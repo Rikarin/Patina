@@ -91,7 +91,9 @@ async function openOnMesh(): Promise<void> {
 /** Waits for the stack to finish evaluating and the picture to stop changing. */
 async function settled(): Promise<void> {
   await expect(window.getByTestId('layers-evaluation')).not.toContainText('Evaluating', { timeout: 60_000 });
-  await expect.poll(async () => Number(await canvas().getAttribute('data-frames')), { timeout: 30_000 }).toBeGreaterThan(0);
+  await expect
+    .poll(async () => Number(await canvas().getAttribute('data-frames')), { timeout: 30_000 })
+    .toBeGreaterThan(0);
   await expect
     .poll(
       async () => {
@@ -109,7 +111,13 @@ async function at(x: number, y: number): Promise<{ x: number; y: number }> {
   return { x: area.x + area.width * x, y: area.y + area.height * y };
 }
 
-async function drag(fromX: number, fromY: number, toX: number, toY: number, modifier?: 'Meta' | 'Control'): Promise<void> {
+async function drag(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  modifier?: 'Meta' | 'Control'
+): Promise<void> {
   const from = await at(fromX, fromY);
   const to = await at(toX, toY);
   await window.mouse.move(from.x, from.y);
@@ -162,7 +170,7 @@ function checker(path: string, side = 64): void {
   for (let y = 0; y < side; y++) {
     const row = Buffer.alloc(1 + side * 4);
     for (let x = 0; x < side; x++) {
-      const green = (x < side / 2) === (y < side / 2);
+      const green = x < side / 2 === y < side / 2;
       row.set(green ? [30, 220, 60, 255] : [230, 30, 200, 255], 1 + x * 4);
     }
 

@@ -1,10 +1,10 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { type MaterialInfo, type StackLayer, unwrap } from '@patina/api-client';
+import { messageOf } from '../core/messages';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { type DropZone, dropManyCommands } from './layer-drag';
 import { PaintStore } from './paint-store';
-import { messageOf } from '../core/messages';
 
 /** Where in the stack a material was dropped. */
 export interface MaterialDrop {

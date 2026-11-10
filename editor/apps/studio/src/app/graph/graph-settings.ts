@@ -204,7 +204,9 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
     <div class="flex flex-col gap-3">
       @for (section of sections(); track section.group) {
         @if (section.group) {
-          <p class="text-foreground-muted -mb-1 text-xs font-semibold" data-testid="parameter-group">{{ section.group }}</p>
+          <p class="text-foreground-muted -mb-1 text-xs font-semibold" data-testid="parameter-group">
+            {{ section.group }}
+          </p>
         }
         @for (parameter of section.members; track parameter.name) {
           <div
@@ -628,48 +630,48 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
       <div class="flex flex-col gap-1.5">
         @for (group of document?.groups; track group.id) {
           <div class="flex flex-col gap-1" data-testid="group-row">
-          <div class="flex items-center gap-1">
-            <xui-select
-              class="w-28 min-w-0 shrink-0"
-              ariaLabel="Frame color"
-              data-testid="group-colour"
-              [disabled]="!store.editable()"
-              [itemText]="colourName"
-              [items]="frameColours"
-              [value]="group.color"
-              (valueChange)="store.describeGroup(group.id, { color: $event ?? '' })"
-            />
+            <div class="flex items-center gap-1">
+              <xui-select
+                class="w-28 min-w-0 shrink-0"
+                ariaLabel="Frame color"
+                data-testid="group-colour"
+                [disabled]="!store.editable()"
+                [itemText]="colourName"
+                [items]="frameColours"
+                [value]="group.color"
+                (valueChange)="store.describeGroup(group.id, { color: $event ?? '' })"
+              />
+              <input
+                class="min-w-0 flex-1"
+                xuiInput
+                size="sm"
+                aria-label="Group title"
+                [disabled]="!store.editable()"
+                [value]="group.title"
+                (change)="retitle(group.id, $event)"
+              />
+              <span class="readout text-foreground-muted shrink-0">{{ group.nodes.length }}</span>
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                [disabled]="!store.editable()"
+                (click)="store.ungroup(group.id)"
+              >
+                Ungroup
+              </button>
+            </div>
             <input
-              class="min-w-0 flex-1"
               xuiInput
               size="sm"
-              aria-label="Group title"
+              aria-label="Group description"
+              placeholder="What these nodes do"
+              data-testid="group-description"
               [disabled]="!store.editable()"
-              [value]="group.title"
-              (change)="retitle(group.id, $event)"
+              [value]="group.description"
+              (change)="store.describeGroup(group.id, { description: valueOf($event) })"
             />
-            <span class="readout text-foreground-muted shrink-0">{{ group.nodes.length }}</span>
-            <button
-              type="button"
-              xuiButton
-              size="sm"
-              variant="ghost"
-              [disabled]="!store.editable()"
-              (click)="store.ungroup(group.id)"
-            >
-              Ungroup
-            </button>
-          </div>
-          <input
-            xuiInput
-            size="sm"
-            aria-label="Group description"
-            placeholder="What these nodes do"
-            data-testid="group-description"
-            [disabled]="!store.editable()"
-            [value]="group.description"
-            (change)="store.describeGroup(group.id, { description: valueOf($event) })"
-          />
           </div>
         }
       </div>
@@ -853,7 +855,10 @@ export class GraphSettings {
 
   /** Every parameter but this one, as something to show it by, and nothing for always. */
   protected conditionsFor(parameter: GraphSettingDefinition): readonly string[] {
-    return ['', ...(this.store.document()?.parameters ?? []).map(held => held.name).filter(name => name !== parameter.name)];
+    return [
+      '',
+      ...(this.store.document()?.parameters ?? []).map(held => held.name).filter(name => name !== parameter.name)
+    ];
   }
 
   protected readonly conditionName = (name: string): string => (name === '' ? 'Always' : name);

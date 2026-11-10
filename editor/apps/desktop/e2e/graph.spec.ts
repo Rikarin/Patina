@@ -1,4 +1,3 @@
-import { leave } from './projects';
 import {
   _electron as electron,
   expect,
@@ -11,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { leave } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
@@ -286,7 +286,10 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await expect(nodes()).toHaveCount(4);
 
   // Each node lands selected, so the next one takes it: the chain is wired as it is made, and nothing is left unwired.
-  const unwired = window.getByTestId('graph-diagnostics').getByRole('listitem').filter({ hasText: 'has no image connected' });
+  const unwired = window
+    .getByTestId('graph-diagnostics')
+    .getByRole('listitem')
+    .filter({ hasText: 'has no image connected' });
   await expect.poll(wiresNow).toEqual(['1>2', '2>3', '3>4']);
   await expect(unwired).toHaveCount(0);
 
@@ -329,15 +332,13 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await expect(thumbnail(3)).not.toHaveAttribute('data-hash', curved);
   await expect(window.getByTestId('graph-evaluation')).toHaveText(/ran, \d+ ms|Up to date/);
 
-  // The Texture pane: a histogram that says where it came from, a channel, the real size.
+  // The Texture pane: a histogram that says where it came from, a channel, and the real size without asking for it.
   await expect(window.getByTestId('texture-histogram-label')).toHaveText('Histogram of the 256 × 256 reduction');
-  await expect(window.getByTestId('texture-size')).toHaveText('256 × 256, a reduction');
+  await expect(window.getByTestId('texture-size')).toHaveText('512 × 512');
   await window.getByRole('radio', { name: 'R', exact: true }).click();
   await expect(window.getByTestId('texture-channel')).toBeVisible();
   await window.screenshot({ path: join(shots, 'graph-channel.png') });
   await window.getByRole('radio', { name: 'RGBA' }).click();
-  await window.getByTestId('texture-full').click();
-  await expect(window.getByTestId('texture-size')).toHaveText('512 × 512');
   await window.screenshot({ path: join(shots, 'graph-tiling-material.png') });
 
   await window.getByTestId('app-save').click();
@@ -428,6 +429,85 @@ test('the palette adds what was typed, wired to the selection, into a wire, or f
   await expect(nodes()).toHaveCount(Nodes + 3);
   await expect.poll(wiresNow).toContain(`5>${String(Nodes + 3)}`);
   await window.screenshot({ path: join(shots, 'graph-palette-wired.png') });
+});
+
+test('the 2D view shows the node on view at full size, tiles it and pins it, and the viewport shows it alone', async () => {
+  test.setTimeout(120_000);
+  await openGraph();
+  await node(3).locator('xui-graph-node-preview').click();
+  await expect(window.getByTestId('texture-size')).toHaveText('256 × 256');
+  const inverted = await hashOf(thumbnail(3));
+  await expect(window.getByTestId('texture-image')).toHaveAttribute('data-hash', inverted);
+
+  // Three by three, with the texel under the pointer read out.
+  await window.getByTestId('texture-tile').click();
+  await expect(window.getByTestId('texture-image')).toHaveCount(9);
+  await window.getByTestId('texture-view').hover();
+  await expect(window.getByTestId('texture-texel')).toHaveText(/^\d+, \d+ {2}(\d\.\d{3} ?){4}$/);
+  await window.screenshot({ path: join(shots, 'graph-2d-tiled.png') });
+  await window.getByTestId('texture-tile').click();
+
+  // Pinned, it stays on the Invert while the Noise is chosen, and follows the selection again once let go.
+  await window.getByTestId('texture-pin').click();
+  await node(1).locator('xui-graph-node-preview').click();
+  await expect(window.getByTestId('inspector-title')).toHaveText('Noise');
+  await expect(window.getByTestId('texture-image')).toHaveAttribute('data-hash', inverted);
+  await window.getByTestId('texture-pin').click();
+  await expect(window.getByTestId('texture-image')).toHaveAttribute('data-hash', await hashOf(thumbnail(1)));
+
+  // The viewport shows the node alone on a sphere, then on a plane, and the material again.
+  await window.getByRole('tab', { name: 'Preview' }).click();
+  await window.getByTestId('viewport-show-node').click();
+  await expect(window.getByTestId('viewport-mesh')).toHaveText('Sphere.glb', { timeout: 30_000 });
+  await expect(window.getByTestId('viewport-view')).toBeDisabled();
+  await window.getByTestId('viewport-display-toggle').click();
+  await window.getByTestId('viewport-shape').selectOption('plane');
+  await expect(window.getByTestId('viewport-mesh')).toHaveText('Plane.glb');
+  await window.getByTestId('viewport-display-toggle').click();
+  await expect(window.getByTestId('viewport-display')).toHaveCount(0);
+  const viewport = window.getByRole('application', { name: 'Viewport' });
+  const drawn = Number(await viewport.getAttribute('data-frames'));
+  await expect
+    .poll(async () => Number(await viewport.getAttribute('data-frames')), { timeout: 30_000 })
+    .toBeGreaterThan(drawn);
+  await window.screenshot({ path: join(shots, 'graph-node-on-plane.png') });
+  await window.getByTestId('viewport-show-node').click();
+  await expect(window.getByTestId('viewport-view')).toBeEnabled();
+});
+
+test('finds a node by name, stars a node for the palette, and adds one from several', async () => {
+  await openGraph();
+
+  // Find Node selects the node and shows it.
+  await window.getByTestId('graph-name').click();
+  await window.keyboard.press('ControlOrMeta+f');
+  await window.locator('input[role=combobox]').fill('Inv');
+  await expect(window.getByRole('dialog').getByRole('option').first()).toHaveText('Invert');
+  await window.keyboard.press('Enter');
+  await expect(window.getByTestId('inspector-title')).toHaveText('Invert');
+
+  // A star in the Nodes list puts Blend first in the palette, under Favourites.
+  await window.getByRole('tab', { name: 'Nodes' }).click();
+  await window.getByTestId('node-library-search').fill('Blend');
+  const blend = window.getByTestId('node-library-item').filter({ hasText: /^Blend$/ });
+  await blend.hover();
+  await blend.getByTestId('node-library-star').click();
+  await window.getByTestId('node-library-search').fill('');
+  await expect(window.getByTestId('node-library-group-Favourites')).toBeVisible();
+  await expect(window.getByTestId('node-library-item').first()).toHaveText('Blend');
+
+  // With the Noise and the Invert selected, the starred Blend takes them both, top first.
+  await node(1).locator('xui-graph-node-preview').click();
+  await node(3)
+    .locator('xui-graph-node-preview')
+    .click({ modifiers: ['Shift'] });
+  await window.getByTestId('graph-add').click();
+  await expect(window.getByRole('dialog').getByRole('option').first()).toHaveText('Blend');
+  await window.keyboard.press('Enter');
+  await expect(nodes()).toHaveCount(Nodes + 1);
+  const added = String(Nodes + 1);
+  await expect.poll(wiresNow).toEqual(expect.arrayContaining([`1>${added}`, `3>${added}`]));
+  await window.screenshot({ path: join(shots, 'graph-added-from-several.png') });
 });
 
 test('the node library ranks what was typed, as the palette does', async () => {

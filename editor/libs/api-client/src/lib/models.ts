@@ -32,6 +32,7 @@ export type ViewportState = components['schemas']['ViewportState'];
 export type ViewportCameraState = components['schemas']['ViewportCameraState'];
 export type ViewportDisplay = components['schemas']['ViewportDisplay'];
 export type ViewportIsolation = components['schemas']['ViewportIsolation'];
+export type ViewportNodeShown = components['schemas']['ViewportNodeShown'];
 export type ViewportScreenshot = components['schemas']['ViewportScreenshot'];
 export type StackChecks = components['schemas']['StackChecks'];
 export type CheckProblem = components['schemas']['CheckProblem'];

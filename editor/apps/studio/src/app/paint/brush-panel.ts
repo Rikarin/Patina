@@ -9,11 +9,11 @@ import { Commands } from '../core/commands';
 import { IconImports } from '../core/icons';
 import { channelName, termName } from '../core/labels';
 import { degrees, percent, toDegrees, toRadians } from '../core/numbers';
+import { ProjectStore } from '../library/project-store';
 import { BrushPresets } from './brush-presets';
 import { MaximumRadius } from './paint-commands';
 import { type BrushSettings, type FillMode, PaintStore } from './paint-store';
 import { FillModes, PaintToolIcons, PaintTools } from './paint-tools';
-import { ProjectStore } from '../library/project-store';
 
 type NumberSetting = {
   [K in keyof BrushSettings]-?: NonNullable<BrushSettings[K]> extends number ? K : never;
@@ -91,7 +91,9 @@ const SizeSteps = 1000;
     @switch (store.tool()) {
       @case ('fill') {
         <div class="flex items-center gap-2">
-          <span class="text-foreground-muted w-16 shrink-0 text-xs" title="How much of the mesh a click fills">Fills</span>
+          <span class="text-foreground-muted w-16 shrink-0 text-xs" title="How much of the mesh a click fills"
+            >Fills</span
+          >
           <select
             class="well h-7 min-w-0 flex-1 px-1 text-sm"
             aria-label="Fill mode"
@@ -107,7 +109,9 @@ const SizeSteps = 1000;
       @case ('clone') {
         <div class="flex flex-wrap items-center gap-2" data-testid="paint-clone">
           <span class="text-foreground-muted w-16 shrink-0 text-xs">Source</span>
-          <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-clone-source">{{ cloneWhere() }}</span>
+          <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-clone-source">{{
+            cloneWhere()
+          }}</span>
           <button
             type="button"
             xuiButton
@@ -142,7 +146,9 @@ const SizeSteps = 1000;
           >Material</span
         >
         @if (store.material(); as material) {
-          <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-material-name">{{ material.name }}</span>
+          <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-material-name">{{
+            material.name
+          }}</span>
           <button
             type="button"
             xuiButton
@@ -165,8 +171,17 @@ const SizeSteps = 1000;
         title="A picture fixed on the viewport: the projection tool paints it, and a stencil masks any brush by its brightness"
         >Picture</span
       >
-      <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-screen-picture-name">{{ pictureName() }}</span>
-      <button type="button" xuiButton size="sm" variant="ghost" data-testid="paint-screen-picture-choose" (click)="choosePicture()">
+      <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-screen-picture-name">{{
+        pictureName()
+      }}</span>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="paint-screen-picture-choose"
+        (click)="choosePicture()"
+      >
         Choose…
       </button>
     </div>
@@ -223,7 +238,9 @@ const SizeSteps = 1000;
     </div>
     @if (store.symmetry(); as symmetry) {
       <div class="flex items-center gap-2" data-testid="paint-symmetry-settings">
-        <span class="text-foreground-muted w-16 shrink-0 text-xs">{{ symmetry.kind === 'radial' ? 'Axis' : 'Plane' }}</span>
+        <span class="text-foreground-muted w-16 shrink-0 text-xs">{{
+          symmetry.kind === 'radial' ? 'Axis' : 'Plane'
+        }}</span>
         <select
           class="well h-7 min-w-0 flex-1 px-1 text-sm"
           aria-label="Symmetry axis"
@@ -247,7 +264,9 @@ const SizeSteps = 1000;
       </div>
       @if (symmetry.kind === 'radial') {
         <div class="flex items-center gap-2">
-          <span class="text-foreground-muted w-16 shrink-0 text-xs" title="How many strokes, this one among them">Copies</span>
+          <span class="text-foreground-muted w-16 shrink-0 text-xs" title="How many strokes, this one among them"
+            >Copies</span
+          >
           <xui-slider
             class="min-w-0 flex-1"
             labelStepSize="0"
@@ -323,7 +342,9 @@ const SizeSteps = 1000;
     </div>
     @if (store.masking()) {
       <div class="flex items-center gap-2">
-        <span class="text-foreground-muted w-16 shrink-0 text-xs" title="Black hides the layer and white shows it">Grey</span>
+        <span class="text-foreground-muted w-16 shrink-0 text-xs" title="Black hides the layer and white shows it"
+          >Grey</span
+        >
         <xui-slider
           class="min-w-0 flex-1"
           labelStepSize="0"
@@ -401,7 +422,10 @@ const SizeSteps = 1000;
         </select>
       </div>
     }
-    <label class="flex items-center gap-2 text-xs" title="Off, a place keeps the strongest stamp: a slow drag paints what a fast one does">
+    <label
+      class="flex items-center gap-2 text-xs"
+      title="Off, a place keeps the strongest stamp: a slow drag paints what a fast one does"
+    >
       <input
         type="checkbox"
         data-testid="paint-accumulate"
@@ -440,7 +464,9 @@ const SizeSteps = 1000;
           [value]="store.brush().occlusionTolerance"
           (valueChange)="set('occlusionTolerance', $event)"
         />
-        <span class="readout w-12 shrink-0 text-end text-xs">{{ (store.brush().occlusionTolerance / 10).toFixed(1) }}%</span>
+        <span class="readout w-12 shrink-0 text-end text-xs"
+          >{{ (store.brush().occlusionTolerance / 10).toFixed(1) }}%</span
+        >
       </div>
     }
     <div class="flex flex-col gap-1" data-testid="paint-channels" [hidden]="store.masking()">
@@ -642,7 +668,15 @@ export class BrushPanel {
   protected setKind(kind: string): void {
     const held = this.store.symmetry();
     this.store.symmetry.set(
-      kind ? { kind, axis: held?.axis ?? 'x', centre: held?.centre ?? 'model', offset: held?.offset ?? 0, count: held?.count ?? 4 } : null
+      kind
+        ? {
+            kind,
+            axis: held?.axis ?? 'x',
+            centre: held?.centre ?? 'model',
+            offset: held?.offset ?? 0,
+            count: held?.count ?? 4
+          }
+        : null
     );
   }
 

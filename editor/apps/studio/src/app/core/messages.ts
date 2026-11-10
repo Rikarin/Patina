@@ -11,7 +11,8 @@ const Words: Readonly<Record<string, string>> = {
   'library-none': 'No library is open. Open one, or make a new one, from the start page.',
   'graph-not-open': 'That graph was closed elsewhere. Open it again from the Library.',
   'stack-not-open': 'That document is not open in the engine any more. Open it again from the Library.',
-  'stroke-not-paint-layer': '{layer} is a {kind} layer, with nothing of its own to paint. Choose a paint layer, or paint its mask.',
+  'stroke-not-paint-layer':
+    '{layer} is a {kind} layer, with nothing of its own to paint. Choose a paint layer, or paint its mask.',
   'stack-no-mesh': 'There is no mesh to paint on. Choose one in Project Settings.',
   'stroke-repeated-channel': 'That stroke could not be painted. Try it again.',
   'stroke-brush-refused': 'That brush can’t be used. {reason}',
@@ -23,7 +24,8 @@ const Words: Readonly<Record<string, string>> = {
   'bake-occluder-minimum':
     'The minimum occluder distance has to be less than the occluder distance, or every ray starts past its reach and the occlusion comes out white.',
   'mask-layer-missing': 'The mask of {layer} has changed since that was asked. Try again.',
-  'mask-layer-not-paint': 'That layer of the mask of {layer} is not painted, so a brush can’t reach it. Add a Paint layer to the mask.',
+  'mask-layer-not-paint':
+    'That layer of the mask of {layer} is not painted, so a brush can’t reach it. Add a Paint layer to the mask.',
   'instance-source-missing': 'The layer to make an instance of is no longer in {set}.',
   'instance-cycle': 'An instance of {layer} there would stand for itself. Choose another layer.',
   'preset-invalid': 'That preset can’t be kept as it is. {reason}',

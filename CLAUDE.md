@@ -40,9 +40,10 @@ reference for how this repository works, and its code can be copied freely (same
 ## Editor
 
 - Angular 22 zoneless with signals, Tailwind 4, Nx 24, pnpm, Vitest, Playwright for Electron, Electron 45, Node 24.
-- `pnpm exec nx run-many -t lint typecheck test`, `pnpm exec nx build desktop`, and
-  `pnpm exec playwright test --config apps/desktop/e2e/playwright.config.ts` after a Release engine build. Tests that open a
-  mesh use `content/fixtures/viewport-test.glb`, written by `patina-bench mesh`.
+- `pnpm exec prettier --check .`, `pnpm exec nx run-many -t lint typecheck test`, `pnpm exec nx build desktop`, and
+  `pnpm exec playwright test --config apps/desktop/e2e/playwright.config.ts` after a Release engine build. CI fails on
+  anything Prettier would change; `pnpm exec prettier --write .` fixes it. Tests that open a mesh use
+  `content/fixtures/viewport-test.glb`, written by `patina-bench mesh`.
 - **Use the xUI skin; don't rebuild it.** Import `theme.css` then `bezel.css`, set `data-skin="bezel"`, and use `pane`,
   `chrome-bar`, `well`, `readout` and friends for app chrome. `libs/studio-ui` holds only controls xUI lacks; a gap in a
   general control gets fixed in xUI. Install the xUI MCP server for agents.

@@ -4,9 +4,9 @@ import {
   type Connection,
   type GraphCommand,
   type GraphCompound,
+  type GraphEdgeState,
   type GraphEditResult,
   type GraphEvent,
-  type GraphEdgeState,
   type GraphInterfacePort,
   type GraphNodeType,
   type GraphPresetState,
@@ -17,6 +17,7 @@ import {
   unwrap
 } from '@patina/api-client';
 import { desktop } from '../core/desktop';
+import { messageOf } from '../core/messages';
 import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
@@ -25,7 +26,6 @@ import { DraftLayer } from './draft-layer';
 import { EditQueue } from './edit-queue';
 import { type GraphDocument, applyEvent, classify, documentOf, edgeKey } from './graph-model';
 import { PreviewLoader } from './preview-loader';
-import { messageOf } from '../core/messages';
 
 export type GraphSessionState =
   | { kind: 'none' }
@@ -55,13 +55,15 @@ export interface GraphPoint {
 }
 
 /**
- * What a new node is wired to: an output it takes, an input it drives, or a wire it goes into the middle of. A port left
- * out is the first that fits, which the Server finds.
+ * What a new node is wired to: an output it takes, an input it drives, a wire it goes into the middle of, or several
+ * nodes, each on the next free input that fits, in order. A port left out is the first that fits, which the Server
+ * finds.
  */
 export type NodeLink =
   | { kind: 'from'; node: number; port?: string }
   | { kind: 'to'; node: number; port: string }
-  | { kind: 'wire'; node: number; port: string; toNode: number; toPort: string };
+  | { kind: 'wire'; node: number; port: string; toNode: number; toPort: string }
+  | { kind: 'many'; nodes: readonly number[] };
 
 /** The kinds of wire a node must suit: one it can take on an input, and an input it can drive. */
 export interface NodeWire {
@@ -156,26 +158,29 @@ export class GraphStore {
   private epoch = 0;
   /** Brings the session back after a drop, by the epoch it dropped in (#226). */
   private readonly recovery = inject(RecoveryOffers);
-  private readonly comeback = new SessionReturn<number>({
-    probe: async epoch => {
-      const document = this.mutableDocument();
-      if (document && epoch === this.epoch && !this.stopped) {
-        const client = await this.reconnect();
-        unwrap(await client.GET('/api/v1/graphs/{id}', { params: { path: { id: document.id } } }));
+  private readonly comeback = new SessionReturn<number>(
+    {
+      probe: async epoch => {
+        const document = this.mutableDocument();
+        if (document && epoch === this.epoch && !this.stopped) {
+          const client = await this.reconnect();
+          unwrap(await client.GET('/api/v1/graphs/{id}', { params: { path: { id: document.id } } }));
+        }
+      },
+      follow: epoch => {
+        this.follow(epoch);
+      },
+      reopen: epoch => this.reopenLost(epoch),
+      lost: (epoch, error) => {
+        const document = this.mutableDocument();
+        if (document && epoch === this.epoch) {
+          this.endSession();
+          this.mutableSession.set({ kind: 'failed', path: document.path, reason: messageOf(error) });
+        }
       }
     },
-    follow: epoch => {
-      this.follow(epoch);
-    },
-    reopen: epoch => this.reopenLost(epoch),
-    lost: (epoch, error) => {
-      const document = this.mutableDocument();
-      if (document && epoch === this.epoch) {
-        this.endSession();
-        this.mutableSession.set({ kind: 'failed', path: document.path, reason: messageOf(error) });
-      }
-    }
-  }, inject(EngineRestarts));
+    inject(EngineRestarts)
+  );
   private reloading = false;
   private held: GraphEvent[] = [];
   /** The live edit in progress, whose batches after the first fold into one undo step. */
@@ -190,7 +195,7 @@ export class GraphStore {
   /** The session each open got from the Server, by the path it opened, the open on its way included. */
   private readonly opened = new Map<string, Promise<string | null>>();
 
-  readonly session =this.mutableSession.asReadonly();
+  readonly session = this.mutableSession.asReadonly();
   readonly document = this.mutableDocument.asReadonly();
   /** A node the library asked for, which the canvas places in the middle of what it shows. */
   readonly adding = signal<GraphNodeType | null>(null);
@@ -240,6 +245,24 @@ export class GraphStore {
     const [first] = this.mutableSelection();
     return (first === undefined ? undefined : document?.nodes.get(first)) ?? null;
   });
+
+  private readonly mutablePinned = signal<{ document: string; node: number } | null>(null);
+
+  /** The node the 2D and 3D views keep showing whatever is selected, in the graph it was pinned in. */
+  readonly pinned = computed(() => {
+    const pinned = this.mutablePinned();
+    const document = this.mutableDocument();
+    return pinned && document?.id === pinned.document ? (document.nodes.get(pinned.node) ?? null) : null;
+  });
+
+  /** The node the 2D view shows, and the 3D view when it shows one node: the pinned one, or the selected one. */
+  readonly viewedNode = computed(() => this.pinned() ?? this.selectedNode());
+
+  /** Keeps the views on a node while the selection moves on, or lets them follow it again with null. */
+  pin(node: number | null): void {
+    const document = this.mutableDocument();
+    this.mutablePinned.set(node === null || !document ? null : { document: document.id, node });
+  }
 
   /**
    * Whether an edit is still on its way: sent and not answered, or answered and its event not yet applied. Until then
@@ -705,7 +728,7 @@ export class GraphStore {
     }
   }
 
-  /** Adds a node, and wires it to the port a dropped wire came from. */
+  /** Adds a node, and wires it to what it was made from: a dropped wire, the selection, or a wire it goes into. */
   async addNode(type: GraphNodeType, position: GraphPoint, link?: NodeLink): Promise<void> {
     const reference = -1;
     const commands: GraphCommand[] = [{ op: 'addNode', type: type.path, x: position.x, y: position.y, ref: reference }];
@@ -720,6 +743,11 @@ export class GraphStore {
 
     if (link?.kind === 'wire') {
       commands.push({ op: 'wire', fromNode: reference, toNode: link.toNode, toPort: link.toPort });
+    }
+
+    // Each takes the next input that fits and has no wire yet, so two images go into a Blend's two.
+    for (const node of link?.kind === 'many' ? link.nodes : []) {
+      commands.push({ op: 'wire', fromNode: node, fromPort: null, toNode: reference });
     }
 
     const result = await this.apply(commands, `Add ${type.title}`);
@@ -1210,7 +1238,9 @@ export class GraphStore {
   private async start(path: string): Promise<void> {
     const epoch = this.endSession();
     this.mutableSession.set({ kind: 'opening', path });
-    const answer = this.reconnect().then(async client => unwrap(await client.POST('/api/v1/graphs', { body: { path } })));
+    const answer = this.reconnect().then(async client =>
+      unwrap(await client.POST('/api/v1/graphs', { body: { path } }))
+    );
     this.opened.set(
       path,
       answer.then(

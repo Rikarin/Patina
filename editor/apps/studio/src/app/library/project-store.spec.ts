@@ -108,14 +108,12 @@ function harness() {
 
       return Promise.resolve({ data: { items: [] }, response: new Response() });
     }),
-    DELETE: vi.fn(
-      (route: string, options?: { params?: { path?: { id?: string }; query?: { discard?: boolean } } }) => {
-        const id = options?.params?.path?.id ?? route;
-        removed.push(id);
-        sessions.delete(id);
-        return Promise.resolve({ data: {}, response: new Response() });
-      }
-    )
+    DELETE: vi.fn((route: string, options?: { params?: { path?: { id?: string }; query?: { discard?: boolean } } }) => {
+      const id = options?.params?.path?.id ?? route;
+      removed.push(id);
+      sessions.delete(id);
+      return Promise.resolve({ data: {}, response: new Response() });
+    })
   };
   TestBed.configureTestingModule({
     providers: [
@@ -210,7 +208,15 @@ describe('ProjectStore', () => {
       harness();
       TestBed.inject(ProjectCommands).install();
       const commands = TestBed.inject(Commands);
-      for (const id of ['projectSettings', 'save', 'saveAs', 'saveAll', 'reloadMesh', 'closeDocument', 'closeProject']) {
+      for (const id of [
+        'projectSettings',
+        'save',
+        'saveAs',
+        'saveAll',
+        'reloadMesh',
+        'closeDocument',
+        'closeProject'
+      ]) {
         expect(commands.enabled(id), id).toBe(false);
       }
     });
@@ -513,7 +519,7 @@ describe('ProjectStore', () => {
     expect(paint.notice()).toBeNull();
   });
 
-  it('keeps the Server\'s word for a tab behind whose session it still has', async () => {
+  it("keeps the Server's word for a tab behind whose session it still has", async () => {
     const { store, paintState, client } = harness();
     await store.open('a');
     paintState.set({ id: `session:${paths.texturing}`, history: { dirty: true } });

@@ -329,13 +329,25 @@ public sealed class GraphEditor {
                 if (filter.Accepts(PortOf(to, input, PortDirection.Input))) {
                     return new(graph, new(from.Id, output.Name), new(to.Id, input));
                 }
-            } else if (NodeSearch.Landing(TypeOf(to), filter) is { } landing) {
+            } else if ((FreeLanding(to, filter) ?? NodeSearch.Landing(TypeOf(to), filter)) is { } landing) {
                 return new(graph, new(from.Id, output.Name), new(to.Id, landing));
             }
         }
 
         return null;
     }
+
+    /// <summary>
+    ///     The first input with no wire yet that takes what the filter allows, so that several wires to a node made
+    ///     from a selection fill its inputs in turn rather than replacing each other on the first.
+    /// </summary>
+    string? FreeLanding(GraphNode to, PortFilter filter) =>
+        TypeOf(to)
+            .Ports.FirstOrDefault(port => port.Direction == PortDirection.Input
+                && filter.Accepts(port)
+                && graph.Source(new(to.Id, port.Name)) is null
+            )
+            ?.Name;
 
     DisconnectCommand BuildDisconnect(GraphDisconnect disconnect, Dictionary<int, int> refs) {
         var to = new PortRef(Find(disconnect.ToNode, refs).Id, disconnect.ToPort);

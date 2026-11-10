@@ -28,7 +28,8 @@ export class ProjectCommands {
       await project.inFront();
       return then();
     };
-    const handle = (id: string, enabled: () => boolean, run: () => unknown) => this.commands.handle(id, { enabled, run });
+    const handle = (id: string, enabled: () => boolean, run: () => unknown) =>
+      this.commands.handle(id, { enabled, run });
     const bridge = desktop();
 
     handle(
@@ -67,7 +68,11 @@ export class ProjectCommands {
       () => project.active() !== null || arriving(),
       () => inFront(() => project.savingAs.set(project.active() !== null))
     );
-    handle('saveAll', () => project.unsavedTabs().length > 0, () => project.saveAll());
+    handle(
+      'saveAll',
+      () => project.unsavedTabs().length > 0,
+      () => project.saveAll()
+    );
     handle(
       'closeDocument',
       () => project.active() !== null || arriving(),

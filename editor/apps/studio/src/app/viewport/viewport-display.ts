@@ -7,7 +7,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { Commands } from '../core/commands';
 import { degrees, percent } from '../core/numbers';
 import type { AxisView } from './orbit';
-import { DefaultDisplay, ViewportClient } from './viewport-client';
+import { DefaultDisplay, Shapes, ViewportClient } from './viewport-client';
 
 type NumberSetting = {
   [K in keyof ViewportDisplay]-?: ViewportDisplay[K] extends number ? K : never;
@@ -44,7 +44,15 @@ const Lighting: readonly Slider[] = [
     step: Math.PI / 180,
     unit: 'degrees'
   },
-  { key: 'shadows', label: 'Shadows', title: 'How dark the model’s shadow is', min: 0, max: 1, step: 0.01, unit: 'share' },
+  {
+    key: 'shadows',
+    label: 'Shadows',
+    title: 'How dark the model’s shadow is',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    unit: 'share'
+  },
   {
     key: 'backgroundOpacity',
     label: 'Background',
@@ -66,7 +74,15 @@ const Lighting: readonly Slider[] = [
 ];
 
 const Finish: readonly Slider[] = [
-  { key: 'contrast', label: 'Contrast', title: 'Contrast about middle grey', min: 0, max: 2, step: 0.01, unit: 'share' },
+  {
+    key: 'contrast',
+    label: 'Contrast',
+    title: 'Contrast about middle grey',
+    min: 0,
+    max: 2,
+    step: 0.01,
+    unit: 'share'
+  },
   { key: 'saturation', label: 'Saturation', title: 'How much color', min: 0, max: 2, step: 0.01, unit: 'share' },
   { key: 'vignette', label: 'Vignette', title: 'Darkens the corners', min: 0, max: 1, step: 0.01, unit: 'share' },
   { key: 'grain', label: 'Grain', title: 'Film grain', min: 0, max: 1, step: 0.01, unit: 'share' },
@@ -79,7 +95,15 @@ const Finish: readonly Slider[] = [
     step: 0.01,
     unit: 'share'
   },
-  { key: 'sharpen', label: 'Sharpen', title: 'Contrast-adaptive sharpening', min: 0, max: 1, step: 0.01, unit: 'share' },
+  {
+    key: 'sharpen',
+    label: 'Sharpen',
+    title: 'Contrast-adaptive sharpening',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    unit: 'share'
+  },
   {
     key: 'bloom',
     label: 'Bloom',
@@ -89,8 +113,24 @@ const Finish: readonly Slider[] = [
     step: 0.01,
     unit: 'share'
   },
-  { key: 'warmth', label: 'Warmth', title: 'Takes blue towards red, or red towards blue', min: -1, max: 1, step: 0.01, unit: 'signed' },
-  { key: 'tint', label: 'Tint', title: 'Takes green towards magenta, or magenta towards green', min: -1, max: 1, step: 0.01, unit: 'signed' }
+  {
+    key: 'warmth',
+    label: 'Warmth',
+    title: 'Takes blue towards red, or red towards blue',
+    min: -1,
+    max: 1,
+    step: 0.01,
+    unit: 'signed'
+  },
+  {
+    key: 'tint',
+    label: 'Tint',
+    title: 'Takes green towards magenta, or magenta towards green',
+    min: -1,
+    max: 1,
+    step: 0.01,
+    unit: 'signed'
+  }
 ];
 
 /** The lanes the picture view shows one of, as a grey, or all of as its colour. */
@@ -134,7 +174,21 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'pane flex w-64 flex-col gap-2 overflow-y-auto p-2', 'data-testid': 'viewport-display' },
   template: `
-    <span class="section-label">Camera</span>
+    <div class="flex items-center gap-2" title="What a material or a graph with no mesh of its own is seen on">
+      <span class="text-foreground-muted w-20 shrink-0 text-xs">Shape</span>
+      <select
+        class="well h-7 min-w-0 flex-1 px-1 text-sm"
+        aria-label="Shape"
+        data-testid="viewport-shape"
+        (change)="viewport.setDisplay({ shape: text($event) })"
+      >
+        @for (shape of shapes; track shape.value) {
+          <option [value]="shape.value" [selected]="shape.value === display().shape">{{ shape.label }}</option>
+        }
+      </select>
+    </div>
+
+    <span class="section-label mt-1">Camera</span>
     <xui-segmented-control
       size="sm"
       ariaLabel="Projection"
@@ -213,7 +267,7 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
       />
     </div>
 
-    @if (display().view === 'picture') {
+    @if (display().view === 'picture' || viewport.node() !== null) {
       <span class="section-label mt-1">Picture</span>
       <div class="flex items-center gap-2" title="One lane of the picture as a grey, or all of it as its color">
         <span class="text-foreground-muted w-20 shrink-0 text-xs">Lane</span>
@@ -228,7 +282,10 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
           }
         </select>
       </div>
-      <div class="flex items-center gap-2" title="What the picture's numbers are multiplied by before they show, for a height or a position">
+      <div
+        class="flex items-center gap-2"
+        title="What the picture's numbers are multiplied by before they show, for a height or a position"
+      >
         <span class="text-foreground-muted w-20 shrink-0 text-xs">Scale</span>
         <input
           type="number"
@@ -321,6 +378,7 @@ export class ViewportDisplayPanel {
   protected readonly curves = ToneMappings;
   protected readonly snaps = Snaps;
   protected readonly lanes = Lanes;
+  protected readonly shapes = Shapes;
   /** A snap moves the camera, which is the pane's. */
   readonly snap = output<AxisView>();
 
@@ -359,9 +417,9 @@ export class ViewportDisplayPanel {
     }
   }
 
-  /** Back to how the viewport opens, but for what it is lit by, looked through and showing, which are choices. */
+  /** Back to how the viewport opens, but for what it is lit by, looked through, showing and on, which are choices. */
   protected reset(): void {
-    const { environment, look = null, view, picture = null, pictureLane, pictureScale } = this.display();
-    this.viewport.setDisplay({ ...DefaultDisplay, environment, look, view, picture, pictureLane, pictureScale });
+    const { environment, look = null, view, picture = null, pictureLane, pictureScale, shape } = this.display();
+    this.viewport.setDisplay({ ...DefaultDisplay, environment, look, view, picture, pictureLane, pictureScale, shape });
   }
 }

@@ -30,6 +30,9 @@ jobs:
           cache-dependency-path: editor/pnpm-lock.yaml
       - id: install
         uses: ./.github/actions/editor-install
+      # Prettier's check, so formatting can't drift until someone happens to run it (#235).
+      - name: Format
+        run: pnpm exec prettier --check .
       - name: Generated API client matches the Server's OpenAPI document
         run: pnpm exec nx run api-client:check-generated
       - name: Type-check (strict, templates included)

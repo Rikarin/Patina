@@ -18,7 +18,14 @@ import { ProjectStore } from './project-store';
  */
 @Component({
   selector: 'ptn-bin',
-  imports: [DatePipe, XuiButtonImports, XuiCalloutImports, XuiDialogImports, XuiNonIdealStateImports, XuiSpinnerImports],
+  imports: [
+    DatePipe,
+    XuiButtonImports,
+    XuiCalloutImports,
+    XuiDialogImports,
+    XuiNonIdealStateImports,
+    XuiSpinnerImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <xui-dialog size="md" title="Bin" [open]="actions.binOpen()" (openChange)="$event || closeBin()">
@@ -30,7 +37,11 @@ import { ProjectStore } from './project-store';
           <div class="grid flex-1 place-items-center"><xui-spinner size="md" aria-label="Reading the bin" /></div>
         } @else {
           @for (item of items(); track item.id) {
-            <div class="border-hairline flex items-center gap-2 border-b py-1.5" data-testid="bin-item" [attr.data-id]="item.id">
+            <div
+              class="border-hairline flex items-center gap-2 border-b py-1.5"
+              data-testid="bin-item"
+              [attr.data-id]="item.id"
+            >
               <span class="min-w-0 flex-1 leading-tight">
                 <span class="block truncate">{{ item.name }}</span>
                 <span class="text-foreground-muted block truncate text-xs" [title]="item.from">
@@ -40,14 +51,30 @@ import { ProjectStore } from './project-store';
               </span>
               @if (forgetting() === item.id) {
                 <button type="button" xuiButton size="sm" variant="ghost" (click)="forgetting.set(null)">Keep</button>
-                <button type="button" xuiButton size="sm" color="error" data-testid="bin-forget-confirm" (click)="forget(item)">
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  color="error"
+                  data-testid="bin-forget-confirm"
+                  (click)="forget(item)"
+                >
                   Delete Forever
                 </button>
               } @else {
-                <button type="button" xuiButton size="sm" variant="ghost" data-testid="bin-forget" (click)="forgetting.set(item.id)">
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  data-testid="bin-forget"
+                  (click)="forgetting.set(item.id)"
+                >
                   Delete…
                 </button>
-                <button type="button" xuiButton size="sm" data-testid="bin-restore" (click)="restore(item)">Restore</button>
+                <button type="button" xuiButton size="sm" data-testid="bin-restore" (click)="restore(item)">
+                  Restore
+                </button>
               }
             </div>
           } @empty {
@@ -64,7 +91,9 @@ import { ProjectStore } from './project-store';
         @if (emptying()) {
           <span class="text-sm">Delete everything in the bin for good?</span>
           <button type="button" xuiButton variant="ghost" (click)="emptying.set(false)">Keep</button>
-          <button type="button" xuiButton color="error" data-testid="bin-empty-confirm" (click)="empty()">Empty Bin</button>
+          <button type="button" xuiButton color="error" data-testid="bin-empty-confirm" (click)="empty()">
+            Empty Bin
+          </button>
         } @else {
           <button
             type="button"

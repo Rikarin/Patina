@@ -16,8 +16,8 @@ import { existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { contentSecurityPolicy } from './csp';
-import { LibraryPlace, type LibraryChoice } from './libraries';
 import { KeyFile } from './keys';
+import { LibraryPlace, type LibraryChoice } from './libraries';
 import { installMenu, readMenuModel, type MenuModel } from './menu';
 import { Sidecars } from './sidecars';
 
@@ -218,20 +218,23 @@ function preferences(): KeyFile {
 }
 
 function rebuildMenu(): void {
-  installMenu({
-    recent: places().recent(),
-    development: !app.isPackaged,
-    newLibrary: async () => {
-      await openLibrary(await askForNewLibrary());
+  installMenu(
+    {
+      recent: places().recent(),
+      development: !app.isPackaged,
+      newLibrary: async () => {
+        await openLibrary(await askForNewLibrary());
+      },
+      openLibrary: async () => {
+        await openLibrary(await askForLibrary());
+      },
+      openRecent: async path => {
+        await openRecent(path);
+      },
+      command: (command, accelerator) => window?.webContents.send('patina:command', command, accelerator)
     },
-    openLibrary: async () => {
-      await openLibrary(await askForLibrary());
-    },
-    openRecent: async path => {
-      await openRecent(path);
-    },
-    command: (command, accelerator) => window?.webContents.send('patina:command', command, accelerator)
-  }, studioMenus);
+    studioMenus
+  );
 }
 
 function serveStudio(): void {

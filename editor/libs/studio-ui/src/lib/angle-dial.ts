@@ -26,7 +26,15 @@ import { angleOf, snapAngle } from './angle';
   template: `
     <svg viewBox="-14 -14 28 28" class="size-full" aria-hidden="true">
       <circle r="12.5" class="fill-surface-inset stroke-border" stroke-width="1" />
-      <line x1="0" y1="0" [attr.x2]="tip().x" [attr.y2]="tip().y" class="stroke-primary" stroke-width="2" stroke-linecap="round" />
+      <line
+        x1="0"
+        y1="0"
+        [attr.x2]="tip().x"
+        [attr.y2]="tip().y"
+        class="stroke-primary"
+        stroke-width="2"
+        stroke-linecap="round"
+      />
       <circle r="1.5" class="fill-primary" />
     </svg>
   `
@@ -73,7 +81,12 @@ export class AngleDial {
 
   protected key(event: KeyboardEvent): void {
     const step = event.shiftKey ? 15 : 1;
-    const turn = event.key === 'ArrowUp' || event.key === 'ArrowRight' ? step : event.key === 'ArrowDown' || event.key === 'ArrowLeft' ? -step : 0;
+    const turn =
+      event.key === 'ArrowUp' || event.key === 'ArrowRight'
+        ? step
+        : event.key === 'ArrowDown' || event.key === 'ArrowLeft'
+          ? -step
+          : 0;
     if (turn === 0 || this.disabled()) {
       return;
     }

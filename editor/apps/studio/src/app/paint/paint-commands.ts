@@ -45,8 +45,14 @@ export class PaintCommands {
       const radius = this.paint.radius() * by;
       this.paint.radius.set(Math.max(1, Math.min(MaximumRadius, Math.round(radius))));
     };
-    this.commands.handle('smallerBrush', { enabled: () => this.paint.radius() > 1 && open(), run: () => resize(1 / RadiusStep) });
-    this.commands.handle('largerBrush', { enabled: () => this.paint.radius() < MaximumRadius && open(), run: () => resize(RadiusStep) });
+    this.commands.handle('smallerBrush', {
+      enabled: () => this.paint.radius() > 1 && open(),
+      run: () => resize(1 / RadiusStep)
+    });
+    this.commands.handle('largerBrush', {
+      enabled: () => this.paint.radius() < MaximumRadius && open(),
+      run: () => resize(RadiusStep)
+    });
     this.commands.handle('findLayer', {
       enabled: () => open() && (this.paint.state()?.layers.length ?? 0) > 0,
       checked: () => this.paint.finding(),

@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  type ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild
+} from '@angular/core';
 import { ChannelView, HistogramChart, type PictureChannel, computeHistogram } from '@patina/studio-ui';
 import { XuiButtonImports } from '@xui/button';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
@@ -10,8 +20,13 @@ import { ProjectStore } from '../library/project-store';
 import { GraphStore } from './graph-store';
 
 const MinZoom = 0.25;
-const MaxZoom = 16;
+const MaxZoom = 64;
 const WheelSpeed = 0.002;
+/** How much of the well a fitted picture fills, so its edge shows. */
+const FitShare = 0.9;
+/** The copies across and down that Tile shows, with the picture itself in the middle. */
+const TileCount = 3;
+const Tiles = Array.from({ length: TileCount * TileCount }, (_, index) => index);
 
 const channels: readonly XuiSegmentedOption<PictureChannel>[] = [
   { value: 'rgba', label: 'RGBA' },
@@ -47,16 +62,29 @@ async function pixelsOf(url: string): Promise<ImageData | null> {
   return context?.getImageData(0, 0, canvas.width, canvas.height) ?? null;
 }
 
+/** A texel's four lanes as the decoded picture holds them, 0 to 1. */
+export function texelText(pixels: ImageData, x: number, y: number): string {
+  const at = (y * pixels.width + x) * 4;
+  const lanes = [...pixels.data.slice(at, at + 4)].map(value => (value / 255).toFixed(3));
+  return `${String(x)}, ${String(y)}  ${lanes.join(' ')}`;
+}
+
 /**
- * The selected node's picture at any zoom, its texels square, one channel at a time. What is shown is a reduction of at
- * most 256 pixels on a side until Full size asks for the image the graph computes (ADR 0005), and the readout says which.
- * The histogram is always counted from the reduction, the pixels already here, and says so.
+ * A node's picture at any zoom, its texels square, one channel at a time, over a checkerboard where it is see-through.
+ * It follows the selected node, or the one pinned, and shows the picture at the size the graph computes it (ADR 0005):
+ * the 256-pixel reduction is on screen until the full picture arrives, and the readout says which. Tile shows it three
+ * by three, to see the seams. The histogram is counted from the reduction, the pixels already here, and says so.
  */
 @Component({
   selector: 'ptn-texture-view',
   imports: [ChannelView, HistogramChart, XuiButtonImports, XuiNonIdealStateImports, XuiSegmentedControlImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
+  styles: `
+    .checker {
+      background: repeating-conic-gradient(#808080 0 25%, #b0b0b0 0 50%) 0 0 / 16px 16px;
+    }
+  `,
   template: `
     @if (bake.shown(); as map) {
       <div
@@ -104,7 +132,7 @@ async function pixelsOf(url: string): Promise<ImageData | null> {
           Bake…
         </button>
       </xui-non-ideal-state>
-    } @else if (store.selectedNode() === null) {
+    } @else if (store.viewedNode() === null) {
       <xui-non-ideal-state
         class="flex-1"
         title="No node selected"
@@ -114,39 +142,48 @@ async function pixelsOf(url: string): Promise<ImageData | null> {
     } @else {
       @let picture = shown();
       <div
+        #well
         class="well relative min-h-0 flex-1 cursor-grab overflow-hidden"
         data-testid="texture-view"
+        [attr.data-tiled]="tiled() || null"
         (dblclick)="reset()"
         (pointerdown)="grab($event)"
-        (pointermove)="drag($event)"
+        (pointermove)="drag($event); hover($event)"
+        (pointerleave)="texel.set(null)"
         (pointerup)="drop()"
         (wheel)="zoomBy($event)"
       >
         @if (picture) {
-          @if (channel() !== 'rgba' && pixels(); as decoded) {
-            <ptn-channel-view
-              class="absolute top-1/2 left-1/2 max-w-none"
-              data-testid="texture-channel"
-              [channel]="channel()"
-              [picture]="decoded"
-              [style.height.px]="picture.height * zoom()"
-              [style.transform]="transform()"
-              [style.width.px]="picture.width * zoom()"
-            />
-          } @else {
-            <img
-              class="absolute top-1/2 left-1/2 max-w-none"
-              alt="The selected node's picture"
-              data-testid="texture-image"
-              draggable="false"
-              style="image-rendering: pixelated"
-              [attr.data-hash]="picture.hash"
-              [src]="picture.url"
-              [style.height.px]="picture.height * zoom()"
-              [style.transform]="transform()"
-              [style.width.px]="picture.width * zoom()"
-            />
-          }
+          @let side = displayed();
+          <div
+            #sheet
+            class="absolute top-1/2 left-1/2 grid"
+            [style.grid-template-columns]="'repeat(' + across() + ', ' + side.width + 'px)'"
+            [style.transform]="transform()"
+          >
+            @for (tile of tiles(); track tile) {
+              <div class="checker" [style.height.px]="side.height" [style.width.px]="side.width">
+                @if (channel() !== 'rgba' && pixels(); as decoded) {
+                  <ptn-channel-view
+                    class="block size-full"
+                    data-testid="texture-channel"
+                    [channel]="channel()"
+                    [picture]="decoded"
+                  />
+                } @else {
+                  <img
+                    class="block size-full max-w-none"
+                    alt="The node's picture"
+                    data-testid="texture-image"
+                    draggable="false"
+                    style="image-rendering: pixelated"
+                    [attr.data-hash]="picture.hash"
+                    [src]="picture.url"
+                  />
+                }
+              </div>
+            }
+          </div>
         } @else {
           <p class="text-foreground-muted absolute inset-0 m-auto h-fit text-center">No picture yet.</p>
         }
@@ -160,20 +197,43 @@ async function pixelsOf(url: string): Promise<ImageData | null> {
         </div>
       }
       <div class="chrome-bar flex h-7 shrink-0 items-center gap-2 px-2">
-        <span class="readout min-w-0 truncate" data-testid="texture-size">{{ sizeText() }}</span>
+        <span class="readout shrink-0" data-testid="texture-size">{{ sizeText() }}</span>
+        @if (texel(); as at) {
+          <span
+            class="readout text-foreground-muted min-w-0 truncate"
+            data-testid="texture-texel"
+            [title]="texelTitle"
+            >{{ at }}</span
+          >
+        }
         <span class="readout ms-auto shrink-0" data-testid="texture-zoom">{{ percent() }}%</span>
       </div>
-      <div class="chrome-bar flex h-8 shrink-0 items-center gap-2 px-2">
+      <div class="chrome-bar flex h-8 shrink-0 items-center gap-1 px-2">
         <button
           type="button"
           xuiButton
           size="sm"
           variant="ghost"
-          data-testid="texture-full"
-          [disabled]="loadingFull() || !reduction() || full() !== null"
-          (click)="loadFull()"
+          data-testid="texture-pin"
+          [active]="store.pinned() !== null"
+          [attr.aria-pressed]="store.pinned() !== null"
+          [title]="pinTitle()"
+          (click)="togglePin()"
         >
-          Full size
+          Pin
+        </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="texture-tile"
+          title="Shows the picture three by three, to see whether it tiles"
+          [active]="tiled()"
+          [attr.aria-pressed]="tiled()"
+          (click)="tiled.set(!tiled())"
+        >
+          Tile
         </button>
         <xui-segmented-control
           class="ms-auto min-w-0"
@@ -195,21 +255,34 @@ export class TextureView {
   protected readonly channelOptions = channels;
   /** A bake map as the app calls it: Ambient Occlusion, not `ao` (#198). */
   protected readonly mapName = termName;
+  protected readonly texelTitle =
+    'The texel under the pointer, and its red, green, blue and alpha as decoded at 8 bits';
+  private readonly well = viewChild<ElementRef<HTMLElement>>('well');
+  private readonly sheet = viewChild<ElementRef<HTMLElement>>('sheet');
   private grabbed: { x: number; y: number } | null = null;
   private readonly offset = signal({ x: 0, y: 0 });
   private readonly reductionPixels = signal<ImageData | null>(null);
   private readonly fullPixels = signal<ImageData | null>(null);
+  /** The well's size in pixels, which the picture is fitted to. */
+  private readonly room = signal({ width: 0, height: 0 });
+  /** The hash of the full picture last asked for, so one evaluation is asked for once. */
+  private asked: string | null = null;
 
+  /** One on the picture's fitted size: the readout says what that is in the picture's own pixels. */
   protected readonly zoom = signal(1);
   protected readonly channel = signal<PictureChannel>('rgba');
+  protected readonly tiled = signal(false);
   protected readonly loadingFull = signal(false);
-  protected readonly percent = computed(() => Math.round(this.zoom() * 100));
+  protected readonly texel = signal<string | null>(null);
+  protected readonly across = computed(() => (this.tiled() ? TileCount : 1));
+  protected readonly tiles = computed(() => (this.tiled() ? Tiles : Tiles.slice(0, 1)));
+
   protected readonly transform = computed(() => {
     const { x, y } = this.offset();
     return `translate(calc(-50% + ${String(x)}px), calc(-50% + ${String(y)}px))`;
   });
   protected readonly reduction = computed(() => {
-    const node = this.store.selectedNode();
+    const node = this.store.viewedNode();
     return node ? this.store.thumbnail(node.id)() : null;
   });
   private readonly heldFull = signal<FullPicture | null>(null);
@@ -221,6 +294,33 @@ export class TextureView {
     const reduction = this.reduction();
     const full = this.full();
     return reduction && full ? { ...reduction, ...full } : reduction;
+  });
+
+  /**
+   * The size one copy of the picture is drawn at: fitted to the well at a zoom of one, with its copies when tiled,
+   * whichever of the reduction or the full picture is on screen, so the full one arriving does not change it.
+   */
+  protected readonly displayed = computed(() => {
+    const picture = this.shown();
+    const { width, height } = this.room();
+    if (!picture || picture.width <= 0 || picture.height <= 0) {
+      return { width: 0, height: 0 };
+    }
+
+    // Tiled, the whole sheet of copies is what fits.
+    const sheet = this.across();
+    const fit =
+      width > 0 && height > 0
+        ? Math.min(width / (picture.width * sheet), height / (picture.height * sheet)) * FitShare
+        : 1;
+    const scale = fit * this.zoom();
+    return { width: picture.width * scale, height: picture.height * scale };
+  });
+  protected readonly percent = computed(() => {
+    const picture = this.shown();
+    return picture && picture.width > 0
+      ? Math.round((this.displayed().width / picture.width) * 100)
+      : Math.round(this.zoom() * 100);
   });
   protected readonly pixels = computed(() => (this.full() ? this.fullPixels() : this.reductionPixels()));
   protected readonly histogram = computed(() => {
@@ -239,7 +339,15 @@ export class TextureView {
       return '—';
     }
 
-    return `${String(picture.width)} × ${String(picture.height)}${this.full() ? '' : ', a reduction'}`;
+    const size = `${String(picture.width)} × ${String(picture.height)}`;
+    return this.full() ? size : `${size}, a reduction${this.loadingFull() ? ' until the full size comes' : ''}`;
+  });
+  protected readonly pinTitle = computed(() => {
+    const pinned = this.store.pinned();
+    const type = pinned ? this.store.types().get(pinned.type) : undefined;
+    return pinned
+      ? `Showing ${type?.title ?? pinned.type} whatever is selected. Click to follow the selection again.`
+      : 'Keeps showing this node, here and in the viewport, while you select others';
   });
 
   constructor() {
@@ -267,6 +375,16 @@ export class TextureView {
       }
     });
 
+    // The node on view is shown at the size the graph computes it, from each evaluation that changes its picture.
+    effect(() => {
+      const node = this.store.viewedNode();
+      const hash = this.reduction()?.hash;
+      if (node && hash && hash !== this.asked) {
+        this.asked = hash;
+        untracked(() => void this.loadFull(node.id, hash));
+      }
+    });
+
     // A full picture outlives nothing: the object URL goes with the preview it was asked for.
     effect(onCleanup => {
       const url = this.heldFull()?.url;
@@ -276,24 +394,45 @@ export class TextureView {
         }
       });
     });
+
+    // The well comes and goes with the picture, and the picture is fitted to it.
+    effect(onCleanup => {
+      const element = this.well()?.nativeElement;
+      if (!element) {
+        return;
+      }
+
+      const observer = new ResizeObserver(() => {
+        this.room.set({ width: element.clientWidth, height: element.clientHeight });
+      });
+      observer.observe(element);
+      onCleanup(() => {
+        observer.disconnect();
+      });
+    });
   }
 
-  protected async loadFull(): Promise<void> {
-    const node = this.store.selectedNode();
-    const reduction = this.reduction();
-    if (!node || !reduction) {
+  private async loadFull(node: number, hash: string): Promise<void> {
+    this.loadingFull.set(true);
+    const port = this.store.document()?.previews.get(node)?.port ?? 'Out';
+    const image = await this.store.fullImage(node, port);
+    if (this.reduction()?.hash !== hash) {
       return;
     }
 
-    this.loadingFull.set(true);
-    const port = this.store.document()?.previews.get(node.id)?.port ?? 'Out';
-    const image = await this.store.fullImage(node.id, port);
     this.loadingFull.set(false);
-    if (image && this.reduction()?.hash === reduction.hash) {
+    if (image) {
       const url = URL.createObjectURL(image.blob);
-      this.heldFull.set({ hash: reduction.hash, url, width: image.width, height: image.height });
+      this.heldFull.set({ hash, url, width: image.width, height: image.height });
       this.fullPixels.set(await pixelsOf(url));
+    } else {
+      // Asked again with the next picture, or on choosing the node again.
+      this.asked = null;
     }
+  }
+
+  protected togglePin(): void {
+    this.store.pin(this.store.pinned() ? null : (this.store.viewedNode()?.id ?? null));
   }
 
   protected reset(): void {
@@ -321,5 +460,27 @@ export class TextureView {
 
   protected drop(): void {
     this.grabbed = null;
+  }
+
+  /** The texel under the pointer, from whichever copy of the picture it is over. */
+  protected hover(event: PointerEvent): void {
+    const sheet = this.sheet()?.nativeElement;
+    const pixels = this.pixels();
+    const { width, height } = this.displayed();
+    if (!sheet || !pixels || width <= 0 || height <= 0) {
+      this.texel.set(null);
+      return;
+    }
+
+    const box = sheet.getBoundingClientRect();
+    const [across, down] = [(event.clientX - box.left) / width, (event.clientY - box.top) / height];
+    if (across < 0 || down < 0 || across >= this.across() || down >= this.across()) {
+      this.texel.set(null);
+      return;
+    }
+
+    const x = Math.min(pixels.width - 1, Math.floor((across % 1) * pixels.width));
+    const y = Math.min(pixels.height - 1, Math.floor((down % 1) * pixels.height));
+    this.texel.set(texelText(pixels, x, y));
   }
 }

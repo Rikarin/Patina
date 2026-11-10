@@ -615,7 +615,7 @@
         "tags": [
           "Viewport"
         ],
-        "summary": "Lays a graph\u0027s Output nodes over the mesh, as they stand now. Ask again to see a later edit.",
+        "summary": "Lays a graph\u0027s Output nodes over the mesh, or the display\u0027s shape with none, as they stand now, or shows one node\u0027s picture there. Ask again to see a later edit.",
         "operationId": "ShowGraphInViewport",
         "requestBody": {
           "content": {
@@ -17917,7 +17917,8 @@
           "backgroundColor",
           "grid",
           "pictureLane",
-          "pictureScale"
+          "pictureScale",
+          "shape"
         ],
         "type": "object",
         "properties": {
@@ -18076,6 +18077,11 @@
             "description": "What the picture\u0027s numbers are multiplied by before they are shown, 0.001 to 1000, so a height in the model\u0027s\nunits or a position comes into view.",
             "format": "double",
             "default": 1
+          },
+          "shape": {
+            "type": "string",
+            "description": "What a material or a graph with no mesh of its own is seen on: one of IReadOnlyList\u0026lt;string\u0026gt; ViewportShapes.All. A model\nthat has a mesh is seen on its mesh whatever this says.",
+            "default": "sphere"
           }
         },
         "description": "How the viewport is lit, shown and finished. None of it reaches a file that is exported; a project keeps it, so\nit opens as it was left. Angles are radians and exposure is in stops; an effect at zero is off. A field left out\nof a request is the one the viewport opens with."
@@ -18089,9 +18095,24 @@
           "graph": {
             "type": "string",
             "description": "The graph\u0027s session."
+          },
+          "node": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "A node whose picture to show as stored, lit by nothing, in place of the material, or null for the Output nodes.\nThe display\u0027s picture lane and scale apply to it, and its view, Lit or another, returns when the node is let go.",
+            "format": "int32"
+          },
+          "port": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The node\u0027s output, or null for the one its preview shows."
           }
         },
-        "description": "Asks the viewport to lay a graph\u0027s Output nodes over the mesh it is showing, as they stand now."
+        "description": "Asks the viewport to show a graph on the mesh it is showing, or on the display\u0027s shape with none, as it stands\nnow: its Output nodes as a material, or one node\u0027s picture alone."
       },
       "ViewportIsolation": {
         "required": [
@@ -18184,6 +18205,30 @@
           }
         },
         "description": "Asks the viewport to show a mesh."
+      },
+      "ViewportNodeShown": {
+        "required": [
+          "graph",
+          "node",
+          "port"
+        ],
+        "type": "object",
+        "properties": {
+          "graph": {
+            "type": "string",
+            "description": "The graph\u0027s session."
+          },
+          "node": {
+            "type": "integer",
+            "description": "The node.",
+            "format": "int32"
+          },
+          "port": {
+            "type": "string",
+            "description": "Its output."
+          }
+        },
+        "description": "A graph node whose picture the viewport shows in place of a material."
       },
       "ViewportPick": {
         "required": [
@@ -18444,6 +18489,17 @@
               {
                 "description": "What is drawn alone, or null for the whole model.",
                 "$ref": "#/components/schemas/ViewportIsolation"
+              }
+            ]
+          },
+          "node": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The graph node whose picture is shown in place of the material, or null. While it is, the picture view is\nwhat the frames show, whatever string ViewportDisplay.View says.",
+                "$ref": "#/components/schemas/ViewportNodeShown"
               }
             ]
           }

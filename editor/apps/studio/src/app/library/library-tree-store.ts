@@ -1,7 +1,7 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { type FolderSummary, type ProjectDocumentInfo, type ProjectSummary, unwrap } from '@patina/api-client';
-import { LibraryStore } from './library-store';
 import { messageOf } from '../core/messages';
+import { LibraryStore } from './library-store';
 
 const PageSize = 200;
 const ExpandedKey = 'patina.library.expanded';
@@ -212,9 +212,7 @@ export class LibraryTreeStore {
   async createFolder(parent: string, name: string): Promise<string | null> {
     return this.attempt(async () => {
       const client = await this.library.api();
-      const made = unwrap(
-        await client.POST('/api/v1/library/folders', { body: { name, parent: parent || null } })
-      );
+      const made = unwrap(await client.POST('/api/v1/library/folders', { body: { name, parent: parent || null } }));
       if (parent !== '') {
         await this.expand(parent);
       }
@@ -314,7 +312,13 @@ export class LibraryTreeStore {
   /** A folder that moved keeps its place in the tree, and so does what was open below it. */
   private movedAway(from: string, to: string): void {
     const renamed = [...this.mutableExpanded()].map(path =>
-      path === from ? to : path.startsWith(`${from}/`) ? (to ? to + path.slice(from.length) : path.slice(from.length + 1)) : path
+      path === from
+        ? to
+        : path.startsWith(`${from}/`)
+          ? to
+            ? to + path.slice(from.length)
+            : path.slice(from.length + 1)
+          : path
     );
     this.mutableExpanded.set(new Set(renamed));
     saveExpanded(renamed);

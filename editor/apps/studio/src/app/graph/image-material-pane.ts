@@ -33,7 +33,14 @@ const Labels: Readonly<Record<string, string>> = {
       </button>
     }
     <span class="flex-1"></span>
-    <button type="button" xuiButton size="sm" variant="ghost" data-testid="image-material-graph" (click)="project.openAsGraph()">
+    <button
+      type="button"
+      xuiButton
+      size="sm"
+      variant="ghost"
+      data-testid="image-material-graph"
+      (click)="project.openAsGraph()"
+    >
       Open as Graph
     </button>
   `

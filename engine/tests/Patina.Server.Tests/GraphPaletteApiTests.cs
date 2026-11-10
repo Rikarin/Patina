@@ -85,6 +85,32 @@ public sealed partial class GraphApiTests {
         }
     }
 
+    /// <summary>A node made from several selected takes each on an input of its own, in turn (#183).</summary>
+    [Fact]
+    public async Task A_new_node_from_several_takes_each_on_the_next_free_input() {
+        var (client, state) = await OpenAsync();
+        using (client) {
+            await client.EditAsync(
+                state.Id,
+                Token,
+                new GraphAddNode("Colour/Blend", 0, 0, -1),
+                new GraphWire(2, -1),
+                new GraphWire(5, -1)
+            );
+            var after = await client.StateAsync(state.Id, Token);
+            var blend = after.Nodes.Max(static node => node.Id);
+            var into = after.Edges.Where(edge => edge.ToNode == blend)
+                .ToDictionary(static edge => edge.ToPort, static edge => edge.FromNode);
+            Assert.Equal(2, into["Background"]);
+            Assert.Equal(5, into["Foreground"]);
+
+            // An input that is already wired is still the one a single wire takes when nothing else fits.
+            await client.EditAsync(state.Id, Token, new GraphWire(3, blend));
+            var again = await client.StateAsync(state.Id, Token);
+            Assert.Contains(again.Edges, edge => edge is { FromNode: 3, ToPort: "Background" } && edge.ToNode == blend);
+        }
+    }
+
     [Fact]
     public async Task A_new_node_with_nothing_that_fits_is_still_added() {
         var (client, state) = await OpenAsync();

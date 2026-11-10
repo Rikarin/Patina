@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { type FolderContents, canDrop, flatten, parentOf } from './library-tree-store';
 
-const folder = (path: string, projectCount = 0) => ({ path, name: path.split('/').pop() ?? path, color: null, projectCount });
+const folder = (path: string, projectCount = 0) => ({
+  path,
+  name: path.split('/').pop() ?? path,
+  color: null,
+  projectCount
+});
 const project = (path: string) => ({ id: path, name: path, path, tags: [], referenceCount: 0 });
 
 describe('the Library tree', () => {

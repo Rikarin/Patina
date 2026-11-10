@@ -40,7 +40,8 @@ export interface CommandFocus {
   dialog: boolean;
 }
 
-const TextFields = 'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]), textarea, select, [contenteditable=true], [contenteditable=""]';
+const TextFields =
+  'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]), textarea, select, [contenteditable=true], [contenteditable=""]';
 
 /** What Space and Enter press when it has focus. */
 const Pressable =
@@ -164,7 +165,10 @@ export class Commands {
     const release = () =>
       this.handlers.update(all => {
         const next = new Map(all);
-        next.set(id, (next.get(id) ?? []).filter(held => held !== handler));
+        next.set(
+          id,
+          (next.get(id) ?? []).filter(held => held !== handler)
+        );
         return next;
       });
     destroyRef?.onDestroy(release);
@@ -188,7 +192,9 @@ export class Commands {
   }
 
   checked(id: string): boolean | undefined {
-    const handler = this.handlers().get(id)?.find(held => held.checked);
+    const handler = this.handlers()
+      .get(id)
+      ?.find(held => held.checked);
     return handler?.checked?.();
   }
 
@@ -238,7 +244,11 @@ export class Commands {
 
     const chord = chordOf(event, this.mac);
     // Space and Enter press whatever control has focus, as they do everywhere.
-    if ((chord === 'Space' || chord === 'Enter') && event.target instanceof Element && event.target.closest(Pressable)) {
+    if (
+      (chord === 'Space' || chord === 'Enter') &&
+      event.target instanceof Element &&
+      event.target.closest(Pressable)
+    ) {
       return;
     }
 

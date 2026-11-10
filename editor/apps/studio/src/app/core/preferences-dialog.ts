@@ -142,8 +142,8 @@ const MostKept = 20;
           <section class="flex flex-col gap-2" data-testid="preferences-autosave">
             <h3 class="section-label">Autosave</h3>
             <p class="text-foreground-muted text-xs">
-              The engine keeps open, unsaved work in the library's cache, never over a document, and offers it back after a
-              crash or a restart. These settings are the engine's, so every app attached to it uses them.
+              The engine keeps open, unsaved work in the library's cache, never over a document, and offers it back
+              after a crash or a restart. These settings are the engine's, so every app attached to it uses them.
             </p>
             @if (autosave(); as held) {
               <label class="flex items-center gap-3">
@@ -214,8 +214,8 @@ const MostKept = 20;
             <h3 class="section-label">Cache</h3>
             @if (cache(); as held) {
               <p class="text-foreground-muted text-xs">
-                Previews, bakes, compiled kernels and autosaves of the open library. Deleting it loses nothing but the time
-                to make them again.
+                Previews, bakes, compiled kernels and autosaves of the open library. Deleting it loses nothing but the
+                time to make them again.
               </p>
               <div class="flex items-center gap-3">
                 <span class="min-w-0 flex-1 truncate text-xs select-text" [title]="held.path">{{ held.path }}</span>

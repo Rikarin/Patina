@@ -38,7 +38,9 @@ interface Refused {
               (change)="choosePreset($event)"
             >
               @for (preset of presets; track preset.id) {
-                <option [value]="preset.id" [selected]="preset.id === commands.settings().preset">{{ preset.label }}</option>
+                <option [value]="preset.id" [selected]="preset.id === commands.settings().preset">
+                  {{ preset.label }}
+                </option>
               }
             </select>
             <span class="flex-1"></span>

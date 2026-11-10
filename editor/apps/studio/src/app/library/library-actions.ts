@@ -145,7 +145,12 @@ export class LibraryActions {
   }
 
   /** Makes a document of a kind in a project. */
-  async addDocument(project: string, kind: string, name: string, extra: { mesh?: string; image?: string }): Promise<boolean> {
+  async addDocument(
+    project: string,
+    kind: string,
+    name: string,
+    extra: { mesh?: string; image?: string }
+  ): Promise<boolean> {
     return this.attempt(async () => {
       const client = await this.library.api();
       const body = { project, kind, name, mesh: extra.mesh ?? null, image: extra.image ?? null };

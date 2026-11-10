@@ -14,10 +14,10 @@ import { XuiDialogImports } from '@xui/dialog';
 import { XuiFormFieldImports } from '@xui/form-field';
 import { XuiInputImports } from '@xui/input';
 import { XuiSelectImports } from '@xui/select';
+import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { GraphStore } from './graph-store';
-import { messageOf } from '../core/messages';
 
 /**
  * Asks for a new graph's name. It lands in the selected project, or in a project of its own when none is selected. The

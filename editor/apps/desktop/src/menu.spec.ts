@@ -23,7 +23,14 @@ describe('menus from the studio', () => {
       {
         label: 'Edit',
         items: [
-          { type: 'command', id: 'undo', label: 'Undo Paint', accelerator: 'CmdOrCtrl+Z', registered: true, enabled: true },
+          {
+            type: 'command',
+            id: 'undo',
+            label: 'Undo Paint',
+            accelerator: 'CmdOrCtrl+Z',
+            registered: true,
+            enabled: true
+          },
           { type: 'separator' },
           { type: 'submenu', label: 'More', items: [{ type: 'command', id: 'cut', label: 'Cut', enabled: false }] },
           { type: 'native', native: 'recent' }
@@ -114,7 +121,9 @@ describe('menus from the studio', () => {
       }
     };
     const ids = (menu: { submenu?: unknown } | undefined) =>
-      ((menu?.submenu ?? []) as { id?: string; role?: string; type?: string }[]).map(item => item.id ?? item.role ?? item.type);
+      ((menu?.submenu ?? []) as { id?: string; role?: string; type?: string }[]).map(
+        item => item.id ?? item.role ?? item.type
+      );
 
     const mac = built('darwin');
     expect(ids(mac[0])).toContain('preferences');

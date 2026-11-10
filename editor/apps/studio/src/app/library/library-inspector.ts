@@ -21,8 +21,8 @@ import { documentKindName } from '../core/labels';
 import { LibraryActions, assetTarget, projectTarget } from './library-actions';
 import { LibrarySelection } from './library-selection';
 import { LibraryStore } from './library-store';
-import { ProjectStore } from './project-store';
 import { counted } from './list-keys';
+import { ProjectStore } from './project-store';
 import { ViewportFit } from './viewport-fit';
 
 const DependentHeight = 28;

@@ -19,7 +19,7 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
-import { labelIn, jobStateName, termName } from '../core/labels';
+import { jobStateName, labelIn, termName } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
@@ -47,7 +47,6 @@ const StatusNames: Readonly<Record<string, string>> = {
   fresh: 'already up to date',
   failed: 'failed'
 };
-
 
 /** A colour as the colour picker holds it, from lanes 0 to 1. */
 function hexOf(colour: readonly number[]): string {

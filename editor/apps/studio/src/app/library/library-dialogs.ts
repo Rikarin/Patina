@@ -26,7 +26,14 @@ const DocumentKinds = [
  */
 @Component({
   selector: 'ptn-library-dialogs',
-  imports: [XuiButtonImports, XuiCalloutImports, XuiDialogImports, XuiFormFieldImports, XuiInputImports, XuiTagInputImports],
+  imports: [
+    XuiButtonImports,
+    XuiCalloutImports,
+    XuiDialogImports,
+    XuiFormFieldImports,
+    XuiInputImports,
+    XuiTagInputImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <xui-dialog size="sm" title="Rename" [open]="actions.renaming() !== null" (openChange)="$event || close()">
@@ -67,7 +74,9 @@ const DocumentKinds = [
       </xui-dialog-body>
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="close()">Cancel</button>
-        <button type="button" xuiButton color="primary" data-testid="library-tags-save" (click)="saveTags()">Save</button>
+        <button type="button" xuiButton color="primary" data-testid="library-tags-save" (click)="saveTags()">
+          Save
+        </button>
       </xui-dialog-footer>
     </xui-dialog>
 

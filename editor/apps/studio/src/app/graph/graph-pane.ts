@@ -12,9 +12,6 @@ import {
   untracked,
   viewChild
 } from '@angular/core';
-import type { GraphDiagnostic, GraphEdgeState, GraphNodeState, GraphNodeType } from '@patina/api-client';
-import { XuiContextMenuImports } from '@xui/context-menu';
-import { XuiMenuImports } from '@xui/menu';
 import { provideIcons } from '@ng-icons/core';
 import {
   matAccountTree,
@@ -26,9 +23,12 @@ import {
   matTune,
   matWidgets
 } from '@ng-icons/material-icons/baseline';
+import type { GraphDiagnostic, GraphEdgeState, GraphNodeState, GraphNodeType } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
+import { XuiContextMenuImports } from '@xui/context-menu';
 import { XuiDialogImports } from '@xui/dialog';
+import { XuiMenuImports } from '@xui/menu';
 import {
   type XuiGraphConnection,
   type XuiGraphConnectionDrop,
@@ -47,15 +47,25 @@ import { XuiTagImports } from '@xui/tag';
 import { Commands } from '../core/commands';
 import { FileConflictDialog } from '../core/file-conflict-dialog';
 import { IconImports } from '../core/icons';
-import { NodeDragType } from './node-library';
-import { SystemStatus } from '../core/system-status';
-import { isWireable, wireFamily } from './graph-fields';
 import { diagnosticOf } from '../core/messages';
-import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
-import { type Alignment, type NodeBox, aligned, distributed } from './graph-authoring';
+import { Preferences, type WireStyle } from '../core/preferences';
+import { SystemStatus } from '../core/system-status';
 import { frameShown } from './frame-colours';
+import {
+  type Alignment,
+  type NodeBox,
+  type PaletteLine,
+  aligned,
+  distributed,
+  findMatches,
+  flowOf,
+  paletteOf
+} from './graph-authoring';
+import { isWireable, wireFamily } from './graph-fields';
+import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
 import { GraphStore, type NodeLink, type NodeWire, RerouteIn, RerouteOut, RerouteType } from './graph-store';
 import { NewGraphDialog } from './new-graph-dialog';
+import { NodeDragType } from './node-library';
 import { SaveCompoundDialog } from './save-compound-dialog';
 
 const NodeWidth = 176;
@@ -114,6 +124,15 @@ interface NodeProblem {
   summary: string;
 }
 
+/** A line of the palette. A favourite is under its category as well. */
+type PaletteItem = PaletteLine<GraphNodeType>;
+
+/** A line of Find Node: a node of the graph, by the title its card shows. */
+interface FoundNode {
+  id: number;
+  title: string;
+}
+
 interface NoteView {
   id: number;
   key: string;
@@ -136,13 +155,15 @@ function accentOf(category: string): string {
 }
 
 function portsOf(type: GraphNodeType | undefined, numbers: ReadonlySet<string>): readonly PortView[] {
-  return (type?.ports ?? []).filter(port => isWireable(port) || numbers.has(port.name)).map(port => ({
-    name: port.name,
-    direction: port.direction === 'Output' ? 'output' : 'input',
-    summary: port.summary,
-    dataType: wireFamily(port.kind),
-    maxConnections: port.direction === 'Output' ? Number.POSITIVE_INFINITY : 2
-  }));
+  return (type?.ports ?? [])
+    .filter(port => isWireable(port) || numbers.has(port.name))
+    .map(port => ({
+      name: port.name,
+      direction: port.direction === 'Output' ? 'output' : 'input',
+      summary: port.summary,
+      dataType: wireFamily(port.kind),
+      maxConnections: port.direction === 'Output' ? Number.POSITIVE_INFINITY : 2
+    }));
 }
 
 /**
@@ -339,7 +360,16 @@ export class GraphThumbnail {
       >
         <ng-icon xui size="sm" name="matAdd" />
       </button>
-      <button type="button" xuiButton size="sm" variant="ghost" aria-label="New graph" title="New graph" data-testid="graph-new" (click)="creating.set(true)">
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        aria-label="New graph"
+        title="New graph"
+        data-testid="graph-new"
+        (click)="creating.set(true)"
+      >
         <ng-icon xui size="sm" name="matNoteAdd" />
       </button>
     </div>
@@ -384,6 +414,8 @@ export class GraphThumbnail {
       [maxZoom]="2"
       [minZoom]="0.05"
       [portTypes]="portTypes"
+      [routing]="preferences.graphWires()"
+      [snapToGrid]="preferences.graphSnap()"
       (canvasContextMenu)="openContextPalette($event.event, $event.position)"
       (connect)="connect($event)"
       (connectionDrop)="openDropPalette($event)"
@@ -447,7 +479,11 @@ export class GraphThumbnail {
           @if (view.bypassed || problem) {
             <xui-graph-node-actions>
               @if (view.bypassed) {
-                <xui-tag minimal size="sm" data-testid="graph-node-bypassed" title="Bypassed: what feeds it passes through"
+                <xui-tag
+                  minimal
+                  size="sm"
+                  data-testid="graph-node-bypassed"
+                  title="Bypassed: what feeds it passes through"
                   >Off</xui-tag
                 >
               }
@@ -564,13 +600,45 @@ export class GraphThumbnail {
         >
           Distribute Vertically
         </button>
+        <xui-menu-divider />
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="arrange-snap"
+          role="menuitemcheckbox"
+          [attr.aria-checked]="preferences.graphSnap()"
+          [selected]="preferences.graphSnap()"
+          (triggered)="commands.run('toggleGraphSnap')"
+        >
+          Snap to Grid
+        </button>
+        @for (style of wireStyles; track style.command) {
+          <button
+            type="button"
+            xuiMenuItem
+            role="menuitemradio"
+            [attr.aria-checked]="preferences.graphWires() === style.value"
+            [attr.data-testid]="'arrange-' + style.command"
+            [selected]="preferences.graphWires() === style.value"
+            (triggered)="commands.run(style.command)"
+          >
+            {{ style.label }}
+          </button>
+        }
       </xui-menu>
     </ng-template>
 
     <ng-template #nodeMenu>
       <xui-menu aria-label="Node" data-testid="graph-node-menu">
-        <button type="button" xuiMenuItem data-testid="node-bypass" [disabled]="!store.editable()" (triggered)="store.toggleBypass()">
-          {{ menuBypassed() ? 'Stop Bypassing' : 'Bypass' }} <span menuItemLabel>{{ commands.keyText('bypassNodes') }}</span>
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="node-bypass"
+          [disabled]="!store.editable()"
+          (triggered)="store.toggleBypass()"
+        >
+          {{ menuBypassed() ? 'Stop Bypassing' : 'Bypass' }}
+          <span menuItemLabel>{{ commands.keyText('bypassNodes') }}</span>
         </button>
         <button
           type="button"
@@ -581,7 +649,12 @@ export class GraphThumbnail {
         >
           Delete and Relink <span menuItemLabel>{{ commands.keyText('deleteRelink') }}</span>
         </button>
-        <button type="button" xuiMenuItem [disabled]="!store.editable()" (triggered)="store.remove(selectedNodes(), [])">
+        <button
+          type="button"
+          xuiMenuItem
+          [disabled]="!store.editable()"
+          (triggered)="store.remove(selectedNodes(), [])"
+        >
           Delete <span menuItemLabel>{{ commands.keyText('delete') }}</span>
         </button>
         <xui-menu-divider />
@@ -602,17 +675,31 @@ export class GraphThumbnail {
       noResultsText="No node by that name"
       placeholder="Search nodes"
       [hotkey]="null"
-      [itemGroup]="paletteRanked() ? null : categoryOf"
+      [itemGroup]="paletteRanked() ? null : groupOf"
       [itemText]="titleOf"
       [itemsProvider]="searchPalette"
       [open]="paletteOpen()"
       (itemSelected)="add($event)"
       (openChange)="paletteOpen.set($event)"
     />
+    <xui-omnibar
+      ariaLabel="Find a node"
+      debounce="0"
+      noResultsText="No node by that name in this graph"
+      placeholder="Find in this graph"
+      data-testid="graph-find"
+      [hotkey]="null"
+      [itemText]="foundTitle"
+      [itemsProvider]="searchGraph"
+      [open]="finding()"
+      (itemSelected)="reveal({ node: $event.id })"
+      (openChange)="finding.set($event)"
+    />
   `
 })
 export class GraphCanvas {
   protected readonly store = inject(GraphStore);
+  protected readonly preferences = inject(Preferences);
   private readonly status = inject(SystemStatus);
   private readonly destroyed = inject(DestroyRef);
   protected readonly commands = inject(Commands);
@@ -620,6 +707,7 @@ export class GraphCanvas {
   private readonly graphElement = viewChild.required(XuiNodeGraph, { read: ElementRef<HTMLElement> });
   private nodeViews = new WeakMap<GraphNodeState, NodeView>();
   private readonly edgeViews = new WeakMap<GraphEdgeState, XuiGraphEdge>();
+  private readonly flowingViews = new WeakMap<GraphEdgeState, XuiGraphEdge>();
   private readonly portViews = new Map<string, readonly PortView[]>();
   private viewedTypes: ReadonlyMap<string, GraphNodeType> | null = null;
   private addAt: XuiGraphPoint | null = null;
@@ -649,19 +737,41 @@ export class GraphCanvas {
   protected readonly groupPrefix = GroupPrefix;
   protected readonly frameShown = frameShown;
   protected readonly paletteOpen = signal(false);
+  protected readonly finding = signal(false);
+  protected readonly wireStyles: readonly { value: WireStyle; command: string; label: string }[] = [
+    { value: 'bezier', command: 'curvedWires', label: 'Curved Wires' },
+    { value: 'smoothstep', command: 'angledWires', label: 'Angled Wires' },
+    { value: 'straight', command: 'straightWires', label: 'Straight Wires' }
+  ];
+  protected readonly foundTitle = (found: FoundNode): string => found.title;
+  /** Every node of the graph by the title its card shows, those that start with what was typed first. */
+  protected readonly searchGraph = (query: string): Promise<readonly FoundNode[]> => {
+    const types = this.store.types();
+    const nodes = [...(this.document()?.nodes.values() ?? [])]
+      .filter(node => node.type !== RerouteType)
+      .map(node => ({ id: node.id, title: types.get(node.type)?.title ?? node.type }));
+    return Promise.resolve(findMatches(nodes, query));
+  };
   protected readonly creating = signal(false);
   protected readonly savingCompound = signal(false);
   /** Whether the palette shows a ranking, which grouping by category would shuffle. */
   protected readonly paletteRanked = signal(false);
 
-  protected readonly categoryOf = (type: GraphNodeType): string => type.category || 'Compounds';
-  protected readonly titleOf = (type: GraphNodeType): string => type.title;
-  protected readonly searchPalette = (query: string): Promise<readonly GraphNodeType[]> => {
+  protected readonly groupOf = (item: PaletteItem): string => item.group;
+  protected readonly titleOf = (item: PaletteItem): string => item.type.title;
+  /**
+   * What the palette offers: with nothing typed, the starred node types, then the ones added last, then every one by
+   * category; typed, the Server's ranking. Each list keeps only what the wire being made can use.
+   */
+  protected readonly searchPalette = (query: string): Promise<readonly PaletteItem[]> => {
     const wire = this.addWire;
     return this.store.findNodes(query, wire).then(types => {
       this.answered = query;
-      this.paletteRanked.set(query.trim() !== '');
-      return types;
+      const ranked = query.trim() !== '';
+      this.paletteRanked.set(ranked);
+      return ranked
+        ? types.map(type => ({ type, group: '' }))
+        : paletteOf(types, this.preferences.favouriteNodes(), this.preferences.recentNodes());
     });
   };
 
@@ -743,8 +853,16 @@ export class GraphCanvas {
     }));
   });
 
+  /**
+   * The wires, those a picture takes into and out of the selection marching the way it flows, so a node's sources and
+   * what it ends up in show at a glance.
+   */
   protected readonly edges = computed(
-    () => [...(this.document()?.edges.values() ?? [])].map(edge => this.edgeView(edge)),
+    () => {
+      const wires = [...(this.document()?.edges.values() ?? [])];
+      const flowing = flowOf(wires, this.store.selection());
+      return wires.map(edge => (flowing.has(edge) ? this.flowingView(edge) : this.edgeView(edge)));
+    },
     { equal: (a, b) => a.length === b.length && a.every((edge, index) => edge === b[index]) }
   );
 
@@ -937,11 +1055,11 @@ export class GraphCanvas {
     }
   }
 
-  protected add(type: GraphNodeType): void {
+  protected add(item: PaletteItem): void {
     const [at, link] = [this.addAt, this.addLink];
     this.addAt = null;
     this.addLink = null;
-    void this.place(type, at, link);
+    void this.place(item.type, at, link);
   }
 
   protected connect(connection: XuiGraphConnection): void {
@@ -1062,7 +1180,7 @@ export class GraphCanvas {
     void this.store.addComment({ x: x - NoteOffset, y: y - NoteOffset });
   }
 
-  protected reveal(item: GraphDiagnostic): void {
+  protected reveal(item: Pick<GraphDiagnostic, 'node'>): void {
     if (item.node !== undefined && item.node !== null) {
       this.store.select([item.node]);
       this.graph().store.centerOn(String(item.node));
@@ -1080,20 +1198,50 @@ export class GraphCanvas {
     const editable = () => this.store.editable() && this.store.document() !== null;
     const selected = () => here() && this.store.selection().size > 0;
     handle('copy', selected, () => this.store.copySelection());
-    handle('cut', () => selected() && editable(), () => {
-      this.store.copySelection();
-      this.store.remove([...this.store.selection()], []);
-    });
-    handle('paste', () => here() && editable(), () => this.store.paste());
-    handle('duplicate', () => selected() && editable(), () => this.store.duplicate());
-    handle('delete', () => here() && editable() && this.graph().store.selectedNodes().size + this.graph().store.selectedEdges().size > 0, () =>
-      this.remove({ nodes: [...this.graph().store.selectedNodes()], edges: [...this.graph().store.selectedEdges()] })
+    handle(
+      'cut',
+      () => selected() && editable(),
+      () => {
+        this.store.copySelection();
+        this.store.remove([...this.store.selection()], []);
+      }
     );
-    handle('selectAll', () => here() && this.store.document() !== null, () => this.graph().store.selectAll());
-    handle('groupNodes', () => editable() && this.store.selection().size > 0, () => this.store.groupSelection());
-    handle('bypassNodes', () => editable() && this.store.selection().size > 0, () => this.store.toggleBypass());
-    handle('deleteRelink', () => here() && editable() && this.store.selection().size > 0, () =>
-      this.store.removeRelinking(this.selectedNodes())
+    handle(
+      'paste',
+      () => here() && editable(),
+      () => this.store.paste()
+    );
+    handle(
+      'duplicate',
+      () => selected() && editable(),
+      () => this.store.duplicate()
+    );
+    handle(
+      'delete',
+      () =>
+        here() && editable() && this.graph().store.selectedNodes().size + this.graph().store.selectedEdges().size > 0,
+      () =>
+        this.remove({ nodes: [...this.graph().store.selectedNodes()], edges: [...this.graph().store.selectedEdges()] })
+    );
+    handle(
+      'selectAll',
+      () => here() && this.store.document() !== null,
+      () => this.graph().store.selectAll()
+    );
+    handle(
+      'groupNodes',
+      () => editable() && this.store.selection().size > 0,
+      () => this.store.groupSelection()
+    );
+    handle(
+      'bypassNodes',
+      () => editable() && this.store.selection().size > 0,
+      () => this.store.toggleBypass()
+    );
+    handle(
+      'deleteRelink',
+      () => here() && editable() && this.store.selection().size > 0,
+      () => this.store.removeRelinking(this.selectedNodes())
     );
     this.commands.handle(
       'arrangeGraph',
@@ -1105,16 +1253,55 @@ export class GraphCanvas {
       this.destroyed
     );
     for (const { alignment, command, label } of this.alignments) {
-      handle(command, () => editable() && this.store.selection().size > 1, () => this.align(alignment, label));
+      handle(
+        command,
+        () => editable() && this.store.selection().size > 1,
+        () => this.align(alignment, label)
+      );
     }
-    handle('distributeHorizontally', () => editable() && this.store.selection().size > 2, () =>
-      this.distribute('horizontal')
+    handle(
+      'distributeHorizontally',
+      () => editable() && this.store.selection().size > 2,
+      () => this.distribute('horizontal')
     );
-    handle('distributeVertically', () => editable() && this.store.selection().size > 2, () => this.distribute('vertical'));
-    handle('addNode', () => editable() && !this.paletteOpen(), via => {
-      const at = via === 'key' ? this.pointer : null;
-      this.openPalette(at === null ? null : this.graph().store.toGraphPoint(at.x, at.y));
-    });
+    handle(
+      'distributeVertically',
+      () => editable() && this.store.selection().size > 2,
+      () => this.distribute('vertical')
+    );
+    handle(
+      'findNode',
+      () => this.store.document() !== null && !this.finding(),
+      () => {
+        this.finding.set(true);
+      }
+    );
+    this.commands.handle(
+      'toggleGraphSnap',
+      {
+        checked: () => this.preferences.graphSnap(),
+        run: () => this.preferences.set({ graphSnap: !this.preferences.graphSnap() })
+      },
+      this.destroyed
+    );
+    for (const style of this.wireStyles) {
+      this.commands.handle(
+        style.command,
+        {
+          checked: () => this.preferences.graphWires() === style.value,
+          run: () => this.preferences.set({ graphWires: style.value })
+        },
+        this.destroyed
+      );
+    }
+    handle(
+      'addNode',
+      () => editable() && !this.paletteOpen(),
+      via => {
+        const at = via === 'key' ? this.pointer : null;
+        this.openPalette(at === null ? null : this.graph().store.toGraphPoint(at.x, at.y));
+      }
+    );
   }
 
   private showPalette(at: XuiGraphPoint | null, link: NodeLink | null, wire: NodeWire): void {
@@ -1158,10 +1345,14 @@ export class GraphCanvas {
     const fits =
       link?.kind !== 'wire' ||
       (await this.store.findNodes(type.title, this.wireOf(link))).some(found => found.path === type.path);
+    this.preferences.usedNode(type.path);
     await this.store.addNode(type, at ?? this.spotFor(link), (fits ? link : null) ?? undefined);
   }
 
-  /** What a new node joins: the selected wire, or the one selected node that has an output. */
+  /**
+   * What a new node joins: the selected wire, the one selected node, or several selected nodes, top first, which fill its
+   * inputs in turn.
+   */
   private selectionLink(): NodeLink | null {
     const edges = [...this.graph().store.selectedEdges()];
     const [onlyEdge] = edges;
@@ -1173,6 +1364,12 @@ export class GraphCanvas {
 
     const nodes = [...this.store.selection()];
     const [only] = nodes;
+    if (nodes.length > 1) {
+      const held = this.document()?.nodes;
+      const top = (id: number) => held?.get(id)?.y ?? 0;
+      return { kind: 'many', nodes: nodes.sort((a, b) => top(a) - top(b)) };
+    }
+
     return nodes.length === 1 && only !== undefined ? { kind: 'from', node: only } : null;
   }
 
@@ -1191,7 +1388,16 @@ export class GraphCanvas {
   /** Where a node goes when nothing said: after what it follows, between the ends of its wire, or in the view. */
   private spotFor(link: NodeLink | null): XuiGraphPoint {
     const nodes = this.document()?.nodes;
-    const from = link === null ? undefined : nodes?.get(link.node);
+    if (link?.kind === 'many') {
+      const sources = link.nodes.flatMap(id => nodes?.get(id) ?? []);
+      if (sources.length > 0) {
+        const right = Math.max(...sources.map(node => node.x));
+        const middle = sources.reduce((sum, node) => sum + node.y, 0) / sources.length;
+        return this.clearOf({ x: right + NodeWidth + FollowingGap, y: middle });
+      }
+    }
+
+    const from = link === null || link.kind === 'many' ? undefined : nodes?.get(link.node);
     const to = link?.kind === 'wire' ? nodes?.get(link.toNode) : undefined;
     if (from && to) {
       return this.clearOf({ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 });
@@ -1249,6 +1455,16 @@ export class GraphCanvas {
         reroute
       };
       this.nodeViews.set(node, view);
+    }
+
+    return view;
+  }
+
+  private flowingView(edge: GraphEdgeState): XuiGraphEdge {
+    let view = this.flowingViews.get(edge);
+    if (!view) {
+      view = { ...this.edgeView(edge), animated: true };
+      this.flowingViews.set(edge, view);
     }
 
     return view;

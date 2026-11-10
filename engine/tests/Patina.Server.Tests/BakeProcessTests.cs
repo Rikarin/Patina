@@ -629,11 +629,15 @@ public sealed partial class BakeProcessTests : IDisposable {
     }
 
     /// <summary>Shows a graph in the viewport, once its first evaluation holds a picture.</summary>
-    async Task<ViewportState> ShowGraphAsync(string graph, CancellationToken cancellationToken) {
+    Task<ViewportState> ShowGraphAsync(string graph, CancellationToken cancellationToken) =>
+        ShowGraphAsync(new ViewportGraphRequest(graph), cancellationToken);
+
+    /// <summary>Shows a graph, or one node of it, once its first evaluation holds a picture.</summary>
+    async Task<ViewportState> ShowGraphAsync(ViewportGraphRequest request, CancellationToken cancellationToken) {
         while (true) {
             using var response = await http.PutAsJsonAsync(
                 "/api/v1/viewport/graph",
-                new(graph),
+                request,
                 ContractsJsonContext.Default.ViewportGraphRequest,
                 cancellationToken
             );
@@ -696,6 +700,93 @@ public sealed partial class BakeProcessTests : IDisposable {
         Assert.True(File.Exists(shown.Maps.Roughness), shown.Maps.Roughness);
         Assert.Null(shown.Maps.BaseColor);
         await FrameAsync(socket, deadline.Token);
+        Assert.Null((await ViewportStateAsync(deadline.Token)).Error);
+    }
+
+    /// <summary>
+    ///     One node's picture stands in for the material on the shape the display chooses, which a model's own mesh
+    ///     ignores, and the display's view comes back when the node is let go (#184).
+    /// </summary>
+    [Fact]
+    public async Task A_node_alone_shows_on_the_shape_the_display_chooses() {
+        using var deadline = Deadline(120);
+        StartServer();
+        await DiscoverAsync(deadline.Token);
+        StartWorker();
+        var asset = new NodeGraphAsset {
+            Name = "Alone",
+            Nodes = [
+                new() { Id = 1, Type = "Source/Gradient" },
+                new() { Id = 2, Type = "Colour/Invert", X = 200 },
+                new() { Id = 3, Type = "Output/Output", X = 400, Texts = new() { ["Usage"] = "roughness" } }
+            ],
+            Edges = [
+                new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Input" },
+                new() { FromNode = 2, FromPort = "Out", ToNode = 3, ToPort = "Input" }
+            ],
+            Settings = new() { ["baseWidth"] = "64", ["baseHeight"] = "64" }
+        };
+        var graph = await http.OpenAsync(GraphTesting.Write(Library, asset, "alone.vxtexgraph"), deadline.Token);
+        var instance = (await new InstanceRegistry(DiscoveryFile).FindAsync(Library, deadline.Token))!;
+        using var evaluations = await FollowAsync(instance, graph, deadline.Token);
+        await NextAsync(evaluations, graph.Revision, deadline.Token);
+        using var socket = await ViewportAsync(deadline.Token);
+
+        async Task<ViewportState> DisplayAsync(ViewportDisplay display) {
+            using var response = await http.PutAsJsonAsync(
+                "/api/v1/viewport/display",
+                display,
+                ContractsJsonContext.Default.ViewportDisplay,
+                deadline.Token
+            );
+            response.EnsureSuccessStatusCode();
+            return (await response.Content.ReadFromJsonAsync(
+                ContractsJsonContext.Default.ViewportState,
+                deadline.Token
+            ))!;
+        }
+
+        uint input = 0;
+
+        async Task<byte[]> SettledFrameAsync() {
+            await SendAsync(socket, new(Input: ++input), deadline.Token);
+            var frame = await FrameAsync(socket, deadline.Token);
+            while (BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(16)) != input) {
+                frame = await FrameAsync(socket, deadline.Token);
+            }
+
+            return frame;
+        }
+
+        Assert.Null((await DisplayAsync(new(Shape: ViewportShapes.Plane))).Mesh);
+        var node = await ShowGraphAsync(new ViewportGraphRequest(graph.Id, 1), deadline.Token);
+        Assert.EndsWith("Plane.glb", node.Mesh, StringComparison.Ordinal);
+        Assert.Equal(new(graph.Id, 1, "Out"), node.Node);
+        Assert.Equal(ViewportViews.Lit, node.Display.View);
+        var gradient = await SettledFrameAsync();
+
+        var inverted = await ShowGraphAsync(new ViewportGraphRequest(graph.Id, 2, "Out"), deadline.Token);
+        Assert.Equal(2, inverted.Node?.Node);
+        Assert.False(SamePicture(gradient, await SettledFrameAsync()), "The other node's picture did not show.");
+
+        // Another shape takes the stand-in's place and keeps what lies on it.
+        var cube = await DisplayAsync(new(Shape: ViewportShapes.Cube));
+        Assert.EndsWith("Cube.glb", cube.Mesh, StringComparison.Ordinal);
+        Assert.Equal(2, cube.Node?.Node);
+
+        var material = await ShowGraphAsync(graph.Id, deadline.Token);
+        Assert.Null(material.Node);
+        Assert.True(File.Exists(material.Maps.Roughness), material.Maps.Roughness);
+
+        var low = Request().Low;
+        using var opened = await http.PutAsJsonAsync(
+            "/api/v1/viewport/mesh",
+            new(low),
+            ContractsJsonContext.Default.ViewportMeshRequest,
+            deadline.Token
+        );
+        opened.EnsureSuccessStatusCode();
+        Assert.Equal(low, (await DisplayAsync(new(Shape: ViewportShapes.Cylinder))).Mesh);
         Assert.Null((await ViewportStateAsync(deadline.Token)).Error);
     }
 

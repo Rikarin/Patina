@@ -1,26 +1,26 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import {
   ApiError,
-  type ProjectContents,
   type ProjectBakeSettings,
+  type ProjectCheckSettings,
+  type ProjectContents,
   type ProjectDocumentInfo,
   type UnwrapOptions,
-  type ProjectCheckSettings,
   type ViewportDisplay,
   unwrap
 } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { desktop } from '../core/desktop';
-import { SystemStatus } from '../core/system-status';
+import { messageOf } from '../core/messages';
 import { RecoveryOffers } from '../core/recovery-offers';
+import { EngineRestarts, RestartedNotice } from '../core/session-return';
+import { SystemStatus } from '../core/system-status';
 import { UnsavedWork } from '../core/unsaved-work';
 import type { WorkspaceName } from '../core/workspaces';
 import { GraphStore } from '../graph/graph-store';
 import { BrushStore } from '../paint/brush-store';
 import { PaintStore } from '../paint/paint-store';
 import { LibraryStore } from './library-store';
-import { messageOf } from '../core/messages';
-import { EngineRestarts, RestartedNotice } from '../core/session-return';
 
 /** An open document. Its session stays on the Server while another tab is in front, with all its edits and history. */
 export interface DocumentTab {

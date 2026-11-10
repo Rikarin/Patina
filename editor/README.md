@@ -5,6 +5,7 @@ An Nx workspace: `apps/studio` is the Angular renderer, `apps/desktop` the Elect
 
 ```sh
 pnpm install
+pnpm exec prettier --check .   # CI fails on anything Prettier would change
 pnpm exec nx run-many -t lint typecheck test
 pnpm exec nx build desktop
 pnpm exec nx serve desktop   # needs a Release engine build; PATINA_LIBRARY opens a library

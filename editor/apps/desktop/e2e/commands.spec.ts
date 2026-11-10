@@ -22,8 +22,7 @@ test.afterEach(async () => {
 });
 
 /** The native menu bar's labels, and whether an item is on. */
-const bar = () =>
-  app.evaluate(({ Menu }) => Menu.getApplicationMenu()?.items.map(menu => menu.label) ?? []);
+const bar = () => app.evaluate(({ Menu }) => Menu.getApplicationMenu()?.items.map(menu => menu.label) ?? []);
 const enabled = (id: string) =>
   app.evaluate(({ Menu }, item) => Menu.getApplicationMenu()?.getMenuItemById(item)?.enabled ?? null, id);
 const command = (name: string) =>

@@ -38,6 +38,35 @@ describe('Preferences', () => {
     });
   });
 
+  it('keeps lists of node types as strings, each once and no more than it may', () => {
+    const many = Array.from({ length: 20 }, (_, index) => `Source/N${String(index)}`);
+    const read = readPreferences({
+      favouriteNodes: ['Colour/Blend', 7, 'Colour/Blend', '', 'Filters/Blur'],
+      recentNodes: many,
+      graphWires: 'straight',
+      graphSnap: true
+    });
+    expect(read.favouriteNodes).toEqual(['Colour/Blend', 'Filters/Blur']);
+    expect(read.recentNodes).toEqual(many.slice(0, 8));
+    expect(read.graphWires).toBe('straight');
+    expect(read.graphSnap).toBe(true);
+    expect(readPreferences({ favouriteNodes: 'Colour/Blend', graphWires: 'wavy' })).toEqual(DefaultPreferences);
+  });
+
+  it('stars a node type and remembers what was added last, newest first', () => {
+    vi.stubGlobal('patina', undefined);
+    const preferences = TestBed.inject(Preferences);
+    preferences.toggleFavouriteNode('Colour/Blend');
+    preferences.toggleFavouriteNode('Filters/Blur');
+    preferences.toggleFavouriteNode('Colour/Blend');
+    expect(preferences.favouriteNodes()).toEqual(['Filters/Blur']);
+
+    for (const path of ['A', 'B', 'C', 'A']) {
+      preferences.usedNode(path);
+    }
+    expect(preferences.recentNodes()).toEqual(['A', 'C', 'B']);
+  });
+
   it('starts with the defaults and keeps a change in the desktop app’s file', () => {
     const written: unknown[] = [];
     vi.stubGlobal('patina', {

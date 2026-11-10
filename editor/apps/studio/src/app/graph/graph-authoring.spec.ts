@@ -1,6 +1,18 @@
 import type { GraphSettingDefinition } from '@patina/api-client';
 import { describe, expect, it } from 'vitest';
-import { aligned, controlOf, distributed, freePresetName, grouped, holds, titleOf, widgetsFor } from './graph-authoring';
+import {
+  aligned,
+  controlOf,
+  distributed,
+  findMatches,
+  flowOf,
+  freePresetName,
+  grouped,
+  holds,
+  paletteOf,
+  titleOf,
+  widgetsFor
+} from './graph-authoring';
 
 const box = (id: number, x: number, y: number, width = 100, height = 50) => ({ id, x, y, width, height });
 
@@ -121,5 +133,71 @@ describe('parameters', () => {
   it('presets are named by the first free number', () => {
     expect(freePresetName([{ name: 'Preset 2' }])).toBe('Preset 3');
     expect(freePresetName([])).toBe('Preset 1');
+  });
+});
+
+describe('flowOf', () => {
+  // 1 → 2 → 3 → 4, and 5 → 3, with 6 → 7 off to one side.
+  const wires = [
+    { id: 'a', fromNode: 1, toNode: 2 },
+    { id: 'b', fromNode: 2, toNode: 3 },
+    { id: 'c', fromNode: 3, toNode: 4 },
+    { id: 'd', fromNode: 5, toNode: 3 },
+    { id: 'e', fromNode: 6, toNode: 7 }
+  ];
+  const ids = (selected: number[]) => [...flowOf(wires, new Set(selected))].map(wire => wire.id).sort();
+
+  it('follows the picture back to every source and on to everything it ends up in', () => {
+    expect(ids([3])).toEqual(['a', 'b', 'c', 'd']);
+    expect(ids([2])).toEqual(['a', 'b', 'c']);
+  });
+
+  it('lights nothing with nothing selected, and nothing the selection does not touch', () => {
+    expect(ids([])).toEqual([]);
+    expect(ids([7])).toEqual(['e']);
+  });
+
+  it('stops at a loop rather than walking it for ever', () => {
+    const loop = [
+      { fromNode: 1, toNode: 2 },
+      { fromNode: 2, toNode: 1 }
+    ];
+    expect(flowOf(loop, new Set([1])).size).toBe(2);
+  });
+});
+
+describe('paletteOf', () => {
+  const type = (path: string, category = 'Filters') => ({ path, category });
+  const types = [type('Filters/Blur'), type('Colour/Blend', 'Colour'), type('My/Rust', '')];
+
+  it('offers the starred, then the ones added last, then every one by category', () => {
+    const lines = paletteOf(types, ['Colour/Blend'], ['Filters/Blur', 'Colour/Blend']);
+    expect(lines.map(line => `${line.group}:${line.type.path}`)).toEqual([
+      'Favourites:Colour/Blend',
+      'Recent:Filters/Blur',
+      'Recent:Colour/Blend',
+      'Filters:Filters/Blur',
+      'Colour:Colour/Blend',
+      'Compounds:My/Rust'
+    ]);
+  });
+
+  it('leaves out a favourite the list was not given, such as one a dropped wire cannot use', () => {
+    expect(paletteOf([type('Filters/Blur')], ['Colour/Blend'], ['Gone/Node']).map(line => line.group)).toEqual([
+      'Filters'
+    ]);
+  });
+});
+
+describe('findMatches', () => {
+  const nodes = [{ title: 'Auto Levels' }, { title: 'Blur' }, { title: 'Levels' }, { title: 'Noise' }];
+
+  it('keeps the titles that hold what was typed, those that start with it first', () => {
+    expect(findMatches(nodes, 'lev').map(node => node.title)).toEqual(['Levels', 'Auto Levels']);
+    expect(findMatches(nodes, '  NOISE ').map(node => node.title)).toEqual(['Noise']);
+  });
+
+  it('offers every node with nothing typed', () => {
+    expect(findMatches(nodes, '')).toHaveLength(4);
   });
 });

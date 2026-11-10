@@ -20,42 +20,42 @@ export interface GraphFieldLook {
 /** A row of the Inspector: one thing a node lets an author set. */
 export type GraphField = GraphFieldLook &
   (
-  | {
-      control: 'number';
-      source: 'value';
-      name: string;
-      summary: string;
-      fallback: readonly number[];
-      whole: boolean;
-      minimum: number | null;
-      maximum: number | null;
-    }
-  | { control: 'switch'; source: 'value'; name: string; summary: string; fallback: readonly number[] }
-  | { control: 'colour'; source: 'value'; name: string; summary: string; fallback: readonly number[] }
-  | {
-      control: 'number';
-      source: 'text';
-      name: string;
-      summary: string;
-      fallback: string;
-      whole: boolean;
-      minimum: number | null;
-      maximum: number | null;
-    }
-  | { control: 'switch'; source: 'text'; name: string; summary: string; fallback: string }
-  | {
-      control: 'choice';
-      source: 'text';
-      name: string;
-      summary: string;
-      fallback: string;
-      choices: readonly string[];
-      /** What a person calls each choice, from the labels the Server sent. */
-      label: (value: string) => string;
-    }
-  | { control: 'text'; source: 'text'; name: string; summary: string; fallback: string }
-  | { control: 'curve'; source: 'text'; name: string; summary: string; fallback: string }
-  | { control: 'ramp'; source: 'text'; name: string; summary: string; fallback: string }
+    | {
+        control: 'number';
+        source: 'value';
+        name: string;
+        summary: string;
+        fallback: readonly number[];
+        whole: boolean;
+        minimum: number | null;
+        maximum: number | null;
+      }
+    | { control: 'switch'; source: 'value'; name: string; summary: string; fallback: readonly number[] }
+    | { control: 'colour'; source: 'value'; name: string; summary: string; fallback: readonly number[] }
+    | {
+        control: 'number';
+        source: 'text';
+        name: string;
+        summary: string;
+        fallback: string;
+        whole: boolean;
+        minimum: number | null;
+        maximum: number | null;
+      }
+    | { control: 'switch'; source: 'text'; name: string; summary: string; fallback: string }
+    | {
+        control: 'choice';
+        source: 'text';
+        name: string;
+        summary: string;
+        fallback: string;
+        choices: readonly string[];
+        /** What a person calls each choice, from the labels the Server sent. */
+        label: (value: string) => string;
+      }
+    | { control: 'text'; source: 'text'; name: string; summary: string; fallback: string }
+    | { control: 'curve'; source: 'text'; name: string; summary: string; fallback: string }
+    | { control: 'ramp'; source: 'text'; name: string; summary: string; fallback: string }
   );
 
 /** The text a port's expression is kept under, in Vixen's spelling. */

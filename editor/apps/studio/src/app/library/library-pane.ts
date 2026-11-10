@@ -56,7 +56,6 @@ const views: readonly XuiSegmentedOption<LibraryTabChoice>[] = [
   { value: 'assets', label: 'Materials' }
 ];
 
-
 function isAsset(row: LibraryRow): row is AssetSummary {
   return 'kind' in row;
 }
@@ -196,7 +195,11 @@ function targetOf(row: LibraryRow): LibraryTarget {
           <div class="well relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <ptn-library-tree #tree (creatingProject)="newProjectIn($event)" />
             @if (treeOverlay(); as message) {
-              <xui-non-ideal-state class="absolute inset-0 m-auto h-fit" [title]="message.title" [description]="message.description">
+              <xui-non-ideal-state
+                class="absolute inset-0 m-auto h-fit"
+                [title]="message.title"
+                [description]="message.description"
+              >
                 @if (message.make) {
                   <button action type="button" xuiButton size="sm" (click)="newProjectIn(treeStore.target())">
                     New Project…
@@ -296,7 +299,11 @@ function targetOf(row: LibraryRow): LibraryTarget {
             </cdk-virtual-scroll-viewport>
 
             @if (overlay(); as message) {
-              <xui-non-ideal-state class="absolute inset-0 m-auto h-fit" [title]="message.title" [description]="message.description">
+              <xui-non-ideal-state
+                class="absolute inset-0 m-auto h-fit"
+                [title]="message.title"
+                [description]="message.description"
+              >
                 @switch (message.action) {
                   @case ('retry') {
                     <button action type="button" xuiButton size="sm" (click)="view().list.retry()">Try again</button>
@@ -310,7 +317,9 @@ function targetOf(row: LibraryRow): LibraryTarget {
                     </button>
                   }
                   @case ('graph') {
-                    <button action type="button" xuiButton size="sm" (click)="creatingGraph.set(true)">New Graph…</button>
+                    <button action type="button" xuiButton size="sm" (click)="creatingGraph.set(true)">
+                      New Graph…
+                    </button>
                   }
                 }
               </xui-non-ideal-state>
@@ -443,15 +452,26 @@ function targetOf(row: LibraryRow): LibraryTarget {
           <button type="button" xuiMenuItem data-testid="item-open" (triggered)="actions.open(target)">Open</button>
           @if (target.kind === 'project') {
             <button type="button" xuiMenuItem (triggered)="project.openSettings(target.path)">Project Settings…</button>
-            <button type="button" xuiMenuItem data-testid="item-new-document" (triggered)="actions.adding.set(target.path)">
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="item-new-document"
+              (triggered)="actions.adding.set(target.path)"
+            >
               New Document…
             </button>
           }
           <xui-menu-divider />
-          <button type="button" xuiMenuItem data-testid="item-rename" (triggered)="actions.renaming.set(target)">Rename…</button>
-          <button type="button" xuiMenuItem data-testid="item-tags" (triggered)="actions.tagging.set(target)">Tags…</button>
+          <button type="button" xuiMenuItem data-testid="item-rename" (triggered)="actions.renaming.set(target)">
+            Rename…
+          </button>
+          <button type="button" xuiMenuItem data-testid="item-tags" (triggered)="actions.tagging.set(target)">
+            Tags…
+          </button>
           @if (target.kind === 'project') {
-            <button type="button" xuiMenuItem data-testid="item-duplicate" (triggered)="duplicate(target)">Duplicate</button>
+            <button type="button" xuiMenuItem data-testid="item-duplicate" (triggered)="duplicate(target)">
+              Duplicate
+            </button>
           }
           @if (canPick) {
             <button type="button" xuiMenuItem data-testid="item-reveal" (triggered)="reveal(target)">
@@ -459,7 +479,13 @@ function targetOf(row: LibraryRow): LibraryTarget {
             </button>
           }
           <xui-menu-divider />
-          <button type="button" xuiMenuItem color="error" data-testid="item-delete" (triggered)="actions.deleting.set(target)">
+          <button
+            type="button"
+            xuiMenuItem
+            color="error"
+            data-testid="item-delete"
+            (triggered)="actions.deleting.set(target)"
+          >
             Delete…
           </button>
         }
@@ -590,7 +616,11 @@ export class LibraryPane {
     }
 
     if (view.filtered) {
-      return { title: 'Nothing matches', description: 'No name, tag or path has every word and tag asked for.', action: 'clear' };
+      return {
+        title: 'Nothing matches',
+        description: 'No name, tag or path has every word and tag asked for.',
+        action: 'clear'
+      };
     }
 
     const projects = this.viewName() === 'projects';
@@ -624,7 +654,11 @@ export class LibraryPane {
       }
     });
     const ready = () => this.store.state().kind === 'ready';
-    this.commands.handle('newProject', { enabled: ready, run: () => this.newProjectIn(this.treeStore.target()) }, this.destroyRef);
+    this.commands.handle(
+      'newProject',
+      { enabled: ready, run: () => this.newProjectIn(this.treeStore.target()) },
+      this.destroyRef
+    );
     this.commands.handle('newFolder', { enabled: ready, run: () => this.newFolder() }, this.destroyRef);
     this.commands.handle('showBin', { enabled: ready, run: () => this.actions.binOpen.set(true) }, this.destroyRef);
 

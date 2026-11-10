@@ -1,5 +1,11 @@
 import { DestroyRef, Injectable, InjectionToken, effect, inject, signal, untracked } from '@angular/core';
-import type { ViewportCameraState, ViewportDisplay, ViewportInput, ViewportScreenshot } from '@patina/api-client';
+import type {
+  ViewportCameraState,
+  ViewportDisplay,
+  ViewportInput,
+  ViewportNodeShown,
+  ViewportScreenshot
+} from '@patina/api-client';
 import { unwrap } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { messageOf } from '../core/messages';
@@ -48,8 +54,17 @@ export const DefaultDisplay: ViewportDisplay = {
   backgroundColor: '#000000',
   grid: false,
   pictureLane: 'rgb',
-  pictureScale: 1
+  pictureScale: 1,
+  shape: 'sphere'
 };
+
+/** What a material or a graph with no mesh of its own is seen on, as the Display panel offers them. */
+export const Shapes: readonly { value: string; label: string }[] = [
+  { value: 'sphere', label: 'Sphere' },
+  { value: 'plane', label: 'Plane' },
+  { value: 'cube', label: 'Cube' },
+  { value: 'cylinder', label: 'Cylinder' }
+];
 
 /** The largest picture a screenshot can be, which is the largest the Server's frame slots hold. */
 const MaxShot = { width: 3840, height: 2160 };
@@ -96,6 +111,8 @@ export class ViewportClient {
   private size: { width: number; height: number } | null = null;
 
   readonly mesh = signal<string | null>(null);
+  /** The graph node whose picture is on the mesh in place of the material, or null. */
+  readonly node = signal<ViewportNodeShown | null>(null);
   /** How the model is lit, shown and finished, as the Server has it or as it was just asked for. */
   readonly display = signal<ViewportDisplay>(DefaultDisplay);
   readonly error = signal<string | null>(null);
@@ -175,10 +192,12 @@ export class ViewportClient {
     }
   }
 
-  /** Lays a graph's outputs over the mesh on screen. */
-  async showGraph(graph: string): Promise<void> {
+  /** Lays a graph's outputs over the mesh on screen, or one node's picture alone with a node. */
+  async showGraph(graph: string, node: number | null = null): Promise<void> {
     try {
-      await this.bakes.showGraphOnMesh(graph);
+      const state = await this.bakes.showGraphOnMesh(graph, node);
+      this.mesh.set(state.mesh ?? null);
+      this.node.set(state.node ?? null);
       this.error.set(null);
     } catch (error) {
       this.error.set(messageOf(error));
@@ -190,6 +209,7 @@ export class ViewportClient {
       const client = this.createClient(await this.connection());
       const state = unwrap(await client.PUT('/api/v1/viewport/mesh', { body: { path } }));
       this.mesh.set(state.mesh ?? null);
+      this.node.set(null);
       this.error.set(null);
     } catch (error) {
       this.error.set(messageOf(error));
@@ -235,6 +255,8 @@ export class ViewportClient {
         this.display.set(state.display);
       }
 
+      // A new shape takes a stand-in's place.
+      this.mesh.set(state.mesh ?? null);
       this.error.set(null);
     } catch (error) {
       // A file the project kept may have gone: what the Server still shows is what the controls say.
@@ -308,6 +330,7 @@ export class ViewportClient {
   private async refresh(): Promise<void> {
     const state = unwrap(await this.createClient(await this.connection()).GET('/api/v1/viewport'));
     this.mesh.set(state.mesh ?? null);
+    this.node.set(state.node ?? null);
     this.display.set(state.display);
     this.isolation.heard(state.isolation);
     this.error.set(state.error ?? null);
@@ -333,6 +356,7 @@ export class ViewportClient {
       const connection = await this.connection();
       const state = unwrap(await this.createClient(connection).GET('/api/v1/viewport'));
       this.mesh.set(state.mesh ?? null);
+      this.node.set(state.node ?? null);
       this.camera.set(state.camera);
       this.isolation.heard(state.isolation);
       if (this.adopted === null) {

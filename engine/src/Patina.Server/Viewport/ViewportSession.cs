@@ -72,6 +72,10 @@ public sealed class ViewportSession(
     ViewportMapSet maps = new();
     ViewportCameraState camera = new(0.6, 0.35, ViewportCameraState.Framed);
     ViewportDisplaySet display = new(new(), null, null);
+
+    /// <summary>A graph node's picture shown in place of the material, and its file, or null.</summary>
+    (ViewportNodeShown Shown, ViewportMapFile File)? node;
+
     int width = DefaultWidth;
     int height = DefaultHeight;
     bool interacting;
@@ -102,7 +106,8 @@ public sealed class ViewportSession(
                     error ?? mapsError,
                     display.Display,
                     stack,
-                    display.Isolation
+                    display.Isolation,
+                    node?.Shown
                 );
             }
         }
@@ -173,6 +178,7 @@ public sealed class ViewportSession(
             mesh = path;
             stack = session;
             maps = new();
+            node = null;
             painted = 0;
             error = null;
             mapsError = null;
@@ -233,6 +239,7 @@ public sealed class ViewportSession(
             also = [];
             layouts.Clear();
             maps = pictures;
+            node = null;
             error = null;
             mapsError = null;
             revision++;
@@ -248,6 +255,7 @@ public sealed class ViewportSession(
             stack = null;
             also = [];
             maps = new();
+            node = null;
             error = null;
             mapsError = null;
             revision++;
@@ -262,7 +270,40 @@ public sealed class ViewportSession(
             stack = null;
             also = [];
             maps = pictures;
+            node = null;
             mapsError = null;
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>
+    ///     Shows one graph node's picture in place of the material, through the picture view, until something else is
+    ///     laid on the mesh. The display settings are not touched, so the view they hold comes back after.
+    /// </summary>
+    public void ShowNode(ViewportNodeShown shown, ViewportMapFile file) {
+        ArgumentNullException.ThrowIfNull(shown);
+        ArgumentNullException.ThrowIfNull(file);
+        lock (changing) {
+            stack = null;
+            also = [];
+            node = (shown, file);
+            mapsError = null;
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>
+    ///     Swaps the mesh for another and keeps whatever lies on it: a stack, pictures or a node. For one stand-in
+    ///     shape taking another's place.
+    /// </summary>
+    public void Reshape(string path) {
+        lock (changing) {
+            mesh = path;
+            error = null;
             revision++;
         }
 
@@ -408,7 +449,7 @@ public sealed class ViewportSession(
                 mesh,
                 new(stack, also, painted, new Dictionary<string, int>(layouts, StringComparer.Ordinal)),
                 maps,
-                display,
+                Shown(),
                 Lens(camera, display.Display),
                 (request.Width ?? width, request.Height ?? height, 1d),
                 false,
@@ -602,6 +643,12 @@ public sealed class ViewportSession(
             settings.Orthographic
         );
 
+    /// <summary>The display the Worker draws with: the picture view of a node shown in place of the material.</summary>
+    ViewportDisplaySet Shown() =>
+        node is var (_, file)
+            ? display with { Display = display.Display with { View = ViewportViews.Picture }, Picture = file }
+            : display;
+
     (Work? Work, long Revision) Snapshot() {
         lock (changing) {
             return subscribers.Count == 0
@@ -610,7 +657,7 @@ public sealed class ViewportSession(
                     mesh,
                     new(stack, also, painted, new Dictionary<string, int>(layouts, StringComparer.Ordinal)),
                     maps,
-                    display,
+                    Shown(),
                     Lens(camera, display.Display),
                     (width, height, scale.Value),
                     interacting,

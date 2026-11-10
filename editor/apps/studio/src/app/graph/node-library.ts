@@ -1,6 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { provideIcons } from '@ng-icons/core';
+import { matStar, matStarBorder } from '@ng-icons/material-icons/baseline';
 import type { GraphNodeType } from '@patina/api-client';
 import { XuiInputImports } from '@xui/input';
+import { IconImports } from '../core/icons';
+import { Preferences } from '../core/preferences';
+import { paletteOf } from './graph-authoring';
 import { GraphStore } from './graph-store';
 
 /** How a dragged node names itself to the canvas. */
@@ -9,12 +14,14 @@ export const NodeDragType = 'application/x-patina-node';
 const SearchQuiet = 120;
 
 /**
- * Every node a graph can hold, by category. Typing ranks them, best first and in the order the palette has, since both
- * ask the Server. Double-click to add, or drag onto the canvas.
+ * Every node a graph can hold: the starred ones and those added last, then every one by category. Typing ranks them,
+ * best first and in the order the palette has, since both ask the Server. Double-click to add, or drag onto the
+ * canvas; the star keeps a node at the top here and in the palette.
  */
 @Component({
   selector: 'ptn-node-library',
-  imports: [XuiInputImports],
+  imports: [IconImports, XuiInputImports],
+  viewProviders: [provideIcons({ matStar, matStarBorder })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
@@ -33,11 +40,14 @@ const SearchQuiet = 120;
     <div class="min-h-0 flex-1 overflow-auto px-2 pb-2" role="list" aria-label="Nodes" data-testid="node-library">
       @for (group of groups(); track group.name) {
         @if (group.name) {
-          <p class="section-label mt-2 mb-1">{{ group.name }}</p>
+          <p class="section-label mt-2 mb-1" [attr.data-testid]="'node-library-group-' + group.name">
+            {{ group.name }}
+          </p>
         }
         @for (type of group.types; track type.path) {
+          @let starred = favourites().has(type.path);
           <div
-            class="hover:bg-selection cursor-grab rounded-sm px-1.5 py-0.5 text-sm"
+            class="group hover:bg-selection flex cursor-grab items-center rounded-sm ps-1.5 text-sm"
             role="listitem"
             draggable="true"
             tabindex="0"
@@ -48,7 +58,21 @@ const SearchQuiet = 120;
             (dragstart)="drag($event, type)"
             (keydown.enter)="add(type)"
           >
-            {{ type.title }}
+            <span class="min-w-0 flex-1 truncate py-0.5">{{ type.title }}</span>
+            <button
+              type="button"
+              class="text-foreground-muted hover:text-foreground shrink-0 px-1 focus-visible:opacity-100"
+              data-testid="node-library-star"
+              [class.opacity-0]="!starred"
+              [class.group-hover:opacity-100]="!starred"
+              [attr.aria-label]="(starred ? 'Unstar ' : 'Star ') + type.title"
+              [attr.aria-pressed]="starred"
+              [title]="starred ? 'Takes the star away' : 'Keeps this node at the top here and in the palette'"
+              (click)="preferences.toggleFavouriteNode(type.path)"
+              (dblclick)="$event.stopPropagation()"
+            >
+              <ng-icon xui size="sm" [name]="starred ? 'matStar' : 'matStarBorder'" />
+            </button>
           </div>
         }
       } @empty {
@@ -59,8 +83,10 @@ const SearchQuiet = 120;
 })
 export class NodeLibrary {
   private readonly store = inject(GraphStore);
+  protected readonly preferences = inject(Preferences);
   private readonly found = signal<{ query: string; types: readonly GraphNodeType[] }>({ query: '', types: [] });
   protected readonly query = signal('');
+  protected readonly favourites = computed(() => new Set(this.preferences.favouriteNodes()));
 
   protected readonly groups = computed(() => {
     const { query, types } = this.found();
@@ -69,9 +95,8 @@ export class NodeLibrary {
     }
 
     const groups = new Map<string, GraphNodeType[]>();
-    for (const type of types) {
-      const name = type.category || 'Compounds';
-      groups.set(name, [...(groups.get(name) ?? []), type]);
+    for (const line of paletteOf(types, this.preferences.favouriteNodes(), this.preferences.recentNodes())) {
+      groups.set(line.group, [...(groups.get(line.group) ?? []), line.type]);
     }
 
     return [...groups].map(([name, held]) => ({ name, types: held }));
