@@ -74,6 +74,12 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         return new() { Type = IpcTypes.Ok, FoundLayer = Find(ask.Session).LayerAt(ask.U, ask.V) };
     }
 
+    /// <summary>What every channel holds at a place on the map, for a material picker: numbers, never the picture.</summary>
+    public IpcMessage Sample(IpcMessage request) {
+        var ask = request.StackSample ?? throw new IpcException("stack.sample names no stack.");
+        return new() { Type = IpcTypes.Ok, Sampled = Find(ask.Session).SampleAt(ask.U, ask.V) };
+    }
+
     public IpcMessage Sync(IpcMessage request) {
         var sync = request.StackSync ?? throw new IpcException("stack.sync says nothing.");
         Find(sync.Session).Sync(sync, watch);
@@ -419,6 +425,32 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             return null;
         }
 
+        /// <summary>
+        ///     What each channel of the composite holds at a place on the map, at full size: one texel of each read
+        ///     back, as the plan stores it.
+        /// </summary>
+        /// <exception cref="IpcException">The stack does not evaluate.</exception>
+        public IReadOnlyList<StackSampledChannel> SampleAt(float u, float v) {
+            var problems = Prepare();
+            if (problems.Count > 0 || Run.Plan is null) {
+                throw new IpcException(string.Join(' ', problems));
+            }
+
+            var x = Math.Clamp((int)(u * document.BaseWidth), 0, document.BaseWidth - 1);
+            var y = Math.Clamp((int)(v * document.BaseHeight), 0, document.BaseHeight - 1);
+            using var bake = Run.Evaluate();
+            return [
+                ..Run.Outputs.Select(output => new StackSampledChannel(
+                        output.Usage,
+                        StackSampling.Value(
+                            bake.ReadTexels(output.Image, [new(x, y, 1, 1)])[0],
+                            bake.Plan.Images[output.Image].Format
+                        )
+                    )
+                )
+            ];
+        }
+
         static IEnumerable<LayerAsset> Fills(IEnumerable<LayerAsset> layers) =>
             layers.SelectMany(static layer => layer.Kind == LayerKind.Group
                     ? Fills(layer.Children)
@@ -697,7 +729,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                     part.Curve == "free" ? part.Brush.Lazy : 0f,
                     placement: placement,
                     source: StrokeSources.Source(part, image, coverage, Picture, Composite),
-                    stencil: StrokeSources.Stencil(part.Stencil, Picture)
+                    stencil: StrokeSources.Stencil(part.Stencil, Picture),
+                    resume: StrokeShapes.Resume(part)
                 ),
                 part.Curve is "free" or "fill" ? null : new()
             ) { Fill = part.Curve == "fill" };

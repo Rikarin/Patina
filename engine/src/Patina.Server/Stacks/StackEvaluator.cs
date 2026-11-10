@@ -210,6 +210,28 @@ public sealed class StackEvaluator(
         return reply.FoundLayer;
     }
 
+    /// <summary>What every channel of a stack holds at a place on the map, which the Worker reads back as numbers.</summary>
+    /// <exception cref="TimeoutException">No Worker came.</exception>
+    /// <exception cref="IpcException">The stack would not evaluate.</exception>
+    public async Task<StackSample> SampleAsync(
+        StackSession session,
+        float u,
+        float v,
+        CancellationToken cancellationToken
+    ) {
+        await ReachedAsync(session, cancellationToken);
+        if (session.EvaluationError is { } failed) {
+            throw new IpcException(failed);
+        }
+
+        var connection = await ConnectionAsync(cancellationToken);
+        var reply = await connection.SendAsync(
+            new() { Type = IpcTypes.StackSample, StackSample = new(session.Id, u, v) },
+            cancellationToken
+        );
+        return new(reply.Sampled ?? []);
+    }
+
     /// <summary>
     ///     What the Worker measures of a stack's set before export: its layout and the values in its maps, as numbers.
     /// </summary>

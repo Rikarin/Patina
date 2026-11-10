@@ -40,6 +40,7 @@ class StackBrushTerms:
             maximum_radius (float): The largest radius a stroke takes, in its own units.
             maximum_aspect (float): The longest a stamp can be, against its width.
             maximum_count (int): The most strokes a radial symmetry makes.
+            material_projections (list[StackTerm]): How a material brush can lay its maps on the mesh.
      """
 
     default: StackBrush
@@ -55,6 +56,7 @@ class StackBrushTerms:
     maximum_radius: float
     maximum_aspect: float
     maximum_count: int
+    material_projections: list[StackTerm]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -135,6 +137,13 @@ class StackBrushTerms:
 
         maximum_count = self.maximum_count
 
+        material_projections = []
+        for material_projections_item_data in self.material_projections:
+            material_projections_item = material_projections_item_data.to_dict()
+            material_projections.append(material_projections_item)
+
+
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -152,6 +161,7 @@ class StackBrushTerms:
             "maximumRadius": maximum_radius,
             "maximumAspect": maximum_aspect,
             "maximumCount": maximum_count,
+            "materialProjections": material_projections,
         })
 
         return field_dict
@@ -264,6 +274,16 @@ class StackBrushTerms:
 
         maximum_count = d.pop("maximumCount")
 
+        material_projections = []
+        _material_projections = d.pop("materialProjections")
+        for material_projections_item_data in (_material_projections):
+            material_projections_item = StackTerm.from_dict(material_projections_item_data)
+
+
+
+            material_projections.append(material_projections_item)
+
+
         stack_brush_terms = cls(
             default=default,
             falloffs=falloffs,
@@ -278,6 +298,7 @@ class StackBrushTerms:
             maximum_radius=maximum_radius,
             maximum_aspect=maximum_aspect,
             maximum_count=maximum_count,
+            material_projections=material_projections,
         )
 
 

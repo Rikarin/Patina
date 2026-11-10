@@ -58,6 +58,11 @@ class StackCommandStackStroke:
             fill (None | str | Unset): With the fill curve, how much of the mesh a click takes: `triangle`, `polygon` (the
                 flat polygon it
                 is part of), `part` (the named mesh it belongs to) or `shell` (its UV island). It needs a mesh.
+            resume (list[float] | None | Unset): Where the brush already stands when this stroke carries on the one before
+                it, as two numbers in the units of
+                its stamps, or null. The stroke starts there without a stamp, as a pen lifted in the middle of one stroke and
+                put down again: its first stamp comes a step along, so nothing is laid twice where the two meet, and a lazy
+                brush keeps its string. Only a free stroke carries one on; it is still an undo step of its own.
      """
 
     op: StackCommandStackStrokeOp
@@ -76,6 +81,7 @@ class StackCommandStackStroke:
     source: None | StackStrokeSource | Unset = UNSET
     stencil: None | StackPicture | Unset = UNSET
     fill: None | str | Unset = UNSET
+    resume: list[float] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -160,6 +166,16 @@ class StackCommandStackStroke:
         else:
             fill = self.fill
 
+        resume: list[float] | None | Unset
+        if isinstance(self.resume, Unset):
+            resume = UNSET
+        elif isinstance(self.resume, list):
+            resume = self.resume
+
+
+        else:
+            resume = self.resume
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -187,6 +203,8 @@ class StackCommandStackStroke:
             field_dict["stencil"] = stencil
         if fill is not UNSET:
             field_dict["fill"] = fill
+        if resume is not UNSET:
+            field_dict["resume"] = resume
 
         return field_dict
 
@@ -336,6 +354,24 @@ class StackCommandStackStroke:
         fill = _parse_fill(d.pop("fill", UNSET))
 
 
+        def _parse_resume(data: object) -> list[float] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                resume_type_1 = cast(list[float], data)
+
+                return resume_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[float] | None | Unset, data)
+
+        resume = _parse_resume(d.pop("resume", UNSET))
+
+
         stack_command_stack_stroke = cls(
             op=op,
             stroke=stroke,
@@ -353,6 +389,7 @@ class StackCommandStackStroke:
             source=source,
             stencil=stencil,
             fill=fill,
+            resume=resume,
         )
 
 

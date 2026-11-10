@@ -479,4 +479,89 @@ public sealed class StackVocabularyTests {
             )
         );
     }
+
+    /// <summary>
+    ///     A stroke carries the last one on from one place, as two numbers, and only a free one does: a line or a path
+    ///     runs through points of its own.
+    /// </summary>
+    [Theory]
+    [InlineData("free", 1)]
+    [InlineData("free", 3)]
+    [InlineData("line", 2)]
+    public void A_stroke_carried_on_from_nowhere_or_along_a_line_is_refused(string curve, int numbers) {
+        var editor = Painted("Resume");
+
+        Assert.Throws<StackEditRefusedException>(() =>
+            editor.Apply(
+                new([
+                    new StackStroke(
+                        "a",
+                        "paint",
+                        "baseColor",
+                        new(4f),
+                        [1f, 1f, 1f, 1f],
+                        [new(1f, 1f), new(9f, 1f)],
+                        Curve: curve,
+                        Resume: [..Enumerable.Repeat(4f, numbers)]
+                    )
+                ])
+            )
+        );
+    }
+
+    /// <summary>A face turns from a camera by a quarter turn at most, and by no less than nothing.</summary>
+    [Theory]
+    [InlineData(-0.1f)]
+    [InlineData(1.6f)]
+    [InlineData(float.NaN)]
+    public void A_facing_angle_past_a_quarter_turn_is_refused(float facing) {
+        Assert.NotNull(new StackBrush(4f, Facing: facing).Problem());
+        Assert.Null(new StackBrush(4f, Facing: StackBrushes.AnyFacing).Problem());
+        Assert.Null(new StackBrush(4f, Facing: 0f).Problem());
+    }
+
+    /// <summary>
+    ///     A material brush lays its maps as a fill does, but not through a decal's box or along a path, and one laid in
+    ///     the model's space needs a model.
+    /// </summary>
+    [Theory]
+    [InlineData("Decal", null)]
+    [InlineData("Triplanar", Api.Refusals.NoMesh)]
+    [InlineData("Planar", Api.Refusals.NoMesh)]
+    public void A_material_laid_where_this_stack_cannot_lay_it_is_refused(string projection, string? code) {
+        var editor = Painted("Laid");
+
+        var refusal = Assert.Throws<StackEditRefusedException>(() =>
+            editor.Apply(
+                new([
+                    new StackStroke(
+                        "a",
+                        "paint",
+                        "baseColor",
+                        new(4f),
+                        [1f, 1f, 1f, 1f],
+                        [new(1f, 1f)],
+                        Source: new("material", "rust.vxtexgraph", Projection: projection)
+                    )
+                ])
+            )
+        );
+
+        Assert.Equal(code ?? Api.Refusals.BrushRefused, refusal.Code);
+    }
+
+    static StackEditor Painted(string name) =>
+        new(
+            $"/tmp/{name}.vxlayers",
+            new() {
+                Name = name,
+                Sets = [
+                    new() {
+                        Name = "Body",
+                        Channels = [new() { Usage = "baseColor" }],
+                        Layers = [new() { Id = "paint", Name = "Paint", Kind = LayerKind.Paint }]
+                    }
+                ]
+            }
+        );
 }

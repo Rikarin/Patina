@@ -322,6 +322,8 @@ from .stack_pixels import StackPixels
 from .stack_placement import StackPlacement
 from .stack_preview import StackPreview
 from .stack_problem import StackProblem
+from .stack_sample import StackSample
+from .stack_sampled_channel import StackSampledChannel
 from .stack_save_material_request import StackSaveMaterialRequest
 from .stack_saved_material import StackSavedMaterial
 from .stack_stamp import StackStamp
@@ -685,6 +687,8 @@ __all__ = (
     "StackPlacement",
     "StackPreview",
     "StackProblem",
+    "StackSample",
+    "StackSampledChannel",
     "StackSavedMaterial",
     "StackSaveMaterialRequest",
     "StackStamp",

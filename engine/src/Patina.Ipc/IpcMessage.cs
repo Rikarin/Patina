@@ -119,6 +119,9 @@ public static class IpcTypes {
     /// </summary>
     public const string StackFind = "stack.find";
 
+    /// <summary>Reads what every channel of a stack holds at one place on its map: numbers, for a material picker.</summary>
+    public const string StackSample = "stack.sample";
+
     /// <summary>
     ///     Measures a stack's set before export: its layout on the mesh, and the share of its texels a physical
     ///     material
@@ -292,6 +295,12 @@ public sealed class IpcMessage {
     public IReadOnlyList<StackLayerThumbnail>? StackLayerThumbnails { get; set; }
 
     public StackFindAsk? StackFind { get; set; }
+
+    /// <summary>stack.sample: the stack and the place, which a find asks about the same way.</summary>
+    public StackFindAsk? StackSample { get; set; }
+
+    /// <summary>The reply to stack.sample: each channel's value there.</summary>
+    public IReadOnlyList<StackSampledChannel>? Sampled { get; set; }
 
     /// <summary>stack.check: the session to measure.</summary>
     public string? StackCheck { get; set; }
@@ -610,6 +619,7 @@ public sealed record StackLoad(
 /// </param>
 /// <param name="Width">The set's width when the stroke began, which its stamps are texels of; 0 is today's.</param>
 /// <param name="Height">The set's height when the stroke began.</param>
+/// <param name="Resume">Where the brush already stood when a free stroke carries the last one on, or null.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -630,7 +640,8 @@ public sealed record StackPaintPart(
     string? Fill = null,
     string? SourceDocument = null,
     int Width = 0,
-    int Height = 0
+    int Height = 0,
+    IReadOnlyList<float>? Resume = null
 );
 
 /// <summary>What a flattened group's canvas is made of.</summary>

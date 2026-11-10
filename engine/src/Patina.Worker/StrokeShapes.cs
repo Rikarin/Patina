@@ -24,9 +24,18 @@ static class StrokeShapes {
         );
     }
 
-    /// <summary>Whether a stroke paints only what its camera sees, its tolerance a share of the model's size.</summary>
+    /// <summary>
+    ///     Whether a stroke paints only what its camera sees, its tolerance a share of the model's size, and how far a
+    ///     face may turn from the camera, which holds either way.
+    /// </summary>
     public static PaintOcclusion Occlusion(StackBrush brush) =>
-        brush.Occlusion ? new(true, brush.OcclusionTolerance / 1000f) : PaintOcclusion.None;
+        brush.Occlusion
+            ? new(true, brush.OcclusionTolerance / 1000f, brush.Facing)
+            : PaintOcclusion.None with { Facing = brush.Facing };
+
+    /// <summary>Where the brush already stands for a free stroke that carries the last one on, or null.</summary>
+    public static Vector2? Resume(StackPaintPart part) =>
+        part.Curve == "free" && part.Resume is [var x, var y] ? new Vector2(x, y) : null;
 
     public static PaintView View(StackView view) =>
         new(

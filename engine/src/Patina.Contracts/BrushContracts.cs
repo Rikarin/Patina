@@ -37,6 +37,7 @@ public sealed record StackSymmetry(
 /// <param name="MaximumRadius">The largest radius a stroke takes, in its own units.</param>
 /// <param name="MaximumAspect">The longest a stamp can be, against its width.</param>
 /// <param name="MaximumCount">The most strokes a radial symmetry makes.</param>
+/// <param name="MaterialProjections">How a material brush can lay its maps on the mesh.</param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 public sealed record StackBrushTerms(
@@ -52,7 +53,8 @@ public sealed record StackBrushTerms(
     IReadOnlyList<StackTerm> Fills,
     float MaximumRadius,
     float MaximumAspect,
-    int MaximumCount
+    int MaximumCount,
+    IReadOnlyList<StackTerm> MaterialProjections
 );
 #pragma warning restore SK7005
 
@@ -163,6 +165,9 @@ public static class StackBrushes {
     /// <summary>The most strokes a radial symmetry makes, the stroke among them.</summary>
     public const int MaximumCount = 64;
 
+    /// <summary>The facing angle that paints every face a camera looks at: a quarter turn, in radians.</summary>
+    public const float AnyFacing = MathF.PI / 2f;
+
     /// <summary>The falloff curves.</summary>
     public static IReadOnlyList<string> Falloffs { get; } = ["smooth", "linear", "spherical", "tip"];
 
@@ -191,6 +196,16 @@ public static class StackBrushes {
     /// <summary>How much of a mesh one click of a polygon fill takes.</summary>
     public static IReadOnlyList<string> Fills { get; } = ["triangle", "polygon", "part", "shell"];
 
+    /// <summary>
+    ///     How a material brush lays its maps: a fill's projections, but for a decal and a path, which need a box or a
+    ///     curve placed on the model first.
+    /// </summary>
+    public static IReadOnlyList<string> MaterialProjections { get; } =
+        ["Uv", "Triplanar", "Planar", "Spherical", "Cylindrical"];
+
+    /// <summary>The axes a planar material projects along, as a fill's planar axis names them.</summary>
+    public static IReadOnlyList<string> PlanarAxes { get; } = ["X", "Y", "Z"];
+
     /// <summary>Where a stroke's colour can come from besides its colour.</summary>
     public static IReadOnlyList<string> Sources { get; } = ["smudge", "clone", "material", "picture"];
 
@@ -204,7 +219,16 @@ public static class StackBrushes {
             "clone" => source.Offset is [var x, var y] && float.IsFinite(x) && float.IsFinite(y)
                 ? null
                 : "A clone reads from an offset of two numbers, in texels.",
-            "material" => string.IsNullOrWhiteSpace(source.Graph) ? "A material brush names the graph it lays." : null,
+            "material" => string.IsNullOrWhiteSpace(source.Graph) ? "A material brush names the graph it lays."
+                : source.Projection is { } projection && !MaterialProjections.Contains(projection)
+                    ? $"'{projection}' is not how a material brush lays its maps."
+                : source.PlanarAxis is { } axis && !PlanarAxes.Contains(axis) ? $"'{axis}' is not an axis."
+                : source.Placement is { } placement
+                && (!(placement.Scale > 0f) || !float.IsFinite(placement.Scale)
+                    || !float.IsFinite(placement.Rotation) || !float.IsFinite(placement.OffsetX)
+                    || !float.IsFinite(placement.OffsetY) || !float.IsFinite(placement.Sharpness))
+                    ? "A material repeats a number of times above zero, and turns and moves by numbers."
+                : null,
             "picture" => source.Picture is null
                 ? "A projection names the picture it paints."
                 : source.Picture.Problem(),
@@ -220,6 +244,11 @@ public static class StackBrushes {
     public static string? PaintProblem(this StackStroke stroke) {
         if (stroke.Curve == "fill" && !Fills.Contains(stroke.Fill ?? string.Empty)) {
             return "A fill takes a triangle, a polygon, a mesh part or a UV shell.";
+        }
+
+        if (stroke.Resume is { } resume
+            && (stroke.Curve != "free" || resume is not [var x, var y] || !float.IsFinite(x) || !float.IsFinite(y))) {
+            return "A free stroke carries the last one on from where the brush stood: two numbers.";
         }
 
         if ((stroke.Source?.Problem() ?? stroke.Stencil?.Problem()) is { } problem) {
@@ -294,6 +323,11 @@ public static class StackBrushes {
 
         if (!(brush.OcclusionTolerance >= 0f) || brush.OcclusionTolerance > 1000f) {
             return "An occlusion tolerance is 0 to 1000 thousandths of the model's size.";
+        }
+
+        // A float's quarter turn is a hair over π/2 as JSON writes it back, so the cap allows that hair.
+        if (!(brush.Facing >= 0f) || brush.Facing > AnyFacing + 1e-5f) {
+            return "A facing angle is 0 to a quarter turn.";
         }
 
         if (!(brush.Aspect >= 1f) || brush.Aspect > MaximumAspect) {

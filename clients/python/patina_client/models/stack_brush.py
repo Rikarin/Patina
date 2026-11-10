@@ -64,6 +64,14 @@ class StackBrush:
             occlusion_tolerance (float): How far in front of a texel something may lie and still not hide it, in thousandths
                 of the model's size (its
                 bounds' diagonal), 0 to 1000: a decal floating a hair over a face is not the face's occluder. Default: 2.0.
+            facing (float): How far a face may turn from the camera and still be painted, in radians from the line of sight,
+                0 to π/2. π/2
+                paints every face the camera looks at; less keeps a stroke with a view off the faces it only grazes, where a
+                stamp smears into a streak. Measured per triangle. Default: 1.5707964.
+            resume (bool): Whether a stroke that starts where the last one stopped carries it on. A client that sees one
+                start there sends
+                where the brush stood as IReadOnlyList&lt;float&gt;? StackStroke.Resume; the brush only says whether to.
+                Default: False.
             alpha (None | str | Unset): A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or
                 null.
      """
@@ -90,6 +98,8 @@ class StackBrush:
     size_space: str = 'screen'
     occlusion: bool = True
     occlusion_tolerance: float = 2.0
+    facing: float = 1.5707964
+    resume: bool = False
     alpha: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -142,6 +152,10 @@ class StackBrush:
 
         occlusion_tolerance = self.occlusion_tolerance
 
+        facing = self.facing
+
+        resume = self.resume
+
         alpha: None | str | Unset
         if isinstance(self.alpha, Unset):
             alpha = UNSET
@@ -174,6 +188,8 @@ class StackBrush:
             "sizeSpace": size_space,
             "occlusion": occlusion,
             "occlusionTolerance": occlusion_tolerance,
+            "facing": facing,
+            "resume": resume,
         })
         if alpha is not UNSET:
             field_dict["alpha"] = alpha
@@ -229,6 +245,10 @@ class StackBrush:
 
         occlusion_tolerance = d.pop("occlusionTolerance")
 
+        facing = d.pop("facing")
+
+        resume = d.pop("resume")
+
         def _parse_alpha(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -262,6 +282,8 @@ class StackBrush:
             size_space=size_space,
             occlusion=occlusion,
             occlusion_tolerance=occlusion_tolerance,
+            facing=facing,
+            resume=resume,
             alpha=alpha,
         )
 

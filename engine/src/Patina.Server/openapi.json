@@ -6003,6 +6003,77 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/sample": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "What every channel holds at a place on the map, as a material picker takes it up: one texel of each, read back from the composite at full size, as numbers.",
+        "operationId": "SampleStack",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackFindRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackSample"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/thumbnails": {
       "get": {
         "tags": [
@@ -13934,7 +14005,9 @@
           "accumulate",
           "sizeSpace",
           "occlusion",
-          "occlusionTolerance"
+          "occlusionTolerance",
+          "facing",
+          "resume"
         ],
         "type": "object",
         "properties": {
@@ -14069,6 +14142,17 @@
             "description": "How far in front of a texel something may lie and still not hide it, in thousandths of the model\u0027s size (its\nbounds\u0027 diagonal), 0 to 1000: a decal floating a hair over a face is not the face\u0027s occluder.",
             "format": "float",
             "default": 2
+          },
+          "facing": {
+            "type": "number",
+            "description": "How far a face may turn from the camera and still be painted, in radians from the line of sight, 0 to \u03C0/2. \u03C0/2\npaints every face the camera looks at; less keeps a stroke with a view off the faces it only grazes, where a\nstamp smears into a streak. Measured per triangle.",
+            "format": "float",
+            "default": 1.5707964
+          },
+          "resume": {
+            "type": "boolean",
+            "description": "Whether a stroke that starts where the last one stopped carries it on. A client that sees one start there sends\nwhere the brush stood as IReadOnlyList\u0026lt;float\u0026gt;? StackStroke.Resume; the brush only says whether to.",
+            "default": false
           }
         },
         "description": "A brush. Everything but the radius has the value a new brush has."
@@ -14087,7 +14171,8 @@
           "fills",
           "maximumRadius",
           "maximumAspect",
-          "maximumCount"
+          "maximumCount",
+          "materialProjections"
         ],
         "type": "object",
         "properties": {
@@ -14172,6 +14257,13 @@
             "type": "integer",
             "description": "The most strokes a radial symmetry makes.",
             "format": "int32"
+          },
+          "materialProjections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "How a material brush can lay its maps on the mesh."
           }
         },
         "description": "What a brush\u0027s fields take and how a new brush starts, so a client keeps no list or default of its own."
@@ -15405,6 +15497,17 @@
               "string"
             ],
             "description": "With the fill curve, how much of the mesh a click takes: \u0060triangle\u0060, \u0060polygon\u0060 (the flat polygon it\nis part of), \u0060part\u0060 (the named mesh it belongs to) or \u0060shell\u0060 (its UV island). It needs a mesh."
+          },
+          "resume": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Where the brush already stands when this stroke carries on the one before it, as two numbers in the units of\nits stamps, or null. The stroke starts there without a stamp, as a pen lifted in the middle of one stroke and\nput down again: its first stamp comes a step along, so nothing is laid twice where the two meet, and a lazy\nbrush keeps its string. Only a free stroke carries one on; it is still an undo step of its own."
           }
         },
         "description": "Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one\nStroke and they make one undo step, ended by one with Open false."
@@ -16859,6 +16962,44 @@
         },
         "description": "Something a stack\u0027s compile had to say."
       },
+      "StackSample": {
+        "required": [
+          "channels"
+        ],
+        "type": "object",
+        "properties": {
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackSampledChannel"
+            },
+            "description": "Each channel the set has, with its value there."
+          }
+        },
+        "description": "What every channel of a stack holds at one place on its map, as a material picker takes it up: numbers read\nback from the composite at full size, never a picture."
+      },
+      "StackSampledChannel": {
+        "required": [
+          "usage",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "usage": {
+            "type": "string",
+            "description": "The channel."
+          },
+          "value": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Red, green, blue and alpha, 0 to 1, as the map stores them and a stroke\u0027s colour is given: a one-number channel\nrepeats its number in the first three."
+          }
+        },
+        "description": "What one channel holds at a place."
+      },
       "StackSavedMaterial": {
         "required": [
           "path",
@@ -17117,6 +17258,31 @@
               {
                 "description": "For a picture, the picture and where it stands.",
                 "$ref": "#/components/schemas/StackPicture"
+              }
+            ]
+          },
+          "projection": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For a material, how its maps land on the mesh, as a fill\u0027s do: \u0060Uv\u0060 (the default) lays them over the\nlayout, so a material\u0027s size follows how the UVs are laid out; \u0060Triplanar\u0060, \u0060Planar\u0060,\n\u0060Spherical\u0060 and \u0060Cylindrical\u0060 lay them in the model\u0027s space, the same size wherever the stroke goes.\nA projection in the model\u0027s space needs a mesh."
+          },
+          "planarAxis": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For a planar material, the axis it projects along: X, Y or Z."
+          },
+          "placement": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For a material, how often its maps repeat, and how they turn and move.",
+                "$ref": "#/components/schemas/StackPlacement"
               }
             ]
           }

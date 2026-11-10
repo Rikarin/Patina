@@ -58,4 +58,44 @@ public sealed partial class StackProcessTests {
             Digest(await PixelsAsync(lazyLine.Id, false, deadline.Token), "baseColor")
         );
     }
+
+    /// <summary>
+    ///     A stroke that carries the last one on starts where the brush stood: a lazy one put down within its string of
+    ///     there paints nothing until it is pulled past it, where a fresh stroke lays a stamp under the pointer at once.
+    ///     Undone, it takes nothing of the stroke before it.
+    /// </summary>
+    [Fact]
+    public async Task A_stroke_carried_on_starts_where_the_brush_stood() {
+        using var deadline = Deadline(240);
+        var (_, first) = await StartAsync("First.vxlayers", deadline.Token);
+        var carried = await CreateAsync("Carried.vxlayers", deadline.Token);
+        var fresh = await CreateAsync("Fresh.vxlayers", deadline.Token);
+        StackBrush lazy = new(16f, Spacing: 0.25f, Lazy: 60f, Resume: true);
+        var drag = Line(100, 300, 40);
+        var stood = new StackStamp(300f, 300f);
+        IReadOnlyList<StackStamp> within = [new(320f, 310f), new(330f, 300f)];
+
+        foreach (var stack in new[] { first.Id, carried.Id, fresh.Id }) {
+            await EditAsync(stack, deadline.Token, new StackStroke("a", "paint", "baseColor", lazy, Red, drag));
+        }
+
+        await EditAsync(
+            carried.Id,
+            deadline.Token,
+            new StackStroke("b", "paint", "baseColor", lazy, Red, within, Resume: [stood.X, stood.Y])
+        );
+        await EditAsync(fresh.Id, deadline.Token, new StackStroke("b", "paint", "baseColor", lazy, Red, within));
+
+        var before = Digest(await PixelsAsync(first.Id, false, deadline.Token), "baseColor");
+        Assert.Equal(before, Digest(await PixelsAsync(carried.Id, false, deadline.Token), "baseColor"));
+        Assert.NotEqual(before, Digest(await PixelsAsync(fresh.Id, false, deadline.Token), "baseColor"));
+
+        // Pulled past the string, it paints on from where it stood.
+        await EditAsync(
+            carried.Id,
+            deadline.Token,
+            new StackStroke("c", "paint", "baseColor", lazy, Red, [new(500f, 300f)], Resume: [stood.X, stood.Y])
+        );
+        Assert.NotEqual(before, Digest(await PixelsAsync(carried.Id, false, deadline.Token), "baseColor"));
+    }
 }

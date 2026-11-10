@@ -137,6 +137,16 @@ static class StackEndpoints {
             Refused,
             Unavailable
         );
+        Post(
+            "/{id}/sample",
+            Sample,
+            "SampleStack",
+            "What every channel holds at a place on the map, as a material picker takes it up: one texel of each, "
+            + "read back from the composite at full size, as numbers.",
+            Missing,
+            Refused,
+            Unavailable
+        );
         Get(
             "/{id}/thumbnails",
             GetThumbnails,
@@ -353,6 +363,19 @@ static class StackEndpoints {
             id,
             sessions,
             async session => new StackFound(await evaluator.FindAsync(session, request.U, request.V, cancellationToken))
+        );
+
+    static Task<Results<Ok<StackSample>, ProblemHttpResult>> Sample(
+        string id,
+        StackFindRequest request,
+        StackSessions sessions,
+        StackEvaluator evaluator,
+        CancellationToken cancellationToken
+    ) =>
+        AskWorkerAsync(
+            id,
+            sessions,
+            session => evaluator.SampleAsync(session, request.U, request.V, cancellationToken)
         );
 
     /// <summary>

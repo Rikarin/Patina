@@ -13,6 +13,7 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.stack_picture import StackPicture
+  from ..models.stack_placement import StackPlacement
 
 
 
@@ -35,12 +36,22 @@ class StackStrokeSource:
             offset (list[float] | None | Unset): For a clone, how far the texel read is from the texel painted, in texels of
                 the map: two numbers.
             picture (None | StackPicture | Unset):
+            projection (None | str | Unset): For a material, how its maps land on the mesh, as a fill's do: `Uv` (the
+                default) lays them over the
+                layout, so a material's size follows how the UVs are laid out; `Triplanar`, `Planar`,
+                `Spherical` and `Cylindrical` lay them in the model's space, the same size wherever the stroke goes.
+                A projection in the model's space needs a mesh.
+            planar_axis (None | str | Unset): For a planar material, the axis it projects along: X, Y or Z.
+            placement (None | StackPlacement | Unset):
      """
 
     kind: str
     graph: None | str | Unset = UNSET
     offset: list[float] | None | Unset = UNSET
     picture: None | StackPicture | Unset = UNSET
+    projection: None | str | Unset = UNSET
+    planar_axis: None | str | Unset = UNSET
+    placement: None | StackPlacement | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -49,6 +60,7 @@ class StackStrokeSource:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.stack_picture import StackPicture # noqa: PLC0415
+        from ..models.stack_placement import StackPlacement # noqa: PLC0415
         kind = self.kind
 
         graph: None | str | Unset
@@ -75,6 +87,26 @@ class StackStrokeSource:
         else:
             picture = self.picture
 
+        projection: None | str | Unset
+        if isinstance(self.projection, Unset):
+            projection = UNSET
+        else:
+            projection = self.projection
+
+        planar_axis: None | str | Unset
+        if isinstance(self.planar_axis, Unset):
+            planar_axis = UNSET
+        else:
+            planar_axis = self.planar_axis
+
+        placement: dict[str, Any] | None | Unset
+        if isinstance(self.placement, Unset):
+            placement = UNSET
+        elif isinstance(self.placement, StackPlacement):
+            placement = self.placement.to_dict()
+        else:
+            placement = self.placement
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -87,6 +119,12 @@ class StackStrokeSource:
             field_dict["offset"] = offset
         if picture is not UNSET:
             field_dict["picture"] = picture
+        if projection is not UNSET:
+            field_dict["projection"] = projection
+        if planar_axis is not UNSET:
+            field_dict["planarAxis"] = planar_axis
+        if placement is not UNSET:
+            field_dict["placement"] = placement
 
         return field_dict
 
@@ -95,6 +133,7 @@ class StackStrokeSource:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.stack_picture import StackPicture # noqa: PLC0415
+        from ..models.stack_placement import StackPlacement # noqa: PLC0415
         d = dict(src_dict)
         kind = d.pop("kind")
 
@@ -146,11 +185,54 @@ class StackStrokeSource:
         picture = _parse_picture(d.pop("picture", UNSET))
 
 
+        def _parse_projection(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        projection = _parse_projection(d.pop("projection", UNSET))
+
+
+        def _parse_planar_axis(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        planar_axis = _parse_planar_axis(d.pop("planarAxis", UNSET))
+
+
+        def _parse_placement(data: object) -> None | StackPlacement | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                placement_type_1 = StackPlacement.from_dict(data)
+
+
+
+                return placement_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackPlacement | Unset, data)
+
+        placement = _parse_placement(d.pop("placement", UNSET))
+
+
         stack_stroke_source = cls(
             kind=kind,
             graph=graph,
             offset=offset,
             picture=picture,
+            projection=projection,
+            planar_axis=planar_axis,
+            placement=placement,
         )
 
 

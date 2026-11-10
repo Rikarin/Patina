@@ -341,6 +341,21 @@ public sealed record StackFindRequest(float U, float V);
 /// </param>
 public sealed record StackFound(string? Layer);
 
+/// <summary>
+///     What every channel of a stack holds at one place on its map, as a material picker takes it up: numbers read
+///     back from the composite at full size, never a picture.
+/// </summary>
+/// <param name="Channels">Each channel the set has, with its value there.</param>
+public sealed record StackSample(IReadOnlyList<StackSampledChannel> Channels);
+
+/// <summary>What one channel holds at a place.</summary>
+/// <param name="Usage">The channel.</param>
+/// <param name="Value">
+///     Red, green, blue and alpha, 0 to 1, as the map stores them and a stroke's colour is given: a one-number channel
+///     repeats its number in the first three.
+/// </param>
+public sealed record StackSampledChannel(string Usage, IReadOnlyList<float> Value);
+
 /// <summary>The fills of a stack, each drawn alone.</summary>
 /// <param name="Items">Them.</param>
 public sealed record StackThumbnails(IReadOnlyList<StackThumbnail> Items);
@@ -799,6 +814,15 @@ public sealed record StackView(
 ///     How far in front of a texel something may lie and still not hide it, in thousandths of the model's size (its
 ///     bounds' diagonal), 0 to 1000: a decal floating a hair over a face is not the face's occluder.
 /// </param>
+/// <param name="Facing">
+///     How far a face may turn from the camera and still be painted, in radians from the line of sight, 0 to π/2. π/2
+///     paints every face the camera looks at; less keeps a stroke with a view off the faces it only grazes, where a
+///     stamp smears into a streak. Measured per triangle.
+/// </param>
+/// <param name="Resume">
+///     Whether a stroke that starts where the last one stopped carries it on. A client that sees one start there sends
+///     where the brush stood as <see cref="StackStroke.Resume" />; the brush only says whether to.
+/// </param>
 public sealed record StackBrush(
     float Radius,
     float Flow = 1f,
@@ -822,7 +846,9 @@ public sealed record StackBrush(
     bool Accumulate = true,
     string SizeSpace = "screen",
     bool Occlusion = true,
-    float OcclusionTolerance = 2f
+    float OcclusionTolerance = 2f,
+    float Facing = StackBrushes.AnyFacing,
+    bool Resume = false
 );
 #pragma warning restore SK7005
 
@@ -855,11 +881,22 @@ public sealed record StackPicture(
 ///     For a clone, how far the texel read is from the texel painted, in texels of the map: two numbers.
 /// </param>
 /// <param name="Picture">For a picture, the picture and where it stands.</param>
+/// <param name="Projection">
+///     For a material, how its maps land on the mesh, as a fill's do: <c>Uv</c> (the default) lays them over the
+///     layout, so a material's size follows how the UVs are laid out; <c>Triplanar</c>, <c>Planar</c>,
+///     <c>Spherical</c> and <c>Cylindrical</c> lay them in the model's space, the same size wherever the stroke goes.
+///     A projection in the model's space needs a mesh.
+/// </param>
+/// <param name="PlanarAxis">For a planar material, the axis it projects along: X, Y or Z.</param>
+/// <param name="Placement">For a material, how often its maps repeat, and how they turn and move.</param>
 public sealed record StackStrokeSource(
     string Kind,
     string? Graph = null,
     IReadOnlyList<float>? Offset = null,
-    StackPicture? Picture = null
+    StackPicture? Picture = null,
+    string? Projection = null,
+    string? PlanarAxis = null,
+    StackPlacement? Placement = null
 );
 
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
@@ -902,6 +939,12 @@ public sealed record StackStrokeSource(
 ///     With the fill curve, how much of the mesh a click takes: <c>triangle</c>, <c>polygon</c> (the flat polygon it
 ///     is part of), <c>part</c> (the named mesh it belongs to) or <c>shell</c> (its UV island). It needs a mesh.
 /// </param>
+/// <param name="Resume">
+///     Where the brush already stands when this stroke carries on the one before it, as two numbers in the units of
+///     its stamps, or null. The stroke starts there without a stamp, as a pen lifted in the middle of one stroke and
+///     put down again: its first stamp comes a step along, so nothing is laid twice where the two meet, and a lazy
+///     brush keeps its string. Only a free stroke carries one on; it is still an undo step of its own.
+/// </param>
 public sealed record StackStroke(
     string Stroke,
     string Layer,
@@ -917,7 +960,8 @@ public sealed record StackStroke(
     int? MaskLayer = null,
     StackStrokeSource? Source = null,
     StackPicture? Stencil = null,
-    string? Fill = null
+    string? Fill = null,
+    IReadOnlyList<float>? Resume = null
 ) : StackCommand;
 #pragma warning restore SK7005
 
