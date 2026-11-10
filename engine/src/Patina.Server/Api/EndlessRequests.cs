@@ -1,8 +1,8 @@
 namespace Patina.Server.Api;
 
 /// <summary>
-///     The requests that never end on their own: every WebSocket (events, viewport input) and the frame stream. They end
-///     when the Server begins to stop (#236).
+///     The requests that never end on their own: every WebSocket (events, viewport input) and the frame stream. They
+///     end when the Server begins to stop (#236).
 /// </summary>
 /// <remarks>
 ///     ⚠ <b>A graceful stop waits for every request in flight</b>, up to the host's shutdown timeout of 30 s. A client
@@ -19,16 +19,17 @@ public static class EndlessRequests {
         ArgumentNullException.ThrowIfNull(app);
         var stopping = app.Lifetime.ApplicationStopping;
         app.Use(async (context, next) => {
-            var endless = context.WebSockets.IsWebSocketRequest
-                || context.GetEndpoint()?.Metadata.GetMetadata<EndlessResponse>() is not null;
-            if (!endless) {
-                await next(context);
-                return;
-            }
+                var endless = context.WebSockets.IsWebSocketRequest
+                    || context.GetEndpoint()?.Metadata.GetMetadata<EndlessResponse>() is not null;
+                if (!endless) {
+                    await next(context);
+                    return;
+                }
 
-            using var ending = stopping.Register(static held => ((HttpContext)held!).Abort(), context);
-            await next(context);
-        });
+                await using var ending = stopping.Register(static held => ((HttpContext)held!).Abort(), context);
+                await next(context);
+            }
+        );
     }
 
     sealed class EndlessResponse;

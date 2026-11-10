@@ -132,9 +132,10 @@ public sealed class ProcessTests : IDisposable {
     }
 
     /// <summary>
-    ///     A client following events or frames does not keep a stopping Server (#236). A graceful stop waited the host's
-    ///     30 s for those endless requests, so the desktop app killed the Server at 3 s on every quit, and its discovery
-    ///     entry stayed behind. ⚠ The 15 s is a hang check, half the host's timeout, and not a bound on a stop.
+    ///     A client following events or frames does not keep a stopping Server (#236). A graceful stop waited the
+    ///     host's 30 s for those endless requests, so the desktop app killed the Server at 3 s on every quit, and its
+    ///     discovery entry stayed behind. ⚠ The 15 s is a hang check, half the host's timeout, and not a bound on a
+    ///     stop.
     /// </summary>
     [Fact]
     public async Task A_client_following_events_and_frames_does_not_keep_a_stopping_server() {

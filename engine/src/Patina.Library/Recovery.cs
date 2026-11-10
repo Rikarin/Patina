@@ -75,8 +75,8 @@ public static class Recovery {
     }
 
     /// <summary>
-    ///     Puts the newest autosave in place of the file, its paint beside it. The autosaves stay: the Server lets go of
-    ///     them through its autosave gate, as it does every other letting go.
+    ///     Puts the newest autosave in place of the file, its paint beside it. The autosaves stay: the Server lets go
+    ///     of them through its autosave gate, as it does every other letting go.
     /// </summary>
     public static void Restore(string root, string file) {
         if (Latest(root, file) is not { } latest) {

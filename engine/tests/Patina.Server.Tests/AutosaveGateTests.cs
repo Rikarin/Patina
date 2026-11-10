@@ -1,5 +1,5 @@
-using System.Text.RegularExpressions;
 using Patina.Library;
+using System.Text.RegularExpressions;
 
 namespace Patina.Server.Tests;
 
@@ -38,9 +38,9 @@ public sealed partial class AutosaveGateTests : IDisposable {
     }
 
     /// <summary>
-    ///     Only the gate lets go of autosaves (#239). A letting go anywhere else can delete one a Worker is still writing,
-    ///     or let one begun before it land after it; it is easy to copy, so a new one fails here. Recovery itself only
-    ///     declares it.
+    ///     Only the gate lets go of autosaves (#239). A letting go anywhere else can delete one a Worker is still
+    ///     writing, or let one begun before it land after it; it is easy to copy, so a new one fails here. Recovery
+    ///     itself only declares it.
     /// </summary>
     [Fact]
     public void Nothing_but_the_gate_lets_go_of_autosaves() {

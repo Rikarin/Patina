@@ -6,11 +6,11 @@ using Vixen.Texturing.Painting;
 namespace Patina.Server.Stacks;
 
 /// <summary>
-///     The size each canvas of a session has as a Worker holds it, so that a stroke a Worker would refuse for its canvas's
-///     size is refused before it begins, and never stands to fail the stack until it is undone (#241). It follows the
-///     Worker's rule (<c>StackHost.Resized</c>): the first stroke of a session on a canvas smaller than its set enlarges
-///     it, a canvas is never made smaller, and one a stroke of the session began on is never enlarged, since that
-///     stroke's undo holds the pixels it painted over. Not thread safe: the session locks.
+///     The size each canvas of a session has as a Worker holds it, so that a stroke a Worker would refuse for its
+///     canvas's size is refused before it begins, and never stands to fail the stack until it is undone (#241). It
+///     follows the Worker's rule (<c>StackHost.Resized</c>): the first stroke of a session on a canvas smaller than its
+///     set enlarges it, a canvas is never made smaller, and one a stroke of the session began on is never enlarged,
+///     since that stroke's undo holds the pixels it painted over. Not thread safe: the session locks.
 /// </summary>
 /// <param name="folder">The stack's folder, which its canvases are beside.</param>
 public sealed class StackCanvasSides(string folder) {
@@ -22,16 +22,16 @@ public sealed class StackCanvasSides(string folder) {
     /// <param name="paint">The canvas, beside the stack.</param>
     /// <param name="width">The set's width, which the stroke paints at.</param>
     /// <param name="height">The set's height.</param>
-    /// <exception cref="StackEditRefusedException">The canvas cannot be painted at that size in this session.</exception>
+    /// <exception cref="StackEditRefusedException">
+    ///     The canvas cannot be painted at that size in this session.
+    /// </exception>
     public void Check(string layer, string paint, int width, int height) {
         if (Side(paint) is not { } held || held == (width, height)) {
             return;
         }
 
         var values = new Dictionary<string, string> {
-            ["layer"] = layer,
-            ["held"] = Size(held.Width, held.Height),
-            ["size"] = Size(width, height)
+            ["layer"] = layer, ["held"] = Size(held.Width, held.Height), ["size"] = Size(width, height)
         };
         if (held.Width > width || held.Height > height) {
             throw new StackEditRefusedException(
@@ -90,6 +90,5 @@ public sealed class StackCanvasSides(string folder) {
         }
     }
 
-    static string Size(int width, int height) =>
-        string.Create(CultureInfo.InvariantCulture, $"{width} × {height}");
+    static string Size(int width, int height) => string.Create(CultureInfo.InvariantCulture, $"{width} × {height}");
 }

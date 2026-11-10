@@ -24,8 +24,7 @@ public sealed class GeneratedMeshTests : IDisposable {
 
     static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    public static TheoryData<string> Meshes =>
-    [
+    public static TheoryData<string> Meshes => [
         ..ViewportShapes.All.Select(static shape => $"preview {shape}"),
         "viewport fixture",
         "housing low",
@@ -56,7 +55,8 @@ public sealed class GeneratedMeshTests : IDisposable {
                     continue; // a sliver has no direction
                 }
 
-                if (normals.Length > 0 && Vector3.Dot(turned, normals[fan[0]] + normals[fan[1]] + normals[fan[2]]) <= 0) {
+                if (normals.Length > 0
+                    && Vector3.Dot(turned, normals[fan[0]] + normals[fan[1]] + normals[fan[2]]) <= 0) {
                     faults.Add($"face {face} turns against its normals");
                 }
 
@@ -161,9 +161,9 @@ public sealed class GeneratedMeshTests : IDisposable {
                 BakeFixture.Write(at, 0.1f);
                 var made = Path.Combine(at, "made");
                 var built = new OutputBuilders(
-                        static () => throw new InvalidOperationException("This step needs no device."),
-                        static work => work()
-                    )
+                    static () => throw new InvalidOperationException("This step needs no device."),
+                    static work => work()
+                )
                     .Build(
                         new(
                             BuildTools.MeshLod,

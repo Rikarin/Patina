@@ -59,7 +59,9 @@ public sealed class StackEditor : ILayerStackDocument {
         canvasSides = new(Path.GetDirectoryName(path)!);
     }
 
-    /// <summary>What size each canvas is as a Worker holds it, which a stroke is checked against before it begins.</summary>
+    /// <summary>
+    ///     What size each canvas is as a Worker holds it, which a stroke is checked against before it begins.
+    /// </summary>
     readonly StackCanvasSides canvasSides;
 
     /// <summary>The library layered materials are read from, or null with none.</summary>
@@ -570,7 +572,8 @@ public sealed class StackEditor : ILayerStackDocument {
             );
         }
 
-        // A Worker refuses to begin one its canvas cannot take at this size, and the stack would fail until it is undone.
+        // A Worker refuses to begin one its canvas cannot take at this size, and the stack would fail until it is
+        // undone.
         canvasSides.Check(layer.Name, paint, Document.BaseWidth, Document.BaseHeight);
         step.Strokes.Add(
             new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start) {
