@@ -69,6 +69,13 @@ them, which is the bake's box when the maps are baked from the model itself. ⚠
 differ from the low mesh's moves a decal by the difference, and a model swapped for one with other bounds leaves the
 stored box stale: nothing rewrites it yet.
 
+## UV sets
+
+A decal and a path never read a texture coordinate. They read the `position` and `world` bakes, and a set's bake is
+made in the set's own UV set (ADR 0020), so a set laid out in a mesh's second UV set gets its decal there. ⚠ A bake
+made before the set's UV set changed is still in the old layout and nothing marks it out of date, so a decal reads it
+until the set is baked again.
+
 ## #204 and the mesh
 
 #204 (strokes bound to the surface surviving mesh edits) is the owner's to decide. This keeps it open and makes it no

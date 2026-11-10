@@ -15,12 +15,16 @@ static class BakeLayouts {
             return request;
         }
 
-        var own = library is not null && request.Material is { } material ? Of(library, request.Low, material) : null;
+        var own = library is not null ? Of(library, request.Low, request.Material) : null;
         return request with { UvSet = own ?? 0 };
     }
 
-    /// <summary>The UV set of the texture set on this material of the project that holds the mesh, or null.</summary>
-    static int? Of(OpenLibrary library, string low, string material) {
+    /// <summary>
+    ///     The UV set of the texture set on this material of the project that holds the mesh, or null. A mesh of one
+    ///     material has one document, which names no material, and a bake of it names none either: that document is
+    ///     found by the mesh it is on.
+    /// </summary>
+    static int? Of(OpenLibrary library, string low, string? material) {
         var root = Path.GetFullPath(Path.Combine(library.RootPath, LibraryLayout.ProjectsFolder));
         for (var folder = Path.GetDirectoryName(Path.GetFullPath(low));
              folder is not null && folder.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal);
@@ -29,14 +33,19 @@ static class BakeLayouts {
                 continue;
             }
 
-            var project = LibraryLayout.Relative(root, folder);
-            var set = library.Contents(project).Documents.FirstOrDefault(d => d.Material == material);
+            var contents = library.Contents(LibraryLayout.Relative(root, folder));
+            var below = LibraryLayout.Relative(Path.GetFullPath(library.RootPath), Path.GetFullPath(low));
+            var mesh = contents.Meshes.FirstOrDefault(m => m.Path == below)?.Id;
+            var set = (material is null ? null : contents.Documents.FirstOrDefault(d => d.Material == material))
+                ?? contents.Documents.FirstOrDefault(d =>
+                    d.Kind == DocumentKinds.Texturing && d.Material is null && mesh is not null && d.Mesh == mesh
+                );
             if (set is null) {
                 return null;
             }
 
             var stack = StackDocuments.Parse(SharedFile.ReadAllText(LibraryLayout.Full(library.RootPath, set.Path)));
-            return (stack.SetNamed(material) ?? stack.Sets.FirstOrDefault())?.UvSet;
+            return ((material is null ? null : stack.SetNamed(material)) ?? stack.Sets.FirstOrDefault())?.UvSet;
         }
 
         return null;

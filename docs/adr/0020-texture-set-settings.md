@@ -60,7 +60,10 @@ the place of the first:
 
 - the Worker's strokes, its UV-tile check and the set's checks (`MeshShelf.Of(path, set, uvSet)`);
 - a bake's low mesh and cage (`BakeRequest.UvSet`; left out, the Server reads it from the project's set on that
-  material, so a client baking several sets need not open each);
+  material, so a client baking several sets need not open each, and for a bake that names no material, from the one
+  document on that mesh, which is how a mesh of one material is baked);
+- through that bake, a decal and a path (ADR 0021), which read the `position` and `world` maps and so land in the
+  set's own layout;
 - the export's coverage, which its padding grows from;
 - Preserve Paint's move to a new mesh;
 - the viewport, which reads the mesh again with each worn set's layout (`viewport.open` carries `UvSets`).
