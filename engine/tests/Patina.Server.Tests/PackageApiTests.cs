@@ -243,7 +243,7 @@ public sealed class PackageApiTests : IAsyncLifetime {
             Token,
             new GraphSetInfo(
                 "Iron left out in the rain.",
-                Tags: ["metal", " Metal ", "", "iron"],
+                Tags: ["metal", " Metal ", string.Empty, "iron"],
                 PhysicalWidth: 200,
                 PhysicalHeight: 150
             )

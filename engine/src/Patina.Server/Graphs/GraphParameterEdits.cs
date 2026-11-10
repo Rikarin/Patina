@@ -1,7 +1,6 @@
-using Patina.Graphs;
 using Patina.Contracts;
+using Patina.Graphs;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using Vixen.Authoring;
 using Vixen.NodeGraph;
 

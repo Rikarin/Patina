@@ -1,5 +1,5 @@
-using Patina.Graphs;
 using Patina.Contracts;
+using Patina.Graphs;
 using Patina.Ipc;
 using System.Globalization;
 using Vixen.Core.Yaml;

@@ -328,7 +328,7 @@ public static class GraphPackages {
         }
 
         var prefix = $"{CompoundPrefix}{gathered.Name}/";
-        Dictionary<string, string> types = gathered.Compounds.ToDictionary(
+        var types = gathered.Compounds.ToDictionary(
             static compound => compound.Type,
             compound => prefix + compound.Type,
             StringComparer.Ordinal
