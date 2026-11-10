@@ -16,7 +16,7 @@ public sealed class CliPackageProcessTests : IDisposable {
 
     public void Dispose() => folder.Delete(true);
 
-    /// <summary>A compound of its own folder's with a knob on the blend after it: enough for a package to carry.</summary>
+    /// <summary>A compound of its folder's and a knob on the blend after it: enough for a package to carry.</summary>
     void WriteGraph() {
         Directory.CreateDirectory(Path.Combine(folder.FullName, "work", "Compounds"));
         File.WriteAllText(

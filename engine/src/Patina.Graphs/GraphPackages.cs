@@ -16,7 +16,7 @@ namespace Patina.Graphs;
 ///     0007 already looks.
 /// </summary>
 public static class GraphPackages {
-    /// <summary>Where a package's own compounds go, under its name, so two packages never share one by accident.</summary>
+    /// <summary>Where a package's own compounds go, under its name, so two packages never share one.</summary>
     public const string CompoundPrefix = "Packages/";
 
     const string BitmapNode = "Source/Bitmap";
@@ -45,7 +45,7 @@ public static class GraphPackages {
     }
 
     /// <summary>Publishes a graph into a library's <c>packages/</c>, replacing a package of its name.</summary>
-    /// <exception cref="PackageRefusedException">It reads something a package cannot carry, or does not compile.</exception>
+    /// <exception cref="PackageRefusedException">It reads what a package cannot carry, or does not compile.</exception>
     /// <param name="graph">The graph's file.</param>
     /// <param name="library">The library's folder.</param>
     /// <param name="role">What it is used as.</param>
@@ -67,7 +67,7 @@ public static class GraphPackages {
     /// <param name="library">The library its pictures may be under, or null for the one around it, if any.</param>
     /// <param name="role">What it is used as.</param>
     /// <returns>The package's folder and its manifest.</returns>
-    /// <exception cref="PackageRefusedException">It reads something a package cannot carry, or does not compile.</exception>
+    /// <exception cref="PackageRefusedException">It reads what a package cannot carry, or does not compile.</exception>
     public static (string Package, PackageManifest Manifest) PublishTo(
         string graph,
         string folder,
@@ -166,7 +166,7 @@ public static class GraphPackages {
         IReadOnlyList<GraphDiagnostic> Diagnostics
     );
 
-    /// <summary>Everything the graph reads, walked through its project's compounds, and what compiling it says.</summary>
+    /// <summary>Everything the graph reads, through its project's compounds, and what compiling it says.</summary>
     static Gathered Gather(string graph, string? library) {
         if (!File.Exists(graph)) {
             throw new FileNotFoundException($"There is no graph at '{graph}'.", graph);
@@ -227,7 +227,7 @@ public static class GraphPackages {
             }
         }
 
-        /// <summary>A compound of the folder is carried and walked; a shipped one is named; anything else is a node.</summary>
+        /// <summary>A compound of the folder is carried and walked, a shipped one named, the rest are nodes.</summary>
         void Type(string type) {
             var file = Path.Combine(
                 folder,
@@ -267,7 +267,7 @@ public static class GraphPackages {
             );
         }
 
-        /// <summary>A file below the library by its path there, which is what a person recognises; else whole.</summary>
+        /// <summary>A file below the library by its path there, which a person recognises; else whole.</summary>
         string Shown(string file) =>
             library is not null && file.StartsWith(library + Path.DirectorySeparatorChar, StringComparison.Ordinal)
                 ? LibraryLayout.Relative(library, file)
@@ -337,7 +337,8 @@ public static class GraphPackages {
         foreach (var picture in gathered.Pictures) {
             var bytes = SharedFile.ReadAllBytes(picture.Found);
             var hash = Convert.ToHexStringLower(SHA256.HashData(bytes))[..16];
-            files[picture.Reference] = $"{PackageManifests.FilesFolder}/{hash}{Path.GetExtension(picture.Found).ToLowerInvariant()}";
+            var extension = Path.GetExtension(picture.Found).ToLowerInvariant();
+            files[picture.Reference] = $"{PackageManifests.FilesFolder}/{hash}{extension}";
         }
 
         var staging = package + Staging;
@@ -401,7 +402,7 @@ public static class GraphPackages {
             ? graph
             : graph with { Tags = [..graph.Tags.Concat(tags).Distinct(StringComparer.OrdinalIgnoreCase)] };
 
-    /// <summary>A file of the package: its compounds under their package types, its pictures from <c>files/</c>.</summary>
+    /// <summary>A file of the package: compounds under their package types, pictures from <c>files/</c>.</summary>
     static NodeGraphAsset Rewritten(
         NodeGraphAsset graph,
         Dictionary<string, string> types,

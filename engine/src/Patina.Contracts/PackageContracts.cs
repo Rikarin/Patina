@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Patina.Contracts;
 
-/// <summary>What a package's manifest, publishing one and <c>patina graph info</c> put on the wire (ADR 0027).</summary>
+/// <summary>What a package's manifest, publishing and <c>patina graph info</c> put on the wire (ADR 0027).</summary>
 [JsonSourceGenerationOptions(
     WriteIndented = true,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
@@ -25,7 +25,7 @@ public sealed partial class PackageJsonContext : JsonSerializerContext;
 /// <param name="Graph">The graph's file, beside this one.</param>
 /// <param name="Role">What it is used as: <c>material</c>, <c>mask</c>, <c>filter</c> or <c>brush</c>.</param>
 /// <param name="Writer">The Patina that published it, as <c>Patina 0.9.0</c>.</param>
-/// <param name="Compounds">The compounds it carries under <c>Compounds/</c>, and what each was called where it came from.</param>
+/// <param name="Compounds">The compounds it carries under <c>Compounds/</c>, and what each was called before.</param>
 /// <param name="Shipped">The compounds it reads from those that ship with Patina, which it does not carry.</param>
 /// <param name="Files">The pictures it carries under <c>files/</c>, and how the graph named each.</param>
 public sealed record PackageManifest(

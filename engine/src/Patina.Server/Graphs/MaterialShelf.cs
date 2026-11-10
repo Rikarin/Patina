@@ -140,7 +140,7 @@ public static class MaterialShelf {
         return reader.ReadToEnd();
     }
 
-    /// <summary>The library's packages (ADR 0027), each as the graph inside it. One that will not read is left out.</summary>
+    /// <summary>The library's packages (ADR 0027), each as its graph. One that will not read is left out.</summary>
     static IEnumerable<MaterialInfo> Packaged(OpenLibrary library) {
         foreach (var package in PackageManifests.In(library.RootPath)) {
             MaterialInfo? found;

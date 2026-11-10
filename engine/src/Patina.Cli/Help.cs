@@ -1,8 +1,8 @@
 namespace Patina.Cli;
 
 /// <summary>
-///     What <c>patina help</c>, <c>patina --help</c> and <c>patina &lt;command&gt; --help</c> print (#186): one usage per
-///     command, kept beside the command that reads it, so the help cannot list a flag the command does not take.
+///     What <c>patina help</c>, <c>patina --help</c> and <c>patina &lt;command&gt; --help</c> print (#186): one
+///     usage per command, kept beside the command that reads it, so the help cannot list a flag it does not take.
 /// </summary>
 static class Help {
     /// <summary>Each command by the words that name it, longest first, with what it does and its usage.</summary>

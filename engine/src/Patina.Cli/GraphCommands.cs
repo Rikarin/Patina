@@ -22,7 +22,7 @@ static class GraphCommands {
     const int ExitRefused = 1;
     const int ExitUsage = 2;
 
-    /// <summary>Prints a graph's or a package's inputs, outputs, parameters, presets and what it says about itself.</summary>
+    /// <summary>Prints a graph's or a package's inputs, outputs, parameters, presets and description.</summary>
     public static int Info(string path) {
         try {
             var (_, graph, package) = GraphFactsOf.Read(path);

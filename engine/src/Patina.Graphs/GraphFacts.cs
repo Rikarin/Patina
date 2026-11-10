@@ -104,7 +104,7 @@ public static class GraphFactsOf {
             diagnostic.Port.Length > 0 ? diagnostic.Port : null
         );
 
-    /// <summary>Whether a parameter's default is a value it can hold: of its kind, in its range, among its choices.</summary>
+    /// <summary>Whether a parameter's default is one it holds: of its kind, in its range, among its choices.</summary>
     public static bool Holds(SettingDefinition parameter) {
         var number = float.TryParse(
             parameter.Default,
@@ -123,8 +123,8 @@ public static class GraphFactsOf {
 
     /// <summary>
     ///     A graph with its parameters set, for an evaluation that has no session: a preset's values first, then each
-    ///     value given by name, then a seed. Each value becomes the parameter's default, which is what a graph evaluated
-    ///     on its own reads.
+    ///     value given by name, then a seed. Each value becomes the parameter's default, which is what a graph
+    ///     evaluated on its own reads.
     /// </summary>
     /// <param name="graph">The graph.</param>
     /// <param name="preset">A preset to start from, or null.</param>
@@ -154,7 +154,8 @@ public static class GraphFactsOf {
         foreach (var (name, value) in values) {
             if (!model.Parameters.Exists(p => string.Equals(p.Name, name, StringComparison.Ordinal))) {
                 throw new ArgumentException(
-                    $"There is no parameter '{name}'. This graph has {Listed(model.Parameters.Select(static p => p.Name))}."
+                    $"There is no parameter '{name}'. "
+                    + $"This graph has {Listed(model.Parameters.Select(static p => p.Name))}."
                 );
             }
 

@@ -27,7 +27,7 @@ public static class PackageManifests {
         YamlText.Write(YamlRecords.Write(manifest, PackageJsonContext.Default.PackageManifest));
 
     /// <summary>A manifest read from text.</summary>
-    /// <exception cref="LibraryFormatException">It is not a manifest, or is of a newer shape than this reads.</exception>
+    /// <exception cref="LibraryFormatException">It is not a manifest, or is newer than this reads.</exception>
     public static PackageManifest Parse(string text, string path) {
         var fields = new YamlFields(YamlText.Parse(text, path), path);
         var manifest = YamlRecords.Read(

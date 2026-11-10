@@ -35,7 +35,7 @@ sealed class GraphAuthoringEdits(NodeGraphModel graph, GraphParameterEdits param
         };
 
     /// <summary>What the graph says about itself, with what a client left out kept as it is.</summary>
-    /// <exception cref="GraphEditRefusedException">The physical size is not a width and a height above zero.</exception>
+    /// <exception cref="GraphEditRefusedException">The physical size is not two numbers above zero.</exception>
     SetInfoCommand BuildInfo(GraphSetInfo set) {
         var held = graph.Info;
         var size = held.PhysicalSize;
@@ -171,7 +171,7 @@ sealed class CompositeCommand(string name, IReadOnlyList<IAuthoringCommand> comm
     }
 }
 
-/// <summary>Replaces what a graph says about itself. Nothing it holds is computed from, so it never evaluates.</summary>
+/// <summary>Replaces what a graph says about itself. Nothing computes from it, so it never evaluates.</summary>
 sealed class SetInfoCommand(NodeGraphModel graph, GraphInfo info) : IAuthoringCommand {
     readonly GraphInfo previous = graph.Info;
 

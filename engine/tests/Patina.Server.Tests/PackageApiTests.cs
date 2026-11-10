@@ -29,8 +29,8 @@ public sealed class PackageApiTests : IAsyncLifetime {
                            """;
 
     /// <summary>
-    ///     A picture through a compound of the project's, a shipped grunge over it, and a knob on the blend: something of
-    ///     each kind a package brings or leaves.
+    ///     A picture through a compound of the project's, a shipped grunge over it, and a knob on the blend:
+    ///     something of each kind a package brings or leaves.
     /// </summary>
     const string Rust = """
                         name: Rust
@@ -143,7 +143,7 @@ public sealed class PackageApiTests : IAsyncLifetime {
         Assert.Equal(["Grunges/Speckle"], package.Manifest.Shipped);
         var file = Assert.Single(package.Manifest.Files);
         Assert.Equal("mask.png", file.From);
-        Assert.Matches("^files/[0-9a-f]{16}\\.png$", file.Path);
+        Assert.Matches("""^files/[0-9a-f]{16}\.png$""", file.Path);
 
         var folder = Path.Combine(server.Library, "packages", "Rust.ptpkg");
         Assert.Equal([1, 2, 3, 4], await File.ReadAllBytesAsync(Path.Combine(folder, file.Path), Token));

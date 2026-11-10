@@ -161,7 +161,7 @@ public sealed class GraphSessions(ServerIdentity identity) : IDisposable {
         }
 
         // The same folder `patina bake` reads, so a graph means the same in both. A package's graph opens to be read,
-        // as a shipped compound does: it is offered by its parameters, and a republish would replace any edit (ADR 0027).
+        // as a shipped compound does: it is offered by its parameters, and a republish replaces any edit (ADR 0027).
         var folder = CompoundFolders.Of(full);
         var packaged = PackageManifests.PackageOf(full) is not null;
         return new(full, SharedFile.ReadAllText(full), Types(folder), folder, Wake, packaged) {
