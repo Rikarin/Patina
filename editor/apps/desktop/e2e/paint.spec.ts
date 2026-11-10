@@ -52,12 +52,12 @@ test('a brush on the map paints through the Server, and undo takes it back', asy
   await window.mouse.up();
 
   await expect(picture).not.toHaveAttribute('src', before ?? '', { timeout: 30_000 });
-  await expect(window.getByTestId('paint-undo')).toBeEnabled();
+  await expect(window.getByTestId('app-undo')).toBeEnabled();
   await window.waitForTimeout(500);
   await window.screenshot({ path: join(shots, 'paint.png') });
   const painted = await picture.getAttribute('src');
 
-  await window.getByTestId('paint-undo').click();
+  await window.getByTestId('app-undo').click();
   await expect(picture).not.toHaveAttribute('src', painted ?? '', { timeout: 30_000 });
-  await expect(window.getByTestId('paint-redo')).toBeEnabled();
+  await expect(window.getByTestId('app-redo')).toBeEnabled();
 });

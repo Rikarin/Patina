@@ -132,9 +132,9 @@ test('a document deleted from the tree waits in the bin, and Empty Bin deletes i
   await window.getByTestId('new-document-kind').selectOption('graph');
   await window.getByTestId('new-document-create').click();
   await expect(window.getByTestId('document-tab-name').filter({ hasText: 'Planks' })).toBeVisible({ timeout: 30_000 });
-  // Closed once its session is open, or the close finds nothing to end and the Server keeps it open.
-  await expect(window.getByTestId('graph-canvas')).toBeVisible({ timeout: 30_000 });
+  // Closed at once, while its graph may still be opening: the close ends the session the open gets (#232).
   await window.getByTestId('document-tab-close').last().click();
+  await expect(window.getByTestId('document-tab-name').filter({ hasText: 'Planks' })).toHaveCount(0, { timeout: 30_000 });
 
   if ((await project.getAttribute('aria-expanded')) !== 'true') {
     await project.getByTestId('tree-toggle').click();

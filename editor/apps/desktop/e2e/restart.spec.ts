@@ -124,7 +124,7 @@ test('a texturing document comes back from its file when the Server dies, as it 
   const reopened = await picture.getAttribute('src');
   await stroke([0.5, 0.2], [0.5, 0.8]);
   await expect(picture).not.toHaveAttribute('src', reopened ?? '', { timeout: 60_000 });
-  await expect(window.getByTestId('paint-undo')).toBeEnabled();
+  await expect(window.getByTestId('app-undo')).toBeEnabled();
   await expect(window.getByTestId('app-failure')).toHaveCount(0);
   await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready', { timeout: 60_000 });
   await window.waitForTimeout(3_000);

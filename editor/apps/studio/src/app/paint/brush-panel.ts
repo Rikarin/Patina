@@ -149,13 +149,13 @@ const SizeSteps = 1000;
             size="sm"
             variant="ghost"
             data-testid="paint-material-clear"
-            title="Paints the colours again"
+            title="Paints the colors again"
             (click)="store.material.set(null)"
           >
             Clear
           </button>
         } @else {
-          <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">Colours · Alt-click a shelf material</span>
+          <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">Colors · Alt-click a shelf material</span>
         }
       </div>
     }
@@ -339,9 +339,9 @@ const SizeSteps = 1000;
       </div>
     } @else {
       <div class="flex items-center gap-2">
-        <span class="text-foreground-muted w-16 shrink-0 text-xs">Colour</span>
+        <span class="text-foreground-muted w-16 shrink-0 text-xs">Color</span>
         <xui-color-picker
-          aria-label="Brush colour"
+          aria-label="Brush color"
           data-testid="paint-colour"
           [presets]="store.recentColours()"
           [value]="store.colour()"
@@ -353,7 +353,7 @@ const SizeSteps = 1000;
           size="sm"
           variant="ghost"
           data-testid="paint-keep-colour"
-          title="Keeps this colour in the project's palette"
+          title="Keeps this color in the project's palette"
           (click)="store.keepColour(store.colour())"
         >
           Keep
@@ -456,24 +456,11 @@ const SizeSteps = 1000;
           />
           <span class="min-w-0 flex-1 truncate text-xs">{{ nameOf(channel.usage) }}</span>
           <xui-color-picker
-            [attr.aria-label]="nameOf(channel.usage) + ' colour'"
+            [attr.aria-label]="nameOf(channel.usage) + ' color'"
             [value]="store.alsoPaints().get(channel.usage) ?? '#808080'"
             (valueChange)="setChannel(channel.usage, $event)"
           />
         </div>
-      }
-      @if (addable().length > 0) {
-        <select
-          class="well h-7 min-w-0 px-1 text-sm"
-          aria-label="Add a channel to this stack"
-          data-testid="paint-add-channel"
-          (change)="addChannel($event)"
-        >
-          <option value="">Add a channel…</option>
-          @for (usage of addable(); track usage) {
-            <option [value]="usage">{{ nameOf(usage) }}</option>
-          }
-        </select>
       }
     </div>
     @for (slider of sliders; track slider.key) {
@@ -541,10 +528,10 @@ export class BrushPanel {
   protected readonly percent = percent;
   protected readonly toRadians = toRadians;
 
-  /** The words a brush takes, with the labels the Server gives them, or the values alone until it answers. */
+  /** The words a brush takes, with the labels the Server gives them, or the values in words until it answers. */
   protected readonly terms = computed(() => {
     const brush = this.store.vocabulary()?.brush;
-    const plain = (values: readonly string[]): StackTerm[] => values.map(value => ({ value, label: value }));
+    const plain = (values: readonly string[]): StackTerm[] => values.map(value => ({ value, label: termName(value) }));
     return {
       rotations: brush?.rotations ?? plain(['fixed', 'along', 'random']),
       falloffs: brush?.falloffs ?? plain(['smooth', 'linear', 'spherical', 'tip']),
@@ -561,10 +548,6 @@ export class BrushPanel {
   protected readonly others = computed(() =>
     (this.store.state()?.channels ?? []).filter(channel => channel.usage !== this.store.channel())
   );
-  protected readonly addable = computed(() => {
-    const held = this.store.state()?.channels.map(channel => channel.usage) ?? [];
-    return (this.store.vocabulary()?.usages ?? []).map(term => term.value).filter(usage => !held.includes(usage));
-  });
 
   protected toggleChannel(usage: string, event: Event): void {
     const next = new Map(this.store.alsoPaints());
@@ -579,15 +562,6 @@ export class BrushPanel {
 
   protected setChannel(usage: string, colour: string): void {
     this.store.alsoPaints.set(new Map(this.store.alsoPaints()).set(usage, colour));
-  }
-
-  protected addChannel(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const usage = select.value;
-    select.value = '';
-    if (usage) {
-      void this.store.edit({ op: 'addChannel', usage });
-    }
   }
 
   /** A palette colour paints, or with Alt held leaves the palette. */

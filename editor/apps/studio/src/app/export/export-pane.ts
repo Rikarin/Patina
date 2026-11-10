@@ -238,7 +238,7 @@ function lanesOf(hex: string): number[] {
           }
           @if (settings().padding === 'colour') {
             <div class="flex items-center gap-2">
-              <span class="text-foreground-muted w-16 shrink-0 text-xs">Colour</span>
+              <span class="text-foreground-muted w-16 shrink-0 text-xs">Color</span>
               <xui-color-picker showAlpha [value]="paddingHex()" (valueChange)="change({ colour: lanes($event) })" />
             </div>
           }
@@ -498,9 +498,9 @@ function lanesOf(hex: string): number[] {
           <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-impact">
             <span>Projects to touch</span>
             <span class="readout" data-testid="export-impact-projects">{{ preview.projects }}</span>
-            <span>Outputs to build</span>
+            <span>Maps to make</span>
             <span class="readout" data-testid="export-impact-rebuilds">{{ preview.rebuilds }}</span>
-            <span>Of those, shared work</span>
+            <span>Of those, made once for several projects</span>
             <span class="readout">{{ preview.shared }}</span>
             <span>Up to date</span>
             <span class="readout">{{ preview.fresh }}</span>
@@ -538,7 +538,13 @@ function lanesOf(hex: string): number[] {
           </div>
         }
 
-        <div class="flex gap-1">
+        <!-- As the Bake dialog's: what runs it is primary and last, at the right (#200). -->
+        <div class="flex justify-end gap-1">
+          @if (running()) {
+            <button type="button" xuiButton size="sm" variant="ghost" data-testid="export-cancel" (click)="cancel()">
+              Stop
+            </button>
+          }
           <button type="button" xuiButton size="sm" data-testid="export-preview" [disabled]="!chosen()" (click)="ask()">
             Preview
           </button>
@@ -553,11 +559,6 @@ function lanesOf(hex: string): number[] {
           >
             Export
           </button>
-          @if (running()) {
-            <button type="button" xuiButton size="sm" variant="ghost" data-testid="export-cancel" (click)="cancel()">
-              Stop
-            </button>
-          }
         </div>
 
         @if (error(); as message) {

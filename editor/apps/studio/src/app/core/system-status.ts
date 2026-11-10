@@ -16,8 +16,17 @@ export const API_CLIENT_FACTORY = new InjectionToken<(connection: Connection) =>
   factory: () => connection => createPatinaClient(connection)
 });
 
+/**
+ * Where the Server stands. Offline, `reason` is a sentence for a person and `detail` what the process or the network
+ * said, for Diagnostics and a tooltip (#198).
+ */
 export type ServerState =
-  { kind: 'connecting' } | { kind: 'online'; system: SystemInfo } | { kind: 'offline'; reason: string };
+  | { kind: 'connecting' }
+  | { kind: 'online'; system: SystemInfo }
+  | { kind: 'offline'; reason: string; detail: string | null };
+
+/** What the app says when it cannot reach its engine, whatever the network said. */
+export const EngineUnreachable = 'Patina cannot reach its engine. It tries again every few seconds.';
 
 /** The Server and its Worker, as `/api/v1/system` reports them, refreshed every few seconds. */
 @Injectable({ providedIn: 'root' })
@@ -69,7 +78,11 @@ export class SystemStatus {
     desktop()?.onSidecars(statuses => {
       const failed = statuses.find(status => status.state === 'failed');
       if (failed) {
-        this.mutableState.set({ kind: 'offline', reason: failed.detail ?? `The ${failed.name} stopped.` });
+        this.mutableState.set({
+          kind: 'offline',
+          reason: failed.name === 'worker' ? 'The GPU engine stopped.' : 'The engine stopped.',
+          detail: failed.detail
+        });
       }
     });
     void this.refresh();
@@ -83,7 +96,11 @@ export class SystemStatus {
       this.mutableState.set({ kind: 'online', system });
     } catch (error) {
       this.client = null;
-      this.mutableState.set({ kind: 'offline', reason: error instanceof Error ? error.message : String(error) });
+      this.mutableState.set({
+        kind: 'offline',
+        reason: EngineUnreachable,
+        detail: error instanceof Error ? error.message : String(error)
+      });
     }
 
     if (!this.stopped) {

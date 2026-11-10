@@ -110,7 +110,7 @@ test('bypasses a node, which the compiler honours, and bends and relinks wires',
   await window.keyboard.press('ControlOrMeta+Backspace');
   await expect(node(3)).toHaveCount(0);
   await expect(thumbnail(4)).toHaveAttribute('data-hash', bypassed);
-  await expect(window.getByTestId('graph-undo')).toHaveAttribute('title', /^Undo Delete and Relink\b/);
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('title', /^Undo Delete and Relink\b/);
 });
 
 test('arranges, badges a problem and colours a frame', async () => {
@@ -146,7 +146,7 @@ test('arranges, badges a problem and colours a frame', async () => {
   await window.getByTestId('graph-group').click();
   await window.getByTestId('graph-settings').click();
   await window.getByTestId('group-colour').getByRole('combobox').click();
-  await window.getByRole('option', { name: 'Colour 3' }).click();
+  await window.getByRole('option', { name: 'Color 3' }).click();
   await window.getByTestId('group-description').fill('Where the colour is decided');
   await window.getByTestId('group-description').press('Enter');
   await expect(window.getByTestId('graph-frame-description')).toHaveText('Where the colour is decided');
@@ -199,5 +199,5 @@ test('describes parameters, hides one by another, and keeps presets', async () =
   await expect(window.getByTestId('parameter-Parameter2')).toHaveClass(/opacity-60/);
   await window.getByTestId('preset-apply-Scratched').click();
   await expect(window.getByTestId('parameter-Parameter2')).not.toHaveClass(/opacity-60/);
-  await expect(window.getByTestId('graph-undo')).toHaveAttribute('title', /^Undo Preset Scratched\b/);
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('title', /^Undo Preset Scratched\b/);
 });

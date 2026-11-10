@@ -91,7 +91,12 @@ describe('LibraryPane', () => {
 
     const element = await pane('No projects yet');
 
-    expect(element.querySelector('[data-testid=library-count]')?.textContent).toContain('0 projects');
+    const count = element.querySelector('[data-testid=library-count]');
+    expect(count?.textContent).toContain('0 projects');
+    // Narrow, only the number shows; the words are the part a container query hides, and the tooltip says it all (#234).
+    expect(count?.firstChild?.textContent).toBe('0');
+    expect(count?.querySelector('span')?.className).toContain('hidden');
+    expect(count?.getAttribute('title')).toBe('0 projects');
   });
 
   it('says a scan is running rather than that the library is empty', async () => {

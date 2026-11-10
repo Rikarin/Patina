@@ -123,6 +123,9 @@ public static class Terms {
         return words.ToString();
     }
 
+    /// <summary>What a layer stack calls one value of its fields: a mask source, a blend, a channel.</summary>
+    public static string InStack(string value) => InStacks.TryGetValue(value, out var named) ? named : Label(value);
+
     /// <summary>Values of a layer stack's fields with their labels.</summary>
     public static IReadOnlyList<StackTerm> InStack(IEnumerable<string> values) => [
         ..values.Select(static value => new StackTerm(

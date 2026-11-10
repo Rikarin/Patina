@@ -155,7 +155,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
           </ul>
         }
         @if (!layer.instance) {
-        <p class="section-label mt-1">Material Channels</p>
+        <p class="section-label mt-1">Channels</p>
         <div class="flex flex-wrap items-center gap-1">
           @for (channel of store.state()?.channels ?? []; track channel.usage) {
             <button
@@ -425,12 +425,12 @@ export function hexOf(colour: readonly number[] | undefined): string {
         @for (parameter of knobs(); track parameter.name) {
           <div class="flex items-center gap-2">
             <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
-              parameter.name
+              knobName(parameter)
             }}</span>
             @if (parameter.accepted.length > 0) {
               <select
                 class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                [attr.aria-label]="parameter.name"
+                [attr.aria-label]="knobName(parameter)"
                 [attr.data-testid]="'paint-knob-' + parameter.name"
                 (change)="setKnob(layer, parameter.name, text($event))"
               >
@@ -444,7 +444,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
               <xui-numeric-input
                 class="min-w-0 flex-1"
                 size="sm"
-                [ariaLabel]="parameter.name"
+                [ariaLabel]="knobName(parameter)"
                 [attr.data-testid]="'paint-knob-' + parameter.name"
                 [stepSize]="parameter.kind === 'Int' ? 1 : 0.1"
                 [value]="+knob(layer, parameter)"
@@ -453,7 +453,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             } @else if (parameter.kind === 'Bool') {
               <input
                 type="checkbox"
-                [attr.aria-label]="parameter.name"
+                [attr.aria-label]="knobName(parameter)"
                 [attr.data-testid]="'paint-knob-' + parameter.name"
                 [checked]="knob(layer, parameter) === 'true'"
                 (change)="setKnob(layer, parameter.name, checked($event).toString())"
@@ -464,7 +464,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                 xuiInput
                 size="sm"
                 autocomplete="off"
-                [attr.aria-label]="parameter.name"
+                [attr.aria-label]="knobName(parameter)"
                 [attr.data-testid]="'paint-knob-' + parameter.name"
                 [value]="knob(layer, parameter)"
                 (change)="setKnob(layer, parameter.name, text($event))"
@@ -661,12 +661,12 @@ export function hexOf(colour: readonly number[] | undefined): string {
             @for (parameter of generatorKnobs(); track parameter.name) {
               <div class="flex items-center gap-2">
                 <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
-                  parameter.name
+                  knobName(parameter)
                 }}</span>
                 @if (parameter.accepted.length > 0) {
                   <select
                     class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                    [attr.aria-label]="parameter.name"
+                    [attr.aria-label]="knobName(parameter)"
                     [attr.data-testid]="'paint-mask-knob-' + parameter.name"
                     (change)="setGeneratorKnob(layer, parameter.name, text($event))"
                   >
@@ -680,7 +680,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   <xui-numeric-input
                     class="min-w-0 flex-1"
                     size="sm"
-                    [ariaLabel]="parameter.name"
+                    [ariaLabel]="knobName(parameter)"
                     [attr.data-testid]="'paint-mask-knob-' + parameter.name"
                     [stepSize]="parameter.kind === 'Int' ? 1 : 0.05"
                     [value]="+generatorKnob(layer, parameter)"
@@ -713,7 +713,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
             </div>
             @if (layer.mask.map === 'id') {
               <div class="flex flex-col gap-1.5" data-testid="paint-colour-selection">
-                <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Colours in the id map">
+                <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Colors in the ID map">
                   @for (entry of store.idColours() ?? []; track $index) {
                     <button
                       type="button"
@@ -727,7 +727,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                     ></button>
                   } @empty {
                     <span class="text-foreground-muted text-xs" data-testid="paint-id-none">
-                      Bake with the ID map on to pick from its colours.
+                      Bake with the ID map on to pick from its colors.
                     </span>
                   }
                 </div>
@@ -755,7 +755,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   <xui-slider
                     class="min-w-0 flex-1"
                     labelStepSize="0"
-                    aria-label="Colour tolerance"
+                    aria-label="Color tolerance"
                     data-testid="paint-mask-tolerance"
                     [max]="0.5"
                     [min]="0"
@@ -770,7 +770,7 @@ export function hexOf(colour: readonly number[] | undefined): string {
                   <xui-slider
                     class="min-w-0 flex-1"
                     labelStepSize="0"
-                    aria-label="Colour softness"
+                    aria-label="Color softness"
                     data-testid="paint-mask-softness"
                     [max]="0.5"
                     [min]="0"
@@ -901,6 +901,11 @@ export class LayerPanel {
   /** The lanes of a picture a mask can read, which a direction's mesh map holds its axes in. */
   protected readonly lanes = computed(() => this.store.vocabulary()?.lanes?.map(term => term.value) ?? ['Red']);
   protected readonly termName = termName;
+
+  /** A knob as the app calls it: its label, or its name in words, never the key a graph stores it by (#198). */
+  protected knobName(parameter: { name: string; label?: string | null }): string {
+    return parameter.label ?? termName(parameter.name);
+  }
   protected readonly choiceName = choiceName;
   /** A layer by its name, which is what the anchor list offers rather than its id. */
   protected readonly layerName = (id: string): string =>

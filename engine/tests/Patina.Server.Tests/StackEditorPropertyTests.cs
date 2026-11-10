@@ -300,16 +300,22 @@ public sealed class StackEditorPropertyTests {
         Assert.Equal(5, Assert.Single(editor.Standing).Stamps.Count);
     }
 
-    /// <summary>A first stroke names the file, and undoing it takes the name back.</summary>
+    /// <summary>A channel is added once, named as a person names it, and undoing takes it away.</summary>
     [Fact]
     public void A_channel_can_be_added_once_and_undone() {
         var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
         var before = editor.Set.Channels.Count;
 
-        editor.Apply(new([new StackAddChannel("height")]));
+        editor.Apply(new([new StackAddChannel("occlusion")]));
 
         Assert.Equal(before + 1, editor.Set.Channels.Count);
-        Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackAddChannel("height")])));
+        // The History list and a refusal say what a person calls the channel, never its stored value (#198).
+        Assert.Equal("Add Ambient Occlusion", editor.History.UndoLabel);
+        Assert.Equal(
+            "This stack has Ambient Occlusion already.",
+            Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackAddChannel("occlusion")])))
+                .Message
+        );
         Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackAddChannel("sparkle")])));
         Assert.NotNull(editor.Undo());
         Assert.Equal(before, editor.Set.Channels.Count);

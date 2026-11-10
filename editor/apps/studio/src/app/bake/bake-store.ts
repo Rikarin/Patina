@@ -52,6 +52,9 @@ export class BakeStore {
   private sequence = 0;
   private stopped = false;
 
+  /** Every job the Server remembers, bakes and exports, newest first. */
+  readonly jobs = computed(() => [...this.byId().values()].sort((a, b) => b.created.localeCompare(a.created)));
+
   /** The jobs the last Bake started, one per texture set, in the order they were asked for. */
   private readonly batchIds = signal<readonly string[]>([]);
 
@@ -106,7 +109,7 @@ export class BakeStore {
   async start(request: BakeRequest): Promise<JobState> {
     const [job] = await this.startAll([request]);
     if (!job) {
-      throw new Error('The Server made no job of the bake.');
+      throw new Error('The bake did not start. Try again.');
     }
 
     return job;

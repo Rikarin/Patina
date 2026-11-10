@@ -36,5 +36,5 @@ export function frameColourName(colour: string): string {
   }
 
   const slot = slotOf(colour);
-  return slot >= 0 ? `Colour ${String(slot + 1)}` : colour;
+  return slot >= 0 ? `Color ${String(slot + 1)}` : colour;
 }

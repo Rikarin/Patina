@@ -5,6 +5,7 @@ import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { BakeStore } from '../bake/bake-store';
 import { Commands } from '../core/commands';
+import { termName } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
 import { GraphStore } from './graph-store';
 
@@ -81,7 +82,7 @@ async function pixelsOf(url: string): Promise<ImageData | null> {
       </div>
       <div class="chrome-bar flex h-7 shrink-0 items-center gap-2 px-2">
         <span class="readout min-w-0 truncate" data-testid="texture-size">
-          {{ map.map }}, {{ map.width }} × {{ map.height }}, shown at 8 bits
+          {{ mapName(map.map) }}, {{ map.width }} × {{ map.height }}, shown at 8 bits
         </span>
         <span class="readout ms-auto shrink-0" data-testid="texture-zoom">{{ percent() }}%</span>
       </div>
@@ -192,6 +193,8 @@ export class TextureView {
   protected readonly commands = inject(Commands);
   protected readonly project = inject(ProjectStore);
   protected readonly channelOptions = channels;
+  /** A bake map as the app calls it: Ambient Occlusion, not `ao` (#198). */
+  protected readonly mapName = termName;
   private grabbed: { x: number; y: number } | null = null;
   private readonly offset = signal({ x: 0, y: 0 });
   private readonly reductionPixels = signal<ImageData | null>(null);

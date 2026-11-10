@@ -103,7 +103,7 @@ test('opens a graph from the Library, edits it, and sees live thumbnails', async
   await expect(window.getByTestId('start-texturing')).toBeVisible();
   await openGraph();
   await expect(window.getByTestId('graph-name')).toHaveText(Name);
-  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+  await expect(window.getByTestId('active-unsaved')).toHaveCount(0);
 
   // The chain's previews arrive by hash, each over a fetch with the token.
   const before = await hashOf(thumbnail(2));
@@ -114,7 +114,7 @@ test('opens a graph from the Library, edits it, and sees live thumbnails', async
   await addNode('Grayscale');
   await expect(nodes()).toHaveCount(Nodes + 1);
   await expect(window.getByTestId('inspector-title')).toHaveText('Grayscale');
-  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
   const added = Nodes + 1;
 
   // Connect it: a wire from the noise, through a port, shows up as a thumbnail of its own.
@@ -139,18 +139,18 @@ test('opens a graph from the Library, edits it, and sees live thumbnails', async
   await expect(thumbnail(2)).not.toHaveAttribute('data-hash', changed);
   await window.getByTestId('field-Scale').getByRole('slider').blur();
 
-  await window.getByTestId('graph-undo').click();
+  await window.getByTestId('app-undo').click();
   await expect(thumbnail(2)).toHaveAttribute('data-hash', changed);
 
   // Undo takes the value back, and the old picture with it. A preview already seen is not evaluated twice.
-  await window.getByTestId('graph-undo').click();
+  await window.getByTestId('app-undo').click();
   await expect(thumbnail(2)).toHaveAttribute('data-hash', before);
-  await window.getByTestId('graph-redo').click();
+  await window.getByTestId('app-redo').click();
   await expect(thumbnail(2)).toHaveAttribute('data-hash', changed);
 
   // Saving reaches the file.
-  await window.getByTestId('graph-save').click();
-  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+  await window.getByTestId('app-save').click();
+  await expect(window.getByTestId('active-unsaved')).toHaveCount(0);
   const saved = readFileSync(join(library, 'projects/graphs', File), 'utf8');
   expect(saved).toContain('Colour/Grayscale');
   expect(saved).toContain('Scale');
@@ -164,9 +164,9 @@ test('moves, deletes and shows a second client without a reload', async () => {
   // A drag is one undo step, and the Server has the node where it was dropped.
   const start = await centre(node(3).locator('xui-graph-node-header, [data-xui-graph-node-header]').first());
   await dragBetween(start, { x: start.x + 60, y: start.y + 90 });
-  await expect(window.getByTestId('graph-undo')).toHaveAttribute('title', /Move/);
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('title', /Move/);
   const moved = await centre(node(3));
-  await window.getByTestId('graph-undo').click();
+  await window.getByTestId('app-undo').click();
   await expect.poll(async () => (await centre(node(3))).y).toBeLessThan(moved.y);
 
   // Delete takes the node and its wires.
@@ -174,7 +174,7 @@ test('moves, deletes and shows a second client without a reload', async () => {
   await expect(window.getByTestId('inspector-title')).toHaveText('HSL');
   await window.keyboard.press('Delete');
   await expect(nodes()).toHaveCount(Nodes - 1);
-  await window.getByTestId('graph-undo').click();
+  await window.getByTestId('app-undo').click();
   await expect(nodes()).toHaveCount(Nodes);
 
   // Another client's edit arrives as a delta.
@@ -273,7 +273,7 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await window.screenshot({ path: join(shots, 'graph-settings-size.png') });
   await window.getByTestId('setting-seed').getByRole('spinbutton').fill('11');
   await window.getByTestId('setting-seed').getByRole('spinbutton').press('Enter');
-  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
 
   // Tiling is the graph's now, and a new one tiles.
   await expect(window.getByTestId('setting-tilingX').getByRole('switch')).toBeChecked();
@@ -340,8 +340,8 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await expect(window.getByTestId('texture-size')).toHaveText('512 × 512');
   await window.screenshot({ path: join(shots, 'graph-tiling-material.png') });
 
-  await window.getByTestId('graph-save').click();
-  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+  await window.getByTestId('app-save').click();
+  await expect(window.getByTestId('active-unsaved')).toHaveCount(0);
 
   // The file is the truth: everything above is in it.
   const file = readFileSync(join(library, 'projects', 'tiling-rust', 'tiling-rust.vxtexgraph'), 'utf8');
@@ -371,7 +371,7 @@ test('exposes a parameter, drives a number from it and edits its default', async
   await parameter.getByRole('spinbutton').press('Enter');
   await expect(thumbnail(1)).not.toHaveAttribute('data-hash', driven);
 
-  await window.getByTestId('graph-undo').click();
+  await window.getByTestId('app-undo').click();
   await expect(thumbnail(1)).toHaveAttribute('data-hash', driven);
 });
 
@@ -473,9 +473,9 @@ test('groups nodes, keeps notes, and both survive a save and a reopen', async ()
   await window.getByTestId('group-row').getByLabel('Group title').press('Tab');
   await expect(window.getByTestId('graph-frame')).toContainText('Base');
 
-  await window.getByTestId('graph-save').click();
-  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
-  await window.getByTestId('graph-close').click();
+  await window.getByTestId('app-save').click();
+  await expect(window.getByTestId('active-unsaved')).toHaveCount(0);
+  await window.getByTestId('document-tab-close').last().click();
   await expect(window.getByTestId('start-texturing')).toBeVisible();
   await window.getByTestId('open-graph').click();
   await expect(window.getByTestId('graph-frame')).toContainText('Base');
@@ -488,7 +488,7 @@ test('instances a compound, opens it, and comes back along the breadcrumb', asyn
   const added = Nodes + 1;
   await hashOf(thumbnail(added));
   await expect(node(added)).toHaveAttribute('data-compound', 'Patterns/Cells');
-  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
 
   await window.getByTestId('graph-open-compound').click();
   await expect(window.getByTestId('graph-name')).not.toHaveText(Name);
@@ -502,7 +502,7 @@ test('instances a compound, opens it, and comes back along the breadcrumb', asyn
   await expect(window.getByTestId('graph-name')).toHaveText(Name);
   await expect(window.getByTestId('graph-crumb')).toHaveCount(0);
   await expect(nodes()).toHaveCount(Nodes + 1);
-  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
 });
 
 test('reads a bitmap from beside the graph, and says so when it cannot', async () => {
@@ -599,15 +599,15 @@ test('saves a selection as a compound, opens it, authors its ports, and undoes t
   await window.getByTestId('port-Input2').getByLabel('Port name').press('Enter');
   await expect(window.getByTestId('port-Amount')).toBeVisible();
   await expect(window.locator('[data-xui-graph-port="Amount"]')).toHaveCount(1);
-  await window.getByTestId('graph-save').click();
-  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+  await window.getByTestId('app-save').click();
+  // The tab keeps its mark: the graph outside, which the save as a compound changed, is unsaved still.
+  await expect.poll(() => readFileSync(file, 'utf8')).toContain('name: Amount');
   await window.screenshot({ path: join(shots, 'graph-compound-interface.png') });
-  expect(readFileSync(file, 'utf8')).toContain('name: Amount');
 
   // Undoing the save brings the nodes back, and the file stays for whoever else holds it.
   await window.getByTestId('graph-crumb').click();
   await expect(window.getByTestId('graph-name')).toHaveText(Name);
-  await window.getByTestId('graph-undo').click();
+  await window.getByTestId('app-undo').click();
   await expect(nodes()).toHaveCount(Nodes);
   await expect(thumbnail(Nodes - 1)).toHaveAttribute('data-hash', after);
   expect(existsSync(file)).toBe(true);
@@ -669,11 +669,11 @@ test('a graph computes at 32 bits from its settings, and the file says so', asyn
   await window.getByTestId('graph-settings').click();
   await window.getByTestId('setting-bitDepth').getByRole('combobox').click();
   await window.getByRole('option', { name: '32' }).click();
-  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
   await expect(window.getByTestId('graph-evaluation')).toHaveText(/ran, \d+ ms|Up to date/);
   await hashOf(thumbnail(1));
-  await window.getByTestId('graph-save').click();
-  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+  await window.getByTestId('app-save').click();
+  await expect(window.getByTestId('active-unsaved')).toHaveCount(0);
   expect(readFileSync(join(library, 'projects', 'graphs', File), 'utf8')).toContain("bitDepth: '32'");
 });
 
@@ -684,23 +684,23 @@ test('Undo, Redo and Save work from the Inspector, and several nodes say so', as
   const slider = window.locator('[data-testid^=field-]').getByRole('slider').first();
   await slider.focus();
   await window.keyboard.press('ArrowRight');
-  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
 
   await window.keyboard.press('ControlOrMeta+s');
-  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+  await expect(window.getByTestId('active-unsaved')).toHaveCount(0);
   await window.keyboard.press('ArrowRight');
-  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
   await window.keyboard.press('ControlOrMeta+z');
-  await expect(window.getByTestId('graph-redo')).toBeEnabled();
-  await expect(window.getByTestId('graph-unsaved')).toHaveCount(0);
+  await expect(window.getByTestId('app-redo')).toBeEnabled();
+  await expect(window.getByTestId('active-unsaved')).toHaveCount(0);
 
   // Pressed together, each before the last has come back: a key waits for the edit in flight, not dropped (#223).
   // Back past the save, then forward twice, ends somewhere none of them passed through: unsaved, nothing to redo.
   await window.keyboard.press('ControlOrMeta+z');
   await window.keyboard.press('ControlOrMeta+Shift+z');
   await window.keyboard.press('ControlOrMeta+Shift+z');
-  await expect(window.getByTestId('graph-redo')).toBeDisabled();
-  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+  await expect(window.getByTestId('app-redo')).toBeDisabled();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
   expect(title).not.toBe('');
 
   await inspect(1);
@@ -714,7 +714,7 @@ test('Undo, Redo and Save work from the Inspector, and several nodes say so', as
 test('asks before quitting with unsaved edits', async () => {
   await openGraph();
   await addNode('Grayscale');
-  await expect(window.getByTestId('graph-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
 
   void app.evaluate(({ app: electronApp }) => {
     electronApp.quit();

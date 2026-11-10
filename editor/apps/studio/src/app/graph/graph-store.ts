@@ -172,7 +172,7 @@ export class GraphStore {
       const document = this.mutableDocument();
       if (document && epoch === this.epoch) {
         this.endSession();
-        this.mutableSession.set({ kind: 'failed', path: document.path, reason: error.message });
+        this.mutableSession.set({ kind: 'failed', path: document.path, reason: messageOf(error) });
       }
     }
   }, inject(EngineRestarts));
@@ -187,8 +187,10 @@ export class GraphStore {
   private moveScheduled = false;
   private evaluateAsked = false;
   private stopped = false;
+  /** The session each open got from the Server, by the path it opened, the open on its way included. */
+  private readonly opened = new Map<string, Promise<string | null>>();
 
-  readonly session = this.mutableSession.asReadonly();
+  readonly session =this.mutableSession.asReadonly();
   readonly document = this.mutableDocument.asReadonly();
   /** A node the library asked for, which the canvas places in the middle of what it shows. */
   readonly adding = signal<GraphNodeType | null>(null);
@@ -278,6 +280,15 @@ export class GraphStore {
         });
       }
     });
+  }
+
+  /**
+   * The session an open of this path got from the Server, once the open on its way has its answer; null if none was
+   * asked for or the Server made none. A tab closed while its graph is still opening closes this, or the Server keeps a
+   * session that nothing shows, and the document can then be neither moved nor deleted (#232).
+   */
+  sessionOpened(path: string): Promise<string | null> {
+    return this.opened.get(path) ?? Promise.resolve(null);
   }
 
   /** Lets go of the graph, which stays open on the Server with its edits and history, to come back to. */
@@ -1199,9 +1210,16 @@ export class GraphStore {
   private async start(path: string): Promise<void> {
     const epoch = this.endSession();
     this.mutableSession.set({ kind: 'opening', path });
+    const answer = this.reconnect().then(async client => unwrap(await client.POST('/api/v1/graphs', { body: { path } })));
+    this.opened.set(
+      path,
+      answer.then(
+        state => state.id,
+        () => null
+      )
+    );
     try {
-      const client = await this.reconnect();
-      const state = unwrap(await client.POST('/api/v1/graphs', { body: { path } }));
+      const state = await answer;
       await this.adopt(state, epoch);
     } catch (error) {
       if (epoch === this.epoch) {

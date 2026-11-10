@@ -17,7 +17,7 @@ describe('frame colours', () => {
 
   it('names Auto, the ramp by number, and another colour by its value', () => {
     expect(frameColourName('')).toBe('Auto');
-    expect(frameColourName('#eb6834')).toBe('Colour 2');
+    expect(frameColourName('#eb6834')).toBe('Color 2');
     expect(frameColourName('#123456')).toBe('#123456');
   });
 });

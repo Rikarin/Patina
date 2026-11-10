@@ -79,7 +79,7 @@ export function diagnosticOf(text: string): { summary: string; code: string | nu
 const CheckWords: Readonly<Record<string, string>> = {
   'texture-over-budget': 'Takes {bytes} of GPU memory as {preset} writes it, over the budget of {budget}.',
   'texture-too-large': 'Is {width} × {height} texels, larger than the limit of {limit}.',
-  'channel-missing': '{preset} reads {map} into {file}, and this set has no {map}, so a default fills it.',
+  'channel-missing': '{preset} reads {channel} into {file}, and this set has no {channel}, so a default fills it.',
   'density-low': 'Has {density} texels per unit, short of the {target} the project asks for.',
   'density-high': 'Has {density} texels per unit, more than the {target} the project asks for.',
   'uv-outside': '{count} triangles reach past the first UV tile, which is the only one painted.',

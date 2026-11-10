@@ -186,9 +186,9 @@ test('a brush on the mesh shows on it in the viewport, across its flats, and und
   await expect(window.getByTestId('viewport-stamp')).toBeAttached();
   await window.screenshot({ path: join(shots, 'paint-mesh.png') });
 
-  await window.getByTestId('paint-undo').click();
+  await window.getByTestId('app-undo').click();
   await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeLessThan(40);
-  await window.getByTestId('paint-redo').click();
+  await window.getByTestId('app-redo').click();
   await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(1500);
 });
 
@@ -438,7 +438,7 @@ test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads
 test('Save All on the quit dialog saves a painted stack and quits', async () => {
   await openOnMesh();
   await drag(0.3, 0.45, 0.72, 0.55);
-  await expect(window.getByTestId('paint-undo')).toBeEnabled();
+  await expect(window.getByTestId('app-undo')).toBeEnabled();
 
   const closed = app.waitForEvent('close');
   void app.evaluate(({ app: electronApp }) => {
@@ -481,7 +481,7 @@ test('a preset takes up its brush, a radial symmetry paints its copies, and the 
   await settled();
   const one = await changed(before, await shot());
 
-  await window.getByTestId('paint-undo').click();
+  await window.getByTestId('app-undo').click();
   await settled();
   await window.getByRole('combobox', { name: 'Symmetry', exact: true }).selectOption('radial');
   await window.getByRole('combobox', { name: 'Symmetry axis' }).selectOption('y');

@@ -67,7 +67,7 @@ test('Find Layer chooses the layer on top where the map is clicked', async () =>
   await expect(paint).toHaveAttribute('aria-selected', 'true', { timeout: 30_000 });
   await expect(window.getByTestId('layers-find')).toHaveAttribute('aria-pressed', 'false');
   // A click that found something made no stroke.
-  await expect(window.getByTestId('paint-undo')).toHaveAttribute('aria-label', 'Undo Stroke');
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('aria-label', 'Undo Stroke');
 
   await window.getByTestId('layers-find').click();
   await clickMap(0.5, 0.9);
@@ -185,8 +185,8 @@ test('an instance in another texture set shows its source and follows an unsaved
   await stroke([0.1, 0.5], [0.9, 0.5]);
   await paint.click({ button: 'right' });
   await window.getByTestId('layer-menu-copy').click();
-  await window.getByTestId('paint-save').click();
-  await expect(window.getByTestId('paint-save')).toBeDisabled({ timeout: 30_000 });
+  await window.getByTestId('app-save').click();
+  await expect(window.getByTestId('app-save')).toBeDisabled({ timeout: 30_000 });
 
   // Wood shows none of it, until its instance does.
   await window.getByTestId('texture-set-wood').click();
@@ -203,7 +203,7 @@ test('an instance in another texture set shows its source and follows an unsaved
   await settled();
   const shown = await picture.getAttribute('src');
   await expect(window.getByTestId('paint-instance-source')).toContainText('in metal');
-  await expect(window.getByTestId('paint-undo')).toHaveAttribute('aria-label', 'Undo Paste as instances');
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('aria-label', 'Undo Paste as instances');
   await window.screenshot({ path: join(shots, 'instance-2-wood-instance.png') });
 
   // A black mask on the source in metal, unsaved, hides it in wood too.

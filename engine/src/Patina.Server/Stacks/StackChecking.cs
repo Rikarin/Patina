@@ -93,7 +93,7 @@ public static class StackChecking {
         var bytes = preset is null ? 0 : Memory(preset, project?.Export, state, width, height);
         var budget = (long)(settings.MemoryBudget * 1024 * 1024);
         List<CheckProblem> problems = [..Limits(settings, name, (width, height), (bytes, budget), preset)];
-        problems.AddRange(Missing(preset, project?.Export, state, name));
+        problems.AddRange(Missing(preset, project, state, name));
         problems.AddRange(Density(density, target, settings.DensityTolerance, name));
         if (measured.Layout is { } measures) {
             problems.AddRange(Layout(measures, name));
@@ -231,10 +231,14 @@ public static class StackChecking {
         return maps;
     }
 
-    /// <summary>A map the preset reads that the set does not make, once, under the first file that reads it.</summary>
+    /// <summary>
+    ///     A map the preset reads that the set does not make, once, under the first file that reads it. The file is
+    ///     named as the export would write it and the map as the app calls it, never a template or a stored value
+    ///     (#198).
+    /// </summary>
     static IEnumerable<CheckProblem> Missing(
         ExportPreset? preset,
-        ProjectExportSettings? export,
+        ProjectContents? project,
         StackState state,
         string name
     ) {
@@ -243,20 +247,24 @@ public static class StackChecking {
         }
 
         var maps = Maps(state);
+        var naming = new NamingValues(project?.Name ?? state.Name, preset.Id, state.Set);
         HashSet<string> said = new(StringComparer.Ordinal);
-        foreach (var texture in Written(preset, export).Textures) {
+        foreach (var texture in Written(preset, project?.Export).Textures) {
             var reads = texture.Maps.ToArray();
             if (!reads.Any(maps.Contains)) {
                 continue;
             }
 
+            var file = NamingTemplate.Resolve(texture.File, naming, string.Empty)
+                .Replace(Path.DirectorySeparatorChar, '/');
             foreach (var map in reads.Where(map => !maps.Contains(map) && said.Add(map))) {
+                var channel = Terms.Label(map);
                 yield return Problem(
                     CheckCodes.ChannelMissing,
                     Warning,
-                    $"{preset.Name} reads {map} into {texture.File}, and {name} has no {map} channel, so a default "
+                    $"{preset.Name} reads {channel} into {file}, and {name} has no {channel} channel, so a default "
                     + "fills it.",
-                    new() { ["map"] = map, ["preset"] = preset.Name, ["file"] = texture.File },
+                    new() { ["map"] = map, ["channel"] = channel, ["preset"] = preset.Name, ["file"] = file },
                     new(Setting: "export.preset")
                 );
             }

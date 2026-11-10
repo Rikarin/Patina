@@ -28,6 +28,16 @@ public sealed class GraphAuthoringTests {
     static GraphSettingDefinition Float(string name, string value = "0.5") =>
         new(name, value, string.Empty, "Float", 0f, 1f, string.Empty, []);
 
+    /// <summary>A graph setting's undo step says what a person calls it, never its key (#198).</summary>
+    [Fact]
+    public void A_settings_undo_step_names_it_in_words() {
+        var editor = Editor();
+
+        editor.Apply(new([new GraphSetSetting("bitDepth", "32")]));
+
+        Assert.Equal("Set Bit Depth", editor.History.UndoLabel);
+    }
+
     [Fact]
     public void Switching_a_node_off_is_one_undo_and_the_worker_is_told_the_whole_document() {
         var editor = Editor();

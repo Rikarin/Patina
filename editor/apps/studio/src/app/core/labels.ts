@@ -95,7 +95,7 @@ const DocumentKinds: Readonly<Record<string, string>> = {
   texturing: 'Texturing',
   'layered-material': 'Layered Material',
   'image-material': 'Image Material',
-  graph: 'Material Graph',
+  graph: 'Graph',
   'brush-preset': 'Brush Preset'
 };
 

@@ -242,7 +242,7 @@ describe('GraphPane', () => {
     expect(element.querySelectorAll('xui-graph-node-preview')).toHaveLength(0);
   });
 
-  it('marks unsaved changes', async () => {
+  it('leaves unsaved changes, Save and Close to the app', async () => {
     const { open, sockets, found, fixture } = await render();
     await open();
 
@@ -255,8 +255,10 @@ describe('GraphPane', () => {
     });
     await fixture.whenStable();
 
-    expect(found('graph-unsaved')).not.toBeNull();
-    expect((found('graph-save') as HTMLButtonElement).disabled).toBe(false);
+    // The tab says so, and Save is the app's: the pane has neither of its own (#200).
+    expect(found('graph-unsaved')).toBeNull();
+    expect(found('graph-save')).toBeNull();
+    expect(found('graph-close')).toBeNull();
   });
 
   it('lists diagnostics, such as a bitmap the Worker cannot read yet', async () => {

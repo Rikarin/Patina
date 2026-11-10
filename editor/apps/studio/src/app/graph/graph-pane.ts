@@ -19,15 +19,11 @@ import { provideIcons } from '@ng-icons/core';
 import {
   matAccountTree,
   matAdd,
-  matClose,
   matDashboard,
   matNoteAdd,
   matPowerSettingsNew,
-  matRedo,
-  matSave,
   matStickyNote2,
   matTune,
-  matUndo,
   matWidgets
 } from '@ng-icons/material-icons/baseline';
 import { XuiButtonImports } from '@xui/button';
@@ -184,15 +180,11 @@ export class GraphThumbnail {
     provideIcons({
       matAccountTree,
       matAdd,
-      matClose,
       matDashboard,
       matNoteAdd,
       matPowerSettingsNew,
-      matRedo,
-      matSave,
       matStickyNote2,
       matTune,
-      matUndo,
       matWidgets
     })
   ],
@@ -254,9 +246,6 @@ export class GraphThumbnail {
           Copy to edit
         </button>
       }
-      @if (current?.history?.dirty) {
-        <xui-tag class="ms-1 shrink-0" color="warning" minimal data-testid="graph-unsaved">Unsaved</xui-tag>
-      }
       <span class="readout text-foreground-muted ms-2 truncate" data-testid="graph-evaluation">{{ evaluated() }}</span>
       <span class="flex-1"></span>
       <button
@@ -314,7 +303,7 @@ export class GraphThumbnail {
       <button
         type="button"
         xuiButton
-        aria-label="Group the selection"
+        aria-label="Frame the selection"
         [title]="commands.tooltip('groupNodes')"
         size="sm"
         variant="ghost"
@@ -352,47 +341,6 @@ export class GraphThumbnail {
       </button>
       <button type="button" xuiButton size="sm" variant="ghost" aria-label="New graph" title="New graph" data-testid="graph-new" (click)="creating.set(true)">
         <ng-icon xui size="sm" name="matNoteAdd" />
-      </button>
-      <button
-        type="button"
-        xuiButton
-        aria-label="Undo"
-        size="sm"
-        variant="ghost"
-        data-testid="graph-undo"
-        [disabled]="!store.editable() || !current?.history?.canUndo"
-        [title]="commands.tooltip('undo', current?.history?.undoLabel ? 'Undo ' + current.history.undoLabel : 'Undo')"
-        (click)="store.undo()"
-      >
-        <ng-icon xui size="sm" name="matUndo" />
-      </button>
-      <button
-        type="button"
-        xuiButton
-        aria-label="Redo"
-        size="sm"
-        variant="ghost"
-        data-testid="graph-redo"
-        [disabled]="!store.editable() || !current?.history?.canRedo"
-        [title]="commands.tooltip('redo', current?.history?.redoLabel ? 'Redo ' + current.history.redoLabel : 'Redo')"
-        (click)="store.redo()"
-      >
-        <ng-icon xui size="sm" name="matRedo" />
-      </button>
-      <button
-        type="button"
-        xuiButton
-        aria-label="Save"
-        title="Save"
-        size="sm"
-        data-testid="graph-save"
-        [disabled]="!store.editable() || !current?.history?.dirty"
-        (click)="store.save()"
-      >
-        <ng-icon xui size="sm" name="matSave" />
-      </button>
-      <button type="button" xuiButton size="sm" variant="ghost" data-testid="graph-close" (click)="store.close()">
-        <ng-icon xui size="sm" name="matClose" />
       </button>
     </div>
 
@@ -1342,7 +1290,7 @@ export class GraphCanvas {
         <xui-non-ideal-state
           class="flex-1"
           title="No graph open"
-          description="Select a graph in the Library's Shared Assets, then choose Open in the Inspector."
+          description="Select a graph under Materials in the Library, then choose Open in the Inspector."
           data-testid="graph-none"
         >
           <button action type="button" xuiButton size="sm" data-testid="graph-new" (click)="creating.set(true)">
@@ -1392,12 +1340,12 @@ export class GraphCanvas {
       (openChange)="$event || store.resolveLeaving('cancel')"
     >
       <xui-dialog-body data-testid="graph-leaving">
-        {{ store.document()?.name }} has edits that are not in its file.
+        {{ store.document()?.name }} has unsaved changes.
       </xui-dialog-body>
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="store.resolveLeaving('cancel')">Cancel</button>
         <button type="button" xuiButton data-testid="graph-discard" (click)="store.resolveLeaving('discard')">
-          Discard
+          Don't Save
         </button>
         <button type="button" xuiButton color="primary" (click)="store.resolveLeaving('save')">Save</button>
       </xui-dialog-footer>

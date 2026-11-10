@@ -505,14 +505,14 @@ public sealed class StackEditor : ILayerStackDocument {
 
         var chosen = Set;
         if (chosen.Channels.Exists(channel => channel.Usage == usage)) {
-            throw new StackEditRefusedException($"This stack has '{usage}' already.");
+            throw new StackEditRefusedException($"This stack has {StackDocuments.ChannelName(usage)} already.");
         }
 
         var added = chosen with { Channels = [..chosen.Channels, new() { Usage = usage, Default = DefaultOf(usage) }] };
         return new(
             this,
             Document with { Sets = [..Document.Sets.Select(held => held == chosen ? added : held)] },
-            $"Add {usage}"
+            $"Add {StackDocuments.ChannelName(usage)}"
         );
     }
 
@@ -587,13 +587,14 @@ public sealed class StackEditor : ILayerStackDocument {
             );
         }
 
-        if (Set.Channels.TrueForAll(channel => channel.Usage != stroke.Channel)) {
-            throw new StackEditRefusedException($"This stack has no channel '{stroke.Channel}'.");
+        var channel = StackDocuments.ChannelName(stroke.Channel);
+        if (Set.Channels.TrueForAll(held => held.Usage != stroke.Channel)) {
+            throw new StackEditRefusedException($"This stack has no {channel} channel.");
         }
 
         if (!layer.Writes(stroke.Channel)) {
             throw new StackEditRefusedException(
-                $"'{layer.Name}' does not write '{stroke.Channel}', so a stroke there would never show."
+                $"'{layer.Name}' does not write {channel}, so a stroke there would never show."
             );
         }
     }
@@ -644,7 +645,7 @@ public sealed class StackEditor : ILayerStackDocument {
             LayerMaskSource.None or LayerMaskSource.Paint => 1f,
             LayerMaskSource.Constant => layer.Mask.Value,
             var source => throw new StackEditRefusedException(
-                $"A brush would replace the {source} mask of '{layer.Name}'. "
+                $"A brush would replace the {StackDocuments.SourceName(source)} mask of '{layer.Name}'. "
                 + "Set the mask's source to Paint to paint it."
             )
         };

@@ -119,11 +119,11 @@ export const CommandTable: readonly CommandSpec[] = [
   },
   {
     id: 'pickerTool',
-    label: 'Colour Picker',
+    label: 'Color Picker',
     section: 'Painting',
     keys: ['C'],
     area: 'stack',
-    hint: 'Takes the brush colour from the picture'
+    hint: 'Takes the brush color from the picture'
   },
   {
     id: 'lineTool',
@@ -143,7 +143,7 @@ export const CommandTable: readonly CommandSpec[] = [
   },
   { id: 'finishPath', label: 'Finish Path', section: 'Painting', keys: ['Enter'], area: 'stack' },
   { id: 'cancelStroke', label: 'Cancel Line or Path', section: 'Painting', keys: ['Escape'], area: 'stack' },
-  { id: 'pickIdColour', label: 'Pick a Colour from the ID Map', section: 'Painting', keys: ['I'], area: 'stack' },
+  { id: 'pickIdColour', label: 'Pick a Color from the ID Map', section: 'Painting', keys: ['I'], area: 'stack' },
   { id: 'smallerBrush', label: 'Smaller Brush', section: 'Painting', keys: ['['], area: 'stack' },
   { id: 'largerBrush', label: 'Larger Brush', section: 'Painting', keys: [']'], area: 'stack' },
 
@@ -188,7 +188,7 @@ export const CommandTable: readonly CommandSpec[] = [
   },
 
   { id: 'addNode', label: 'Add Node…', section: 'Graph', keys: ['Space'], area: 'graph' },
-  { id: 'groupNodes', label: 'Group Selection', section: 'Graph', keys: ['Mod+G'], area: 'graph' },
+  { id: 'groupNodes', label: 'Frame Selection', section: 'Graph', keys: ['Mod+G'], area: 'graph' },
   {
     id: 'bypassNodes',
     label: 'Bypass',
@@ -269,6 +269,12 @@ export const CommandTable: readonly CommandSpec[] = [
     label: 'Checks',
     section: 'Window',
     hint: 'Lists what the texture set in front would get wrong in an export'
+  },
+  {
+    id: 'showActivity',
+    label: 'Activity',
+    section: 'Window',
+    hint: 'Bakes and exports with how far each is, and everything the app has said'
   },
 
   { id: 'shortcuts', label: 'Keyboard Shortcuts…', section: 'Help', keys: ['Mod+/'] },
@@ -443,6 +449,7 @@ export const MenuBar: readonly {
       { submenu: 'Layout', items: ['layout1', 'layout2', 'layout3', '-', 'resetLayout'] },
       'showHistory',
       'showChecks',
+      'showActivity',
       '-',
       { native: 'windowItems' }
     ]

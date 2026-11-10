@@ -8,7 +8,7 @@ const Kinds = [
   { kind: 'texturing', title: 'Texturing', text: 'Paint and layer materials on a mesh.' },
   { kind: 'layered-material', title: 'Layered Material', text: 'Stack materials into a new one, with no mesh.' },
   { kind: 'image-material', title: 'Image Material', text: 'Make a material from one photo.' },
-  { kind: 'graph', title: 'Material Graph', text: 'Build a material from nodes.' }
+  { kind: 'graph', title: 'Graph', text: 'Build a material, a mask or a brush from nodes.' }
 ];
 
 /** Where the app starts with nothing open: what can be begun, and what was being worked on. */

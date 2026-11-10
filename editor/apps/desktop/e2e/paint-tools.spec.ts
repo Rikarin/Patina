@@ -298,7 +298,7 @@ test('a dab on the strap paints the top under it only with the occlusion test of
   await atlas.screenshot({ path: join(shots, 'occlusion-off-atlas.png') });
   const through = await atlas.screenshot();
 
-  await window.getByTestId('paint-undo').click();
+  await window.getByTestId('app-undo').click();
   await settled();
   await window.getByTestId('paint-occlusion').check();
   await click(0.5, 0.5);

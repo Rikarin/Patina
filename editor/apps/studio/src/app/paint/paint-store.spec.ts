@@ -98,7 +98,9 @@ function setup() {
   /** What the Server answers to an undo, a redo or a save, when a test wants it to refuse. */
   const steps: { reply: (() => Response) | null; queries: string[] } = { reply: null, queries: [] };
   /** What a test's Server answers before the usual, by method and path, such as one that has restarted. */
-  const server: { reply: ((method: string, path: string) => Response | null) | null } = { reply: null };
+  const server: { reply: ((method: string, path: string) => Response | Promise<Response> | null) | null } = {
+    reply: null
+  };
   const fetcher = (async (input: Request) => {
     const { pathname: path, search } = new URL(input.url);
     posts.push(path);
@@ -526,6 +528,29 @@ describe('PaintStore', () => {
     expect(sockets.at(-1)).not.toBe(sockets[0]);
     expect(sockets).toHaveLength(2);
     vi.useRealTimers();
+  });
+
+  it('shows nothing it was let go of before it opened, and gives the session it got to whoever closes the tab (#232)', async () => {
+    const { store, server, sockets, posts } = setup();
+    let answer = (): void => undefined;
+    server.reply = (method, path) =>
+      method === 'POST' && path === '/api/v1/stacks'
+        ? new Promise<Response>(done => {
+            answer = () => done(Response.json(stack()));
+          })
+        : null;
+
+    const opening = store.open('/a/Crate.vxlayers', false);
+    store.detach();
+    const session = store.sessionOpened('/a/Crate.vxlayers');
+    await vi.waitFor(() => expect(posts).toContain('/api/v1/stacks'));
+    answer();
+    await opening;
+
+    expect(await session).toBe('s1');
+    expect(store.state()).toBeNull();
+    expect(sockets).toHaveLength(0);
+    expect(await store.sessionOpened('/a/Other.vxlayers')).toBeNull();
   });
 
   it('keeps the mask in front and Find armed through a restart, and lets go of a mask entry the file lacks', async () => {

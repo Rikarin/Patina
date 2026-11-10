@@ -63,9 +63,9 @@ const Origins: Readonly<Record<string, string>> = { shipped: 'Starter', project:
           (keydown.enter)="save()"
           (keydown.escape)="naming.set(false)"
         />
-        <label class="flex items-center gap-1 text-xs" title="The preset paints in this colour when taken up">
+        <label class="flex items-center gap-1 text-xs" title="The preset paints in this color when taken up">
           <input type="checkbox" data-testid="brush-preset-colour" [checked]="withColour()" (change)="withColour.set(checked($event))" />
-          Colour
+          Color
         </label>
         <button type="button" xuiButton size="sm" data-testid="brush-preset-confirm" [disabled]="!name().trim()" (click)="save()">
           Save

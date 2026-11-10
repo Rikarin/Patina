@@ -17,6 +17,8 @@ import { XuiInputImports } from '@xui/input';
 import { BakePane } from './bake/bake-pane';
 import { BakeSettings } from './bake/bake-settings';
 import { BakeStore } from './bake/bake-store';
+import { Activity } from './core/activity';
+import { ActivityPanel } from './core/activity-panel';
 import { menuModel } from './core/app-menu';
 import { type CommandHandler, Commands } from './core/commands';
 import { desktop } from './core/desktop';
@@ -48,7 +50,9 @@ import { GraphStore } from './graph/graph-store';
 import { ImageMaterialPane } from './graph/image-material-pane';
 import { NodeLibrary } from './graph/node-library';
 import { TextureView } from './graph/texture-view';
+import { LibraryActions } from './library/library-actions';
 import { LibraryPane } from './library/library-pane';
+import { LibraryTreeStore } from './library/library-tree-store';
 import { ProjectSettingsDialog } from './library/project-settings-dialog';
 import { TextureSets } from './paint/texture-sets';
 import { ProjectCommands } from './library/project-commands';
@@ -57,6 +61,7 @@ import { LayerStack } from './paint/layer-stack';
 import { MaterialShelf } from './paint/material-shelf';
 import { PaintAtlas } from './paint/paint-atlas';
 import { PaintPane } from './paint/paint-pane';
+import { BrushStore } from './paint/brush-store';
 import { PaintStore } from './paint/paint-store';
 import { ViewportPane } from './viewport/viewport-pane';
 
@@ -64,6 +69,7 @@ import { ViewportPane } from './viewport/viewport-pane';
 @Component({
   selector: 'ptn-root',
   imports: [
+    ActivityPanel,
     BakePane,
     ChecksPane,
     ExportPane,
@@ -119,7 +125,15 @@ import { ViewportPane } from './viewport/viewport-pane';
               [title]="tab.path"
               (click)="project.activate(tab.path)"
             >
-              {{ tab.name }}{{ tab.dirty ? ' •' : '' }}
+              {{ tab.name
+              }}@if (tab.dirty) {
+                <span
+                  class="text-foreground-muted"
+                  title="Unsaved changes"
+                  [attr.data-testid]="tab.path === project.active()?.path ? 'active-unsaved' : 'tab-unsaved'"
+                  >&nbsp;•</span
+                >
+              }
             </button>
             <button
               type="button"
@@ -131,6 +145,77 @@ import { ViewportPane } from './viewport/viewport-pane';
             </button>
           </div>
         }
+      </div>
+      <!-- Undo, Redo and Save are the app's, for whichever document is in front, so no pane has its own (#200). -->
+      <div class="flex shrink-0 items-center" role="toolbar" aria-label="Document">
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          class="px-1.5"
+          data-testid="app-undo"
+          [attr.aria-label]="commands.label('undo')"
+          [disabled]="!commands.enabled('undo')"
+          [title]="commands.tooltip('undo')"
+          (click)="commands.run('undo')"
+        >
+          <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+            <path
+              d="M5.5 3 2.5 6l3 3M2.5 6h7a4 4 0 0 1 0 8H7"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              fill="none"
+            />
+          </svg>
+        </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          class="px-1.5"
+          data-testid="app-redo"
+          [attr.aria-label]="commands.label('redo')"
+          [disabled]="!commands.enabled('redo')"
+          [title]="commands.tooltip('redo')"
+          (click)="commands.run('redo')"
+        >
+          <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+            <path
+              d="M10.5 3l3 3-3 3M13.5 6h-7a4 4 0 0 0 0 8H9"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              fill="none"
+            />
+          </svg>
+        </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          class="px-1.5"
+          aria-label="Save"
+          data-testid="app-save"
+          [disabled]="!commands.enabled('save') || !project.active()?.dirty"
+          [title]="commands.tooltip('save')"
+          (click)="commands.run('save')"
+        >
+          <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+            <path
+              d="M2.5 2.5h9l2 2v9h-11zM5 2.5v3.5h5V2.5M4.5 13.5V9h7v4.5"
+              stroke="currentColor"
+              stroke-width="1.2"
+              stroke-linejoin="round"
+              fill="none"
+            />
+          </svg>
+        </button>
       </div>
       <div class="flex shrink-0 items-center gap-1">
         <button
@@ -306,17 +391,52 @@ import { ViewportPane } from './viewport/viewport-pane';
         }
         @case ('online') {
           <span class="readout shrink-0">Patina {{ current.system.version }}</span>
-          <span class="readout truncate">{{ current.system.library ?? 'No library open' }}</span>
+          <span class="readout truncate" data-testid="status-library" [title]="current.system.library ?? ''">{{
+            libraryName() ?? 'No library open'
+          }}</span>
           <span class="readout shrink-0">GPU {{ current.system.worker.connected ? 'ready' : 'starting' }}</span>
           @if (project.notice(); as notice) {
             <span class="readout truncate" data-testid="app-notice">{{ notice }}</span>
           }
         }
         @case ('offline') {
-          <span class="readout text-error truncate">The engine stopped: {{ current.reason }}</span>
+          <span class="readout text-error truncate" data-testid="status-offline" [title]="current.detail ?? ''">{{
+            current.reason
+          }}</span>
         }
       }
+      <!-- Every bake and export, and everything the app said, in one place (#192). -->
+      <button
+        type="button"
+        class="readout hover:bg-hover ms-auto flex max-w-[50%] min-w-0 shrink-0 items-center gap-1.5 rounded px-1.5"
+        data-testid="activity-readout"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="activity.open()"
+        [title]="commands.tooltip('showActivity')"
+        (click)="activity.toggle()"
+      >
+        @if (activity.readout(); as doing) {
+          <span class="bg-primary size-2 shrink-0 animate-pulse rounded-full" aria-hidden="true"></span>
+          <span class="truncate" data-testid="activity-doing">{{ doing }}</span>
+        } @else {
+          <span class="truncate">Activity</span>
+        }
+        @if (activity.unread() > 0) {
+          <span
+            class="bg-error text-error-foreground rounded-full px-1.5 text-xs"
+            data-testid="activity-unread"
+            [attr.aria-label]="activity.unread() + ' new'"
+            >{{ activity.unread() }}</span
+          >
+        }
+      </button>
     </footer>
+
+    @defer (when activity.open()) {
+      @if (activity.open()) {
+        <ptn-activity />
+      }
+    }
 
     <xui-dialog class="max-w-5xl" size="lg" title="Bake" [(open)]="baking">
       <xui-dialog-body>
@@ -339,7 +459,7 @@ import { ViewportPane } from './viewport/viewport-pane';
       [open]="project.closing() !== null"
       (openChange)="$event || project.resolveClosing('cancel')"
     >
-      <xui-dialog-body data-testid="project-leaving">This document has changes that are not saved.</xui-dialog-body>
+      <xui-dialog-body data-testid="project-leaving">This document has unsaved changes.</xui-dialog-body>
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="project.resolveClosing('cancel')">Cancel</button>
         <button
@@ -480,7 +600,7 @@ import { ViewportPane } from './viewport/viewport-pane';
       (openChange)="$event || project.resolveClosingProject('cancel')"
     >
       <xui-dialog-body data-testid="project-closing"
-        >Some documents of this project have changes that are not saved.</xui-dialog-body
+        >Some documents of this project have unsaved changes.</xui-dialog-body
       >
       <xui-dialog-footer>
         <button type="button" xuiButton variant="ghost" (click)="project.resolveClosingProject('cancel')">Cancel</button>
@@ -496,6 +616,7 @@ export class App {
   protected readonly status = inject(SystemStatus);
   protected readonly project = inject(ProjectStore);
   protected readonly bakes = inject(BakeStore);
+  protected readonly activity = inject(Activity);
   protected readonly bakeSettings = inject(BakeSettings);
   /** How far the jobs of the last bake are, together. */
   protected readonly bakePercent = computed(() => {
@@ -526,16 +647,19 @@ export class App {
   private readonly chosen = linkedSignal(() => chosenLayout(this.project.workspace()));
   /** The layout of what is in front. Each kind of document keeps its own (ADR 0012). */
   protected readonly layout = linkedSignal(() => layoutOf(this.project.workspace(), this.chosen()));
+  /** The open library by its name, which the status bar shows with its whole path on hover (#200). */
+  protected readonly libraryName = computed(() => {
+    const state = this.status.state();
+    return state.kind === 'online'
+      ? (state.system.library
+          ?.split(/[\\/]/)
+          .pop()
+          ?.replace(/\.ptlib$/, '') ?? null)
+      : null;
+  });
   /** What is open, which is also what the window says. */
   protected readonly title = computed(() => {
-    const state = this.status.state();
-    const library =
-      state.kind === 'online'
-        ? state.system.library
-            ?.split(/[\\/]/)
-            .pop()
-            ?.replace(/\.ptlib$/, '')
-        : null;
+    const library = this.libraryName();
     const name = this.project.active()?.name;
     const dirty = this.project.active()?.dirty ? ' •' : '';
     return [name ? `${name}${dirty}` : null, library].filter(Boolean).join(' — ');
@@ -567,6 +691,8 @@ export class App {
       }
     });
 
+    this.hear();
+
     const bridge = desktop();
     bridge?.onFullScreen(fullScreen => this.fullScreen.set(fullScreen));
     this.edit.install();
@@ -592,6 +718,29 @@ export class App {
         bridge.setTitle(this.title());
       });
     }
+  }
+
+  /** What each part of the app says goes to Activity too, so it can be read again once it has gone (#192). */
+  private hear(): void {
+    const activity = this.activity;
+    activity.listen('Project', 'error', this.project.failure);
+    activity.listen('Project', 'info', this.project.notice);
+    activity.listen('Layers', 'error', this.paint.failure);
+    activity.listen('Layers', 'warning', this.paint.notice);
+    activity.listen('Graph', 'error', this.graph.problem);
+    activity.listen('Graph', 'info', this.graph.notice);
+    activity.listen('Bake', 'error', this.bakeSettings.failure);
+    activity.listen('Brush', 'error', inject(BrushStore).failure);
+    activity.listen('Library', 'error', inject(LibraryActions).failure);
+    activity.listen('Library', 'error', inject(LibraryTreeStore).failure);
+    activity.listen(
+      'Engine',
+      'error',
+      computed(() => {
+        const state = this.status.state();
+        return state.kind === 'offline' ? state.reason : null;
+      })
+    );
   }
 
   /** Files from outside the app can land anywhere on the window. */
@@ -669,6 +818,7 @@ export class App {
       enabled: () => holds(this.layout(), 'checks'),
       run: () => this.layout.update(layout => showing(layout, 'checks'))
     });
+    handle('showActivity', { checked: () => this.activity.open(), run: () => this.activity.toggle() });
     handle('shortcuts', { run: () => this.keys.set(true) });
     handle('preferences', { run: () => this.preferencesOpen.set(true) });
     handle('diagnostics', { run: () => this.diagnosing.set(true) });

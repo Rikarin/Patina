@@ -5,10 +5,7 @@ import {
   matDeleteOutline,
   matFolder,
   matFormatColorFill,
-  matRedo,
-  matSave,
-  matTune,
-  matUndo
+  matTune
 } from '@ng-icons/material-icons/baseline';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, signal } from '@angular/core';
 import type { StackFilterKind, StackLayer, StackMaskLayer } from '@patina/api-client';
@@ -100,7 +97,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
     XuiSliderImports
   ],
   viewProviders: [
-    provideIcons({ matAdsClick, matBrush, matDeleteOutline, matFolder, matFormatColorFill, matRedo, matSave, matTune, matUndo })
+    provideIcons({ matAdsClick, matBrush, matDeleteOutline, matFolder, matFormatColorFill, matTune })
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -234,51 +231,6 @@ const MaskMarks: Readonly<Record<string, string>> = {
       >
         <ng-icon xui size="sm" name="matDeleteOutline" />
       </button>
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        class="w-6 shrink-0 px-0"
-        data-testid="paint-undo"
-        [title]="commands.tooltip('undo', undoLabel())"
-        [attr.aria-label]="undoLabel()"
-        [disabled]="!store.state()?.history?.canUndo"
-        (click)="store.act('undo')"
-      >
-        <ng-icon xui size="sm" name="matUndo" />
-      </button>
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        class="w-6 shrink-0 px-0"
-        data-testid="paint-redo"
-        [title]="commands.tooltip('redo', redoLabel())"
-        [attr.aria-label]="redoLabel()"
-        [disabled]="!store.state()?.history?.canRedo"
-        (click)="store.act('redo')"
-      >
-        <ng-icon xui size="sm" name="matRedo" />
-      </button>
-      <button
-        type="button"
-        xuiButton
-        size="sm"
-        variant="ghost"
-        class="w-6 shrink-0 px-0"
-        data-testid="paint-save"
-        title="Save"
-        aria-label="Save"
-        [disabled]="!store.state()?.history?.dirty"
-        (click)="store.act('save')"
-      >
-        <ng-icon xui size="sm" name="matSave" />
-      </button>
-      @if (store.state()?.history?.dirty) {
-        <span class="text-foreground-muted text-xs" data-testid="paint-unsaved" title="Unsaved changes">•</span>
-      }
     </div>
 
     @if (project.bakeOutOfDate()) {
@@ -300,7 +252,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
 
     @if (store.unbaked(); as maps) {
       <div class="bg-warning-subtle flex shrink-0 items-center gap-2 px-2 py-1 text-xs" data-testid="layers-need-bake">
-        <span class="min-w-0 flex-1" [title]="maps">Some masks need baked maps, and show grey until then.</span>
+        <span class="min-w-0 flex-1" [title]="mapNames(maps)">Some masks need mesh maps, and show grey until they are baked.</span>
         <button type="button" xuiButton size="sm" data-testid="layers-bake" (click)="project.askToBake()">Bake…</button>
       </div>
     }
@@ -407,7 +359,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
               <button
                 type="button"
                 class="text-foreground-muted grid size-5 shrink-0 place-items-center"
-                [attr.aria-label]="'Take off ' + item.name"
+                [attr.aria-label]="'Remove ' + item.name + ' from the mask'"
                 (click)="removeWork(owner, item.effect)"
               >
                 ×
@@ -859,7 +811,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
               type="button"
               class="text-foreground-muted grid size-5 shrink-0 place-items-center"
               data-testid="layer-work-remove"
-              [attr.aria-label]="'Take off ' + item.name"
+              [attr.aria-label]="'Remove ' + item.name + ' from the mask'"
               (click)="removeWork(row.layer, item.effect)"
             >
               ×
@@ -962,7 +914,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
           <button type="button" xuiMenuItem (triggered)="addValueMask(layer, 0)">Black Mask</button>
           <button type="button" xuiMenuItem (triggered)="addBitmapMask(layer)">Bitmap Mask…</button>
           <button type="button" xuiMenuItem (triggered)="addMask(layer, 'Paint')">Paint Mask</button>
-          <button type="button" xuiMenuItem (triggered)="addColourMask(layer)">Colour Selection Mask</button>
+          <button type="button" xuiMenuItem (triggered)="addColourMask(layer)">Color Selection Mask</button>
           <button type="button" xuiMenuItem (triggered)="addMask(layer, 'Generator')">Generator</button>
         }
       </xui-menu>
@@ -1081,7 +1033,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
               Add Paint Mask
             </button>
             <button type="button" xuiMenuItem data-testid="layer-menu-mask-colour" (triggered)="addColourMask(layer)">
-              Add Colour Selection Mask
+              Add Color Selection Mask
             </button>
             <button
               type="button"
@@ -1481,6 +1433,14 @@ export class LayerStack {
     return this.store.layers().find(row => row.layer.id === id)?.layer ?? null;
   });
   protected readonly commands = inject(Commands);
+
+  /** The maps a mask waits for, as the app calls them, from the values the Worker lists them by (#198). */
+  protected mapNames(maps: string): string {
+    return maps
+      .split(', ')
+      .map(map => termName(map))
+      .join(', ');
+  }
   protected readonly undoLabel = computed(() => {
     const label = this.store.state()?.history.undoLabel;
     return label ? `Undo ${label}` : 'Undo';

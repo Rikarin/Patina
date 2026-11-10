@@ -336,13 +336,74 @@ function targetOf(row: LibraryRow): LibraryTarget {
           </div>
         }
 
-        <footer class="chrome-bar flex h-8 shrink-0 items-center gap-2 px-2">
-          <span class="readout min-w-0 flex-1 truncate" data-testid="library-count">{{ countText() }}</span>
+        <!-- Narrow, the count shrinks to its number and says the rest on hover, so the buttons keep their room (#234). -->
+        <footer class="chrome-bar @container flex h-8 shrink-0 items-center gap-1 px-2" data-testid="library-footer">
+          <span class="readout min-w-0 flex-1 truncate" data-testid="library-count" [title]="countText()"
+            >{{ countNumber() }}<span class="hidden @min-[12rem]:inline">{{ countNoun() }}</span></span
+          >
           @if (state.info.indexing) {
-            <span class="text-foreground-muted flex items-center gap-1 text-xs" data-testid="library-indexing">
+            <span
+              class="text-foreground-muted flex shrink-0 items-center gap-1 text-xs"
+              data-testid="library-indexing"
+              title="Indexing"
+            >
               <xui-spinner size="xs" aria-hidden="true" />
-              Indexing
+              <span class="hidden @min-[16rem]:inline">Indexing</span>
             </span>
+          }
+          @if (viewName() === 'projects') {
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              class="shrink-0 px-1.5"
+              aria-label="New Folder"
+              data-testid="library-new-folder"
+              [title]="commands.tooltip('newFolder')"
+              (click)="commands.run('newFolder')"
+            >
+              <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+                <path
+                  d="M1.5 3.5h4.25L7.25 5h7.25v7.5h-13zM8 7v4M6 9h4"
+                  stroke="currentColor"
+                  stroke-width="1.2"
+                  stroke-linejoin="round"
+                  fill="none"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              class="shrink-0 px-1.5"
+              aria-label="New Project…"
+              data-testid="library-new-project"
+              [title]="commands.tooltip('newProject')"
+              (click)="commands.run('newProject')"
+            >
+              <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+                <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" stroke-width="1.5" fill="none" />
+              </svg>
+            </button>
+          } @else {
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              class="shrink-0 px-1.5"
+              aria-label="New Graph…"
+              title="New Graph…"
+              data-testid="library-new-graph"
+              (click)="creatingGraph.set(true)"
+            >
+              <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+                <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" stroke-width="1.5" fill="none" />
+              </svg>
+            </button>
           }
           <button
             type="button"
@@ -364,32 +425,6 @@ function targetOf(row: LibraryRow): LibraryTarget {
               />
             </svg>
           </button>
-          @if (viewName() === 'assets') {
-            <button type="button" xuiButton size="sm" data-testid="library-new-graph" (click)="creatingGraph.set(true)">
-              New Graph…
-            </button>
-          }
-          @if (viewName() === 'projects') {
-            <button
-              type="button"
-              xuiButton
-              size="sm"
-              variant="ghost"
-              data-testid="library-new-folder"
-              (click)="newFolder()"
-            >
-              Folder
-            </button>
-            <button
-              type="button"
-              xuiButton
-              size="sm"
-              data-testid="library-new-project"
-              (click)="newProjectIn(treeStore.target())"
-            >
-              Project…
-            </button>
-          }
         </footer>
         <ptn-new-project [(open)]="creating" [folder]="creatingIn()" [startKind]="creatingKind()" />
         <ptn-new-graph [(open)]="creatingGraph" />
@@ -504,14 +539,21 @@ export class LibraryPane {
       .map(option => option.tag)
   );
 
-  protected readonly countText = computed(() => {
+  private readonly total = computed(() => {
     const state = this.store.state();
-    const total = this.showsTree() && state.kind === 'ready' ? state.info.projectCount : this.view().list.total();
-    if (total === null) {
-      return '…';
-    }
+    return this.showsTree() && state.kind === 'ready' ? state.info.projectCount : this.view().list.total();
+  });
 
-    return counted(total, this.viewName() === 'projects' ? 'project' : 'material');
+  protected readonly countText = computed(() => {
+    const total = this.total();
+    return total === null ? '…' : counted(total, this.viewName() === 'projects' ? 'project' : 'material');
+  });
+
+  /** The count's number, which stays when the pane is too narrow for the rest of {@link countText}. */
+  protected readonly countNumber = computed(() => this.total()?.toLocaleString('en') ?? '…');
+  protected readonly countNoun = computed(() => {
+    const total = this.total();
+    return total === null ? '' : this.countText().slice(total.toLocaleString('en').length);
   });
 
   /** What the tree says instead of rows. */

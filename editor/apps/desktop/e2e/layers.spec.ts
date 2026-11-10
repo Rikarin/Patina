@@ -63,7 +63,7 @@ test('layers go into folders and back, a folder closes, and a drag undoes as one
   await folder.getByTestId('layer-toggle').click();
   await expect(paint).toHaveAttribute('aria-level', '2');
 
-  await window.getByTestId('paint-undo').click();
+  await window.getByTestId('app-undo').click();
   await expect(paint).toHaveAttribute('aria-level', '1');
 });
 
@@ -283,7 +283,7 @@ test('a mask runs effects, and they stay in order', async () => {
   await window.getByTestId('paint-mask-effect-add').selectOption({ label: 'Blur' });
   await expect(window.getByTestId('paint-mask-effect-1')).toContainText('Blur');
 
-  await window.getByRole('button', { name: 'Remove Invert' }).click();
+  await window.getByRole('button', { name: 'Remove Invert', exact: true }).click();
   await expect(window.getByTestId('paint-mask-effect-0')).toContainText('Blur');
   await expect(window.getByTestId('paint-mask-effect-1')).toHaveCount(0);
 });
@@ -440,7 +440,7 @@ test('every slider shows its number, and a share is a percentage', async () => {
 
 test('Export says when it would read files with unsaved changes', async () => {
   await window.getByTestId('paint-add').click();
-  await expect(window.getByTestId('paint-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
   await window.getByTestId('open-export').click();
   await expect(window.getByTestId('export-unsaved')).toContainText('without its unsaved changes');
   await window.screenshot({ path: join(shots, 'export-unsaved.png') });
@@ -469,7 +469,7 @@ test('a folder flattens into one row, and unflattens to its layers', async () =>
   await expect(folder.getByTestId('layer-flattened')).toHaveCount(0);
   await expect(paint).toHaveAttribute('aria-level', '2');
 
-  await window.getByTestId('paint-undo').click();
+  await window.getByTestId('app-undo').click();
   await expect(folder.getByTestId('layer-flattened')).toBeVisible();
 });
 
@@ -517,6 +517,6 @@ test('a name typed for one layer is never written onto another when a row is pre
   await expect(base).not.toContainText('Paint');
   await expect(base).not.toContainText('Top');
 
-  await window.getByTestId('paint-undo').click();
+  await window.getByTestId('app-undo').click();
   await expect(paint).toContainText('Paint');
 });

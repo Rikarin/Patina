@@ -74,6 +74,32 @@ public sealed class StackCheckingTests {
         Assert.Equal(bytes, ExportMemory.BytesPerTexel(format, compression, lanes));
 
     /// <summary>
+    ///     A missing channel's sentence and values name the file as the export writes it, never its template, and the
+    ///     channel by its label, never its stored value (#198).
+    /// </summary>
+    [Fact]
+    public void A_missing_channel_names_the_file_as_the_export_writes_it_and_the_channel_as_the_app_calls_it() {
+        var checks = StackChecking.Judge(
+            Set("baseColor", "roughness", "metalness", "normal"),
+            Square,
+            Project(new()),
+            512,
+            Unreal
+        );
+
+        var missing = checks.Problems.Where(static p => p.Code == CheckCodes.ChannelMissing).ToArray();
+        Assert.NotEmpty(missing);
+        foreach (var problem in missing) {
+            Assert.DoesNotContain('{', problem.Detail);
+            Assert.DoesNotContain('{', problem.Values["file"]);
+            Assert.StartsWith("T_Crate_", problem.Values["file"], StringComparison.Ordinal);
+        }
+
+        Assert.Equal(["Opacity", "Ambient Occlusion"], missing.Select(static p => p.Values["channel"]));
+        Assert.Contains("reads Ambient Occlusion into T_Crate_ORM,", missing[1].Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     ///     Over budget and over the size limit are errors and come first; the maps the preset reads that the set does
     ///     not make, and a density half the library's, are warnings after them, each once and in the order of the
     ///     codes.

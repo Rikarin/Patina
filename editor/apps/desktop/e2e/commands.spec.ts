@@ -98,7 +98,7 @@ test('the History pane lists the undo steps and goes back to one', async () => {
   await expect(layers).toHaveCount(count + 1);
   await window.getByTestId('paint-add').click();
   await expect(layers).toHaveCount(count + 2);
-  await expect(window.getByTestId('paint-undo')).toHaveAttribute('title', /^Undo Add Paint/u);
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('title', /^Undo Add Paint/u);
 
   await command('showHistory');
   const steps = window.getByTestId('history-step');

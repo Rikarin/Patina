@@ -64,7 +64,8 @@ function harness() {
       paintState.set(null);
     }),
     act: vi.fn(() => Promise.resolve(true)),
-    notice: signal<string | null>(null)
+    notice: signal<string | null>(null),
+    sessionOpened: vi.fn((path: string) => Promise.resolve<string | null>(`session:${path}`))
   };
   const graph = {
     document: graphDocument,
@@ -79,7 +80,8 @@ function harness() {
       graphDocument.set(null);
     }),
     save: vi.fn(() => Promise.resolve(true)),
-    restarted: vi.fn()
+    restarted: vi.fn(),
+    sessionOpened: vi.fn((path: string) => Promise.resolve<string | null>(`session:${path}`))
   };
   const removed: string[] = [];
   const client = {
@@ -188,6 +190,20 @@ describe('ProjectStore', () => {
       await vi.waitFor(() => expect(store.settingsOpen()).toBe(true));
       expect(paint.act).toHaveBeenCalledWith('save');
       expect(store.arriving()).toBeNull();
+    });
+
+    it('lets it arrive before closing it, so the session its open gets is the one closed (#232)', async () => {
+      const { store, paint, sessions, removed, opened, release } = await opening();
+      expect(paint.open).not.toHaveBeenCalled(); // its open has not even started
+
+      const closing = store.closeTab(paths.texturing);
+      release();
+      await Promise.all([opened, closing]);
+
+      expect(paint.open).toHaveBeenCalled();
+      expect(removed).toContain(`session:${paths.texturing}`);
+      expect(sessions.size).toBe(0);
+      expect(store.tabs()).toHaveLength(0);
     });
 
     it('turns them off with nothing open or on its way', () => {
@@ -383,6 +399,34 @@ describe('ProjectStore', () => {
       params: { path: { id: `session:${paths.graph}` }, query: { discard: true } }
     });
   });
+
+  for (const kind of ['graph', 'texturing'] as const) {
+    it(`ends the session of a ${kind} tab closed while its document was still opening (#232)`, async () => {
+      const test = harness();
+      const store = kind === 'graph' ? test.graph : test.paint;
+      let answer = (): void => undefined;
+      const answered = new Promise<void>(done => {
+        answer = done;
+      });
+      // Let go of before the Server answered, so the store shows nothing and the tab learns no session.
+      store.open.mockImplementationOnce((path: string) =>
+        answered.then(() => {
+          test.sessions.add(`session:${path}`);
+        })
+      );
+      store.sessionOpened.mockImplementation((path: string) => answered.then(() => `session:${path}`));
+
+      const opening = test.store.openDocument('a', paths[kind]);
+      await vi.waitFor(() => expect(store.open).toHaveBeenCalled());
+      const closing = test.store.closeTab(paths[kind]);
+      answer();
+      await Promise.all([opening, closing]);
+
+      expect(test.removed).toContain(`session:${paths[kind]}`);
+      expect(test.sessions.has(`session:${paths[kind]}`)).toBe(false);
+      expect(test.store.tabs()).toHaveLength(0);
+    });
+  }
 
   it('clears what went wrong before when a tab closes or a graph saves', async () => {
     const { store } = harness();

@@ -21,4 +21,7 @@ static class GraphSettingValues {
             TextureGraphSettings.TilingX or TextureGraphSettings.TilingY => value is "true" or "false",
             _ => throw new GraphEditRefusedException($"There is no graph setting '{key}'.")
         };
+
+    /// <summary>Why a value was refused, naming the setting as a person does, never by its key (#198).</summary>
+    public static string Refused(string key, string value) => $"'{value}' is not a value for {Terms.Label(key)}.";
 }
