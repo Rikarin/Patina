@@ -32,6 +32,8 @@ export interface ActivityJob {
   readonly state: JobState['state'];
   /** 0 to 1. */
   readonly progress: number;
+  /** What a running export is making now, the project, preset and file its last progress named; null for a bake. */
+  readonly current: string | null;
   readonly error: string | null;
   readonly created: Date;
   /** Whether it is waiting or running, so Stop would do something. */
@@ -71,6 +73,7 @@ export function activityJob(job: JobState): ActivityJob {
     title: jobTitle(job),
     state: job.state,
     progress: job.progress,
+    current: job.state === 'running' ? (job.report?.current ?? null) : null,
     error: job.error ?? null,
     created: new Date(job.created),
     going: job.state === 'queued' || job.state === 'running'
@@ -135,7 +138,8 @@ export class Activity {
       return null;
     }
 
-    const doing = first.state === 'queued' ? `${first.title}, waiting` : `${first.title} ${Math.round(first.progress * 100)}%`;
+    const at = `${first.title} ${Math.round(first.progress * 100)}%`;
+    const doing = first.state === 'queued' ? `${first.title}, waiting` : first.current ? `${at}, ${first.current}` : at;
     return going.length > 1 ? `${doing}, and ${going.length - 1} more` : doing;
   });
 

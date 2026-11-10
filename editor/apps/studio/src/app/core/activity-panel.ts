@@ -108,6 +108,11 @@ const ToneWords: Readonly<Record<NoticeTone, string>> = {
                   </button>
                 }
               </div>
+              @if (job.current; as current) {
+                <p class="text-foreground-muted truncate text-xs" data-testid="activity-current" [title]="current">
+                  {{ current }}
+                </p>
+              }
               @if (job.state === 'running') {
                 <div
                   class="bg-surface-sunken h-1 overflow-hidden rounded-sm"

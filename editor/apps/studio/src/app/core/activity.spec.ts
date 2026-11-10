@@ -70,6 +70,16 @@ describe('Activity', () => {
     expect(jobTitle(bake({ bake: unnamed }))).toBe('Bake of crate_low');
   });
 
+  it('says which file a running export is on, from its report, beside the bakes going on', () => {
+    const { activity, jobs } = harness();
+    const report = { current: 'Crate: Unreal: T_Crate_ORM.png' } as NonNullable<JobState['report']>;
+    jobs.set([bake(), bake({ id: 'j2', bake: null, build: {}, progress: 0.5, report })]);
+    TestBed.tick();
+
+    expect(activity.jobs().map(job => job.current)).toEqual([null, 'Crate: Unreal: T_Crate_ORM.png']);
+    expect(activity.readout()).toBe('Export of the library 50%, Crate: Unreal: T_Crate_ORM.png, and 1 more');
+  });
+
   it('tells of a job that ends, once, and not of one long over when first heard of', () => {
     const { activity, jobs } = harness();
     jobs.set([bake(), bake({ id: 'old', state: 'done', created: '2020-01-01T00:00:00Z' })]);
