@@ -211,6 +211,7 @@ from .project_rename_request import ProjectRenameRequest
 from .project_report import ProjectReport
 from .project_report_page import ProjectReportPage
 from .project_settings_request import ProjectSettingsRequest
+from .project_settings_request_reassign_type_1 import ProjectSettingsRequestReassignType1
 from .project_summary import ProjectSummary
 from .project_tags_request import ProjectTagsRequest
 from .project_viewport_request import ProjectViewportRequest
@@ -574,6 +575,7 @@ __all__ = (
     "ProjectReport",
     "ProjectReportPage",
     "ProjectSettingsRequest",
+    "ProjectSettingsRequestReassignType1",
     "ProjectSummary",
     "ProjectTagsRequest",
     "ProjectViewportRequest",

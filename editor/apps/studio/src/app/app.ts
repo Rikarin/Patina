@@ -52,6 +52,7 @@ import { TextureView } from './graph/texture-view';
 import { LibraryActions } from './library/library-actions';
 import { LibraryPane } from './library/library-pane';
 import { LibraryTreeStore } from './library/library-tree-store';
+import { MeshReloadDialog } from './library/mesh-reload-dialog';
 import { ProjectCommands } from './library/project-commands';
 import { ProjectSettingsDialog } from './library/project-settings-dialog';
 import { ProjectStore } from './library/project-store';
@@ -81,6 +82,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     Inspector,
     NodeLibrary,
     ProjectSettingsDialog,
+    MeshReloadDialog,
     TextureSets,
     LayerStack,
     LibraryPane,
@@ -483,29 +485,9 @@ import { ViewportPane } from './viewport/viewport-pane';
       </xui-dialog-footer>
     </xui-dialog>
 
-    <xui-dialog
-      size="sm"
-      title="Reload Mesh"
-      [open]="project.reloading() !== null"
-      (openChange)="$event || project.resolveReloading(false)"
-    >
-      <xui-dialog-body data-testid="mesh-reload">
-        The mesh file changed. Open documents close and lose their undo history. Bakes made on the old mesh go out of
-        date.
-      </xui-dialog-body>
-      <xui-dialog-footer>
-        <button type="button" xuiButton variant="ghost" (click)="project.resolveReloading(false)">Cancel</button>
-        <button
-          type="button"
-          xuiButton
-          color="primary"
-          data-testid="mesh-reload-confirm"
-          (click)="project.resolveReloading(true)"
-        >
-          Reload
-        </button>
-      </xui-dialog-footer>
-    </xui-dialog>
+    @defer (when project.reloading() !== null) {
+      <ptn-mesh-reload-dialog />
+    }
 
     <ptn-file-conflict
       [name]="project.active()?.name ?? ''"

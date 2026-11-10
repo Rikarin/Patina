@@ -4811,6 +4811,15 @@ export interface components {
        */
       preservePaint?: null | boolean;
       unwrap?: null | components['schemas']['UnwrapOptions'];
+      /**
+       * @description For a new mesh whose materials are not the old one's (#89): which of the new materials each texture set on an
+       *     old material that the new mesh lacks becomes, by name. The set keeps its layers, its paint (moved across with
+       *     Preserve Paint) and its bake folder's name changes with it. A set left out, or sent to a material another set
+       *     holds, stays as it is, and a new material no set takes gets a set of its own.
+       */
+      reassign?: null | {
+        [key: string]: string;
+      };
     };
     /** @description One project as the browser shows it. The project itself loads on open. */
     ProjectSummary: {

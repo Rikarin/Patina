@@ -1,6 +1,7 @@
 using Patina.Bench;
 using Patina.Contracts;
 using Patina.Library;
+using Patina.Server.Stacks;
 using System.Net.Http.Json;
 using Vixen.Core.Imaging;
 
@@ -203,6 +204,69 @@ public sealed partial class StackProcessTests {
         }
 
         return last;
+    }
+
+    /// <summary>
+    ///     A mesh reloaded with a material renamed (#89): told which new material the vanished one is, its texture set
+    ///     moves onto it with its layers and its bake, and no set is made for the new name. Left untold, the old set
+    ///     stays on a material the mesh lacks and a new set is made beside it, as before.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_reloaded_mesh_s_renamed_material_keeps_its_texture_set_when_reassigned(bool reassign) {
+        using var deadline = Deadline(240);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var mesh = Path.Combine(folder.FullName, "two.obj");
+        BakeFixture.WriteTwoMaterials(mesh);
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(mesh, deadline.Token);
+        using (var made = await http.PatchAsJsonAsync("/api/v1/library/project/settings", new { project, autoUnwrap = false }, deadline.Token)) {
+            Assert.True(made.IsSuccessStatusCode, await made.Content.ReadAsStringAsync(deadline.Token));
+        }
+
+        var projectFolder = Path.Combine(Library, "projects", project);
+        var before = await http.GetFromJsonAsync<ProjectContents>($"/api/v1/library/project?path={project}", deadline.Token);
+        var strap = before!.Documents.Single(static d => d.Material == "Strap");
+        Directory.CreateDirectory(Path.Combine(projectFolder, "bakes", "maps", "Strap"));
+
+        var renamed = Path.Combine(folder.FullName, "renamed");
+        Directory.CreateDirectory(renamed);
+        foreach (var file in Directory.EnumerateFiles(folder.FullName, "two.*")) {
+            var text = await File.ReadAllTextAsync(file, deadline.Token);
+            await File.WriteAllTextAsync(
+                Path.Combine(renamed, Path.GetFileName(file)),
+                text.Replace("Strap", "Belt", StringComparison.Ordinal),
+                deadline.Token
+            );
+        }
+
+        using var set = await http.PatchAsJsonAsync(
+            "/api/v1/library/project/settings",
+            new ProjectSettingsRequest(
+                project,
+                Path.Combine(renamed, "two.obj"),
+                null,
+                null,
+                Reassign: reassign ? new Dictionary<string, string> { ["Strap"] = "Belt" } : null
+            ),
+            deadline.Token
+        );
+        Assert.True(set.IsSuccessStatusCode, await set.Content.ReadAsStringAsync(deadline.Token));
+        var after = (await set.Content.ReadFromJsonAsync<ProjectContents>(deadline.Token))!;
+        var materials = after.Documents.Where(static d => d.Kind == DocumentKinds.Texturing)
+            .Select(static d => d.Material ?? string.Empty)
+            .Order()
+            .ToArray();
+
+        if (reassign) {
+            Assert.Equal(["Belt", "Body"], materials);
+            Assert.Equal("Belt", after.Documents.Single(d => d.Id == strap.Id).Material);
+            Assert.Equal("Belt", StackDocuments.Parse(await File.ReadAllTextAsync(Path.Combine(Library, strap.Path), deadline.Token)).Sets[0].Name);
+            Assert.True(Directory.Exists(Path.Combine(projectFolder, "bakes", "maps", "Belt")));
+        } else {
+            Assert.Equal(["Belt", "Body", "Strap"], materials);
+        }
     }
 
     async Task<string?> ProjectBakeStaleAsync(string project, CancellationToken token) {

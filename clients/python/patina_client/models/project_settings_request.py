@@ -12,6 +12,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.project_settings_request_reassign_type_1 import ProjectSettingsRequestReassignType1
   from ..models.unwrap_options import UnwrapOptions
 
 
@@ -38,6 +39,11 @@ class ProjectSettingsRequest:
                 surface. Open documents have to be closed
                 first, as it rewrites their paint files.
             unwrap (None | Unset | UnwrapOptions):
+            reassign (None | ProjectSettingsRequestReassignType1 | Unset): For a new mesh whose materials are not the old
+                one's (#89): which of the new materials each texture set on an
+                old material that the new mesh lacks becomes, by name. The set keeps its layers, its paint (moved across with
+                Preserve Paint) and its bake folder's name changes with it. A set left out, or sent to a material another set
+                holds, stays as it is, and a new material no set takes gets a set of its own.
      """
 
     project: str
@@ -46,6 +52,7 @@ class ProjectSettingsRequest:
     auto_unwrap: bool | None | Unset = UNSET
     preserve_paint: bool | None | Unset = UNSET
     unwrap: None | Unset | UnwrapOptions = UNSET
+    reassign: None | ProjectSettingsRequestReassignType1 | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -53,6 +60,7 @@ class ProjectSettingsRequest:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.project_settings_request_reassign_type_1 import ProjectSettingsRequestReassignType1 # noqa: PLC0415
         from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
         project = self.project
 
@@ -88,6 +96,14 @@ class ProjectSettingsRequest:
         else:
             unwrap = self.unwrap
 
+        reassign: dict[str, Any] | None | Unset
+        if isinstance(self.reassign, Unset):
+            reassign = UNSET
+        elif isinstance(self.reassign, ProjectSettingsRequestReassignType1):
+            reassign = self.reassign.to_dict()
+        else:
+            reassign = self.reassign
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -104,6 +120,8 @@ class ProjectSettingsRequest:
             field_dict["preservePaint"] = preserve_paint
         if unwrap is not UNSET:
             field_dict["unwrap"] = unwrap
+        if reassign is not UNSET:
+            field_dict["reassign"] = reassign
 
         return field_dict
 
@@ -111,6 +129,7 @@ class ProjectSettingsRequest:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.project_settings_request_reassign_type_1 import ProjectSettingsRequestReassignType1 # noqa: PLC0415
         from ..models.unwrap_options import UnwrapOptions # noqa: PLC0415
         d = dict(src_dict)
         project = d.pop("project")
@@ -175,6 +194,26 @@ class ProjectSettingsRequest:
         unwrap = _parse_unwrap(d.pop("unwrap", UNSET))
 
 
+        def _parse_reassign(data: object) -> None | ProjectSettingsRequestReassignType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                reassign_type_1 = ProjectSettingsRequestReassignType1.from_dict(data)
+
+
+
+                return reassign_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | ProjectSettingsRequestReassignType1 | Unset, data)
+
+        reassign = _parse_reassign(d.pop("reassign", UNSET))
+
+
         project_settings_request = cls(
             project=project,
             mesh=mesh,
@@ -182,6 +221,7 @@ class ProjectSettingsRequest:
             auto_unwrap=auto_unwrap,
             preserve_paint=preserve_paint,
             unwrap=unwrap,
+            reassign=reassign,
         )
 
 

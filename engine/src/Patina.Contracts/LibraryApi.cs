@@ -211,13 +211,20 @@ public sealed record ProjectFileRequest(string Project, string File);
 ///     How Auto Unwrap lays a mesh out. A mesh it already wrote is unwrapped again with these, from the file it came
 ///     from, and its paint moves across as a new mesh's would.
 /// </param>
+/// <param name="Reassign">
+///     For a new mesh whose materials are not the old one's (#89): which of the new materials each texture set on an
+///     old material that the new mesh lacks becomes, by name. The set keeps its layers, its paint (moved across with
+///     Preserve Paint) and its bake folder's name changes with it. A set left out, or sent to a material another set
+///     holds, stays as it is, and a new material no set takes gets a set of its own.
+/// </param>
 public sealed record ProjectSettingsRequest(
     string Project,
     string? Mesh,
     string? High,
     bool? AutoUnwrap,
     bool? PreservePaint = null,
-    UnwrapOptions? Unwrap = null
+    UnwrapOptions? Unwrap = null,
+    IReadOnlyDictionary<string, string>? Reassign = null
 );
 
 /// <summary>One preset file as a project's export last had it.</summary>

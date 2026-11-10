@@ -13756,6 +13756,16 @@
                 "$ref": "#/components/schemas/UnwrapOptions"
               }
             ]
+          },
+          "reassign": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "For a new mesh whose materials are not the old one\u0027s (#89): which of the new materials each texture set on an\nold material that the new mesh lacks becomes, by name. The set keeps its layers, its paint (moved across with\nPreserve Paint) and its bake folder\u0027s name changes with it. A set left out, or sent to a material another set\nholds, stays as it is, and a new material no set takes gets a set of its own."
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/settings\u0060. Null leaves a setting as it is."
