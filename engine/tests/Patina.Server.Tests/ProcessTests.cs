@@ -131,6 +131,39 @@ public sealed class ProcessTests : IDisposable {
         Assert.False(File.Exists(socketPath));
     }
 
+    /// <summary>
+    ///     A client following events or frames does not keep a stopping Server (#236). A graceful stop waited the host's
+    ///     30 s for those endless requests, so the desktop app killed the Server at 3 s on every quit, and its discovery
+    ///     entry stayed behind. ⚠ The 15 s is a hang check, half the host's timeout, and not a bound on a stop.
+    /// </summary>
+    [Fact]
+    public async Task A_client_following_events_and_frames_does_not_keep_a_stopping_server() {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        deadline.CancelAfter(TimeSpan.FromSeconds(60));
+        var server = StartServer();
+        var instance = await DiscoverAsync(deadline.Token);
+
+        using var events = new System.Net.WebSockets.ClientWebSocket();
+        await events.ConnectAsync(
+            new($"ws://127.0.0.1:{instance.Port}/ws/jobs?access_token={instance.Token}"),
+            deadline.Token
+        );
+        using var frames = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"http://127.0.0.1:{instance.Port}/api/v1/viewport/frames"
+        );
+        frames.Headers.Authorization = new("Bearer", instance.Token);
+        using var stream = await Http.SendAsync(frames, HttpCompletionOption.ResponseHeadersRead, deadline.Token);
+        Assert.Equal(HttpStatusCode.OK, stream.StatusCode);
+
+        server.StandardInput.Close();
+        using var stopped = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token);
+        stopped.CancelAfter(TimeSpan.FromSeconds(15));
+        await server.WaitForExitAsync(stopped.Token);
+        Assert.Equal(0, server.ExitCode);
+        Assert.Null(await new InstanceRegistry(DiscoveryFile).FindAsync(Library, deadline.Token));
+    }
+
     [Fact]
     public async Task A_second_server_on_a_library_refuses_to_run() {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Token);
