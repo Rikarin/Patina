@@ -473,7 +473,9 @@ public static class MeshMapBakeRun {
             name,
             request.Options.Format,
             new(files, maps.Covered, maps.Missed, warnings, false) { Log = log },
-            LibraryFiles.Digest(request.Low)
+            LibraryFiles.Digest(request.Low),
+            request.UvSet ?? 0,
+            request.Options.Space
         );
         File.WriteAllBytes(
             Path.Combine(folder, BakeCache.ManifestFile),

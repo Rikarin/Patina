@@ -90,7 +90,19 @@ public sealed record JobPage(IReadOnlyList<JobState> Jobs, long Sequence);
 /// <param name="Format">The format they are in.</param>
 /// <param name="Result">The maps, with paths relative to this file's folder.</param>
 /// <param name="Mesh">The digest of the mesh baked onto, which says when these maps went out of date.</param>
-public sealed record BakeManifest(string Name, string Format, BakeResult Result, string? Mesh = null);
+/// <param name="UvSet">
+///     The mesh's UV set the maps are laid out in, by the file's number: a texture set in another reads them in the wrong
+///     place (#238).
+/// </param>
+/// <param name="Space">Whether the normal is in <c>tangent</c> or <c>object</c> space; only a tangent one shades a set.</param>
+public sealed record BakeManifest(
+    string Name,
+    string Format,
+    BakeResult Result,
+    string? Mesh = null,
+    int UvSet = 0,
+    string Space = "tangent"
+);
 
 /// <summary>Says which folder of baked maps a graph's Mesh Map nodes read.</summary>
 /// <param name="Folder">A folder holding a bake's files, or null to read none.</param>

@@ -55,6 +55,36 @@ public static class StackInputs {
         }
     }
 
+    /// <summary>
+    ///     The UV set a stack's texture set is laid out in: the set named <paramref name="set" />, or its first. Zero, the
+    ///     first, when the file does not say or cannot be read.
+    /// </summary>
+    public static int UvSetOf(string text, string? set) {
+        YamlStream yaml = [];
+        try {
+            using StringReader reader = new(text);
+            yaml.Load(reader);
+        } catch (YamlException) {
+            return 0;
+        }
+
+        if (yaml.Documents.FirstOrDefault()?.RootNode is not YamlMappingNode root
+            || !root.Children.TryGetValue(new YamlScalarNode("sets"), out var sets)
+            || sets is not YamlSequenceNode list) {
+            return 0;
+        }
+
+        var chosen = list.Children.OfType<YamlMappingNode>()
+            .FirstOrDefault(entry => set is null || Scalar(entry, "name") == set)
+            ?? list.Children.OfType<YamlMappingNode>().FirstOrDefault();
+        return chosen is not null && int.TryParse(Scalar(chosen, "uvSet"), out var uvSet) ? uvSet : 0;
+    }
+
+    static string? Scalar(YamlMappingNode mapping, string key) =>
+        mapping.Children.TryGetValue(new YamlScalarNode(key), out var value) && value is YamlScalarNode scalar
+            ? scalar.Value
+            : null;
+
     static void Walk(YamlNode node, Action<string> found) {
         switch (node) {
             case YamlMappingNode mapping:

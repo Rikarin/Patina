@@ -410,6 +410,13 @@ public sealed record StackEvaluation(
 /// </param>
 /// <param name="Anchors">The anchor points its set publishes, by name, and who reads each.</param>
 /// <param name="UvSet">The mesh's coordinate set the set is painted, baked and drawn in, by the file's number.</param>
+/// <param name="BakedNormal">How the bake's normal reaches the set's: <c>Combine</c>, <c>Replace</c> or <c>Off</c>.</param>
+/// <param name="BakedOcclusion">How the bake's occlusion reaches the set's: <c>Combine</c>, <c>Replace</c> or <c>Off</c>.</param>
+/// <param name="BakeStale">
+///     Why the bake the set reads no longer fits it, or null when it does or there is none: <c>mesh</c>, made on a mesh
+///     the set no longer stands on, or <c>uvSet</c>, laid out in another of the mesh's UV sets (#238). Either way its
+///     maps need baking again.
+/// </param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -430,7 +437,10 @@ public sealed record StackState(
     uint Seed = 0,
     string HeightNormal = "Smooth",
     IReadOnlyList<StackAnchor>? Anchors = null,
-    int UvSet = 0
+    int UvSet = 0,
+    string BakedNormal = "Combine",
+    string BakedOcclusion = "Combine",
+    string? BakeStale = null
 );
 #pragma warning restore SK7005
 

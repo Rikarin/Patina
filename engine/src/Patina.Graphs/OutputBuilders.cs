@@ -140,7 +140,10 @@ public sealed class OutputBuilders(
                     (uploads, plan, owed) => pictures.Fill(uploads, plan, [..owed], roots, meshMaps)
                         .Refusals.Select(static refusal => refusal.Message)
                         .ToArray()
-                );
+                ) {
+                    // What a set exports is what it shows: its bake's normal and occlusion beneath its layers (#86).
+                    Baked = BakedMapPicture.Shading(meshMaps)
+                };
                 var problems = run.Prepare(document, set, shelf.Registry, shelf.Source);
                 if (problems.Count > 0 || run.Plan is null) {
                     throw new InvalidDataException(string.Join(' ', problems));

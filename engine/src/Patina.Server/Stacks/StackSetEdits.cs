@@ -50,7 +50,10 @@ static class StackSetEdits {
         }
 
         var changed = set with {
-            UvSet = uvSet, HeightNormal = settings.HeightNormal is { } method ? Method(method) : set.HeightNormal
+            UvSet = uvSet,
+            HeightNormal = settings.HeightNormal is { } method ? Method(method) : set.HeightNormal,
+            BakedNormal = settings.BakedNormal is { } normal ? Mix(normal) : set.BakedNormal,
+            BakedOcclusion = settings.BakedOcclusion is { } occlusion ? Mix(occlusion) : set.BakedOcclusion
         };
         return document with {
             BaseWidth = width,
@@ -58,6 +61,14 @@ static class StackSetEdits {
             Sets = [..document.Sets.Select(held => held == set ? changed : held)]
         };
     }
+
+    static LayerBakeMix Mix(string mix) =>
+        Enum.TryParse<LayerBakeMix>(mix, false, out var chosen) && Enum.IsDefined(chosen)
+            ? chosen
+            : throw new StackEditRefusedException(
+                $"'{mix}' is no way for a bake to reach a texture set. "
+                + $"Use {string.Join(", ", Enum.GetNames<LayerBakeMix>())}."
+            );
 
     static LayerHeightNormal Method(string method) =>
         Enum.TryParse<LayerHeightNormal>(method, false, out var chosen) && Enum.IsDefined(chosen)

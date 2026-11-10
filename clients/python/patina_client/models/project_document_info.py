@@ -35,6 +35,9 @@ class ProjectDocumentInfo:
             role (None | str | Unset): What a graph is for: `material`, `mask`, `brush` or `filter`.
             material (None | str | Unset): The material of the mesh it paints, as one of the project's texture sets.
             bake (None | str | Unset): The folder of the bake it reads, below the library, or null.
+            bake_stale (None | str | Unset): Why that bake no longer fits it, so its maps need baking again, or null:
+                `mesh`, made on a mesh it no
+                longer stands on, or `uvSet`, laid out in another UV set than the one it chose (#238).
      """
 
     kind: str
@@ -46,6 +49,7 @@ class ProjectDocumentInfo:
     role: None | str | Unset = UNSET
     material: None | str | Unset = UNSET
     bake: None | str | Unset = UNSET
+    bake_stale: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -97,6 +101,12 @@ class ProjectDocumentInfo:
         else:
             bake = self.bake
 
+        bake_stale: None | str | Unset
+        if isinstance(self.bake_stale, Unset):
+            bake_stale = UNSET
+        else:
+            bake_stale = self.bake_stale
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -116,6 +126,8 @@ class ProjectDocumentInfo:
             field_dict["material"] = material
         if bake is not UNSET:
             field_dict["bake"] = bake
+        if bake_stale is not UNSET:
+            field_dict["bakeStale"] = bake_stale
 
         return field_dict
 
@@ -203,6 +215,16 @@ class ProjectDocumentInfo:
         bake = _parse_bake(d.pop("bake", UNSET))
 
 
+        def _parse_bake_stale(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        bake_stale = _parse_bake_stale(d.pop("bakeStale", UNSET))
+
+
         project_document_info = cls(
             kind=kind,
             name=name,
@@ -213,6 +235,7 @@ class ProjectDocumentInfo:
             role=role,
             material=material,
             bake=bake,
+            bake_stale=bake_stale,
         )
 
 

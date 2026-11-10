@@ -29,6 +29,32 @@ public static class BakedMapPicture {
         return null;
     }
 
+    /// <summary>
+    ///     The maps of a bake that shade a texture set beneath its layers (#86): its normal when it is in tangent space,
+    ///     which is the only one a set's normal can be combined with, and its ambient occlusion. Empty for no bake.
+    /// </summary>
+    /// <param name="folder">The folder a bake was delivered to, or null.</param>
+    public static IReadOnlySet<string> Shading(string? folder) {
+        HashSet<string> found = new(StringComparer.Ordinal);
+        if (folder is null || !Directory.Exists(folder)) {
+            return found;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(folder, $"*.{BakeCache.ManifestFile}")) {
+            if (BakeCache.ReadManifestFile(file) is not { } manifest) {
+                continue;
+            }
+
+            foreach (var map in manifest.Result.Maps) {
+                if (map.Map == "ao" || (map.Map == "normal" && manifest.Space == "tangent")) {
+                    found.Add(map.Map);
+                }
+            }
+        }
+
+        return found;
+    }
+
     /// <summary>Whether a float file holds this map's measurement from below zero, which a picture centres.</summary>
     public static bool IsSigned(string map) => map is "normal" or "height" or "bent" or "curvature" or "world";
 

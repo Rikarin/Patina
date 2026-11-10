@@ -112,6 +112,12 @@ public sealed record ProjectDocumentInfo(
     /// <summary>The folder of the bake it reads, below the library, or null.</summary>
     public string? Bake { get; init; }
 
+    /// <summary>
+    ///     Why that bake no longer fits it, so its maps need baking again, or null: <c>mesh</c>, made on a mesh it no
+    ///     longer stands on, or <c>uvSet</c>, laid out in another UV set than the one it chose (#238).
+    /// </summary>
+    public string? BakeStale { get; init; }
+
     /// <summary>What it can be searched by, sorted.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
 }

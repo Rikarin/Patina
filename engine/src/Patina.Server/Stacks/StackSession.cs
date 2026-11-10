@@ -254,7 +254,10 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                     editor.Document.Seed,
                     set.HeightNormal.ToString(),
                     StackDocuments.Anchors(set),
-                    set.UvSet
+                    set.UvSet,
+                    set.BakedNormal.ToString(),
+                    set.BakedOcclusion.ToString(),
+                    BakeFit.OfModel(MeshMaps, ModelFile, set.UvSet)
                 );
             }
         }

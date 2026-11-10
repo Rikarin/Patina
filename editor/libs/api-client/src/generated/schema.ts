@@ -4503,6 +4503,11 @@ export interface components {
       material?: null | string;
       /** @description The folder of the bake it reads, below the library, or null. */
       bake?: null | string;
+      /**
+       * @description Why that bake no longer fits it, so its maps need baking again, or null: `mesh`, made on a mesh it no
+       *     longer stands on, or `uvSet`, laid out in another UV set than the one it chose (#238).
+       */
+      bakeStale?: null | string;
       /** @description What it can be searched by, sorted. */
       tags: string[];
     };
@@ -5507,6 +5512,16 @@ export interface components {
       uvSet?: null | number;
       /** @description How height becomes the normal: `Sharp` or `Smooth`. */
       heightNormal?: null | string;
+      /**
+       * @description How the bake's normal reaches the set's (#86): `Combine`, beneath everything painted; `Replace`, where
+       *     the normal channel starts, so paint covers it; or `Off`.
+       */
+      bakedNormal?: null | string;
+      /**
+       * @description How the bake's ambient occlusion reaches the set's: `Combine`, multiplied with what is painted;
+       *     `Replace`; or `Off`.
+       */
+      bakedOcclusion?: null | string;
     };
     /**
      * @description Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
@@ -6367,6 +6382,22 @@ export interface components {
        * @default 0
        */
       uvSet: number;
+      /**
+       * @description How the bake's normal reaches the set's: `Combine`, `Replace` or `Off`.
+       * @default Combine
+       */
+      bakedNormal: string;
+      /**
+       * @description How the bake's occlusion reaches the set's: `Combine`, `Replace` or `Off`.
+       * @default Combine
+       */
+      bakedOcclusion: string;
+      /**
+       * @description Why the bake the set reads no longer fits it, or null when it does or there is none: `mesh`, made on a mesh
+       *     the set no longer stands on, or `uvSet`, laid out in another of the mesh's UV sets (#238). Either way its
+       *     maps need baking again.
+       */
+      bakeStale?: null | string;
     };
     /** @description Where a stroke's colour comes from, when it is not one colour. */
     StackStrokeSource: {

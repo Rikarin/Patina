@@ -68,7 +68,9 @@ public sealed class BakeCache(string root) {
                 manifest with {
                     Name = stem,
                     Result = manifest.Result with { Maps = relative },
-                    Mesh = File.Exists(request.Low) ? LibraryFiles.Digest(request.Low) : manifest.Mesh
+                    Mesh = File.Exists(request.Low) ? LibraryFiles.Digest(request.Low) : manifest.Mesh,
+                    UvSet = request.UvSet ?? 0,
+                    Space = request.Options.Space
                 },
                 ContractsJsonContext.Default.BakeManifest
             )

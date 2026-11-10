@@ -94,6 +94,10 @@ public static class StackChecking {
         var budget = (long)(settings.MemoryBudget * 1024 * 1024);
         List<CheckProblem> problems = [..Limits(settings, name, (width, height), (bytes, budget), preset)];
         problems.AddRange(Missing(preset, project, state, name));
+        if (state.BakeStale is { } stale) {
+            problems.Add(Stale(stale, state.UvSet, name));
+        }
+
         problems.AddRange(Density(density, target, settings.DensityTolerance, name));
         if (measured.Layout is { } measures) {
             problems.AddRange(Layout(measures, name));
@@ -115,6 +119,18 @@ public static class StackChecking {
             problems
         );
     }
+
+    /// <summary>A bake that no longer fits the set, which is an error: what reads it lands in the wrong place.</summary>
+    static CheckProblem Stale(string reason, int uvSet, string name) =>
+        Problem(
+            CheckCodes.BakeStale,
+            Error,
+            reason == BakeFit.UvSet
+                ? $"{name} is laid out in UV set {uvSet + 1}, and its mesh maps were baked in another. Bake it again."
+                : $"{name}'s mesh changed after its mesh maps were baked. Bake it again.",
+            new() { ["reason"] = reason, ["uvSet"] = Number(uvSet + 1) },
+            new(Setting: "bake")
+        );
 
     /// <summary>The project's limits a set breaks: its memory budget and its size limit, which are errors.</summary>
     static IEnumerable<CheckProblem> Limits(

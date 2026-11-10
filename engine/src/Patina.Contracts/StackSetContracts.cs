@@ -22,10 +22,20 @@ public sealed record StackSetHeightNormal(string Method) : StackCommand;
 /// <param name="Height">The height, which may differ from the width.</param>
 /// <param name="UvSet">The mesh's UV set it is painted, baked and drawn in, by its number; 0 is the first.</param>
 /// <param name="HeightNormal">How height becomes the normal: <c>Sharp</c> or <c>Smooth</c>.</param>
+/// <param name="BakedNormal">
+///     How the bake's normal reaches the set's (#86): <c>Combine</c>, beneath everything painted; <c>Replace</c>, where
+///     the normal channel starts, so paint covers it; or <c>Off</c>.
+/// </param>
+/// <param name="BakedOcclusion">
+///     How the bake's ambient occlusion reaches the set's: <c>Combine</c>, multiplied with what is painted;
+///     <c>Replace</c>; or <c>Off</c>.
+/// </param>
 public sealed record StackSetSettings(
     int? Width = null,
     int? Height = null,
     int? UvSet = null,
-    string? HeightNormal = null
+    string? HeightNormal = null,
+    string? BakedNormal = null,
+    string? BakedOcclusion = null
 ) : StackCommand;
 #pragma warning restore SK7005

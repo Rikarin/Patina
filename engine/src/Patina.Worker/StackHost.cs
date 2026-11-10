@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export;
 using Patina.Graphs;
 using Patina.Ipc;
 using Patina.Library;
@@ -365,7 +366,10 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                 )
                 .Refusals.Select(static refusal => refusal.Message)
                 .ToArray();
-            Run = new(evaluator, canvases, load.Path, fill) { Draft = true };
+            // The bake's normal and occlusion shade the set beneath its layers (#86).
+            Run = new(evaluator, canvases, load.Path, fill) {
+                Draft = true, Baked = BakedMapPicture.Shading(load.MeshMaps)
+            };
             if (load.Checkpoint is { } checkpoint) {
                 Restore(checkpoint);
             }

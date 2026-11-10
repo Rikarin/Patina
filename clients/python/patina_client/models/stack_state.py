@@ -52,9 +52,16 @@ class StackState:
                 height channel, and then it writes a normal whether or not it declares one. Default: 'Smooth'.
             uv_set (int): The mesh's coordinate set the set is painted, baked and drawn in, by the file's number. Default:
                 0.
+            baked_normal (str): How the bake's normal reaches the set's: `Combine`, `Replace` or `Off`. Default: 'Combine'.
+            baked_occlusion (str): How the bake's occlusion reaches the set's: `Combine`, `Replace` or `Off`. Default:
+                'Combine'.
             evaluation (None | StackEvaluation | Unset):
             mesh_maps (None | str | Unset): The bake its generators read, or null.
             anchors (list[StackAnchor] | None | Unset): The anchor points its set publishes, by name, and who reads each.
+            bake_stale (None | str | Unset): Why the bake the set reads no longer fits it, or null when it does or there is
+                none: `mesh`, made on a mesh
+                the set no longer stands on, or `uvSet`, laid out in another of the mesh's UV sets (#238). Either way its
+                maps need baking again.
      """
 
     id: str
@@ -74,9 +81,12 @@ class StackState:
     seed: int = 0
     height_normal: str = 'Smooth'
     uv_set: int = 0
+    baked_normal: str = 'Combine'
+    baked_occlusion: str = 'Combine'
     evaluation: None | StackEvaluation | Unset = UNSET
     mesh_maps: None | str | Unset = UNSET
     anchors: list[StackAnchor] | None | Unset = UNSET
+    bake_stale: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -139,6 +149,10 @@ class StackState:
 
         uv_set = self.uv_set
 
+        baked_normal = self.baked_normal
+
+        baked_occlusion = self.baked_occlusion
+
         evaluation: dict[str, Any] | None | Unset
         if isinstance(self.evaluation, Unset):
             evaluation = UNSET
@@ -166,6 +180,12 @@ class StackState:
         else:
             anchors = self.anchors
 
+        bake_stale: None | str | Unset
+        if isinstance(self.bake_stale, Unset):
+            bake_stale = UNSET
+        else:
+            bake_stale = self.bake_stale
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -187,6 +207,8 @@ class StackState:
             "seed": seed,
             "heightNormal": height_normal,
             "uvSet": uv_set,
+            "bakedNormal": baked_normal,
+            "bakedOcclusion": baked_occlusion,
         })
         if evaluation is not UNSET:
             field_dict["evaluation"] = evaluation
@@ -194,6 +216,8 @@ class StackState:
             field_dict["meshMaps"] = mesh_maps
         if anchors is not UNSET:
             field_dict["anchors"] = anchors
+        if bake_stale is not UNSET:
+            field_dict["bakeStale"] = bake_stale
 
         return field_dict
 
@@ -269,6 +293,10 @@ class StackState:
 
         uv_set = d.pop("uvSet")
 
+        baked_normal = d.pop("bakedNormal")
+
+        baked_occlusion = d.pop("bakedOcclusion")
+
         def _parse_evaluation(data: object) -> None | StackEvaluation | Unset:
             if data is None:
                 return data
@@ -324,6 +352,16 @@ class StackState:
         anchors = _parse_anchors(d.pop("anchors", UNSET))
 
 
+        def _parse_bake_stale(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        bake_stale = _parse_bake_stale(d.pop("bakeStale", UNSET))
+
+
         stack_state = cls(
             id=id,
             path=path,
@@ -342,9 +380,12 @@ class StackState:
             seed=seed,
             height_normal=height_normal,
             uv_set=uv_set,
+            baked_normal=baked_normal,
+            baked_occlusion=baked_occlusion,
             evaluation=evaluation,
             mesh_maps=mesh_maps,
             anchors=anchors,
+            bake_stale=bake_stale,
         )
 
 
