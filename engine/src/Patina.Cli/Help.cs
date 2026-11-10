@@ -22,7 +22,12 @@ static class Help {
     /// <summary>Every command, with one line about each.</summary>
     public static string All =>
         "Usage: patina <command> [options]. Every command takes --help.\n\n"
-        + string.Join('\n', Commands.Select(static c => $"  {string.Join(' ', c.Words),-14} {c.Summary}"));
+        + string.Join(
+            '\n',
+            Commands.Select(static c => (Name: string.Join(' ', c.Words), c.Summary))
+                .OrderBy(static c => c.Name, StringComparer.Ordinal)
+                .Select(static c => $"  {c.Name,-14} {c.Summary}")
+        );
 
     /// <summary>Prints the usage of the command <paramref name="words" /> start with.</summary>
     /// <returns>0 when there is such a command, otherwise 2.</returns>
