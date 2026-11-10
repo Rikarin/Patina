@@ -99,7 +99,7 @@ public sealed partial class StackProcessTests {
 
         using var refused = await http.PostAsJsonAsync(
             $"/api/v1/stacks/{state.Id}/brush-preview",
-            new StackBrush(0f),
+            new(0f),
             ContractsJsonContext.Default.StackBrush,
             deadline.Token
         );
