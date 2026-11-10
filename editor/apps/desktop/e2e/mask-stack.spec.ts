@@ -187,6 +187,59 @@ test('a mask switches off and on from its own menu and Shift-click, and pastes i
   await window.screenshot({ path: join(shots, 'mask-switch-2-pasted.png') });
 });
 
+test('a mask effect blends over the mask it reads, and copies into another layer’s mask', async () => {
+  // Every step waits on an evaluation.
+  test.setTimeout(180_000);
+  const picture = window.getByTestId('paint-picture');
+  const paint = window.getByTestId('paint-layer-paint');
+
+  // A band hidden by a black mask, shown again by an Invert on the mask.
+  await paint.click();
+  const bare = await picture.getAttribute('src');
+  await drag([0.1, 0.5], [0.9, 0.5]);
+  const band = await changed(bare);
+  const withBand = await mean();
+  await paint.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-black').click();
+  const hidden = await changed(band);
+  const withoutBand = await mean();
+  await paint.click({ button: 'right' });
+  await window.getByTestId('layer-menu-effect-Invert').click();
+  let shown = await changed(hidden);
+  expect(await mean()).toBeCloseTo(withBand, 0);
+
+  // Multiplied over the black it read, the inverted mask is black again: the band is hidden, by one undo step.
+  await paint.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-open').click();
+  const effect = window.getByTestId('mask-stack-effect');
+  await expect(effect).toContainText('Invert');
+  await effect.getByTestId('mask-stack-effect-blend').click();
+  await window.getByRole('option', { name: 'Multiply' }).click();
+  shown = await changed(shown);
+  expect(await mean()).toBeCloseTo(withoutBand, 0);
+  await window.screenshot({ path: join(shots, 'mask-effect-1-multiplied.png') });
+
+  // Chosen and copied, it pastes into the base's mask, which had none and so gets a white one to run on.
+  await effect.click();
+  await expect(effect).toHaveAttribute('aria-selected', 'true');
+  await window.getByTestId('mask-stack-copy').click();
+  await window.getByTestId('mask-stack-back').click();
+  const base = window.getByTestId('paint-layer-base');
+  await base.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-open').click();
+  await expect(window.getByTestId('mask-stack-title')).toHaveText('Base · Mask');
+  await window.getByTestId('mask-stack-paste').click();
+  await expect(window.getByTestId('mask-stack-effect')).toContainText('Invert');
+  await expect(window.getByTestId('mask-stack-effect-blend')).toContainText('Multiply');
+  await changed(shown);
+  await window.screenshot({ path: join(shots, 'mask-effect-2-pasted.png') });
+
+  // A switch of the mask is named for what it did.
+  await window.getByTestId('mask-stack-back').click();
+  await paint.getByTestId('layer-mask').click({ modifiers: ['Shift'] });
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('aria-label', 'Undo Switch mask off');
+});
+
 test('the layer rows go compact, a line each, and back', async () => {
   const paint = window.getByTestId('paint-layer-paint');
   await expect(paint).toHaveCSS('height', '56px');
