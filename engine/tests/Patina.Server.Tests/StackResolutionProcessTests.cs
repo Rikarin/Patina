@@ -104,6 +104,7 @@ public sealed partial class StackProcessTests {
         var (instance, state) = await StartAsync("Wide.vxlayers", deadline.Token, out var worker);
         var line = new StackStroke("first", "paint", "baseColor", new(30f, 0.3f), Red, Line(100, 100, 10));
         await EditAsync(state.Id, deadline.Token, line);
+        await PixelsAsync(state.Id, false, deadline.Token); // skips where the Worker has no device, as a copy needs one
         var clip = await ClipAsync(state.Id, ["paint"], deadline.Token);
 
         // Pasted twice into a set half the size: each paste is 512 across, made so from the 1024 it was copied at.
