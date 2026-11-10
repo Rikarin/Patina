@@ -29,6 +29,7 @@ static class StackLabels {
             StackRemoveMaskLayer => "Remove mask layer",
             StackMoveMaskLayer => "Move mask layer",
             StackSetMaskLayer => "Change mask layer",
+            StackApplyMask => "Apply mask",
             _ => "Edit"
         };
 
@@ -37,6 +38,8 @@ static class StackLabels {
         set switch {
             { Inputs: not null, Filter: null, FilterNode: null, Graph: null } => "Change input",
             { Mask: not null } => "Change mask",
+            { Decal: not null, Path: null, Projection: null } => "Move decal",
+            { Path: not null, Decal: null, Projection: null } => "Edit path",
             _ => "Change layer"
         };
 }

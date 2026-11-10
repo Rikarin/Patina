@@ -461,6 +461,8 @@ public sealed class StackEditor : ILayerStackDocument {
                 Projection = Parsed(change.Projection, layer.Projection, "projection"),
                 PlanarAxis = Parsed(change.PlanarAxis, layer.PlanarAxis, "axis"),
                 Placement = change.Placement is { } placement ? Placed(placement) : layer.Placement,
+                Decal = StackLayerEdits.Decal(change, layer),
+                SurfacePath = StackLayerEdits.SurfacePath(change, layer),
                 Filter = filter,
                 FilterNode = filterNode,
                 Settings = Merged(sameFilter ? layer.Settings : [], Copied(change.Settings)),

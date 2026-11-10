@@ -470,7 +470,9 @@ public static class StackDocuments {
             Wire(layer.Anchor),
             Wire(layer.Inputs),
             layer.Flattened,
-            layer.Kind == LayerKind.Instance ? new(layer.Instance.Layer, layer.Instance.Set) : null
+            layer.Kind == LayerKind.Instance ? new(layer.Instance.Layer, layer.Instance.Set) : null,
+            StackSurfaces.Wire(layer.Decal),
+            StackSurfaces.Wire(layer.SurfacePath)
         );
 
     static Dictionary<string, IReadOnlyList<float>> Numbers(Dictionary<string, float[]> numbers) =>

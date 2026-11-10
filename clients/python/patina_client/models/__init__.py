@@ -234,6 +234,8 @@ from .stack_command_stack_add_layer_op import StackCommandStackAddLayerOp
 from .stack_command_stack_add_layer_values_type_1 import StackCommandStackAddLayerValuesType1
 from .stack_command_stack_add_mask_layer import StackCommandStackAddMaskLayer
 from .stack_command_stack_add_mask_layer_op import StackCommandStackAddMaskLayerOp
+from .stack_command_stack_apply_mask import StackCommandStackApplyMask
+from .stack_command_stack_apply_mask_op import StackCommandStackApplyMaskOp
 from .stack_command_stack_duplicate_layers import StackCommandStackDuplicateLayers
 from .stack_command_stack_duplicate_layers_op import StackCommandStackDuplicateLayersOp
 from .stack_command_stack_flatten_layer import StackCommandStackFlattenLayer
@@ -275,6 +277,7 @@ from .stack_command_stack_stroke_op import StackCommandStackStrokeOp
 from .stack_command_stack_unflatten_layer import StackCommandStackUnflattenLayer
 from .stack_command_stack_unflatten_layer_op import StackCommandStackUnflattenLayerOp
 from .stack_create_request import StackCreateRequest
+from .stack_decal import StackDecal
 from .stack_delta import StackDelta
 from .stack_edit_result import StackEditResult
 from .stack_evaluation import StackEvaluation
@@ -313,15 +316,19 @@ from .stack_mesh_mask_request import StackMeshMaskRequest
 from .stack_mesh_parts import StackMeshParts
 from .stack_open_request import StackOpenRequest
 from .stack_painted import StackPainted
+from .stack_path_point import StackPathPoint
 from .stack_picture import StackPicture
 from .stack_pixels import StackPixels
 from .stack_placement import StackPlacement
 from .stack_preview import StackPreview
 from .stack_problem import StackProblem
+from .stack_save_material_request import StackSaveMaterialRequest
+from .stack_saved_material import StackSavedMaterial
 from .stack_stamp import StackStamp
 from .stack_state import StackState
 from .stack_stroke_source import StackStrokeSource
 from .stack_summary import StackSummary
+from .stack_surface_path import StackSurfacePath
 from .stack_symmetry import StackSymmetry
 from .stack_term import StackTerm
 from .stack_thumbnail import StackThumbnail
@@ -589,6 +596,8 @@ __all__ = (
     "StackCommandStackAddLayerValuesType1",
     "StackCommandStackAddMaskLayer",
     "StackCommandStackAddMaskLayerOp",
+    "StackCommandStackApplyMask",
+    "StackCommandStackApplyMaskOp",
     "StackCommandStackDuplicateLayers",
     "StackCommandStackDuplicateLayersOp",
     "StackCommandStackFlattenLayer",
@@ -630,6 +639,7 @@ __all__ = (
     "StackCommandStackUnflattenLayer",
     "StackCommandStackUnflattenLayerOp",
     "StackCreateRequest",
+    "StackDecal",
     "StackDelta",
     "StackEditResult",
     "StackEvaluation",
@@ -668,15 +678,19 @@ __all__ = (
     "StackMeshParts",
     "StackOpenRequest",
     "StackPainted",
+    "StackPathPoint",
     "StackPicture",
     "StackPixels",
     "StackPlacement",
     "StackPreview",
     "StackProblem",
+    "StackSavedMaterial",
+    "StackSaveMaterialRequest",
     "StackStamp",
     "StackState",
     "StackStrokeSource",
     "StackSummary",
+    "StackSurfacePath",
     "StackSymmetry",
     "StackTerm",
     "StackThumbnail",

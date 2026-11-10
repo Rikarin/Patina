@@ -34,6 +34,15 @@ export class MaterialUse {
       if (material.role === 'brush') {
         const alpha = await this.brush(project.path, material);
         this.paint.brush.update(brush => ({ ...brush, alpha }));
+      } else if (material.kind === 'layered-material' && material.role === 'mask') {
+        // A smart mask joins the mask the layer has, narrowing it, rather than throwing it away (#135).
+        const layer = this.paint.layers().find(row => row.layer.id === drop?.layer)?.layer ?? this.paint.chosen();
+        if (!layer) {
+          this.failure.set('Choose a layer for this mask first.');
+          return;
+        }
+
+        await this.paint.edit({ op: 'applyMask', layer: layer.id, source: material.source, merge: true });
       } else if (material.kind === 'graph' || material.kind === 'image-material') {
         await this.useGraph(material, await this.publish(project.path, material), drop);
       } else {

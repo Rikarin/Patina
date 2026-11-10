@@ -386,12 +386,12 @@ static class ProjectFiles {
         return copy;
     }
 
-    /// <summary>Says what a graph is for.</summary>
+    /// <summary>Says what a graph is for, or whether a layered material is a material or a mask (#135).</summary>
     public static ProjectItem SetRole(string root, string path, AssetId id, string role) {
         var (_, document) = Project(root, path);
         var item = document.Documents.FirstOrDefault(d => d.Id == id)
             ?? throw new FileNotFoundException($"This project has no document {id}.");
-        if (item.Kind != DocumentKinds.Graph || !GraphRoles.Known(role)) {
+        if (!GraphRoles.Fits(item.Kind, role)) {
             throw new ProjectRefusedException($"'{item.Name}' cannot be a {role}.");
         }
 

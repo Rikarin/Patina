@@ -374,7 +374,7 @@ public static class DocumentCodec {
         }
 
         var role = fields.Optional(RoleKey);
-        if (role is not null && (kind != DocumentKinds.Graph || !GraphRoles.Known(role))) {
+        if (role is not null && !GraphRoles.Fits(kind, role)) {
             throw fields.Problem($"'{role}' is no role of a {kind} document.");
         }
 

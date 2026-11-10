@@ -34,7 +34,7 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 /// <param name="Values">What a constant fill writes to each channel.</param>
 /// <param name="Textures">What a texture fill reads for each channel.</param>
 /// <param name="Graph">The graph a graph fill reads.</param>
-/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.</param>
+/// <param name="Projection">How a fill lands: Uv, Triplanar, Planar, Spherical, Cylindrical, Decal or Path.</param>
 /// <param name="Filter">The named filter a file holds: Levels, Hsl, Blur, Invert or Grayscale.</param>
 /// <param name="Settings">A filter's numbers.</param>
 /// <param name="Mask">Its mask.</param>
@@ -53,6 +53,8 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 ///     For an instance layer, the layer it stands for. It keeps its own name, switch, opacity, blend and anchor point,
 ///     and its own mask entries narrow the source's mask; everything else is the source's.
 /// </param>
+/// <param name="Decal">The box a Decal fill is projected through, or null when none has been placed.</param>
+/// <param name="Path">The curve a Path fill is laid along, or null when none has been drawn.</param>
 public sealed record StackLayer(
     string Id,
     string Name,
@@ -79,7 +81,9 @@ public sealed record StackLayer(
     StackAnchorRef? Anchor = null,
     IReadOnlyDictionary<string, StackInput>? Inputs = null,
     bool Flattened = false,
-    StackInstanceRef? Instance = null
+    StackInstanceRef? Instance = null,
+    StackDecal? Decal = null,
+    StackSurfacePath? Path = null
 );
 
 /// <summary>The layer an instance stands for.</summary>
@@ -456,6 +460,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackMoveMaskLayer), "moveMaskLayer"),
  JsonDerivedType(typeof(StackSetMaskLayer), "setMaskLayer")]
 [JsonDerivedType(typeof(StackAddInstance), "addInstance"), JsonDerivedType(typeof(StackSetInstance), "setInstance")]
+[JsonDerivedType(typeof(StackApplyMask), "applyMask")]
 public abstract record StackCommand;
 
 /// <summary>Adds a layer at the top of the stack.</summary>
@@ -510,7 +515,7 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="Values">What a constant fill writes, replacing what these channels held.</param>
 /// <param name="Textures">What a texture fill reads, replacing what these channels held.</param>
 /// <param name="Graph">The graph a graph fill reads.</param>
-/// <param name="Projection">How a fill lands on the mesh: Uv, Triplanar, Planar, Spherical or Cylindrical.</param>
+/// <param name="Projection">How a fill lands: Uv, Triplanar, Planar, Spherical, Cylindrical, Decal or Path.</param>
 /// <param name="Filter">What a filter does, one of the five named filters.</param>
 /// <param name="Settings">
 ///     A filter's numbers, replacing what these names held. Choosing another filter starts it from its own defaults.
@@ -531,6 +536,8 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// <param name="Inputs">
 ///     Where the image inputs of a graph fill or a filter read, by port, replacing all of them.
 /// </param>
+/// <param name="Decal">The box a Decal fill is projected through, replacing where it was.</param>
+/// <param name="Path">The curve a Path fill is laid along, replacing the curve it had.</param>
 public sealed record StackSetLayer(
     string Layer,
     string? Name = null,
@@ -553,7 +560,9 @@ public sealed record StackSetLayer(
     string? FilterNode = null,
     string? AnchorPoint = null,
     StackAnchorRef? Anchor = null,
-    IReadOnlyDictionary<string, StackInput>? Inputs = null
+    IReadOnlyDictionary<string, StackInput>? Inputs = null,
+    StackDecal? Decal = null,
+    StackSurfacePath? Path = null
 ) : StackCommand;
 #pragma warning restore SK7005
 

@@ -25,6 +25,7 @@ static class StackEndpoints {
     public static void MapStackApi(this IEndpointRouteBuilder api) {
         var stacks = api.MapGroup("/stacks").WithTags(Tag);
         stacks.MapStackChecks();
+        stacks.MapStackShelf();
 
         void Post(string route, Delegate handler, string name, string summary, params int[] problems) =>
             stacks.MapPost(route, handler).Describe(name, summary, problems);
@@ -584,7 +585,7 @@ static class StackEndpoints {
             since
         );
 
-    static ProblemHttpResult NoSession(string id) =>
+    internal static ProblemHttpResult NoSession(string id) =>
         Refusals.Problem(
             $"There is no open stack '{id}'.",
             Missing,
