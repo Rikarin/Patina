@@ -101,6 +101,31 @@ public static class Recovery {
         }
     }
 
+    /// <summary>
+    ///     Forgets a document's autosaves but those in <paramref name="sparing" />, which are still being written: a
+    ///     folder deleted while a Worker writes into it fails with "Directory not empty", and the save asking fails
+    ///     with it. Whoever is writing one deletes it when they find it let go.
+    /// </summary>
+    public static void Clear(string root, string file, IReadOnlySet<string> sparing) {
+        ArgumentNullException.ThrowIfNull(sparing);
+        var folder = Folder(root, file);
+        if (!Directory.Exists(folder)) {
+            return;
+        }
+
+        foreach (var generation in Directory.GetDirectories(folder).Where(path => !sparing.Contains(path))) {
+            Directory.Delete(generation, true);
+        }
+
+        foreach (var stray in Directory.GetFiles(folder)) {
+            File.Delete(stray);
+        }
+
+        if (!Directory.EnumerateFileSystemEntries(folder).Any()) {
+            Directory.Delete(folder);
+        }
+    }
+
     /// <summary>The newest whole autosave, or null.</summary>
     static string? Latest(string root, string file) =>
         Generations(Folder(root, file))

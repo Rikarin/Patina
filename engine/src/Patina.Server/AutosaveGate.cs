@@ -15,6 +15,21 @@ public sealed class AutosaveGate {
 
     long count;
 
+    /// <summary>The autosaves begun and not yet finished or abandoned, which a Worker may be writing into.</summary>
+    readonly HashSet<string> writing = new(StringComparer.Ordinal);
+
+    /// <summary>
+    ///     Begins an autosave of a document, a folder for its paint and then its text. Until it is finished or
+    ///     abandoned, letting the document go leaves this folder to whoever is writing it.
+    /// </summary>
+    public string Begin(string root, string file) {
+        lock (gate) {
+            var generation = Recovery.Begin(root, file);
+            writing.Add(generation);
+            return generation;
+        }
+    }
+
     /// <summary>
     ///     A mark for autosave to take before it looks at what is open: whatever is let go after this is let go of
     ///     everything autosave began since.
@@ -31,7 +46,8 @@ public sealed class AutosaveGate {
         lock (gate) {
             count++;
             forgotten[folder] = count;
-            Recovery.Clear(root, file);
+            // ⚠ Not the autosave being written: deleting its folder under the Worker fails the save that asked.
+            Recovery.Clear(root, file, writing);
         }
     }
 
@@ -42,6 +58,7 @@ public sealed class AutosaveGate {
     /// </summary>
     public bool Finish(string root, string file, string generation, long mark, string text, int keep) {
         lock (gate) {
+            writing.Remove(generation);
             if (Abandoned(root, file, generation, mark)) {
                 return false;
             }
@@ -55,6 +72,7 @@ public sealed class AutosaveGate {
     /// <summary>Lets go of an autosave that did not finish, if its document was let go since it began.</summary>
     public void Abandon(string root, string file, string generation, long mark) {
         lock (gate) {
+            writing.Remove(generation);
             Abandoned(root, file, generation, mark);
         }
     }

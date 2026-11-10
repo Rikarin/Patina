@@ -506,7 +506,7 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         var gate = server.Services.GetRequiredService<AutosaveGate>();
         var (document, file, letGo) = await EditedAsync(how);
         var mark = gate.Mark();
-        var generation = Recovery.Begin(server.Library, file);
+        var generation = gate.Begin(server.Library, file);
         await File.WriteAllTextAsync(Path.Combine(generation, "early.png"), "paint", Token);
 
         await letGo();
@@ -529,7 +529,7 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         await save();
 
         var mark = gate.Mark();
-        var kept = gate.Finish(server.Library, file, Recovery.Begin(server.Library, file), mark, "autosaved", 3);
+        var kept = gate.Finish(server.Library, file, gate.Begin(server.Library, file), mark, "autosaved", 3);
 
         Assert.True(kept);
         Assert.Equal(1, Recovery.Count(server.Library, file));

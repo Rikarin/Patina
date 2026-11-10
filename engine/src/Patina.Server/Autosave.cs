@@ -47,7 +47,7 @@ public sealed class Autosave(
             foreach (var graph in graphs.All) {
                 open.Add(graph.Path);
                 if (Due(graph.Path, graph.Summary.Revision, graph.Summary.Dirty, now, settings)) {
-                    var generation = Recovery.Begin(library, graph.Path);
+                    var generation = gate.Begin(library, graph.Path);
                     Finished(graph.Path, gate.Finish(library, graph.Path, generation, mark, graph.Text, settings.Keep));
                 }
             }
@@ -74,7 +74,7 @@ public sealed class Autosave(
     async Task TryAsync(StackSession stack, string library, long mark, int keep, CancellationToken cancellationToken) {
         string? generation = null;
         try {
-            generation = Recovery.Begin(library, stack.Path);
+            generation = gate.Begin(library, stack.Path);
             await evaluator.KeepAsync(stack, generation, cancellationToken);
             Finished(stack.Path, gate.Finish(library, stack.Path, generation, mark, stack.Text, keep));
         } catch (Exception e) when (e is IOException or TimeoutException or Patina.Ipc.IpcException) {
