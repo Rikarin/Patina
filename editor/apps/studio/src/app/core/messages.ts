@@ -84,6 +84,9 @@ const CheckWords: Readonly<Record<string, string>> = {
   'channel-missing': '{preset} reads {channel} into {file}, and this set has no {channel}, so a default fills it.',
   'density-low': 'Has {density} texels per unit, short of the {target} the project asks for.',
   'density-high': 'Has {density} texels per unit, more than the {target} the project asks for.',
+  'bake-stale':
+    'Its mesh maps were baked on another mesh or in another UV set than its UV {uvSet}, so what reads them lands in ' +
+    'the wrong place. Bake it again.',
   'uv-outside': '{count} triangles reach past the first UV tile, which is the only one painted.',
   'uv-overlap': '{share} of the laid-out texels are under more than one triangle, so a stroke lands twice.',
   'uv-degenerate': '{count} triangles have no area in the UV layout, so no texel lands on them.',

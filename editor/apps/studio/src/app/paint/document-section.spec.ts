@@ -21,7 +21,7 @@ const facts = {
   ]
 };
 
-async function render(channels: readonly string[] = ['baseColor', 'roughness']) {
+async function render(channels: readonly string[] = ['baseColor', 'roughness'], meshMaps: string | null = null) {
   const edit = vi.fn((_command: unknown) => Promise.resolve(true));
   const asked = vi.fn((_path: string, _init: unknown) => Promise.resolve({ data: facts, response: { ok: true } }));
   const paint = {
@@ -31,6 +31,9 @@ async function render(channels: readonly string[] = ['baseColor', 'roughness']) 
       height: 1024,
       uvSet: 0,
       heightNormal: 'Smooth',
+      bakedNormal: 'Combine',
+      bakedOcclusion: 'Combine',
+      meshMaps,
       channels: channels.map(usage => ({ usage }))
     }),
     channel: signal('baseColor'),
@@ -108,5 +111,24 @@ describe('DocumentSection', () => {
     const { element } = await render(['baseColor', 'height']);
 
     expect(element.querySelector('[data-testid=texture-set-height-normal]')).not.toBeNull();
+  });
+
+  it('offers how the bake shades the set only once there is one', async () => {
+    const { element } = await render();
+
+    expect(element.querySelector('[data-testid=texture-set-baked-normal]')).toBeNull();
+  });
+
+  it('sends how the bake shades the set as a set setting (#86)', async () => {
+    const { element, edit, fixture } = await render(['baseColor'], '/library/projects/crate/bakes/maps');
+    expect(element.querySelector('[data-testid=texture-set-baked-occlusion]')?.textContent).toContain('Multiply');
+    const normal = element.querySelector('[data-testid=texture-set-baked-normal]');
+    const replace = [...(normal?.querySelectorAll('button') ?? [])].find(
+      button => button.textContent.trim() === 'Replace'
+    );
+    replace?.click();
+    await fixture.whenStable();
+
+    expect(edit).toHaveBeenCalledWith({ op: 'setSettings', bakedNormal: 'Replace', bakedOcclusion: null });
   });
 });

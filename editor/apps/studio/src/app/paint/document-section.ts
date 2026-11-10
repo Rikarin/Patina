@@ -17,6 +17,20 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
   { value: 'Smooth', label: 'Smooth' }
 ];
 
+/** How the bake's normal reaches the set's (#86): beneath the paint, as where the channel starts, or not at all. */
+const BakedNormals: readonly XuiSegmentedOption[] = [
+  { value: 'Combine', label: 'Combine' },
+  { value: 'Replace', label: 'Replace' },
+  { value: 'Off', label: 'Off' }
+];
+
+/** How the bake's occlusion reaches the set's: multiplied with the paint, as where the channel starts, or not at all. */
+const BakedOcclusions: readonly XuiSegmentedOption[] = [
+  { value: 'Combine', label: 'Multiply' },
+  { value: 'Replace', label: 'Replace' },
+  { value: 'Off', label: 'Off' }
+];
+
 /**
  * The document's own settings, at the top of Properties whatever tool or layer is chosen (#201): what it is and the
  * mesh it is painted on, its texture set's size, UV set and height to normal (ADR 0020), what the mesh is under that
@@ -124,6 +138,28 @@ const HeightNormals: readonly XuiSegmentedOption[] = [
             />
           </dd>
         }
+        @if (state.meshMaps) {
+          <dt class="text-foreground-muted" [title]="bakedNormalHint">Baked normal</dt>
+          <dd data-testid="texture-set-baked-normal" [title]="bakedNormalHint">
+            <xui-segmented-control
+              size="sm"
+              ariaLabel="Baked normal"
+              [options]="bakedNormals"
+              [value]="state.bakedNormal"
+              (valueChange)="setBake({ bakedNormal: $event })"
+            />
+          </dd>
+          <dt class="text-foreground-muted" [title]="bakedOcclusionHint">Baked occlusion</dt>
+          <dd data-testid="texture-set-baked-occlusion" [title]="bakedOcclusionHint">
+            <xui-segmented-control
+              size="sm"
+              ariaLabel="Baked occlusion"
+              [options]="bakedOcclusions"
+              [value]="state.bakedOcclusion"
+              (valueChange)="setBake({ bakedOcclusion: $event })"
+            />
+          </dd>
+        }
         @if (meshFacts(); as facts) {
           <dt class="text-foreground-muted">Mesh</dt>
           <dd
@@ -174,6 +210,14 @@ export class DocumentSection {
   private readonly library = inject(LibraryStore);
   protected readonly canPick = desktop() !== undefined;
   protected readonly heightNormals = HeightNormals;
+  protected readonly bakedNormals = BakedNormals;
+  protected readonly bakedOcclusions = BakedOcclusions;
+  protected readonly bakedNormalHint =
+    'How the bake’s normal lights this texture set. Combine keeps it under everything painted; Replace starts the ' +
+    'normal channel from it, so paint covers it; Off leaves it out.';
+  protected readonly bakedOcclusionHint =
+    'How the bake’s ambient occlusion shades this texture set. Multiply darkens what is painted by it; Replace starts ' +
+    'the occlusion channel from it, so paint covers it; Off leaves it out.';
   protected readonly texels = (side: number): string => `${side}`;
   protected readonly uvSetName = (index: number): string => `UV ${index + 1}`;
   protected readonly sizeHint =
@@ -275,6 +319,16 @@ export class DocumentSection {
   protected setUvSet(uvSet: number | null): void {
     if (uvSet !== null && uvSet !== this.store.state()?.uvSet) {
       void this.store.edit({ op: 'setSettings', uvSet });
+    }
+  }
+
+  /** Says how the bake reaches the set's normal or occlusion, one undo step like every set setting. */
+  protected setBake(mix: { bakedNormal?: string | null; bakedOcclusion?: string | null }): void {
+    const state = this.store.state();
+    const normal = mix.bakedNormal ?? null;
+    const occlusion = mix.bakedOcclusion ?? null;
+    if (state && ((normal && normal !== state.bakedNormal) || (occlusion && occlusion !== state.bakedOcclusion))) {
+      void this.store.edit({ op: 'setSettings', bakedNormal: normal, bakedOcclusion: occlusion });
     }
   }
 

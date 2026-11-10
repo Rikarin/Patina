@@ -178,6 +178,14 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   (checkedChange)="setSet(set.material, $event)"
                 />
                 <span class="truncate">{{ set.name }}</span>
+                @if (set.stale) {
+                  <span
+                    class="text-warning shrink-0 text-xs"
+                    [attr.data-testid]="'bake-set-stale-' + set.material"
+                    [title]="staleWhy(set.stale)"
+                    >Bake again</span
+                  >
+                }
               </label>
             }
           }
@@ -1153,6 +1161,13 @@ export class BakePane {
       ...settings,
       sets: ticked.size === all.length ? [] : all.filter(set => ticked.has(set))
     }));
+  }
+
+  /** Why a set's maps need baking again, as its tooltip says it. */
+  protected staleWhy(stale: string): string {
+    return stale === 'uvSet'
+      ? 'Its maps were baked in another UV set than the one it is laid out in.'
+      : 'Its maps were baked on the mesh as it was before it changed.';
   }
 
   protected allSets(): void {
