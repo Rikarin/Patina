@@ -1,3 +1,4 @@
+using Patina.Graphs;
 using Patina.Contracts;
 using Patina.Ipc;
 using System.Globalization;
@@ -101,6 +102,15 @@ public static class GraphDocuments {
                 : null;
     }
 
+    /// <summary>What a document says about itself, as clients see it.</summary>
+    public static GraphInfoState Info(NodeGraphAsset document) => GraphFactsOf.Info(document);
+
+    static bool SameInfo(NodeGraphAsset a, NodeGraphAsset b) =>
+        string.Equals(a.Description, b.Description, StringComparison.Ordinal)
+        && string.Equals(a.Author, b.Author, StringComparison.Ordinal)
+        && a.Tags.AsSpan().SequenceEqual(b.Tags)
+        && a.PhysicalSize.AsSpan().SequenceEqual(b.PhysicalSize);
+
     public static GraphPresetState State(GraphPresetAsset preset) => new(preset.Name, preset.Values);
 
     public static GraphPresetState State(GraphPreset preset) => new(preset.Name, preset.Values);
@@ -129,14 +139,7 @@ public static class GraphDocuments {
                 : null
         );
 
-    public static GraphDiagnostic Diagnostic(NodeDiagnostic diagnostic) =>
-        new(
-            diagnostic.Id,
-            diagnostic.Message,
-            diagnostic.Severity.ToString(),
-            diagnostic.Node.IsValid ? diagnostic.Node.Value : null,
-            diagnostic.Port.Length > 0 ? diagnostic.Port : null
-        );
+    public static GraphDiagnostic Diagnostic(NodeDiagnostic diagnostic) => GraphFactsOf.Diagnostic(diagnostic);
 
     /// <summary>A node type for a palette, its open-ended bounds as nulls since JSON has no infinity.</summary>
     public static GraphNodeType Definition(NodeTypeDefinition type) =>
@@ -160,20 +163,7 @@ public static class GraphDocuments {
 
     /// <summary>What a client is told about a setting of a node, a compound or a generator.</summary>
     public static GraphSettingDefinition Definition(SettingDefinition setting) =>
-        new(
-            setting.Name,
-            setting.Default,
-            setting.Summary,
-            setting.Kind.ToString(),
-            Bound(setting.Minimum),
-            Bound(setting.Maximum),
-            setting.Group,
-            setting.Accepted,
-            Terms.LabelsOf(setting.Accepted),
-            setting.Label.Length > 0 ? setting.Label : null,
-            setting.Widget == SettingWidget.Default ? null : setting.Widget.ToString(),
-            setting.VisibleIf is { } condition ? new(condition.Setting, condition.Value, condition.Negated) : null
-        );
+        GraphFactsOf.Definition(setting, Terms.LabelsOf);
 
     static GraphPortRange? RangeOf(PortDefinition port) {
         GraphPortRange range = new(
@@ -208,7 +198,8 @@ public static class GraphDocuments {
                 ? null
                 : [..after.Comments.Select(static comment => State(comment))],
             SameInterface(before, after) ? null : [..after.Interface.Select(static port => State(port))],
-            SamePresets(before, after) ? null : [..after.Presets.Select(static preset => State(preset))]
+            SamePresets(before, after) ? null : [..after.Presets.Select(static preset => State(preset))],
+            SameInfo(before, after) ? null : Info(after)
         );
     }
 

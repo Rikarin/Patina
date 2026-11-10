@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Graphs;
 using Patina.Library;
 using Patina.Server.Stacks;
 using System.Collections.Concurrent;
@@ -25,6 +26,7 @@ public static class MaterialShelf {
     const int ElsewhereLimit = 300;
     const int ProjectPage = 200;
     const string ElsewhereOrigin = "library";
+    const string PackageOrigin = "package";
     const string StarterPrefix = "starter:";
     const string StarterResource = "Starter/";
 
@@ -36,7 +38,7 @@ public static class MaterialShelf {
     /// <summary>The types a shelf narrows to, and where a material can be from.</summary>
     static readonly string[] Roles = [GraphRoles.Material, GraphRoles.Mask, GraphRoles.Filter, GraphRoles.Brush];
 
-    static readonly string[] Origins = ["shipped", "project", ElsewhereOrigin];
+    static readonly string[] Origins = ["shipped", PackageOrigin, "project", ElsewhereOrigin];
 
     /// <summary>A list as the API answers it, with the words its types and origins are shown and searched by.</summary>
     public static MaterialList Listed(IReadOnlyList<MaterialInfo> items) =>
@@ -62,6 +64,7 @@ public static class MaterialShelf {
             )
         ];
         found.AddRange(Starters());
+        found.AddRange(Packaged(library));
         if (project is not null) {
             found.AddRange(
                 library.Contents(project)
@@ -91,7 +94,8 @@ public static class MaterialShelf {
             material.Origin,
             Terms.InShelf(material.Origin),
             material.Project ?? string.Empty,
-            material.Source
+            material.Source,
+            string.Join(' ', material.Tags ?? [])
         );
 
     static bool Has(IEnumerable<string> words, params ReadOnlySpan<string> fields) {
@@ -136,6 +140,53 @@ public static class MaterialShelf {
         return reader.ReadToEnd();
     }
 
+    /// <summary>The library's packages (ADR 0027), each as the graph inside it. One that will not read is left out.</summary>
+    static IEnumerable<MaterialInfo> Packaged(OpenLibrary library) {
+        foreach (var package in PackageManifests.In(library.RootPath)) {
+            MaterialInfo? found;
+            try {
+                var manifest = PackageManifests.Read(package);
+                var graph = LibraryLayout.Relative(library.RootPath, Path.Combine(package, manifest.Graph));
+                found = FromGraph(library, manifest.Name, graph, PackageOrigin, manifest.Role);
+            } catch (Exception e) when (e is IOException or LibraryFormatException or GraphEditRefusedException) {
+                found = null;
+            }
+
+            if (found is not null) {
+                yield return found;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     A package's compounds come with it into the project that uses it, under the package's own folder, which is
+    ///     the package's to replace: a newer package replaces them all.
+    /// </summary>
+    static void BringPackage(OpenLibrary library, string project, string graph) {
+        if (PackageManifests.PackageOf(graph) is not { } package) {
+            return;
+        }
+
+        var name = PackageManifests.Read(package).Name;
+        var compounds = library.ProjectFile(project, LibraryLayout.CompoundsFolder);
+        var folder = Path.Combine(compounds, GraphPackages.CompoundPrefix.TrimEnd('/'), name);
+        List<(string Path, string Text)> brought = [..GraphPackages.CompoundsFor(package, library.RootPath)];
+        if (Directory.Exists(folder)) {
+            foreach (var stale in Directory.EnumerateFiles(folder, "*" + LibraryLayout.GraphExtension, SearchOption.AllDirectories)
+                         .Where(file => !brought.Exists(b => string.Equals(Path.Combine(compounds, b.Path), file, StringComparison.Ordinal)))) {
+                File.Delete(stale);
+            }
+        }
+
+        foreach (var (path, text) in brought) {
+            var file = Path.Combine(compounds, path.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            if (!File.Exists(file) || !string.Equals(SharedFile.ReadAllText(file), text, StringComparison.Ordinal)) {
+                LibraryFiles.Replace(file, text);
+            }
+        }
+    }
+
     /// <summary>A starter material becomes a document of the project the first time it is used there.</summary>
     static string Bring(OpenLibrary library, string project, string source) {
         var name = source[StarterPrefix.Length..];
@@ -163,7 +214,8 @@ public static class MaterialShelf {
             graph ? Terms.InShelf("empty") : string.Empty,
             ElsewhereOrigin,
             Terms.InShelf(ElsewhereOrigin),
-            project
+            project,
+            string.Join(' ', document.Tags)
         );
     }
 
@@ -275,6 +327,7 @@ public static class MaterialShelf {
 
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
         Reference(library, project, source);
+        BringPackage(library, project, full);
         var text = GraphDocuments.Text(AsCompound(Rooted(graph, full, library.RootPath)));
         var path = $"{MaterialsFolder}/{name}";
         if (File.Exists(file) && string.Equals(SharedFile.ReadAllText(file), text, StringComparison.Ordinal)) {
@@ -418,7 +471,8 @@ public static class MaterialShelf {
                 document.Name,
                 document.Path,
                 "project",
-                document.Role
+                document.Role,
+                document.Tags
             ),
             DocumentKinds.LayeredMaterial => new(
                 document.Name,
@@ -426,12 +480,24 @@ public static class MaterialShelf {
                 document.Path,
                 document.Role ?? GraphRoles.Material,
                 "project",
-                []
+                [],
+                Tags: document.Tags
             ),
             _ => null
         };
 
-    static MaterialInfo FromGraph(OpenLibrary library, string name, string path, string origin, string? role = null) {
+    /// <summary>
+    ///     A graph on the shelf. Its tags are its project's words for it (ADR 0018), which a search of another project
+    ///     reads without opening the file, and the graph's own, which a package carries.
+    /// </summary>
+    static MaterialInfo FromGraph(
+        OpenLibrary library,
+        string name,
+        string path,
+        string origin,
+        string? role = null,
+        IReadOnlyList<string>? tags = null
+    ) {
         var graph = GraphDocuments.Parse(SharedFile.ReadAllText(Path.GetFullPath(path, library.RootPath)));
         var usages = Usages(graph);
         return new(
@@ -441,7 +507,9 @@ public static class MaterialShelf {
             usages.Count == 0 ? "empty" : role ?? GraphRoles.Material,
             origin,
             usages,
-            [..graph.Parameters.Select(GraphDocuments.Definition)]
+            [..graph.Parameters.Select(GraphDocuments.Definition)],
+            Tags: [..(tags ?? []).Concat(graph.Tags).Distinct(StringComparer.OrdinalIgnoreCase)],
+            Description: graph.Description.Length > 0 ? graph.Description : null
         );
     }
 

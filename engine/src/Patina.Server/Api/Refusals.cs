@@ -115,6 +115,12 @@ public static class Refusals {
     /// <summary>An instance that would stand, through instances, for itself. Values: <c>layer</c>.</summary>
     public const string InstanceCycle = "instance-cycle";
 
+    /// <summary>
+    ///     A graph that cannot be published as a package: it reads something a package cannot carry, does not compile,
+    ///     or is not a graph (ADR 0027). Values: <c>reason</c>, which is the Server's own sentence.
+    /// </summary>
+    public const string PackageRefused = "package-refused";
+
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(
         string detail,

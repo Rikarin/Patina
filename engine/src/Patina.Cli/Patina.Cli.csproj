@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>The patina command: `version`, `library new`, `library check`, `bake`, which evaluates a texture graph on a GPU with no UI, and `bake-maps`, a high-to-low bake on the CPU in this process.</Description>
+    <Description>The patina command: `version`, `help`, `library new`, `library check`, `bake`, which evaluates a texture graph or a package on a GPU with no UI, `graph info`, `package`, `build`, and `bake-maps`, a high-to-low bake on the CPU in this process.</Description>
     <OutputType>Exe</OutputType>
     <AssemblyName>patina</AssemblyName>
     <RootNamespace>Patina.Cli</RootNamespace>

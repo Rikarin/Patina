@@ -1,3 +1,4 @@
+using Patina.Graphs;
 using Patina.Contracts;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -181,21 +182,7 @@ sealed class GraphParameterEdits(NodeGraphModel graph) {
         return new(graph, next, $"Preset {preset.Name}", null);
     }
 
-    static bool Holds(SettingDefinition parameter) {
-        var number = float.TryParse(
-            parameter.Default,
-            NumberStyles.Float,
-            CultureInfo.InvariantCulture,
-            out var parsed
-        );
-        return parameter.Kind switch {
-            SettingKind.Float or SettingKind.Int when !number || !float.IsFinite(parsed) => false,
-            SettingKind.Int when parsed != MathF.Round(parsed) => false,
-            SettingKind.Float or SettingKind.Int when parsed < parameter.Minimum || parsed > parameter.Maximum => false,
-            SettingKind.Bool => parameter.Default is "true" or "false",
-            _ => parameter.Accepts(parameter.Default)
-        };
-    }
+    static bool Holds(SettingDefinition parameter) => GraphFactsOf.Holds(parameter);
 }
 
 /// <summary>Replaces the list of presets.</summary>

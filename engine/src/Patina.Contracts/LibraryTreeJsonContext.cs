@@ -64,4 +64,9 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(BrushPreset))]
 [JsonSerializable(typeof(BrushPresetCreateRequest))]
 [JsonSerializable(typeof(BrushPresetUpdateRequest))]
+[JsonSerializable(typeof(PackageManifest), TypeInfoPropertyName = nameof(PackageManifest))]
+[JsonSerializable(typeof(PackagePlan), TypeInfoPropertyName = nameof(PackagePlan))]
+[JsonSerializable(typeof(PackageRequest))]
+[JsonSerializable(typeof(PackagePublished), TypeInfoPropertyName = nameof(PackagePublished))]
+[JsonSerializable(typeof(GraphFacts), TypeInfoPropertyName = nameof(GraphFacts))]
 public sealed partial class LibraryTreeJsonContext : JsonSerializerContext;

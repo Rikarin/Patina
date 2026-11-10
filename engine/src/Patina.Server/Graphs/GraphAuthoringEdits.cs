@@ -30,8 +30,39 @@ sealed class GraphAuthoringEdits(NodeGraphModel graph, GraphParameterEdits param
             GraphSavePreset save => parameters.SavePreset(save),
             GraphRemovePreset remove => parameters.RemovePreset(remove),
             GraphApplyPreset apply => parameters.ApplyPreset(apply),
+            GraphSetInfo info => BuildInfo(info),
             _ => throw new GraphEditRefusedException($"Unknown command '{command.GetType().Name}'.")
         };
+
+    /// <summary>What the graph says about itself, with what a client left out kept as it is.</summary>
+    /// <exception cref="GraphEditRefusedException">The physical size is not a width and a height above zero.</exception>
+    SetInfoCommand BuildInfo(GraphSetInfo set) {
+        var held = graph.Info;
+        var size = held.PhysicalSize;
+        if (set.PhysicalWidth is not null || set.PhysicalHeight is not null) {
+            var (width, height) = (set.PhysicalWidth ?? 0f, set.PhysicalHeight ?? 0f);
+            size = (width, height) switch {
+                (0f, 0f) => default,
+                _ when float.IsFinite(width) && float.IsFinite(height) && width > 0f && height > 0f => new(width, height),
+                _ => throw new GraphEditRefusedException(
+                    "A physical size is a width and a height above zero, in centimetres, or both zero for none."
+                )
+            };
+        }
+
+        List<string> tags = [];
+        foreach (var tag in set.Tags ?? held.Tags) {
+            var word = tag.Trim();
+            if (word.Length > 0 && !tags.Contains(word, StringComparer.OrdinalIgnoreCase)) {
+                tags.Add(word);
+            }
+        }
+
+        return new(
+            graph,
+            new(set.Description?.Trim() ?? held.Description, set.Author?.Trim() ?? held.Author, tags, size)
+        );
+    }
 
     /// <summary>Removes nodes and wires what fed them to what they fed, as one command so it undoes as one.</summary>
     CompositeCommand BuildRelink(GraphRemoveNodes remove, Dictionary<int, int> refs) {
@@ -135,4 +166,15 @@ sealed class CompositeCommand(string name, IReadOnlyList<IAuthoringCommand> comm
             command.Undo(context);
         }
     }
+}
+
+/// <summary>Replaces what a graph says about itself. Nothing it holds is computed from, so it never evaluates.</summary>
+sealed class SetInfoCommand(NodeGraphModel graph, GraphInfo info) : IAuthoringCommand {
+    readonly GraphInfo previous = graph.Info;
+
+    public string Name => "Describe Graph";
+
+    public void Do(ICommandContext context) => graph.Info = info;
+
+    public void Undo(ICommandContext context) => graph.Info = previous;
 }
