@@ -17113,12 +17113,12 @@
           },
           "bakedNormal": {
             "type": "string",
-            "description": "How the bake\u0027s normal reaches the set\u0027s: \u0060Combine\u0060, \u0060Replace\u0060 or \u0060Off\u0060.",
+            "description": "How the bake\u0027s normal reaches the set: \u0060Combine\u0060, \u0060Replace\u0060, \u0060Off\u0060.",
             "default": "Combine"
           },
           "bakedOcclusion": {
             "type": "string",
-            "description": "How the bake\u0027s occlusion reaches the set\u0027s: \u0060Combine\u0060, \u0060Replace\u0060 or \u0060Off\u0060.",
+            "description": "How its occlusion does: \u0060Combine\u0060, \u0060Replace\u0060, \u0060Off\u0060.",
             "default": "Combine"
           },
           "bakeStale": {

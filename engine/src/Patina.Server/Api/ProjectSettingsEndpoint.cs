@@ -95,7 +95,7 @@ static class ProjectSettingsEndpoint {
         HashSet<string> open = [..stacks.All.Select(static session => session.Path)];
         var documents = library.UseMesh(project, added.Id);
         // Which material each set was on, for paint that moves from a material the reload gave another name.
-        Dictionary<AssetId, string> was = documents.Where(static d => d.Material is not null)
+        var was = documents.Where(static d => d.Material is not null)
             .ToDictionary(static d => d.Id, static d => d.Material!);
         string[] files = [..documents.Select(document => library.ProjectFile(project, document.File))];
         if (!files.Any(open.Contains)) {

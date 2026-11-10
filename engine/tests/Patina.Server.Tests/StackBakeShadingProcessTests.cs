@@ -77,7 +77,7 @@ public sealed partial class StackProcessTests {
                 var orm = Texel(Path.Combine(exported, "T_Housing_ORM.png"), u, v)[0];
                 if (occlusion < 0.9f) {
                     shaded++;
-                    if (Math.Abs(orm - (0.5f * occlusion)) < 0.03f) {
+                    if (Math.Abs(orm - 0.5f * occlusion) < 0.03f) {
                         darker++;
                     }
                 }
@@ -200,7 +200,7 @@ public sealed partial class StackProcessTests {
             await Task.Delay(500, token);
             using var response = await http.PostAsJsonAsync(
                 "/api/v1/viewport/screenshot",
-                new ViewportScreenshotRequest(path, 640, 480),
+                new(path, 640, 480),
                 ContractsJsonContext.Default.ViewportScreenshotRequest,
                 token
             );

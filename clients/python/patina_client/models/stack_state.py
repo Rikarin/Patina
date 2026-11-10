@@ -52,9 +52,8 @@ class StackState:
                 height channel, and then it writes a normal whether or not it declares one. Default: 'Smooth'.
             uv_set (int): The mesh's coordinate set the set is painted, baked and drawn in, by the file's number. Default:
                 0.
-            baked_normal (str): How the bake's normal reaches the set's: `Combine`, `Replace` or `Off`. Default: 'Combine'.
-            baked_occlusion (str): How the bake's occlusion reaches the set's: `Combine`, `Replace` or `Off`. Default:
-                'Combine'.
+            baked_normal (str): How the bake's normal reaches the set: `Combine`, `Replace`, `Off`. Default: 'Combine'.
+            baked_occlusion (str): How its occlusion does: `Combine`, `Replace`, `Off`. Default: 'Combine'.
             evaluation (None | StackEvaluation | Unset):
             mesh_maps (None | str | Unset): The bake its generators read, or null.
             anchors (list[StackAnchor] | None | Unset): The anchor points its set publishes, by name, and who reads each.

@@ -34,11 +34,11 @@ public static class BakeFit {
             .Select(Read)
             .OfType<BakeManifest>()
             .ToList();
-        if (mesh is not null && manifests.Any(m => m.Mesh is not null && m.Mesh != mesh)) {
+        if (mesh is not null && manifests.Exists(m => m.Mesh is not null && m.Mesh != mesh)) {
             return Mesh;
         }
 
-        return manifests.Any(m => m.UvSet != uvSet) ? UvSet : null;
+        return manifests.Exists(m => m.UvSet != uvSet) ? UvSet : null;
     }
 
     /// <summary>The same, for a set on a mesh file, whose digest is kept while the file stays as it was.</summary>

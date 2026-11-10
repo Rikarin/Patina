@@ -6392,12 +6392,12 @@ export interface components {
        */
       uvSet: number;
       /**
-       * @description How the bake's normal reaches the set's: `Combine`, `Replace` or `Off`.
+       * @description How the bake's normal reaches the set: `Combine`, `Replace`, `Off`.
        * @default Combine
        */
       bakedNormal: string;
       /**
-       * @description How the bake's occlusion reaches the set's: `Combine`, `Replace` or `Off`.
+       * @description How its occlusion does: `Combine`, `Replace`, `Off`.
        * @default Combine
        */
       bakedOcclusion: string;
