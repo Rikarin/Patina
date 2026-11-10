@@ -62,7 +62,7 @@ public sealed record PackagePlan(
 );
 
 /// <summary>The body of <c>POST /api/v1/library/packages</c>.</summary>
-/// <param name="Graph">The graph, below the library, as it is saved.</param>
+/// <param name="Graph">The graph as it is saved: absolute, or below the library.</param>
 /// <param name="Role">What it is used as, or null for the role its project gives it.</param>
 public sealed record PackageRequest(string Graph, string? Role = null);
 

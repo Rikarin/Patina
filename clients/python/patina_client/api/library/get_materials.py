@@ -98,7 +98,7 @@ def sync_detailed(
 
 ) -> Response[MaterialList | ProblemDetails]:
     """ What a project's layers can be filled with. A search keeps those with every word in their name,
-    type, kind, origin, project or path, wherever they are from.
+    tags, type, kind, origin, project or path, wherever they are from.
 
     Args:
         project (str | Unset):
@@ -133,7 +133,7 @@ def sync(
 
 ) -> MaterialList | ProblemDetails | None:
     """ What a project's layers can be filled with. A search keeps those with every word in their name,
-    type, kind, origin, project or path, wherever they are from.
+    tags, type, kind, origin, project or path, wherever they are from.
 
     Args:
         project (str | Unset):
@@ -163,7 +163,7 @@ async def asyncio_detailed(
 
 ) -> Response[MaterialList | ProblemDetails]:
     """ What a project's layers can be filled with. A search keeps those with every word in their name,
-    type, kind, origin, project or path, wherever they are from.
+    tags, type, kind, origin, project or path, wherever they are from.
 
     Args:
         project (str | Unset):
@@ -198,7 +198,7 @@ async def asyncio(
 
 ) -> MaterialList | ProblemDetails | None:
     """ What a project's layers can be filled with. A search keeps those with every word in their name,
-    type, kind, origin, project or path, wherever they are from.
+    tags, type, kind, origin, project or path, wherever they are from.
 
     Args:
         project (str | Unset):

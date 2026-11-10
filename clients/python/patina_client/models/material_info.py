@@ -32,10 +32,13 @@ class MaterialInfo:
             source (str): What names it to the routes that use it.
             role (str): `material`, `mask`, `brush`, `filter`, or `empty` for a graph with no
                             output yet.
-            origin (str): `shipped`, `project`, or `library` for another project.
+            origin (str): `shipped`, `project`, `library` for another project, or `package` for one of the library's
+                            packages (ADR 0027).
             channels (list[str]): The maps a graph makes, by usage.
             parameters (list[GraphSettingDefinition] | None | Unset): The knobs a graph exposes, which a layer can set.
             project (None | str | Unset): The project it lives in, when that is another one.
+            tags (list[str] | None | Unset): The words its graph is tagged with, which a search also matches.
+            description (None | str | Unset): What its graph says it makes, or null when it says nothing.
      """
 
     name: str
@@ -46,6 +49,8 @@ class MaterialInfo:
     channels: list[str]
     parameters: list[GraphSettingDefinition] | None | Unset = UNSET
     project: None | str | Unset = UNSET
+    tags: list[str] | None | Unset = UNSET
+    description: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -87,6 +92,22 @@ class MaterialInfo:
         else:
             project = self.project
 
+        tags: list[str] | None | Unset
+        if isinstance(self.tags, Unset):
+            tags = UNSET
+        elif isinstance(self.tags, list):
+            tags = self.tags
+
+
+        else:
+            tags = self.tags
+
+        description: None | str | Unset
+        if isinstance(self.description, Unset):
+            description = UNSET
+        else:
+            description = self.description
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -102,6 +123,10 @@ class MaterialInfo:
             field_dict["parameters"] = parameters
         if project is not UNSET:
             field_dict["project"] = project
+        if tags is not UNSET:
+            field_dict["tags"] = tags
+        if description is not UNSET:
+            field_dict["description"] = description
 
         return field_dict
 
@@ -159,6 +184,34 @@ class MaterialInfo:
         project = _parse_project(d.pop("project", UNSET))
 
 
+        def _parse_tags(data: object) -> list[str] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                tags_type_1 = cast(list[str], data)
+
+                return tags_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[str] | None | Unset, data)
+
+        tags = _parse_tags(d.pop("tags", UNSET))
+
+
+        def _parse_description(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        description = _parse_description(d.pop("description", UNSET))
+
+
         material_info = cls(
             name=name,
             kind=kind,
@@ -168,6 +221,8 @@ class MaterialInfo:
             channels=channels,
             parameters=parameters,
             project=project,
+            tags=tags,
+            description=description,
         )
 
 

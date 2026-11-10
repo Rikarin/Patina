@@ -104,6 +104,8 @@ from .graph_command_graph_set_comment import GraphCommandGraphSetComment
 from .graph_command_graph_set_comment_op import GraphCommandGraphSetCommentOp
 from .graph_command_graph_set_group import GraphCommandGraphSetGroup
 from .graph_command_graph_set_group_op import GraphCommandGraphSetGroupOp
+from .graph_command_graph_set_info import GraphCommandGraphSetInfo
+from .graph_command_graph_set_info_op import GraphCommandGraphSetInfoOp
 from .graph_command_graph_set_parameter import GraphCommandGraphSetParameter
 from .graph_command_graph_set_parameter_op import GraphCommandGraphSetParameterOp
 from .graph_command_graph_set_port import GraphCommandGraphSetPort
@@ -137,6 +139,7 @@ from .graph_group_state import GraphGroupState
 from .graph_history_state import GraphHistoryState
 from .graph_image import GraphImage
 from .graph_image_request import GraphImageRequest
+from .graph_info_state import GraphInfoState
 from .graph_interface_port import GraphInterfacePort
 from .graph_mesh_maps_request import GraphMeshMapsRequest
 from .graph_node_matches import GraphNodeMatches
@@ -178,6 +181,13 @@ from .mesh_facts import MeshFacts
 from .mesh_material_facts import MeshMaterialFacts
 from .mesh_part_facts import MeshPartFacts
 from .output_report import OutputReport
+from .package_compound import PackageCompound
+from .package_dependency import PackageDependency
+from .package_file import PackageFile
+from .package_manifest import PackageManifest
+from .package_plan import PackagePlan
+from .package_published import PackagePublished
+from .package_request import PackageRequest
 from .problem_details import ProblemDetails
 from .project_bake_request import ProjectBakeRequest
 from .project_bake_settings import ProjectBakeSettings
@@ -467,6 +477,8 @@ __all__ = (
     "GraphCommandGraphSetCommentOp",
     "GraphCommandGraphSetGroup",
     "GraphCommandGraphSetGroupOp",
+    "GraphCommandGraphSetInfo",
+    "GraphCommandGraphSetInfoOp",
     "GraphCommandGraphSetParameter",
     "GraphCommandGraphSetParameterOp",
     "GraphCommandGraphSetPort",
@@ -500,6 +512,7 @@ __all__ = (
     "GraphHistoryState",
     "GraphImage",
     "GraphImageRequest",
+    "GraphInfoState",
     "GraphInterfacePort",
     "GraphMeshMapsRequest",
     "GraphNodeMatches",
@@ -541,6 +554,13 @@ __all__ = (
     "MeshMaterialFacts",
     "MeshPartFacts",
     "OutputReport",
+    "PackageCompound",
+    "PackageDependency",
+    "PackageFile",
+    "PackageManifest",
+    "PackagePlan",
+    "PackagePublished",
+    "PackageRequest",
     "ProblemDetails",
     "ProjectBakeRequest",
     "ProjectBakeSettings",

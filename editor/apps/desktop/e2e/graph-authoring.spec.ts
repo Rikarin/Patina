@@ -7,7 +7,7 @@ import {
   type Page
 } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { leave } from './projects';
@@ -214,4 +214,33 @@ test('describes parameters, hides one by another, and keeps presets', async () =
   await window.getByTestId('preset-apply-Scratched').click();
   await expect(window.getByTestId('parameter-Parameter2')).not.toHaveClass(/opacity-60/);
   await expect(window.getByTestId('app-undo')).toHaveAttribute('title', /^Undo Preset Scratched\b/);
+});
+
+test('says what the graph is about, and publishes it as a package with what it reads', async () => {
+  test.setTimeout(120_000);
+  await openGraph();
+  await window.getByTestId('graph-settings').click();
+
+  await window.getByTestId('about-description').fill('A plate gone to rust.');
+  await window.getByTestId('about-description').press('Tab');
+  await window.getByTestId('about-tags').fill('metal, rust, Metal');
+  await window.getByTestId('about-tags').press('Enter');
+  await expect(window.getByTestId('about-tags')).toHaveValue('metal, rust');
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('title', /^Undo Describe Graph\b/);
+
+  // The graph has unsaved changes, so the dialog saves it before it says what a package would hold.
+  await window.getByTestId('about-publish').click();
+  const dialog = window.getByTestId('publish-package');
+  await expect(window.getByTestId('publish-package-path')).toHaveText(`packages/${Name}.ptpkg`);
+  await expect(dialog.getByTestId('publish-package-problem')).toHaveCount(0);
+  await window.screenshot({ path: join(shots, 'publish-package.png') });
+  await window.getByTestId('publish-package-publish').click();
+  await expect(dialog).toBeHidden();
+
+  const library = join(scratch, 'Generated.ptlib');
+  const folder = join(library, 'packages', `${Name}.ptpkg`);
+  expect(readFileSync(join(folder, 'package.yaml'), 'utf8')).toContain(`name: ${Name}`);
+  const graph = readFileSync(join(folder, `${Name}.vxtexgraph`), 'utf8');
+  expect(graph).toContain('description: A plate gone to rust.');
+  expect(graph).toMatch(/tags: \[metal, rust\]/);
 });

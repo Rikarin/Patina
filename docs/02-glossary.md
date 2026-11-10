@@ -21,6 +21,7 @@ The Server's labels for stored values (`Terms.cs`) and the editor's refusal word
 | The run that makes mesh maps | **bake** | |
 | A graph or document a layer can be filled with, on the shelf and in the Library | **material** | shared asset, asset, starter (for the thing) |
 | Where a material came from: shipped with Patina | **Starter** | factory, built-in |
+| A graph published with what it reads, for any project or library | **package** | archive, bundle, export |
 | A part of a model with its own maps | **texture set** | material slot |
 | A document's width and height in texels | **size** | resolution (in Properties) |
 

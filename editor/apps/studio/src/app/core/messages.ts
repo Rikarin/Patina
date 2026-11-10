@@ -29,6 +29,7 @@ const Words: Readonly<Record<string, string>> = {
   'instance-source-missing': 'The layer to make an instance of is no longer in {set}.',
   'instance-cycle': 'An instance of {layer} there would stand for itself. Choose another layer.',
   'preset-invalid': 'That preset can’t be kept as it is. {reason}',
+  'package-refused': 'This graph can’t be published as a package. {reason}',
   'preset-factory': '{preset} is a Starter preset, so it can’t be changed or deleted. Duplicate it to change a copy.',
   'preset-missing': 'There is no preset {preset} there any more. It may have been deleted outside Patina.',
   'export-unbuilt': 'The maps of this project are not built as they are now. Build them first, then look again.'

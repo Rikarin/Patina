@@ -24,3 +24,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0019](0019-export-presets.md): accepted: the export preset language exactly, presets in a project, the editor that writes them through the reader, material files beside the textures, and the compression preview.
 - [0020](0020-texture-set-settings.md): accepted: a texture set's settings live in its stack, a resolution change rewrites no paint, and a set chooses its UV set.
 - [0021](0021-decals-and-paths.md): accepted: a decal and a path are a fill's projection, kept as numbers and evaluated, never stamped.
+- [0027](0027-packages.md): accepted: a package is a folder of text that evaluates where it is put, and a graph says what it is about in its own file.

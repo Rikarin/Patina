@@ -3,3 +3,7 @@ bitmaps from paths relative to it and to the library (ADR 0007). The Worker and 
 this, so a graph that previews also bakes. Everything general lives in Vixen; what is here is the library's layout.
 
 `GraphSize` is how big a graph is made, for the same processes and for a build (ADR 0014).
+
+`GraphPackages` publishes a graph as a package: a folder laid out for exactly those lookups, so it evaluates wherever it
+is put (ADR 0027). `GraphFactsOf` says what a graph or a package takes and makes, and sets its parameters for an
+evaluation with no session, for the Server and for `patina graph info` and `patina bake`.

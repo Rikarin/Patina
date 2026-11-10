@@ -51,8 +51,12 @@ static class PackageEndpoints {
         }
 
         try {
-            var file = LibraryLayout.Beside(library.RootPath, graph);
-            var document = DocumentOf(library, graph);
+            // Absolute, or below the library, as every API path is the caller's (ADR 0013).
+            var file = Path.GetFullPath(graph, library.RootPath);
+            var root = Path.GetFullPath(library.RootPath) + Path.DirectorySeparatorChar;
+            var document = file.StartsWith(root, StringComparison.Ordinal)
+                ? DocumentOf(library, LibraryLayout.Relative(library.RootPath, file))
+                : null;
             return TypedResults.Ok(
                 act(
                     file,

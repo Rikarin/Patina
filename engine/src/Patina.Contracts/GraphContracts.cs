@@ -285,7 +285,9 @@ public sealed record GraphEvaluation(
 /// <param name="Settled">
 ///     The newest revision with nothing left to evaluate. Below <paramref name="Revision" />, evaluation is behind.
 /// </param>
-/// <param name="ReadOnly">True when this graph cannot be edited or saved: a compound that ships with Patina.</param>
+/// <param name="ReadOnly">
+///     True when this graph cannot be edited or saved: a compound that ships with Patina, or a package's graph.
+/// </param>
 /// <param name="Info">What it says about itself: a description, an author, tags and a physical size.</param>
 public sealed record GraphState(
     string Id,

@@ -890,6 +890,46 @@ describe('what a graph holds besides its nodes', () => {
     expect(test.store.document()?.presets.map(preset => preset.name)).toEqual(['B']);
   });
 
+  it('says what the graph is about in one command, and keeps what a delta says of it', async () => {
+    const test = await opened();
+    test.store.describe({ description: 'Rust.', tags: ['metal'], physicalWidth: 200, physicalHeight: 200 });
+    await vi.waitFor(() => {
+      expect(sent(test)).toEqual([
+        { op: 'setInfo', description: 'Rust.', tags: ['metal'], physicalWidth: 200, physicalHeight: 200 }
+      ]);
+    });
+    expect(test.store.document()?.info.description).toBe('');
+    test.socket().send({
+      sequence: 1,
+      kind: 'edited',
+      revision: 2,
+      history: dirty,
+      delta: { ...noDelta, info: { description: 'Rust.', author: '', tags: ['metal'] } }
+    });
+    expect(test.store.document()?.info.tags).toEqual(['metal']);
+  });
+
+  it('asks for a package plan and publishes the graph by its path', async () => {
+    const test = await opened(state({ path: '/lib/projects/a/rust.vxtexgraph' }));
+    const plan = {
+      name: 'Rust',
+      role: 'mask',
+      path: 'packages/Rust.ptpkg',
+      replaces: false,
+      dependencies: [],
+      diagnostics: []
+    };
+    test.routes['GET library/packages/plan'] = () => Response.json(plan);
+    test.routes['POST library/packages'] = () =>
+      Response.json({ path: 'packages/Rust.ptpkg', manifest: { name: 'Rust' } });
+    expect((await test.store.packagePlan()).role).toBe('mask');
+    expect((await test.store.publishPackage('mask')).path).toBe('packages/Rust.ptpkg');
+    expect(test.requests.find(request => request.key === 'POST library/packages')?.body).toEqual({
+      graph: '/lib/projects/a/rust.vxtexgraph',
+      role: 'mask'
+    });
+  });
+
   it('asks for the node types again when a compound was saved', async () => {
     const test = await opened();
     const types = () => test.requests.filter(request => request.key === 'GET graphs/g1/node-types').length;

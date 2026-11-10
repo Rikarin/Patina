@@ -153,6 +153,7 @@ public sealed class PackageApiTests : IAsyncLifetime {
         Assert.Equal(["metal", "weathered"], inside.Tags);
         Assert.Equal("Rust over a picture.", inside.Description);
         Assert.Equal(PackageManifests.Text(package.Manifest), PackageManifests.Text(PackageManifests.Read(folder)));
+        Assert.True((await client.OpenAsync($"{package.Path}/Rust.vxtexgraph", Token)).ReadOnly);
 
         // The same graph publishes to the same bytes, so republishing an unchanged material is no diff.
         var manifest = await File.ReadAllTextAsync(Path.Combine(folder, "package.yaml"), Token);

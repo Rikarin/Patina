@@ -61,7 +61,7 @@ const Everything = 'all';
         autocomplete="off"
         aria-label="Search materials"
         data-testid="shelf-search"
-        placeholder="Search by name, type, origin or path"
+        placeholder="Search by name, tag, type, origin or path"
         [value]="search()"
         (input)="search.set(text($event))"
       />
@@ -272,8 +272,11 @@ export class MaterialShelf {
     return material.project ?? this.originLabel(material.origin);
   }
 
+  /** Its type and origin, then what its graph says it makes and the words it is tagged with, when it says. */
   protected describe(material: MaterialInfo): string {
-    return `${this.roleLabel(material.role)}, ${this.originOf(material)}`;
+    const tags = material.tags?.length ? `\nTags: ${material.tags.join(', ')}` : '';
+    const about = material.description ? `\n${material.description}` : '';
+    return `${this.roleLabel(material.role)}, ${this.originOf(material)}${about}${tags}`;
   }
 
   /** A click adds a material; with Alt held, a material the brush can lay becomes the brush's (#125). */

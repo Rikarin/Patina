@@ -232,6 +232,13 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'curvedWires', label: 'Curved Wires', section: 'Graph', area: 'graph' },
   { id: 'angledWires', label: 'Angled Wires', section: 'Graph', area: 'graph' },
   { id: 'straightWires', label: 'Straight Wires', section: 'Graph', area: 'graph' },
+  {
+    id: 'publishPackage',
+    label: 'Publish as Package…',
+    section: 'Graph',
+    area: 'graph',
+    hint: 'Saves the graph with what it reads into the library’s packages, where every project’s shelf offers it'
+  },
 
   { id: 'frameModel', label: 'Frame the Model', section: 'Viewport', keys: ['F'] },
   { id: 'nextView', label: 'Next View', section: 'Viewport', keys: ['V'], area: 'viewport' },
@@ -436,6 +443,8 @@ export const MenuBar: readonly {
       },
       { submenu: 'Wires', items: ['curvedWires', 'angledWires', 'straightWires'] },
       'toggleGraphSnap',
+      '-',
+      'publishPackage',
       '-',
       'showHistory'
     ]

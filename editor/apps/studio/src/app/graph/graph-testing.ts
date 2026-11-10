@@ -42,6 +42,7 @@ export function state(overrides: Partial<GraphState> = {}): GraphState {
     evaluation: null,
     settled: 1,
     readOnly: false,
+    info: { description: '', author: '', tags: [] },
     ...overrides
   };
 }
