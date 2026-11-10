@@ -204,10 +204,10 @@ export class ViewportClient {
     }
   }
 
+  /** Opens a mesh, once a tab on its way to the front is there: it would otherwise take the mesh away again (#237). */
   async openMesh(path: string): Promise<void> {
     try {
-      const client = this.createClient(await this.connection());
-      const state = unwrap(await client.PUT('/api/v1/viewport/mesh', { body: { path } }));
+      const state = await this.projects.openMesh(path);
       this.mesh.set(state.mesh ?? null);
       this.node.set(null);
       this.error.set(null);
