@@ -172,8 +172,18 @@ public static class MaterialShelf {
         var folder = Path.Combine(compounds, GraphPackages.CompoundPrefix.TrimEnd('/'), name);
         List<(string Path, string Text)> brought = [..GraphPackages.CompoundsFor(package, library.RootPath)];
         if (Directory.Exists(folder)) {
-            foreach (var stale in Directory.EnumerateFiles(folder, "*" + LibraryLayout.GraphExtension, SearchOption.AllDirectories)
-                         .Where(file => !brought.Exists(b => string.Equals(Path.Combine(compounds, b.Path), file, StringComparison.Ordinal)))) {
+            foreach (var stale in Directory.EnumerateFiles(
+                             folder,
+                             "*" + LibraryLayout.GraphExtension,
+                             SearchOption.AllDirectories
+                         )
+                         .Where(file => !brought.Exists(b => string.Equals(
+                                     Path.Combine(compounds, b.Path),
+                                     file,
+                                     StringComparison.Ordinal
+                                 )
+                             )
+                         )) {
                 File.Delete(stale);
             }
         }

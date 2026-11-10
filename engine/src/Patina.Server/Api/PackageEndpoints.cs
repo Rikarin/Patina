@@ -30,7 +30,12 @@ static class PackageEndpoints {
     }
 
     static Results<Ok<PackagePlan>, ProblemHttpResult> GetPackagePlan(LibraryHost host, string graph, string? role) =>
-        Packaged(host, graph, role, static (file, library, role, _) => GraphPackages.Plan(file, library.RootPath, role));
+        Packaged(
+            host,
+            graph,
+            role,
+            static (file, library, role, _) => GraphPackages.Plan(file, library.RootPath, role)
+        );
 
     static Results<Ok<PackagePublished>, ProblemHttpResult> PublishPackage(LibraryHost host, PackageRequest request) =>
         Packaged(

@@ -26,7 +26,9 @@ static class GraphCommands {
     public static int Info(string path) {
         try {
             var (_, graph, package) = GraphFactsOf.Read(path);
-            Console.WriteLine(JsonSerializer.Serialize(GraphFactsOf.Of(graph, package), LibraryTreeJsonContext.Default.GraphFacts));
+            Console.WriteLine(
+                JsonSerializer.Serialize(GraphFactsOf.Of(graph, package), PackageJsonContext.Default.GraphFacts)
+            );
             return ExitClean;
         } catch (Exception e) when (e is FileNotFoundException
                                         or LibraryFormatException

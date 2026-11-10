@@ -50,7 +50,12 @@ public static class GraphPackages {
     /// <param name="library">The library's folder.</param>
     /// <param name="role">What it is used as.</param>
     /// <param name="tags">Its project's words for it, which the package's graph carries beside its own.</param>
-    public static PackagePublished Publish(string graph, string library, string role, IReadOnlyList<string>? tags = null) {
+    public static PackagePublished Publish(
+        string graph,
+        string library,
+        string role,
+        IReadOnlyList<string>? tags = null
+    ) {
         var gathered = Gather(graph, library);
         var path = LibraryPath(library, gathered.Name);
         return new(path, Write(gathered, Path.Combine(library, path), role, tags ?? []));
@@ -97,7 +102,8 @@ public static class GraphPackages {
         foreach (var compound in manifest.Compounds) {
             var file = Path.Combine(compounds, compound.Type + LibraryLayout.GraphExtension);
             var asset = YamlSerializer.Parse<NodeGraphAsset>(SharedFile.ReadAllText(file));
-            yield return (compound.Type + LibraryLayout.GraphExtension, YamlSerializer.ToYaml(Rooted(asset, graph, library)));
+            yield return (compound.Type + LibraryLayout.GraphExtension,
+                YamlSerializer.ToYaml(Rooted(asset, graph, library)));
         }
     }
 
@@ -167,79 +173,104 @@ public static class GraphPackages {
         }
 
         var root = YamlSerializer.Parse<NodeGraphAsset>(SharedFile.ReadAllText(graph));
-        var name = NameOf(root, graph);
         var folder = CompoundFolders.Of(graph);
         var published = new CompoundShelf().Of(folder);
-        var roots = CompoundFolders.PictureRoots(graph, library);
-        var libraryRoot = roots.Count > 1 ? roots[1] : null;
-
-        List<Compound> compounds = [];
-        Dictionary<string, Picture> pictures = new(StringComparer.Ordinal);
-        SortedSet<string> shipped = new(StringComparer.Ordinal);
-        List<PackageDependency> dependencies = [];
-        HashSet<string> seen = new(StringComparer.Ordinal);
-        Queue<NodeGraphAsset> walk = new([root]);
-        while (walk.TryDequeue(out var asset)) {
-            foreach (var node in asset.Nodes) {
-                Visit(node);
-            }
-        }
-
-        var diagnostics = Compile(root, published, dependencies);
+        Walk walk = new(folder, published, CompoundFolders.PictureRoots(graph, library));
+        walk.Through(root);
+        var diagnostics = Compile(root, published, walk.Dependencies);
         return new(
-            name,
+            NameOf(root, graph),
             graph,
             root,
-            compounds,
-            [..pictures.Values],
-            [..shipped],
-            [..dependencies.OrderBy(static d => d.Kind, StringComparer.Ordinal).ThenBy(static d => d.Name, StringComparer.Ordinal)],
+            walk.Compounds,
+            [..walk.Pictures.Values],
+            [..walk.Shipped],
+            [
+                ..walk.Dependencies.OrderBy(static d => d.Kind, StringComparer.Ordinal)
+                    .ThenBy(static d => d.Name, StringComparer.Ordinal)
+            ],
             diagnostics
         );
+    }
+
+    /// <summary>
+    ///     A walk through a graph and every compound of its folder that it reads, however deep, gathering what each
+    ///     names: compounds, the shipped ones and pictures, and what none of them is.
+    /// </summary>
+    /// <param name="folder">The compounds folder the graph reads.</param>
+    /// <param name="published">The node types that folder and Patina publish.</param>
+    /// <param name="roots">Where a picture is found: beside the graph, then in the library.</param>
+    sealed class Walk(string folder, PublishedCompounds published, IReadOnlyList<string> roots) {
+        readonly HashSet<string> seen = new(StringComparer.Ordinal);
+        readonly Queue<NodeGraphAsset> pending = [];
+        readonly string? library = roots.Count > 1 ? roots[1] : null;
+
+        public List<Compound> Compounds { get; } = [];
+        public Dictionary<string, Picture> Pictures { get; } = new(StringComparer.Ordinal);
+        public SortedSet<string> Shipped { get; } = new(StringComparer.Ordinal);
+        public List<PackageDependency> Dependencies { get; } = [];
+
+        public void Through(NodeGraphAsset graph) {
+            pending.Enqueue(graph);
+            while (pending.TryDequeue(out var asset)) {
+                foreach (var node in asset.Nodes) {
+                    Visit(node);
+                }
+            }
+        }
 
         void Visit(GraphNodeAsset node) {
             if (node.Type == BitmapNode) {
-                VisitPicture(node.Texts.GetValueOrDefault(SourceSetting, string.Empty).Trim());
-                return;
+                Picture(node.Texts.GetValueOrDefault(SourceSetting, string.Empty).Trim());
+            } else if (!SubGraphs.IsBoundary(node.Type) && !Reroutes.IsReroute(node.Type) && seen.Add(node.Type)) {
+                Type(node.Type);
             }
+        }
 
-            if (SubGraphs.IsBoundary(node.Type) || Reroutes.IsReroute(node.Type) || !seen.Add(node.Type)) {
-                return;
-            }
-
-            var file = Path.Combine(folder, node.Type.Replace('/', Path.DirectorySeparatorChar) + LibraryLayout.GraphExtension);
+        /// <summary>A compound of the folder is carried and walked; a shipped one is named; anything else is a node.</summary>
+        void Type(string type) {
+            var file = Path.Combine(
+                folder,
+                type.Replace('/', Path.DirectorySeparatorChar) + LibraryLayout.GraphExtension
+            );
             if (File.Exists(file)) {
                 var asset = YamlSerializer.Parse<NodeGraphAsset>(SharedFile.ReadAllText(file));
-                compounds.Add(new(node.Type, file, asset));
-                dependencies.Add(new("compound", node.Type, Shown(file)));
-                walk.Enqueue(asset);
-            } else if (TextureCompoundLibrary.Shipped.Contains(node.Type)) {
-                shipped.Add(node.Type);
-                dependencies.Add(new("shipped", node.Type, null));
-            } else if (!published.Registry.TryGet(node.Type, out _)) {
-                dependencies.Add(new("unknown", node.Type, null, "Nothing publishes this node type here."));
+                Compounds.Add(new(type, file, asset));
+                Dependencies.Add(new("compound", type, Shown(file)));
+                pending.Enqueue(asset);
+            } else if (TextureCompoundLibrary.Shipped.Contains(type)) {
+                Shipped.Add(type);
+                Dependencies.Add(new("shipped", type, null));
+            } else if (!published.Registry.TryGet(type, out _)) {
+                Dependencies.Add(new("unknown", type, null, "Nothing publishes this node type here."));
             }
         }
 
-        void VisitPicture(string reference) {
-            if (reference.Length == 0 || reference.StartsWith(MeshMapScheme, StringComparison.Ordinal) || pictures.ContainsKey(reference)) {
+        void Picture(string reference) {
+            if (reference.Length == 0
+                || reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)
+                || Pictures.ContainsKey(reference)) {
                 return;
             }
 
-            if (Located(reference, roots) is { } found) {
-                pictures[reference] = new(reference, found);
-                dependencies.Add(new("picture", reference, Shown(found)));
-            } else {
-                pictures[reference] = new(reference, string.Empty);
-                dependencies.Add(
-                    new("picture", reference, null, "It is not beside the graph or in the library. Point the Bitmap at it again.")
-                );
-            }
+            var found = Located(reference, roots);
+            Pictures[reference] = new(reference, found ?? string.Empty);
+            Dependencies.Add(
+                found is null
+                    ? new(
+                        "picture",
+                        reference,
+                        null,
+                        "It is not beside the graph or in the library. Point the Bitmap at it again."
+                    )
+                    : new("picture", reference, Shown(found))
+            );
         }
 
+        /// <summary>A file below the library by its path there, which is what a person recognises; else whole.</summary>
         string Shown(string file) =>
-            libraryRoot is not null && file.StartsWith(libraryRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal)
-                ? LibraryLayout.Relative(libraryRoot, file)
+            library is not null && file.StartsWith(library + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                ? LibraryLayout.Relative(library, file)
                 : file;
     }
 
@@ -261,7 +292,10 @@ public static class GraphPackages {
             }
         }
 
-        return [..compilation.Diagnostics.Where(static d => d.Severity == NodeSeverity.Error).Select(GraphFactsOf.Diagnostic)];
+        return [
+            ..compilation.Diagnostics.Where(static d => d.Severity == NodeSeverity.Error)
+                .Select(GraphFactsOf.Diagnostic)
+        ];
     }
 
     static string? Located(string reference, IReadOnlyList<string> roots) {
@@ -288,7 +322,9 @@ public static class GraphPackages {
         }
 
         if (gathered.Diagnostics is [var error, ..]) {
-            throw new PackageRefusedException($"The graph does not compile, so it cannot be published: {error.Message}");
+            throw new PackageRefusedException(
+                $"The graph does not compile, so it cannot be published: {error.Message}"
+            );
         }
 
         var prefix = $"{CompoundPrefix}{gathered.Name}/";
@@ -328,16 +364,25 @@ public static class GraphPackages {
         }
 
         var graphFile = gathered.Name + LibraryLayout.GraphExtension;
-        File.WriteAllText(Path.Combine(staging, graphFile), YamlSerializer.ToYaml(Rewritten(Tagged(gathered.Graph, tags), types, files)));
+        File.WriteAllText(
+            Path.Combine(staging, graphFile),
+            YamlSerializer.ToYaml(Rewritten(Tagged(gathered.Graph, tags), types, files))
+        );
         PackageManifest manifest = new(
             PackageManifests.Format,
             gathered.Name,
             graphFile,
             role,
             $"Patina {ProductInfo.Version.Split('+')[0]}",
-            [..gathered.Compounds.Select(compound => new PackageCompound(types[compound.Type], compound.Type)).OrderBy(static c => c.Type, StringComparer.Ordinal)],
+            [
+                ..gathered.Compounds.Select(compound => new PackageCompound(types[compound.Type], compound.Type))
+                    .OrderBy(static c => c.Type, StringComparer.Ordinal)
+            ],
             gathered.Shipped,
-            [..files.Select(static file => new PackageFile(file.Value, file.Key)).OrderBy(static f => f.From, StringComparer.Ordinal)]
+            [
+                ..files.Select(static file => new PackageFile(file.Value, file.Key))
+                    .OrderBy(static f => f.From, StringComparer.Ordinal)
+            ]
         );
         File.WriteAllText(Path.Combine(staging, PackageManifests.File), PackageManifests.Text(manifest));
 
@@ -352,7 +397,9 @@ public static class GraphPackages {
 
     /// <summary>The graph with its project's words for it beside its own, each once.</summary>
     static NodeGraphAsset Tagged(NodeGraphAsset graph, IReadOnlyList<string> tags) =>
-        tags.Count == 0 ? graph : graph with { Tags = [..graph.Tags.Concat(tags).Distinct(StringComparer.OrdinalIgnoreCase)] };
+        tags.Count == 0
+            ? graph
+            : graph with { Tags = [..graph.Tags.Concat(tags).Distinct(StringComparer.OrdinalIgnoreCase)] };
 
     /// <summary>A file of the package: its compounds under their package types, its pictures from <c>files/</c>.</summary>
     static NodeGraphAsset Rewritten(

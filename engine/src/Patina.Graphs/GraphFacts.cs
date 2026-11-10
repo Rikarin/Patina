@@ -38,7 +38,7 @@ public static class GraphFactsOf {
             graph.Name,
             Info(graph),
             new SortedDictionary<string, string>(graph.Settings, StringComparer.Ordinal),
-            [..model.Parameters.Select(parameter => Definition(parameter))],
+            [..model.Parameters.Select(static parameter => Definition(parameter))],
             [..graph.Presets.Select(static preset => new GraphPresetState(preset.Name, preset.Values))],
             [
                 ..graph.Interface.Where(static port => port.Direction == PortDirection.Input)
@@ -163,14 +163,23 @@ public static class GraphFactsOf {
 
         GraphParameterAsset[] parameters = [..graph.Parameters];
         for (var at = 0; at < parameters.Length; at++) {
-            var parameter = model.Parameters.Find(p => string.Equals(p.Name, parameters[at].Name, StringComparison.Ordinal));
+            var parameter = model.Parameters.Find(p => string.Equals(
+                    p.Name,
+                    parameters[at].Name,
+                    StringComparison.Ordinal
+                )
+            );
             if (parameter is null || !set.TryGetValue(parameter.Name, out var value)) {
                 continue;
             }
 
-            var changed = parameter with { Default = parameter.Kind == SettingKind.Text ? parameter.Canonical(value) : value };
+            var changed = parameter with {
+                Default = parameter.Kind == SettingKind.Text ? parameter.Canonical(value) : value
+            };
             if (!Holds(changed)) {
-                throw new ArgumentException($"'{value}' is not a value for {parameter.Name}, a {Described(parameter)}.");
+                throw new ArgumentException(
+                    $"'{value}' is not a value for {parameter.Name}, a {Described(parameter)}."
+                );
             }
 
             parameters[at] = parameters[at] with { Default = changed.Default };

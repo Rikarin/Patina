@@ -78,7 +78,11 @@ public sealed class CliPackageProcessTests : IDisposable {
     public async Task A_package_says_what_it_takes_and_bakes_where_it_is_put_with_its_knobs_set() {
         WriteGraph();
         var packages = Path.Combine(folder.FullName, "packages");
-        var published = await PatinaAsync("package", Path.Combine(folder.FullName, "work", "Banded.vxtexgraph"), packages);
+        var published = await PatinaAsync(
+            "package",
+            Path.Combine(folder.FullName, "work", "Banded.vxtexgraph"),
+            packages
+        );
         Assert.True(published.Exit == 0, published.Error);
 
         // Moved away from the folder it came from, it still has its compound: the package carries it.
@@ -89,8 +93,11 @@ public sealed class CliPackageProcessTests : IDisposable {
 
         var info = await PatinaAsync("graph", "info", package);
         Assert.True(info.Exit == 0, info.Error);
-        var facts = JsonSerializer.Deserialize(info.Out, LibraryTreeJsonContext.Default.GraphFacts)!;
-        Assert.Equal(("Banded", "Checks that soften.", "redness"), (facts.Name, facts.Info.Description, Assert.Single(facts.Parameters).Name));
+        var facts = JsonSerializer.Deserialize(info.Out, PackageJsonContext.Default.GraphFacts)!;
+        Assert.Equal(
+            ("Banded", "Checks that soften.", "redness"),
+            (facts.Name, facts.Info.Description, Assert.Single(facts.Parameters).Name)
+        );
         Assert.Equal(["baseColor"], facts.Outputs);
         Assert.Equal("Red", Assert.Single(facts.Presets).Name);
         Assert.Equal(["Packages/Banded/Soften"], facts.Package!.Compounds.Select(static c => c.Type));
@@ -98,7 +105,10 @@ public sealed class CliPackageProcessTests : IDisposable {
         var refused = await PatinaAsync("bake", package, Path.Combine(folder.FullName, "bad"), "--param", "redness=2");
         Assert.Equal(2, refused.Exit);
         Assert.Contains("not a value for redness", refused.Error, StringComparison.Ordinal);
-        Assert.Equal(2, (await PatinaAsync("bake", package, Path.Combine(folder.FullName, "bad"), "--preset", "Blue")).Exit);
+        Assert.Equal(
+            2,
+            (await PatinaAsync("bake", package, Path.Combine(folder.FullName, "bad"), "--preset", "Blue")).Exit
+        );
 
         var help = await PatinaAsync("bake", "--help");
         Assert.Equal(0, help.Exit);
@@ -111,7 +121,11 @@ public sealed class CliPackageProcessTests : IDisposable {
             }
 
             Assert.True(baked.Exit == 0, baked.Error);
-            return Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(Path.Combine(folder.FullName, name, "baseColor.png"), Token)));
+            return Convert.ToHexStringLower(
+                SHA256.HashData(
+                    await File.ReadAllBytesAsync(Path.Combine(folder.FullName, name, "baseColor.png"), Token)
+                )
+            );
         }
 
         var plain = await BakedAsync("plain");

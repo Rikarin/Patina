@@ -43,7 +43,10 @@ sealed class GraphAuthoringEdits(NodeGraphModel graph, GraphParameterEdits param
             var (width, height) = (set.PhysicalWidth ?? 0f, set.PhysicalHeight ?? 0f);
             size = (width, height) switch {
                 (0f, 0f) => default,
-                _ when float.IsFinite(width) && float.IsFinite(height) && width > 0f && height > 0f => new(width, height),
+                _ when float.IsFinite(width) && float.IsFinite(height) && width > 0f && height > 0f => new(
+                    width,
+                    height
+                ),
                 _ => throw new GraphEditRefusedException(
                     "A physical size is a width and a height above zero, in centimetres, or both zero for none."
                 )

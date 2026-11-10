@@ -24,7 +24,7 @@ public static class PackageManifests {
 
     /// <summary>A manifest as text. The same manifest always gives the same bytes.</summary>
     public static string Text(PackageManifest manifest) =>
-        YamlText.Write(YamlRecords.Write(manifest, LibraryTreeJsonContext.Default.PackageManifest));
+        YamlText.Write(YamlRecords.Write(manifest, PackageJsonContext.Default.PackageManifest));
 
     /// <summary>A manifest read from text.</summary>
     /// <exception cref="LibraryFormatException">It is not a manifest, or is of a newer shape than this reads.</exception>
@@ -32,7 +32,7 @@ public static class PackageManifests {
         var fields = new YamlFields(YamlText.Parse(text, path), path);
         var manifest = YamlRecords.Read(
             fields,
-            LibraryTreeJsonContext.Default.PackageManifest,
+            PackageJsonContext.Default.PackageManifest,
             new(Format, string.Empty, string.Empty, "material", string.Empty, [], [], [])
         );
         if (manifest.Format > Format) {

@@ -120,7 +120,10 @@ public sealed class PackageApiTests : IAsyncLifetime {
         var graph = await RustProjectAsync();
 
         var plan = await PlanAsync(graph);
-        Assert.Equal(("Rust", "material", "packages/Rust.ptpkg", false), (plan.Name, plan.Role, plan.Path, plan.Replaces));
+        Assert.Equal(
+            ("Rust", "material", "packages/Rust.ptpkg", false),
+            (plan.Name, plan.Role, plan.Path, plan.Replaces)
+        );
         Assert.Empty(plan.Diagnostics);
         Assert.All(plan.Dependencies, static d => Assert.Null(d.Problem));
         Assert.Equal(
@@ -158,20 +161,27 @@ public sealed class PackageApiTests : IAsyncLifetime {
         // The same graph publishes to the same bytes, so republishing an unchanged material is no diff.
         var manifest = await File.ReadAllTextAsync(Path.Combine(folder, "package.yaml"), Token);
         Assert.True((await PlanAsync(graph)).Replaces);
-        (await client.PostAsJsonAsync("/api/v1/library/packages", new PackageRequest(graph), Token)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync(
+            "/api/v1/library/packages",
+            new PackageRequest(graph),
+            Token
+        )).EnsureSuccessStatusCode();
         Assert.Equal(manifest, await File.ReadAllTextAsync(Path.Combine(folder, "package.yaml"), Token));
 
         await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Alpha"), Token);
-        async Task<MaterialInfo[]> Shelf(string search) =>
-            [
-                ..(await client.GetFromJsonAsync<MaterialList>(
-                    $"/api/v1/library/materials?project=alpha&search={Uri.EscapeDataString(search)}",
-                    Token
-                ))!.Items.Where(static m => m.Origin == "package")
-            ];
+
+        async Task<MaterialInfo[]> Shelf(string search) => [
+            ..(await client.GetFromJsonAsync<MaterialList>(
+                $"/api/v1/library/materials?project=alpha&search={Uri.EscapeDataString(search)}",
+                Token
+            ))!.Items.Where(static m => m.Origin == "package")
+        ];
 
         var offered = Assert.Single(await Shelf(string.Empty));
-        Assert.Equal(("Rust", "graph", "material", "packages/Rust.ptpkg/Rust.vxtexgraph"), (offered.Name, offered.Kind, offered.Role, offered.Source));
+        Assert.Equal(
+            ("Rust", "graph", "material", "packages/Rust.ptpkg/Rust.vxtexgraph"),
+            (offered.Name, offered.Kind, offered.Role, offered.Source)
+        );
         Assert.Equal(["baseColor"], offered.Channels);
         Assert.Equal("tint", Assert.Single(offered.Parameters!).Name);
         Assert.Equal("Rust over a picture.", offered.Description);
@@ -183,7 +193,11 @@ public sealed class PackageApiTests : IAsyncLifetime {
         var terms = await client.GetFromJsonAsync<MaterialList>("/api/v1/library/materials?project=alpha", Token);
         Assert.Contains(new("package", "Packages"), terms!.Origins);
 
-        var used = await client.PostAsJsonAsync("/api/v1/library/materials/use", new MaterialUseRequest("alpha", offered.Source), Token);
+        var used = await client.PostAsJsonAsync(
+            "/api/v1/library/materials/use",
+            new MaterialUseRequest("alpha", offered.Source),
+            Token
+        );
         Assert.Equal(HttpStatusCode.OK, used.StatusCode);
         Assert.Equal("Materials/Rust", (await used.Content.ReadFromJsonAsync<MaterialUse>(Token))!.Graph);
         var alpha = Path.Combine(server.Library, "projects", "alpha", "Compounds");
@@ -218,13 +232,21 @@ public sealed class PackageApiTests : IAsyncLifetime {
     public async Task What_a_graph_says_about_itself_is_one_undo_step_that_reaches_its_file() {
         var graph = await RustProjectAsync();
         var state = await client.OpenAsync(graph, Token);
-        Assert.Equal(("Rust over a picture.", "Ines", null), (state.Info.Description, state.Info.Author, state.Info.PhysicalWidth));
+        Assert.Equal(
+            ("Rust over a picture.", "Ines", null),
+            (state.Info.Description, state.Info.Author, state.Info.PhysicalWidth)
+        );
         Assert.Equal(["metal"], state.Info.Tags);
 
         await client.EditAsync(
             state.Id,
             Token,
-            new GraphSetInfo("Iron left out in the rain.", Tags: ["metal", " Metal ", "", "iron"], PhysicalWidth: 200, PhysicalHeight: 150)
+            new GraphSetInfo(
+                "Iron left out in the rain.",
+                Tags: ["metal", " Metal ", "", "iron"],
+                PhysicalWidth: 200,
+                PhysicalHeight: 150
+            )
         );
         var described = await client.StateAsync(state.Id, Token);
         Assert.Equal("Iron left out in the rain.", described.Info.Description);
@@ -233,7 +255,11 @@ public sealed class PackageApiTests : IAsyncLifetime {
         Assert.Equal((200f, 150f), (described.Info.PhysicalWidth, described.Info.PhysicalHeight));
         Assert.Equal("Describe Graph", described.History.UndoLabel);
 
-        var bad = await client.SendAsync(state.Id, new([new GraphSetInfo(PhysicalWidth: -1, PhysicalHeight: 5)]), Token);
+        var bad = await client.SendAsync(
+            state.Id,
+            new([new GraphSetInfo(PhysicalWidth: -1, PhysicalHeight: 5)]),
+            Token
+        );
         Assert.Equal(HttpStatusCode.UnprocessableEntity, bad.StatusCode);
 
         await client.ActAsync(state.Id, "undo", Token);

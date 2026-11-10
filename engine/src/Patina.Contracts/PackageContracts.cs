@@ -1,4 +1,19 @@
+using System.Text.Json.Serialization;
+
 namespace Patina.Contracts;
+
+/// <summary>What a package's manifest, publishing one and <c>patina graph info</c> put on the wire (ADR 0027).</summary>
+[JsonSourceGenerationOptions(
+    WriteIndented = true,
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+)]
+[JsonSerializable(typeof(PackageManifest))]
+[JsonSerializable(typeof(PackagePlan))]
+[JsonSerializable(typeof(PackageRequest))]
+[JsonSerializable(typeof(PackagePublished))]
+[JsonSerializable(typeof(GraphFacts))]
+public sealed partial class PackageJsonContext : JsonSerializerContext;
 
 /// <summary>
 ///     A package's <c>package.yaml</c> (ADR 0027): what a <c>.ptpkg</c> folder holds besides its graph, and what made

@@ -53,7 +53,12 @@ internal static class GraphBake {
                 case "--size":
                     found.Size = value;
                     break;
-                case "--seed" when int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var seed):
+                case "--seed" when int.TryParse(
+                    value,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out var seed
+                ):
                     found.Seed = seed;
                     break;
                 case "--preset":
