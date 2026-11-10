@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using System.Net.Http.Json;
+using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
 
@@ -120,15 +121,48 @@ public sealed partial class StackProcessTests {
             Digest(await PixelsAsync(other.Id, false, deadline.Token), "baseColor")
         );
 
-        // A stack of another size takes no paint, and says why.
-        var small = await CreateAsync("Small.vxlayers", deadline.Token, 512);
-        using var refused = await http.PostAsJsonAsync(
-            $"/api/v1/stacks/{small.Id}/commands",
-            new([new StackPasteLayers(clip.Id)]),
-            ContractsJsonContext.Default.StackCommandBatch,
-            deadline.Token
-        );
-        Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+        // A stack of another size takes the paint at its own size (#106): twice the size is the copy with each texel
+        // repeated, exactly, and half the size is each block of four averaged.
+        var source = RedOf(await ExportAsync(state.Id, Path.Combine(folder.FullName, "pasted-source"), deadline.Token));
+        var large = await CreateAsync("Large.vxlayers", deadline.Token, Side * 2);
+        await EditAsync(large.Id, deadline.Token, new StackRemoveLayer("paint"), new StackPasteLayers(clip.Id));
+        var big = RedOf(await ExportAsync(large.Id, Path.Combine(folder.FullName, "pasted-large"), deadline.Token));
+        for (var y = 0; y < Side; y += 7) {
+            for (var x = 0; x < Side; x += 7) {
+                Assert.Equal(source.At(x, y), big.At(x * 2 + 1, y * 2 + 1));
+            }
+        }
+
+        var small = await CreateAsync("Small.vxlayers", deadline.Token, Side / 2);
+        await EditAsync(small.Id, deadline.Token, new StackRemoveLayer("paint"));
+        var empty = RedOf(await ExportAsync(small.Id, Path.Combine(folder.FullName, "small-empty"), deadline.Token));
+        await EditAsync(small.Id, deadline.Token, new StackPasteLayers(clip.Id));
+        var half = RedOf(await ExportAsync(small.Id, Path.Combine(folder.FullName, "pasted-small"), deadline.Token));
+        double off = 0;
+        var painted = 0;
+        for (var y = 0; y < Side / 2; y++) {
+            for (var x = 0; x < Side / 2; x++) {
+                var averaged = source.Averaged(x * 2, y * 2);
+                off += Math.Abs(averaged - half.At(x, y));
+                painted += half.At(x, y) != empty.At(x, y) ? 1 : 0;
+            }
+        }
+
+        Assert.True(painted > 100, $"Only {painted} texels of the smaller stack took the paste.");
+        Assert.True(off / (Side / 2 * Side / 2) < 1.0, $"The smaller paste is {off / (Side / 2 * Side / 2)} of 255 off.");
+    }
+
+    /// <summary>A map's red, by texel.</summary>
+    static RedMap RedOf(IReadOnlyList<StackPixels> maps) {
+        var picture = PngCodec.Decode(File.ReadAllBytes(maps.Single(static map => map.Usage == "baseColor").File!));
+        return new(picture.Width, picture.Pixels);
+    }
+
+    sealed record RedMap(int Width, byte[] Pixels) {
+        public int At(int x, int y) => Pixels[(y * Width + x) * 4];
+
+        /// <summary>The mean of a block of four, from its top left.</summary>
+        public double Averaged(int x, int y) => (At(x, y) + At(x + 1, y) + At(x, y + 1) + At(x + 1, y + 1)) / 4.0;
     }
 
     async Task<StackClip> ClipAsync(string id, IReadOnlyList<string> layers, CancellationToken token) {

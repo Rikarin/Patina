@@ -31,6 +31,8 @@ class StackMaskEffect:
         Attributes:
             node (str): The node type or compound it is.
             enabled (bool): Whether it runs. Default: True.
+            blend (str): How its result composites over the mask it read. Copy replaces it. Default: 'Copy'.
+            opacity (float): How much of its result composites, 0 to 1. Default: 1.0.
             values (None | StackMaskEffectValuesType1 | Unset): Its numbers, by port.
             texts (None | StackMaskEffectTextsType1 | Unset): Its settings, by name.
             inputs (None | StackMaskEffectInputsType1 | Unset): Where its other image inputs read, by port. The mask always
@@ -39,6 +41,8 @@ class StackMaskEffect:
 
     node: str
     enabled: bool = True
+    blend: str = 'Copy'
+    opacity: float = 1.0
     values: None | StackMaskEffectValuesType1 | Unset = UNSET
     texts: None | StackMaskEffectTextsType1 | Unset = UNSET
     inputs: None | StackMaskEffectInputsType1 | Unset = UNSET
@@ -55,6 +59,10 @@ class StackMaskEffect:
         node = self.node
 
         enabled = self.enabled
+
+        blend = self.blend
+
+        opacity = self.opacity
 
         values: dict[str, Any] | None | Unset
         if isinstance(self.values, Unset):
@@ -86,6 +94,8 @@ class StackMaskEffect:
         field_dict.update({
             "node": node,
             "enabled": enabled,
+            "blend": blend,
+            "opacity": opacity,
         })
         if values is not UNSET:
             field_dict["values"] = values
@@ -107,6 +117,10 @@ class StackMaskEffect:
         node = d.pop("node")
 
         enabled = d.pop("enabled")
+
+        blend = d.pop("blend")
+
+        opacity = d.pop("opacity")
 
         def _parse_values(data: object) -> None | StackMaskEffectValuesType1 | Unset:
             if data is None:
@@ -171,6 +185,8 @@ class StackMaskEffect:
         stack_mask_effect = cls(
             node=node,
             enabled=enabled,
+            blend=blend,
+            opacity=opacity,
             values=values,
             texts=texts,
             inputs=inputs,

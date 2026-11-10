@@ -115,6 +115,12 @@ public static class Refusals {
     /// <summary>An instance that would stand, through instances, for itself. Values: <c>layer</c>.</summary>
     public const string InstanceCycle = "instance-cycle";
 
+    /// <summary>A node or compound neither the shipped nodes nor the project's compounds have. Values: <c>node</c>.</summary>
+    public const string NodeUnknown = "node-unknown";
+
+    /// <summary>A layer the stack does not have. Values: <c>layer</c>.</summary>
+    public const string StackLayerMissing = "stack-layer-missing";
+
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(
         string detail,

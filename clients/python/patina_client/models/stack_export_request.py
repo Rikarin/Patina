@@ -8,6 +8,8 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
+from typing import cast
 
 
 
@@ -24,9 +26,13 @@ class StackExportRequest:
 
         Attributes:
             folder (str): Where, absolute or relative to the library.
+            layer (None | str | Unset): One layer to write on its own, such as a flattened folder, composited alone over the
+                channels' defaults, or
+                null for the whole stack. Its files are named after it.
      """
 
     folder: str
+    layer: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -36,12 +42,20 @@ class StackExportRequest:
     def to_dict(self) -> dict[str, Any]:
         folder = self.folder
 
+        layer: None | str | Unset
+        if isinstance(self.layer, Unset):
+            layer = UNSET
+        else:
+            layer = self.layer
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
             "folder": folder,
         })
+        if layer is not UNSET:
+            field_dict["layer"] = layer
 
         return field_dict
 
@@ -52,8 +66,19 @@ class StackExportRequest:
         d = dict(src_dict)
         folder = d.pop("folder")
 
+        def _parse_layer(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        layer = _parse_layer(d.pop("layer", UNSET))
+
+
         stack_export_request = cls(
             folder=folder,
+            layer=layer,
         )
 
 

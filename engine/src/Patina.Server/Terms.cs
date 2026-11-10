@@ -123,6 +123,14 @@ public static class Terms {
         return words.ToString();
     }
 
+    /// <summary>
+    ///     The colours a layer can be marked with, by their plain names: a red tag is Red, where a mask's red lane is Red
+    ///     (X).
+    /// </summary>
+    public static IReadOnlyList<StackTerm> InTags(IEnumerable<string> values) => [
+        ..values.Select(static value => new StackTerm(value, value == "Grey" ? "Gray" : Label(value)))
+    ];
+
     /// <summary>What a layer stack calls one value of its fields: a mask source, a blend, a channel.</summary>
     public static string InStack(string value) => InStacks.TryGetValue(value, out var named) ? named : Label(value);
 

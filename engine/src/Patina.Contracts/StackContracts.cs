@@ -55,6 +55,7 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
 /// </param>
 /// <param name="Decal">The box a Decal fill is projected through, or null when none has been placed.</param>
 /// <param name="Path">The curve a Path fill is laid along, or null when none has been drawn.</param>
+/// <param name="Tag">The colour the layer is marked with in a list, from the vocabulary's tags, or None.</param>
 public sealed record StackLayer(
     string Id,
     string Name,
@@ -83,7 +84,8 @@ public sealed record StackLayer(
     bool Flattened = false,
     StackInstanceRef? Instance = null,
     StackDecal? Decal = null,
-    StackSurfacePath? Path = null
+    StackSurfacePath? Path = null,
+    string Tag = "None"
 );
 
 /// <summary>The layer an instance stands for.</summary>
@@ -210,12 +212,16 @@ public sealed record StackMeshParts(IReadOnlyList<string> Parts, string? Asset =
 /// <param name="Inputs">
 ///     Where its other image inputs read, by port. The mask always goes into its first image input.
 /// </param>
+/// <param name="Blend">How its result composites over the mask it read. Copy replaces it.</param>
+/// <param name="Opacity">How much of its result composites, 0 to 1.</param>
 public sealed record StackMaskEffect(
     string Node,
     bool Enabled = true,
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
     IReadOnlyDictionary<string, string>? Texts = null,
-    IReadOnlyDictionary<string, StackInput>? Inputs = null
+    IReadOnlyDictionary<string, StackInput>? Inputs = null,
+    string Blend = "Copy",
+    float Opacity = 1f
 );
 
 /// <summary>One colour of a stack's id map.</summary>
@@ -304,6 +310,7 @@ public sealed record StackTerm(string Value, string Label);
 /// </param>
 /// <param name="Sources">The generators an image input can read: noises, patterns, grunges and the rest.</param>
 /// <param name="Lanes">The lanes of a picture a mask can read.</param>
+/// <param name="Tags">The colours a layer can be marked with, None first.</param>
 public sealed record StackVocabulary(
     IReadOnlyList<StackTerm> Blends,
     IReadOnlyList<StackFilterKind> Filters,
@@ -319,7 +326,8 @@ public sealed record StackVocabulary(
     StackBrushTerms Brush,
     IReadOnlyList<StackTerm> Inputs,
     IReadOnlyList<StackFilterKind> Sources,
-    IReadOnlyList<StackTerm>? Lanes = null
+    IReadOnlyList<StackTerm>? Lanes = null,
+    IReadOnlyList<StackTerm>? Tags = null
 );
 
 /// <summary>What a layer looks like alone.</summary>
@@ -540,6 +548,7 @@ public sealed record StackMoveLayer(string Layer, int Delta) : StackCommand;
 /// </param>
 /// <param name="Decal">The box a Decal fill is projected through, replacing where it was.</param>
 /// <param name="Path">The curve a Path fill is laid along, replacing the curve it had.</param>
+/// <param name="Tag">The colour it is marked with, from the vocabulary's tags: None takes the mark away.</param>
 public sealed record StackSetLayer(
     string Layer,
     string? Name = null,
@@ -564,7 +573,8 @@ public sealed record StackSetLayer(
     StackAnchorRef? Anchor = null,
     IReadOnlyDictionary<string, StackInput>? Inputs = null,
     StackDecal? Decal = null,
-    StackSurfacePath? Path = null
+    StackSurfacePath? Path = null,
+    string? Tag = null
 ) : StackCommand;
 #pragma warning restore SK7005
 
@@ -972,7 +982,11 @@ public sealed record StackEventPage(long Sequence, IReadOnlyList<StackEvent> Eve
 
 /// <summary>Writes each channel of a stack to a file.</summary>
 /// <param name="Folder">Where, absolute or relative to the library.</param>
-public sealed record StackExportRequest(string Folder);
+/// <param name="Layer">
+///     One layer to write on its own, such as a flattened folder, composited alone over the channels' defaults, or
+///     null for the whole stack. Its files are named after it.
+/// </param>
+public sealed record StackExportRequest(string Folder, string? Layer = null);
 
 /// <summary>A digest of a map's pixels, so that two pictures can be compared with neither crossing the API.</summary>
 /// <param name="Usage">Which channel.</param>

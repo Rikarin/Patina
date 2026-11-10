@@ -1541,6 +1541,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/kind': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What a node or compound this stack can run takes: its numbers, its settings and the images it reads, by port. The project's own compounds are included, which the vocabulary's lists are not. */
+    get: operations['GetStackNodeKind'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/{id}/find': {
     parameters: {
       query?: never;
@@ -5422,6 +5439,8 @@ export interface components {
       };
       decal?: null | components['schemas']['StackDecal'];
       path?: null | components['schemas']['StackSurfacePath'];
+      /** @description The colour it is marked with, from the vocabulary's tags: None takes the mark away. */
+      tag?: null | string;
     };
     /** @description Changes an entry of a layer's mask stack. What is null stays. */
     StackCommandStackSetMaskLayer: {
@@ -5739,6 +5758,11 @@ export interface components {
     StackExportRequest: {
       /** @description Where, absolute or relative to the library. */
       folder: string;
+      /**
+       * @description One layer to write on its own, such as a flattened folder, composited alone over the channels' defaults, or
+       *     null for the whole stack. Its files are named after it.
+       */
+      layer?: null | string;
     };
     /** @description One image a filter reads, as Properties offers a slot for it. */
     StackFilterInput: {
@@ -5937,6 +5961,11 @@ export interface components {
       instance?: null | components['schemas']['StackInstanceRef'];
       decal?: null | components['schemas']['StackDecal'];
       path?: null | components['schemas']['StackSurfacePath'];
+      /**
+       * @description The colour the layer is marked with in a list, from the vocabulary's tags, or None.
+       * @default None
+       */
+      tag: string;
     };
     /** @description What decides where a layer shows. */
     StackMask: {
@@ -6029,6 +6058,17 @@ export interface components {
       inputs?: null | {
         [key: string]: components['schemas']['StackInput'];
       };
+      /**
+       * @description How its result composites over the mask it read. Copy replaces it.
+       * @default Copy
+       */
+      blend: string;
+      /**
+       * Format: float
+       * @description How much of its result composites, 0 to 1.
+       * @default 1
+       */
+      opacity: number;
     };
     /**
      * @description One entry of a mask's own stack: a source, composited over the base and the entries beneath it with its own
@@ -6559,6 +6599,8 @@ export interface components {
       sources: components['schemas']['StackFilterKind'][];
       /** @description The lanes of a picture a mask can read. */
       lanes?: null | components['schemas']['StackTerm'][];
+      /** @description The colours a layer can be marked with, None first. */
+      tags?: null | components['schemas']['StackTerm'][];
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {
@@ -11878,6 +11920,39 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['StackIdColours'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackNodeKind: {
+    parameters: {
+      query: {
+        node: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackFilterKind'];
         };
       };
       /** @description Not Found */

@@ -28,6 +28,8 @@ const Words: Readonly<Record<string, string>> = {
     'That layer of the mask of {layer} is not painted, so a brush can’t reach it. Add a Paint layer to the mask.',
   'instance-source-missing': 'The layer to make an instance of is no longer in {set}.',
   'instance-cycle': 'An instance of {layer} there would stand for itself. Choose another layer.',
+  'stack-layer-missing': 'That layer is no longer in the stack. It may have been removed by another client.',
+  'node-unknown': '{node} isn’t a node or a compound this project has. It may have been renamed or removed.',
   'preset-invalid': 'That preset can’t be kept as it is. {reason}',
   'preset-factory': '{preset} is a Starter preset, so it can’t be changed or deleted. Duplicate it to change a copy.',
   'preset-missing': 'There is no preset {preset} there any more. It may have been deleted outside Patina.',

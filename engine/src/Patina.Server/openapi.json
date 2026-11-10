@@ -5932,6 +5932,55 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/kind": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "What a node or compound this stack can run takes: its numbers, its settings and the images it reads, by port. The project\u0027s own compounds are included, which the vocabulary\u0027s lists are not.",
+        "operationId": "GetStackNodeKind",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "node",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackFilterKind"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/find": {
       "post": {
         "tags": [
@@ -15082,6 +15131,13 @@
                 "$ref": "#/components/schemas/StackSurfacePath"
               }
             ]
+          },
+          "tag": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The colour it is marked with, from the vocabulary\u0027s tags: None takes the mark away."
           }
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
@@ -15777,6 +15833,13 @@
           "folder": {
             "type": "string",
             "description": "Where, absolute or relative to the library."
+          },
+          "layer": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "One layer to write on its own, such as a flattened folder, composited alone over the channels\u0027 defaults, or\nnull for the whole stack. Its files are named after it."
           }
         },
         "description": "Writes each channel of a stack to a file."
@@ -16064,7 +16127,8 @@
           "planarAxis",
           "filterNode",
           "anchorPoint",
-          "flattened"
+          "flattened",
+          "tag"
         ],
         "type": "object",
         "properties": {
@@ -16254,6 +16318,11 @@
                 "$ref": "#/components/schemas/StackSurfacePath"
               }
             ]
+          },
+          "tag": {
+            "type": "string",
+            "description": "The colour the layer is marked with in a list, from the vocabulary\u0027s tags, or None.",
+            "default": "None"
           }
         },
         "description": "One layer, without its pixels."
@@ -16397,7 +16466,9 @@
       "StackMaskEffect": {
         "required": [
           "node",
-          "enabled"
+          "enabled",
+          "blend",
+          "opacity"
         ],
         "type": "object",
         "properties": {
@@ -16443,6 +16514,17 @@
               "$ref": "#/components/schemas/StackInput"
             },
             "description": "Where its other image inputs read, by port. The mask always goes into its first image input."
+          },
+          "blend": {
+            "type": "string",
+            "description": "How its result composites over the mask it read. Copy replaces it.",
+            "default": "Copy"
+          },
+          "opacity": {
+            "type": "number",
+            "description": "How much of its result composites, 0 to 1.",
+            "format": "float",
+            "default": 1
           }
         },
         "description": "One step run on a mask."
@@ -17497,6 +17579,16 @@
               "$ref": "#/components/schemas/StackTerm"
             },
             "description": "The lanes of a picture a mask can read."
+          },
+          "tags": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "The colours a layer can be marked with, None first."
           }
         },
         "description": "The words a stack\u0027s fields take, each with its label, so that a client holds no list of its own."
