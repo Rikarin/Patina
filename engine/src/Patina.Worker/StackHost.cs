@@ -198,7 +198,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         }
 
         // A map the stack no longer writes leaves the viewport with it, or the old picture would stay on the mesh.
-        HashSet<ViewportSlot> written = [..stack.Run.Outputs.Select(static output => Slot(output.Usage)).OfType<ViewportSlot>()];
+        HashSet<ViewportSlot> written =
+            [..stack.Run.Outputs.Select(static output => Slot(output.Usage)).OfType<ViewportSlot>()];
         foreach (var gone in stack.Fed.Keys.Where(slot => !written.Contains(slot)).ToList()) {
             viewport.Live.ClearLive(gone, material);
             stack.Fed.Remove(gone);

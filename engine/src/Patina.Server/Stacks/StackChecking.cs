@@ -120,7 +120,7 @@ public static class StackChecking {
         );
     }
 
-    /// <summary>A bake that no longer fits the set, which is an error: what reads it lands in the wrong place.</summary>
+    /// <summary>A bake that no longer fits the set: an error, as what reads it lands in the wrong place.</summary>
     static CheckProblem Stale(string reason, int uvSet, string name) =>
         Problem(
             CheckCodes.BakeStale,

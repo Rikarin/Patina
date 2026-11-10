@@ -56,8 +56,8 @@ public static class StackInputs {
     }
 
     /// <summary>
-    ///     The UV set a stack's texture set is laid out in: the set named <paramref name="set" />, or its first. Zero, the
-    ///     first, when the file does not say or cannot be read.
+    ///     The UV set a stack's texture set is laid out in: the set named <paramref name="set" />, or its first. Zero,
+    ///     the first, when the file does not say or cannot be read.
     /// </summary>
     public static int UvSetOf(string text, string? set) {
         YamlStream yaml = [];
@@ -75,7 +75,7 @@ public static class StackInputs {
         }
 
         var chosen = list.Children.OfType<YamlMappingNode>()
-            .FirstOrDefault(entry => set is null || Scalar(entry, "name") == set)
+                .FirstOrDefault(entry => set is null || Scalar(entry, "name") == set)
             ?? list.Children.OfType<YamlMappingNode>().FirstOrDefault();
         return chosen is not null && int.TryParse(Scalar(chosen, "uvSet"), out var uvSet) ? uvSet : 0;
     }

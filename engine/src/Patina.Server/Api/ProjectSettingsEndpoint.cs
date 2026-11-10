@@ -113,7 +113,16 @@ static class ProjectSettingsEndpoint {
         }
 
         try {
-            await MovePaintAsync(library, worker, project, moving, added, documents, open, was, cancellationToken);
+            await MovePaintAsync(
+                library,
+                worker,
+                project,
+                moving,
+                added,
+                [..documents.Select(d => (d, was.TryGetValue(d.Id, out var old) && old != d.Material ? old : null))],
+                open,
+                cancellationToken
+            );
         } finally {
             File.Delete(moving);
         }
@@ -216,9 +225,8 @@ static class ProjectSettingsEndpoint {
         string project,
         string from,
         ProjectMesh to,
-        IReadOnlyList<ProjectItem> documents,
+        IReadOnlyList<(ProjectItem Document, string? Was)> documents,
         HashSet<string> open,
-        Dictionary<AssetId, string> was,
         CancellationToken cancellationToken
     ) {
         var backup = library.ProjectFile(
@@ -226,7 +234,7 @@ static class ProjectSettingsEndpoint {
             $"{LibraryLayout.PaintBackupFolder}/{DateTime.UtcNow:yyyyMMdd-HHmmss}"
         );
         var connection = await worker.ConnectionAsync(cancellationToken);
-        foreach (var document in documents) {
+        foreach (var (document, was) in documents) {
             var stack = library.ProjectFile(project, document.File);
             if (open.Contains(stack)) {
                 throw new ProjectRefusedException($"Close '{document.Name}' first: its paint is about to move.");
@@ -251,7 +259,7 @@ static class ProjectSettingsEndpoint {
                         document.Material ?? string.Empty,
                         backup,
                         StackDocuments.Parse(SharedFile.ReadAllText(stack)).Sets.FirstOrDefault()?.UvSet ?? 0,
-                        was.TryGetValue(document.Id, out var old) && old != document.Material ? old : null
+                        was
                     )
                 },
                 cancellationToken

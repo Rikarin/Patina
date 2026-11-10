@@ -3,7 +3,6 @@ using Patina.Contracts;
 using Patina.Library;
 using Patina.Server.Stacks;
 using System.Net.Http.Json;
-using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
 
@@ -164,7 +163,11 @@ public sealed partial class StackProcessTests {
         );
 
         var state = await OpenAsync($"projects/{project}/housing.vxlayers", deadline.Token);
-        using (var worn = await http.PutAsJsonAsync("/api/v1/viewport/stack", new { stack = state.Id }, deadline.Token)) {
+        using (var worn = await http.PutAsJsonAsync(
+                   "/api/v1/viewport/stack",
+                   new { stack = state.Id },
+                   deadline.Token
+               )) {
             Assert.True(worn.IsSuccessStatusCode, await worn.Content.ReadAsStringAsync(deadline.Token));
         }
 
@@ -176,7 +179,11 @@ public sealed partial class StackProcessTests {
 
         var keep = Environment.GetEnvironmentVariable("PATINA_PICTURES") ?? folder.FullName;
         var shaded = await SettledShotAsync(Path.Combine(keep, "bake-shading-combined.png"), deadline.Token);
-        var off = await EditAsync(state.Id, deadline.Token, new StackSetSettings(BakedNormal: "Off", BakedOcclusion: "Off"));
+        var off = await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetSettings(BakedNormal: "Off", BakedOcclusion: "Off")
+        );
         while ((await StateAsync(state.Id, deadline.Token)).Settled < off.Revision) {
             await Task.Delay(100, deadline.Token);
         }
@@ -227,12 +234,19 @@ public sealed partial class StackProcessTests {
         BakeFixture.WriteTwoMaterials(mesh);
         await StartAsync("Unused.vxlayers", deadline.Token);
         var project = await MakeTexturingProjectAsync(mesh, deadline.Token);
-        using (var made = await http.PatchAsJsonAsync("/api/v1/library/project/settings", new { project, autoUnwrap = false }, deadline.Token)) {
+        using (var made = await http.PatchAsJsonAsync(
+                   "/api/v1/library/project/settings",
+                   new { project, autoUnwrap = false },
+                   deadline.Token
+               )) {
             Assert.True(made.IsSuccessStatusCode, await made.Content.ReadAsStringAsync(deadline.Token));
         }
 
         var projectFolder = Path.Combine(Library, "projects", project);
-        var before = await http.GetFromJsonAsync<ProjectContents>($"/api/v1/library/project?path={project}", deadline.Token);
+        var before = await http.GetFromJsonAsync<ProjectContents>(
+            $"/api/v1/library/project?path={project}",
+            deadline.Token
+        );
         var strap = before!.Documents.Single(static d => d.Material == "Strap");
         Directory.CreateDirectory(Path.Combine(projectFolder, "bakes", "maps", "Strap"));
 
@@ -268,7 +282,12 @@ public sealed partial class StackProcessTests {
         if (reassign) {
             Assert.Equal(["Belt", "Body"], materials);
             Assert.Equal("Belt", after.Documents.Single(d => d.Id == strap.Id).Material);
-            Assert.Equal("Belt", StackDocuments.Parse(await File.ReadAllTextAsync(Path.Combine(Library, strap.Path), deadline.Token)).Sets[0].Name);
+            Assert.Equal(
+                "Belt",
+                StackDocuments.Parse(await File.ReadAllTextAsync(Path.Combine(Library, strap.Path), deadline.Token))
+                    .Sets[0]
+                    .Name
+            );
             Assert.True(Directory.Exists(Path.Combine(projectFolder, "bakes", "maps", "Belt")));
         } else {
             Assert.Equal(["Belt", "Body", "Strap"], materials);

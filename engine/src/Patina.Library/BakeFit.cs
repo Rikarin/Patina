@@ -5,10 +5,10 @@ using System.Text.Json;
 namespace Patina.Library;
 
 /// <summary>
-///     Whether a texture set's bake still fits it. A bake is of one mesh, laid out in one of its UV sets, and a set that
-///     stands on another mesh or chose another UV set reads its maps in the wrong place: decals, paths and mesh-map masks
-///     read them per texel (ADR 0021), and the set's shading reads them beneath its layers (#86). Nothing is rebaked
-///     here; the set is told, and so is whoever shows it.
+///     Whether a texture set's bake still fits it. A bake is of one mesh, laid out in one of its UV sets, and a set
+///     that stands on another mesh or chose another UV set reads its maps in the wrong place: decals, paths and
+///     mesh-map masks read them per texel (ADR 0021), and the set's shading reads them beneath its layers (#86).
+///     Nothing is rebaked here; the set is told, and so is whoever shows it.
 /// </summary>
 public static class BakeFit {
     /// <summary>The bake was made on a mesh the set no longer stands on.</summary>
@@ -46,10 +46,14 @@ public static class BakeFit {
     /// <param name="model">The mesh the set stands on, or null for none.</param>
     /// <param name="uvSet">The UV set the set is laid out in.</param>
     public static string? OfModel(string? folder, string? model, int uvSet) =>
-        folder is null ? null : Stale(folder, model is null ? null : DigestOf(model), uvSet);
+        folder is null ? null : Stale(folder, DigestOf(model), uvSet);
 
     /// <summary>A file's digest, read again only when its length or time changes. Null when it is not there.</summary>
-    static string? DigestOf(string file) {
+    static string? DigestOf(string? file) {
+        if (file is null) {
+            return null;
+        }
+
         FileInfo info = new(file);
         if (!info.Exists) {
             return null;

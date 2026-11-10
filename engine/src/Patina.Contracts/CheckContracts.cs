@@ -82,7 +82,8 @@ public static class CheckCodes {
     // a clone of another list of them.
     /// <summary>Every code, in the order a list shows them.</summary>
     public static IReadOnlyList<string> All { get; } = [
-        OverBudget, TooLarge, ChannelMissing, DensityLow, DensityHigh, BakeStale, UvOutside, UvOverlap, UvDegenerate, UvFlipped,
+        OverBudget, TooLarge, ChannelMissing, DensityLow, DensityHigh, BakeStale, UvOutside, UvOverlap, UvDegenerate,
+        UvFlipped,
         AlbedoDark, AlbedoBright, MetalDark, MetalPartial
     ];
 
