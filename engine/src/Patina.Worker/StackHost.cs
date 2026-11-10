@@ -788,7 +788,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             return enlarged;
         }
 
-        PaintBrush Brush(StackBrush brush) => StrokeShapes.Brush(brush, StrokeShapes.Alpha(brush.Alpha, folder, alphas));
+        PaintBrush Brush(StackBrush brush) =>
+            StrokeShapes.Brush(brush, StrokeShapes.Alpha(brush.Alpha, folder, alphas));
 
         /// <summary>
         ///     Makes a copy the journal holds. ⚠ As its turn comes and not as it begins: a replay begins every stroke
