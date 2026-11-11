@@ -29,14 +29,27 @@ public sealed record GraphWork(long Revision, NodeGraphAsset Document, bool Forc
 ///     Worker: edits work with none running, and evaluation catches up when one connects. Every client sees the same
 ///     events, and the log lets a client that dropped its socket catch up from the number it last saw.
 /// </summary>
-public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
+/// <param name="path">Its file, or a name for a graph no file holds.</param>
+/// <param name="text">The document as text.</param>
+/// <param name="registry">The node types it can use.</param>
+/// <param name="folder">The folder its compounds come from.</param>
+/// <param name="wake">Tells the evaluation loop to look.</param>
+/// <param name="readOnly">Refuses every edit and every save.</param>
+public sealed class GraphSession(
+    string path,
+    string text,
+    NodeTypeRegistry registry,
+    string? folder,
+    Action wake,
+    bool readOnly = false
+) : FollowedSession<GraphEvent>(static item => item.Sequence), IFileSession {
     const string OutputNodeType = "Output/Output";
     const string OutputUsageSetting = "Usage";
     const string DefaultOutputUsage = "baseColor";
-    readonly GraphEditor editor;
+    readonly GraphEditor editor = new(GraphDocuments.Parse(text), registry);
     readonly Dictionary<(int Node, string Port), GraphPreview> previews = [];
-    readonly Action wake;
-    string fileHash;
+    readonly Action wake = wake;
+    string fileHash = Hash(text);
     long revision = 1;
     long settled;
     bool forced;
@@ -44,45 +57,20 @@ public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
     bool closed;
     GraphEvaluation? evaluation;
 
-    /// <param name="path">Its file, or a name for a graph no file holds.</param>
-    /// <param name="text">The document as text.</param>
-    /// <param name="registry">The node types it can use.</param>
-    /// <param name="folder">The folder its compounds come from.</param>
-    /// <param name="wake">Tells the evaluation loop to look.</param>
-    /// <param name="readOnly">Refuses every edit and every save.</param>
-    public GraphSession(
-        string path,
-        string text,
-        NodeTypeRegistry registry,
-        string? folder,
-        Action wake,
-        bool readOnly = false
-    ) : base(static item => item.Sequence) {
-        Id = Guid.NewGuid().ToString("N");
-        Path = path;
-        Folder = folder;
-        Registry = registry;
-        ReadOnly = readOnly;
-        MeshMaps = readOnly ? null : ReadMeshMaps(path);
-        fileHash = Hash(text);
-        editor = new(GraphDocuments.Parse(text), registry);
-        this.wake = wake;
-    }
+    public string Id { get; } = Guid.NewGuid().ToString("N");
 
-    public string Id { get; }
-
-    public string Path { get; }
+    public string Path { get; } = path;
 
     /// <summary>The folder its compounds come from.</summary>
-    public string? Folder { get; }
+    public string? Folder { get; } = folder;
 
     /// <summary>The folders a relative image reference is read from, in order.</summary>
     public IReadOnlyList<string> ImageRoots { get; init; } = [];
 
     /// <summary>The folder its Mesh Map nodes read a bake from, or null.</summary>
-    public string? MeshMaps { get; private set; }
+    public string? MeshMaps { get; private set; } = readOnly ? null : ReadMeshMaps(path);
 
-    public NodeTypeRegistry Registry { get; private set; }
+    public NodeTypeRegistry Registry { get; private set; } = registry;
 
     /// <summary>
     ///     Every node this graph can use, for a palette. A boundary node's ports are this graph's own interface, so a
@@ -107,7 +95,7 @@ public sealed class GraphSession : FollowedSession<GraphEvent>, IFileSession {
     }
 
     /// <summary>True for a compound that ships with Patina, which no file holds to save to.</summary>
-    public bool ReadOnly { get; }
+    public bool ReadOnly { get; } = readOnly;
 
     public GraphSummary Summary {
         get {

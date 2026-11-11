@@ -13,12 +13,14 @@ public delegate ValueTask<IpcMessage> IpcHandler(IpcMessage request, Cancellatio
 ///     One end of a connected link: correlates replies with requests and hands the peer's requests to a handler, one at
 ///     a time, in order. The same on both sides, since the Worker says hello and the Server asks for health.
 /// </summary>
+/// <param name="stream">The connected stream, which this connection then owns.</param>
+/// <param name="handler">Answers the peer's requests.</param>
 [SuppressMessage("Skala", "SK3502", Justification = "False positive: DisposeAsync disposes both.")]
-public sealed class IpcConnection : IAsyncDisposable {
+public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDisposable {
     static readonly TimeSpan ReplyTimeout = TimeSpan.FromSeconds(30);
 
-    readonly Stream stream;
-    readonly IpcHandler handler;
+    readonly Stream stream = stream;
+    readonly IpcHandler handler = handler;
     readonly ConcurrentDictionary<long, TaskCompletionSource<IpcMessage>> pending = new();
     readonly SemaphoreSlim writeLock = new(1, 1);
     readonly CancellationTokenSource stop = new();
@@ -27,13 +29,6 @@ public sealed class IpcConnection : IAsyncDisposable {
     Task? readLoop;
     Task? queueLoop;
     long nextId;
-
-    /// <param name="stream">The connected stream, which this connection then owns.</param>
-    /// <param name="handler">Answers the peer's requests.</param>
-    public IpcConnection(Stream stream, IpcHandler handler) {
-        this.stream = stream;
-        this.handler = handler;
-    }
 
     /// <summary>
     ///     Which requests are answered as they are read. Set, the rest wait their turn on a queue of their own, so a

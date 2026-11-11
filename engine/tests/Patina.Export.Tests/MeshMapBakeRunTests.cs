@@ -7,7 +7,8 @@ using Vixen.Core.Imaging;
 namespace Patina.Export.Tests;
 
 /// <summary>A bake from paths to files, on the generated hard-edged pair, with no Server anywhere.</summary>
-public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair>, IDisposable {
+public sealed class MeshMapBakeRunTests(MeshMapBakeRunTests.Pair pair)
+    : IClassFixture<MeshMapBakeRunTests.Pair>, IDisposable {
     /// <summary>The pair, written once: a coarse high is all these need.</summary>
     public sealed class Pair : IDisposable {
         readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-pair-");
@@ -23,12 +24,8 @@ public sealed class MeshMapBakeRunTests : IClassFixture<MeshMapBakeRunTests.Pair
         public void Dispose() => folder.Delete(true);
     }
 
-    readonly Pair pair;
+    readonly Pair pair = pair;
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-maps-");
-
-    public MeshMapBakeRunTests(Pair pair) {
-        this.pair = pair;
-    }
 
     public void Dispose() => folder.Delete(true);
 

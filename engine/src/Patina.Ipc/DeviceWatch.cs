@@ -7,22 +7,17 @@ namespace Patina.Ipc;
 ///     and the health check keeps answering, so only this process can tell, and it ends itself: the Worker holds
 ///     nothing that cannot be rebuilt, and what supervises it starts another.
 /// </summary>
-public sealed class DeviceWatch {
+public sealed class DeviceWatch(TimeSpan limit, Func<TimeSpan> now) {
     const string HangVariable = "PATINA_WORKER_HANG_SECONDS";
     const int DefaultHangSeconds = 300;
     const int Exited = 3;
     static readonly TimeSpan Look = TimeSpan.FromSeconds(5);
 
-    readonly TimeSpan limit;
-    readonly Func<TimeSpan> now;
+    readonly TimeSpan limit = limit;
+    readonly Func<TimeSpan> now = now;
     long lastMark = -1;
 
     public DeviceWatch() : this(ConfiguredLimit(), Elapsed) { }
-
-    public DeviceWatch(TimeSpan limit, Func<TimeSpan> now) {
-        this.limit = limit;
-        this.now = now;
-    }
 
     /// <summary>How long the device work has gone without progress, or nothing if there is none.</summary>
     public TimeSpan Busy =>

@@ -9,21 +9,17 @@ namespace Patina.Worker;
 ///     compression can outlast any reply, so the IPC loop waits only for the start. The GPU part takes the device's
 ///     gate, and everything else is plain threads. Holds nothing a Server's plan cannot make again.
 /// </summary>
-sealed class BuildHost : OneAtATime {
+sealed class BuildHost(DeviceHost gpu) : OneAtATime("building") {
     const int ReservedCores = 2;
 
-    readonly OutputBuilders builders;
-
-    public BuildHost(DeviceHost gpu) : base("building") {
-        builders = new(
-            () => gpu.Evaluator,
-            work => {
-                lock (gpu.Gate) {
-                    return work();
-                }
+    readonly OutputBuilders builders = new(
+        () => gpu.Evaluator,
+        work => {
+            lock (gpu.Gate) {
+                return work();
             }
-        );
-    }
+        }
+    );
 
     /// <summary>Starts a step. Refuses a second: the Server hands out one at a time.</summary>
     public IpcMessage Start(IpcMessage request, IpcConnection link) {

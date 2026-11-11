@@ -511,7 +511,7 @@ Inherited from Cathode unless noted.
 |---|---|
 | .NET | SDK 11.0.100, `net11.0`, `LangVersion=latest`, nullable, warnings as errors, central package management |
 | Tests | xunit.v3 on Microsoft.Testing.Platform, CsCheck for properties |
-| Skala | `rikarin.skala.cli` 4.4.0 pinned in `dotnet-tools.json`. Copy `skala.jsonc` and its three gates (`local`, `pr`, `ci`). Severities live only in `.editorconfig`, each with a reason. **Start with an empty baseline.** Exclude `external/`, since Vixen runs its own gates |
+| Skala | `rikarin.skala.cli` 4.4.1 pinned in `dotnet-tools.json`. Copy `skala.jsonc` and its three gates (`local`, `pr`, `ci`). Severities live only in `.editorconfig`, each with a reason. **Start with an empty baseline.** Exclude `external/`, since Vixen runs its own gates |
 | Workflows | `engine.yml`, `editor.yml`, `skala.yml`, `desktop.yml`, `release.yml`, `nightly.yml`. Actions pinned by SHA. Reuse `actions/setup-dotnet`, Cathode's composite that avoids the broken aka.ms route |
 | Vixen in CI | Vixen's CI covers its libraries. Patina's CI checks out the submodule recursively, builds the closure with a cache, and runs integration tests. Nothing retests Vixen's suite. Release tags require the pin on Vixen's main branch |
 | GPU in CI | Linux on **lavapipe**, as in Vixen's `ci.yml`. It gives pixel coverage on every PR. Real-GPU goldens run nightly on a **self-hosted Mac and PC**, since hosted runners can't be relied on for this |

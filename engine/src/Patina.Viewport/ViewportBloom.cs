@@ -13,28 +13,23 @@ namespace Patina.Viewport;
 ///     the frame, before the curve. The threshold is the light the curve takes to white at the exposure set, so what
 ///     blooms is what would clip. It runs only when it is asked for, and its pictures are the frame's size's.
 /// </summary>
-sealed class ViewportBloom : IDisposable {
+/// <param name="device">The device.</param>
+/// <param name="variant">Builds the pass for one of the shader's modes, writing the frame's light format.</param>
+sealed class ViewportBloom(VulkanDevice device, Func<int, (Effect Effect, PipelineHandle Pipeline)> variant)
+    : IDisposable {
     /// <summary>How many halvings the chain goes down, at most.</summary>
     const int MostLevels = 5;
 
     /// <summary>A level smaller than this on its shorter side ends the chain.</summary>
     const int SmallestSide = 8;
 
-    readonly VulkanDevice device;
-    readonly Func<int, (Effect Effect, PipelineHandle Pipeline)> variant;
-    readonly SamplerHandle sampler;
+    readonly VulkanDevice device = device;
+    readonly Func<int, (Effect Effect, PipelineHandle Pipeline)> variant = variant;
+    readonly SamplerHandle sampler = device.CreateSampler(SamplerDescription.LinearClamp);
     readonly Dictionary<int, (Effect Effect, PipelineHandle Pipeline)> modes = [];
     readonly List<Pass> passes = [];
     readonly List<(TextureHandle Texture, TextureViewHandle View)> pictures = [];
     (int Width, int Height) size;
-
-    /// <param name="device">The device.</param>
-    /// <param name="variant">Builds the pass for one of the shader's modes, writing the frame's light format.</param>
-    public ViewportBloom(VulkanDevice device, Func<int, (Effect Effect, PipelineHandle Pipeline)> variant) {
-        this.device = device;
-        this.variant = variant;
-        sampler = device.CreateSampler(SamplerDescription.LinearClamp);
-    }
 
     /// <summary>
     ///     The frame's light with the bloom over it, which the curve reads, or null before the first frame.

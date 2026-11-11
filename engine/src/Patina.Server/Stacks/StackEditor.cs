@@ -40,7 +40,9 @@ public sealed class StackEditRefusedException : Exception {
 ///     here: the Server keeps where each brush went, and that journal is what the pixels are a function of, so a Worker
 ///     that dies loses nothing that cannot be stamped again (ADR 0009). Not thread safe: the session locks.
 /// </summary>
-public sealed class StackEditor : ILayerStackDocument {
+/// <param name="path">Its file.</param>
+/// <param name="document">The document, as a file holds it.</param>
+public sealed class StackEditor(string path, LayerStackAsset document) : ILayerStackDocument {
     static readonly HeadlessContext Context = new();
 
     readonly List<UndoStep> undoable = [];
@@ -50,19 +52,10 @@ public sealed class StackEditor : ILayerStackDocument {
     long? savedStep;
     bool extendedSinceSave;
 
-    /// <summary>Takes a document as a file holds it.</summary>
-    /// <param name="path">Its file.</param>
-    /// <param name="document">The document.</param>
-    public StackEditor(string path, LayerStackAsset document) {
-        AssetPath = path;
-        Document = document;
-        canvasSides = new(Path.GetDirectoryName(path)!);
-    }
-
     /// <summary>
     ///     What size each canvas is as a Worker holds it, which a stroke is checked against before it begins.
     /// </summary>
-    readonly StackCanvasSides canvasSides;
+    readonly StackCanvasSides canvasSides = new(Path.GetDirectoryName(path)!);
 
     /// <summary>The library layered materials are read from, or null with none.</summary>
     public string? Library { get; set; }
@@ -80,10 +73,10 @@ public sealed class StackEditor : ILayerStackDocument {
     public bool CompoundsArrived { get; set; }
 
     /// <inheritdoc />
-    public string AssetPath { get; }
+    public string AssetPath { get; } = path;
 
     /// <inheritdoc />
-    public LayerStackAsset Document { get; set; }
+    public LayerStackAsset Document { get; set; } = document;
 
     /// <inheritdoc />
     public string PaintSet => string.Empty;

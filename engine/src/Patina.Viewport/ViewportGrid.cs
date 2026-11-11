@@ -14,7 +14,15 @@ namespace Patina.Viewport;
 ///     of its radius, and reach three of its radii round it. They are drawn in the forward pass after the model, tested
 ///     against its depth and not written to it, so the model hides what is behind it and casts nothing on them.
 /// </summary>
-sealed class ViewportGrid : IDisposable {
+sealed class ViewportGrid(
+    VulkanDevice device,
+    Effect effect,
+    ShaderHandle vertex,
+    ShaderHandle fragment,
+    PixelFormat colourFormat,
+    PixelFormat depthFormat,
+    int samples
+) : IDisposable {
     /// <summary>How far round the model's centre the grid reaches, in bounding radii.</summary>
     const float Reach = 3f;
 
@@ -23,24 +31,11 @@ sealed class ViewportGrid : IDisposable {
     static readonly Vector4 AxisX = new(0.85f, 0.16f, 0.14f, 0.9f);
     static readonly Vector4 AxisZ = new(0.16f, 0.32f, 0.9f, 0.9f);
 
-    readonly VulkanDevice device;
-    readonly ViewportLines pass;
+    readonly VulkanDevice device = device;
+    readonly ViewportLines pass = new(device, (effect, vertex, fragment), colourFormat, depthFormat, samples);
     BufferHandle? lines;
     int count;
     BoundingBox drawn;
-
-    public ViewportGrid(
-        VulkanDevice device,
-        Effect effect,
-        ShaderHandle vertex,
-        ShaderHandle fragment,
-        PixelFormat colourFormat,
-        PixelFormat depthFormat,
-        int samples
-    ) {
-        this.device = device;
-        pass = new(device, (effect, vertex, fragment), colourFormat, depthFormat, samples);
-    }
 
     /// <summary>
     ///     The spacing of the lines for a model of this size: the power of ten nearest a third of its radius.

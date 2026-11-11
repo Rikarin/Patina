@@ -19,15 +19,15 @@ static class BuildCommand {
         + "\n"
         + BuildFlags.Usage;
 
-    public static async Task<int> RunAsync(string[] options) {
+    public static async Task<int> RunAsync(string[] options, CancellationToken cancellationToken = default) {
         if (Parse(options) is not { } parsed) {
-            await Console.Error.WriteLineAsync(Usage);
+            await Console.Error.WriteLineAsync(Usage, cancellationToken);
             return 2;
         }
 
         var (root, given, dryRun, flags) = parsed;
         if (!OpenLibrary.Exists(root)) {
-            await Console.Error.WriteLineAsync($"There is no library at '{root}'.");
+            await Console.Error.WriteLineAsync($"There is no library at '{root}'.", cancellationToken);
             return 2;
         }
 
@@ -36,12 +36,12 @@ static class BuildCommand {
         try {
             request = BuildFlags.Apply(library, given, flags);
         } catch (ArgumentException e) {
-            await Console.Error.WriteLineAsync(e.Message);
+            await Console.Error.WriteLineAsync(e.Message, cancellationToken);
             return 2;
         }
 
         using var executor = new LocalExecutor();
-        using var stop = new CancellationTokenSource();
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         Console.CancelKeyPress += (_, press) => {
             press.Cancel = true;
             stop.Cancel();
@@ -86,10 +86,14 @@ static class BuildCommand {
             Console.WriteLine(report.Folder);
             return report.Failed > 0 ? 1 : 0;
         } catch (BuildRefusedException e) {
-            await Console.Error.WriteLineAsync(e.Message);
+            await Console.Error.WriteLineAsync(e.Message, cancellationToken);
             return 2;
         } catch (OperationCanceledException) {
-            await Console.Error.WriteLineAsync("Stopped. What finished stays finished, and the next build carries on.");
+            // Written because the build stopped, so the token that stopped it cannot stop this.
+            await Console.Error.WriteLineAsync(
+                "Stopped. What finished stays finished, and the next build carries on.",
+                CancellationToken.None
+            );
             return 130;
         }
     }
