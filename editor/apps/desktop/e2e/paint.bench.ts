@@ -10,8 +10,8 @@ import { loadavg, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
-const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
-const patina = resolve(__dirname, '../../../../engine/src/Patina.Cli/bin/Release/net10.0/patina.dll');
+const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
+const patina = resolve(__dirname, '../../../../engine/src/Patina.Cli/bin/Release/net11.0/patina.dll');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
 const Size = process.env['BENCH_SIZE'] ?? '4096';
 const Layers = process.env['BENCH_LAYERS'] ?? '20';

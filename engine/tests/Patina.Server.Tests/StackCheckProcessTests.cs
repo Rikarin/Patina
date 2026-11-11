@@ -1,5 +1,4 @@
 using Patina.Contracts;
-using System.Net.Http.Json;
 
 namespace Patina.Server.Tests;
 

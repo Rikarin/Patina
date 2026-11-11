@@ -17,7 +17,7 @@ CONFIGURATION = os.environ.get("PATINA_CONFIGURATION", "Release")
 
 
 def dll(folder: str, assembly: str) -> str:
-    path = ENGINE / folder / "bin" / CONFIGURATION / "net10.0" / f"{assembly}.dll"
+    path = ENGINE / folder / "bin" / CONFIGURATION / "net11.0" / f"{assembly}.dll"
     if not path.exists():
         raise RuntimeError(f"{path} is not built. Run: dotnet build Patina.slnx -c {CONFIGURATION}")
     return str(path)

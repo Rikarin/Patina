@@ -119,7 +119,7 @@ The evaluator rewrite adds:
 
 ```
 patina/
-├─ engine/                         # .NET 10; Directory.Build.props and Packages.props as in Cathode
+├─ engine/                         # .NET 11; Directory.Build.props and Packages.props as in Cathode
 │  ├─ src/
 │  │  ├─ Patina.Contracts/         # REST DTOs and file schemas, no references
 │  │  ├─ Patina.Ipc/               # Server <-> Worker protocol
@@ -509,7 +509,7 @@ Inherited from Cathode unless noted.
 
 | Area | Decision |
 |---|---|
-| .NET | SDK 10.0.401, `net10.0`, `LangVersion=latest`, nullable, warnings as errors, central package management |
+| .NET | SDK 11.0.100, `net11.0`, `LangVersion=latest`, nullable, warnings as errors, central package management |
 | Tests | xunit.v3 on Microsoft.Testing.Platform, CsCheck for properties |
 | Skala | `rikarin.skala.cli` 4.4.0 pinned in `dotnet-tools.json`. Copy `skala.jsonc` and its three gates (`local`, `pr`, `ci`). Severities live only in `.editorconfig`, each with a reason. **Start with an empty baseline.** Exclude `external/`, since Vixen runs its own gates |
 | Workflows | `engine.yml`, `editor.yml`, `skala.yml`, `desktop.yml`, `release.yml`, `nightly.yml`. Actions pinned by SHA. Reuse `actions/setup-dotnet`, Cathode's composite that avoids the broken aka.ms route |

@@ -76,7 +76,7 @@ Reproduce with:
 
 ```
 dotnet build Patina.slnx -c Release
-PATINA_BENCH_OUT=/tmp/bench.txt tests/Patina.Server.Tests/bin/Release/net10.0/Patina.Server.Tests \
+PATINA_BENCH_OUT=/tmp/bench.txt tests/Patina.Server.Tests/bin/Release/net11.0/Patina.Server.Tests \
   -method Patina.Server.Tests.GraphProcessTests.A_slider_on_a_2K_40_node_graph_is_measured_end_to_end
 ```
 

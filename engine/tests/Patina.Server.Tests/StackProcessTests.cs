@@ -3,7 +3,6 @@ using Patina.Contracts;
 using Patina.Library;
 using System.Diagnostics;
 using System.Net;
-using System.Net.Http.Json;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -146,7 +145,7 @@ public sealed partial class StackProcessTests : IDisposable {
         );
         var reply = await used.Content.ReadAsStringAsync(deadline.Token);
         Assert.True(used.IsSuccessStatusCode, reply);
-        var graph = JsonDocument.Parse(reply).RootElement.GetProperty("graph").GetString();
+        var graph = JsonElement.Parse(reply).GetProperty("graph").GetString();
 
         var state = await OpenAsync("projects/crate/crate.vxlayers", deadline.Token);
         var before = await PixelsAsync(state.Id, true, deadline.Token);
@@ -191,7 +190,7 @@ public sealed partial class StackProcessTests : IDisposable {
         var before = await PixelsAsync(state.Id, true, deadline.Token);
         await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Wall"));
         var layer = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
-        var graph = JsonDocument.Parse(reply).RootElement.GetProperty("graph").GetString();
+        var graph = JsonElement.Parse(reply).GetProperty("graph").GetString();
         await EditAsync(state.Id, deadline.Token, new StackSetLayer(layer, Fill: "Graph", Graph: graph));
 
         var after = await PixelsAsync(state.Id, true, deadline.Token);

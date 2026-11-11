@@ -17,7 +17,7 @@ are still thin, and the open list is the [audit tracker](https://github.com/Rika
 
 ## Running it
 
-You need .NET SDK 10.0.401, Node 24, pnpm and a Vulkan device.
+You need .NET SDK 11.0.100, Node 24, pnpm and a Vulkan device.
 
 ```bash
 cd engine && dotnet build Patina.slnx -c Release
@@ -33,7 +33,7 @@ File > New Library starts from nothing. `patina-server --library <path> --create
 
 | Path | What |
 |---|---|
-| `engine/` | .NET 10: Server, Worker, CLI and libraries |
+| `engine/` | .NET 11: Server, Worker, CLI and libraries |
 | `editor/` | Nx workspace: `apps/desktop` (Electron), `apps/studio` (Angular), `libs/` |
 | `clients/python/` | The generated Python client and its conformance test |
 | `content/` | Factory content, CC0 |

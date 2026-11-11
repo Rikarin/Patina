@@ -36,7 +36,7 @@ Decisions the plan left open, for review:
 | Until the Worker reports kernel versions, every tool's version is the engine release | Stales too much on upgrade, never too little | A new release rebuilds everything |
 | `check` reads every `project.yaml` to get at outputs; the index does not hold them | The index stays small, and `check` is the one whole-library operation there is, in batches | About 1.3 s at 10,000 projects |
 | `ILibrary` is synchronous and paged, and `ListProjectsAsync` is gone | It had no callers or implementation, returning every id contradicts "nothing loads a whole library", and Microsoft.Data.Sqlite has no real async | A remote `ILibrary` would need another interface |
-| SQLitePCLRaw is pinned to 2.1.14 by hand | `Microsoft.Data.Sqlite` 10.0.10 pulls 2.1.11, flagged by GHSA-2m69-gcr7-jv3q, and NuGet audit fails the build | One extra line to drop when the package catches up |
+| SQLitePCLRaw was pinned to 2.1.14 by hand, until `Microsoft.Data.Sqlite` 11.0.0 brought 3.0.5 itself | `Microsoft.Data.Sqlite` 10.0.10 pulls 2.1.11, flagged by GHSA-2m69-gcr7-jv3q, and NuGet audit fails the build | Dropped with the move to .NET 11; the bundle now comes only through `Microsoft.Data.Sqlite` |
 
 ## Measurements
 
@@ -105,5 +105,5 @@ profiled. The first thing to fix past 10,000 is the broad search, by capping the
 ```sh
 cd engine
 dotnet build tools/Patina.Bench -c Release
-tools/Patina.Bench/bin/Release/net10.0/patina-bench s6 /path/to/empty-folder 10000 42
+tools/Patina.Bench/bin/Release/net11.0/patina-bench s6 /path/to/empty-folder 10000 42
 ```

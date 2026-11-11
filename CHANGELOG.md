@@ -356,6 +356,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `.glb` files written by `patina-bench` no longer turn `v` over.
 - The app loads less before its first picture: the panes and dialogs a start page does not show load the first time they are
   shown, so the first bundle is 792 kB where it was 1.23 MB.
+- The engine runs on .NET 11. Building it from source takes the .NET SDK 11.0.100, and the app carries the .NET 11
+  runtime.
 
 ### Added
 

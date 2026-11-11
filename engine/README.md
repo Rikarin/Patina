@@ -13,7 +13,7 @@ dotnet run --project src/Patina.Worker -- --socket /tmp/patina.sock
 
 ```sh
 dotnet build tools/Patina.Bench -c Release
-tools/Patina.Bench/bin/Release/net10.0/patina-bench s6 /tmp/s6-library 10000
+tools/Patina.Bench/bin/Release/net11.0/patina-bench s6 /tmp/s6-library 10000
 ```
 
 After an API change, review the difference and update the committed document with

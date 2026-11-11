@@ -41,7 +41,7 @@ const system = {
   version: '1.2.3',
   apiVersion: 1,
   library: '/games/Ember.ptlib' as string | null,
-  host: { os: 'macOS', architecture: 'Arm64', runtime: '.NET 10' },
+  host: { os: 'macOS', architecture: 'Arm64', runtime: '.NET 11' },
   worker: { connected: false },
   formats: { pictures: ['.png'], environments: ['.hdr'], meshes: ['.obj'] },
   textureSides: [256, 512, 1024, 2048],

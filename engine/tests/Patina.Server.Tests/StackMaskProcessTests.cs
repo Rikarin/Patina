@@ -1,6 +1,5 @@
 using Patina.Contracts;
 using System.Net;
-using System.Net.Http.Json;
 using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;

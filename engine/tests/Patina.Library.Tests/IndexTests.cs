@@ -272,7 +272,7 @@ public sealed class IndexTests : IDisposable {
 
         Gen.OneOf(
                 Gen.String,
-                Gen.OneOfConst("\"", "AND", "OR NOT", "NEAR(", "*", "a:b", "(", "-", "^x", "'", "\0", "\"\"", "name:x")
+                Gen.OneOf("\"", "AND", "OR NOT", "NEAR(", "*", "a:b", "(", "-", "^x", "'", "\0", "\"\"", "name:x")
             )
             .Sample(text => {
                     _ = open.Projects(new(text));

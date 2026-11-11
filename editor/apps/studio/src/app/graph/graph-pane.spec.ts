@@ -26,7 +26,7 @@ const online = (connected: boolean): ServerState => ({
     version: '1',
     apiVersion: 1,
     library: null,
-    host: { os: 'macOS', architecture: 'Arm64', runtime: '.NET 10' },
+    host: { os: 'macOS', architecture: 'Arm64', runtime: '.NET 11' },
     worker: { connected },
     formats: { pictures: ['.png'], environments: ['.hdr'], meshes: ['.obj'] },
     textureSides: [256, 512, 1024, 2048],

@@ -11,7 +11,7 @@ public sealed class DocumentCodecTests {
     /// <summary>Text built to trip a YAML writer: everything here looks like syntax or like another type.</summary>
     static readonly Gen<string> Text = Gen.OneOf(
         Gen.String.AlphaNumeric,
-        Gen.OneOfConst(
+        Gen.OneOf(
             string.Empty,
             " ",
             " leading",
@@ -253,7 +253,7 @@ public sealed class DocumentCodecTests {
             Gen.Double[0, 10],
             Gen.Bool,
             Gen.Int[16, 4096],
-            Gen.OneOfConst("measured", "rays", "custom"),
+            Gen.OneOf("measured", "rays", "custom"),
             Text.Array[0, 3]
         )
         .Select(static t => new ProjectBakeSettings {

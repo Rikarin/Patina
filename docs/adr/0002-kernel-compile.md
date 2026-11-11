@@ -31,7 +31,7 @@ a fresh process, so JIT is in the figures. All 49 kernels, `Rgba8` variant, 330,
 So a Worker's kernel start is about 15 ms + 65 ms on a warm machine. On a machine that has never compiled these shaders it
 is about 0.9 s + 10.5 s if everything is built at once, or 230 ms per kernel on first use.
 
-Reproduce with `dotnet tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll kernels <folder> --pipelines`. Add
+Reproduce with `dotnet tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll kernels <folder> --pipelines`. Add
 `--salt=<new number>` for a cold Metal compile.
 
 ## What the numbers mean

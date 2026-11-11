@@ -1,5 +1,4 @@
 using Patina.Contracts;
-using System.Net.Http.Json;
 using Vixen.Texturing.Painting;
 
 namespace Patina.Server.Tests;

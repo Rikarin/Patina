@@ -32,7 +32,7 @@ sealed class WorkerLoop(
             try {
                 await RunLinkAsync(socketPath, log, cancellationToken);
             } catch (Exception e) when (e is IOException or IpcException or System.Net.Sockets.SocketException) {
-                await log.WriteLineAsync($"patina-worker: {e.Message}");
+                await log.WriteLineAsync($"patina-worker: {e.Message}", CancellationToken.None);
             } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 return;
             }
@@ -68,10 +68,13 @@ sealed class WorkerLoop(
                 },
                 cancellationToken
             );
-            await log.WriteLineAsync($"patina-worker {ProductInfo.Version} connected to {socketPath}");
+            await log.WriteLineAsync(
+                $"patina-worker {ProductInfo.Version} connected to {socketPath}",
+                cancellationToken
+            );
             try {
                 await connection.Closed.WaitAsync(cancellationToken);
-                await log.WriteLineAsync("patina-worker: the Server disconnected");
+                await log.WriteLineAsync("patina-worker: the Server disconnected", cancellationToken);
             } finally {
                 bakes.LinkLost();
                 builds.LinkLost();

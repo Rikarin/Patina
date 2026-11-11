@@ -133,7 +133,7 @@ public sealed class BuildPlan {
 
     /// <summary>The folder a project's export through a preset goes to.</summary>
     public static string TargetOf(string exports, string preset, string projectPath) =>
-        Path.Combine(exports, preset, Path.Combine(projectPath.Split('/')));
+        Path.Combine([exports, preset, ..projectPath.Split('/')]);
 
     static PlannedProject Plan(
         ScannedProject project,

@@ -3,7 +3,6 @@ using Patina.Contracts;
 using Patina.Library;
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Vixen.Core.Imaging;
 
@@ -198,7 +197,7 @@ public sealed partial class StackProcessTests {
         );
         var reply = await used.Content.ReadAsStringAsync(deadline.Token);
         Assert.True(used.IsSuccessStatusCode, reply);
-        var graph = JsonDocument.Parse(reply).RootElement.GetProperty("graph").GetString();
+        var graph = JsonElement.Parse(reply).GetProperty("graph").GetString();
 
         var state = await OpenAsync("projects/crate/crate.vxlayers", deadline.Token);
         await EditAsync(state.Id, deadline.Token, new StackAddChannel("normal"));

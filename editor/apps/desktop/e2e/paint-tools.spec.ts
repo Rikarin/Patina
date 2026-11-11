@@ -7,7 +7,7 @@ import { crc32, deflateSync } from 'node:zlib';
 import { answerOpen, leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
-const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
+const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
 
 /** Linux CI runs under Xvfb with no GPU, and Chromium no longer falls back to software WebGL unless told to. */

@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Patina.Contracts;
 using Patina.Server.Viewport;
 using System.Net;
-using System.Net.Http.Json;
 
 namespace Patina.Server.Tests;
 

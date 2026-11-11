@@ -1,6 +1,5 @@
 using Patina.Contracts;
 using Patina.Library;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace Patina.Server.Tests;
@@ -32,7 +31,7 @@ public sealed partial class StackProcessTests {
         );
         var reply = await used.Content.ReadAsStringAsync(deadline.Token);
         Assert.True(used.IsSuccessStatusCode, reply);
-        var graph = JsonDocument.Parse(reply).RootElement.GetProperty("graph").GetString();
+        var graph = JsonElement.Parse(reply).GetProperty("graph").GetString();
 
         var state = await OpenAsync("projects/crate/crate.vxlayers", deadline.Token);
         await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Cells"));
@@ -101,7 +100,7 @@ public sealed partial class StackProcessTests {
             Gpu.Skip(reply);
         }
 
-        Assert.Equal("brushes/spots.png", JsonDocument.Parse(reply).RootElement.GetProperty("alpha").GetString());
+        Assert.Equal("brushes/spots.png", JsonElement.Parse(reply).GetProperty("alpha").GetString());
         Assert.True(File.Exists(Path.Combine(Library, "projects", "crate", "brushes", "spots.png")));
 
         var used = await http.PostAsJsonAsync(
@@ -109,8 +108,8 @@ public sealed partial class StackProcessTests {
             new { project = "crate", source = "projects/crate/spots.vxtexgraph" },
             deadline.Token
         );
-        var graph = JsonDocument.Parse(await used.Content.ReadAsStringAsync(deadline.Token))
-            .RootElement.GetProperty("graph")
+        var graph = JsonElement.Parse(await used.Content.ReadAsStringAsync(deadline.Token))
+            .GetProperty("graph")
             .GetString()!;
         var state = await OpenAsync("projects/crate/crate.vxlayers", deadline.Token);
         await EditAsync(

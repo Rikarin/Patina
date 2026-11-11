@@ -1,3 +1,4 @@
+using Microsoft.OpenApi;
 using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Jobs;
@@ -76,7 +77,13 @@ builder.Services.ConfigureHttpJsonOptions(static o => {
 );
 builder.Services.AddProblemDetails();
 builder.Services.AddPatinaCors();
-builder.Services.AddOpenApi(static o => o.MarkNonNullablePropertiesRequired());
+// OpenAPI 3.1, not the 3.2 that .NET 11 writes by default: openapi-python-client, which makes the Python client, reads
+// 3.1 only.
+builder.Services.AddOpenApi(static o => {
+        o.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1;
+        o.MarkNonNullablePropertiesRequired();
+    }
+);
 builder.Services.AddSingleton(new ServerIdentity(library, token));
 builder.Services.AddSingleton<WorkerLink>();
 builder.Services.AddHostedService(static s => s.GetRequiredService<WorkerLink>());

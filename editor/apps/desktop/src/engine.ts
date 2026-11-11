@@ -27,7 +27,7 @@ function locate(name: 'patina-worker' | 'patina-server'): Command {
   }
 
   const project = name === 'patina-worker' ? 'Patina.Worker' : 'Patina.Server';
-  const checkout = resolve(__dirname, '../../../../engine/src', project, 'bin/Release/net10.0', `${name}.dll`);
+  const checkout = resolve(__dirname, '../../../../engine/src', project, 'bin/Release/net11.0', `${name}.dll`);
   if (existsSync(checkout)) {
     return { command: 'dotnet', args: [checkout] };
   }

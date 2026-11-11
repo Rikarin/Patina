@@ -2,7 +2,6 @@ using Patina.Bench;
 using Patina.Contracts;
 using Patina.Library;
 using Patina.Server.Stacks;
-using System.Net.Http.Json;
 
 namespace Patina.Server.Tests;
 

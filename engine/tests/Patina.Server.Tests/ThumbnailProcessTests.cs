@@ -1,7 +1,6 @@
 using Patina.Library;
 using System.Buffers.Binary;
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace Patina.Server.Tests;
@@ -87,7 +86,7 @@ public sealed partial class StackProcessTests {
         using var reply = await http.PostAsJsonAsync("/api/v1/library/thumbnails", new { sources }, token);
         var text = await reply.Content.ReadAsStringAsync(token);
         Assert.True(reply.IsSuccessStatusCode, text);
-        var items = JsonDocument.Parse(text).RootElement.GetProperty("items").EnumerateArray().ToList();
+        var items = JsonElement.Parse(text).GetProperty("items").EnumerateArray().ToList();
         Assert.Equal(sources, items.Select(static item => item.GetProperty("source").GetString()));
         return [
             ..items.Select(static item => item.GetProperty("hash") is { ValueKind: JsonValueKind.String } hash

@@ -43,7 +43,8 @@ public sealed class DeviceWatch {
         while (await timer.WaitForNextTickAsync(cancellationToken)) {
             if (Hung) {
                 await log.WriteLineAsync(
-                    $"patina-worker: the device has not moved for {Busy.TotalSeconds:0} s, stopping"
+                    $"patina-worker: the device has not moved for {Busy.TotalSeconds:0} s, stopping",
+                    cancellationToken
                 );
                 await log.FlushAsync(cancellationToken);
                 Environment.ExitCode = Exited;

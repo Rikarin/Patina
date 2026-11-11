@@ -25,7 +25,7 @@ reference for how this repository works, and its code can be copied freely (same
 
 ## Engine
 
-- .NET SDK 10.0.401, `net10.0`, `LangVersion=latest`, nullable, warnings as errors, central package management.
+- .NET SDK 11.0.100, `net11.0`, `LangVersion=latest`, nullable, warnings as errors, central package management.
 - Tests are xunit.v3 on Microsoft.Testing.Platform, with CsCheck for properties (trait `Category=Property`, so nightly
   finds them). One test project per library.
 - `dotnet build Patina.slnx`, then `dotnet test --solution Patina.slnx`. Run from `engine/`.

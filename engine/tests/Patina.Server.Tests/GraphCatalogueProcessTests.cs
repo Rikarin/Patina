@@ -1,7 +1,6 @@
 using Patina.Contracts;
 using Patina.Library;
 using System.Diagnostics;
-using System.Net.Http.Json;
 using System.Net.WebSockets;
 using System.Text.Json;
 using Vixen.Core.Imaging;

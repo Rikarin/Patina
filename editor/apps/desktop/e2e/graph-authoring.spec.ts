@@ -13,7 +13,7 @@ import { join, resolve } from 'node:path';
 import { leave } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
-const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net10.0/patina-bench.dll');
+const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
 const Name = 'Rust Plate';
 /** Noise (1), Blur (2), Invert (3), HSL (4), Blur (5) and an Output (6), wired in that order. */

@@ -5641,7 +5641,7 @@ export interface components {
       fill?: null | string;
       /** @description What a constant fill writes, replacing what these channels held. */
       values?: null | {
-        [key: string]: unknown;
+        [key: string]: number[];
       };
       /** @description What a texture fill reads, replacing what these channels held. */
       textures?: null | {
@@ -5655,7 +5655,7 @@ export interface components {
       filter?: null | string;
       /** @description A filter's numbers, replacing what these names held. Choosing another filter starts it from its own defaults. */
       settings?: null | {
-        [key: string]: unknown;
+        [key: string]: number[];
       };
       mask?: null | components['schemas']['StackMask'];
       meshMask?: null | components['schemas']['StackMeshMask'];

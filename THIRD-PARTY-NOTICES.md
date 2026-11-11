@@ -7,7 +7,7 @@ compatibility as each one arrives (plan §11). NuGet and npm packages are listed
 | Component | Used in | Version | Licence used | Source |
 |---|---|---|---|---|
 | xUI | `editor/` (npm packages `@xui/*`) | see `editor/pnpm-lock.yaml` | Apache-2.0 | https://github.com/rikarin/xui |
-| SQLite (native `e_sqlite3`) | `Patina.Library`, through SQLitePCLRaw | see `engine/Directory.Packages.props` | Public domain | https://sqlite.org |
+| SQLite (native `e_sqlite3`) | `Patina.Library`, through `Microsoft.Data.Sqlite` and SQLitePCLRaw | the SQLitePCLRaw that `Microsoft.Data.Sqlite` in `engine/Directory.Packages.props` brings | Public domain | https://sqlite.org |
 | HarfBuzz (native `libHarfBuzzSharp`) | `patina-worker` and `patina`, through `Vixen.TextureGraph.Drawing` → `Vixen.Ui.Text` and the NuGet package `HarfBuzzSharp`, to shape a Text node's string | see `external/Vixen/Directory.Packages.props` | MIT ("Old MIT") | https://github.com/harfbuzz/harfbuzz |
 | Open Sans (`OpenSans-Regular.ttf`, embedded in `Vixen.TextureGraph.Drawing.dll`) | The face a Text node draws with when it names none | as in `external/Vixen/Editor/Vixen.Editor.App/Fonts` | OFL-1.1, whose text is `Fonts/OFL.txt` there and ships in Vixen's `NOTICE` | https://github.com/googlefonts/opensans |
 | Assimp (native `libassimp`, `Assimp64.dll`) | `patina-worker`, through `Vixen.Interchange` and the NuGet package `Ultz.Native.Assimp` 6.0.2 | 5.4.1 on Linux and macOS, 6.0.2 on Windows | BSD-3-Clause, below | https://github.com/assimp/assimp |

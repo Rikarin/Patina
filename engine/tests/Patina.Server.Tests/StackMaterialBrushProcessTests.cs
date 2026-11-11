@@ -1,6 +1,5 @@
 using Patina.Contracts;
 using Patina.Library;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace Patina.Server.Tests;
@@ -42,7 +41,7 @@ public sealed partial class StackProcessTests {
         );
         var reply = await used.Content.ReadAsStringAsync(deadline.Token);
         Assert.True(used.IsSuccessStatusCode, reply);
-        var graph = JsonDocument.Parse(reply).RootElement.GetProperty("graph").GetString()!;
+        var graph = JsonElement.Parse(reply).GetProperty("graph").GetString()!;
         var state = await OpenAsync("projects/grain/grain.vxlayers", deadline.Token);
         await EditAsync(state.Id, deadline.Token, new StackAddLayer("paint", "Paint"));
         var paint = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;

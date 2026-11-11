@@ -1,12 +1,12 @@
 {
-  "openapi": "3.1.1",
+  "openapi": "3.1.2",
   "info": {
     "title": "patina-server | v1",
     "version": "1.0.0"
   },
   "servers": [
     {
-      "url": "http://localhost/"
+      "url": "http://localhost"
     }
   ],
   "paths": {
@@ -648,8 +648,8 @@
               }
             }
           },
-          "422": {
-            "description": "Unprocessable Entity",
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -658,8 +658,8 @@
               }
             }
           },
-          "409": {
-            "description": "Conflict",
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -3698,16 +3698,6 @@
               }
             }
           },
-          "503": {
-            "description": "Service Unavailable",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Bad Request",
             "content": {
@@ -3730,6 +3720,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -10035,6 +10035,7 @@
           "y",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10089,6 +10090,7 @@
           "nodes",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10126,6 +10128,7 @@
           "y",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10163,6 +10166,7 @@
           "parameter",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10181,6 +10185,7 @@
           "port",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10199,6 +10204,7 @@
           "name",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10217,6 +10223,7 @@
           "nodes",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10243,6 +10250,7 @@
           "toPort",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10273,6 +10281,7 @@
           "toPort",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10295,6 +10304,7 @@
           "positions",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10316,6 +10326,7 @@
           "id",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10335,6 +10346,7 @@
           "id",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10355,6 +10367,7 @@
           "op",
           "relink"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10383,6 +10396,7 @@
           "name",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10402,6 +10416,7 @@
           "direction",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10423,6 +10438,7 @@
           "name",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10441,6 +10457,7 @@
           "name",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10471,6 +10488,7 @@
           "bypassed",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10496,6 +10514,7 @@
           "id",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10555,6 +10574,7 @@
           "id",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10606,6 +10626,7 @@
         "required": [
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10662,6 +10683,7 @@
           "parameter",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10687,6 +10709,7 @@
           "port",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10715,6 +10738,7 @@
           "value",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10738,6 +10762,7 @@
           "value",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10765,6 +10790,7 @@
           "value",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -10798,6 +10824,7 @@
           "toNode",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15147,6 +15174,7 @@
           "usage",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15166,6 +15194,7 @@
           "source",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15193,6 +15222,7 @@
           "name",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15259,6 +15289,7 @@
           "source",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15299,6 +15330,7 @@
           "op",
           "merge"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15327,6 +15359,7 @@
           "layers",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15348,6 +15381,7 @@
         "required": [
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15371,6 +15405,7 @@
           "delta",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15397,6 +15432,7 @@
           "delta",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15426,6 +15462,7 @@
           "layer",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15454,6 +15491,7 @@
           "asInstances",
           "part"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15497,6 +15535,7 @@
           "layer",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15517,6 +15556,7 @@
           "index",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15541,6 +15581,7 @@
           "method",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15561,6 +15602,7 @@
           "source",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15584,6 +15626,7 @@
           "layer",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15646,7 +15689,13 @@
               "null",
               "object"
             ],
-            "additionalProperties": {},
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "float"
+              }
+            },
             "description": "What a constant fill writes, replacing what these channels held."
           },
           "textures": {
@@ -15685,7 +15734,13 @@
               "null",
               "object"
             ],
-            "additionalProperties": {},
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "float"
+              }
+            },
             "description": "A filter\u0027s numbers, replacing what these names held. Choosing another filter starts it from its own defaults."
           },
           "mask": {
@@ -15811,6 +15866,7 @@
           "index",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15931,6 +15987,7 @@
           "model",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15950,6 +16007,7 @@
           "seed",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -15969,6 +16027,7 @@
         "required": [
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -16037,6 +16096,7 @@
           "mask",
           "curve"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -16168,6 +16228,7 @@
           "layer",
           "op"
         ],
+        "type": "object",
         "properties": {
           "op": {
             "enum": [
@@ -19434,28 +19495,28 @@
   },
   "tags": [
     {
-      "name": "System"
-    },
-    {
-      "name": "Preferences"
-    },
-    {
-      "name": "Viewport"
+      "name": "Builds"
     },
     {
       "name": "Graphs"
     },
     {
-      "name": "Builds"
+      "name": "Jobs"
     },
     {
       "name": "Library"
     },
     {
+      "name": "Preferences"
+    },
+    {
       "name": "Stacks"
     },
     {
-      "name": "Jobs"
+      "name": "System"
+    },
+    {
+      "name": "Viewport"
     }
   ]
 }
