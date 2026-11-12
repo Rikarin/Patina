@@ -31,8 +31,8 @@ class GraphCreateRequest:
             resolution (int | None | Unset): The side it evaluates at. Null is 2048. Its authoring base does not depend on
                 this.
             template (None | str | Unset): What it starts from: null or `empty` for nothing, `outputs` for an Output node
-                per material channel, or a
-                starter preset by name, as `GET /api/v1/library/graph-templates` lists them.
+                per material
+                channel, or a starter preset by name, as `GET /api/v1/library/graph-templates` lists them.
      """
 
     name: str

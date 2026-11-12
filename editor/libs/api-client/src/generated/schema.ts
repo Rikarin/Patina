@@ -3629,8 +3629,8 @@ export interface components {
        */
       resolution?: null | number;
       /**
-       * @description What it starts from: null or `empty` for nothing, `outputs` for an Output node per material channel, or a
-       *     starter preset by name, as `GET /api/v1/library/graph-templates` lists them.
+       * @description What it starts from: null or `empty` for nothing, `outputs` for an Output node per material
+       *     channel, or a starter preset by name, as `GET /api/v1/library/graph-templates` lists them.
        */
       template?: null | string;
     };

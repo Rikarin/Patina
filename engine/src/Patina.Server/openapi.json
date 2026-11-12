@@ -11141,7 +11141,7 @@
               "null",
               "string"
             ],
-            "description": "What it starts from: null or \u0060empty\u0060 for nothing, \u0060outputs\u0060 for an Output node per material channel, or a\nstarter preset by name, as \u0060GET /api/v1/library/graph-templates\u0060 lists them."
+            "description": "What it starts from: null or \u0060empty\u0060 for nothing, \u0060outputs\u0060 for an Output node per material\nchannel, or a starter preset by name, as \u0060GET /api/v1/library/graph-templates\u0060 lists them."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/graphs\u0060."
