@@ -577,6 +577,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/export/preset': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps in library.yaml the export preset a project's export starts from when it has kept none, and that checks measure against. Null forgets it, which leaves the factory's glTF starter. GET /export/presets says which preset that comes to. */
+    put: operations['SetLibraryDefaultPreset'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/export': {
     parameters: {
       query?: never;
@@ -707,6 +724,23 @@ export interface paths {
     put?: never;
     /** Brings a mesh or a picture into a project. Anything else is refused. */
     post: operations['ImportProjectFile'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project/materials': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings the materials of a glTF or another model, a MaterialX document or a USD text layer into a project, each as a material graph of its own that reads the file's pictures from the project. Says what each graph is and what was left out. */
+    post: operations['ImportProjectMaterials'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1504,6 +1538,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/pixels': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A digest of each map as it stands, the same one an export reports, with no pixels in the reply. */
+    get: operations['GetStackPixels'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/export': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Evaluates from nothing and writes each map to a file, and says where and what they hold. */
+    post: operations['ExportStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks': {
     parameters: {
       query?: never;
@@ -1773,40 +1841,6 @@ export interface paths {
     get: operations['GetStackThumbnails'];
     put?: never;
     post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/stacks/{id}/pixels': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** A digest of each map as it stands, the same one an export reports, with no pixels in the reply. */
-    get: operations['GetStackPixels'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/stacks/{id}/export': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Evaluates from nothing and writes each map to a file, and says where and what they hold. */
-    post: operations['ExportStack'];
     delete?: never;
     options?: never;
     head?: never;
@@ -3049,6 +3083,11 @@ export interface components {
       presets: components['schemas']['ExportPresetInfo'][];
       /** @description One line per file that is not a preset. */
       problems: string[];
+      /**
+       * @description The preset an export starts from when nothing is kept for it: the library's `defaultPreset` while it
+       *     names one of these, else the factory's glTF starter, and null only when there are no presets at all.
+       */
+      default?: null | string;
       /** @description The file formats there are, for a client that offers another one. */
       formats: components['schemas']['ExportFormatInfo'][];
       /** @description The padding modes there are, in order, each with what a person calls it. */
@@ -3163,6 +3202,8 @@ export interface components {
       environments: string[];
       /** @description What a project takes as its mesh, its detailed mesh or a cage. */
       meshes: string[];
+      /** @description What a project brings materials in from, as graphs (#157). */
+      materials: string[];
     };
     /** @description The body of `POST /api/v1/library/folders`. */
     FolderCreateRequest: {
@@ -4386,6 +4427,11 @@ export interface components {
       /** @description Whether a rescan is running; counts and pages may lag the files until it ends. */
       indexing: boolean;
       export?: null | components['schemas']['ProjectExportSettings'];
+      /**
+       * @description The export preset a project's export starts from when it has kept none, from `library.yaml`, or null
+       *     for the factory's starter. `GET /export/presets` says which preset that comes to.
+       */
+      defaultPreset?: null | string;
     };
     /** @description Where things went. */
     LibraryMoved: {
@@ -4398,6 +4444,11 @@ export interface components {
       paths: string[];
       /** @description The folder to put them in. Null is the top. */
       into?: null | string;
+    };
+    /** @description The body of `PUT /api/v1/library/export/preset`. */
+    LibraryPresetRequest: {
+      /** @description The id of the preset a project's export starts from when it has kept none, or null for the factory's starter. */
+      preset?: null | string;
     };
     /** @description What a whole build did. */
     LibraryReport: {
@@ -4464,6 +4515,23 @@ export interface components {
     MaterialBrush: {
       /** @description The picture, relative to the project's stacks, as a brush names it. */
       alpha: string;
+    };
+    /** @description The body of `POST /api/v1/library/project/materials`. */
+    MaterialImportRequest: {
+      /** @description The project, below `projects/`, that the materials become graphs of. */
+      project: string;
+      /**
+       * @description A file on the Server's machine that describes materials: a glTF (`.gltf`, `.glb`) or another model
+       *     file, a MaterialX document (`.mtlx`) or a USD layer in its text form (`.usda`).
+       */
+      file: string;
+    };
+    /** @description What importing a material file made. */
+    MaterialImportResult: {
+      /** @description The graph made for each material, in the file's order: its path below the library, which the graph routes take. */
+      documents: string[];
+      /** @description What a person should know: an input left out, and why. */
+      warnings: string[];
     };
     /** @description Something a layer can be filled with (ADR 0012). */
     MaterialInfo: {
@@ -6183,6 +6251,23 @@ export interface components {
        *     null for the whole stack. Its files are named after it.
        */
       layer?: null | string;
+      /**
+       * @description The file format of every map, as `GET /export/presets` lists them, or null for 8-bit RGBA PNGs, which
+       *     hold exactly the pixels string StackPixels.Digest is of. A map keeps its own lanes where the format
+       *     holds them, and otherwise the nearest it does: a JPEG of a color with alpha drops the alpha.
+       */
+      format?: null | string;
+      /** @description What a KTX2 or DDS file holds: none, half, float or bc1 to bc7. Null is none. */
+      compression?: null | string;
+      /** @description For JPEG, 1 to 100; for BC6H and BC7, fast, balanced or best. Null is the format's default. */
+      quality?: null | string;
+      /** @description Whether a KTX2 or DDS file carries a mip chain. */
+      mips?: null | boolean;
+      /**
+       * @description With string? StackExportRequest.Layer, whether to write the layer's mask alone rather than the layer: one map,
+       *     `mask`, white where the layer shows, with the mask's own layers and effects, even while it is off.
+       */
+      mask?: null | boolean;
     };
     /** @description One image a filter reads, as Properties offers a slot for it. */
     StackFilterInput: {
@@ -9445,6 +9530,57 @@ export interface operations {
       };
     };
   };
+  SetLibraryDefaultPreset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LibraryPresetRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryInfo'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   SetProjectExport: {
     parameters: {
       query?: never;
@@ -9822,6 +9958,57 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ImportProjectMaterials: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MaterialImportRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialImportResult'];
         };
       };
       /** @description Bad Request */
@@ -12380,6 +12567,102 @@ export interface operations {
       };
     };
   };
+  GetStackPixels: {
+    parameters: {
+      query?: {
+        clean?: boolean;
+        sampled?: boolean;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackPixels'][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ExportStack: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackExportRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackPixels'][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetStacks: {
     parameters: {
       query?: never;
@@ -13082,102 +13365,6 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
-  GetStackPixels: {
-    parameters: {
-      query?: {
-        clean?: boolean;
-        sampled?: boolean;
-      };
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['StackPixels'][];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Service Unavailable */
-      503: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
-  ExportStack: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['StackExportRequest'];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['StackPixels'][];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Unprocessable Entity */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Service Unavailable */
-      503: {
         headers: {
           [name: string]: unknown;
         };

@@ -2138,6 +2138,67 @@
         }
       }
     },
+    "/api/v1/library/export/preset": {
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps in library.yaml the export preset a project\u0027s export starts from when it has kept none, and that checks measure against. Null forgets it, which leaves the factory\u0027s glTF starter. GET /export/presets says which preset that comes to.",
+        "operationId": "SetLibraryDefaultPreset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryPresetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/export": {
       "put": {
         "tags": [
@@ -2589,6 +2650,67 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/materials": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings the materials of a glTF or another model, a MaterialX document or a USD text layer into a project, each as a material graph of its own that reads the file\u0027s pictures from the project. Says what each graph is and what was left out.",
+        "operationId": "ImportProjectMaterials",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialImportResult"
                 }
               }
             }
@@ -5816,6 +5938,150 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/pixels": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "A digest of each map as it stands, the same one an export reports, with no pixels in the reply.",
+        "operationId": "GetStackPixels",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "clean",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "sampled",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StackPixels"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/export": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Evaluates from nothing and writes each map to a file, and says where and what they hold.",
+        "operationId": "ExportStack",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StackPixels"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks": {
       "get": {
         "tags": [
@@ -6740,150 +7006,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/stacks/{id}/pixels": {
-      "get": {
-        "tags": [
-          "Stacks"
-        ],
-        "summary": "A digest of each map as it stands, the same one an export reports, with no pixels in the reply.",
-        "operationId": "GetStackPixels",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "clean",
-            "in": "query",
-            "schema": {
-              "type": "boolean",
-              "default": false
-            }
-          },
-          {
-            "name": "sampled",
-            "in": "query",
-            "schema": {
-              "type": "boolean",
-              "default": false
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StackPixels"
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service Unavailable",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/stacks/{id}/export": {
-      "post": {
-        "tags": [
-          "Stacks"
-        ],
-        "summary": "Evaluates from nothing and writes each map to a file, and says where and what they hold.",
-        "operationId": "ExportStack",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StackExportRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StackPixels"
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable Entity",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service Unavailable",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -9706,6 +9828,13 @@
             },
             "description": "One line per file that is not a preset."
           },
+          "default": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The preset an export starts from when nothing is kept for it: the library\u0027s \u0060defaultPreset\u0060 while it\nnames one of these, else the factory\u0027s glTF starter, and null only when there are no presets at all."
+          },
           "formats": {
             "type": "array",
             "items": {
@@ -10003,7 +10132,8 @@
         "required": [
           "pictures",
           "environments",
-          "meshes"
+          "meshes",
+          "materials"
         ],
         "type": "object",
         "properties": {
@@ -10027,6 +10157,13 @@
               "type": "string"
             },
             "description": "What a project takes as its mesh, its detailed mesh or a cage."
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What a project brings materials in from, as graphs (#157)."
           }
         },
         "description": "What a client may offer, with the dot."
@@ -12954,6 +13091,13 @@
                 "$ref": "#/components/schemas/ProjectExportSettings"
               }
             ]
+          },
+          "defaultPreset": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The export preset a project\u0027s export starts from when it has kept none, from \u0060library.yaml\u0060, or null\nfor the factory\u0027s starter. \u0060GET /export/presets\u0060 says which preset that comes to."
           }
         },
         "description": "The reply to \u0060GET /api/v1/library\u0060: what opening a library reads, and nothing more."
@@ -12996,6 +13140,19 @@
           }
         },
         "description": "The body of \u0060POST /api/v1/library/move\u0060."
+      },
+      "LibraryPresetRequest": {
+        "type": "object",
+        "properties": {
+          "preset": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The id of the preset a project\u0027s export starts from when it has kept none, or null for the factory\u0027s starter."
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/library/export/preset\u0060."
       },
       "LibraryReport": {
         "required": [
@@ -13103,6 +13260,48 @@
           }
         },
         "description": "A graph rendered to a picture a brush stamps."
+      },
+      "MaterialImportRequest": {
+        "required": [
+          "project",
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060, that the materials become graphs of."
+          },
+          "file": {
+            "type": "string",
+            "description": "A file on the Server\u0027s machine that describes materials: a glTF (\u0060.gltf\u0060, \u0060.glb\u0060) or another model\nfile, a MaterialX document (\u0060.mtlx\u0060) or a USD layer in its text form (\u0060.usda\u0060)."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/project/materials\u0060."
+      },
+      "MaterialImportResult": {
+        "required": [
+          "documents",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The graph made for each material, in the file\u0027s order: its path below the library, which the graph routes take."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What a person should know: an input left out, and why."
+          }
+        },
+        "description": "What importing a material file made."
       },
       "MaterialInfo": {
         "required": [
@@ -16966,6 +17165,41 @@
               "string"
             ],
             "description": "One layer to write on its own, such as a flattened folder, composited alone over the channels\u0027 defaults, or\nnull for the whole stack. Its files are named after it."
+          },
+          "format": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The file format of every map, as \u0060GET /export/presets\u0060 lists them, or null for 8-bit RGBA PNGs, which\nhold exactly the pixels string StackPixels.Digest is of. A map keeps its own lanes where the format\nholds them, and otherwise the nearest it does: a JPEG of a color with alpha drops the alpha."
+          },
+          "compression": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What a KTX2 or DDS file holds: none, half, float or bc1 to bc7. Null is none."
+          },
+          "quality": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For JPEG, 1 to 100; for BC6H and BC7, fast, balanced or best. Null is the format\u0027s default."
+          },
+          "mips": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether a KTX2 or DDS file carries a mip chain."
+          },
+          "mask": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "With string? StackExportRequest.Layer, whether to write the layer\u0027s mask alone rather than the layer: one map,\n\u0060mask\u0060, white where the layer shows, with the mask\u0027s own layers and effects, even while it is off."
           }
         },
         "description": "Writes each channel of a stack to a file."
