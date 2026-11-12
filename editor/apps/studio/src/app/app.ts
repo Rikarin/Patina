@@ -18,6 +18,7 @@ import { XuiInputImports } from '@xui/input';
 import { BakePane } from './bake/bake-pane';
 import { BakeSettings } from './bake/bake-settings';
 import { BakeStore } from './bake/bake-store';
+import { AboutDialog } from './core/about-dialog';
 import { Activity } from './core/activity';
 import { ActivityPanel } from './core/activity-panel';
 import { menuModel } from './core/app-menu';
@@ -26,6 +27,7 @@ import { desktop } from './core/desktop';
 import { DiagnosticsDialog } from './core/diagnostics-dialog';
 import { EditCommands } from './core/edit-commands';
 import { FileConflictDialog } from './core/file-conflict-dialog';
+import { Links } from './core/help-links';
 import { HistoryPane } from './core/history-pane';
 import { PreferencesDialog } from './core/preferences-dialog';
 import { ShortcutsDialog } from './core/shortcuts-dialog';
@@ -71,6 +73,7 @@ import { ViewportPane } from './viewport/viewport-pane';
 @Component({
   selector: 'ptn-root',
   imports: [
+    AboutDialog,
     ActivityPanel,
     BakePane,
     ChecksPane,
@@ -506,6 +509,10 @@ import { ViewportPane } from './viewport/viewport-pane';
       <ptn-diagnostics [(open)]="diagnosing" />
     }
 
+    @defer (when about()) {
+      <ptn-about [(open)]="about" />
+    }
+
     @defer (when keys()) {
       <ptn-shortcuts [(open)]="keys" />
     }
@@ -623,6 +630,7 @@ export class App {
   protected readonly keys = signal(false);
   protected readonly preferencesOpen = signal(false);
   protected readonly diagnosing = signal(false);
+  protected readonly about = signal(false);
   protected readonly paint = inject(PaintStore);
   /** The one thing that went wrong last, which stays until it is read. */
   protected readonly failure = computed(() => this.paint.failure() ?? this.project.failure());
@@ -814,8 +822,8 @@ export class App {
     handle('shortcuts', { run: () => this.keys.set(true) });
     handle('preferences', { run: () => this.preferencesOpen.set(true) });
     handle('diagnostics', { run: () => this.diagnosing.set(true) });
-    handle('reportProblem', {
-      run: () => globalThis.open('https://github.com/Rikarin/Patina/issues/new', '_blank')
-    });
+    handle('documentation', { run: () => globalThis.open(Links.documentation, '_blank') });
+    handle('reportProblem', { run: () => globalThis.open(Links.issues, '_blank') });
+    handle('about', { run: () => this.about.set(true) });
   }
 }
