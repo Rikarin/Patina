@@ -675,7 +675,7 @@ export class GraphThumbnail {
     </ng-template>
 
     <xui-omnibar
-      ariaLabel="Add a node"
+      aria-label="Add a node"
       debounce="0"
       noResultsText="No node by that name"
       placeholder="Search nodes"
@@ -688,7 +688,7 @@ export class GraphThumbnail {
       (openChange)="paletteOpen.set($event)"
     />
     <xui-omnibar
-      ariaLabel="Find a node"
+      aria-label="Find a node"
       debounce="0"
       noResultsText="No node by that name in this graph"
       placeholder="Find in this graph"

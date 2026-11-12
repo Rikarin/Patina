@@ -54,7 +54,7 @@ type Picture = 'source' | 'written' | 'difference';
           <span class="text-foreground-muted">Mip</span>
           <xui-select
             class="w-24"
-            ariaLabel="Mip level"
+            aria-label="Mip level"
             data-testid="compression-level"
             [filterable]="false"
             [itemText]="levelName"
@@ -68,7 +68,7 @@ type Picture = 'source' | 'written' | 'difference';
         <span class="text-foreground-muted">Region</span>
         <xui-select
           class="w-24"
-          ariaLabel="Region size"
+          aria-label="Region size"
           data-testid="compression-side"
           [filterable]="false"
           [itemText]="sideName"

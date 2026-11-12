@@ -274,8 +274,8 @@ describe('ExportPane settings', () => {
 
     expect(page.querySelector('[data-testid="export-folder"]')?.textContent.trim()).toBe('/out');
     expect(page.querySelector('[data-testid="export-distance-readout"]')?.textContent.trim()).toBe('8 px');
-    const rough = page.querySelectorAll<HTMLInputElement>('[data-testid="export-file-on"]')[1];
-    expect(rough?.checked).toBe(false);
+    const rough = page.querySelectorAll<HTMLElement>('[data-testid="export-file-on"] [role="checkbox"]')[1];
+    expect(rough?.getAttribute('aria-checked')).toBe('false');
     expect(puts).toEqual([]);
 
     page.querySelector<HTMLElement>('[data-testid="export-dither"] button, [data-testid="export-dither"]')?.click();
@@ -331,7 +331,7 @@ describe('ExportPane settings', () => {
     const folder = () => page.querySelector('[data-testid="export-folder"]')?.textContent.trim();
     expect(folder()).toBe('/everything');
 
-    page.querySelectorAll<HTMLInputElement>('[data-testid="export-file-on"]')[0]?.click();
+    page.querySelectorAll<HTMLElement>('[data-testid="export-file-on"] [role="checkbox"]')[0]?.click();
     await new Promise(resolve => setTimeout(resolve, 600));
     expect(puts.map(kept => kept.path)).toEqual(['/api/v1/library/export']);
     expect(puts[0]?.body.export).toMatchObject({ folder: '/everything', dither: true });
@@ -346,7 +346,11 @@ describe('ExportPane settings', () => {
     await settled(fixture);
 
     expect(folder()).toBe('/everything');
-    expect(page.querySelectorAll<HTMLInputElement>('[data-testid="export-file-on"]')[0]?.checked).toBe(false);
+    expect(
+      page
+        .querySelectorAll<HTMLElement>('[data-testid="export-file-on"] [role="checkbox"]')[0]
+        ?.getAttribute('aria-checked')
+    ).toBe('false');
     expect(puts.map(kept => kept.path)).toEqual(['/api/v1/library/export']);
   });
 
@@ -381,7 +385,11 @@ describe('ExportPane settings', () => {
     await settled(fixture);
     await settled(fixture);
     expect(folder()).toBe('The library’s exports folder');
-    expect(page.querySelectorAll<HTMLInputElement>('[data-testid="export-file-on"]')[1]?.checked).toBe(true);
+    expect(
+      page
+        .querySelectorAll<HTMLElement>('[data-testid="export-file-on"] [role="checkbox"]')[1]
+        ?.getAttribute('aria-checked')
+    ).toBe('true');
 
     page.querySelector<HTMLElement>('[data-testid="export-dither"] button, [data-testid="export-dither"]')?.click();
     await new Promise(resolve => setTimeout(resolve, 600));
@@ -410,7 +418,7 @@ describe('ExportPane settings', () => {
     selection.select({ kind: 'project', project: { id: 'beta', name: 'Beta', path: 'beta' } } as never);
     await settled(fixture);
     await settled(fixture);
-    page.querySelectorAll<HTMLInputElement>('[data-testid="export-file-on"]')[0]?.click();
+    page.querySelectorAll<HTMLElement>('[data-testid="export-file-on"] [role="checkbox"]')[0]?.click();
     await new Promise(resolve => setTimeout(resolve, 600));
 
     expect(puts.map(kept => [kept.project, kept.export.dither])).toEqual([

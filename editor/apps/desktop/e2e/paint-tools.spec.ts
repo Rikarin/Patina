@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
-import { answerOpen, leave, newLibrary, newProject } from './projects';
+import { answerOpen, leave, newLibrary, newProject, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -206,7 +206,7 @@ test('the tool strip follows the tool, stays when a fill is chosen, and a polygo
   await window.screenshot({ path: join(shots, 'tool-strip-polygon-fill.png') });
   const polygon = await shot();
 
-  await window.getByTestId('paint-fill-mode').selectOption('part');
+  await pick(window, 'paint-fill-mode', 'Mesh Part');
   await click(0.5, 0.5);
   await expect.poll(async () => changed(polygon, await shot()), { timeout: 60_000 }).toBeGreaterThan(1500);
   await settled();

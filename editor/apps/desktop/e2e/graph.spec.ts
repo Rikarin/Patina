@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave } from './projects';
+import { leave, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -459,9 +459,9 @@ test('the 2D view shows the node on view at full size, tiles it and pins it, and
   await window.getByRole('tab', { name: 'Preview' }).click();
   await window.getByTestId('viewport-show-node').click();
   await expect(window.getByTestId('viewport-mesh')).toHaveText('Sphere.glb', { timeout: 30_000 });
-  await expect(window.getByTestId('viewport-view')).toBeDisabled();
+  await expect(window.getByTestId('viewport-view').getByRole('combobox')).toBeDisabled();
   await window.getByTestId('viewport-display-toggle').click();
-  await window.getByTestId('viewport-shape').selectOption('plane');
+  await pick(window, 'viewport-shape', 'Plane');
   await expect(window.getByTestId('viewport-mesh')).toHaveText('Plane.glb');
   await window.getByTestId('viewport-display-toggle').click();
   await expect(window.getByTestId('viewport-display')).toHaveCount(0);
@@ -472,7 +472,7 @@ test('the 2D view shows the node on view at full size, tiles it and pins it, and
     .toBeGreaterThan(drawn);
   await window.screenshot({ path: join(shots, 'graph-node-on-plane.png') });
   await window.getByTestId('viewport-show-node').click();
-  await expect(window.getByTestId('viewport-view')).toBeEnabled();
+  await expect(window.getByTestId('viewport-view').getByRole('combobox')).toBeEnabled();
 });
 
 test('finds a node by name, stars a node for the palette, and adds one from several', async () => {

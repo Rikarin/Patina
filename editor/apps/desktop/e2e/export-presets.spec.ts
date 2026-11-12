@@ -44,7 +44,7 @@ test('a duplicated preset is a file in the project, and a BC7 file shows what co
   await window.getByTestId('preset-duplicate').click();
   await expect(window.getByTestId('preset-id')).toHaveValue('godot-copy');
   await expect(window.getByTestId('preset-file-written').first()).toContainText('Housing');
-  await window.getByTestId('preset-material-gltf').check();
+  await window.getByTestId('preset-material-gltf').getByRole('checkbox').check();
   if (shots) {
     await window.screenshot({ path: join(shots, 'preset-editor.png') });
   }

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, u
 import type { CheckProblem, ProjectCheckSettings, StackChecks } from '@patina/api-client';
 import { unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { XuiInputImports } from '@xui/input';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { Commands } from '../core/commands';
 import { checkWords, messageOf } from '../core/messages';
@@ -57,7 +58,7 @@ const Limits: readonly Limit[] = [
  */
 @Component({
   selector: 'ptn-checks',
-  imports: [XuiButtonImports, XuiNonIdealStateImports],
+  imports: [XuiButtonImports, XuiInputImports, XuiNonIdealStateImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col', 'data-testid': 'checks' },
   template: `
@@ -124,10 +125,13 @@ const Limits: readonly Limit[] = [
           @for (limit of limits; track limit.key) {
             <label class="mt-1 flex items-center gap-2 text-xs" [title]="limit.title">
               <span class="text-foreground-muted w-24 shrink-0">{{ limit.label }}</span>
+              <!-- A limit runs the checks again, so it is kept when it is done being typed, not at each key. -->
               <input
                 type="number"
                 min="0"
-                class="well h-6 min-w-0 flex-1 px-1"
+                class="min-w-0 flex-1"
+                xuiInput
+                size="sm"
                 [attr.data-testid]="'checks-limit-' + limit.key"
                 [value]="shownLimit(limit)"
                 (change)="setLimit(limit, $event)"

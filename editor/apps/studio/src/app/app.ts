@@ -11,6 +11,7 @@ import {
   untracked
 } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
+import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
 import { XuiInputImports } from '@xui/input';
@@ -97,6 +98,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     TextureView,
     ViewportPane,
     XuiButtonImports,
+    XuiCalloutImports,
     XuiDialogImports,
     XuiDockManagerImports
   ],
@@ -139,16 +141,24 @@ import { ViewportPane } from './viewport/viewport-pane';
             </button>
             <button
               type="button"
-              [attr.aria-label]="'Close ' + tab.name"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              class="size-5 px-0"
               data-testid="document-tab-close"
+              [attr.aria-label]="'Close ' + tab.name"
+              [title]="'Close ' + tab.name"
               (click)="project.closeTab(tab.path)"
             >
-              ×
+              <svg viewBox="0 0 16 16" class="size-3" aria-hidden="true">
+                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+              </svg>
             </button>
           </div>
         }
       </div>
-      <!-- Undo, Redo and Save are the app's, for whichever document is in front, so no pane has its own (#200). -->
+      <!-- Undo, Redo and Save are the app's, for whichever document is in front, so no pane has its own (#200). The
+           title bar draws its few icons itself: ng-icon in the first bundle would cost it 11 kB. -->
       <div class="flex shrink-0 items-center" role="toolbar" aria-label="Document">
         <button
           type="button"
@@ -343,46 +353,42 @@ import { ViewportPane } from './viewport/viewport-pane';
     }
 
     @if (failure(); as reason) {
-      <div
-        class="bg-error-subtle flex shrink-0 items-center gap-2 px-3 py-1 text-sm"
-        role="alert"
-        data-testid="app-failure"
-      >
-        <span class="min-w-0 flex-1 truncate" [title]="reason">{{ reason }}</span>
-        @if (reason.includes('no texture coordinates')) {
+      <xui-callout class="shrink-0 rounded-none" color="error" compact role="alert" data-testid="app-failure">
+        <span class="flex items-center gap-2">
+          <span class="min-w-0 flex-1 truncate" [title]="reason">{{ reason }}</span>
+          @if (reason.includes('no texture coordinates')) {
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              data-testid="app-unwrap"
+              [disabled]="project.unwrapping()"
+              (click)="project.applySettings({ autoUnwrap: true })"
+            >
+              {{ project.unwrapping() ? 'Unwrapping…' : 'Unwrap Mesh' }}
+            </button>
+          }
           <button
             type="button"
             xuiButton
             size="sm"
-            data-testid="app-unwrap"
-            [disabled]="project.unwrapping()"
-            (click)="project.applySettings({ autoUnwrap: true })"
+            variant="ghost"
+            data-testid="app-failure-dismiss"
+            (click)="dismissFailure()"
           >
-            {{ project.unwrapping() ? 'Unwrapping…' : 'Unwrap Mesh' }}
+            Dismiss
           </button>
-        }
-        <button
-          type="button"
-          xuiButton
-          size="sm"
-          variant="ghost"
-          data-testid="app-failure-dismiss"
-          (click)="dismissFailure()"
-        >
-          Dismiss
-        </button>
-      </div>
+        </span>
+      </xui-callout>
     }
 
     @if (paint.notice(); as notice) {
-      <div
-        class="bg-warning-subtle flex shrink-0 items-center gap-2 px-3 py-1 text-sm"
-        role="status"
-        data-testid="paint-notice"
-      >
-        <span class="min-w-0 flex-1 truncate" [title]="notice">{{ notice }}</span>
-        <button type="button" xuiButton size="sm" variant="ghost" (click)="paint.notice.set(null)">Dismiss</button>
-      </div>
+      <xui-callout class="shrink-0 rounded-none" color="warning" compact role="status" data-testid="paint-notice">
+        <span class="flex items-center gap-2">
+          <span class="min-w-0 flex-1 truncate" [title]="notice">{{ notice }}</span>
+          <button type="button" xuiButton size="sm" variant="ghost" (click)="paint.notice.set(null)">Dismiss</button>
+        </span>
+      </xui-callout>
     }
 
     <footer class="chrome-bar flex h-7 shrink-0 items-center gap-4 px-3" role="status" aria-label="Server status">

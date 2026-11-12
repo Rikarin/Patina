@@ -3,7 +3,15 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerSave as answerAgain, answerOpen as answerFile, leave, newLibrary, newProject } from './projects';
+import {
+  answerSave as answerAgain,
+  answerOpen as answerFile,
+  leave,
+  newLibrary,
+  newProject,
+  pick,
+  ProjectKinds
+} from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -92,7 +100,7 @@ test('a new user makes a library, groups projects in folders, and comes back to 
   // A second project, closed, so that it can move.
   await window.getByTestId('library-new-project').click();
   await window.getByTestId('new-project-name').fill('Door');
-  await window.getByTestId('new-project-kind').selectOption('layered-material');
+  await pick(window, 'new-project-kind', ProjectKinds['layered-material']);
   await window.getByRole('button', { name: 'Create' }).click();
   await expect(window.getByTestId('paint-project')).toHaveText('Door', { timeout: 30_000 });
 
@@ -253,7 +261,7 @@ test('a layered material is seen on a shape, and a photo becomes a material', as
   await answerOpen(photo);
   await window.getByTestId('library-new-project').click();
   await window.getByTestId('new-project-name').fill('Wall');
-  await window.getByTestId('new-project-kind').selectOption('image-material');
+  await pick(window, 'new-project-kind', ProjectKinds['image-material']);
   await window.getByTestId('new-project-image').click();
   await expect(window.getByTestId('new-project-image-name')).toHaveText('wall.png');
   await window.getByRole('button', { name: 'Create' }).click();
@@ -273,7 +281,7 @@ test('painted work asks before the project is left', async () => {
   for (const name of ['First', 'Second']) {
     await window.getByTestId('library-new-project').click();
     await window.getByTestId('new-project-name').fill(name);
-    await window.getByTestId('new-project-kind').selectOption('layered-material');
+    await pick(window, 'new-project-kind', ProjectKinds['layered-material']);
     await window.getByRole('button', { name: 'Create' }).click();
     await expect(window.getByTestId('paint-project')).toHaveText(name, { timeout: 30_000 });
   }

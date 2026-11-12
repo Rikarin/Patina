@@ -52,7 +52,7 @@ const KindHints: Readonly<Record<string, string>> = {
           <div class="flex flex-col gap-1">
             <span class="text-foreground-muted text-xs">Use as</span>
             <xui-select
-              ariaLabel="Use as"
+              aria-label="Use as"
               data-testid="publish-package-role"
               [filterable]="false"
               [itemText]="roleName"

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { type MeshFacts, unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { XuiMenuImports } from '@xui/menu';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { desktop } from '../core/desktop';
@@ -43,7 +44,7 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
  */
 @Component({
   selector: 'ptn-document-section',
-  imports: [XuiButtonImports, XuiSegmentedControlImports, XuiSelectImports],
+  imports: [XuiButtonImports, XuiMenuImports, XuiSegmentedControlImports, XuiSelectImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-1.5', role: 'group', 'aria-label': 'Document', 'data-testid': 'paint-document' },
   template: `
@@ -89,7 +90,7 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
           <xui-select
             class="min-w-0"
             size="sm"
-            ariaLabel="Texture set width"
+            aria-label="Texture set width"
             data-testid="texture-set-width"
             [filterable]="false"
             [items]="sides()"
@@ -101,7 +102,7 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
           <xui-select
             class="min-w-0"
             size="sm"
-            ariaLabel="Texture set height"
+            aria-label="Texture set height"
             data-testid="texture-set-height"
             [filterable]="false"
             [items]="sides()"
@@ -116,7 +117,7 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
             <xui-select
               class="min-w-0"
               size="sm"
-              ariaLabel="UV set"
+              aria-label="UV set"
               data-testid="texture-set-uv-set"
               [filterable]="false"
               [items]="uvSets()"
@@ -131,7 +132,7 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
           <dd data-testid="texture-set-height-normal" [title]="heightNormalHint">
             <xui-segmented-control
               size="sm"
-              ariaLabel="Height to normal"
+              aria-label="Height to normal"
               [options]="heightNormals"
               [value]="method"
               (valueChange)="setHeightNormal($event)"
@@ -143,7 +144,7 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
           <dd data-testid="texture-set-baked-normal" [title]="bakedNormalHint">
             <xui-segmented-control
               size="sm"
-              ariaLabel="Baked normal"
+              aria-label="Baked normal"
               [options]="bakedNormals"
               [value]="state.bakedNormal"
               (valueChange)="setBake({ bakedNormal: $event })"
@@ -153,7 +154,7 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
           <dd data-testid="texture-set-baked-occlusion" [title]="bakedOcclusionHint">
             <xui-segmented-control
               size="sm"
-              ariaLabel="Baked occlusion"
+              aria-label="Baked occlusion"
               [options]="bakedOcclusions"
               [value]="state.bakedOcclusion"
               (valueChange)="setBake({ bakedOcclusion: $event })"
@@ -187,20 +188,35 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
           </button>
         }
         @if (addable().length > 0) {
-          <select
-            class="well h-7 min-w-0 px-1 text-sm"
-            aria-label="Add a channel to this document"
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            title="Add a channel to this document"
             data-testid="paint-add-channel"
-            (change)="addChannel($event)"
+            [xuiMenuTriggerFor]="channelMenu"
           >
-            <option value="">Add Channel…</option>
-            @for (usage of addable(); track usage) {
-              <option [value]="usage">{{ nameOf(usage) }}</option>
-            }
-          </select>
+            Add Channel…
+          </button>
         }
       </div>
     }
+
+    <ng-template #channelMenu>
+      <xui-menu aria-label="Add a channel to this document" data-testid="paint-add-channel-menu">
+        @for (usage of addable(); track usage) {
+          <button
+            type="button"
+            xuiMenuItem
+            [attr.data-testid]="'paint-add-channel-' + usage"
+            (triggered)="store.edit({ op: 'addChannel', usage })"
+          >
+            {{ nameOf(usage) }}
+          </button>
+        }
+      </xui-menu>
+    </ng-template>
   `
 })
 export class DocumentSection {
@@ -298,15 +314,6 @@ export class DocumentSection {
           );
       }
     });
-  }
-
-  protected addChannel(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const usage = select.value;
-    select.value = '';
-    if (usage) {
-      void this.store.edit({ op: 'addChannel', usage });
-    }
   }
 
   protected setSize(width: number | null, height: number | null): void {

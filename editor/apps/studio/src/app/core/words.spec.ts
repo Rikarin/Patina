@@ -1,6 +1,6 @@
 import { ApiError, type StackVocabulary } from '@patina/api-client';
 import { colourName, hexColourName } from './colour-names';
-import { blendName, choiceName, kindName, learnTerms, termName, wordsOf } from './labels';
+import { blendName, choiceName, kindName, labelsOf, learnTerms, termName, valuesOf, wordsOf } from './labels';
 import { asksForMenu } from './menu-keys';
 import { checkWords, diagnosticOf, messageOf } from './messages';
 import { amount, bytes, degrees, percent } from './numbers';
@@ -39,6 +39,16 @@ describe('labels', () => {
     expect(choiceName(usage, 'metalness')).toBe('Metallic');
     expect(choiceName({ accepted: ['x'] }, 'roughness')).toBe('Roughness');
     expect(kindName('Float2')).toBe('2 Numbers');
+  });
+
+  it('gives a select one list of values and one reader of labels for each list, so it never starts over', () => {
+    const axes = [term('x', 'X'), term('y', 'Y')];
+    expect(valuesOf(axes)).toEqual(['x', 'y']);
+    expect(valuesOf(axes)).toBe(valuesOf(axes));
+    expect(labelsOf(axes)).toBe(labelsOf(axes));
+    expect(labelsOf(axes)('y')).toBe('Y');
+    expect(valuesOf(undefined)).toEqual([]);
+    expect(labelsOf(undefined)('hardLight')).toBe('Hard Light');
   });
 });
 

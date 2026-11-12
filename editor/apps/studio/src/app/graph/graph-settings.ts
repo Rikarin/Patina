@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
+import { provideIcons } from '@ng-icons/core';
+import { matClose } from '@ng-icons/material-icons/baseline';
 import type {
   GraphInterfacePort,
   GraphPresetState,
@@ -13,6 +15,7 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { Commands } from '../core/commands';
+import { IconImports } from '../core/icons';
 import { choiceName, kindName } from '../core/labels';
 import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
@@ -74,6 +77,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
 @Component({
   selector: 'ptn-graph-settings',
   imports: [
+    IconImports,
     AngleDial,
     XuiButtonImports,
     XuiInputImports,
@@ -82,6 +86,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
     XuiSliderImports,
     XuiSwitchImports
   ],
+  viewProviders: [provideIcons({ matClose })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'block h-full overflow-auto p-3',
@@ -98,7 +103,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
         <div class="flex flex-col gap-1" data-testid="setting-role">
           <span class="text-foreground-muted text-xs">Use as</span>
           <xui-select
-            ariaLabel="Use as"
+            aria-label="Use as"
             title="Where the shelf offers it: a material fills a layer, a mask decides where one shows, a brush is stamped, and a filter changes what is under it."
             [filterable]="false"
             [itemText]="roleName"
@@ -111,7 +116,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
       <div class="flex flex-col gap-1" data-testid="setting-size">
         <span class="text-foreground-muted text-xs">Size</span>
         <xui-select
-          ariaLabel="Size"
+          aria-label="Size"
           [disabled]="!store.editable()"
           [items]="sidesHolding(size())"
           [value]="size()"
@@ -121,7 +126,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
       <div class="flex flex-col gap-1" data-testid="setting-bitDepth">
         <span class="text-foreground-muted text-xs">Bit depth</span>
         <xui-select
-          ariaLabel="Bit depth"
+          aria-label="Bit depth"
           [disabled]="!store.editable()"
           [items]="bitDepths"
           [value]="bitDepth()"
@@ -132,7 +137,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
         <div class="flex flex-col gap-1" data-testid="setting-bake">
           <span class="text-foreground-muted text-xs">Bake</span>
           <xui-select
-            ariaLabel="Bake"
+            aria-label="Bake"
             [disabled]="!store.editable()"
             [itemText]="bakeName"
             [items]="bakes()"
@@ -144,7 +149,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
       <div class="flex items-center justify-between gap-2" data-testid="setting-tilingX">
         <span class="text-foreground-muted text-xs">Tile across</span>
         <xui-switch
-          ariaLabel="Tile across"
+          aria-label="Tile across"
           [checked]="tiles('tilingX')"
           [disabled]="!store.editable()"
           (checkedChange)="store.setSetting('tilingX', String($event))"
@@ -153,7 +158,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
       <div class="flex items-center justify-between gap-2" data-testid="setting-tilingY">
         <span class="text-foreground-muted text-xs">Tile down</span>
         <xui-switch
-          ariaLabel="Tile down"
+          aria-label="Tile down"
           [checked]="tiles('tilingY')"
           [disabled]="!store.editable()"
           (checkedChange)="store.setSetting('tilingY', String($event))"
@@ -163,7 +168,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
         <span class="text-foreground-muted text-xs">Seed</span>
         <xui-numeric-input
           size="sm"
-          ariaLabel="Seed"
+          aria-label="Seed"
           [disabled]="!store.editable()"
           [min]="0"
           [stepSize]="1"
@@ -178,7 +183,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
       <div class="flex flex-col gap-1" data-testid="setting-baseWidth">
         <span class="text-foreground-muted text-xs">Width</span>
         <xui-select
-          ariaLabel="Width"
+          aria-label="Width"
           [disabled]="!store.editable()"
           [items]="sidesHolding(settingOf('baseWidth'))"
           [value]="settingOf('baseWidth')"
@@ -188,7 +193,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
       <div class="flex flex-col gap-1" data-testid="setting-baseHeight">
         <span class="text-foreground-muted text-xs">Height</span>
         <xui-select
-          ariaLabel="Height"
+          aria-label="Height"
           [disabled]="!store.editable()"
           [items]="sidesHolding(settingOf('baseHeight'))"
           [value]="settingOf('baseHeight')"
@@ -229,7 +234,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
               />
               <xui-select
                 class="w-28 min-w-0 shrink-0"
-                ariaLabel="Parameter kind"
+                aria-label="Parameter kind"
                 [disabled]="!store.editable()"
                 [itemText]="kindName"
                 [items]="kinds"
@@ -277,7 +282,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                   />
                   <xui-select
                     class="w-28 min-w-0 shrink-0"
-                    ariaLabel="Parameter widget"
+                    aria-label="Parameter widget"
                     [attr.data-testid]="'parameter-widget-' + parameter.name"
                     [disabled]="!store.editable()"
                     [items]="widgetsFor(parameter)"
@@ -301,7 +306,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                       class="min-w-0 flex-1"
                       size="sm"
                       buttonPosition="none"
-                      [ariaLabel]="parameter.name + ' minimum'"
+                      [aria-label]="parameter.name + ' minimum'"
                       [disabled]="!store.editable()"
                       [value]="parameter.minimum ?? null"
                       (valueChange)="setRange(parameter, 'minimum', $event)"
@@ -310,7 +315,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                       class="min-w-0 flex-1"
                       size="sm"
                       buttonPosition="none"
-                      [ariaLabel]="parameter.name + ' maximum'"
+                      [aria-label]="parameter.name + ' maximum'"
                       [disabled]="!store.editable()"
                       [value]="parameter.maximum ?? null"
                       (valueChange)="setRange(parameter, 'maximum', $event)"
@@ -333,7 +338,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                   <span class="text-foreground-muted w-12 shrink-0 text-xs">Shown</span>
                   <xui-select
                     class="min-w-0 flex-1"
-                    ariaLabel="Shown while"
+                    aria-label="Shown while"
                     [disabled]="!store.editable()"
                     [itemText]="conditionName"
                     [items]="conditionsFor(parameter)"
@@ -343,7 +348,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                   @if (parameter.visibleIf; as condition) {
                     <xui-select
                       class="w-20 min-w-0 shrink-0"
-                      ariaLabel="Comparison"
+                      aria-label="Comparison"
                       [disabled]="!store.editable()"
                       [items]="comparisons"
                       [value]="condition.negated ? 'is not' : 'is'"
@@ -379,7 +384,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                   <xui-numeric-input
                     class="w-28 min-w-0 shrink-0"
                     size="sm"
-                    [ariaLabel]="parameter.name + ' default value'"
+                    [aria-label]="parameter.name + ' default value'"
                     [disabled]="!store.editable()"
                     [stepSize]="parameter.kind === 'Int' ? 1 : 0.1"
                     [value]="numberOf(parameter)"
@@ -390,7 +395,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
               @case ('number') {
                 <xui-numeric-input
                   size="sm"
-                  [ariaLabel]="parameter.name + ' default value'"
+                  [aria-label]="parameter.name + ' default value'"
                   [disabled]="!store.editable()"
                   [stepSize]="parameter.kind === 'Int' ? 1 : 0.1"
                   [value]="numberOf(parameter)"
@@ -409,7 +414,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                   <xui-numeric-input
                     class="min-w-0 flex-1"
                     size="sm"
-                    [ariaLabel]="parameter.name + ' default value'"
+                    [aria-label]="parameter.name + ' default value'"
                     [disabled]="!store.editable()"
                     [stepSize]="1"
                     [value]="numberOf(parameter)"
@@ -420,7 +425,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
               }
               @case ('switch') {
                 <xui-switch
-                  [ariaLabel]="titleOf(parameter) + ' default'"
+                  [aria-label]="titleOf(parameter) + ' default'"
                   [checked]="store.parameterDefault(parameter) === 'true'"
                   [disabled]="!store.editable()"
                   (checkedChange)="setDefault(parameter, $event ? 'true' : 'false')"
@@ -523,10 +528,11 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
             size="sm"
             variant="ghost"
             [attr.aria-label]="'Remove preset ' + preset.name"
+            [title]="'Remove preset ' + preset.name"
             [disabled]="!store.editable()"
             (click)="store.removePreset(preset.name)"
           >
-            ×
+            <ng-icon xui size="sm" name="matClose" />
           </button>
         </div>
       } @empty {
@@ -604,7 +610,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
           <xui-numeric-input
             class="min-w-0 flex-1"
             size="sm"
-            ariaLabel="Physical width"
+            aria-label="Physical width"
             [disabled]="!store.editable()"
             [min]="0"
             [value]="info?.physicalWidth ?? 0"
@@ -614,7 +620,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
           <xui-numeric-input
             class="min-w-0 flex-1"
             size="sm"
-            ariaLabel="Physical height"
+            aria-label="Physical height"
             [disabled]="!store.editable()"
             [min]="0"
             [value]="info?.physicalHeight ?? 0"
@@ -658,7 +664,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
             <div class="flex items-center gap-1">
               <xui-select
                 class="min-w-0 flex-1"
-                ariaLabel="Port kind"
+                aria-label="Port kind"
                 [disabled]="!store.editable()"
                 [itemText]="kindName"
                 [items]="portKinds"
@@ -714,7 +720,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
             <div class="flex items-center gap-1">
               <xui-select
                 class="w-28 min-w-0 shrink-0"
-                ariaLabel="Frame color"
+                aria-label="Frame color"
                 data-testid="group-colour"
                 [disabled]="!store.editable()"
                 [itemText]="colourName"

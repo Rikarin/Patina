@@ -100,7 +100,7 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
   // Far short of the density asked for is blue all over the model.
   const before = await blue();
   await low.click();
-  await expect(window.getByTestId('viewport-view')).toHaveValue('texelDensity');
+  await expect(window.getByTestId('viewport-view')).toContainText('Texel density');
   await expect.poll(blue, { timeout: 30_000 }).toBeGreaterThan(before + 2000);
   await window.screenshot({ path: join(shots, 'checks.png'), scale: 'css' });
 });

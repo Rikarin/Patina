@@ -39,6 +39,7 @@ function clamp(value: number): number {
           aria-valuemin="0"
           aria-valuemax="1"
           [attr.aria-label]="'Stop ' + ($index + 1)"
+          [title]="'Stop ' + ($index + 1)"
           [attr.aria-valuenow]="stop.position"
           [class.border-foreground]="$index === selectedIndex()"
           [class.border-border]="$index !== selectedIndex()"
@@ -61,7 +62,7 @@ function clamp(value: number): number {
         <xui-numeric-input
           class="w-20 shrink-0"
           size="sm"
-          ariaLabel="Stop position"
+          aria-label="Stop position"
           [disabled]="disabled()"
           [max]="1"
           [min]="0"

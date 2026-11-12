@@ -13,6 +13,7 @@ import {
 import type { BuildRequest, ExportPresetFile, ExportPresetInfo } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
+import { XuiCheckboxImports } from '@xui/checkbox';
 import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
@@ -75,6 +76,7 @@ function lanesOf(hex: string): number[] {
     PresetEditor,
     XuiButtonImports,
     XuiCalloutImports,
+    XuiCheckboxImports,
     XuiColorPickerImports,
     XuiSegmentedControlImports,
     XuiSelectImports,
@@ -100,7 +102,7 @@ function lanesOf(hex: string): number[] {
             <xui-segmented-control
               size="sm"
               fill
-              ariaLabel="What to export"
+              aria-label="What to export"
               data-testid="export-scope-choice"
               [options]="scopes()"
               [value]="scope()"
@@ -115,7 +117,7 @@ function lanesOf(hex: string): number[] {
             <span class="text-foreground-muted text-xs font-medium">Preset</span>
             <xui-select
               class="w-full"
-              ariaLabel="Preset"
+              aria-label="Preset"
               data-testid="export-preset"
               [filterable]="false"
               [itemText]="presetName"
@@ -182,7 +184,7 @@ function lanesOf(hex: string): number[] {
             <div class="flex gap-1">
               <xui-select
                 class="min-w-0 flex-1"
-                ariaLabel="Size"
+                aria-label="Size"
                 data-testid="export-size"
                 [filterable]="false"
                 [itemText]="sizeName"
@@ -192,7 +194,7 @@ function lanesOf(hex: string): number[] {
               />
               <xui-select
                 class="min-w-0 flex-1"
-                ariaLabel="Resize filter"
+                aria-label="Resize filter"
                 data-testid="export-filter"
                 [disabled]="settings().size === null"
                 [filterable]="false"
@@ -208,7 +210,7 @@ function lanesOf(hex: string): number[] {
             <span class="text-foreground-muted text-xs font-medium">Padding</span>
             <xui-select
               class="w-full"
-              ariaLabel="Padding"
+              aria-label="Padding"
               data-testid="export-padding"
               [filterable]="false"
               [itemText]="paddingName"
@@ -255,7 +257,7 @@ function lanesOf(hex: string): number[] {
               Dither 8-bit files
             </span>
             <xui-switch
-              ariaLabel="Dither 8-bit files"
+              aria-label="Dither 8-bit files"
               data-testid="export-dither"
               [checked]="settings().dither"
               (checkedChange)="change({ dither: $event })"
@@ -305,20 +307,19 @@ function lanesOf(hex: string): number[] {
               </div>
               @for (set of setNames(); track set) {
                 <div class="flex items-center gap-2 text-xs" data-testid="export-set">
-                  <label class="flex min-w-0 flex-1 items-center gap-2">
-                    <input
-                      type="checkbox"
-                      [attr.aria-label]="'Export ' + set"
-                      [checked]="!settings().skipped.includes(set)"
-                      (change)="toggleSet(set)"
-                    />
+                  <xui-checkbox
+                    class="min-w-0 flex-1"
+                    [aria-label]="'Export ' + set"
+                    [checked]="!settings().skipped.includes(set)"
+                    (checkedChange)="toggleSet(set)"
+                  >
                     <span class="truncate">{{ set }}</span>
-                  </label>
+                  </xui-checkbox>
                   <xui-select
                     class="w-32 shrink-0"
                     data-testid="export-set-size"
                     title="The longest side this texture set's files are written at. The set keeps its own size."
-                    [ariaLabel]="'Export size of ' + set"
+                    [aria-label]="'Export size of ' + set"
                     [filterable]="false"
                     [itemText]="setSizeName"
                     [items]="setSizes()"
@@ -346,12 +347,11 @@ function lanesOf(hex: string): number[] {
                   data-testid="export-file"
                   [class.opacity-50]="!choice.enabled"
                 >
-                  <input
-                    type="checkbox"
+                  <xui-checkbox
                     data-testid="export-file-on"
-                    [attr.aria-label]="'Write ' + file.template"
+                    [aria-label]="'Write ' + file.template"
                     [checked]="choice.enabled"
-                    (change)="chooseFile(file, { enabled: !choice.enabled })"
+                    (checkedChange)="chooseFile(file, { enabled: !choice.enabled })"
                   />
                   <span class="min-w-0 truncate" [title]="mapsOf(file)">
                     <span class="readout">{{ file.template }}</span>
@@ -360,7 +360,7 @@ function lanesOf(hex: string): number[] {
                   <xui-select
                     class="w-full"
                     data-testid="export-file-format"
-                    [ariaLabel]="'Format of ' + file.template"
+                    [aria-label]="'Format of ' + file.template"
                     [filterable]="false"
                     [itemText]="formatName"
                     [items]="formatsFor(file)"
@@ -379,7 +379,7 @@ function lanesOf(hex: string): number[] {
                         <xui-select
                           class="w-40"
                           data-testid="export-file-compression"
-                          [ariaLabel]="'Compression of ' + file.template"
+                          [aria-label]="'Compression of ' + file.template"
                           [filterable]="false"
                           [itemText]="compressionName"
                           [items]="compressionsFor(file)"
@@ -390,7 +390,7 @@ function lanesOf(hex: string): number[] {
                           <xui-select
                             class="w-28"
                             data-testid="export-file-quality"
-                            [ariaLabel]="'Search of ' + file.template"
+                            [aria-label]="'Search of ' + file.template"
                             [filterable]="false"
                             [itemText]="qualityName"
                             [items]="searches"
@@ -398,16 +398,14 @@ function lanesOf(hex: string): number[] {
                             (valueChange)="chooseFile(file, { quality: $event ?? 'balanced' })"
                           />
                         }
-                        <label class="flex items-center gap-1">
-                          <input
-                            type="checkbox"
-                            data-testid="export-file-mips"
-                            [attr.aria-label]="'Mips of ' + file.template"
-                            [checked]="choice.mips ?? file.mips"
-                            (change)="chooseFile(file, { mips: !(choice.mips ?? file.mips) })"
-                          />
+                        <xui-checkbox
+                          data-testid="export-file-mips"
+                          [aria-label]="'Mips of ' + file.template"
+                          [checked]="choice.mips ?? file.mips"
+                          (checkedChange)="chooseFile(file, { mips: !(choice.mips ?? file.mips) })"
+                        >
                           Mips
-                        </label>
+                        </xui-checkbox>
                       } @else {
                         <span class="text-foreground-muted">Quality</span>
                         <xui-slider

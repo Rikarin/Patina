@@ -52,7 +52,7 @@ function pathOf(keys: readonly CurveKey[]): string {
     <xui-segmented-control
       size="sm"
       fill
-      ariaLabel="Curve channel"
+      aria-label="Curve channel"
       [disabled]="disabled()"
       [options]="options"
       [value]="channel()"

@@ -4,6 +4,7 @@ import { matStar, matStarBorder } from '@ng-icons/material-icons/baseline';
 import type { BrushPresetInfo } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiInputImports } from '@xui/input';
+import { XuiSwitchImports } from '@xui/switch';
 import { IconImports } from '../core/icons';
 import { BrushStore } from './brush-store';
 
@@ -18,7 +19,7 @@ const Origins: Readonly<Record<string, string>> = { shipped: 'Starter', project:
 @Component({
   selector: 'ptn-brush-presets',
   viewProviders: [provideIcons({ matStar, matStarBorder })],
-  imports: [IconImports, XuiButtonImports, XuiInputImports],
+  imports: [IconImports, XuiButtonImports, XuiInputImports, XuiSwitchImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-1' },
   template: `
@@ -63,15 +64,10 @@ const Origins: Readonly<Record<string, string>> = { shipped: 'Starter', project:
           (keydown.enter)="save()"
           (keydown.escape)="naming.set(false)"
         />
-        <label class="flex items-center gap-1 text-xs" title="The preset paints in this color when taken up">
-          <input
-            type="checkbox"
-            data-testid="brush-preset-colour"
-            [checked]="withColour()"
-            (change)="withColour.set(checked($event))"
-          />
+        <span class="flex items-center gap-1 text-xs" title="The preset paints in this color when taken up">
+          <xui-switch aria-label="Keep the color" data-testid="brush-preset-colour" [(checked)]="withColour" />
           Color
-        </label>
+        </span>
         <button
           type="button"
           xuiButton
@@ -91,6 +87,7 @@ const Origins: Readonly<Record<string, string>> = { shipped: 'Starter', project:
             type="button"
             class="text-foreground-muted grid size-5 shrink-0 place-items-center"
             [attr.aria-label]="(preset.preset.favourite ? 'Unfavourite ' : 'Favourite ') + preset.name"
+            [title]="(preset.preset.favourite ? 'Unfavourite ' : 'Favourite ') + preset.name"
             [attr.aria-pressed]="preset.preset.favourite"
             [attr.data-testid]="'brush-preset-favourite-' + preset.name"
             (click)="brushes.toggleFavourite(preset)"
@@ -144,9 +141,5 @@ export class BrushPresets {
 
   protected text(event: Event): string {
     return (event.target as HTMLInputElement).value;
-  }
-
-  protected checked(event: Event): boolean {
-    return (event.target as HTMLInputElement).checked;
   }
 }

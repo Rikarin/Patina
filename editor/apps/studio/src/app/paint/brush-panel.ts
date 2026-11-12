@@ -5,9 +5,11 @@ import { XuiButtonImports } from '@xui/button';
 import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
+import { XuiSwitchImports } from '@xui/switch';
+import { hexColourName } from '../core/colour-names';
 import { Commands } from '../core/commands';
 import { IconImports } from '../core/icons';
-import { channelName, termName } from '../core/labels';
+import { channelName, labelIn, labelsOf, termName, valuesOf } from '../core/labels';
 import { degrees, percent, toDegrees, toRadians } from '../core/numbers';
 import { ProjectStore } from '../library/project-store';
 import { LibraryThumbnails } from '../library/thumbnails';
@@ -61,7 +63,15 @@ const PreviewQuiet = 200;
 @Component({
   selector: 'ptn-brush-panel',
   viewProviders: [provideIcons(PaintToolIcons)],
-  imports: [BrushPresets, IconImports, XuiButtonImports, XuiColorPickerImports, XuiSelectImports, XuiSliderImports],
+  imports: [
+    BrushPresets,
+    IconImports,
+    XuiButtonImports,
+    XuiColorPickerImports,
+    XuiSelectImports,
+    XuiSliderImports,
+    XuiSwitchImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-1.5' },
   template: `
@@ -109,16 +119,16 @@ const PreviewQuiet = 200;
           <span class="text-foreground-muted w-16 shrink-0 text-xs" title="How much of the mesh a click fills"
             >Fills</span
           >
-          <select
-            class="well h-7 min-w-0 flex-1 px-1 text-sm"
+          <xui-select
+            class="min-w-0 flex-1"
             aria-label="Fill mode"
             data-testid="paint-fill-mode"
-            (change)="store.fillMode.set(fillMode($event))"
-          >
-            @for (term of terms().fills; track term.value) {
-              <option [value]="term.value" [selected]="store.fillMode() === term.value">{{ term.label }}</option>
-            }
-          </select>
+            [filterable]="false"
+            [itemText]="labelsOf(terms().fills)"
+            [items]="valuesOf(terms().fills)"
+            [value]="store.fillMode()"
+            (valueChange)="store.fillMode.set(fillMode($event))"
+          />
         </div>
       }
       @case ('clone') {
@@ -138,18 +148,13 @@ const PreviewQuiet = 200;
           >
             Set
           </button>
-          <label
+          <span
             class="flex w-full items-center gap-2 text-xs"
             title="Keeps the step from the source to where the first stroke after it started. Off, every stroke starts at the source."
           >
-            <input
-              type="checkbox"
-              data-testid="paint-clone-relative"
-              [checked]="store.cloneRelative()"
-              (change)="store.cloneRelative.set(checked($event))"
-            />
+            <xui-switch aria-label="Relative" data-testid="paint-clone-relative" [(checked)]="store.cloneRelative" />
             Relative
-          </label>
+          </span>
         </div>
       }
     }
@@ -184,23 +189,18 @@ const PreviewQuiet = 200;
       </div>
       @if (store.material()) {
         <div class="flex items-center gap-2 ps-[4.5rem]" data-testid="paint-material-placement">
-          <select
-            class="well h-7 min-w-0 flex-1 px-1 text-sm"
+          <xui-select
+            class="min-w-0 flex-1"
             aria-label="Material projection"
             data-testid="paint-material-projection"
             title="How the material's maps land: over the UV layout, or in the model's space at one size everywhere"
-            (change)="store.materialProjection.set(text($event))"
-          >
-            @for (term of terms().materialProjections; track term.value) {
-              <option
-                [value]="term.value"
-                [disabled]="term.value !== 'Uv' && !store.state()?.model"
-                [selected]="store.materialProjection() === term.value"
-              >
-                {{ term.label }}
-              </option>
-            }
-          </select>
+            [filterable]="false"
+            [itemDisabled]="needsModel()"
+            [itemText]="labelsOf(terms().materialProjections)"
+            [items]="valuesOf(terms().materialProjections)"
+            [value]="store.materialProjection()"
+            (valueChange)="$event && store.materialProjection.set($event)"
+          />
           <xui-slider
             class="w-24 shrink-0"
             labelStepSize="0"
@@ -218,18 +218,17 @@ const PreviewQuiet = 200;
       }
     }
     @if (store.tool() === 'picker' && !store.masking()) {
-      <label
+      <span
         class="flex items-center gap-2 text-xs"
         title="Takes every channel the layer writes at the click, as Also paints, besides the painted channel's color"
       >
-        <input
-          type="checkbox"
+        <xui-switch
+          aria-label="Every channel"
           data-testid="paint-pick-every-channel"
-          [checked]="store.pickEveryChannel()"
-          (change)="store.pickEveryChannel.set(checked($event))"
+          [(checked)]="store.pickEveryChannel"
         />
         Every channel
-      </label>
+      </span>
     }
     <div class="flex items-center gap-2" data-testid="paint-screen-picture">
       <span
@@ -253,24 +252,19 @@ const PreviewQuiet = 200;
     </div>
     @if (store.screenPicture(); as picture) {
       <div class="flex items-center gap-3 ps-[4.5rem]">
-        <label class="flex items-center gap-1 text-xs" title="Repeats the picture past its edges">
-          <input
-            type="checkbox"
+        <span class="flex items-center gap-1 text-xs" title="Repeats the picture past its edges">
+          <xui-switch
+            aria-label="Tiled"
             data-testid="paint-screen-picture-tiled"
             [checked]="picture.tiled"
-            (change)="store.screenPicture.set({ ...picture, tiled: checked($event) })"
+            (checkedChange)="store.screenPicture.set({ ...picture, tiled: $event })"
           />
           Tiled
-        </label>
-        <label class="flex items-center gap-1 text-xs" [title]="commands.tooltip('toggleStencil')">
-          <input
-            type="checkbox"
-            data-testid="paint-stencil"
-            [checked]="store.stencil()"
-            (change)="store.stencil.set(checked($event))"
-          />
+        </span>
+        <span class="flex items-center gap-1 text-xs" [title]="commands.tooltip('toggleStencil')">
+          <xui-switch aria-label="Stencil" data-testid="paint-stencil" [(checked)]="store.stencil" />
           Stencil
-        </label>
+        </span>
         <button
           type="button"
           xuiButton
@@ -289,44 +283,44 @@ const PreviewQuiet = 200;
         title="Copies strokes on the mesh, in the 3D view and the 2D view alike"
         >Symmetry</span
       >
-      <select
-        class="well h-7 min-w-0 flex-1 px-1 text-sm"
+      <xui-select
+        class="min-w-0 flex-1"
         aria-label="Symmetry"
         data-testid="paint-symmetry"
+        placeholder="Off"
         [disabled]="!store.state()?.model"
-        (change)="setKind(text($event))"
-      >
-        <option value="" [selected]="!store.symmetry()">Off</option>
-        @for (term of terms().symmetries; track term.value) {
-          <option [value]="term.value" [selected]="store.symmetry()?.kind === term.value">{{ term.label }}</option>
-        }
-      </select>
+        [filterable]="false"
+        [itemText]="symmetryName()"
+        [items]="symmetries()"
+        [value]="store.symmetry()?.kind ?? ''"
+        (valueChange)="setKind($event ?? '')"
+      />
     </div>
     @if (store.symmetry(); as symmetry) {
       <div class="flex items-center gap-2" data-testid="paint-symmetry-settings">
         <span class="text-foreground-muted w-16 shrink-0 text-xs">{{
           symmetry.kind === 'radial' ? 'Axis' : 'Plane'
         }}</span>
-        <select
-          class="well h-7 min-w-0 flex-1 px-1 text-sm"
+        <xui-select
+          class="min-w-0 flex-1"
           aria-label="Symmetry axis"
           data-testid="paint-symmetry-axis"
-          (change)="setSymmetry({ axis: text($event) })"
-        >
-          @for (term of terms().axes; track term.value) {
-            <option [value]="term.value" [selected]="symmetry.axis === term.value">{{ term.label }}</option>
-          }
-        </select>
-        <select
-          class="well h-7 min-w-0 flex-1 px-1 text-sm"
+          [filterable]="false"
+          [itemText]="labelsOf(terms().axes)"
+          [items]="valuesOf(terms().axes)"
+          [value]="symmetry.axis"
+          (valueChange)="$event && setSymmetry({ axis: $event })"
+        />
+        <xui-select
+          class="min-w-0 flex-1"
           aria-label="Symmetry centre"
           data-testid="paint-symmetry-centre"
-          (change)="setSymmetry({ centre: text($event) })"
-        >
-          @for (term of terms().centres; track term.value) {
-            <option [value]="term.value" [selected]="symmetry.centre === term.value">{{ term.label }}</option>
-          }
-        </select>
+          [filterable]="false"
+          [itemText]="labelsOf(terms().centres)"
+          [items]="valuesOf(terms().centres)"
+          [value]="symmetry.centre"
+          (valueChange)="$event && setSymmetry({ centre: $event })"
+        />
       </div>
       @if (symmetry.kind === 'radial') {
         <div class="flex items-center gap-2">
@@ -389,22 +383,17 @@ const PreviewQuiet = 200;
     </div>
     <div class="flex items-center gap-2">
       <span class="text-foreground-muted w-16 shrink-0 text-xs">Size in</span>
-      <select
-        class="well h-7 min-w-0 flex-1 px-1 text-sm"
+      <xui-select
+        class="min-w-0 flex-1"
         aria-label="Size space"
         data-testid="paint-size-space"
-        (change)="choose('sizeSpace', text($event))"
-      >
-        @for (term of terms().sizeSpaces; track term.value) {
-          <option
-            [value]="term.value"
-            [disabled]="term.value === 'model' && !store.state()?.model"
-            [selected]="term.value === store.brush().sizeSpace"
-          >
-            {{ term.label }}
-          </option>
-        }
-      </select>
+        [filterable]="false"
+        [itemDisabled]="sizeNeedsModel()"
+        [itemText]="labelsOf(terms().sizeSpaces)"
+        [items]="valuesOf(terms().sizeSpaces)"
+        [value]="store.brush().sizeSpace"
+        (valueChange)="$event && choose('sizeSpace', $event)"
+      />
     </div>
     @if (store.masking()) {
       <div class="flex items-center gap-2">
@@ -452,8 +441,8 @@ const PreviewQuiet = 200;
             <button
               type="button"
               class="size-5 rounded-sm border border-black/30"
-              [attr.aria-label]="'Paint with ' + colour + '. Alt-click takes it out of the palette'"
-              [title]="colour + ' (Alt-click takes it out)'"
+              [attr.aria-label]="'Paint with ' + colourName(colour) + '. Alt-click takes it out of the palette'"
+              [title]="colourName(colour) + ' (Alt-click takes it out)'"
               [style.background-color]="colour"
               (click)="pick(colour, $event)"
             ></button>
@@ -476,54 +465,54 @@ const PreviewQuiet = 200;
     @for (choice of choices; track choice.key) {
       <div class="flex items-center gap-1">
         <span class="text-foreground-muted w-16 shrink-0 text-xs">{{ choice.label }}</span>
-        <select
-          class="well h-7 min-w-0 flex-1 px-1 text-sm"
-          [attr.aria-label]="'Brush ' + choice.label.toLowerCase()"
+        <xui-select
+          class="min-w-0 flex-1"
+          [aria-label]="'Brush ' + choice.label.toLowerCase()"
           [attr.data-testid]="'paint-' + choice.key"
-          (change)="choose(choice.key, text($event))"
-        >
-          @for (term of terms()[choice.terms]; track term.value) {
-            <option [value]="term.value" [selected]="term.value === store.brush()[choice.key]">{{ term.label }}</option>
-          }
-        </select>
+          [filterable]="false"
+          [itemText]="labelsOf(terms()[choice.terms])"
+          [items]="valuesOf(terms()[choice.terms])"
+          [value]="store.brush()[choice.key]"
+          (valueChange)="$event && choose(choice.key, $event)"
+        />
       </div>
     }
-    <label
+    <span
       class="flex items-center gap-2 text-xs"
       title="Off, a place keeps the strongest stamp: a slow drag paints what a fast one does"
     >
-      <input
-        type="checkbox"
+      <xui-switch
+        aria-label="Stamps build up where they overlap"
         data-testid="paint-accumulate"
         [checked]="store.brush().accumulate"
-        (change)="set('accumulate', checked($event))"
+        (checkedChange)="set('accumulate', $event)"
       />
       Stamps build up where they overlap
-    </label>
-    <label
+    </span>
+    <span
       class="flex items-center gap-2 text-xs"
       title="A stroke started where the last one stopped carries it on: nothing is laid twice where they meet, and a lazy brush keeps its string"
     >
-      <input
-        type="checkbox"
+      <xui-switch
+        aria-label="Carry on the last stroke"
         data-testid="paint-resume"
         [checked]="store.brush().resume"
-        (change)="set('resume', checked($event))"
+        (checkedChange)="set('resume', $event)"
       />
       Carry on the last stroke
-    </label>
-    <label
+    </span>
+    <span
       class="flex items-center gap-2 text-xs"
       title="On the mesh, paints only what the camera sees: off, a stroke also reaches what lies close behind the surface under it"
     >
-      <input
-        type="checkbox"
+      <xui-switch
+        aria-label="Only what the camera sees"
         data-testid="paint-occlusion"
         [checked]="store.brush().occlusion"
-        (change)="set('occlusion', checked($event))"
+        (checkedChange)="set('occlusion', $event)"
       />
       Only what the camera sees
-    </label>
+    </span>
     @if (store.brush().occlusion) {
       <div class="flex items-center gap-2">
         <span
@@ -551,12 +540,11 @@ const PreviewQuiet = 200;
       <span class="section-label">Also paints</span>
       @for (channel of others(); track channel.usage) {
         <div class="flex items-center gap-2">
-          <input
-            type="checkbox"
-            [attr.aria-label]="'Paint ' + nameOf(channel.usage)"
+          <xui-switch
+            [aria-label]="'Paint ' + nameOf(channel.usage)"
             [attr.data-testid]="'paint-also-' + channel.usage"
             [checked]="store.alsoPaints().has(channel.usage)"
-            (change)="toggleChannel(channel.usage, $event)"
+            (checkedChange)="toggleChannel(channel.usage, $event)"
           />
           <span class="min-w-0 flex-1 truncate text-xs">{{ nameOf(channel.usage) }}</span>
           <xui-color-picker
@@ -674,10 +662,29 @@ export class BrushPanel {
     }
   }
 
-  protected fillMode(event: Event): FillMode {
-    const value = (event.target as HTMLSelectElement).value;
+  protected fillMode(value: string | null): FillMode {
     return FillModes.find(mode => mode === value) ?? 'polygon';
   }
+
+  protected readonly valuesOf = valuesOf;
+  protected readonly labelsOf = labelsOf;
+  protected readonly colourName = hexColourName;
+  /** A material lands over the UV layout alone where there is no mesh to place it in the space of. */
+  protected readonly needsModel = computed(() => {
+    const model = !!this.store.state()?.model;
+    return (projection: string) => !model && projection !== 'Uv';
+  });
+  /** A size is a share of the model only where there is one. */
+  protected readonly sizeNeedsModel = computed(() => {
+    const model = !!this.store.state()?.model;
+    return (space: string) => !model && space === 'model';
+  });
+  /** Off first, then each kind of symmetry. */
+  protected readonly symmetries = computed(() => ['', ...valuesOf(this.terms().symmetries)]);
+  protected readonly symmetryName = computed(() => {
+    const terms = this.terms().symmetries;
+    return (kind: string) => (kind ? labelIn(terms, kind) : 'Off');
+  });
   protected readonly termName = termName;
   protected readonly percent = percent;
   protected readonly toRadians = toRadians;
@@ -704,9 +711,9 @@ export class BrushPanel {
     (this.store.state()?.channels ?? []).filter(channel => channel.usage !== this.store.channel())
   );
 
-  protected toggleChannel(usage: string, event: Event): void {
+  protected toggleChannel(usage: string, on: boolean): void {
     const next = new Map(this.store.alsoPaints());
-    if ((event.target as HTMLInputElement).checked) {
+    if (on) {
       next.set(usage, next.get(usage) ?? '#808080');
     } else {
       next.delete(usage);
@@ -812,13 +819,5 @@ export class BrushPanel {
 
   protected setSymmetry(change: Partial<StackSymmetry>): void {
     this.store.symmetry.update(held => (held ? { ...held, ...change } : held));
-  }
-
-  protected text(event: Event): string {
-    return (event.target as HTMLInputElement).value;
-  }
-
-  protected checked(event: Event): boolean {
-    return (event.target as HTMLInputElement).checked;
   }
 }

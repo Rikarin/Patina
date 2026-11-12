@@ -68,7 +68,7 @@ const MostKept = 20;
                 class="min-w-0 flex-1"
                 size="sm"
                 fill
-                ariaLabel="Theme"
+                aria-label="Theme"
                 data-testid="preferences-theme"
                 [options]="themes"
                 [value]="preferences.theme()"
@@ -85,7 +85,7 @@ const MostKept = 20;
                 class="min-w-0 flex-1"
                 size="sm"
                 fill
-                ariaLabel="Library opens on"
+                aria-label="Library opens on"
                 data-testid="preferences-library-tab"
                 [options]="libraryTabs"
                 [value]="preferences.libraryTab()"
@@ -98,7 +98,7 @@ const MostKept = 20;
                 class="min-w-0 flex-1"
                 size="sm"
                 fill
-                ariaLabel="Library shows"
+                aria-label="Library shows"
                 data-testid="preferences-library-view"
                 [options]="libraryViews"
                 [value]="preferences.libraryView()"
@@ -111,7 +111,7 @@ const MostKept = 20;
                 class="min-w-0 flex-1"
                 size="sm"
                 fill
-                ariaLabel="Shelf pictures"
+                aria-label="Shelf pictures"
                 data-testid="preferences-shelf-view"
                 [options]="shelfViews"
                 [value]="preferences.shelfView()"
@@ -121,7 +121,7 @@ const MostKept = 20;
             <label class="flex items-center gap-3">
               <span class="w-36 shrink-0">Render statistics</span>
               <xui-switch
-                ariaLabel="Render statistics"
+                aria-label="Render statistics"
                 data-testid="preferences-stats"
                 [checked]="preferences.stats()"
                 (checkedChange)="preferences.set({ stats: $event })"
@@ -149,7 +149,7 @@ const MostKept = 20;
               <label class="flex items-center gap-3">
                 <span class="w-36 shrink-0">Autosave</span>
                 <xui-switch
-                  ariaLabel="Autosave"
+                  aria-label="Autosave"
                   data-testid="preferences-autosave-on"
                   [checked]="held.intervalSeconds > 0"
                   (checkedChange)="saveAutosave({ intervalSeconds: $event ? 60 : 0 })"
@@ -161,7 +161,7 @@ const MostKept = 20;
                   <xui-numeric-input
                     class="w-28"
                     size="sm"
-                    ariaLabel="Autosave interval in minutes"
+                    aria-label="Autosave interval in minutes"
                     data-testid="preferences-autosave-interval"
                     [min]="1"
                     [max]="mostMinutes"
@@ -176,7 +176,7 @@ const MostKept = 20;
                   <xui-numeric-input
                     class="w-28"
                     size="sm"
-                    ariaLabel="Autosave after a pause, in seconds"
+                    aria-label="Autosave after a pause, in seconds"
                     data-testid="preferences-autosave-idle"
                     [min]="0"
                     [max]="mostSeconds"
@@ -191,7 +191,7 @@ const MostKept = 20;
                   <xui-numeric-input
                     class="w-28"
                     size="sm"
-                    ariaLabel="Autosaves kept of each document"
+                    aria-label="Autosaves kept of each document"
                     data-testid="preferences-autosave-keep"
                     [min]="1"
                     [max]="mostKept"

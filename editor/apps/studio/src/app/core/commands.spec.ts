@@ -17,6 +17,7 @@ import {
 import { Commands, KeyWaitMs } from './commands';
 import { heldBy, readKeySettings, settleKeys } from './key-bindings';
 import { ShortcutsDialog } from './shortcuts-dialog';
+import { sources } from './source-testing';
 
 const key = (init: KeyboardEventInit) => new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
 
@@ -123,26 +124,6 @@ describe('the command table', () => {
     expect(settled.get('brushTool')).toEqual([]);
   });
 });
-
-/** What {@link sources} needs of Node's file system. */
-interface Fs {
-  readdirSync(path: string, options: { recursive: true }): string[];
-  readFileSync(path: string, encoding: 'utf8'): string;
-}
-
-/** Every source file of the studio and its UI library, but tests, for checks that read what the code says. */
-async function sources(): Promise<{ path: string; text: string }[]> {
-  // Read at run time, so that the bundle the tests run from does not try to hold the file system.
-  const module = 'node:fs';
-  const fs = (await import(/* @vite-ignore */ module)) as Fs;
-  const roots = ['apps/studio/src/app', 'libs/studio-ui/src'];
-  return roots.flatMap(root =>
-    fs
-      .readdirSync(root, { recursive: true })
-      .filter(path => path.endsWith('.ts') && !path.endsWith('.spec.ts'))
-      .map(path => ({ path: `${root}/${path}`, text: fs.readFileSync(`${root}/${path}`, 'utf8') }))
-  );
-}
 
 describe('keys written into the code', () => {
   it('names a key in a tooltip or a menu only through the table, so it is one that works (#229)', async () => {

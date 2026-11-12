@@ -2,7 +2,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerSave, leave, newLibrary, newProject } from './projects';
+import { answerSave, leave, newLibrary, newProject, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const mesh = resolve(__dirname, '../../../../content/fixtures/viewport-test.glb');
@@ -148,17 +148,17 @@ test('the display settings change the picture, and the project keeps them', asyn
   const lit = await colours();
 
   // Clay is the shape in grey: the gold goes.
-  await window.getByTestId('viewport-view').selectOption('clay');
+  await pick(window, 'viewport-view', 'Clay');
   await expect.poll(async () => (await colours()).gold).toBeLessThan(lit.gold / 10);
   await window.screenshot({ path: join(shots, 'viewport-clay.png'), scale: 'css' });
-  await window.getByTestId('viewport-view').selectOption('lit');
+  await pick(window, 'viewport-view', 'Lit');
   await expect.poll(async () => (await colours()).gold).toBeGreaterThan(lit.gold / 2);
 
   await window.getByRole('button', { name: 'Maximize Preview' }).click();
   await window.getByTestId('viewport-display-toggle').click();
   await expect(window.getByTestId('viewport-display')).toBeVisible();
   const before = await frames();
-  await window.getByTestId('viewport-tonemap').selectOption('agx');
+  await pick(window, 'viewport-tonemap', 'AgX');
   await window.getByTestId('viewport-projection').getByText('Orthographic').click();
   await window.getByTestId('viewport-wireframe').click();
   await expect.poll(frames).toBeGreaterThan(before);
@@ -197,7 +197,7 @@ test('the display settings change the picture, and the project keeps them', asyn
 
   // The layout comes back too, with Preview still maximized.
   await window.getByTestId('viewport-display-toggle').click();
-  await expect(window.getByTestId('viewport-tonemap')).toHaveValue('agx', { timeout: 30_000 });
+  await expect(window.getByTestId('viewport-tonemap')).toContainText('AgX', { timeout: 30_000 });
   await expect(window.getByTestId('viewport-wireframe')).toBeChecked();
 });
 

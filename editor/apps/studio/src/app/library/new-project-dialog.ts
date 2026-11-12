@@ -14,15 +14,25 @@ import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
 import { XuiFormFieldImports } from '@xui/form-field';
 import { XuiInputImports } from '@xui/input';
+import { XuiSelectImports } from '@xui/select';
 import { XuiSwitchImports } from '@xui/switch';
 import { XuiTagInputImports } from '@xui/tag-input';
 import { desktop } from '../core/desktop';
+import { labelsOf, valuesOf } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from './library-store';
 import { LibraryTreeStore } from './library-tree-store';
 import { MeshFactsView } from './mesh-facts';
 import { ProjectStore } from './project-store';
+
+/** What a project can start as, and what each is for. */
+const ProjectKinds = [
+  { value: 'texturing', label: 'Texturing: paint a mesh' },
+  { value: 'layered-material', label: 'Layered Material: layers with no mesh' },
+  { value: 'image-material', label: 'Image Material: from one photo' },
+  { value: 'graph', label: 'Graph: nodes' }
+];
 
 /** Asks for a new project's name. The Server decides whether it can exist, so its refusal is what this shows. */
 @Component({
@@ -33,6 +43,7 @@ import { ProjectStore } from './project-store';
     XuiDialogImports,
     XuiFormFieldImports,
     XuiInputImports,
+    XuiSelectImports,
     XuiSwitchImports,
     XuiTagInputImports,
     MeshFactsView
@@ -53,14 +64,17 @@ import { ProjectStore } from './project-store';
               (input)="name.set(text($event))"
             />
           </xui-form-field>
-          <label class="flex flex-col gap-1">
-            <span class="section-label">Start with</span>
-            <select class="well h-7 w-full px-1" data-testid="new-project-kind" (change)="kind.set(text($event))">
-              @for (option of kinds; track option.value) {
-                <option [value]="option.value" [selected]="option.value === kind()">{{ option.label }}</option>
-              }
-            </select>
-          </label>
+          <xui-form-field label="Start with">
+            <xui-select
+              class="w-full"
+              data-testid="new-project-kind"
+              [filterable]="false"
+              [itemText]="kindName"
+              [items]="kinds"
+              [value]="kind()"
+              (valueChange)="$event && kind.set($event)"
+            />
+          </xui-form-field>
           @if (kind() === 'image-material') {
             <div class="flex flex-col gap-1">
               <span class="section-label">Picture</span>
@@ -131,21 +145,20 @@ import { ProjectStore } from './project-store';
           @if (kind() === 'texturing') {
             <label class="flex items-center justify-between gap-2">
               <span class="text-sm">Auto Unwrap</span>
-              <xui-switch ariaLabel="Auto Unwrap" data-testid="new-project-unwrap" [(checked)]="autoUnwrap" />
+              <xui-switch aria-label="Auto Unwrap" data-testid="new-project-unwrap" [(checked)]="autoUnwrap" />
             </label>
           }
-          <label class="flex flex-col gap-1">
-            <span class="section-label">Resolution</span>
-            <select
-              class="well h-7 w-full px-1"
+          <xui-form-field label="Resolution">
+            <xui-select
+              class="w-full"
               data-testid="new-project-resolution"
-              (change)="resolution.set(number($event))"
-            >
-              @for (side of sides(); track side) {
-                <option [value]="side" [selected]="side === resolution()">{{ side }} × {{ side }}</option>
-              }
-            </select>
-          </label>
+              [filterable]="false"
+              [itemText]="sideName"
+              [items]="sides()"
+              [value]="resolution()"
+              (valueChange)="$event && resolution.set($event)"
+            />
+          </xui-form-field>
           @if (folder()) {
             <p class="text-foreground-muted text-xs" data-testid="new-project-folder">In {{ folder() }}</p>
           }
@@ -187,10 +200,6 @@ export class NewProjectDialog {
     }
   }
 
-  protected number(event: Event): number {
-    return Number((event.target as HTMLSelectElement).value);
-  }
-
   private readonly status = inject(SystemStatus);
   private readonly store = inject(LibraryStore);
   private readonly tree = inject(LibraryTreeStore);
@@ -205,12 +214,9 @@ export class NewProjectDialog {
   protected readonly name = signal('');
   protected readonly canPick = desktop() !== undefined;
   protected readonly sides = this.status.textureSides;
-  protected readonly kinds = [
-    { value: 'texturing', label: 'Texturing: paint a mesh' },
-    { value: 'layered-material', label: 'Layered Material: layers with no mesh' },
-    { value: 'image-material', label: 'Image Material: from one photo' },
-    { value: 'graph', label: 'Graph: nodes' }
-  ];
+  protected readonly kinds = valuesOf(ProjectKinds);
+  protected readonly kindName = labelsOf(ProjectKinds);
+  protected readonly sideName = (side: number): string => `${String(side)} × ${String(side)}`;
   protected readonly kind = linkedSignal(() => this.startKind());
   protected readonly mesh = signal('');
   protected readonly image = signal('');

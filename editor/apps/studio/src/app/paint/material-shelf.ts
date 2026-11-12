@@ -69,7 +69,7 @@ const Everything = 'all';
         <xui-select
           class="min-w-0 flex-1 [&_button]:text-xs"
           size="sm"
-          ariaLabel="Type"
+          aria-label="Type"
           data-testid="shelf-role"
           [filterable]="false"
           [itemText]="roleLabel"
@@ -80,7 +80,7 @@ const Everything = 'all';
         <xui-select
           class="min-w-0 flex-1 [&_button]:text-xs"
           size="sm"
-          ariaLabel="From"
+          aria-label="From"
           data-testid="shelf-origin"
           [filterable]="false"
           [itemText]="originLabel"
@@ -92,7 +92,7 @@ const Everything = 'all';
       <xui-segmented-control
         class="min-w-0"
         size="sm"
-        ariaLabel="Picture size"
+        aria-label="Picture size"
         data-testid="shelf-view"
         [options]="views"
         [value]="view()"

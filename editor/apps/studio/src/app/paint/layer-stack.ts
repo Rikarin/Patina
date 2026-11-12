@@ -2,20 +2,36 @@ import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, i
 import { provideIcons } from '@ng-icons/core';
 import {
   matAdsClick,
+  matArrowDownward,
+  matArrowUpward,
   matBrush,
+  matChevronRight,
+  matClose,
   matDeleteOutline,
+  matDensitySmall,
+  matExpandLess,
+  matExpandMore,
   matFolder,
+  matFolderZip,
   matFormatColorFill,
-  matTune
+  matGradient,
+  matHideSource,
+  matTune,
+  matViewInAr,
+  matVisibility,
+  matVisibilityOff
 } from '@ng-icons/material-icons/baseline';
 import type { StackFilterKind, StackLayer, StackMaskEffect, StackMaskLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { XuiCalloutImports } from '@xui/callout';
 import { XuiContextMenuImports } from '@xui/context-menu';
+import { XuiInputImports } from '@xui/input';
 import { XuiMenuImports } from '@xui/menu';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiPopoverImports } from '@xui/popover';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
+import { XuiSwitchImports } from '@xui/switch';
 import { Activity } from '../core/activity';
 import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
@@ -91,14 +107,39 @@ const MaskMarks: Readonly<Record<string, string>> = {
     IconImports,
     MenuKeys,
     XuiButtonImports,
+    XuiCalloutImports,
     XuiContextMenuImports,
+    XuiInputImports,
     XuiMenuImports,
     XuiNonIdealStateImports,
     XuiPopoverImports,
     XuiSelectImports,
-    XuiSliderImports
+    XuiSliderImports,
+    XuiSwitchImports
   ],
-  viewProviders: [provideIcons({ matAdsClick, matBrush, matDeleteOutline, matFolder, matFormatColorFill, matTune })],
+  viewProviders: [
+    provideIcons({
+      matAdsClick,
+      matArrowDownward,
+      matArrowUpward,
+      matBrush,
+      matChevronRight,
+      matClose,
+      matDeleteOutline,
+      matDensitySmall,
+      matExpandLess,
+      matExpandMore,
+      matFolder,
+      matFolderZip,
+      matFormatColorFill,
+      matGradient,
+      matHideSource,
+      matTune,
+      matViewInAr,
+      matVisibility,
+      matVisibilityOff
+    })
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'flex h-full min-h-0 flex-col',
@@ -110,7 +151,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
       <xui-select
         class="w-24 min-w-0 shrink-0 [&_button]:text-xs"
         style="--control-height-md: 1.375rem; --control-padding-md: 0.375rem"
-        ariaLabel="Channel"
+        aria-label="Channel"
         data-testid="layers-channel"
         [filterable]="false"
         [itemText]="channelLabel"
@@ -161,9 +202,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
         [class.bg-selection]="compact()"
         (click)="setCompact(!compact())"
       >
-        <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
-          <path d="M2 3h12M2 6.5h12M2 10h12M2 13.5h12" stroke="currentColor" stroke-width="1.4" />
-        </svg>
+        <ng-icon xui size="sm" name="matDensitySmall" />
       </button>
       <button
         type="button"
@@ -234,29 +273,35 @@ const MaskMarks: Readonly<Record<string, string>> = {
     </div>
 
     @if (staleBake(); as stale) {
-      <div class="bg-warning-subtle flex shrink-0 items-center gap-2 px-2 py-1 text-xs" data-testid="layers-stale-bake">
-        <span class="min-w-0 flex-1">{{ stale }}</span>
-        <button
-          type="button"
-          xuiButton
-          size="sm"
-          data-testid="layers-rebake"
-          title="Bakes again with the project’s settings. Texture sets the change did not touch come from the cache."
-          (click)="commands.run('quickBake')"
-        >
-          Rebake
-        </button>
-        <button type="button" xuiButton size="sm" (click)="project.askToBake()">Bake…</button>
-      </div>
+      <xui-callout class="shrink-0 text-xs" color="warning" compact data-testid="layers-stale-bake">
+        <span class="flex items-center gap-2">
+          <span class="min-w-0 flex-1">{{ stale }}</span>
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            data-testid="layers-rebake"
+            title="Bakes again with the project’s settings. Texture sets the change did not touch come from the cache."
+            (click)="commands.run('quickBake')"
+          >
+            Rebake
+          </button>
+          <button type="button" xuiButton size="sm" (click)="project.askToBake()">Bake…</button>
+        </span>
+      </xui-callout>
     }
 
     @if (store.unbaked(); as maps) {
-      <div class="bg-warning-subtle flex shrink-0 items-center gap-2 px-2 py-1 text-xs" data-testid="layers-need-bake">
-        <span class="min-w-0 flex-1" [title]="mapNames(maps)"
-          >Some masks need mesh maps, and show grey until they are baked.</span
-        >
-        <button type="button" xuiButton size="sm" data-testid="layers-bake" (click)="project.askToBake()">Bake…</button>
-      </div>
+      <xui-callout class="shrink-0 text-xs" color="warning" compact data-testid="layers-need-bake">
+        <span class="flex items-center gap-2">
+          <span class="min-w-0 flex-1" [title]="mapNames(maps)"
+            >Some masks need mesh maps, and show grey until they are baked.</span
+          >
+          <button type="button" xuiButton size="sm" data-testid="layers-bake" (click)="project.askToBake()">
+            Bake…
+          </button>
+        </span>
+      </xui-callout>
     }
 
     @if (store.evaluated(); as evaluated) {
@@ -368,20 +413,11 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 type="button"
                 class="grid size-5 shrink-0 place-items-center"
                 [attr.aria-label]="(item.enabled ? 'Hide ' : 'Show ') + item.name"
+                [title]="(item.enabled ? 'Hide ' : 'Show ') + item.name"
                 [attr.aria-pressed]="item.enabled"
                 (click)="$event.stopPropagation(); setWork(owner, item.effect, !item.enabled)"
               >
-                <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
-                  <path
-                    d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.3"
-                  />
-                  @if (item.enabled) {
-                    <circle cx="8" cy="8" r="2.2" fill="currentColor" />
-                  }
-                </svg>
+                <ng-icon xui size="sm" [name]="item.enabled ? 'matVisibility' : 'matVisibilityOff'" />
               </button>
               <span class="text-foreground-muted w-5 shrink-0 text-center text-xs">Fx</span>
               <span class="min-w-0 flex-1 truncate text-xs">{{ item.name }}</span>
@@ -398,7 +434,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
                     class="w-full min-w-0 [&_button]:text-xs"
                     style="--control-height-md: 1.25rem; --control-padding-md: 0.375rem"
                     data-testid="mask-stack-effect-blend"
-                    [ariaLabel]="'Blend mode of ' + item.name"
+                    [aria-label]="'Blend mode of ' + item.name"
                     [filterable]="false"
                     [itemText]="blendLabel"
                     [items]="blends()"
@@ -427,28 +463,31 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 class="text-foreground-muted grid size-5 shrink-0 place-items-center disabled:opacity-30"
                 data-testid="mask-stack-effect-up"
                 [attr.aria-label]="'Move ' + item.name + ' up'"
+                [title]="'Move ' + item.name + ' up'"
                 [disabled]="item.effect === 0"
                 (click)="$event.stopPropagation(); moveWork(owner, item.effect, -1)"
               >
-                ↑
+                <ng-icon xui size="sm" name="matArrowUpward" />
               </button>
               <button
                 type="button"
                 class="text-foreground-muted grid size-5 shrink-0 place-items-center disabled:opacity-30"
                 data-testid="mask-stack-effect-down"
                 [attr.aria-label]="'Move ' + item.name + ' down'"
+                [title]="'Move ' + item.name + ' down'"
                 [disabled]="item.effect === (owner.mask.effects?.length ?? 0) - 1"
                 (click)="$event.stopPropagation(); moveWork(owner, item.effect, 1)"
               >
-                ↓
+                <ng-icon xui size="sm" name="matArrowDownward" />
               </button>
               <button
                 type="button"
                 class="text-foreground-muted grid size-5 shrink-0 place-items-center"
                 [attr.aria-label]="'Remove ' + item.name + ' from the mask'"
+                [title]="'Remove ' + item.name + ' from the mask'"
                 (click)="$event.stopPropagation(); removeWork(owner, item.effect)"
               >
-                ×
+                <ng-icon xui size="sm" name="matClose" />
               </button>
             </div>
           }
@@ -471,17 +510,13 @@ const MaskMarks: Readonly<Record<string, string>> = {
               class="grid size-5 shrink-0 place-items-center"
               data-testid="mask-layer-eye"
               [attr.aria-label]="(entry.layer.enabled ? 'Hide ' : 'Show ') + entry.name"
+              [title]="(entry.layer.enabled ? 'Hide ' : 'Show ') + entry.name"
               [attr.aria-pressed]="entry.layer.enabled"
               (click)="
                 $event.stopPropagation(); store.setMaskLayer(owner, entry.index, { enabled: !entry.layer.enabled })
               "
             >
-              <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
-                <path d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" />
-                @if (entry.layer.enabled) {
-                  <circle cx="8" cy="8" r="2.2" fill="currentColor" />
-                }
-              </svg>
+              <ng-icon xui size="sm" [name]="entry.layer.enabled ? 'matVisibility' : 'matVisibilityOff'" />
             </button>
             <span
               class="border-hairline text-foreground-muted grid size-6 shrink-0 place-items-center rounded-sm border text-xs"
@@ -501,7 +536,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 class="w-full min-w-0 [&_button]:text-xs"
                 style="--control-height-md: 1.25rem; --control-padding-md: 0.375rem"
                 data-testid="mask-layer-blend"
-                [ariaLabel]="'Blend mode of ' + entry.name"
+                [aria-label]="'Blend mode of ' + entry.name"
                 [filterable]="false"
                 [itemText]="blendLabel"
                 [items]="blends()"
@@ -537,20 +572,22 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 class="text-foreground-muted grid h-4 w-5 place-items-center text-xs"
                 data-testid="mask-layer-up"
                 [attr.aria-label]="'Move ' + entry.name + ' up'"
+                [title]="'Move ' + entry.name + ' up'"
                 [disabled]="entry.index === (owner.mask.layers?.length ?? 0) - 1"
                 (click)="store.moveMaskLayer(owner, entry.index, 1)"
               >
-                ▲
+                <ng-icon xui size="sm" name="matExpandLess" />
               </button>
               <button
                 type="button"
                 class="text-foreground-muted grid h-4 w-5 place-items-center text-xs"
                 data-testid="mask-layer-down"
                 [attr.aria-label]="'Move ' + entry.name + ' down'"
+                [title]="'Move ' + entry.name + ' down'"
                 [disabled]="entry.index === 0"
                 (click)="store.moveMaskLayer(owner, entry.index, -1)"
               >
-                ▼
+                <ng-icon xui size="sm" name="matExpandMore" />
               </button>
             </span>
             <button
@@ -558,9 +595,10 @@ const MaskMarks: Readonly<Record<string, string>> = {
               class="text-foreground-muted grid size-5 shrink-0 place-items-center"
               data-testid="mask-layer-remove"
               [attr.aria-label]="'Remove ' + entry.name"
+              [title]="'Remove ' + entry.name"
               (click)="$event.stopPropagation(); store.removeMaskLayer(owner, entry.index)"
             >
-              ×
+              <ng-icon xui size="sm" name="matClose" />
             </button>
           </div>
         }
@@ -649,15 +687,11 @@ const MaskMarks: Readonly<Record<string, string>> = {
               class="grid size-5 shrink-0 place-items-center"
               data-testid="layer-eye"
               [attr.aria-label]="(row.layer.enabled ? 'Hide ' : 'Show ') + row.layer.name"
+              [title]="(row.layer.enabled ? 'Hide ' : 'Show ') + row.layer.name"
               [attr.aria-pressed]="row.layer.enabled"
               (click)="$event.stopPropagation(); store.setEnabled(row.layer, !row.layer.enabled)"
             >
-              <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
-                <path d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" />
-                @if (row.layer.enabled) {
-                  <circle cx="8" cy="8" r="2.2" fill="currentColor" />
-                }
-              </svg>
+              <ng-icon xui size="sm" [name]="row.layer.enabled ? 'matVisibility' : 'matVisibilityOff'" />
             </button>
 
             @if (row.effect) {
@@ -669,37 +703,35 @@ const MaskMarks: Readonly<Record<string, string>> = {
               </span>
             } @else if (row.layer.flattened) {
               <span class="size-4 shrink-0"></span>
-              <svg
-                viewBox="0 0 16 16"
-                class="text-foreground-muted size-8 shrink-0"
+              <span
+                class="text-foreground-muted grid size-8 shrink-0 place-items-center"
                 role="img"
                 aria-label="Flattened folder"
                 data-testid="layer-flattened"
+                title="Flattened folder: its layers are kept, and Unflatten brings them back"
               >
-                <title>Flattened folder: its layers are kept, and Unflatten brings them back</title>
-                <path d="M1.5 3.5h5l1.5 2h6.5v7.5h-13z" fill="currentColor" fill-opacity="0.9" />
-                <path class="text-background" d="M4 9.5h8M4 11.5h8" stroke="currentColor" stroke-width="1" />
-              </svg>
+                <ng-icon xui size="lg" name="matFolderZip" />
+              </span>
             } @else if (row.layer.kind === 'group') {
               <button
                 type="button"
                 class="text-foreground-muted grid size-4 shrink-0 place-items-center"
                 data-testid="layer-toggle"
                 [attr.aria-label]="(closed().has(row.layer.id) ? 'Open ' : 'Close ') + row.layer.name"
+                [title]="(closed().has(row.layer.id) ? 'Open ' : 'Close ') + row.layer.name"
                 (click)="$event.stopPropagation(); toggle(row.layer.id)"
               >
-                <svg
-                  viewBox="0 0 16 16"
-                  class="size-3"
+                <ng-icon
+                  xui
+                  size="sm"
+                  name="matChevronRight"
+                  class="transition-transform"
                   [class.rotate-90]="!closed().has(row.layer.id)"
-                  aria-hidden="true"
-                >
-                  <path d="M6 3l5 5-5 5z" fill="currentColor" />
-                </svg>
+                />
               </button>
-              <svg viewBox="0 0 16 16" class="text-foreground-muted size-8 shrink-0" aria-hidden="true">
-                <path d="M1.5 3.5h5l1.5 2h6.5v7.5h-13z" fill="currentColor" fill-opacity="0.45" />
-              </svg>
+              <span class="text-foreground-muted grid size-8 shrink-0 place-items-center" aria-hidden="true">
+                <ng-icon xui size="lg" name="matFolder" />
+              </span>
             } @else {
               <span class="flex shrink-0 flex-col gap-0.5">
                 <span
@@ -744,13 +776,11 @@ const MaskMarks: Readonly<Record<string, string>> = {
                   (click)="$event.stopPropagation(); maskClicked($event, row.layer)"
                   (dblclick)="$event.stopPropagation(); openMaskStack(row.layer)"
                 >
-                  <svg viewBox="0 0 16 16" class="size-5" aria-hidden="true">
-                    <path d="M1 1h14v14H1z" fill="currentColor" fill-opacity="0.35" />
-                    <circle cx="8" cy="8" r="4.5" fill="currentColor" />
-                    @if (!maskOn(row.layer)) {
-                      <path d="M2 14L14 2" stroke="var(--color-error)" stroke-width="2" />
-                    }
-                  </svg>
+                  <ng-icon
+                    xui
+                    [class.text-error]="!maskOn(row.layer)"
+                    [name]="maskOn(row.layer) ? 'matGradient' : 'matHideSource'"
+                  />
                 </button>
                 <span
                   class="h-[3px] w-8 rounded-full"
@@ -778,7 +808,10 @@ const MaskMarks: Readonly<Record<string, string>> = {
             <span class="min-w-0 flex-1 leading-tight">
               @if (renaming() === row.layer.id) {
                 <input
-                  class="w-full bg-transparent text-sm"
+                  class="w-full"
+                  xuiInput
+                  size="sm"
+                  autocomplete="off"
                   aria-label="Layer name"
                   data-testid="layer-rename"
                   [value]="row.layer.name"
@@ -810,12 +843,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 (click)="$event.stopPropagation()"
                 (opened)="openMeshes(row.layer)"
               >
-                <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
-                  <path d="M2 2h12v12H2z" fill="none" stroke="currentColor" stroke-width="1.5" />
-                  @if (row.layer.mask.meshParts) {
-                    <path d="M2 2h6v6H2z" fill="currentColor" />
-                  }
-                </svg>
+                <ng-icon xui size="sm" name="matViewInAr" />
               </button>
             }
 
@@ -840,7 +868,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 class="min-w-0 [&_button]:text-xs"
                 style="--control-height-md: 1.375rem; --control-padding-md: 0.375rem"
                 data-testid="paint-layer-blend"
-                [ariaLabel]="'Blend mode of ' + row.layer.name"
+                [aria-label]="'Blend mode of ' + row.layer.name"
                 [filterable]="false"
                 [class.w-20]="row.effect"
                 [class.w-16]="compact() && !row.effect"
@@ -878,9 +906,10 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 class="text-foreground-muted grid size-5 shrink-0 place-items-center"
                 data-testid="layer-effect-remove"
                 [attr.aria-label]="'Remove ' + row.layer.name"
+                [title]="'Remove ' + row.layer.name"
                 (click)="$event.stopPropagation(); remove(row.layer)"
               >
-                ×
+                <ng-icon xui size="sm" name="matClose" />
               </button>
             }
           </div>
@@ -895,21 +924,12 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 class="grid size-5 shrink-0 place-items-center"
                 data-testid="layer-work-eye"
                 [attr.aria-label]="(item.enabled ? 'Hide ' : 'Show ') + item.name"
+                [title]="(item.enabled ? 'Hide ' : 'Show ') + item.name"
                 [attr.aria-pressed]="item.enabled"
                 [disabled]="item.effect === null"
                 (click)="setWork(row.layer, item.effect, !item.enabled)"
               >
-                <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
-                  <path
-                    d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.3"
-                  />
-                  @if (item.enabled) {
-                    <circle cx="8" cy="8" r="2.2" fill="currentColor" />
-                  }
-                </svg>
+                <ng-icon xui size="sm" [name]="item.enabled ? 'matVisibility' : 'matVisibilityOff'" />
               </button>
               <button
                 type="button"
@@ -923,9 +943,10 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 class="text-foreground-muted grid size-5 shrink-0 place-items-center"
                 data-testid="layer-work-remove"
                 [attr.aria-label]="'Remove ' + item.name + ' from the mask'"
+                [title]="'Remove ' + item.name + ' from the mask'"
                 (click)="removeWork(row.layer, item.effect)"
               >
-                ×
+                <ng-icon xui size="sm" name="matClose" />
               </button>
             </div>
           }
@@ -979,16 +1000,16 @@ const MaskMarks: Readonly<Record<string, string>> = {
       <div class="flex max-h-80 min-w-44 flex-col gap-1 overflow-auto p-1 text-sm" data-testid="layer-meshes">
         @if (meshLayer(); as layer) {
           @for (part of parts(); track part) {
-            <label class="flex items-center gap-2">
-              <input
-                type="checkbox"
+            <div class="flex h-7 items-center gap-2">
+              <span class="min-w-0 flex-1 truncate" [title]="part">{{ part }}</span>
+              <xui-switch
+                [aria-label]="part"
                 [attr.data-testid]="'layer-mesh-' + part"
                 [checked]="onPart(layer, part)"
                 [disabled]="isLastPart(layer, part)"
-                (change)="setPart(layer, part, checked($event))"
+                (checkedChange)="setPart(layer, part, $event)"
               />
-              <span class="truncate">{{ part }}</span>
-            </label>
+            </div>
           } @empty {
             <span class="text-foreground-muted text-xs">This mesh has no named parts.</span>
           }
@@ -1489,10 +1510,6 @@ export class LayerStack {
     return this.onPart(layer, part) && this.parts().filter(name => this.onPart(layer, name)).length === 1;
   }
 
-  protected checked(event: Event): boolean {
-    return (event.target as HTMLInputElement).checked;
-  }
-
   protected setPart(layer: StackLayer, part: string, on: boolean): void {
     const kept = this.parts().filter(name => (name === part ? on : this.onPart(layer, name)));
     void this.store.keepToMeshes(layer, kept.length === this.parts().length ? [] : kept);
@@ -1500,13 +1517,6 @@ export class LayerStack {
     this.meshLayer.set({ ...layer, mask: { ...layer.mask, meshParts: kept } });
   }
 
-  /** Goes to a texture set, which is a document of the project. */
-  protected chooseSet(path: string): void {
-    const project = this.project.current();
-    if (project) {
-      void this.project.openDocument(project.path, path);
-    }
-  }
   protected readonly rowHeight = RowHeight;
   protected readonly compactHeight = CompactHeight;
   /** Rows a line each, so that more of a long stack shows at once (#106). */
@@ -2072,10 +2082,6 @@ export class LayerStack {
 
   protected mark(layer: StackLayer): string {
     return layer.kind === 'fill' && layer.fill === 'Graph' ? 'M' : (KindMarks[layer.kind] ?? '');
-  }
-
-  protected maskMark(layer: StackLayer): string {
-    return MaskMarks[layer.mask.source] ?? '';
   }
 
   protected maskColour(layer: StackLayer): string | null {

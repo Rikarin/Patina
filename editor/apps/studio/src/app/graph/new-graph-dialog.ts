@@ -51,7 +51,7 @@ import { GraphStore } from './graph-store';
           </xui-form-field>
           <xui-form-field label="Size" helperText="You can change it later without changing the picture.">
             <xui-select
-              ariaLabel="Size"
+              aria-label="Size"
               data-testid="new-graph-size"
               [items]="sides()"
               [value]="side()"

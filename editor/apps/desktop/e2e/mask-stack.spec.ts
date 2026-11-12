@@ -2,7 +2,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject } from './projects';
+import { leave, newLibrary, newProject, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
@@ -203,7 +203,7 @@ test('a mask effect blends over the mask it reads, and copies into another layer
   await window.getByTestId('layer-menu-mask-black').click();
   const hidden = await changed(band);
   const withoutBand = await mean();
-  await window.getByTestId('paint-mask-effect-add').selectOption('Colour/Invert');
+  await pick(window, 'paint-mask-effect-add', /^Invert/u);
   let shown = await changed(hidden);
   expect(await mean()).toBeCloseTo(withBand, 0);
 

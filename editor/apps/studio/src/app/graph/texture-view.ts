@@ -238,7 +238,7 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
         <xui-segmented-control
           class="ms-auto min-w-0"
           size="sm"
-          ariaLabel="Channel"
+          aria-label="Channel"
           [options]="channelOptions"
           [value]="channel()"
           (valueChange)="channel.set($event ?? 'rgba')"

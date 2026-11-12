@@ -144,7 +144,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
           @for (map of maps; track map.name) {
             <div class="flex items-center gap-1.5">
               <xui-switch
-                [ariaLabel]="'Bake ' + label(map.name)"
+                [aria-label]="'Bake ' + label(map.name)"
                 [attr.data-testid]="'bake-map-' + map.name"
                 [checked]="options.maps.includes(map.name)"
                 (checkedChange)="setMap(map.name, $event)"
@@ -172,7 +172,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
             @for (set of settings.sets(); track set.material) {
               <label class="flex items-center gap-1.5 px-1 text-sm">
                 <xui-switch
-                  [ariaLabel]="'Bake ' + set.name"
+                  [aria-label]="'Bake ' + set.name"
                   [attr.data-testid]="'bake-set-' + set.material"
                   [checked]="chosen().has(set.material)"
                   (checkedChange)="setSet(set.material, $event)"
@@ -222,6 +222,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     size="sm"
                     variant="ghost"
                     aria-label="Choose High poly mesh"
+                    title="Choose High poly mesh"
                     data-testid="bake-choose-high"
                     (click)="pickHigh()"
                   >
@@ -238,6 +239,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     size="sm"
                     variant="ghost"
                     [attr.aria-label]="'Remove ' + nameOf(path)"
+                    [title]="'Remove ' + nameOf(path)"
                     [attr.data-testid]="'bake-remove-high-' + $index"
                     (click)="removeHigh($index)"
                   >
@@ -283,6 +285,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                       size="sm"
                       variant="ghost"
                       [attr.aria-label]="'Choose ' + field.label"
+                      [title]="'Choose ' + field.label"
                       [attr.data-testid]="'bake-choose-' + field.key"
                       (click)="pick(field.key)"
                     >
@@ -296,6 +299,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                       size="sm"
                       variant="ghost"
                       [attr.aria-label]="'Clear ' + field.label"
+                      [title]="'Clear ' + field.label"
                       (click)="setPath(field.key, '')"
                     >
                       Clear
@@ -310,7 +314,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 <span class="text-foreground-muted text-xs">Size</span>
                 <xui-select
                   class="w-full"
-                  ariaLabel="Size"
+                  aria-label="Size"
                   data-testid="bake-resolution"
                   [itemText]="sideName"
                   [items]="sides()"
@@ -322,7 +326,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 <span class="text-foreground-muted text-xs">Format</span>
                 <xui-select
                   class="w-full"
-                  ariaLabel="Format"
+                  aria-label="Format"
                   data-testid="bake-format"
                   [itemText]="formatName"
                   [items]="formats"
@@ -334,7 +338,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 <span class="text-foreground-muted text-xs">Antialiasing, samples per side</span>
                 <xui-numeric-input
                   size="sm"
-                  ariaLabel="Samples per side"
+                  aria-label="Samples per side"
                   [max]="8"
                   [min]="1"
                   [stepSize]="1"
@@ -346,7 +350,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 <span class="text-foreground-muted text-xs">Dilation, in texels</span>
                 <xui-numeric-input
                   size="sm"
-                  ariaLabel="Dilation in texels"
+                  aria-label="Dilation in texels"
                   [max]="64"
                   [min]="0"
                   [stepSize]="1"
@@ -361,7 +365,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               Distances are
               <xui-segmented-control
                 size="sm"
-                ariaLabel="Distance units"
+                aria-label="Distance units"
                 data-testid="bake-units"
                 [options]="units"
                 [value]="options.rays.units"
@@ -374,7 +378,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 <span class="text-foreground-muted text-xs">Front distance, {{ unit() }}</span>
                 <xui-numeric-input
                   size="sm"
-                  ariaLabel="Front distance"
+                  aria-label="Front distance"
                   data-testid="bake-front"
                   [min]="0"
                   [stepSize]="step()"
@@ -386,7 +390,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 <span class="text-foreground-muted text-xs">Rear distance, {{ unit() }}</span>
                 <xui-numeric-input
                   size="sm"
-                  ariaLabel="Rear distance"
+                  aria-label="Rear distance"
                   data-testid="bake-rear"
                   [min]="0"
                   [stepSize]="step()"
@@ -401,7 +405,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
             >
               Ignore backfaces
               <xui-switch
-                ariaLabel="Ignore backfaces"
+                aria-label="Ignore backfaces"
                 data-testid="bake-ignore-backfaces"
                 [checked]="options.rays.ignoreBackfaces"
                 (checkedChange)="setRays({ ignoreBackfaces: $event })"
@@ -428,7 +432,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
             <label class="flex items-center justify-between gap-2 text-sm">
               Match parts by name
               <xui-switch
-                ariaLabel="Match parts by name"
+                aria-label="Match parts by name"
                 data-testid="bake-match"
                 [checked]="options.rays.matchByName"
                 (checkedChange)="setRays({ matchByName: $event })"
@@ -468,7 +472,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
             >
               Show in the viewport
               <xui-switch
-                ariaLabel="Show the bake in the viewport"
+                aria-label="Show the bake in the viewport"
                 data-testid="bake-preview"
                 [checked]="settings.previewing()"
                 (checkedChange)="settings.setPreviewing($event)"
@@ -479,7 +483,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 @for (shown of previewParts; track shown.key) {
                   <label class="flex items-center gap-1.5" [title]="shown.about">
                     <xui-switch
-                      [ariaLabel]="'Show ' + shown.label"
+                      [aria-label]="'Show ' + shown.label"
                       [attr.data-testid]="'bake-preview-' + shown.key"
                       [checked]="settings.previewShows()[shown.key]"
                       (checkedChange)="showInPreview(shown.key, $event)"
@@ -526,7 +530,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   Space
                   <xui-segmented-control
                     size="sm"
-                    ariaLabel="Normal map space"
+                    aria-label="Normal map space"
                     data-testid="bake-space"
                     [options]="spaces"
                     [value]="options.space"
@@ -543,7 +547,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 >
                   Round edges
                   <xui-switch
-                    ariaLabel="Round edges"
+                    aria-label="Round edges"
                     data-testid="bake-round"
                     [checked]="options.rounding.enabled"
                     (checkedChange)="setRounding({ enabled: $event })"
@@ -555,7 +559,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                       <span class="text-foreground-muted text-xs">Width, {{ unit() }}</span>
                       <xui-numeric-input
                         size="sm"
-                        ariaLabel="Rounded edge width"
+                        aria-label="Rounded edge width"
                         data-testid="bake-round-width"
                         [min]="0"
                         [stepSize]="step()"
@@ -568,7 +572,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                         <span class="text-foreground-muted text-xs">Sharper than, degrees</span>
                         <xui-numeric-input
                           size="sm"
-                          ariaLabel="Rounded edge angle"
+                          aria-label="Rounded edge angle"
                           data-testid="bake-round-angle"
                           [max]="180"
                           [min]="0"
@@ -583,7 +587,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     Edges
                     <xui-segmented-control
                       size="sm"
-                      ariaLabel="Which edges are rounded"
+                      aria-label="Which edges are rounded"
                       data-testid="bake-round-edges"
                       [options]="roundedEdges"
                       [value]="options.rounding.edges"
@@ -602,7 +606,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   Range
                   <xui-segmented-control
                     size="sm"
-                    ariaLabel="Height range"
+                    aria-label="Height range"
                     data-testid="bake-height-range"
                     [options]="heightRanges"
                     [value]="options.height.range"
@@ -618,7 +622,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     <span class="text-foreground-muted text-xs">Height range, {{ unit() }}</span>
                     <xui-numeric-input
                       size="sm"
-                      ariaLabel="Height range"
+                      aria-label="Height range"
                       data-testid="bake-height-scale"
                       [min]="0"
                       [stepSize]="step()"
@@ -634,7 +638,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     <span class="text-foreground-muted text-xs">Rays per texel</span>
                     <xui-numeric-input
                       size="sm"
-                      ariaLabel="Occlusion rays"
+                      aria-label="Occlusion rays"
                       data-testid="bake-ao-rays"
                       [max]="8192"
                       [min]="1"
@@ -647,7 +651,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     <span class="text-foreground-muted text-xs">Occluder distance, {{ unit() }}</span>
                     <xui-numeric-input
                       size="sm"
-                      ariaLabel="Occluder distance"
+                      aria-label="Occluder distance"
                       data-testid="bake-ao-distance"
                       [min]="0"
                       [stepSize]="step() * 10"
@@ -659,7 +663,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     <span class="text-foreground-muted text-xs">Minimum distance, {{ unit() }}</span>
                     <xui-numeric-input
                       size="sm"
-                      ariaLabel="Minimum occluder distance"
+                      aria-label="Minimum occluder distance"
                       data-testid="bake-ao-minimum"
                       [min]="0"
                       [stepSize]="step()"
@@ -676,7 +680,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     <span class="text-foreground-muted text-xs">Falloff</span>
                     <xui-select
                       class="w-full"
-                      ariaLabel="Occlusion falloff"
+                      aria-label="Occlusion falloff"
                       data-testid="bake-ao-falloff"
                       [itemText]="falloffName"
                       [items]="falloffs"
@@ -707,7 +711,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   Distribution
                   <xui-segmented-control
                     size="sm"
-                    ariaLabel="Ray distribution"
+                    aria-label="Ray distribution"
                     data-testid="bake-ao-distribution"
                     [options]="distributions"
                     [value]="options.occlusion.distribution"
@@ -717,7 +721,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 <label class="flex items-center justify-between gap-2 text-sm">
                   Ignore backfaces
                   <xui-switch
-                    ariaLabel="Occlusion ignores backfaces"
+                    aria-label="Occlusion ignores backfaces"
                     data-testid="bake-ao-backfaces"
                     [checked]="options.occlusion.ignoreBackfaces"
                     (checkedChange)="setOcclusion({ ignoreBackfaces: $event })"
@@ -729,7 +733,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 >
                   Only a part's own surface occludes it
                   <xui-switch
-                    ariaLabel="Only a part's own surface occludes it"
+                    aria-label="Only a part's own surface occludes it"
                     data-testid="bake-ao-within-part"
                     [disabled]="!options.rays.matchByName"
                     [checked]="options.occlusion.withinPart"
@@ -742,7 +746,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 >
                   Ground plane
                   <xui-switch
-                    ariaLabel="Ground plane"
+                    aria-label="Ground plane"
                     data-testid="bake-ao-ground"
                     [checked]="options.occlusion.groundPlane"
                     (checkedChange)="setOcclusion({ groundPlane: $event })"
@@ -753,7 +757,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     <span class="text-foreground-muted text-xs">Ground offset, {{ unit() }}</span>
                     <xui-numeric-input
                       size="sm"
-                      ariaLabel="Ground offset"
+                      aria-label="Ground offset"
                       data-testid="bake-ao-ground-offset"
                       [stepSize]="step()"
                       [value]="shown(options.occlusion.groundOffset)"
@@ -769,7 +773,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 <label class="flex items-center justify-between gap-2 text-sm">
                   Normalise, so the thickest point is white
                   <xui-switch
-                    ariaLabel="Normalise thickness"
+                    aria-label="Normalise thickness"
                     data-testid="bake-thickness-normalised"
                     [checked]="options.thickness.normalised"
                     (checkedChange)="set({ thickness: { normalised: $event } })"
@@ -784,7 +788,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   <span class="text-foreground-muted text-xs">Color by</span>
                   <xui-select
                     class="w-full"
-                    ariaLabel="ID color source"
+                    aria-label="ID color source"
                     data-testid="bake-id-source"
                     [itemText]="idSourceName"
                     [items]="idSources"
@@ -799,7 +803,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   Colors
                   <xui-segmented-control
                     size="sm"
-                    ariaLabel="ID colors"
+                    aria-label="ID colors"
                     data-testid="bake-id-palette"
                     [options]="palettes"
                     [value]="options.id.palette"
@@ -812,7 +816,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   <span class="text-foreground-muted text-xs">Color from</span>
                   <xui-select
                     class="w-full"
-                    ariaLabel="Color source"
+                    aria-label="Color source"
                     data-testid="bake-colour-source"
                     [itemText]="colourSourceName"
                     [items]="colourSources"
@@ -846,6 +850,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                         size="sm"
                         variant="ghost"
                         aria-label="Choose Picture to carry"
+                        title="Choose Picture to carry"
                         (click)="pickColourTexture()"
                       >
                         Choose…
