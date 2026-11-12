@@ -278,11 +278,18 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
-    /// <summary>Applies a batch whole. A refused batch changes nothing and sends no event.</summary>
+    /// <summary>
+    ///     Applies a batch whole. A refused batch changes nothing and sends no event. A stroke on the mesh that
+    ///     begins in it reaches only what the viewport draws alone (#136), when the viewport shows this stack's
+    ///     model: an isolation names the parts of the mesh on view, which say nothing about another.
+    /// </summary>
     /// <exception cref="StackEditRefusedException">A command cannot be applied.</exception>
-    public StackEditResult Apply(StackCommandBatch batch) {
+    public StackEditResult Apply(StackCommandBatch batch, ViewportState? viewport = null) {
+        var ours = viewport is not null && string.Equals(ModelFile, viewport.Mesh, StringComparison.Ordinal);
+        var isolation = ours ? viewport?.Isolation : null;
         StackEditResult result;
         lock (Changing) {
+            editor.Isolation = isolation;
             var painted = editor.Apply(batch);
             if (editor.CompoundsArrived) {
                 editor.CompoundsArrived = false;
@@ -487,7 +494,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                         known ? null : entry.SourceDocument,
                         entry.Width,
                         entry.Height,
-                        entry.Resume
+                        entry.Resume,
+                        entry.Isolation
                     )
                 );
                 sent[entry.Id] = (entry.Stamps.Count, entry.Open);

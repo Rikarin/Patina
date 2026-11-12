@@ -39,4 +39,37 @@ public sealed class ViewportShownTests : IDisposable {
         Assert.All(back.Indices, corner => Assert.Equal(0f, back.Positions[corner].Z));
         Assert.Equal(6, back.Indices.Length);
     }
+
+    /// <summary>
+    ///     A texture set as a stroke reaches it under an isolation: of its own triangles only those of the parts shown,
+    ///     none when another set is shown alone, and all of them when nothing is.
+    /// </summary>
+    [Fact]
+    public void A_set_as_a_stroke_reaches_it_keeps_to_what_is_shown() {
+        var path = Path.Combine(folder.FullName, "parts.obj");
+        File.WriteAllLines(
+            path,
+            [
+                "v 0 0 0", "v 1 0 0", "v 1 1 0", "v 0 1 0",
+                "v 2 0 0", "v 3 0 0", "v 3 1 0", "v 2 1 0",
+                "v 4 0 0", "v 5 0 0", "v 5 1 0",
+                "vt 0 0", "vt 0.4 0", "vt 0.4 1", "vt 0 1",
+                "o left", "usemtl painted", "f 1/1 2/2 3/3 4/4",
+                "o right", "usemtl painted", "f 5/1 6/2 7/3 8/4",
+                "o other", "usemtl plain", "f 9/1 10/2 11/3"
+            ]
+        );
+
+        int[] Reached(string[] parts, string[] materials) =>
+            ViewportGeometry.Read(path, "painted", 0, parts, materials).Indices;
+
+        var whole = ViewportGeometry.Read(path, "painted");
+        Assert.Equal(12, whole.Indices.Length);
+        Assert.Equal(whole.Indices, Reached([], []));
+        var left = ViewportGeometry.Read(path, "painted", 0, ["left"], []);
+        Assert.Equal(6, left.Indices.Length);
+        Assert.All(left.Indices, corner => Assert.InRange(left.Positions[corner].X, 0f, 1f));
+        Assert.Empty(Reached([], ["plain"]));
+        Assert.Equal(12, Reached([], ["painted"]).Length);
+    }
 }

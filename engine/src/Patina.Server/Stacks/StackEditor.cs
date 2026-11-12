@@ -60,6 +60,9 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     /// <summary>The library layered materials are read from, or null with none.</summary>
     public string? Library { get; set; }
 
+    /// <summary>What the viewport draws alone as the next batch arrives, which a stroke on the mesh keeps.</summary>
+    public ViewportIsolation? Isolation { get; set; }
+
     /// <summary>What a paste finds a copy by, or nothing when it has gone.</summary>
     public Func<string, StackClipContents?> Clip { get; set; } = static _ => null;
 
@@ -563,7 +566,9 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start) {
                 SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set),
                 Width = Document.BaseWidth,
-                Height = Document.BaseHeight
+                Height = Document.BaseHeight,
+                // Only a stroke on the mesh has faces to keep to; one in the 2D view reaches the whole layout.
+                Isolation = stroke.View is null ? null : Isolation
             }
         );
     }

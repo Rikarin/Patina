@@ -21,6 +21,7 @@ static class BakePreviewHost {
         var preview = request.BakePreview ?? throw new IpcException("viewport.bake-preview says nothing.");
         if (preview.Low.Length == 0) {
             renderer.SetOverlay([], []);
+            renderer.Neutral = false;
             return Shown(request, BakePreviewState.Off);
         }
 
@@ -35,6 +36,7 @@ static class BakePreviewHost {
         }
 
         renderer.SetOverlay(drawing.Triangles, drawing.Lines);
+        renderer.Neutral = preview.Neutral;
         return Shown(request, new(preview, drawing.Parts, drawing.Warnings));
     }
 

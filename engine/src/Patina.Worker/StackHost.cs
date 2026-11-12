@@ -721,7 +721,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
             touched.Add(part.Paint);
             stroked.Add(file);
-            var surface = Surface(part.Model, canvas.Width, canvas.Height);
+            var surface = Surface(part.Model, canvas.Width, canvas.Height, part.Isolation);
             var image = canvas.Channel(part.Usage);
             var coverage = surface?.Coverage ?? PaintCoverage.Everywhere(canvas.Width, canvas.Height);
             var placement = PlacementOf(part, surface);
@@ -755,18 +755,21 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             model.Trim().Length == 0 ? null : meshes.Of(Path.GetFullPath(model, folder)).Projection.Bounds;
 
         /// <summary>
-        ///     The mesh as a stroke reaches it, at the size of its canvas, in the set's layout. ⚠ Built again when the
-        ///     shelf reads the file again: a mesh reloaded on the same layout keeps its documents open (#89), and its
-        ///     triangles may have moved under the same coordinates.
+        ///     The mesh as a stroke reaches it, at the size of its canvas, in the set's layout: only the faces the
+        ///     viewport drew when it began, with an isolation (#136). ⚠ Built again when the shelf reads the file again:
+        ///     a mesh reloaded on the same layout keeps its documents open (#89), and its triangles may have moved
+        ///     under the same coordinates.
         /// </summary>
-        PaintMeshSurface? Surface(string model, int width, int height) {
+        PaintMeshSurface? Surface(string model, int width, int height, ViewportIsolation? isolation) {
             if (model.Trim().Length == 0) {
                 return null;
             }
 
             var file = Path.GetFullPath(model, folder);
-            var key = $"{file}\n{UvSet}\n{width}x{height}";
-            var over = meshes.Of(file, set, UvSet).Projection;
+            var (parts, materials) = (isolation?.Parts ?? [], isolation?.Materials ?? []);
+            var shown = string.Join('\n', [..parts, string.Empty, ..materials]);
+            var key = $"{file}\n{UvSet}\n{width}x{height}\n{shown}";
+            var over = meshes.Of(file, set, UvSet, [..parts], [..materials]).Projection;
             if (!surfaces.TryGetValue(key, out var held) || !ReferenceEquals(held.Over, over)) {
                 surfaces[key] = held = (over, new(over, width, height));
             }

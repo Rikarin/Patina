@@ -1,12 +1,9 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Ipc;
-using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
 using Patina.Server.Viewport;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Patina.Server.Api;
 
@@ -27,6 +24,7 @@ static class StackEndpoints {
         stacks.MapStackChecks();
         stacks.MapStackShelf();
         stacks.MapStackBrushes();
+        stacks.MapStackMesh();
 
         void Post(string route, Delegate handler, string name, string summary, params int[] problems) =>
             stacks.MapPost(route, handler).Describe(name, summary, problems);
@@ -161,24 +159,6 @@ static class StackEndpoints {
             Missing,
             Unavailable
         );
-        Get(
-            "/{id}/mesh-parts",
-            GetMeshParts,
-            "GetStackMeshParts",
-            "The named meshes in the stack's texture set, which a layer can be limited to.",
-            Missing,
-            Refused,
-            Unavailable
-        );
-        Post(
-            "/{id}/mesh-mask",
-            DrawMeshMask,
-            "DrawStackMeshMask",
-            "Draws where some named meshes lie in the layout, as a picture for a setLayer command's meshMask.",
-            Missing,
-            Refused,
-            Unavailable
-        );
         Post(
             "/{id}/export",
             Export,
@@ -298,9 +278,10 @@ static class StackEndpoints {
     static Results<Ok<StackEditResult>, ProblemHttpResult> Apply(
         string id,
         StackCommandBatch batch,
-        StackSessions sessions
+        StackSessions sessions,
+        ViewportSession viewport
     ) =>
-        Step(id, sessions, session => session.Apply(batch), "apply");
+        Step(id, sessions, session => session.Apply(batch, viewport.State), "apply");
 
     static Results<Ok<StackEditResult>, ProblemHttpResult> Undo(string id, StackSessions sessions) =>
         Step(id, sessions, static session => session.Undo(), "undo");
@@ -469,90 +450,6 @@ static class StackEndpoints {
         bool sampled = false
     ) =>
         ReadAsync(id, sessions, evaluator, clean, null, cancellationToken, sampled);
-
-    static async Task<Results<Ok<StackMeshParts>, ProblemHttpResult>> GetMeshParts(
-        string id,
-        StackSessions sessions,
-        WorkerLink worker,
-        CancellationToken cancellationToken
-    ) {
-        if (sessions.Find(id) is not { } session) {
-            return NoSession(id);
-        }
-
-        return await MeshPartsAsync(session, worker, null, cancellationToken);
-    }
-
-    static async Task<Results<Ok<StackMeshParts>, ProblemHttpResult>> DrawMeshMask(
-        string id,
-        StackMeshMaskRequest request,
-        StackSessions sessions,
-        WorkerLink worker,
-        ServerIdentity identity,
-        CancellationToken cancellationToken
-    ) {
-        if (sessions.Find(id) is not { } session) {
-            return NoSession(id);
-        }
-
-        if (session.ModelFile is not { } mesh || identity.Library is not { } library) {
-            return TypedResults.Problem("This stack is on no mesh.", statusCode: Refused);
-        }
-
-        var side = session.State.Width;
-        var name = Convert.ToHexStringLower(
-            SHA256.HashData(
-                Encoding.UTF8.GetBytes($"{side}\n{string.Join('\n', request.Parts.Order(StringComparer.Ordinal))}")
-            )
-        )[..16];
-        var file = Path.Combine(
-            Path.GetDirectoryName(session.Path)!,
-            "pictures",
-            $"{LibraryLayout.MeshMaskPrefix}{name}.png"
-        );
-        try {
-            var connection = await worker.ConnectionAsync(cancellationToken);
-            await connection.SendAsync(
-                new() { Type = IpcTypes.MeshPartMask, MeshPartMask = new(mesh, request.Parts, side, file) },
-                cancellationToken
-            );
-        } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
-        } catch (Exception e) when (e is IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
-        }
-
-        return await MeshPartsAsync(
-            session,
-            worker,
-            Path.GetRelativePath(library, file).Replace('\\', '/'),
-            cancellationToken
-        );
-    }
-
-    static async Task<Results<Ok<StackMeshParts>, ProblemHttpResult>> MeshPartsAsync(
-        StackSession session,
-        WorkerLink worker,
-        string? asset,
-        CancellationToken cancellationToken
-    ) {
-        if (session.ModelFile is not { } mesh) {
-            return TypedResults.Ok(new StackMeshParts([], asset));
-        }
-
-        try {
-            var connection = await worker.ConnectionAsync(cancellationToken);
-            var reply = await connection.SendAsync(
-                new() { Type = IpcTypes.MeshParts, MeshFile = mesh, MeshSet = session.Set },
-                cancellationToken
-            );
-            return TypedResults.Ok(new StackMeshParts(reply.Parts ?? [], asset));
-        } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
-        } catch (Exception e) when (e is IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
-        }
-    }
 
     static async Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> Export(
         string id,

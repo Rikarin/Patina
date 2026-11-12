@@ -11,21 +11,28 @@ namespace Patina.Worker;
 ///     one tree. A file rewritten in place is read again, and all of this comes back from the file after a crash.
 /// </summary>
 sealed class MeshShelf {
-    readonly Dictionary<(string Path, string Set, int UvSet), (DateTime Written, Mesh Held)> held = [];
+    readonly Dictionary<(string Path, string Set, int UvSet, string Shown), (DateTime Written, Mesh Held)> held = [];
 
     /// <exception cref="IpcException">The file cannot be read as a mesh with a layout.</exception>
     public Mesh Of(string path) => Of(path, string.Empty);
 
-    /// <summary>One texture set's triangles, laid out in the coordinate set it chose (#210).</summary>
+    /// <summary>
+    ///     One texture set's triangles, laid out in the coordinate set it chose (#210), and of those only the ones an
+    ///     isolation shows when it names any parts or materials (#136).
+    /// </summary>
     /// <exception cref="IpcException">The file cannot be read as a mesh with that layout.</exception>
-    public Mesh Of(string path, string set, int uvSet = 0) {
+    public Mesh Of(string path, string set, int uvSet = 0, string[]? parts = null, string[]? materials = null) {
+        var (named, sets) = (parts ?? [], materials ?? []);
+        var shown = string.Join('\n', [..named, string.Empty, ..sets]);
         try {
             var written = File.GetLastWriteTimeUtc(path);
-            if (held.TryGetValue((path, set, uvSet), out var known) && known.Written == written) {
+            if (held.TryGetValue((path, set, uvSet, shown), out var known) && known.Written == written) {
                 return known.Held;
             }
 
-            var geometry = set.Length == 0 ? ViewportGeometry.Read(path) : ViewportGeometry.Read(path, set, uvSet);
+            var geometry = set.Length == 0 && shown.Length == 0
+                ? ViewportGeometry.Read(path)
+                : ViewportGeometry.Read(path, set, uvSet, named, sets);
             if (!geometry.HasCoordinates) {
                 throw new IpcException($"'{path}' has no texture coordinates, so nothing can be painted on it.");
             }
@@ -38,7 +45,7 @@ sealed class MeshShelf {
                     set.Length == 0 ? $"'{Path.GetFileName(path)}'" : $"Texture set '{set}'"
                 )
             );
-            held[(path, set, uvSet)] = (written, mesh);
+            held[(path, set, uvSet, shown)] = (written, mesh);
             return mesh;
         } catch (Exception e) when (e is ModelFormatException or IOException or UnauthorizedAccessException) {
             throw new IpcException($"'{path}' would not read: {e.Message}");

@@ -78,15 +78,16 @@ sealed class ViewportTargets : IDisposable {
     public BufferHandle Readback { get; }
 
     /// <summary>
-    ///     The forward pass's light, cleared to a colour in linear light and resolved into <see cref="Hdr" />.
+    ///     The forward pass's light, cleared to a colour in linear light and resolved into <see cref="Hdr" />, or into
+    ///     <paramref name="elsewhere" /> for a pass that comes between, such as the depth of field.
     /// </summary>
-    public ColourAttachment Cleared(Vector3 colour) =>
+    public ColourAttachment Cleared(Vector3 colour, TextureViewHandle? elsewhere = null) =>
         new(
             HdrSamplesView,
             LoadAction.Clear,
             StoreAction.Resolve,
             new Color4(colour.X, colour.Y, colour.Z, 1f),
-            HdrView
+            elsewhere ?? HdrView
         );
 
     public void Dispose() {

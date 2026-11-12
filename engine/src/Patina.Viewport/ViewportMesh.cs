@@ -46,8 +46,16 @@ public sealed record ViewportGeometry(
     /// <summary>One material's triangles, laid out in one of the file's coordinate sets (#210).</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model, or a part has no such set.</exception>
     public static ViewportGeometry Read(string path, string material, int uvSet = 0) =>
+        Read(path, material, uvSet, [], []);
+
+    /// <summary>
+    ///     One material's triangles that an isolation shows (#136), laid out in one of the file's coordinate sets: the
+    ///     named parts and the parts of the named materials, or all of them when nothing is named.
+    /// </summary>
+    /// <exception cref="ModelFormatException">The file is not a readable model, or a part has no such set.</exception>
+    public static ViewportGeometry Read(string path, string material, int uvSet, string[] parts, string[] materials) =>
         ViewportMesh.Read(path, uvSet == 0 ? null : new Dictionary<string, int> { [material] = uvSet })
-            .Geometry(material);
+            .Geometry(material, parts, materials);
 
     /// <summary>The named meshes in a file, in one texture set if it is one of the file's materials.</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
@@ -292,15 +300,19 @@ sealed class ViewportMesh {
         return (whole with { Indices = [..indices] }, [..triangles]);
     }
 
-    /// <summary>One material's triangles as a brush reaches them, or all of them for an unknown name.</summary>
-    public ViewportGeometry Geometry(string material) {
+    /// <summary>
+    ///     One material's triangles as a brush reaches them, or all of them for an unknown name, and of those only
+    ///     what an isolation shows.
+    /// </summary>
+    public ViewportGeometry Geometry(string material, string[] parts, string[] materials) {
         var index = MaterialOf(material);
         var whole = Geometry();
-        return index < 0
+        var shown = Shown(parts, materials);
+        return index < 0 && shown.Length == Parts.Length
             ? whole
             : whole with {
                 Indices = [
-                    ..Parts.Where(part => part.Material == index)
+                    ..shown.Where(part => index < 0 || part.Material == index)
                         .SelectMany(part => Indices.Skip(part.FirstIndex).Take(part.IndexCount))
                         .Select(static corner => (int)corner)
                 ]

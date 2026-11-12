@@ -119,6 +119,7 @@ sealed class WorkerLoop(
                 IpcTypes.MeshParts => Parts(request),
                 IpcTypes.MeshFacts => Facts(request),
                 IpcTypes.MeshPartMask => PartMask(request),
+                IpcTypes.MeshUvWire => UvWires.Answer(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),
                 IpcTypes.BuildStart => builds.Start(request, link),

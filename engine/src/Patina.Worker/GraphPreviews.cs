@@ -26,8 +26,8 @@ static class GraphPreviews {
     const float Box = 2f;
 
     /// <summary>Writes a file under its hash: whoever reads it sees all of it or no file.</summary>
-    public static void Store(string folder, string hash, byte[] png) {
-        var path = GraphPreviewFiles.PathOf(folder, hash);
+    public static void Store(string folder, string hash, byte[] png, string extension = GraphPreviewFiles.Extension) {
+        var path = GraphPreviewFiles.PathOf(folder, hash, extension);
         if (File.Exists(path)) {
             return;
         }

@@ -1385,6 +1385,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/mesh-parts': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The named meshes in the stack's texture set, which a layer can be limited to. */
+    get: operations['GetStackMeshParts'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/mesh-mask': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Draws where some named meshes lie in the layout, as a picture for a setLayer command's meshMask. */
+    post: operations['DrawStackMeshMask'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/uv-wire': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The texture set's UV layout as lines, each edge of its triangles once, as an SVG over the unit square with v down, as the map lies: what a 2D view lays over the map. A stack on no mesh has none. */
+    get: operations['GetStackUvWire'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks': {
     parameters: {
       query?: never;
@@ -1671,40 +1722,6 @@ export interface paths {
     get: operations['GetStackPixels'];
     put?: never;
     post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/stacks/{id}/mesh-parts': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** The named meshes in the stack's texture set, which a layer can be limited to. */
-    get: operations['GetStackMeshParts'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/stacks/{id}/mesh-mask': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Draws where some named meshes lie in the layout, as a picture for a setLayer command's meshMask. */
-    post: operations['DrawStackMeshMask'];
     delete?: never;
     options?: never;
     head?: never;
@@ -7091,11 +7108,33 @@ export interface components {
       highMesh: boolean;
       /** @description Whether to colour the parts by which matched which, when parts are matched by name. */
       matches: boolean;
+      /**
+       * @description Whether to draw the low mesh's hard edges that have no UV seam, where a tangent-space normal map shows a
+       *     line.
+       */
+      seams: boolean;
+      /** @description Whether the model is drawn in a plain grey while the preview shows, so its colours read. */
+      neutral: boolean;
+      /**
+       * Format: double
+       * @description How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays.
+       */
+      shellOpacity: number;
+      /**
+       * Format: double
+       * @description How opaque the high mesh is, 0 to 1, in its parts' colours or plain.
+       */
+      highOpacity: number;
     };
     /** @description Asks the viewport to show a finished bake on the mesh it was baked onto. */
     ViewportBakeRequest: {
       /** @description The bake's job. */
       job: string;
+      /**
+       * @description One of its maps to show alone on the mesh as stored, through the picture view, such as `normal` or
+       *     `ao`; or null for the normal and occlusion maps on the mesh's material (#149).
+       */
+      map?: null | string;
     };
     /** @description The viewport's camera: an orbit around the model. Its lens is in ViewportDisplay. */
     ViewportCameraState: {
@@ -7294,6 +7333,20 @@ export interface components {
        * @default sphere
        */
       shape: string;
+      /**
+       * Format: double
+       * @description How shallow the depth of field is, 0 none to 1 a lens wide open. The lens is the same against any model, as if
+       *     it were a small object close up.
+       * @default 0
+       */
+      depthOfField: number;
+      /**
+       * Format: double
+       * @description Where the lens focuses, -1 to 1: zero on the point the camera circles, and each unit a bounding radius nearer
+       *     (negative) or further (positive).
+       * @default 0
+       */
+      focus: number;
     };
     /**
      * @description Asks the viewport to show a graph on the mesh it is showing, or on the display's shape with none, as it stands
@@ -11862,6 +11915,157 @@ export interface operations {
       };
     };
   };
+  GetStackMeshParts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackMeshParts'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  DrawStackMeshMask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackMeshMaskRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackMeshParts'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackUvWire: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'image/svg+xml': string;
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetStacks: {
     parameters: {
       query?: never;
@@ -12598,108 +12802,6 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Service Unavailable */
-      503: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
-  GetStackMeshParts: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['StackMeshParts'];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Unprocessable Entity */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Service Unavailable */
-      503: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
-  DrawStackMeshMask: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['StackMeshMaskRequest'];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['StackMeshParts'];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Unprocessable Entity */
-      422: {
         headers: {
           [name: string]: unknown;
         };

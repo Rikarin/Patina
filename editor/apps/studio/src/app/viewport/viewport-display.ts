@@ -114,6 +114,24 @@ const Finish: readonly Slider[] = [
     unit: 'share'
   },
   {
+    key: 'depthOfField',
+    label: 'Depth of field',
+    title: 'How shallow the focus is, as a lens opened wide on something small',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    unit: 'share'
+  },
+  {
+    key: 'focus',
+    label: 'Focus',
+    title: 'Where the lens focuses: nearer or further than the point the camera turns round',
+    min: -1,
+    max: 1,
+    step: 0.01,
+    unit: 'signed'
+  },
+  {
     key: 'warmth',
     label: 'Warmth',
     title: 'Takes blue towards red, or red towards blue',

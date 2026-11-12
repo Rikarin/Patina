@@ -249,4 +249,74 @@ public sealed partial class ViewportDisplayTests {
         Assert.Equal((255, 255, 255), Shown(4, 1f));
         Assert.Equal((255, 255, 255), Shown(3, 2f));
     }
+
+    /// <summary>
+    ///     Depth of field (#138) keeps what the lens focuses on sharp and softens what it does not: a checker
+    ///     square facing the camera stays as sharp as with none when the focus is on it, loses much of its edges'
+    ///     contrast when the focus is a bounding radius behind it, and the setting at zero draws what it drew before.
+    /// </summary>
+    [Fact]
+    public void Depth_of_field_softens_what_is_out_of_focus_and_leaves_the_focus_sharp() {
+        using var renderer = Open();
+        renderer.OpenMesh(Square());
+        var checker = new byte[Map * Map * 4];
+        for (var at = 0; at < Map * Map; at++) {
+            var on = (at % Map / 8 + at / Map / 8) % 2 == 0;
+            (checker[at * 4], checker[at * 4 + 1], checker[at * 4 + 2], checker[at * 4 + 3]) =
+                on ? ((byte)230, (byte)230, (byte)230, (byte)255) : ((byte)20, (byte)20, (byte)20, (byte)255);
+        }
+
+        renderer.SetLive(ViewportSlot.BaseColor, Map, Map, checker);
+        var camera = new OrbitCamera(0f, 0f, 0.5f);
+
+        byte[] Seen(float depthOfField, float focus) {
+            renderer.Shading = new() { DepthOfField = depthOfField, Focus = focus };
+            return Render(renderer, camera, 128, 128);
+        }
+
+        // How much the picture changes from each pixel to the next, inside the square.
+        static long Edges(byte[] pixels) {
+            long sum = 0;
+            for (var y = 16; y < 112; y++) {
+                for (var x = 16; x < 111; x++) {
+                    sum += Math.Abs(pixels[(y * 128 + x) * 4] - pixels[(y * 128 + x + 1) * 4]);
+                }
+            }
+
+            return sum;
+        }
+
+        var none = Seen(0f, 0f);
+        Assert.Equal(Render(renderer, camera, 128, 128), none);
+        var focused = Edges(Seen(1f, 0f));
+        var behind = Edges(Seen(1f, 1f));
+
+        Assert.InRange(focused, Edges(none) * 9 / 10, Edges(none) * 11 / 10);
+        Assert.True(behind < Edges(none) * 6 / 10, $"Out of focus kept {behind} of {Edges(none)}.");
+    }
+
+    /// <summary>
+    ///     Neutral draws the lit view in clay, so a bake's preview reads against plain grey (#149), and leaves a view
+    ///     of a stored channel as it is.
+    /// </summary>
+    [Fact]
+    public void Neutral_draws_the_lit_view_in_clay_and_leaves_the_others() {
+        using var renderer = Open();
+        renderer.OpenMesh(Square());
+        renderer.SetLive(ViewportSlot.BaseColor, Map, Map, Solid(200, 30, 30));
+        var camera = new OrbitCamera(0f, 0f, 0.5f);
+
+        byte[] Seen(ViewportView view, bool neutral) {
+            renderer.Neutral = neutral;
+            renderer.Shading = new() { View = view };
+            return Render(renderer, camera, 64, 64);
+        }
+
+        var clay = Seen(ViewportView.Clay, false);
+        var lit = Seen(ViewportView.Lit, false);
+
+        Assert.NotEqual(clay, lit);
+        Assert.Equal(clay, Seen(ViewportView.Lit, true));
+        Assert.Equal(Seen(ViewportView.BaseColor, false), Seen(ViewportView.BaseColor, true));
+    }
 }

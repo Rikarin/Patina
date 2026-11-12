@@ -134,6 +134,14 @@ public static class ViewportToneMappings {
 ///     What a material or a graph with no mesh of its own is seen on: one of <see cref="ViewportShapes.All" />. A model
 ///     that has a mesh is seen on its mesh whatever this says.
 /// </param>
+/// <param name="DepthOfField">
+///     How shallow the depth of field is, 0 none to 1 a lens wide open. The lens is the same against any model, as if
+///     it were a small object close up.
+/// </param>
+/// <param name="Focus">
+///     Where the lens focuses, -1 to 1: zero on the point the camera circles, and each unit a bounding radius nearer
+///     (negative) or further (positive).
+/// </param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field, and a default on each is what makes a
 // field left out of a request mean the viewport's own; init-only properties would come through as nothing.
 #pragma warning disable SK7005
@@ -165,7 +173,9 @@ public sealed record ViewportDisplay(
     bool Grid = false,
     string PictureLane = "rgb",
     double PictureScale = 1,
-    string Shape = ViewportShapes.Sphere
+    string Shape = ViewportShapes.Sphere,
+    double DepthOfField = 0,
+    double Focus = 0
 ) {
 #pragma warning restore SK7005
     /// <summary>
@@ -218,7 +228,8 @@ public sealed record ViewportDisplay(
             (nameof(Saturation), Saturation, 0, 2),
             (nameof(Vignette), Vignette, 0, 1), (nameof(Grain), Grain, 0, 1), (nameof(Aberration), Aberration, 0, 1),
             (nameof(Sharpen), Sharpen, 0, 1), (nameof(Bloom), Bloom, 0, 1), (nameof(Warmth), Warmth, -1, 1),
-            (nameof(Tint), Tint, -1, 1), (nameof(PictureScale), PictureScale, 0.001, 1000)
+            (nameof(Tint), Tint, -1, 1), (nameof(PictureScale), PictureScale, 0.001, 1000),
+            (nameof(DepthOfField), DepthOfField, 0, 1), (nameof(Focus), Focus, -1, 1)
         ];
         foreach (var (name, value, low, high) in ranges) {
             if (!double.IsFinite(value) || value < low || value > high) {
@@ -332,7 +343,11 @@ public sealed record ViewportMapPaths(
 
 /// <summary>Asks the viewport to show a finished bake on the mesh it was baked onto.</summary>
 /// <param name="Job">The bake's job.</param>
-public sealed record ViewportBakeRequest(string Job);
+/// <param name="Map">
+///     One of its maps to show alone on the mesh as stored, through the picture view, such as <c>normal</c> or
+///     <c>ao</c>; or null for the normal and occlusion maps on the mesh's material (#149).
+/// </param>
+public sealed record ViewportBakeRequest(string Job, string? Map = null);
 
 /// <summary>
 ///     Asks the viewport to show a graph on the mesh it is showing, or on the display's shape with none, as it stands

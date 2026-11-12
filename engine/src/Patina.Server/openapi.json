@@ -5429,6 +5429,199 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/mesh-parts": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The named meshes in the stack\u0027s texture set, which a layer can be limited to.",
+        "operationId": "GetStackMeshParts",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackMeshParts"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/mesh-mask": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Draws where some named meshes lie in the layout, as a picture for a setLayer command\u0027s meshMask.",
+        "operationId": "DrawStackMeshMask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackMeshMaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackMeshParts"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/uv-wire": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The texture set\u0027s UV layout as lines, each edge of its triangles once, as an SVG over the unit square with v down, as the map lies: what a 2D view lays over the map. A stack on no mesh has none.",
+        "operationId": "GetStackUvWire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/svg\u002Bxml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks": {
       "get": {
         "tags": [
@@ -6413,138 +6606,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service Unavailable",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/stacks/{id}/mesh-parts": {
-      "get": {
-        "tags": [
-          "Stacks"
-        ],
-        "summary": "The named meshes in the stack\u0027s texture set, which a layer can be limited to.",
-        "operationId": "GetStackMeshParts",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StackMeshParts"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable Entity",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service Unavailable",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/stacks/{id}/mesh-mask": {
-      "post": {
-        "tags": [
-          "Stacks"
-        ],
-        "summary": "Draws where some named meshes lie in the layout, as a picture for a setLayer command\u0027s meshMask.",
-        "operationId": "DrawStackMeshMask",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StackMeshMaskRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StackMeshParts"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable Entity",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -18723,7 +18784,11 @@
           "options",
           "reach",
           "highMesh",
-          "matches"
+          "matches",
+          "seams",
+          "neutral",
+          "shellOpacity",
+          "highOpacity"
         ],
         "type": "object",
         "properties": {
@@ -18767,6 +18832,24 @@
           "matches": {
             "type": "boolean",
             "description": "Whether to colour the parts by which matched which, when parts are matched by name."
+          },
+          "seams": {
+            "type": "boolean",
+            "description": "Whether to draw the low mesh\u0027s hard edges that have no UV seam, where a tangent-space normal map shows a\nline."
+          },
+          "neutral": {
+            "type": "boolean",
+            "description": "Whether the model is drawn in a plain grey while the preview shows, so its colours read."
+          },
+          "shellOpacity": {
+            "type": "number",
+            "description": "How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays.",
+            "format": "double"
+          },
+          "highOpacity": {
+            "type": "number",
+            "description": "How opaque the high mesh is, 0 to 1, in its parts\u0027 colours or plain.",
+            "format": "double"
           }
         },
         "description": "A bake\u0027s setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,\nand what of it to draw. Paths on the Server\u0027s machine, as in a bake request."
@@ -18780,6 +18863,13 @@
           "job": {
             "type": "string",
             "description": "The bake\u0027s job."
+          },
+          "map": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "One of its maps to show alone on the mesh as stored, through the picture view, such as \u0060normal\u0060 or\n\u0060ao\u0060; or null for the normal and occlusion maps on the mesh\u0027s material (#149)."
           }
         },
         "description": "Asks the viewport to show a finished bake on the mesh it was baked onto."
@@ -18858,7 +18948,9 @@
           "grid",
           "pictureLane",
           "pictureScale",
-          "shape"
+          "shape",
+          "depthOfField",
+          "focus"
         ],
         "type": "object",
         "properties": {
@@ -19022,6 +19114,18 @@
             "type": "string",
             "description": "What a material or a graph with no mesh of its own is seen on: one of IReadOnlyList\u0026lt;string\u0026gt; ViewportShapes.All. A model\nthat has a mesh is seen on its mesh whatever this says.",
             "default": "sphere"
+          },
+          "depthOfField": {
+            "type": "number",
+            "description": "How shallow the depth of field is, 0 none to 1 a lens wide open. The lens is the same against any model, as if\nit were a small object close up.",
+            "format": "double",
+            "default": 0
+          },
+          "focus": {
+            "type": "number",
+            "description": "Where the lens focuses, -1 to 1: zero on the point the camera circles, and each unit a bounding radius nearer\n(negative) or further (positive).",
+            "format": "double",
+            "default": 0
           }
         },
         "description": "How the viewport is lit, shown and finished. None of it reaches a file that is exported; a project keeps it, so\nit opens as it was left. Angles are radians and exposure is in stops; an effect at zero is off. A field left out\nof a request is the one the viewport opens with."

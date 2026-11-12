@@ -138,6 +138,15 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
   await expect(isolate).toHaveAttribute('aria-pressed', 'false');
   await expect.poll(quads, { timeout: 30_000 }).toBeGreaterThan(whole * 0.9);
   await viewport.screenshot({ path: join(shots, 'isolate-3-whole-again.png') });
+
+  // The same from a set's own menu.
+  await window.getByTestId('texture-set-wood').click({ button: 'right' });
+  await expect(window.getByTestId('texture-set-menu-open')).toContainText('Paint wood');
+  await window.getByTestId('texture-set-menu-alone').click();
+  await expect(isolate).toHaveAttribute('aria-pressed', 'true');
+  await window.getByTestId('texture-set-metal').click({ button: 'right' });
+  await window.getByTestId('texture-set-menu-all').click();
+  await expect(isolate).toHaveAttribute('aria-pressed', 'false');
 });
 
 /** Drags across the 2D view, as fractions of it, and waits for the stack to catch up. */
@@ -221,4 +230,44 @@ test('an instance in another texture set shows its source and follows an unsaved
   await expect(picture).not.toHaveAttribute('src', shown ?? '', { timeout: 30_000 });
   await settled();
   await window.screenshot({ path: join(shots, 'instance-3-source-masked.png') });
+});
+
+test('the 2D view draws the UV layout over the map, says where the pointer is, and fits again', async () => {
+  test.setTimeout(120_000);
+  const corners = [
+    ...['0 0 0', '1 0 0', '1 1 0', '0 1 0'].map(v => `v ${v}`),
+    ...['0.1 0.1', '0.6 0.1', '0.6 0.6', '0.1 0.6'].map(t => `vt ${t}`),
+    'f 1/1 2/2 3/3 4/4'
+  ];
+  writeFileSync(join(scratch, 'plate.obj'), corners.join('\n'));
+  await newProject(app, window, 'Plate', join(scratch, 'plate.obj'));
+  const picture = window.getByTestId('paint-picture');
+  await expect(picture).toBeVisible({ timeout: 60_000 });
+
+  const wire = window.getByTestId('paint-uv-wire');
+  await wire.click();
+  await expect(wire).toHaveAttribute('aria-pressed', 'true');
+  const layout = window.getByTestId('paint-uv-layout');
+  await expect(layout).toBeVisible({ timeout: 30_000 });
+  await expect(layout).toHaveAttribute('src', /^blob:/);
+  await window.screenshot({ path: join(shots, 'uv-wire-1-on.png') });
+
+  const box = await picture.boundingBox();
+  if (!box) {
+    throw new Error('The picture has no box.');
+  }
+
+  await window.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.25);
+  await expect(window.getByTestId('paint-under')).toContainText('u 0.50');
+  await expect(window.getByTestId('paint-under')).toContainText('v 0.25');
+
+  const fit = window.getByTestId('paint-fit');
+  await expect(fit).toBeDisabled();
+  await window.mouse.wheel(0, -400);
+  await expect(fit).toBeEnabled();
+  await fit.click();
+  await expect(fit).toBeDisabled();
+
+  await wire.click();
+  await expect(layout).toHaveCount(0);
 });

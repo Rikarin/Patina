@@ -625,6 +625,8 @@ public sealed partial class BakeProcessTests : IDisposable {
         }
 
         Assert.True(SamePicture(baked, again), "A new Worker drew something else.");
+
+        await OneMapAloneAsync(job, socket, again, deadline.Token);
     }
 
     /// <summary>Shows a graph in the viewport, once its first evaluation holds a picture.</summary>
