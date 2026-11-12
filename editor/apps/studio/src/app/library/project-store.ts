@@ -727,6 +727,40 @@ export class ProjectStore {
     }
   }
 
+  /**
+   * Brings the materials of a glTF, MaterialX or USD file into the open project, each as a graph of its own (#157), and
+   * says what was left out. The Server reads the file and makes the graphs; this only names it.
+   */
+  async importMaterials(path: string): Promise<void> {
+    await this.bringing;
+    const project = this.current();
+    if (!project) {
+      this.startAction();
+      this.mutableFailure.set('Open a project to bring materials into it.');
+      return;
+    }
+
+    this.startAction();
+    try {
+      const client = await this.library.api();
+      const body = { project: project.path, file: path };
+      const result = unwrap(await client.POST('/api/v1/library/project/materials', { body }));
+      const contents = unwrap(
+        await client.GET('/api/v1/library/project', { params: { query: { path: project.path } } })
+      );
+      this.mutableContents.update(all => new Map(all).set(project.path, contents));
+      const count = result.documents.length;
+      const file = path.split(/[\\/]/u).pop() ?? path;
+      const left = result.warnings.length > 0 ? ` ${result.warnings.join(' ')}` : '';
+      this.mutableNotice.set(
+        `Brought ${count} ${count === 1 ? 'material' : 'materials'} from ${file} into ${project.name}.${left}`
+      );
+      this.library.refreshSoon();
+    } catch (failure) {
+      this.mutableFailure.set(messageOf(failure));
+    }
+  }
+
   /** A name for Save As is being asked for. */
   readonly savingAs = signal(false);
 

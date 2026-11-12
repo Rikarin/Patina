@@ -25,6 +25,7 @@ static class StackEndpoints {
         stacks.MapStackShelf();
         stacks.MapStackBrushes();
         stacks.MapStackMesh();
+        stacks.MapStackPixels();
 
         void Post(string route, Delegate handler, string name, string summary, params int[] problems) =>
             stacks.MapPost(route, handler).Describe(name, summary, problems);
@@ -150,23 +151,6 @@ static class StackEndpoints {
             "GetStackThumbnails",
             "Each fill drawn alone and small, under /previews. A layer that has not changed is not drawn again.",
             Missing
-        );
-        Get(
-            "/{id}/pixels",
-            GetPixels,
-            "GetStackPixels",
-            "A digest of each map as it stands, the same one an export reports, with no pixels in the reply.",
-            Missing,
-            Unavailable
-        );
-        Post(
-            "/{id}/export",
-            Export,
-            "ExportStack",
-            "Evaluates from nothing and writes each map to a file, and says where and what they hold.",
-            Missing,
-            Refused,
-            Unavailable
         );
         Get(
             "/{id}/events",
@@ -439,74 +423,6 @@ static class StackEndpoints {
 
         session.Evaluate();
         return TypedResults.NoContent();
-    }
-
-    static Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> GetPixels(
-        string id,
-        StackSessions sessions,
-        StackEvaluator evaluator,
-        CancellationToken cancellationToken,
-        bool clean = false,
-        bool sampled = false
-    ) =>
-        ReadAsync(id, sessions, evaluator, clean, null, cancellationToken, sampled);
-
-    static async Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> Export(
-        string id,
-        StackExportRequest request,
-        StackSessions sessions,
-        StackEvaluator evaluator,
-        CancellationToken cancellationToken
-    ) {
-        try {
-            return await ReadAsync(
-                id,
-                sessions,
-                evaluator,
-                true,
-                sessions.Resolve(request.Folder),
-                cancellationToken,
-                layer: request.Layer
-            );
-        } catch (StackEditRefusedException e) {
-            return Refusals.Of(e, Refused);
-        } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
-        }
-    }
-
-    static async Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> ReadAsync(
-        string id,
-        StackSessions sessions,
-        StackEvaluator evaluator,
-        bool clean,
-        string? folder,
-        CancellationToken cancellationToken,
-        bool sampled = false,
-        string? layer = null
-    ) {
-        if (sessions.Find(id) is not { } session) {
-            return NoSession(id);
-        }
-
-        if (layer is not null && !session.Has(layer)) {
-            return Refusals.Problem(
-                $"This stack has no layer '{layer}'.",
-                Refused,
-                Refusals.StackLayerMissing,
-                new Dictionary<string, string> { ["layer"] = layer }
-            );
-        }
-
-        try {
-            return TypedResults.Ok(
-                await evaluator.PixelsAsync(session, clean, folder, cancellationToken, sampled, layer)
-            );
-        } catch (TimeoutException e) {
-            return Refusals.Of(e, Unavailable);
-        } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
-        }
     }
 
     static Results<Ok<StackEventPage>, ProblemHttpResult> GetEvents(

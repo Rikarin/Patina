@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export.Materials;
 using Patina.Export.Presets;
 using System.Text.Json;
 using System.Xml.Linq;
@@ -418,6 +419,64 @@ public sealed class PresetLanguageTests : IDisposable {
                 o => o.Attribute("name")!.Value == input.Attribute("output")!.Value
             )
         );
+    }
+
+    /// <summary>
+    ///     What a USD or MaterialX file says comes back as the maps it was written from (#157): each grey map is the
+    ///     lane of the packed file it was put in, a Y- normal is read as one whose green runs down, and Unity's
+    ///     smoothness is roughness turned over.
+    /// </summary>
+    [Fact]
+    public void A_usd_or_materialx_file_reads_back_as_the_maps_it_was_written_from() {
+        var unreal = ExportPresetCatalog.Read(null).Find("unreal")! with { Materials = ["usda", "mtlx"] };
+        var manifest = ExportRun.Run(unreal, Surface(), Path("object"), null, Token);
+        ExportRun.Deliver("key", Path("object"), manifest, Path("out"), new("Crate", "unreal"), preset: unreal);
+        var urp = ExportPresetCatalog.Read(null).Find("unity-urp")! with { Materials = ["mtlx"] };
+        var urpManifest = ExportRun.Run(urp, Surface(), Path("urp-object"), null, Token);
+        ExportRun.Deliver("key", Path("urp-object"), urpManifest, Path("urp"), new("Crate", "unity-urp"), preset: urp);
+
+        var usd = UsdaReader.Read(Path("out/Crate.usda"));
+        foreach (var read in (IReadOnlyList<ImportedMaterial>[])[usd, MaterialXReader.Read(Path("out/Crate.mtlx"))]) {
+            var material = Assert.Single(read);
+            Assert.Equal("Crate", material.Name);
+            var slots = material.Slots.Where(static s => s.Texture is not null).ToDictionary(static s => s.Usage);
+            var orm = Path("out/T_Crate_ORM.png");
+            var roughness = slots["roughness"];
+            Assert.Equal((orm, 1, false), (roughness.Texture, roughness.Lane, roughness.Inverted));
+            Assert.Equal((orm, 2), (slots["metalness"].Texture, slots["metalness"].Lane));
+            Assert.Equal(-1, slots["baseColor"].Lane);
+            Assert.True(File.Exists(slots["baseColor"].Texture));
+            Assert.False(slots["normal"].GreenUp);
+        }
+
+        // Standard surface has no occlusion, so only USD carries it.
+        var occlusion = usd[0].Slots.Single(static s => s.Usage == "occlusion");
+        Assert.Equal((Path("out/T_Crate_ORM.png"), 0), (occlusion.Texture, occlusion.Lane));
+
+        var smooth = Assert.Single(MaterialXReader.Read(Path("urp/Crate.mtlx")));
+        Assert.True(smooth.Slots.Single(static s => s.Usage == "roughness").Inverted);
+        Assert.True(smooth.Slots.Single(static s => s.Usage == "normal").GreenUp);
+    }
+
+    /// <summary>A material file a graph cannot be made from is refused with the reason.</summary>
+    [Fact]
+    public void A_file_that_is_no_material_is_refused_with_the_reason() {
+        Directory.CreateDirectory(Path("in"));
+        File.WriteAllText(Path("in/binary.usd"), "PXR-USDC");
+        File.WriteAllText(Path("in/empty.mtlx"), """<materialx version="1.38"/>""");
+        File.WriteAllText(Path("in/broken.mtlx"), "<materialx");
+
+        Assert.Contains(
+            ".usdc or .usdz",
+            Assert.Throws<InvalidDataException>(() => UsdaReader.Read(Path("in/binary.usd"))).Message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "no standard_surface",
+            Assert.Throws<InvalidDataException>(() => MaterialXReader.Read(Path("in/empty.mtlx"))).Message,
+            StringComparison.Ordinal
+        );
+        Assert.Throws<InvalidDataException>(() => MaterialXReader.Read(Path("in/broken.mtlx")));
     }
 
     /// <summary>A whole metal-roughness surface: colour, normal, roughness, metalness and occlusion.</summary>

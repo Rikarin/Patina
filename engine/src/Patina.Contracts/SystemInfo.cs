@@ -30,7 +30,29 @@ public sealed record FileFormats(
     IReadOnlyList<string> Pictures,
     IReadOnlyList<string> Environments,
     IReadOnlyList<string> Meshes
-);
+) {
+    /// <summary>What a project brings materials in from, as graphs (#157).</summary>
+    public IReadOnlyList<string> Materials { get; init; } = MaterialFormats.Materials;
+}
+
+/// <summary>
+///     The one list of the files Patina reads materials from (#157): a model's materials through Assimp in the Worker,
+///     and MaterialX and USD's text form, which the Server reads. A file dialog offers them from here.
+/// </summary>
+public static class MaterialFormats {
+    /// <summary>MaterialX.</summary>
+    public const string MaterialX = ".mtlx";
+
+    public static IReadOnlyList<string> Materials { get; } =
+        [".gltf", ".glb", ".fbx", ".obj", ".dae", MaterialX, ".usda", ".usd"];
+
+    /// <summary>The ones the Server reads as text: MaterialX, and USD, which must be in its text form.</summary>
+    public static IReadOnlyList<string> Texts { get; } = [MaterialX, ".usda", ".usd"];
+
+    /// <summary>Whether a file is one Patina reads materials from, by its name.</summary>
+    public static bool IsMaterial(string path) =>
+        Materials.Contains(Path.GetExtension(path).ToLowerInvariant(), StringComparer.Ordinal);
+}
 
 /// <summary>
 ///     The one list of the meshes Patina reads, through Assimp. A project's folder, the Import command and a client's

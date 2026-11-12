@@ -43,4 +43,29 @@ public sealed class StackSessionApiTests : IAsyncLifetime {
             Assert.Equal("gone", problem.RootElement.GetProperty("values").GetProperty("id").GetString());
         }
     }
+
+    /// <summary>
+    ///     A stack's export in a format a file cannot be, or with a compression and no format, is refused with the
+    ///     reason before anything is asked of a Worker (#47).
+    /// </summary>
+    [Theory]
+    [InlineData("gif", null, null, "is not a format")]
+    [InlineData("png8", "bc7", null, "cannot be compressed")]
+    [InlineData("jpeg", null, "0", "1 to 100")]
+    [InlineData(null, "bc7", null, "go with a format")]
+    public async Task An_export_a_file_cannot_hold_is_refused_with_the_reason(
+        string? format,
+        string? compression,
+        string? quality,
+        string reason
+    ) {
+        using var refused = await client.PostAsJsonAsync(
+            "/api/v1/stacks/gone/export",
+            new StackExportRequest("out") { Format = format, Compression = compression, Quality = quality },
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Contains(reason, await refused.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+    }
 }

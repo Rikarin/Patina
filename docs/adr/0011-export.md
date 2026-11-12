@@ -51,6 +51,11 @@ only what differs from the preset. A library export's settings belong to no proj
 `library.yaml`'s own `export` block, written by `PUT /library/export` and read with `GET /library`. A project that has kept
 nothing starts from its preset alone, never from what another project or the library was set to.
 
+Which preset that is, is chosen and never the first by id, which changed whenever a preset was added (#240). It is the library's
+`defaultPreset` in `library.yaml`, set by `PUT /library/export/preset` (the dialog's Make Default), and while that names no
+preset the factory's `gltf`, the starter every engine and Blender reads. `GET /export/presets` says which it comes to as
+`default`, and a texture set's checks measure against the same one when its project has chosen none.
+
 ## What a project builds
 
 A project made in the app writes no outputs. `ProjectOutputs` works them out from its documents on every read, and writes nothing
@@ -88,6 +93,13 @@ So a normal map carries the way it runs, in its output's manifest, and `ChannelP
 disagree. An output that composes a baked normal says `green: up` in its settings; nothing can work that out. The stored number is
 the same one the viewport's shader reads, so this is a one-minus in unit space and not a sign flip of the byte. `Export Maps` writes
 a stack's numbers as they are, so its normal is Y-.
+
+`Export Maps` (`POST /stacks/{id}/export`) writes 8-bit RGBA PNGs unless it is given a format, because those PNGs hold exactly
+the pixels its digests are of, which is what "what you paint is what exports" compares. Given one (#47), each map is the file a
+preset would write that reads only that map's lanes (`MapFile`): packed by `ChannelPacker` and encoded by `ExportEncoder`, from
+the map at the depth it was evaluated at, with its own lanes where the format holds them and otherwise the nearest it does. One
+layer's maps can be written alone, and so can a layer's mask, as one map `mask`: a white fill under that mask over black, the only
+layer of a set whose one channel is `mask`, so the mask is evaluated by the code a layer's is (#153).
 
 The viewport's shader reads Y+ and takes a sign: `-1` for a graph's maps (`PUT /viewport/graph`) and for a stack on the mesh, and `+1`
 for a bake. A stack's green was once declared Y+ and shown Y+, so the two agreed with each other and both disagreed with its fills.

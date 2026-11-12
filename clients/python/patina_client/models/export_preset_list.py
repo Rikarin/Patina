@@ -8,6 +8,7 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
@@ -38,6 +39,9 @@ class ExportPresetList:
             materials (list[StackTerm]): The material files a preset can write beside its textures, each with what a person
                 calls it.
             tokens (list[str]): The names a file's template can hold, such as `project` for `{project}`.
+            default (None | str | Unset): The preset an export starts from when nothing is kept for it: the library's
+                `defaultPreset` while it
+                names one of these, else the factory's glTF starter, and null only when there are no presets at all.
      """
 
     presets: list[ExportPresetInfo]
@@ -49,6 +53,7 @@ class ExportPresetList:
     maps: list[StackTerm]
     materials: list[StackTerm]
     tokens: list[str]
+    default: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -116,6 +121,12 @@ class ExportPresetList:
 
 
 
+        default: None | str | Unset
+        if isinstance(self.default, Unset):
+            default = UNSET
+        else:
+            default = self.default
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -130,6 +141,8 @@ class ExportPresetList:
             "materials": materials,
             "tokens": tokens,
         })
+        if default is not UNSET:
+            field_dict["default"] = default
 
         return field_dict
 
@@ -217,6 +230,16 @@ class ExportPresetList:
         tokens = cast(list[str], d.pop("tokens"))
 
 
+        def _parse_default(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        default = _parse_default(d.pop("default", UNSET))
+
+
         export_preset_list = cls(
             presets=presets,
             problems=problems,
@@ -227,6 +250,7 @@ class ExportPresetList:
             maps=maps,
             materials=materials,
             tokens=tokens,
+            default=default,
         )
 
 

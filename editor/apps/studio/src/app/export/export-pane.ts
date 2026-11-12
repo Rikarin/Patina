@@ -126,19 +126,36 @@ function lanesOf(hex: string): number[] {
             @if (chosen(); as info) {
               <span class="text-foreground-muted text-xs" data-testid="export-preset-info">
                 {{ info.engine }} · normal map {{ greenName(info.normal) }} · {{ originName(info.origin) }}
+                @if (isDefault()) {
+                  · default
+                }
               </span>
             }
-            <button
-              type="button"
-              xuiButton
-              size="sm"
-              variant="ghost"
-              class="self-start"
-              data-testid="export-edit-presets"
-              (click)="editing.set(true)"
-            >
-              Edit Presets…
-            </button>
+            <div class="flex gap-1">
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="export-edit-presets"
+                (click)="editing.set(true)"
+              >
+                Edit Presets…
+              </button>
+              @if (chosen() && !isDefault() && chosen()?.origin !== 'project') {
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  data-testid="export-make-default"
+                  title="Every export that has kept no preset of its own starts from this one, in any project"
+                  (click)="makeDefault()"
+                >
+                  Make Default
+                </button>
+              }
+            </div>
           </section>
 
           <section class="flex flex-col gap-1.5">
@@ -475,9 +492,18 @@ function lanesOf(hex: string): number[] {
 
           @if (paint.state(); as stack) {
             <div class="flex items-center gap-2 text-xs" data-testid="export-document">
-              <span class="text-foreground-muted min-w-0 flex-1"
-                >Or write this document's maps as they are on screen, as PNG.</span
-              >
+              <span class="text-foreground-muted min-w-0 flex-1">Or write this document's maps as they are, as</span>
+              <xui-select
+                class="w-36"
+                size="sm"
+                ariaLabel="Format of the document's maps"
+                data-testid="export-stack-format"
+                [filterable]="false"
+                [itemText]="stackFormatName"
+                [items]="stackFormats()"
+                [value]="stackFormat()"
+                (valueChange)="stackFormat.set($event ?? onScreen)"
+              />
               <button
                 type="button"
                 xuiButton
@@ -695,10 +721,21 @@ export class ExportPane implements OnInit {
   /** The Server's texture sides, after the maps' own size. */
   protected readonly sizes = computed(() => ['native', ...this.status.textureSides().map(String)]);
 
+  /** The document's maps as the 8-bit RGBA PNGs the screen shows, which is what Export Maps writes unless told. */
+  protected readonly onScreen = 'screen';
+  protected readonly stackFormat = signal<string>(this.onScreen);
+  protected readonly stackFormats = computed(() => [this.onScreen, ...this.store.formats().map(format => format.id)]);
+  protected readonly stackFormatName = (format: string): string =>
+    format === this.onScreen ? 'PNG, as on screen' : this.formatName(format);
   protected readonly presetIds = computed(() => this.store.presets().map(preset => preset.id));
   protected readonly chosen = computed<ExportPresetInfo | null>(
     () => this.store.presets().find(preset => preset.id === this.settings().preset) ?? null
   );
+  /** Whether the chosen preset is the one exports start from. */
+  protected readonly isDefault = computed(() => {
+    const chosen = this.chosen();
+    return chosen !== null && chosen.id === this.store.defaultPreset();
+  });
   protected readonly stateName = jobStateName;
   protected readonly running = computed(() => ['queued', 'running'].includes(this.store.build()?.state ?? ''));
   protected readonly percent = computed(() => Math.round((this.store.build()?.progress ?? 0) * 100));
@@ -1004,6 +1041,12 @@ export class ExportPane implements OnInit {
     }
   }
 
+  /** Makes the chosen preset the library's default, where every export that kept none starts (#240). */
+  protected makeDefault(): Promise<void> {
+    const chosen = this.chosen();
+    return chosen ? this.attempt(() => this.store.keepDefault(chosen.id)) : Promise.resolve();
+  }
+
   protected choosePreset(id: string | null): void {
     const preset = this.store.presets().find(known => known.id === id) ?? null;
     if (preset) {
@@ -1060,11 +1103,15 @@ export class ExportPane implements OnInit {
     void desktop()?.reveal(path);
   }
 
-  /** Painted work reaches a file with no build behind it: the stack that is open, in a folder chosen now. */
+  /**
+   * Painted work reaches a file with no build behind it: the stack that is open, in a folder chosen now, as the PNGs the
+   * screen shows or in another format (#47).
+   */
   protected async exportStack(id: string): Promise<void> {
     const folder = await desktop()?.openFolder();
+    const format = this.stackFormat();
     if (folder) {
-      await this.attempt(() => this.store.exportStack(id, folder));
+      await this.attempt(() => this.store.exportStack(id, folder, format === this.onScreen ? null : format));
     }
   }
 
@@ -1116,7 +1163,7 @@ export class ExportPane implements OnInit {
   }
 
   /**
-   * Takes up what an owner's export was last set to. One that has kept nothing starts from the first preset alone:
+   * Takes up what an owner's export was last set to. One that has kept nothing starts from the default preset alone:
    * nothing of another project's, or of the library's, carries into it (#227).
    */
   private async restore(owner: ExportOwner | null, presets: readonly ExportPresetInfo[]): Promise<void> {
@@ -1128,7 +1175,10 @@ export class ExportPane implements OnInit {
     }
     const saved = read?.kept ?? null;
     this.keptSets.set(read?.sets ?? []);
-    const preset = presets.find(known => known.id === saved?.preset) ?? presets[0];
+    const preset =
+      presets.find(known => known.id === saved?.preset) ??
+      presets.find(known => known.id === this.store.defaultPreset()) ??
+      presets[0];
     if (!preset) {
       return;
     }

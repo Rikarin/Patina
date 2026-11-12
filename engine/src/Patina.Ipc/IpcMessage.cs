@@ -124,6 +124,12 @@ public static class IpcTypes {
     /// </summary>
     public const string MeshUvWire = "mesh.uv-wire";
 
+    /// <summary>
+    ///     Server to Worker: read the materials of the model at <see cref="IpcMessage.MaterialRead" />'s file, writing
+    ///     the pictures inside it to its folder (#157). Uses no device.
+    /// </summary>
+    public const string MaterialRead = "material.read";
+
     /// <summary>Renders each fill of a stack alone, small.</summary>
     public const string StackThumbnails = "stack.thumbnails";
 
@@ -312,6 +318,11 @@ public sealed class IpcMessage {
 
     /// <summary>What a mesh is, in the answer to <see cref="IpcTypes.MeshFacts" />.</summary>
     public MeshFacts? Facts { get; set; }
+
+    public MaterialReadAsk? MaterialRead { get; set; }
+
+    /// <summary>A model's materials as maps, in the answer to <see cref="IpcTypes.MaterialRead" />.</summary>
+    public IReadOnlyList<ImportedMaterial>? MaterialsRead { get; set; }
 
     /// <summary>The model's other texture sets, worn along with <see cref="Following" />.</summary>
     public IReadOnlyList<string>? FollowingAlso { get; set; }
@@ -810,13 +821,34 @@ public sealed record StackSave(string Session, string? Folder);
 ///     A layer to evaluate alone, from nothing, over the channels' defaults, rather than the whole set: a flattened
 ///     folder exported on its own (#107). Null for the whole set.
 /// </param>
+/// <param name="Mask">With a layer, whether to write its mask alone, as one map <c>mask</c>.</param>
+/// <param name="File">
+///     The file each map is written as, or null for 8-bit RGBA PNGs: what the pixels' digest is of (#47).
+/// </param>
 public sealed record StackPixelsAsk(
     string Session,
     bool Clean,
     string? Folder,
     bool Viewport = false,
-    string? Layer = null
+    string? Layer = null,
+    StackFileAsk? File = null,
+    bool Mask = false
 );
+
+/// <summary>A model file whose materials are wanted, and where the pictures inside it go.</summary>
+/// <param name="File">The model.</param>
+/// <param name="Folder">
+///     Where a picture the model holds inside it is written, since pixels never cross the socket: the project's own
+///     pictures, so the graph made from it reads it there.
+/// </param>
+public sealed record MaterialReadAsk(string File, string Folder);
+
+/// <summary>A map's file in a format other than the PNG a stack's export writes, settled by the Server.</summary>
+/// <param name="Format">One of the export formats.</param>
+/// <param name="Compression">For KTX2 and DDS, what the file holds; none for any other.</param>
+/// <param name="Quality">JPEG's 1 to 100, or a block search's fast, balanced or best.</param>
+/// <param name="Mips">Whether a KTX2 or DDS file carries a mip chain.</param>
+public sealed record StackFileAsk(string Format, string Compression, string Quality, bool Mips);
 
 /// <summary>Where a preview lives in the cache, for the Worker that writes it and the Server that serves it.</summary>
 public static class GraphPreviewFiles {

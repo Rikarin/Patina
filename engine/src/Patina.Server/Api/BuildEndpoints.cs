@@ -64,6 +64,7 @@ static class BuildEndpoints {
 
         return TypedResults.Ok(
             new ExportPresetList([..found.Presets.Select(Describe)], found.Problems) {
+                Default = found.Default(library.Document.DefaultPreset)?.Id,
                 Formats = [
                     ..ExportFormats.All.Select(static f => new ExportFormatInfo(
                             f,

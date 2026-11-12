@@ -85,6 +85,8 @@ static class LibraryTreeEndpoints {
         library.MapPost("/project/files", ImportFile)
             .Described("ImportProjectFile", "Brings a mesh or a picture into a project. Anything else is refused.");
 
+        library.MapMaterialImport();
+
         library.MapPost("/project/pictures", AddPicture)
             .Described("AddProjectPicture", "Brings a picture into a project, for a layer or a mask to read.");
 

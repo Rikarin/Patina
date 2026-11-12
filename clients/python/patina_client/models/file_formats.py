@@ -27,11 +27,13 @@ class FileFormats:
             pictures (list[str]): What a layer, a mask, an image material and a skew map read.
             environments (list[str]): What lights the viewport.
             meshes (list[str]): What a project takes as its mesh, its detailed mesh or a cage.
+            materials (list[str]): What a project brings materials in from, as graphs (#157).
      """
 
     pictures: list[str]
     environments: list[str]
     meshes: list[str]
+    materials: list[str]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -51,6 +53,10 @@ class FileFormats:
 
 
 
+        materials = self.materials
+
+
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -58,6 +64,7 @@ class FileFormats:
             "pictures": pictures,
             "environments": environments,
             "meshes": meshes,
+            "materials": materials,
         })
 
         return field_dict
@@ -76,10 +83,14 @@ class FileFormats:
         meshes = cast(list[str], d.pop("meshes"))
 
 
+        materials = cast(list[str], d.pop("materials"))
+
+
         file_formats = cls(
             pictures=pictures,
             environments=environments,
             meshes=meshes,
+            materials=materials,
         )
 
 

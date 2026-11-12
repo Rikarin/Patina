@@ -1,5 +1,7 @@
 using Patina.Bench;
 using Patina.Contracts;
+using Patina.Export;
+using Patina.Export.Presets;
 using Patina.Library;
 using System.Diagnostics;
 using System.Net;
@@ -239,6 +241,38 @@ public sealed partial class StackProcessTests : IDisposable {
             Assert.Equal(map.Digest, Digest(composite, map.Usage));
             var file = PngCodec.Decode(File.ReadAllBytes(map.File!));
             Assert.Equal(map.Digest, Convert.ToHexStringLower(SHA256.HashData(file.Pixels)));
+        }
+
+        // Another format holds the same picture (#47): a TGA byte for byte, and an EXR, which holds the map at its own
+        // depth, within a byte's step of it.
+        var tga = await ExportAsync(
+            state.Id,
+            Path.Combine(folder.FullName, "tga"),
+            deadline.Token,
+            new(string.Empty) { Format = "tga" }
+        );
+        var exr = await ExportAsync(
+            state.Id,
+            Path.Combine(folder.FullName, "exr"),
+            deadline.Token,
+            new(string.Empty) { Format = "exr16" }
+        );
+        foreach (var (png, (targa, half)) in exported.Zip(tga.Zip(exr))) {
+            Assert.EndsWith($".{png.Usage}.tga", targa.File, StringComparison.Ordinal);
+            Assert.Equal(png.Digest, targa.Digest);
+            var picture = PngCodec.Decode(File.ReadAllBytes(png.File!));
+            var read = MapPictures.ReadFile(targa.File!);
+            var floats = MapPictures.ReadFile(half.File!);
+            for (var at = 0; at < picture.Width * picture.Height; at++) {
+                for (var lane = 0; lane < Math.Min(3, floats.Channels); lane++) {
+                    var expected = picture.Pixels[at * 4 + lane] / 255f;
+                    Assert.Equal(expected, read.Samples[at * read.Channels + lane], 1e-4f);
+                    var linear = ExportMaps.IsColour(png.Usage)
+                        ? MipChain.ToSrgb(floats.Samples[at * floats.Channels + lane])
+                        : floats.Samples[at * floats.Channels + lane];
+                    Assert.Equal(expected, linear, 1.1f / 255);
+                }
+            }
         }
     }
 
@@ -875,10 +909,15 @@ public sealed partial class StackProcessTests : IDisposable {
         ))!;
     }
 
-    async Task<IReadOnlyList<StackPixels>> ExportAsync(string id, string to, CancellationToken token) {
+    async Task<IReadOnlyList<StackPixels>> ExportAsync(
+        string id,
+        string to,
+        CancellationToken token,
+        StackExportRequest? how = null
+    ) {
         using var response = await http.PostAsJsonAsync(
             $"/api/v1/stacks/{id}/export",
-            new(to),
+            (how ?? new(to)) with { Folder = to },
             ContractsJsonContext.Default.StackExportRequest,
             token
         );

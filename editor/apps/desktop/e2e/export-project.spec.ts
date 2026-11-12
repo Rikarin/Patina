@@ -1,9 +1,9 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject } from './projects';
+import { answerOpen, leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -120,4 +120,48 @@ test('the dialog exports the document in front as TGA, transparent past its padd
   // Inside the layout and its padding the albedo is opaque; past the padding, padding left nothing.
   expect(alpha.filter(value => value === 255).length).toBeGreaterThan(alpha.length / 10);
   expect(alpha.filter(value => value === 0).length).toBeGreaterThan(alpha.length / 10);
+});
+
+/** A USD layer of one material, its base color an image beside it and its roughness a number. */
+const brick = `#usda 1.0
+
+def Material "Brick"
+{
+    token outputs:surface.connect = </Brick/Surface.outputs:surface>
+
+    def Shader "Surface"
+    {
+        uniform token info:id = "UsdPreviewSurface"
+        color3f inputs:diffuseColor.connect = </Brick/Colour.outputs:rgb>
+        float inputs:roughness = 0.7
+        token outputs:surface
+    }
+
+    def Shader "Colour"
+    {
+        uniform token info:id = "UsdUVTexture"
+        asset inputs:file = @brick.png@
+        float3 outputs:rgb
+    }
+}
+`;
+
+test('Import Materials brings a USD file’s material into the project as a graph that reads its picture', async () => {
+  const library = join(scratch, 'Ember.ptlib');
+  await newLibrary(app, window, library);
+  await newProject(app, window, 'Housing', join(scratch, 'meshes', 'housing_low.glb'));
+  // A one-pixel PNG, which is all the graph needs to read.
+  const pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
+  writeFileSync(join(scratch, 'brick.png'), Buffer.from(pixel, 'base64'));
+  writeFileSync(join(scratch, 'brick.usda'), brick);
+
+  await answerOpen(app, join(scratch, 'brick.usda'));
+  await app.evaluate(({ Menu }) => {
+    Menu.getApplicationMenu()?.getMenuItemById('importMaterials')?.click();
+  });
+
+  const graph = join(library, 'projects', 'housing', 'Brick.vxtexgraph');
+  await expect.poll(() => existsSync(graph), { timeout: 30_000 }).toBe(true);
+  expect(readFileSync(graph, 'utf8')).toContain('pictures/brick/brick.png');
+  expect(existsSync(join(library, 'projects', 'housing', 'pictures', 'brick', 'brick.png'))).toBe(true);
 });

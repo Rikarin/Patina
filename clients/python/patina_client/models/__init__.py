@@ -171,8 +171,11 @@ from .library_export_request import LibraryExportRequest
 from .library_info import LibraryInfo
 from .library_move_request import LibraryMoveRequest
 from .library_moved import LibraryMoved
+from .library_preset_request import LibraryPresetRequest
 from .library_report import LibraryReport
 from .material_brush import MaterialBrush
+from .material_import_request import MaterialImportRequest
+from .material_import_result import MaterialImportResult
 from .material_info import MaterialInfo
 from .material_list import MaterialList
 from .material_use import MaterialUse
@@ -549,8 +552,11 @@ __all__ = (
     "LibraryInfo",
     "LibraryMoved",
     "LibraryMoveRequest",
+    "LibraryPresetRequest",
     "LibraryReport",
     "MaterialBrush",
+    "MaterialImportRequest",
+    "MaterialImportResult",
     "MaterialInfo",
     "MaterialList",
     "MaterialUse",

@@ -84,6 +84,8 @@ export interface DesktopBridge {
   writePreferences(settings: unknown): Promise<void>;
   /** Asks the user for a mesh file: its path, or null if they cancelled. */
   openMesh(formats?: readonly string[]): Promise<string | null>;
+  /** Asks the user for a file of materials of these formats: its path, or null if they cancelled. */
+  openMaterial(formats?: readonly string[]): Promise<string | null>;
   /** Asks the user for a picture of these formats: its path, or null if they cancelled. */
   openImage(formats?: readonly string[]): Promise<string | null>;
   /** Asks the user for a folder: its path, or null if they cancelled. */

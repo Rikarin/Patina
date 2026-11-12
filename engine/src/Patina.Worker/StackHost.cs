@@ -258,13 +258,15 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         }
 
         if (ask.Layer is { } layer) {
-            using var alone = stack.Alone(layer, out var name);
+            using var alone = stack.Alone(layer, ask.Mask, out var name);
             using var only = alone.EvaluateClean();
-            return new() { Type = IpcTypes.Ok, StackPicture = Read(alone, only, $"{stack.Name}.{name}", ask.Folder) };
+            return new() {
+                Type = IpcTypes.Ok, StackPicture = Read(alone, only, $"{stack.Name}.{name}", ask.Folder, ask.File)
+            };
         }
 
         using var bake = ask.Clean ? stack.Run.EvaluateClean() : stack.Run.Evaluate();
-        return new() { Type = IpcTypes.Ok, StackPicture = Read(stack.Run, bake, stack.Name, ask.Folder) };
+        return new() { Type = IpcTypes.Ok, StackPicture = Read(stack.Run, bake, stack.Name, ask.Folder, ask.File) };
     }
 
     /// <summary>What the viewport's draw call samples for each map, read back from the viewport's own device.</summary>

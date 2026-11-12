@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Export.Presets;
 using Patina.Library;
 using Patina.Server.Stacks;
 using Patina.Server.Viewport;
@@ -20,6 +21,13 @@ static class ProjectBlockEndpoints {
                 "SetLibraryExport",
                 "Keeps what an export of the whole library is set to in library.yaml, where any client's next "
                 + "library export starts. GET /library reads it back."
+            );
+        library.MapPut("/export/preset", SetDefaultPreset)
+            .Described(
+                "SetLibraryDefaultPreset",
+                "Keeps in library.yaml the export preset a project's export starts from when it has kept none, and "
+                + "that checks measure against. Null forgets it, which leaves the factory's glTF starter. "
+                + "GET /export/presets says which preset that comes to."
             );
         library.MapPut("/project/export", SetExport)
             .Described(
@@ -94,6 +102,30 @@ static class ProjectBlockEndpoints {
                 return TypedResults.Ok(library.Describe());
             }
         );
+
+    static Results<Ok<LibraryInfo>, ProblemHttpResult> SetDefaultPreset(
+        LibraryHost host,
+        LibraryPresetRequest request
+    ) {
+        if (host.Library is { } library
+            && request.Preset is { } id
+            && ExportPresetCatalog.Read(library.RootPath).Find(id) is null) {
+            return Refusals.Problem(
+                $"There is no preset '{id}' in this library.",
+                StatusCodes.Status404NotFound,
+                Refusals.PresetMissing,
+                new Dictionary<string, string> { ["preset"] = id }
+            );
+        }
+
+        return LibraryTreeEndpoints.Guarded(
+            host,
+            open => {
+                open.SetDefaultPreset(request.Preset);
+                return TypedResults.Ok(open.Describe());
+            }
+        );
+    }
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetExport(LibraryHost host, ProjectExportRequest request) =>
         Keep(host, request.Project, null, library => library.SetExport(request.Project, request.Export));

@@ -63,6 +63,24 @@ describe('ExportStore', () => {
     expect(store.problems()).toEqual(['broken.yaml: no id']);
   });
 
+  it('writes a document’s maps as on screen, or in the format chosen', async () => {
+    const bodies: unknown[] = [];
+    const { store } = setup({
+      ...jobs,
+      'POST stacks/s1/export': request => {
+        void request.json().then(body => bodies.push(body));
+        return Response.json([{ usage: 'baseColor', width: 4, height: 4, digest: 'd', file: '/out/a.baseColor.tga' }]);
+      }
+    });
+
+    await store.exportStack('s1', '/out');
+    await store.exportStack('s1', '/out', 'tga');
+    await new Promise(resolve => setTimeout(resolve));
+
+    expect(bodies).toEqual([{ folder: '/out' }, { folder: '/out', format: 'tga' }]);
+    expect(store.exported()).toEqual(['/out/a.baseColor.tga']);
+  });
+
   it('asks for a preview with the preset it was given, and runs nothing', async () => {
     const sent: unknown[] = [];
     const { store } = setup({

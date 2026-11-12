@@ -34,6 +34,17 @@ public sealed class StackCheckingTests {
             "crate.glb"
         );
 
+    /// <summary>
+    ///     A set is measured against the preset its project chose, and one that chose none against the preset the
+    ///     Export dialog starts from, which is not the first by id (#240).
+    /// </summary>
+    [Fact]
+    public void A_project_that_chose_no_preset_is_checked_against_the_starter() {
+        Assert.Equal("unreal", StackChecking.PresetOf(Project(new()), null)!.Id);
+        Assert.Equal("gltf", StackChecking.PresetOf(null, null)!.Id);
+        Assert.Equal("gltf", StackChecking.PresetOf(Project(new()) with { Export = null }, null)!.Id);
+    }
+
     static ProjectContents Project(ProjectCheckSettings checks) =>
         new(Guid.Empty, "Crate", "crate", [], [], "bakes", [], []) {
             Checks = checks, Export = new() { Preset = Unreal.Id }

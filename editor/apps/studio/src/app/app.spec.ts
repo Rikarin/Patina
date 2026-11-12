@@ -43,7 +43,7 @@ const system = {
   library: '/games/Ember.ptlib' as string | null,
   host: { os: 'macOS', architecture: 'Arm64', runtime: '.NET 11' },
   worker: { connected: false },
-  formats: { pictures: ['.png'], environments: ['.hdr'], meshes: ['.obj'] },
+  formats: { pictures: ['.png'], environments: ['.hdr'], meshes: ['.obj'], materials: ['.mtlx'] },
   textureSides: [256, 512, 1024, 2048],
   defaultTextureSide: 2048
 };

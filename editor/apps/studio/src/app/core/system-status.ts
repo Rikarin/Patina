@@ -49,6 +49,8 @@ export class SystemStatus {
   readonly pictures = computed(() => this.formats()?.pictures);
   /** What a file dialog offers for a mesh, the same list a project's folder and Import read. */
   readonly meshes = computed(() => this.formats()?.meshes);
+  /** What a file dialog offers for a file of materials: models, MaterialX and USD's text form (#157). */
+  readonly materials = computed(() => this.formats()?.materials);
   /** What a file dialog offers for an environment. */
   readonly environments = computed(() => this.formats()?.environments);
 

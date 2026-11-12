@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('patina', {
   writePreferences: (settings: unknown) => ipcRenderer.invoke('patina:preferences:write', settings),
   openMesh: (formats?: readonly string[]) => ipcRenderer.invoke('patina:openMesh', formats),
   openImage: (formats?: readonly string[]) => ipcRenderer.invoke('patina:openImage', formats),
+  openMaterial: (formats?: readonly string[]) => ipcRenderer.invoke('patina:openMaterial', formats),
   openFolder: () => ipcRenderer.invoke('patina:openFolder'),
   saveScreenshot: () => ipcRenderer.invoke('patina:saveScreenshot'),
   setUnsaved: (unsaved: boolean) => {

@@ -41,7 +41,7 @@ static class StackCheckEndpoints {
                     measured,
                     project,
                     library?.Describe().TexelDensity ?? 0,
-                    StackChecking.PresetOf(project, library?.RootPath)
+                    StackChecking.PresetOf(project, library)
                 );
             }
         );

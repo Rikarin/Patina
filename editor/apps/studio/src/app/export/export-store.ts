@@ -275,6 +275,8 @@ export class ExportStore {
   /** What the last export of an open stack wrote. */
   readonly exported = signal<readonly string[]>([]);
   readonly presets = signal<readonly ExportPresetInfo[]>([]);
+  /** The preset an export starts from when nothing is kept for it: the library's choice, or the glTF starter (#240). */
+  readonly defaultPreset = signal<string | null>(null);
   readonly formats = signal<readonly ExportFormatInfo[]>([]);
   /** The padding modes and resize filters, each with the label the Server gives it. */
   readonly paddingTerms = signal<readonly StackTerm[]>([]);
@@ -298,12 +300,14 @@ export class ExportStore {
     return id ? this.jobs.find(id) : null;
   });
 
-  /** Writes each map of an open stack to a folder, from what is on screen, saved or not. */
-  async exportStack(id: string, folder: string): Promise<void> {
+  /**
+   * Writes each map of an open stack to a folder, from what is on screen, saved or not: as 8-bit RGBA PNGs, or in a
+   * format of the export's, each map keeping the lanes it has where the format holds them.
+   */
+  async exportStack(id: string, folder: string, format: string | null = null): Promise<void> {
     const client = await this.api();
-    const maps = unwrap(
-      await client.POST('/api/v1/stacks/{id}/export', { params: { path: { id } }, body: { folder } })
-    );
+    const body = format ? { folder, format } : { folder };
+    const maps = unwrap(await client.POST('/api/v1/stacks/{id}/export', { params: { path: { id } }, body }));
     this.exported.set(maps.map(map => map.file ?? map.usage));
   }
 
@@ -315,6 +319,7 @@ export class ExportStore {
     const query = project ? { project } : {};
     const list = unwrap(await (await this.api()).GET('/api/v1/export/presets', { params: { query } }));
     this.presets.set(list.presets);
+    this.defaultPreset.set(list.default ?? null);
     this.problems.set(list.problems);
     this.formats.set(list.formats);
     this.paddingTerms.set(list.paddings);
@@ -323,6 +328,19 @@ export class ExportStore {
     this.mapTerms.set(list.maps);
     this.materialTerms.set(list.materials);
     this.tokens.set(list.tokens);
+  }
+
+  /** Makes a preset the one every export starts from when it has kept none, in the library's own file. */
+  async keepDefault(id: string): Promise<void> {
+    const client = await this.api();
+    unwrap(await client.PUT('/api/v1/library/export/preset', { body: { preset: id } }));
+    this.defaultPreset.set(id);
+  }
+
+  /** The preset an export with nothing kept starts from: the default while it is listed, else the first. */
+  starting(): ExportPresetInfo | null {
+    const presets = this.presets();
+    return presets.find(preset => preset.id === this.defaultPreset()) ?? presets[0] ?? null;
   }
 
   /** A preset as its file says it, where it comes from, and its text. */

@@ -133,6 +133,66 @@ public sealed partial class StackProcessTests {
         );
     }
 
+    /// <summary>
+    ///     Any layer exports on its own, not only a flattened folder, and so does its mask (#153): one grey map,
+    ///     <c>mask</c>, named after the layer, holding the mask and nothing of the layer's content or opacity. A
+    ///     mask with no layer named is refused.
+    /// </summary>
+    [Fact]
+    public async Task A_layer_and_its_mask_export_on_their_own() {
+        using var deadline = Deadline(300);
+        var (instance, state) = await StartAsync("Masked.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Spot", Tint));
+        var spot = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        var masked = await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(spot, null, null, 0.5f, Mask: new("Constant", 0.25f))
+        );
+        await EvaluatedAsync(socket, masked.Revision, deadline.Token);
+
+        var layer = await ExportAloneAsync(state.Id, new(Path.Combine(folder.FullName, "spot"), spot), deadline.Token);
+        var mask = await ExportAloneAsync(
+            state.Id,
+            new(Path.Combine(folder.FullName, "mask"), spot) { Mask = true },
+            deadline.Token
+        );
+
+        Assert.Contains(layer, static map => map.Usage == "baseColor");
+        var only = Assert.Single(mask);
+        Assert.Equal("mask", only.Usage);
+        Assert.EndsWith(".Spot.mask.png", only.File, StringComparison.Ordinal);
+        var pixels = PngCodec.Decode(File.ReadAllBytes(only.File!)).Pixels;
+        Assert.All(pixels.Where(static (_, at) => at % 4 == 0), static value => Assert.InRange(value, 62, 66));
+
+        using var refused = await http.PostAsJsonAsync(
+            $"/api/v1/stacks/{state.Id}/export",
+            new(Path.Combine(folder.FullName, "none")) { Mask = true },
+            ContractsJsonContext.Default.StackExportRequest,
+            deadline.Token
+        );
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, refused.StatusCode);
+    }
+
+    async Task<IReadOnlyList<StackPixels>> ExportAloneAsync(
+        string id,
+        StackExportRequest request,
+        CancellationToken token
+    ) {
+        using var response = await http.PostAsJsonAsync(
+            $"/api/v1/stacks/{id}/export",
+            request,
+            ContractsJsonContext.Default.StackExportRequest,
+            token
+        );
+        await SucceededAsync(response, token);
+        return (await response.Content.ReadFromJsonAsync(
+            ContractsJsonContext.Default.IReadOnlyListStackPixels,
+            token
+        ))!;
+    }
+
     /// <summary>Each map's file, within the rounding a canvas adds.</summary>
     static void Close(IReadOnlyList<StackPixels> before, IReadOnlyList<StackPixels> after) {
         var files = after.ToDictionary(static map => map.Usage, static map => map.File!);

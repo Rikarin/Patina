@@ -458,6 +458,26 @@ describe('ProjectStore', () => {
     });
   }
 
+  it('brings a file’s materials into the open project and says what was left out', async () => {
+    const { store, client } = harness();
+    await store.open('a');
+    client.POST.mockImplementationOnce(
+      () =>
+        Promise.resolve({
+          data: { documents: ['projects/a/Brick.vxtexgraph'], warnings: ['USD: opacity is left out.'] },
+          response: new Response()
+        }) as never
+    );
+
+    await store.importMaterials('/art/brick.usda');
+
+    expect(client.POST).toHaveBeenCalledWith('/api/v1/library/project/materials', {
+      body: { project: 'a', file: '/art/brick.usda' }
+    });
+    expect(store.notice()).toBe('Brought 1 material from brick.usda into A. USD: opacity is left out.');
+    expect(store.failure()).toBeNull();
+  });
+
   it('clears what went wrong before when a tab closes or a graph saves', async () => {
     const { store } = harness();
     await store.importFiles(['/x.png']);

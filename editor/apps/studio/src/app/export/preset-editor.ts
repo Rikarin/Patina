@@ -654,7 +654,7 @@ export class PresetEditor implements OnInit {
   }
 
   ngOnInit(): void {
-    const start = this.start() ?? this.store.presets()[0]?.id ?? null;
+    const start = this.start() ?? this.store.starting()?.id ?? null;
     if (start) {
       void this.select(start);
     }
@@ -866,7 +866,7 @@ export class PresetEditor implements OnInit {
       await this.store.remove(source.document.id, source.origin === 'project' ? this.project() : null);
       this.removing.set(false);
       await this.store.load(this.project());
-      const next = this.store.presets()[0]?.id;
+      const next = this.store.starting()?.id;
       if (next) {
         await this.select(next);
       }

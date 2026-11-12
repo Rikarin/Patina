@@ -245,6 +245,108 @@ public sealed partial class StackProcessTests {
                               """;
 
     /// <summary>
+    ///     A glTF material brought into a project through the Worker is a graph that exports what the glTF meant
+    ///     (#157): its base color as it was, its roughness the green of the packed image times the factor, and its
+    ///     normal's green as Godot reads it, which is glTF's, after the graph turned it to its own and the export back.
+    /// </summary>
+    [Fact]
+    public async Task A_gltf_material_brought_in_exports_what_the_gltf_meant() {
+        using var deadline = Deadline(240);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var made = await http.PostAsJsonAsync("/api/v1/library/projects", new { name = "Imported" }, deadline.Token);
+        Assert.True(made.IsSuccessStatusCode, await made.Content.ReadAsStringAsync(deadline.Token));
+        var gltf = WriteGltf(folder.FullName, [200, 100, 50], [255, 160, 80], [128, 200, 255], 0.5f);
+
+        using var imported = await http.PostAsJsonAsync(
+            "/api/v1/library/project/materials",
+            new MaterialImportRequest("imported", gltf),
+            deadline.Token
+        );
+        Assert.True(imported.IsSuccessStatusCode, await imported.Content.ReadAsStringAsync(deadline.Token));
+        var job = await BuildAsync("godot", deadline.Token);
+        var report = await ReportedAsync(job.Id, deadline.Token);
+        SkipWithoutDevice(report);
+        Assert.Equal(0, job.Report!.Failed);
+
+        var exports = Path.Combine(Library, "exports", "godot", "imported");
+
+        byte[] Texel(string file) {
+            var picture = Patina.Export.MapPictures.ReadFile(Path.Combine(exports, file));
+            var middle = (picture.Height / 2 * picture.Width + picture.Width / 2) * picture.Channels;
+            return [..Enumerable.Range(0, 3).Select(lane => (byte)MathF.Round(picture.Samples[middle + lane] * 255))];
+        }
+
+        var albedo = Texel("Imported_albedo.png");
+        Assert.True(
+            albedo.Zip((byte[])[200, 100, 50]).All(static p => Math.Abs(p.First - p.Second) <= 1),
+            string.Join(",", albedo)
+        );
+        var orm = Texel("Imported_orm.png");
+        Assert.InRange(orm[1], 79, 81);
+        Assert.InRange(orm[2], 79, 81);
+        Assert.InRange(Texel("Imported_normal.png")[1], 199, 201);
+    }
+
+    /// <summary>A glTF of one triangle and one material whose three images are each one color, beside it.</summary>
+    static string WriteGltf(string folder, byte[] colour, byte[] packed, byte[] normal, float roughness) {
+        foreach (var (name, texel) in (IEnumerable<(string, byte[])>)
+                 [("colour", colour), ("packed", packed), ("normal", normal)]) {
+            var pixels = Enumerable.Range(0, 16).SelectMany(_ => texel).ToArray();
+            File.WriteAllBytes(Path.Combine(folder, $"{name}.png"), PngCodec.Encode8(4, 4, 3, pixels));
+        }
+
+        var floats = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1 };
+        var bytes = new byte[floats.Length * 4];
+        Buffer.BlockCopy(floats, 0, bytes, 0, bytes.Length);
+        var factor = roughness.ToString(CultureInfo.InvariantCulture);
+        var path = Path.Combine(folder, "painted.gltf");
+        File.WriteAllText(
+            path,
+            $$"""
+              {
+                "asset": { "version": "2.0" },
+                "scene": 0,
+                "scenes": [{ "nodes": [0] }],
+                "nodes": [{ "mesh": 0, "name": "Tri" }],
+                "meshes": [{
+                  "name": "Tri",
+                  "primitives": [{ "attributes": { "POSITION": 0, "TEXCOORD_0": 1 }, "material": 0 }]
+                }],
+                "materials": [{
+                  "name": "Imported",
+                  "pbrMetallicRoughness": {
+                    "baseColorTexture": { "index": 0 },
+                    "metallicRoughnessTexture": { "index": 1 },
+                    "roughnessFactor": {{factor}},
+                    "metallicFactor": 1
+                  },
+                  "normalTexture": { "index": 2 }
+                }],
+                "textures": [{ "source": 0 }, { "source": 1 }, { "source": 2 }],
+                "images": [{ "uri": "colour.png" }, { "uri": "packed.png" }, { "uri": "normal.png" }],
+                "buffers": [{
+                  "byteLength": {{bytes.Length}},
+                  "uri": "data:application/octet-stream;base64,{{Convert.ToBase64String(bytes)}}"
+                }],
+                "bufferViews": [
+                  { "buffer": 0, "byteOffset": 0, "byteLength": 36 },
+                  { "buffer": 0, "byteOffset": 36, "byteLength": 24 }
+                ],
+                "accessors": [
+                  {
+                    "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3",
+                    "min": [0, 0, 0], "max": [1, 1, 0]
+                  },
+                  { "bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC2" }
+                ]
+              }
+              """
+        );
+        return path;
+    }
+
+    /// <summary>
     ///     A picture keeps its depth to the exported file. The ramp spans a few bytes' worth of height across a
     ///     thousand texels, so eight bits would leave a few terraces, and a file that could not be read would fail.
     /// </summary>
