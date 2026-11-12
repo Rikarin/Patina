@@ -7084,11 +7084,33 @@ export interface components {
       highMesh: boolean;
       /** @description Whether to colour the parts by which matched which, when parts are matched by name. */
       matches: boolean;
+      /**
+       * @description Whether to draw the low mesh's hard edges that have no UV seam, where a tangent-space normal map shows a
+       *     line.
+       */
+      seams: boolean;
+      /** @description Whether the model is drawn in a plain grey while the preview shows, so its colours read. */
+      neutral: boolean;
+      /**
+       * Format: double
+       * @description How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays.
+       */
+      shellOpacity: number;
+      /**
+       * Format: double
+       * @description How opaque the high mesh is, 0 to 1, in its parts' colours or plain.
+       */
+      highOpacity: number;
     };
     /** @description Asks the viewport to show a finished bake on the mesh it was baked onto. */
     ViewportBakeRequest: {
       /** @description The bake's job. */
       job: string;
+      /**
+       * @description One of its maps to show alone on the mesh as stored, through the picture view, such as `normal` or
+       *     `ao`; or null for the normal and occlusion maps on the mesh's material (#149).
+       */
+      map?: null | string;
     };
     /** @description The viewport's camera: an orbit around the model. Its lens is in ViewportDisplay. */
     ViewportCameraState: {

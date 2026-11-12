@@ -18716,7 +18716,11 @@
           "options",
           "reach",
           "highMesh",
-          "matches"
+          "matches",
+          "seams",
+          "neutral",
+          "shellOpacity",
+          "highOpacity"
         ],
         "type": "object",
         "properties": {
@@ -18760,6 +18764,24 @@
           "matches": {
             "type": "boolean",
             "description": "Whether to colour the parts by which matched which, when parts are matched by name."
+          },
+          "seams": {
+            "type": "boolean",
+            "description": "Whether to draw the low mesh\u0027s hard edges that have no UV seam, where a tangent-space normal map shows a\nline."
+          },
+          "neutral": {
+            "type": "boolean",
+            "description": "Whether the model is drawn in a plain grey while the preview shows, so its colours read."
+          },
+          "shellOpacity": {
+            "type": "number",
+            "description": "How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays.",
+            "format": "double"
+          },
+          "highOpacity": {
+            "type": "number",
+            "description": "How opaque the high mesh is, 0 to 1, in its parts\u0027 colours or plain.",
+            "format": "double"
           }
         },
         "description": "A bake\u0027s setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,\nand what of it to draw. Paths on the Server\u0027s machine, as in a bake request."
@@ -18773,6 +18795,13 @@
           "job": {
             "type": "string",
             "description": "The bake\u0027s job."
+          },
+          "map": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "One of its maps to show alone on the mesh as stored, through the picture view, such as \u0060normal\u0060 or\n\u0060ao\u0060; or null for the normal and occlusion maps on the mesh\u0027s material (#149)."
           }
         },
         "description": "Asks the viewport to show a finished bake on the mesh it was baked onto."

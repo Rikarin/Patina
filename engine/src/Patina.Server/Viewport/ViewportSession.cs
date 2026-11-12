@@ -231,9 +231,19 @@ public sealed class ViewportSession(
         Wake();
     }
 
-    /// <summary>Shows a mesh and pictures together, so that no frame has the one without the other.</summary>
-    public void Show(string path, ViewportMapSet pictures) {
+    /// <summary>
+    ///     Shows a mesh and pictures together, so that no frame has the one without the other, and with
+    ///     <paramref name="alone" /> one picture on it through the picture view, the rest of the display as it was.
+    /// </summary>
+    public void Show(string path, ViewportMapSet pictures, ViewportMapFile? alone = null) {
         lock (changing) {
+            if (alone is not null) {
+                display = display with {
+                    Display = display.Display with { View = ViewportViews.Picture, Picture = alone.Path },
+                    Picture = alone
+                };
+            }
+
             mesh = path;
             stack = null;
             also = [];

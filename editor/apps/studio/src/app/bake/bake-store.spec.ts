@@ -161,8 +161,13 @@ describe('BakeStore', () => {
 
     await store.showOnMesh(job({ state: 'done' }));
 
-    expect(await (asked as Request).json()).toEqual({ job: 'j1' });
+    expect(await (asked as Request).json()).toEqual({ job: 'j1', map: null });
     expect(store.viewportChanged()).toBe(1);
+
+    await store.showOnMesh(job({ state: 'done' }), 'ao');
+
+    expect(await (asked as Request).json()).toEqual({ job: 'j1', map: 'ao' });
+    expect(store.viewportChanged()).toBe(2);
   });
 
   it('throws what the Server refused, and the viewport has not changed', async () => {

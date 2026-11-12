@@ -36,6 +36,12 @@ class ViewportBakePreview:
             reach (bool): Whether to draw where the rays start and how far they reach: the cage or the ray distances.
             high_mesh (bool): Whether to draw the high meshes, see-through.
             matches (bool): Whether to colour the parts by which matched which, when parts are matched by name.
+            seams (bool): Whether to draw the low mesh's hard edges that have no UV seam, where a tangent-space normal map
+                shows a
+                line.
+            neutral (bool): Whether the model is drawn in a plain grey while the preview shows, so its colours read.
+            shell_opacity (float): How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays.
+            high_opacity (float): How opaque the high mesh is, 0 to 1, in its parts' colours or plain.
             cage (None | str | Unset): A cage, or null for the ray distances.
             material (None | str | Unset): The texture set of the low mesh, or null for the whole mesh.
      """
@@ -46,6 +52,10 @@ class ViewportBakePreview:
     reach: bool
     high_mesh: bool
     matches: bool
+    seams: bool
+    neutral: bool
+    shell_opacity: float
+    high_opacity: float
     cage: None | str | Unset = UNSET
     material: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -70,6 +80,14 @@ class ViewportBakePreview:
 
         matches = self.matches
 
+        seams = self.seams
+
+        neutral = self.neutral
+
+        shell_opacity = self.shell_opacity
+
+        high_opacity = self.high_opacity
+
         cage: None | str | Unset
         if isinstance(self.cage, Unset):
             cage = UNSET
@@ -92,6 +110,10 @@ class ViewportBakePreview:
             "reach": reach,
             "highMesh": high_mesh,
             "matches": matches,
+            "seams": seams,
+            "neutral": neutral,
+            "shellOpacity": shell_opacity,
+            "highOpacity": high_opacity,
         })
         if cage is not UNSET:
             field_dict["cage"] = cage
@@ -122,6 +144,14 @@ class ViewportBakePreview:
 
         matches = d.pop("matches")
 
+        seams = d.pop("seams")
+
+        neutral = d.pop("neutral")
+
+        shell_opacity = d.pop("shellOpacity")
+
+        high_opacity = d.pop("highOpacity")
+
         def _parse_cage(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -149,6 +179,10 @@ class ViewportBakePreview:
             reach=reach,
             high_mesh=high_mesh,
             matches=matches,
+            seams=seams,
+            neutral=neutral,
+            shell_opacity=shell_opacity,
+            high_opacity=high_opacity,
             cage=cage,
             material=material,
         )

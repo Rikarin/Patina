@@ -157,10 +157,13 @@ export class BakeStore {
     );
   }
 
-  /** Shows a finished bake on the mesh it was baked onto, in every client's viewport: the Server holds the choice. */
-  async showOnMesh(job: JobState): Promise<void> {
+  /**
+   * Shows a finished bake on the mesh it was baked onto, in every client's viewport: the Server holds the choice. With
+   * a map, that map alone on the mesh as it is stored, through the picture view (#149).
+   */
+  async showOnMesh(job: JobState, map: string | null = null): Promise<void> {
     const client = await this.api();
-    unwrap(await client.PUT('/api/v1/viewport/bake', { body: { job: job.id } }));
+    unwrap(await client.PUT('/api/v1/viewport/bake', { body: { job: job.id, map } }));
     this.viewportChanged.update(count => count + 1);
   }
 

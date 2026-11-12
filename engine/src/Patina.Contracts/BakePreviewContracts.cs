@@ -28,6 +28,27 @@ public sealed record ViewportBakePreview {
 
     /// <summary>Whether to colour the parts by which matched which, when parts are matched by name.</summary>
     public bool Matches { get; set; } = true;
+
+    /// <summary>
+    ///     Whether to draw the low mesh's hard edges that have no UV seam, where a tangent-space normal map shows a
+    ///     line.
+    /// </summary>
+    public bool Seams { get; set; } = true;
+
+    /// <summary>Whether the model is drawn in a plain grey while the preview shows, so its colours read.</summary>
+    public bool Neutral { get; set; } = true;
+
+    /// <summary>How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays.</summary>
+    public double ShellOpacity { get; set; } = 0.12;
+
+    /// <summary>How opaque the high mesh is, 0 to 1, in its parts' colours or plain.</summary>
+    public double HighOpacity { get; set; } = 0.25;
+
+    /// <summary>What is wrong, or null.</summary>
+    public string? Problem() =>
+        ShellOpacity is < 0 or > 1 || !double.IsFinite(ShellOpacity) ? "The shell's opacity must be 0 to 1."
+        : HighOpacity is < 0 or > 1 || !double.IsFinite(HighOpacity) ? "The high mesh's opacity must be 0 to 1."
+        : Options.Rays.Problem();
 }
 
 /// <summary>

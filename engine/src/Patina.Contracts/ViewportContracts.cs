@@ -332,7 +332,11 @@ public sealed record ViewportMapPaths(
 
 /// <summary>Asks the viewport to show a finished bake on the mesh it was baked onto.</summary>
 /// <param name="Job">The bake's job.</param>
-public sealed record ViewportBakeRequest(string Job);
+/// <param name="Map">
+///     One of its maps to show alone on the mesh as stored, through the picture view, such as <c>normal</c> or
+///     <c>ao</c>; or null for the normal and occlusion maps on the mesh's material (#149).
+/// </param>
+public sealed record ViewportBakeRequest(string Job, string? Map = null);
 
 /// <summary>
 ///     Asks the viewport to show a graph on the mesh it is showing, or on the display's shape with none, as it stands

@@ -200,7 +200,7 @@ static class ViewportMapEndpoints {
         CancellationToken cancellationToken
     ) {
         if (request.Low.Length > 0) {
-            if (request.Options.Rays.Problem() is { } wrong) {
+            if (request.Problem() is { } wrong) {
                 return TypedResults.Problem(wrong, statusCode: Refused);
             }
 
@@ -252,23 +252,32 @@ static class ViewportMapEndpoints {
             return TypedResults.Problem($"Job '{request.Job}' has not finished.", statusCode: Refused);
         }
 
-        if (job.Bake!.Options.Space != "tangent") {
+        string? Of(string map) => result.Maps.FirstOrDefault(file => file.Map == map)?.Path;
+
+        var tangent = job.Bake!.Options.Space == "tangent";
+        if (request.Map is { } wanted && Of(wanted) is null) {
+            return TypedResults.Problem($"Job '{request.Job}' made no '{wanted}' map.", statusCode: Missing);
+        }
+
+        // ⚠ One map alone is shown as stored, which any map can be; on the material only a tangent space normal reads.
+        if (!tangent && request.Map is null) {
             return TypedResults.Problem(
                 "This bake is in object space, and the viewport reads tangent-space maps.",
                 statusCode: Refused
             );
         }
 
-        string? Of(string map) => result.Maps.FirstOrDefault(file => file.Map == map)?.Path;
-
         try {
-            var maps = new ViewportMapPaths(Normal: Of("normal"), Occlusion: Of("ao"));
-            var hashed = await Task.Run(() => Hashed(maps), cancellationToken);
+            var maps = tangent ? new ViewportMapPaths(Normal: Of("normal"), Occlusion: Of("ao")) : new();
+            var (hashed, alone) = await Task.Run(
+                () => (Hashed(maps), request.Map is { } map ? Hash(Of(map)) : null),
+                cancellationToken
+            );
             if (!File.Exists(job.Bake.Low)) {
                 return TypedResults.Problem($"There is no file at '{job.Bake.Low}'.", statusCode: Missing);
             }
 
-            session.Show(job.Bake.Low, hashed);
+            session.Show(job.Bake.Low, hashed, alone);
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
             return TypedResults.Problem(e.Message, statusCode: Missing);

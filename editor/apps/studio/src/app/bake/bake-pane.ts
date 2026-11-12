@@ -56,10 +56,23 @@ const ColourSourceNames: Readonly<Record<string, string>> = {
   texture: 'A picture'
 };
 /** What a preview can draw, each on its own switch. */
-const PreviewParts: readonly { key: 'reach' | 'highMesh' | 'matches'; label: string; about: string }[] = [
+const PreviewParts: readonly { key: PreviewPart; label: string; about: string }[] = [
   { key: 'reach', label: 'Reach', about: 'The cage, or the ray distances, as a shell with a ray from each point.' },
   { key: 'highMesh', label: 'High poly', about: 'The high poly meshes, see-through.' },
-  { key: 'matches', label: 'Matches', about: 'Each part name in its own color on both meshes.' }
+  { key: 'matches', label: 'Matches', about: 'Each part name in its own color on both meshes.' },
+  {
+    key: 'seams',
+    label: 'Seams',
+    about: 'Hard edges with no UV seam, in magenta: a tangent-space normal map shows a line along them.'
+  },
+  { key: 'neutral', label: 'Neutral', about: 'Draws the model plain grey while the preview shows, so its colors read.' }
+];
+type PreviewPart = 'reach' | 'highMesh' | 'matches' | 'seams' | 'neutral';
+
+/** How opaque the preview draws its see-through parts. */
+const PreviewOpacities: readonly { key: 'shell' | 'high'; label: string; about: string }[] = [
+  { key: 'shell', label: 'Shell', about: 'How opaque the shell of the reach is. Its edges and rays stay as they are.' },
+  { key: 'high', label: 'High poly', about: 'How opaque the high poly meshes are.' }
 ];
 
 const Spaces = [
@@ -488,9 +501,29 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   </label>
                 }
               </div>
+              @for (opacity of previewOpacities; track opacity.key) {
+                <div class="flex items-center gap-2" [title]="opacity.about">
+                  <span class="text-foreground-muted w-20 shrink-0 text-xs">{{ opacity.label }}</span>
+                  <xui-slider
+                    class="min-w-0 flex-1"
+                    labelStepSize="0"
+                    [attr.aria-label]="opacity.label + ' opacity'"
+                    [attr.data-testid]="'bake-preview-opacity-' + opacity.key"
+                    [max]="1"
+                    [min]="0"
+                    [stepSize]="0.01"
+                    [value]="settings.previewOpacity()[opacity.key]"
+                    (valueChange)="setPreviewOpacity(opacity.key, $event)"
+                  />
+                  <span class="readout w-12 shrink-0 text-end text-xs">{{
+                    share(settings.previewOpacity()[opacity.key])
+                  }}</span>
+                </div>
+              }
               <p class="text-foreground-muted text-xs">
                 Blue is where the rays start, with a line out to the front distance and orange in to the rear. Parts
                 matched by name share a color; red matched no high part, so its rays strike all of the high mesh.
+                Magenta is a hard edge with no UV seam.
               </p>
               @if (settings.preview(); as state) {
                 @if (state.parts.length > 0) {
@@ -931,6 +964,22 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 </li>
               }
             </ul>
+            <div class="flex flex-wrap items-center gap-0.5" role="group" aria-label="One map alone on the low mesh">
+              <span class="text-foreground-muted me-1 text-xs">On the mesh</span>
+              @for (map of result.maps; track map.map) {
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  [attr.data-testid]="'bake-on-mesh-' + map.map"
+                  [title]="'The ' + label(map.map) + ' map alone on the low mesh, as it is stored'"
+                  (click)="showOnMesh(each, map.map)"
+                >
+                  {{ label(map.map) }}
+                </button>
+              }
+            </div>
             @if (result.log.length) {
               <details data-testid="bake-log">
                 <summary class="text-foreground-muted cursor-pointer text-xs">Log</summary>
@@ -1033,6 +1082,7 @@ export class BakePane {
   protected readonly colourSources = ColourSources;
   protected readonly colourSourceName = (value: string) => ColourSourceNames[value] ?? value;
   protected readonly previewParts = PreviewParts;
+  protected readonly previewOpacities = PreviewOpacities;
   protected readonly pathFields: readonly { key: PathField; label: string; placeholder: string }[] = [
     { key: 'cage', label: 'Cage', placeholder: 'None: rays start on the low poly mesh' },
     { key: 'skewMap', label: 'Skew map', placeholder: 'None: the skew applies everywhere' },
@@ -1189,8 +1239,12 @@ export class BakePane {
     }
   }
 
-  protected showInPreview(key: 'reach' | 'highMesh' | 'matches', on: boolean): void {
+  protected showInPreview(key: PreviewPart, on: boolean): void {
     this.settings.previewShows.update(shows => ({ ...shows, [key]: on }));
+  }
+
+  protected setPreviewOpacity(key: 'shell' | 'high', value: number): void {
+    this.settings.previewOpacity.update(opacity => ({ ...opacity, [key]: value }));
   }
 
   /** A part of the preview's key: how many faces each side has, or which side has none. */
@@ -1273,10 +1327,10 @@ export class BakePane {
     await this.settings.bake();
   }
 
-  protected async showOnMesh(job: JobState): Promise<void> {
+  protected async showOnMesh(job: JobState, map: string | null = null): Promise<void> {
     this.refused.set(null);
     try {
-      await this.store.showOnMesh(job);
+      await this.store.showOnMesh(job, map);
     } catch (error) {
       this.refused.set(messageOf(error));
     }

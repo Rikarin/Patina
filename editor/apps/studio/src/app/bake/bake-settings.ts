@@ -178,8 +178,14 @@ export class BakeSettings {
   /** Whether the viewport shows the bake's setup. The Server holds it, so another client sees the same. */
   readonly previewing = computed(() => (this.preview()?.preview ?? null) !== null);
 
-  /** What of the setup to draw: the reach, the high mesh and the matched parts. */
-  readonly previewShows = signal({ reach: true, highMesh: true, matches: true });
+  /**
+   * What of the setup to draw: the reach, the high mesh, the matched parts and the hard edges with no UV seam, and
+   * whether the model is drawn plain grey under them.
+   */
+  readonly previewShows = signal({ reach: true, highMesh: true, matches: true, seams: true, neutral: true });
+
+  /** How opaque the shell of the reach and the high mesh are drawn, 0 to 1. */
+  readonly previewOpacity = signal({ shell: 0.12, high: 0.25 });
 
   /** Why the setup could not be shown, or null. */
   readonly previewFailure = signal<string | null>(null);
@@ -196,6 +202,7 @@ export class BakeSettings {
     }
 
     const shows = this.previewShows();
+    const opacity = this.previewOpacity();
     return {
       high: this.high(),
       low,
@@ -204,7 +211,11 @@ export class BakeSettings {
       options: settings.options,
       reach: shows.reach,
       highMesh: shows.highMesh,
-      matches: shows.matches
+      matches: shows.matches,
+      seams: shows.seams,
+      neutral: shows.neutral,
+      shellOpacity: opacity.shell,
+      highOpacity: opacity.high
     };
   });
 

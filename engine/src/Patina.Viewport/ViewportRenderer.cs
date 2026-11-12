@@ -152,6 +152,12 @@ public sealed class ViewportRenderer : IDisposable {
     /// <param name="lines">Lines, two vertices each, laid out the same.</param>
     public void SetOverlay(float[] triangles, float[] lines) => wire.SetOverlay(triangles, lines);
 
+    /// <summary>
+    ///     Whether the lit view draws the model in clay, so that shapes laid over it, such as a bake's preview, read
+    ///     against plain grey (#149). Every other view is left as it is asked for.
+    /// </summary>
+    public bool Neutral { get; set; }
+
     /// <summary>The adapter's name, for logs.</summary>
     public string Adapter => device.Adapter.Name;
 
@@ -556,7 +562,7 @@ public sealed class ViewportRenderer : IDisposable {
             .Set("lightColor", new Vector3(1.2f, 1.15f, 1.1f))
             .Set("environmentYaw", shading.EnvironmentRotation)
             .Set("environmentMipCount", (float)environment.Prefiltered.LevelCount)
-            .Set("view", shading.ViewNumber)
+            .Set("view", Neutral && shading.View == ViewportView.Lit ? (float)ViewportView.Clay : shading.ViewNumber)
             .Set("pictureLane", (float)Math.Clamp(shading.PictureLane, 0, 4))
             .Set("pictureScale", shading.PictureScale)
             .Set("densityTarget", Math.Max(shading.DensityTarget, 0f))
