@@ -35,6 +35,8 @@ export class BakeSettings {
   private readonly bakes = inject(BakeStore);
   private timer: ReturnType<typeof setTimeout> | null = null;
   private pending: { project: string; bake: ProjectBakeSettings } | null = null;
+  /** The last write sent, which the next waits for. */
+  private writing: Promise<void> = Promise.resolve();
 
   /** Why the last write of the settings failed, or null. */
   readonly failure = signal<string | null>(null);
@@ -316,16 +318,22 @@ export class BakeSettings {
       return;
     }
 
-    try {
-      await this.project.setBake(pending.project, pending.bake);
-      this.failure.set(null);
-    } catch (error) {
-      this.failure.set(messageOf(error));
-    } finally {
-      if (this.pending === pending) {
-        this.pending = null;
+    // ⚠ One write at a time, in the order they were made. Two requests in flight at once can reach the Server in
+    // either order, and an older write that lands last puts back what the newer changed (bake.spec's flake).
+    const write = this.writing.then(async () => {
+      try {
+        await this.project.setBake(pending.project, pending.bake);
+        this.failure.set(null);
+      } catch (error) {
+        this.failure.set(messageOf(error));
+      } finally {
+        if (this.pending === pending) {
+          this.pending = null;
+        }
       }
-    }
+    });
+    this.writing = write;
+    await write;
   }
 
   /** One request per texture set to bake, or one for the whole mesh when it has none. */

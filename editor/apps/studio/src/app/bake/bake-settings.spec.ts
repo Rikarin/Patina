@@ -186,6 +186,32 @@ describe('BakeSettings', () => {
     expect(written[0]?.bake.options.rays.rear).toBe(0.05);
   });
 
+  it('writes an edit made while the last was being written after it, so the older never lands last', async () => {
+    vi.useFakeTimers();
+    const texturing = document('Crate', 'texturing', null, true);
+    const { settings, project } = setup([texturing], texturing);
+    const sent: number[] = [];
+    const answers: (() => void)[] = [];
+    project.setBake = (_path: string, bake: ProjectBakeSettings) => {
+      sent.push(bake.options.occlusion.rays);
+      return new Promise<void>(resolve => answers.push(resolve));
+    };
+
+    settings.set(options => ({ ...options, occlusion: { ...options.occlusion, rays: 32 } }));
+    await vi.advanceTimersByTimeAsync(1_000);
+    settings.set(options => ({ ...options, occlusion: { ...options.occlusion, rays: 128 } }));
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    // The first is still on its way, so the second waits for it rather than racing it to the Server.
+    expect(sent).toEqual([32]);
+    answers[0]?.();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sent).toEqual([32, 128]);
+    answers[1]?.();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settings.options()?.occlusion.rays).toBe(128);
+  });
+
   it('bakes each ticked texture set into a folder of its own, from the high meshes in order', async () => {
     const sets = [document('Body', 'texturing', 'Body', true), document('Strap', 'texturing', 'Strap', true)];
     const { settings, started } = setup(sets, sets[0]);
