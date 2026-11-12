@@ -93,6 +93,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
             ? meshes.Shown(pick.Mesh, isolatedParts, isolatedMaterials)
             : (shelf.Projection, null);
         var found = through.TryHit(ray, out var hit);
+        var triangle = found ? triangles?[hit.Triangle] ?? hit.Triangle : -1;
         var box = shelf.Projection.Bounds;
         IReadOnlyList<float> extent = [..Numbers(box.Minimum), ..Numbers(box.Maximum)];
         return new() {
@@ -101,12 +102,13 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
                 ? new(
                     true,
                     wire,
-                    triangles?[hit.Triangle] ?? hit.Triangle,
+                    triangle,
                     hit.Coordinate.X,
                     hit.Coordinate.Y,
                     Numbers(hit.Point),
                     extent,
-                    Numbers(Facing(through, hit.Triangle, ray.Direction))
+                    Numbers(Facing(through, hit.Triangle, ray.Direction)),
+                    shelf.Geometry.PartOf(triangle) is { Length: > 0 } part ? part : null
                 )
                 : new(false, wire, Bounds: extent)
         };

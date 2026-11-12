@@ -278,6 +278,8 @@ export class PaintStore {
   readonly symmetry = signal<StackSymmetry | null>(null);
   /** How much of the mesh a click of the fill tool takes. */
   readonly fillMode = signal<FillMode>('polygon');
+  /** The layer whose meshes a click on the model takes or leaves (#110), or null. */
+  readonly pickingPart = signal<string | null>(null);
   /** Whether the fill tool takes what is under a click, or what a rectangle or a lasso holds. */
   readonly fillShape = signal<FillShape>('click');
   /** Whether a rectangle or a lasso in the viewport also fills what the camera cannot see inside it. */
@@ -800,6 +802,33 @@ export class PaintStore {
     if (added) {
       this.layer.set(added.layer.id);
       this.masking.set(false);
+    }
+  }
+
+  /**
+   * Takes the named mesh under a click on the model into the meshes of the layer {@link pickingPart} names, or out of
+   * them (#110). The last one stays, as it does in the list, since none at all is the whole model.
+   */
+  async togglePartOnMesh(stamp: StackStamp, aim: Aim): Promise<void> {
+    const layer = this.layers().find(row => row.layer.id === this.pickingPart())?.layer;
+    if (!layer) {
+      return;
+    }
+
+    try {
+      const [hit, parts] = await Promise.all([this.picked(stamp, aim), this.meshParts()]);
+      const part = hit.found ? hit.part : null;
+      if (!part || !parts.includes(part)) {
+        return;
+      }
+
+      const held = layer.mask.meshParts?.length ? layer.mask.meshParts : parts;
+      const kept = parts.filter(name => (name === part ? !held.includes(part) : held.includes(name)));
+      if (kept.length > 0) {
+        await this.keepToMeshes(layer, kept.length === parts.length ? [] : kept);
+      }
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
     }
   }
 

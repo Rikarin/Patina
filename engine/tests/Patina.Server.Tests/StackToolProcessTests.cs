@@ -53,7 +53,7 @@ public sealed partial class StackProcessTests {
     ///     An outline fills what it holds (#129): a small box at the middle of the picture takes a few triangles, a box
     ///     round the whole housing takes every flat it sees, and the same box filling through takes the far side too. A
     ///     click with four copies round the housing's axis fills four of its eight flats, and an outline sent open is
-    ///     refused.
+    ///     refused. A pick says which named mesh it met (#110).
     /// </summary>
     [Fact]
     public async Task A_polygon_fill_takes_what_an_outline_holds_and_its_symmetric_copies() {
@@ -121,6 +121,15 @@ public sealed partial class StackProcessTests {
         );
         Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, refused.StatusCode);
         Assert.Contains(Api.Refusals.BrushRefused, await refused.Content.ReadAsStringAsync(deadline.Token));
+        // A pick names the mesh it met, one the stack's own list has, which a layer kept to some meshes takes (#110).
+        var picked = await PickAsync(0.5, 0.5, deadline.Token);
+        var parts = await http.GetFromJsonAsync(
+            $"/api/v1/stacks/{state.Id}/mesh-parts",
+            ContractsJsonContext.Default.StackMeshParts,
+            deadline.Token
+        );
+        Assert.Equal("housing_low", picked.Part);
+        Assert.Contains(picked.Part, parts!.Parts);
     }
 
     /// <summary>

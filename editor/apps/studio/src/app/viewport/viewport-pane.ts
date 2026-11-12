@@ -391,6 +391,7 @@ export class ViewportPane implements AfterViewInit {
       this.paints() ||
       this.paint.picking() !== null ||
       this.paint.placing() !== null ||
+      this.paint.pickingPart() !== null ||
       (this.paint.worn() && (this.paint.tool() === 'picker' || this.paint.finding()))
   );
   private panning = false;
@@ -690,8 +691,13 @@ export class ViewportPane implements AfterViewInit {
       () => {
         this.gesture.cancel();
         this.paint.placing.set(null);
+        this.paint.pickingPart.set(null);
       },
-      () => this.gesture.points().length > 0 || this.paint.picking() !== null || this.paint.placing() !== null
+      () =>
+        this.gesture.points().length > 0 ||
+        this.paint.picking() !== null ||
+        this.paint.placing() !== null ||
+        this.paint.pickingPart() !== null
     );
     handle(
       'finishPath',
@@ -701,6 +707,12 @@ export class ViewportPane implements AfterViewInit {
   }
 
   protected press(event: PointerEvent): void {
+    // A click takes the mesh under it into the layer's meshes, or out of them (#110).
+    if (this.paint.pickingPart() !== null && event.button === 0) {
+      void this.paint.togglePartOnMesh(this.stamp(event), this.aim());
+      return;
+    }
+
     if (this.paint.finding() && event.button === 0) {
       void this.paint.findLayerOnMesh(this.stamp(event), this.aim());
       return;

@@ -7418,6 +7418,11 @@ export interface components {
        *     it, and a path drawn through it keeps to faces that turn the same way.
        */
       normal?: null | number[];
+      /**
+       * @description The named mesh it met, as the model names it, which a layer kept to some meshes takes or leaves; null when the
+       *     model names none.
+       */
+      part?: null | string;
     };
     /** @description Asks what is under a position in the viewport. */
     ViewportPickRequest: {

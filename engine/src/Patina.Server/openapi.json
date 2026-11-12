@@ -19260,6 +19260,13 @@
               "format": "float"
             },
             "description": "The face it met, as a unit direction out of the side the camera sees: three numbers. A decal placed there faces\nit, and a path drawn through it keeps to faces that turn the same way."
+          },
+          "part": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The named mesh it met, as the model names it, which a layer kept to some meshes takes or leaves; null when the\nmodel names none."
           }
         },
         "description": "What a position in the viewport landed on."

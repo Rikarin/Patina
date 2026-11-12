@@ -39,4 +39,33 @@ public sealed class ViewportShownTests : IDisposable {
         Assert.All(back.Indices, corner => Assert.Equal(0f, back.Positions[corner].Z));
         Assert.Equal(6, back.Indices.Length);
     }
+
+    /// <summary>
+    ///     Each triangle knows the named mesh it comes from, in the whole model and in one texture set of it, which is
+    ///     what a pick says a layer kept to some meshes takes or leaves (#110).
+    /// </summary>
+    [Fact]
+    public void Each_triangle_names_the_mesh_it_comes_from() {
+        var path = Path.Combine(folder.FullName, "named.obj");
+        File.WriteAllLines(
+            path,
+            [
+                "v 0 0 1", "v 1 0 1", "v 1 1 1", "v 0 1 1",
+                "v 0 0 0", "v 1 0 0", "v 1 1 0", "v 0 1 0",
+                "vt 0 0", "vt 0.4 0", "vt 0.4 1", "vt 0 1",
+                "vt 0.6 0", "vt 1 0", "vt 1 1", "vt 0.6 1",
+                "o lid", "usemtl metal", "f 1/1 2/2 3/3 4/4",
+                "o box", "usemtl wood", "f 5/5 6/6 7/7 8/8",
+                "o hinge", "usemtl metal", "f 1/1 2/2 3/3"
+            ]
+        );
+
+        var whole = ViewportGeometry.Read(path);
+        var metal = ViewportGeometry.Read(path, "metal");
+
+        Assert.Equal(["lid", "lid", "box", "box", "hinge"], Enumerable.Range(0, 5).Select(whole.PartOf));
+        Assert.Equal(["lid", "lid", "hinge"], Enumerable.Range(0, 3).Select(metal.PartOf));
+        Assert.Null(whole.PartOf(5));
+        Assert.Null(whole.PartOf(-1));
+    }
 }

@@ -261,6 +261,10 @@ public sealed record ViewportPickRequest(
 ///     The face it met, as a unit direction out of the side the camera sees: three numbers. A decal placed there faces
 ///     it, and a path drawn through it keeps to faces that turn the same way.
 /// </param>
+/// <param name="Part">
+///     The named mesh it met, as the model names it, which a layer kept to some meshes takes or leaves; null when the
+///     model names none.
+/// </param>
 public sealed record ViewportPick(
     bool Found,
     StackView View,
@@ -269,7 +273,8 @@ public sealed record ViewportPick(
     float V = 0f,
     IReadOnlyList<float>? Position = null,
     IReadOnlyList<float>? Bounds = null,
-    IReadOnlyList<float>? Normal = null
+    IReadOnlyList<float>? Normal = null,
+    string? Part = null
 );
 
 /// <summary>

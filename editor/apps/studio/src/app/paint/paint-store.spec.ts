@@ -1255,6 +1255,52 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     expect(masks()[1]?.colours).toEqual([[1, 0.001, 0]]);
   });
 
+  it('takes the mesh under a click into the layer, or out of it, and keeps the last one (#110)', async () => {
+    const { store, bodies, server } = await onMesh();
+    server.reply = (_method, path) => {
+      if (path.endsWith('/viewport/pick')) {
+        return Response.json({ found: true, view: PickedView, u: 0.5, v: 0.5, part: 'lid' });
+      }
+
+      if (path.endsWith('/mesh-parts')) {
+        return Response.json({ parts: ['lid', 'box', 'hinge'] });
+      }
+
+      return path.endsWith('/mesh-mask') ? Response.json({ parts: [], asset: 'parts.png' }) : null;
+    };
+    const id = store.state()?.layers[0]?.id ?? '';
+    const keep = (parts: string[] | undefined) =>
+      store.state.update(state =>
+        state
+          ? {
+              ...state,
+              layers: state.layers.map(layer =>
+                layer.id === id ? { ...layer, mask: { ...layer.mask, meshParts: parts ?? null } } : layer
+              )
+            }
+          : state
+      );
+    const sent = () =>
+      bodies
+        .flatMap(body => (body as { commands: { meshMask?: { parts: string[] } }[] }).commands)
+        .map(c => c.meshMask);
+    store.pickingPart.set(id);
+
+    keep(undefined);
+    await store.togglePartOnMesh({ x: 50, y: 50, pressure: 1 }, aim);
+    await vi.waitFor(() => expect(sent()).toHaveLength(1));
+    expect(sent()[0]?.parts).toEqual(['box', 'hinge']);
+
+    keep(['box']);
+    await store.togglePartOnMesh({ x: 50, y: 50, pressure: 1 }, aim);
+    await vi.waitFor(() => expect(sent()).toHaveLength(2));
+    expect(sent()[1]?.parts).toEqual(['lid', 'box']);
+
+    keep(['lid']);
+    await store.togglePartOnMesh({ x: 50, y: 50, pressure: 1 }, aim);
+    expect(sent()).toHaveLength(2);
+  });
+
   it('fills nothing where the viewport draws nothing under a click, as when an isolation hides it (#136)', async () => {
     const test = await onMesh();
     const { store, bodies, server } = test;

@@ -32,13 +32,20 @@ readonly record struct ViewportMaterial(ModelMaterialFactors Factors, ModelMater
 /// <param name="Indices">Three corners per triangle.</param>
 /// <param name="Bounds">The box round it, which the orbit camera frames.</param>
 /// <param name="HasCoordinates">Whether it has a layout at all.</param>
+/// <param name="TriangleParts">The named mesh each triangle comes from, in order, or null where it was not kept.</param>
 public sealed record ViewportGeometry(
     Vector3[] Positions,
     Vector2[] Coordinates,
     int[] Indices,
     BoundingBox Bounds,
-    bool HasCoordinates
+    bool HasCoordinates,
+    IReadOnlyList<string>? TriangleParts = null
 ) {
+    /// <summary>The named mesh a triangle comes from, or null when it is not known.</summary>
+    /// <param name="triangle">The triangle, as a ray through this geometry names it.</param>
+    public string? PartOf(int triangle) =>
+        TriangleParts is { } parts && triangle >= 0 && triangle < parts.Count ? parts[triangle] : null;
+
     /// <summary>Reads a model file.</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static ViewportGeometry Read(string path) => ViewportMesh.Read(path).Geometry();
@@ -303,7 +310,11 @@ sealed class ViewportMesh {
                     ..Parts.Where(part => part.Material == index)
                         .SelectMany(part => Indices.Skip(part.FirstIndex).Take(part.IndexCount))
                         .Select(static corner => (int)corner)
-                ]
+                ],
+                TriangleParts = Named(
+                    Parts.Where(part => part.Material == index),
+                    Parts.Where(part => part.Material == index).Sum(static part => part.IndexCount) / 3
+                )
             };
     }
 
@@ -318,7 +329,23 @@ sealed class ViewportMesh {
             coordinates[vertex] = new(Vertices[at + CoordinateOffset], Vertices[at + CoordinateOffset + 1]);
         }
 
-        return new(positions, coordinates, [..Indices.Select(static index => (int)index)], Bounds, HasCoordinates);
+        return new(
+            positions,
+            coordinates,
+            [..Indices.Select(static index => (int)index)],
+            Bounds,
+            HasCoordinates,
+            Named(Parts, Indices.Length / 3)
+        );
+    }
+
+    /// <summary>
+    ///     The name of each triangle's mesh, for parts whose indices are laid end to end in this order, as both kinds of
+    ///     geometry lay them. Null when they do not add up to every triangle, since a name would then be another's.
+    /// </summary>
+    static string[]? Named(IEnumerable<ViewportPart> parts, int triangles) {
+        string[] names = [..parts.SelectMany(static part => Enumerable.Repeat(part.Name, part.IndexCount / 3))];
+        return names.Length == triangles ? names : null;
     }
 
     /// <summary>This mesh with a tangent at every vertex, split wherever two corners do not agree on one.</summary>

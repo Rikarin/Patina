@@ -25,6 +25,7 @@ import { MenuKeys } from '../core/menu-keys';
 import { diagnosticOf, messageOf } from '../core/messages';
 import { percent } from '../core/numbers';
 import { ProjectStore } from '../library/project-store';
+import { IsolationStore } from '../viewport/isolation-store';
 import { type DropZone, dropManyCommands, nudgeCommands } from './layer-drag';
 import { tagSwatch } from './layer-tags';
 import { MaterialUse } from './material-use';
@@ -978,6 +979,34 @@ const MaskMarks: Readonly<Record<string, string>> = {
     <ng-template #meshList>
       <div class="flex max-h-80 min-w-44 flex-col gap-1 overflow-auto p-1 text-sm" data-testid="layer-meshes">
         @if (meshLayer(); as layer) {
+          @if (parts().length > 0) {
+            <div class="flex flex-wrap gap-1 pb-1">
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                data-testid="layer-meshes-pick"
+                title="Each click on the model takes the mesh under it into this layer, or out of it"
+                [attr.aria-pressed]="store.pickingPart() === layer.id"
+                [variant]="store.pickingPart() === layer.id ? 'default' : 'ghost'"
+                (click)="store.pickingPart.set(store.pickingPart() === layer.id ? null : layer.id)"
+              >
+                {{ store.pickingPart() === layer.id ? 'Click the model…' : 'Pick on Mesh' }}
+              </button>
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="layer-meshes-isolate"
+                title="Shows only the meshes this layer is on in the viewport, or the whole model again"
+                [attr.aria-pressed]="hidesOthers(layer)"
+                (click)="hideOthers(layer)"
+              >
+                {{ hidesOthers(layer) ? 'Show All' : 'Hide Others' }}
+              </button>
+            </div>
+          }
           @for (part of parts(); track part) {
             <label class="flex items-center gap-2">
               <input
@@ -1400,6 +1429,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
 export class LayerStack {
   protected readonly store = inject(PaintStore);
   protected readonly project = inject(ProjectStore);
+  private readonly isolation = inject(IsolationStore);
 
   /** Why this texture set's mesh maps need baking again, or null: its own bake's word first, then the project's. */
   protected readonly staleBake = computed(() => {
@@ -1478,6 +1508,19 @@ export class LayerStack {
     setTimeout(() => {
       globalThis.document.querySelector<HTMLElement>('[data-testid=layer-meshes] input:not(:disabled)')?.focus();
     });
+  }
+
+  /** Whether the viewport shows only the meshes this layer is on, which is how geometry left out is hidden. */
+  protected hidesOthers(layer: StackLayer): boolean {
+    const shown = this.isolation.isolation().parts;
+    const kept = this.parts().filter(name => this.onPart(layer, name));
+    return shown.length > 0 && shown.length === kept.length && kept.every(name => shown.includes(name));
+  }
+
+  protected hideOthers(layer: StackLayer): void {
+    void (this.hidesOthers(layer)
+      ? this.isolation.showAll()
+      : this.isolation.showParts(this.parts().filter(name => this.onPart(layer, name))));
   }
 
   protected onPart(layer: StackLayer, part: string): boolean {
