@@ -10,7 +10,9 @@ namespace Patina.Server.Api;
 ///     touches no paint and leaves open documents open, with their undo.
 /// </summary>
 static class MeshReloadCheck {
-    /// <summary>Why reloading the project's mesh from a file would move something on it, or null when nothing would.</summary>
+    /// <summary>
+    ///     Why reloading the project's mesh from a file would move something on it, or null when nothing would.
+    /// </summary>
     /// <param name="library">The library.</param>
     /// <param name="worker">The Worker, which reads both meshes.</param>
     /// <param name="project">The project.</param>

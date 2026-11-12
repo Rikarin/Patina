@@ -2,7 +2,6 @@ using Patina.Bench;
 using Patina.Contracts;
 using Patina.Library;
 using System.Net;
-using System.Net.Http.Json;
 
 namespace Patina.Server.Tests;
 
@@ -41,9 +40,12 @@ public sealed partial class StackProcessTests {
         var yaml = await File.ReadAllTextAsync(Path.Combine(projectFolder, "project.yaml"), deadline.Token);
         var digest = LibraryFiles.Digest(held);
 
-        var relaid = Variant("relaid", text => text.Replace("vt 1 1", "vt 0.9 1", StringComparison.Ordinal));
+        var relaid = Variant(
+            "relaid",
+            static text => text.Replace("vt 1 1", "vt 0.9 1", StringComparison.Ordinal)
+        );
         await RefusedReloadAsync(project, relaid, "'Strap' is laid out differently", deadline.Token);
-        var renamed = Variant("renamed", text => text.Replace("Strap", "Belt", StringComparison.Ordinal));
+        var renamed = Variant("renamed", static text => text.Replace("Strap", "Belt", StringComparison.Ordinal));
         await RefusedReloadAsync(project, renamed, "materials", deadline.Token);
 
         // Asked to move paint under an open document, it refuses before the mesh is overwritten.
@@ -59,7 +61,10 @@ public sealed partial class StackProcessTests {
         Assert.Equal(yaml, await File.ReadAllTextAsync(Path.Combine(projectFolder, "project.yaml"), deadline.Token));
         Assert.Equal(digest, LibraryFiles.Digest(held));
 
-        var lifted = Path.Combine(Directory.CreateDirectory(Path.Combine(folder.FullName, "lifted")).FullName, "two.obj");
+        var lifted = Path.Combine(
+            Directory.CreateDirectory(Path.Combine(folder.FullName, "lifted")).FullName,
+            "two.obj"
+        );
         BakeFixture.WriteTwoMaterials(lifted, 0.5f);
         using (var reloaded = await ReloadAsync(project, lifted, deadline.Token)) {
             Assert.True(reloaded.IsSuccessStatusCode, await reloaded.Content.ReadAsStringAsync(deadline.Token));
@@ -69,7 +74,10 @@ public sealed partial class StackProcessTests {
         Assert.False(Directory.Exists(Path.Combine(projectFolder, LibraryLayout.PaintBackupFolder)));
         Assert.Contains((await StateAsync(state.Id, deadline.Token)).Layers, static layer => layer.Name == "Kept");
         await ActAsync(state.Id, "undo", deadline.Token);
-        Assert.DoesNotContain((await StateAsync(state.Id, deadline.Token)).Layers, static layer => layer.Name == "Kept");
+        Assert.DoesNotContain(
+            (await StateAsync(state.Id, deadline.Token)).Layers,
+            static layer => layer.Name == "Kept"
+        );
 
         string Variant(string name, Func<string, string> change) {
             var into = Directory.CreateDirectory(Path.Combine(folder.FullName, name)).FullName;

@@ -273,7 +273,9 @@ public sealed class IpcMessage {
 
     public MeshMovePaintAsk? MeshMovePaint { get; set; }
 
-    /// <summary>Whether a texture set keeps its layout, in the answer to <see cref="IpcTypes.MeshSameLayout" />.</summary>
+    /// <summary>
+    ///     Whether a texture set keeps its layout, in the answer to <see cref="IpcTypes.MeshSameLayout" />.
+    /// </summary>
     public bool? SameLayout { get; set; }
 
     /// <summary>The file for <see cref="IpcTypes.MeshMaterials" /> and <see cref="IpcTypes.MeshParts" />.</summary>

@@ -26,20 +26,10 @@ static class ProjectSettingsEndpoint {
         }
 
         var kept = request.SameLayout == true;
-        if (kept && request.Mesh is null) {
-            return TypedResults.Problem("Name the mesh to reload.", statusCode: StatusCodes.Status400BadRequest);
-        }
-
         var project = request.Project;
         try {
-            if (kept && await MeshReloadCheck.WhyItMovesAsync(library, worker, project, request.Mesh!, cancellationToken)
-                    is { } why) {
-                return Refusals.Problem(
-                    why,
-                    StatusCodes.Status409Conflict,
-                    Refusals.MeshLayoutChanged,
-                    new Dictionary<string, string> { ["reason"] = why }
-                );
+            if (kept && await MovesAsync(library, worker, request, cancellationToken) is { } refused) {
+                return refused;
             }
 
             var options = library.Contents(project).Unwrap;
@@ -60,18 +50,9 @@ static class ProjectSettingsEndpoint {
 
             // ⚠ Bringing a file of the same name overwrites the old mesh, and the paint is still on its layout. On the
             // same layout nothing moves, and open documents could not have paint moved under them.
-            var moves = !kept
-                && before.PreservePaint
-                && (request.Mesh is not null || again is not null)
-                && current is not null;
-
-            // ⚠ Refused before the mesh is overwritten: refused after, the project stood on the new mesh with its
-            // paint on the old layout.
-            if (moves && OpenOn(library, stacks, project, before) is { } open) {
-                throw new ProjectRefusedException($"Close '{open}' first: its paint is about to move.");
-            }
-
-            var moving = moves ? KeepOld(Held(current!.Path)!) : null;
+            var moving = !kept && (request.Mesh is not null || again is not null) && current is not null
+                ? Moving(library, stacks, project, before, Held(current.Path)!)
+                : null;
             var added = library.AddMesh(project, mesh, request.High ?? Held(current?.High));
             if (before.AutoUnwrap) {
                 added = await UnwrappedAsync(library, worker, project, added, before.Unwrap, cancellationToken);
@@ -99,6 +80,60 @@ static class ProjectSettingsEndpoint {
         ProjectMeshInfo? current
     ) =>
         before.AutoUnwrap && request.Mesh is null && before.Unwrap != options ? current?.Unwrapped?.From : null;
+
+    /// <summary>
+    ///     Why a reload asked to move nothing is refused before anything changes, or null when nothing on the mesh
+    ///     moves (#89).
+    /// </summary>
+    static async Task<ProblemHttpResult?> MovesAsync(
+        OpenLibrary library,
+        WorkerLink worker,
+        ProjectSettingsRequest request,
+        CancellationToken cancellationToken
+    ) {
+        if (request.Mesh is not { } mesh) {
+            return TypedResults.Problem("Name the mesh to reload.", statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        return await MeshReloadCheck.WhyItMovesAsync(
+            library,
+            worker,
+            request.Project,
+            mesh,
+            cancellationToken
+        ) is { } why
+            ? Refusals.Problem(
+                why,
+                StatusCodes.Status409Conflict,
+                Refusals.MeshLayoutChanged,
+                new Dictionary<string, string> { ["reason"] = why }
+            )
+            : null;
+    }
+
+    /// <summary>
+    ///     A copy of the mesh the paint is on, when Preserve Paint is to move it, or null. ⚠ Refused before the mesh is
+    ///     overwritten while a document is open: refused after, the project stood on the new mesh with its paint on
+    ///     the old layout.
+    /// </summary>
+    /// <exception cref="ProjectRefusedException">A texturing document of the project is open.</exception>
+    static string? Moving(
+        OpenLibrary library,
+        StackSessions stacks,
+        string project,
+        ProjectContents before,
+        string held
+    ) {
+        if (!before.PreservePaint) {
+            return null;
+        }
+
+        if (OpenOn(library, stacks, project, before) is { } open) {
+            throw new ProjectRefusedException($"Close '{open}' first: its paint is about to move.");
+        }
+
+        return KeepOld(held);
+    }
 
     /// <summary>The name of a texturing document of the project that is open, or null when none is.</summary>
     static string? OpenOn(OpenLibrary library, StackSessions stacks, string project, ProjectContents contents) {

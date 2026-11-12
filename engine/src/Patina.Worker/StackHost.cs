@@ -336,8 +336,10 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         readonly LayerStackPictures fill;
         readonly List<Applied> applied = [];
         readonly Dictionary<long, Applied> known = [];
+
         readonly Dictionary<string, (PaintProjection Over, PaintMeshSurface Surface)> surfaces =
             new(StringComparer.Ordinal);
+
         readonly Dictionary<string, IBrushMask> alphas = new(StringComparer.Ordinal);
         readonly Dictionary<string, PaintImage> pictures = new(StringComparer.Ordinal);
         readonly Dictionary<string, Dictionary<string, PaintImage>> composites = new(StringComparer.Ordinal);
