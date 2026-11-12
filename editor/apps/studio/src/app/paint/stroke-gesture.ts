@@ -9,7 +9,7 @@ export const DragTools: ReadonlySet<PaintTool> = new Set(['brush', 'eraser', 'sm
 const ClickReach = 3;
 
 /** How far the pointer moves before a lasso takes another corner, in the stroke's units. */
-const LassoStep = 2;
+const LassoStep = 4;
 
 /** The steps a line snaps to with Cmd or Ctrl held, in radians. */
 const SnapStep = Math.PI / 36;
