@@ -299,7 +299,16 @@ const PickLook = '…';
         }
         @if (gesture.points().length > 1) {
           <svg class="pointer-events-none absolute inset-0 size-full" data-testid="viewport-curve">
-            <polyline class="fill-none stroke-white/70" [attr.points]="curve()" />
+            @if (gesture.outlining()) {
+              <polygon
+                class="fill-white/10 stroke-white/80"
+                data-testid="viewport-outline"
+                stroke-dasharray="4 3"
+                [attr.points]="curve()"
+              />
+            } @else {
+              <polyline class="fill-none stroke-white/70" [attr.points]="curve()" />
+            }
           </svg>
         }
       }

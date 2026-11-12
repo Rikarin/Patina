@@ -53,7 +53,7 @@ static class StrokeShapes {
     ///     The copies a symmetry makes, through the model's centre or the mesh's origin, with a mirror's plane
     ///     moved along its axis by a share of the bounding radius.
     /// </summary>
-    static PaintSymmetryGroup? Symmetry(StackSymmetry? symmetry, BoundingBox bounds) {
+    public static PaintSymmetryGroup? Symmetry(StackSymmetry? symmetry, BoundingBox bounds) {
         if (symmetry is null) {
             return null;
         }

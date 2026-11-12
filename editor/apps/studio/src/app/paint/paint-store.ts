@@ -101,6 +101,12 @@ export type PaintTool = 'brush' | 'eraser' | 'smudge' | 'clone' | 'projection' |
 export type FillMode = 'triangle' | 'polygon' | 'part' | 'shell';
 
 /**
+ * How the fill tool chooses (#129): the piece under each click, or every piece inside a rectangle or a lasso drawn on
+ * the picture, which the stroke sends as one outline.
+ */
+export type FillShape = 'click' | 'rectangle' | 'lasso';
+
+/**
  * Where a clone reads from: a place on the map, 0 to 1 across and down. Relative keeps the step from it to where the
  * first stroke after it started, so later strokes read beside themselves; absolute reads from it at every stroke's start.
  */
@@ -267,6 +273,10 @@ export class PaintStore {
   readonly symmetry = signal<StackSymmetry | null>(null);
   /** How much of the mesh a click of the fill tool takes. */
   readonly fillMode = signal<FillMode>('polygon');
+  /** Whether the fill tool takes what is under a click, or what a rectangle or a lasso holds. */
+  readonly fillShape = signal<FillShape>('click');
+  /** Whether a rectangle or a lasso in the viewport also fills what the camera cannot see inside it. */
+  readonly fillThrough = signal(false);
   /** Where the clone tool reads from, or null until one is set. */
   readonly cloneSource = signal<CloneSource | null>(null);
   /** Whether the clone keeps its step from the first stroke after the source was set, or starts at the source each time. */
@@ -1343,6 +1353,29 @@ export class PaintStore {
     }
   }
 
+  /**
+   * Fills every piece of the mesh an outline holds, grown as the fill tool's mode says, as one undo step: a rectangle's
+   * corners or a lasso, on the viewport's picture or in the 2D view's texels (#129). Unless the tool fills through, the
+   * viewport takes only what it sees.
+   */
+  async fillOutline(outline: readonly StackStamp[], aim?: Aim): Promise<void> {
+    const layer = this.layer();
+    const [first] = outline;
+    if (!layer || !first || outline.length < 3 || !this.state()?.model.trim()) {
+      return;
+    }
+
+    this.startAction();
+    try {
+      const view = aim ? await this.pick(first, aim) : null;
+      this.strokes += 1;
+      const stroke = `fill-${Date.now()}-${this.strokes}`;
+      await this.send(stroke, layer, [...outline], false, view, 'fill', performance.now(), true);
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
   /** Where on the map a position on the viewport lands, or null off the mesh. */
   private async hitAt(stamp: StackStamp, aim: Aim): Promise<CloneSource | null> {
     const client = await this.api();
@@ -1508,7 +1541,8 @@ export class PaintStore {
     open: boolean,
     view: StackView | null,
     curve: 'free' | 'line' | 'path' | 'fill',
-    since: number
+    since: number,
+    outline = false
   ): Promise<void> {
     const tool = this.tool();
     const picture = this.screenPicture();
@@ -1517,7 +1551,8 @@ export class PaintStore {
       return;
     }
 
-    const symmetry = this.state()?.model.trim() && curve !== 'fill' ? this.symmetry() : null;
+    // A fill is copied as a brush is: a mirror fills the mirror image of what it takes.
+    const symmetry = this.state()?.model.trim() ? this.symmetry() : null;
     // A size in the screen's units is pixels of the 2D view as drawn, which the stroke takes as texels of the map.
     const brush = this.wholeBrush();
     const radius =
@@ -1567,6 +1602,8 @@ export class PaintStore {
         source,
         stencil: view && this.stencil() && tool !== 'projection' ? picture : null,
         fill: curve === 'fill' ? this.fillMode() : null,
+        outline,
+        through: outline && view !== null && this.fillThrough(),
         resume: curve === 'free' ? resume : null
       }))
     });

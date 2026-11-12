@@ -1098,6 +1098,8 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     channel: string;
     curve: string;
     fill: string | null;
+    outline: boolean;
+    through: boolean;
     symmetry: unknown;
     source: { kind: string; graph?: string; offset?: number[]; picture?: { image: string } } | null;
     stencil: { image: string } | null;
@@ -1131,15 +1133,89 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     return test;
   }
 
-  it('fills the piece of the mesh under a click as one stroke in its mode, with no symmetry', async () => {
+  it('fills the piece of the mesh under a click as one stroke in its mode, copied as a brush is', async () => {
     const { store, bodies } = await onMesh();
     store.tool.set('fill');
     store.fillMode.set('shell');
     store.symmetry.set({ kind: 'mirror', axis: 'x', centre: 'model', offset: 0, count: 2 });
     new StrokeGesture(store, () => aim).press({ x: 50, y: 25, pressure: 1 });
     await vi.waitFor(() => expect(sent(bodies)).toHaveLength(1));
-    expect(sent(bodies)[0]).toMatchObject({ curve: 'fill', fill: 'shell', source: null, stamps: [{ x: 50, y: 25 }] });
-    expect(sent(bodies)[0]?.symmetry).toBeNull();
+    expect(sent(bodies)[0]).toMatchObject({
+      curve: 'fill',
+      fill: 'shell',
+      source: null,
+      outline: false,
+      stamps: [{ x: 50, y: 25 }]
+    });
+    expect(sent(bodies)[0]?.symmetry).toMatchObject({ kind: 'mirror', axis: 'x' });
+  });
+
+  it('fills what a dragged rectangle holds as one outline of its four corners, through when asked (#129)', async () => {
+    const { store, bodies } = await onMesh();
+    store.tool.set('fill');
+    store.fillShape.set('rectangle');
+    const gesture = new StrokeGesture(store, () => aim);
+    gesture.press({ x: 10, y: 20, pressure: 1 });
+    gesture.move({ x: 30, y: 25, pressure: 1 });
+    gesture.move({ x: 40, y: 60, pressure: 1 });
+    expect(gesture.outlining()).toBe(true);
+    expect(gesture.points().map(point => [point.x, point.y])).toEqual([
+      [10, 20],
+      [40, 20],
+      [40, 60],
+      [10, 60]
+    ]);
+    gesture.release();
+    expect(gesture.points()).toEqual([]);
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(1));
+    expect(sent(bodies)[0]).toMatchObject({ curve: 'fill', outline: true, through: false });
+    expect(sent(bodies)[0]?.stamps.map(point => [point.x, point.y])).toEqual([
+      [10, 20],
+      [40, 20],
+      [40, 60],
+      [10, 60]
+    ]);
+
+    store.fillThrough.set(true);
+    gesture.press({ x: 10, y: 20, pressure: 1 });
+    gesture.move({ x: 40, y: 60, pressure: 1 });
+    gesture.release();
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(2));
+    expect(sent(bodies)[1]).toMatchObject({ outline: true, through: true });
+
+    // The 2D view has no camera, so nothing there is hidden.
+    const flat = new StrokeGesture(store, () => undefined);
+    flat.press({ x: 10, y: 20, pressure: 1 });
+    flat.move({ x: 40, y: 60, pressure: 1 });
+    flat.release();
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(3));
+    expect(sent(bodies)[2]).toMatchObject({ outline: true, through: false });
+  });
+
+  it('fills what a lasso holds, and a rectangle hardly dragged is a click (#129)', async () => {
+    const { store, bodies } = await onMesh();
+    store.tool.set('fill');
+    store.fillShape.set('lasso');
+    const gesture = new StrokeGesture(store, () => aim);
+    gesture.press({ x: 10, y: 10, pressure: 1 });
+    gesture.move({ x: 10.5, y: 10, pressure: 1 });
+    gesture.move({ x: 30, y: 10, pressure: 1 });
+    gesture.move({ x: 30, y: 30, pressure: 1 });
+    gesture.release();
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(1));
+    expect(sent(bodies)[0]).toMatchObject({ outline: true });
+    expect(sent(bodies)[0]?.stamps.map(point => [point.x, point.y])).toEqual([
+      [10, 10],
+      [30, 10],
+      [30, 30]
+    ]);
+
+    store.fillShape.set('rectangle');
+    gesture.press({ x: 50, y: 25, pressure: 1 });
+    gesture.move({ x: 51, y: 26, pressure: 1 });
+    gesture.release();
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(2));
+    expect(sent(bodies)[1]).toMatchObject({ outline: false, stamps: [{ x: 50, y: 25 }] });
   });
 
   it('fills nothing where the viewport draws nothing under a click, as when an isolation hides it (#136)', async () => {

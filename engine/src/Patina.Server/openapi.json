@@ -16094,7 +16094,9 @@
           "op",
           "open",
           "mask",
-          "curve"
+          "curve",
+          "outline",
+          "through"
         ],
         "type": "object",
         "properties": {
@@ -16219,6 +16221,16 @@
               "format": "float"
             },
             "description": "Where the brush already stands when this stroke carries on the one before it, as two numbers in the units of\nits stamps, or null. The stroke starts there without a stamp, as a pen lifted in the middle of one stroke and\nput down again: its first stamp comes a step along, so nothing is laid twice where the two meet, and a lazy\nbrush keeps its string. Only a free stroke carries one on; it is still an undo step of its own."
+          },
+          "outline": {
+            "type": "boolean",
+            "description": "With the fill curve, whether the stamps are one outline rather than clicks: a rectangle\u0027s four corners or a\nlasso, closed from the last back to the first, in the stamps\u0027 units. Every triangle it holds is filled, grown as\nFill says. It is sent whole, as one part with three corners at least.",
+            "default": false
+          },
+          "through": {
+            "type": "boolean",
+            "description": "With an outline through a view, whether what the camera cannot see inside it is filled too: the far side of the\nmesh, and what lies behind something nearer. False fills only what is seen. The atlas has no camera, so an\noutline there takes everything inside it.",
+            "default": false
           }
         },
         "description": "Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one\nStroke and they make one undo step, ended by one with Open false."

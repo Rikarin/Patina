@@ -306,6 +306,9 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         /// <summary>Whether its stamps are the clicks of a polygon fill, each laid where it is.</summary>
         public bool Fill { get; init; }
 
+        /// <summary>Whether that fill's stamps are one outline, filled from one stamp, rather than clicks.</summary>
+        public bool Outline { get; init; }
+
         public bool Done { get; set; }
     }
 
@@ -738,12 +741,11 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                     resume: StrokeShapes.Resume(part)
                 ),
                 part.Curve is "free" or "fill" ? null : new()
-            ) { Fill = part.Curve == "fill" };
+            ) { Fill = part.Curve == "fill", Outline = part.Outline };
             known[part.Id] = stroke;
             return stroke;
         }
 
-        /// <summary>Where a stroke's stamps land besides under themselves, which only a mesh can say.</summary>
         /// <summary>
         ///     The whole model's box, every texture set of it, or null with no model. ⚠ Not the set's own: a symmetry's
         ///     centre and a size in the model's units are the model's, and one set of a character is half of it.
@@ -847,6 +849,11 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
             if (stroke.Curve is { } curve) {
                 Bend(stroke.Stroke, curve, part);
+            } else if (stroke is { Fill: true, Outline: true }) {
+                // One stamp for the whole outline, which the placement holds: where it lands does not matter.
+                if (part.Stamps is [var first, ..]) {
+                    stroke.Stroke.Dab(new(first.X, first.Y), dirtied, first.Pressure);
+                }
             } else if (stroke.Fill) {
                 // Each click is a place of its own, and the stroke between two would fill whatever it passed over.
                 foreach (var stamp in part.Stamps) {

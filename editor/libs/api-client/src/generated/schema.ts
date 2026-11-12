@@ -5843,6 +5843,20 @@ export interface components {
        *     brush keeps its string. Only a free stroke carries one on; it is still an undo step of its own.
        */
       resume?: null | number[];
+      /**
+       * @description With the fill curve, whether the stamps are one outline rather than clicks: a rectangle's four corners or a
+       *     lasso, closed from the last back to the first, in the stamps' units. Every triangle it holds is filled, grown as
+       *     Fill says. It is sent whole, as one part with three corners at least.
+       * @default false
+       */
+      outline: boolean;
+      /**
+       * @description With an outline through a view, whether what the camera cannot see inside it is filled too: the far side of the
+       *     mesh, and what lies behind something nearer. False fills only what is seen. The atlas has no camera, so an
+       *     outline there takes everything inside it.
+       * @default false
+       */
+      through: boolean;
     };
     /** @description Takes a flattened group back to its children, which composite again. */
     StackCommandStackUnflattenLayer: {

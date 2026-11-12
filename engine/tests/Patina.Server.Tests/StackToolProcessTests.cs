@@ -50,6 +50,80 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
+    ///     An outline fills what it holds (#129): a small box at the middle of the picture takes a few triangles, a box
+    ///     round the whole housing takes every flat it sees, and the same box filling through takes the far side too. A
+    ///     click with four copies round the housing's axis fills four of its eight flats, and an outline sent open is
+    ///     refused.
+    /// </summary>
+    [Fact]
+    public async Task A_polygon_fill_takes_what_an_outline_holds_and_its_symmetric_copies() {
+        using var deadline = Deadline(300);
+        var (instance, state) = await StartAsync("Outline.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await BindMeshAsync(state.Id, deadline.Token);
+        using var frames = await WearAsync(instance, state.Id, deadline.Token);
+        var view = await AimAsync(0.5, 0.5, deadline.Token);
+
+        StackStroke Box(string name, float half, bool through) =>
+            new(
+                name,
+                "paint",
+                "baseColor",
+                new(1f),
+                Red,
+                [
+                    new(Picture / 2f - half, Picture / 2f - half),
+                    new(Picture / 2f + half, Picture / 2f - half),
+                    new(Picture / 2f + half, Picture / 2f + half),
+                    new(Picture / 2f - half, Picture / 2f + half)
+                ],
+                View: view,
+                Curve: "fill",
+                Fill: "triangle",
+                Outline: true,
+                Through: through
+            );
+
+        var click = new StackStroke(
+            "click",
+            "paint",
+            "baseColor",
+            new(1f),
+            Red,
+            [new(Picture * 0.3f, Picture / 2f)],
+            View: view,
+            Curve: "fill",
+            Fill: "polygon"
+        );
+
+        var small = await RedAfterAsync(state.Id, "small", Box("small", 10f, false), deadline.Token);
+        var seen = await RedAfterAsync(state.Id, "seen", Box("seen", Picture / 2f, false), deadline.Token);
+        var through = await RedAfterAsync(state.Id, "through", Box("through", Picture / 2f, true), deadline.Token);
+        var alone = await RedAfterAsync(state.Id, "alone", click, deadline.Token);
+        var turned = await RedAfterAsync(
+            state.Id,
+            "turned",
+            click with { Symmetry = new("radial", "y", Count: 4) },
+            deadline.Token
+        );
+
+        Assert.True(small > 100, $"A small box took {small} texels, so it missed the housing.");
+        Assert.True(seen > small * 3, $"The whole picture took {seen} texels against a small box's {small}.");
+        Assert.True(through > seen * 1.3, $"Filling through took {through} texels against {seen} seen.");
+        Assert.True(alone > 1000, $"The click took {alone} texels, so it missed.");
+        Assert.InRange(turned, alone * 3.6, alone * 4.4);
+
+        using var refused = await http.PostAsJsonAsync(
+            $"/api/v1/stacks/{state.Id}/commands",
+            new StackCommandBatch([Box("open", 10f, false) with { Open = true }]),
+            ContractsJsonContext.Default.StackCommandBatch,
+            deadline.Token
+        );
+        Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+        Assert.Contains(Api.Refusals.BrushRefused, await refused.Content.ReadAsStringAsync(deadline.Token));
+    }
+
+    /// <summary>
     ///     In the atlas: a picture paints its colours where it stands, a stencil's black half holds the brush back, a
     ///     clone copies what lies at its offset, and a smudge drags paint along and undoes to what was there.
     /// </summary>

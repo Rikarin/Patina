@@ -919,6 +919,16 @@ public sealed record StackPicture(
 ///     With the fill curve, how much of the mesh a click takes: <c>triangle</c>, <c>polygon</c> (the flat polygon it
 ///     is part of), <c>part</c> (the named mesh it belongs to) or <c>shell</c> (its UV island). It needs a mesh.
 /// </param>
+/// <param name="Outline">
+///     With the fill curve, whether the stamps are one outline rather than clicks: a rectangle's four corners or a
+///     lasso, closed from the last back to the first, in the stamps' units. Every triangle it holds is filled, grown as
+///     <paramref name="Fill" /> says. It is sent whole, as one part with three corners at least.
+/// </param>
+/// <param name="Through">
+///     With an outline through a view, whether what the camera cannot see inside it is filled too: the far side of the
+///     mesh, and what lies behind something nearer. False fills only what is seen. The atlas has no camera, so an
+///     outline there takes everything inside it.
+/// </param>
 /// <param name="Resume">
 ///     Where the brush already stands when this stroke carries on the one before it, as two numbers in the units of
 ///     its stamps, or null. The stroke starts there without a stamp, as a pen lifted in the middle of one stroke and
@@ -941,7 +951,9 @@ public sealed record StackStroke(
     StackStrokeSource? Source = null,
     StackPicture? Stencil = null,
     string? Fill = null,
-    IReadOnlyList<float>? Resume = null
+    IReadOnlyList<float>? Resume = null,
+    bool Outline = false,
+    bool Through = false
 ) : StackCommand;
 #pragma warning restore SK7005
 

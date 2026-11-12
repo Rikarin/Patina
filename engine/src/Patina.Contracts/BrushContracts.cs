@@ -301,7 +301,8 @@ public static class StackBrushes {
     }
 
     /// <summary>
-    ///     What is wrong with what a stroke paints with besides its brush and its symmetry: a fill's mode, its source,
+    ///     What is wrong with what a stroke paints with besides its brush and its symmetry: a fill's mode and outline, its
+    ///     source,
     ///     its stencil, and a mask asked to take a material or a clone, which has no such channel. Null when a Worker
     ///     can paint it.
     /// </summary>
@@ -309,6 +310,10 @@ public static class StackBrushes {
     public static string? PaintProblem(this StackStroke stroke) {
         if (stroke.Curve == "fill" && !Fills.Contains(stroke.Fill ?? string.Empty)) {
             return "A fill takes a triangle, a polygon, a mesh part or a UV shell.";
+        }
+
+        if (stroke.Outline && (stroke.Curve != "fill" || stroke.Open || stroke.Stamps.Count < 3)) {
+            return "An outline is a fill's, sent whole, with three corners at least.";
         }
 
         if (stroke.Resume is { } resume
