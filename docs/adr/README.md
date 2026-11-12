@@ -27,3 +27,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0023](0023-bake-shading.md): accepted: a bake shades its texture set beneath its layers, and a set says when its bake no longer fits its mesh or its UV set.
 - [0025](0025-stroke-control.md): accepted: a stroke carries the last one on from where its brush stood, a brush is pictured at a size of its own, and a material brush lays its maps as a fill does.
 - [0027](0027-packages.md): accepted: a package is a folder of text that evaluates where it is put, and a graph says what it is about in its own file.
+- [0031](0031-viewport-lens-and-reach.md): accepted: the viewport's lens is scaled to the model and it has no temporal filter, a stroke reaches what the viewport showed when it began, and a drawing of lines goes through the preview folder.
