@@ -5,10 +5,11 @@ using Patina.Server.Graphs;
 namespace Patina.Server.Viewport;
 
 /// <summary>
-///     Keeps the graph the viewport follows on the mesh (#244). It reads the graph session's events as any client would,
-///     and lays the graph on the mesh again after each evaluation, and after each change of selection when it shows the
-///     node the selection views. Any client can ask for this, so none has to rebuild it (plan §8). It holds nothing the
-///     Server does not: the following is the viewport's, and a show the following has moved past is dropped.
+///     Keeps the graph the viewport follows on the mesh (#244). It reads the graph session's events as any client
+///     would, and lays the graph on the mesh again after each evaluation, and after each change of selection when it
+///     shows the node the selection views. Any client can ask for this, so none has to rebuild it (plan §8). It holds
+///     nothing the Server does not: the following is the viewport's, and a show the following has moved past is
+///     dropped.
 /// </summary>
 public sealed class GraphFollower(
     ViewportSession viewport,
@@ -77,8 +78,9 @@ public sealed class GraphFollower(
     }
 
     /// <summary>
-    ///     Lays the graph on the mesh as it stands: the node its selection views alone, or its Output nodes. A graph with
-    ///     nothing to show, or a Worker that cannot show it now, leaves the mesh as it is until the next evaluation.
+    ///     Lays the graph on the mesh as it stands: the node its selection views alone, or its Output nodes. A graph
+    ///     with nothing to show, or a Worker that cannot show it now, leaves the mesh as it is until the next
+    ///     evaluation.
     /// </summary>
     /// <returns>The node shown alone, or null.</returns>
     async Task<int?> ShowAsync(GraphSession graph, bool node, long number, CancellationToken stoppingToken) {

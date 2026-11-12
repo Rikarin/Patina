@@ -79,12 +79,12 @@ public sealed class ViewportSession(
     /// <summary>The graph the viewport keeps up with, or null.</summary>
     ViewportFollow? following;
 
-    /// <summary>Goes up each time the following starts, stops or changes, so a follower can tell its own from a later one.</summary>
+    /// <summary>Goes up as the following starts, stops or changes, so a follower knows its own.</summary>
     long followings;
 
     TaskCompletionSource followChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    /// <summary>Counts changes to what lies on the mesh, for the frame header: a client that sees it move reads the state.</summary>
+    /// <summary>Counts changes to what lies on the mesh, for the frame header: a client then reads the state.</summary>
     long laid;
 
     int width = DefaultWidth;
@@ -326,7 +326,7 @@ public sealed class ViewportSession(
         Wake();
     }
 
-    /// <summary>The graph the viewport keeps up with, and the number of this following, to check a show against.</summary>
+    /// <summary>The graph the viewport keeps up with, and the number of this following, to check a show by.</summary>
     public (ViewportFollow? Following, long Number) Following {
         get {
             lock (changing) {
@@ -335,7 +335,7 @@ public sealed class ViewportSession(
         }
     }
 
-    /// <summary>Keeps a graph on the viewport from now on, or stops with null. Whatever lies on the mesh stays.</summary>
+    /// <summary>Keeps a graph on the viewport from now on, or stops with null. What lies on the mesh stays.</summary>
     public void Follow(ViewportFollow? graph) {
         lock (changing) {
             if (following is null && graph?.Graph is null) {
@@ -372,8 +372,9 @@ public sealed class ViewportSession(
     }
 
     /// <summary>
-    ///     Lays a followed graph's outputs on the mesh, or one node's picture with a node, if the following is still this
-    ///     one: a client that laid something else meanwhile keeps it. A viewport with no mesh takes the stand-in shape.
+    ///     Lays a followed graph's outputs on the mesh, or one node's picture with a node, if the following is still
+    ///     this one: a client that laid something else meanwhile keeps it. A viewport with no mesh takes the stand-in
+    ///     shape.
     /// </summary>
     /// <returns>Whether it was laid.</returns>
     public bool ShowFollowed(long number, string? standIn, GraphOnMesh shown) {
@@ -593,7 +594,7 @@ public sealed class ViewportSession(
                 Lens(camera, display.Display),
                 (request.Width ?? width, request.Height ?? height, 1d),
                 false,
-                lastInput
+                (lastInput, laid)
             );
         }
 
@@ -801,8 +802,7 @@ public sealed class ViewportSession(
                     Lens(camera, display.Display),
                     (width, height, scale.Value),
                     interacting,
-                    lastInput,
-                    laid
+                    (lastInput, laid)
                 ),
                     revision);
         }
@@ -872,8 +872,8 @@ public sealed class ViewportSession(
     }
 
     /// <summary>
-    ///     The header: magic, sequence, width, height, the newest input, render microseconds, the worn stack's revision,
-    ///     and how many times what lies on the mesh has changed, which tells a client when to read the state again.
+    ///     The header: magic, sequence, width, height, the newest input, render microseconds, the worn stack's
+    ///     revision, and how many times what lies on the mesh has changed, which tells a client to read the state.
     /// </summary>
     static byte[] Header(uint sequence, ViewportFrame frame, Work work) {
         var header = new byte[HeaderBytes];
@@ -882,10 +882,10 @@ public sealed class ViewportSession(
         BinaryPrimitives.WriteUInt32LittleEndian(span[4..], sequence);
         BinaryPrimitives.WriteUInt32LittleEndian(span[8..], (uint)frame.Width);
         BinaryPrimitives.WriteUInt32LittleEndian(span[12..], (uint)frame.Height);
-        BinaryPrimitives.WriteUInt32LittleEndian(span[16..], work.Input);
+        BinaryPrimitives.WriteUInt32LittleEndian(span[16..], work.Marks.Input);
         BinaryPrimitives.WriteUInt32LittleEndian(span[20..], (uint)(frame.RenderMilliseconds * 1000d));
         BinaryPrimitives.WriteUInt32LittleEndian(span[24..], (uint)work.Worn.Revision);
-        BinaryPrimitives.WriteUInt32LittleEndian(span[28..], (uint)work.Laid);
+        BinaryPrimitives.WriteUInt32LittleEndian(span[28..], (uint)work.Marks.Laid);
         return header;
     }
 
@@ -937,7 +937,6 @@ public sealed class ViewportSession(
         ViewportCamera Camera,
         (int Width, int Height, double Scale) Size,
         bool Interacting,
-        uint Input,
-        long Laid = 0
+        (uint Input, long Laid) Marks
     );
 }

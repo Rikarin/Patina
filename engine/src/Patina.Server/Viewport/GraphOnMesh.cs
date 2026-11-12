@@ -21,8 +21,8 @@ public sealed record GraphOnMesh(ViewportMapSet Maps, NodePicture? Node = null) 
         );
 
     /// <summary>
-    ///     Has the Worker write each Output node's picture at full size, as the graph stands now, or gives null when the
-    ///     graph has no Output node the viewport can show.
+    ///     Has the Worker write each Output node's picture at full size, as the graph stands now, or gives null when
+    ///     the graph has no Output node the viewport can show.
     /// </summary>
     /// <exception cref="IpcException">The Worker holds no such picture.</exception>
     /// <exception cref="TimeoutException">No Worker came, or it did not answer.</exception>

@@ -30,8 +30,8 @@ public sealed class GraphSelectionApiTests : IDisposable {
         return (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.GraphSelection, Token))!;
     }
 
-    async Task<HttpResponseMessage> FollowAsync(HttpClient client, ViewportFollow follow) =>
-        await client.PutAsJsonAsync(
+    Task<HttpResponseMessage> FollowAsync(HttpClient client, ViewportFollow follow) =>
+        client.PutAsJsonAsync(
             "/api/v1/viewport/follow",
             follow,
             ContractsJsonContext.Default.ViewportFollow,
@@ -104,7 +104,7 @@ public sealed class GraphSelectionApiTests : IDisposable {
             // Pictures laid by hand take the graph's place.
             using (var laid = await client.PutAsJsonAsync(
                        "/api/v1/viewport/maps",
-                       new ViewportMapPaths(),
+                       new(),
                        ContractsJsonContext.Default.ViewportMapPaths,
                        Token
                    )) {
@@ -132,10 +132,11 @@ public sealed class GraphSelectionApiTests : IDisposable {
                 closed.EnsureSuccessStatusCode();
             }
 
-            var deadline = DateTime.UtcNow.AddSeconds(10);
+            // The follower lets it go once it reads the last event.
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Token);
+            deadline.CancelAfter(TimeSpan.FromSeconds(10));
             while ((await ViewportAsync(client)).Following is not null) {
-                Assert.True(DateTime.UtcNow < deadline, "The viewport still follows a closed graph.");
-                await Task.Delay(20, Token);
+                await Task.Delay(20, deadline.Token);
             }
         }
     }

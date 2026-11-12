@@ -1,13 +1,12 @@
 using Patina.Contracts;
-using Patina.Graphs;
 using System.Globalization;
 using Vixen.NodeGraph;
 
 namespace Patina.Server.Graphs;
 
 /// <summary>
-///     What a new graph can start from (#183): nothing, an Output node for each material channel, or a copy of one of the
-///     starter presets that ship with Patina. The Server holds the list, so every client offers the same.
+///     What a new graph can start from (#183): nothing, an Output node for each material channel, or a copy of one
+///     of the starter presets that ship with Patina. The Server holds the list, so every client offers the same.
 /// </summary>
 public static class GraphTemplates {
     /// <summary>A graph with no nodes.</summary>
@@ -22,7 +21,7 @@ public static class GraphTemplates {
 
     static readonly string[] Channels = ["baseColor", "normal", "roughness", "metalness", "height", "occlusion"];
 
-    /// <summary>Every template, with what a person calls it: Empty, Material Outputs, then each starter preset.</summary>
+    /// <summary>Each template and what a person calls it: Empty, Material Outputs, then each starter preset.</summary>
     public static IReadOnlyList<StackTerm> All => [
         new(Empty, "Empty"),
         new(Outputs, "Material Outputs"),

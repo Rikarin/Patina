@@ -124,16 +124,16 @@ public static class MaterialShelf {
     /// <summary>The graphs that ship with Patina. They are CC0, and using one puts a copy in the project.</summary>
     static IEnumerable<MaterialInfo> Starters() =>
         StarterNames.Select(static name => {
-                    return new MaterialInfo(
-                        name,
-                        DocumentKinds.Graph,
-                        StarterPrefix + name,
-                        GraphRoles.Material,
-                        "shipped",
-                        Usages(GraphDocuments.Parse(StarterText(name)))
-                    );
-                }
-            );
+                return new MaterialInfo(
+                    name,
+                    DocumentKinds.Graph,
+                    StarterPrefix + name,
+                    GraphRoles.Material,
+                    "shipped",
+                    Usages(GraphDocuments.Parse(StarterText(name)))
+                );
+            }
+        );
 
     /// <summary>A starter material's document.</summary>
     /// <exception cref="StackEditRefusedException">No starter has that name.</exception>

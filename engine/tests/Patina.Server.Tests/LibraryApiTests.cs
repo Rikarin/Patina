@@ -202,7 +202,7 @@ public sealed class LibraryApiTests : IDisposable {
         Assert.Equal(HttpStatusCode.BadRequest, lost.StatusCode);
     }
 
-    /// <summary>A new graph starts from nothing, from an Output node per channel, or from a starter preset (#183).</summary>
+    /// <summary>A new graph starts from nothing, an Output node per channel, or a starter preset (#183).</summary>
     [Fact]
     public async Task A_new_graph_starts_from_the_template_asked_for() {
         CreateLibrary();

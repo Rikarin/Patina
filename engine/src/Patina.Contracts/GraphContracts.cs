@@ -679,8 +679,8 @@ public sealed record GraphImage(string Hash, int Width, int Height);
 /// </param>
 /// <param name="Resolution">The side it evaluates at. Null is 2048. Its authoring base does not depend on this.</param>
 /// <param name="Template">
-///     What it starts from: null or <c>empty</c> for nothing, <c>outputs</c> for an Output node per material channel, or a
-///     starter preset by name, as <c>GET /api/v1/library/graph-templates</c> lists them.
+///     What it starts from: null or <c>empty</c> for nothing, <c>outputs</c> for an Output node per material
+///     channel, or a starter preset by name, as <c>GET /api/v1/library/graph-templates</c> lists them.
 /// </param>
 public sealed record GraphCreateRequest(
     string Name,

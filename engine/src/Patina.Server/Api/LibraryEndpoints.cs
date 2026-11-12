@@ -58,7 +58,8 @@ static class LibraryEndpoints {
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .WithSummary(
-                "Writes a new graph file, empty or from a template. It reaches the listings once the index has caught up."
+                "Writes a new graph file, empty or from a template. It reaches the listings once the index has "
+                + "caught up."
             );
         library.MapGet("/graph-templates", static () => TypedResults.Ok(GraphTemplates.All))
             .WithName("GetGraphTemplates")
