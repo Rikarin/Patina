@@ -14719,7 +14719,7 @@
           },
           "where": {
             "type": "string",
-            "description": "What part of that layer: fill, mask, mask entry 2, or an input\u0027s port."
+            "description": "What part of that layer reads it, in words to show: Fill, Mask, Mask layer 2, Input Warp."
           },
           "channel": {
             "type": "string",

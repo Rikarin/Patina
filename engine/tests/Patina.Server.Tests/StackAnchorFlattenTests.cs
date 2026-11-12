@@ -33,9 +33,26 @@ public sealed class StackAnchorFlattenTests {
 
         Assert.Equal(("Base", "base"), (anchor.Name, anchor.Layer));
         Assert.Equal(
-            [new StackAnchorUse("over", "fill", string.Empty), new StackAnchorUse("over", "mask", "roughness")],
+            [new StackAnchorUse("over", "Fill", string.Empty), new StackAnchorUse("over", "Mask", "roughness")],
             anchor.Uses
         );
+    }
+
+    /// <summary>
+    ///     What reads an anchor point is said in words, never as Vixen keys it: a mask effect by its node's name, even
+    ///     one whose path holds a space, and its port after it (#198).
+    /// </summary>
+    [Theory]
+    [InlineData("fill", "Fill")]
+    [InlineData("mask", "Mask")]
+    [InlineData("input Warp", "Input Warp")]
+    [InlineData("mask generator Height", "Mask generator, Height")]
+    [InlineData("mask entry 2", "Mask layer 2")]
+    [InlineData("mask entry 2 generator Height", "Mask layer 2, generator, Height")]
+    [InlineData("mask effect Colour/Gradient Map Input", "Mask effect Gradient Map, Input")]
+    [InlineData("mask effect Filters/Warp Warp Field", "Mask effect Warp, Warp Field")]
+    public void What_reads_an_anchor_is_said_in_words(string where, string said) {
+        Assert.Equal(said, StackDocuments.Said(where, ["Filters/Warp", "Colour/Gradient Map", "Colour/Gradient"]));
     }
 
     [Fact]

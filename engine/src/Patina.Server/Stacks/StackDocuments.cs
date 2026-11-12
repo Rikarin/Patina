@@ -290,6 +290,7 @@ public static class StackDocuments {
     /// <summary>The anchor points a set publishes, and who reads each, for a client to list.</summary>
     public static IReadOnlyList<StackAnchor> Anchors(TextureSetAsset set) {
         var uses = LayerStackEdit.AnchorUses(set);
+        string[] effects = [..Everything(set.Layers).SelectMany(static layer => layer.Mask.Effects).Select(static e => e.Node)];
         return [
             ..LayerStackEdit.AnchorPoints(set)
                 .Select(point => new StackAnchor(
@@ -297,12 +298,62 @@ public static class StackDocuments {
                         point.Value,
                         [
                             ..uses.Where(use => use.Reference.Anchor == point.Key)
-                                .Select(static use => new StackAnchorUse(use.Layer, use.Where, use.Reference.Channel))
+                                .Select(use => new StackAnchorUse(
+                                        use.Layer,
+                                        Said(use.Where, effects),
+                                        use.Reference.Channel
+                                    )
+                                )
                         ]
                     )
                 )
         ];
     }
+
+    /// <summary>
+    ///     What part of a layer reads an anchor point, as a person reads it (#198). Vixen names it as a key, such as
+    ///     <c>mask entry 2 generator Warp</c> or <c>mask effect Filters/Warp Warp</c>; a mask's effects are named by
+    ///     their nodes, which hold spaces, so the effects the stack runs say where a node ends and its port begins.
+    /// </summary>
+    /// <param name="where">The part, as Vixen names it.</param>
+    /// <param name="effects">The nodes the stack's mask effects run.</param>
+    public static string Said(string where, IReadOnlyCollection<string> effects) {
+        const string Input = "input ";
+        const string MaskGenerator = "mask generator ";
+        const string Entry = "mask entry ";
+        const string Generator = " generator ";
+        const string Effect = "mask effect ";
+        if (where.StartsWith(Input, StringComparison.Ordinal)) {
+            return $"Input {where[Input.Length..]}";
+        }
+
+        if (where.StartsWith(MaskGenerator, StringComparison.Ordinal)) {
+            return $"Mask generator, {where[MaskGenerator.Length..]}";
+        }
+
+        if (where.StartsWith(Entry, StringComparison.Ordinal)) {
+            var rest = where[Entry.Length..];
+            var at = rest.IndexOf(Generator, StringComparison.Ordinal);
+            return at < 0
+                ? $"Mask layer {rest}"
+                : $"Mask layer {rest[..at]}, generator, {rest[(at + Generator.Length)..]}";
+        }
+
+        if (where.StartsWith(Effect, StringComparison.Ordinal)) {
+            var rest = where[Effect.Length..];
+            var node = effects.Where(effect => rest.StartsWith(effect + " ", StringComparison.Ordinal))
+                .MaxBy(static effect => effect.Length);
+            return node is null
+                ? $"Mask effect, {rest}"
+                : $"Mask effect {Terms.Label(node)}, {rest[(node.Length + 1)..]}";
+        }
+
+        return Terms.Label(where);
+    }
+
+    /// <summary>Every layer of a stack, a folder's after it.</summary>
+    static IEnumerable<LayerAsset> Everything(IEnumerable<LayerAsset> layers) =>
+        layers.SelectMany(static layer => Everything(layer.Children).Prepend(layer));
 
     /// <summary>
     ///     Every adjustment a stack can run, read from the same registry and compounds its compile reads, each with

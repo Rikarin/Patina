@@ -109,6 +109,15 @@ static class ViewportMapEndpoints {
         }
     }
 
+    /// <summary>A file a request named that is not there, by its name: where it was is the asker's.</summary>
+    static ProblemHttpResult FileMissing(string file) =>
+        Refusals.Problem(
+            $"There is no file at '{file}'.",
+            Missing,
+            Refusals.FileMissing,
+            new Dictionary<string, string> { ["file"] = Path.GetFileName(file) }
+        );
+
     static async Task<Results<Ok<ViewportState>, ProblemHttpResult>> SetDisplayAsync(
         ViewportDisplay request,
         ViewportSession session,
@@ -129,7 +138,7 @@ static class ViewportMapEndpoints {
             }
 
             if (!File.Exists(request.Environment)) {
-                return TypedResults.Problem($"There is no file '{request.Environment}'.", statusCode: Missing);
+                return FileMissing(request.Environment);
             }
         }
 
@@ -207,7 +216,7 @@ static class ViewportMapEndpoints {
             string[] files =
                 [request.Low, ..request.High, request.Cage ?? string.Empty, request.Options.Rays.DistanceMap];
             if (files.FirstOrDefault(static file => file.Length > 0 && !File.Exists(file)) is { } missing) {
-                return TypedResults.Problem($"There is no file at '{missing}'.", statusCode: Missing);
+                return FileMissing(missing);
             }
 
             if (request.High.Count == 0) {
@@ -245,7 +254,12 @@ static class ViewportMapEndpoints {
         CancellationToken cancellationToken
     ) {
         if (queue.Find(request.Job) is not { } job) {
-            return TypedResults.Problem($"There is no job '{request.Job}'.", statusCode: Missing);
+            return Refusals.Problem(
+                $"There is no job '{request.Job}'.",
+                Missing,
+                Refusals.JobMissing,
+                new Dictionary<string, string> { ["id"] = request.Job }
+            );
         }
 
         if (job is not { State: JobStates.Done, Result: { } result }) {
@@ -265,7 +279,7 @@ static class ViewportMapEndpoints {
             var maps = new ViewportMapPaths(Normal: Of("normal"), Occlusion: Of("ao"));
             var hashed = await Task.Run(() => Hashed(maps), cancellationToken);
             if (!File.Exists(job.Bake.Low)) {
-                return TypedResults.Problem($"There is no file at '{job.Bake.Low}'.", statusCode: Missing);
+                return FileMissing(job.Bake.Low);
             }
 
             session.Show(job.Bake.Low, hashed);
@@ -285,7 +299,12 @@ static class ViewportMapEndpoints {
         CancellationToken cancellationToken
     ) {
         if (graphs.Find(request.Graph) is not { } graph) {
-            return TypedResults.Problem($"There is no graph session '{request.Graph}'.", statusCode: Missing);
+            return Refusals.Problem(
+                $"There is no graph session '{request.Graph}'.",
+                Missing,
+                Refusals.GraphNotOpen,
+                new Dictionary<string, string> { ["id"] = request.Graph }
+            );
         }
 
         if (request.Node is { } shownNode) {
@@ -303,7 +322,11 @@ static class ViewportMapEndpoints {
 
         var outputs = graph.Outputs(Slots);
         if (outputs.Count == 0) {
-            return TypedResults.Problem("This graph has no Output node the viewport can show.", statusCode: Refused);
+            return Refusals.Problem(
+                "This graph has no Output node the viewport can show.",
+                Refused,
+                Refusals.GraphNoOutput
+            );
         }
 
         try {

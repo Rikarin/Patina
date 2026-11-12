@@ -312,7 +312,7 @@ public sealed class StackEditorPropertyTests {
         // The History list and a refusal say what a person calls the channel, never its stored value (#198).
         Assert.Equal("Add Ambient Occlusion", editor.History.UndoLabel);
         Assert.Equal(
-            "This stack has Ambient Occlusion already.",
+            "This document has Ambient Occlusion already.",
             Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackAddChannel("occlusion")])))
                 .Message
         );

@@ -144,6 +144,24 @@ public static class Refusals {
     /// <summary>A list of the library's files of a kind it does not list. Values: <c>kind</c>.</summary>
     public const string FileKindUnknown = "file-kind-unknown";
 
+    /// <summary>An undo or a redo with nothing to take back or put back. Values: <c>what</c>.</summary>
+    public const string HistoryEmpty = "history-empty";
+
+    /// <summary>A new file where one of that name already is. Values: <c>file</c>, its name.</summary>
+    public const string FileExists = "file-exists";
+
+    /// <summary>A file a request named that is not there. Values: <c>file</c>, its name.</summary>
+    public const string FileMissing = "file-missing";
+
+    /// <summary>An ID map asked of a document whose bake made none.</summary>
+    public const string IdMapMissing = "id-map-missing";
+
+    /// <summary>No job has the id. Values: <c>id</c>.</summary>
+    public const string JobMissing = "job-missing";
+
+    /// <summary>A graph shown on the mesh that has no Output node to show.</summary>
+    public const string GraphNoOutput = "graph-no-output";
+
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(
         string detail,

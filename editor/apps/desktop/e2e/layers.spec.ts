@@ -494,7 +494,7 @@ test('an anchor point is named, read by a mask in one channel, and lists who rea
   await expect(window.getByTestId('paint-mask-anchor-channel')).toContainText('Roughness');
 
   await window.getByTestId('paint-layer-base').click();
-  await expect(window.getByTestId('paint-anchor-uses')).toContainText('Read by Paint · mask · Roughness');
+  await expect(window.getByTestId('paint-anchor-uses')).toContainText('Read by Paint · Mask · Roughness');
   await window.screenshot({ path: join(shots, 'layers-anchor-uses.png') });
 });
 

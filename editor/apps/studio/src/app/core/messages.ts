@@ -39,7 +39,13 @@ const Words: Readonly<Record<string, string>> = {
   'preset-factory': '{preset} is a Starter preset, so it can’t be changed or deleted. Duplicate it to change a copy.',
   'preset-missing': 'There is no preset {preset} there any more. It may have been deleted outside Patina.',
   'export-unbuilt': 'The maps of this project are not built as they are now. Build them first, then look again.',
-  'file-kind-unknown': 'The library lists pictures and meshes, and nothing else.'
+  'file-kind-unknown': 'The library lists pictures and meshes, and nothing else.',
+  'history-empty': 'There is nothing to {what}.',
+  'file-exists': 'There is a {file} there already. Choose another name.',
+  'file-missing': '{file} isn’t there any more. It may have been moved or deleted outside Patina.',
+  'id-map-missing': 'This document has no ID map yet. Bake one, with ID among the maps.',
+  'job-missing': 'That bake or export is no longer in Activity. The engine may have restarted since.',
+  'graph-no-output': 'This graph has no Output node, so there is nothing to show on the mesh. Add one.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };

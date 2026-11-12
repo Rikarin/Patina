@@ -24,7 +24,7 @@ public sealed partial class StackProcessTests {
             new StackSetLayer("paint", Mask: new("Anchor", 1f, Anchor: new("Ground", "roughness")))
         );
         var anchor = Assert.Single((await StateAsync(state.Id, deadline.Token)).Anchors!);
-        Assert.Equal([new StackAnchorUse("paint", "mask", "roughness")], anchor.Uses);
+        Assert.Equal([new StackAnchorUse("paint", "Mask", "roughness")], anchor.Uses);
         var evaluation = await EvaluatedAsync(socket, read.Revision, deadline.Token);
         Assert.DoesNotContain(evaluation.Problems, static problem => problem.Severity == "Error");
     }
