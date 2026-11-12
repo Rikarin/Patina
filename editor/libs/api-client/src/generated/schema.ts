@@ -696,6 +696,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/project/materials': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings the materials of a glTF or another model, a MaterialX document or a USD text layer into a project, each as a material graph of its own that reads the file's pictures from the project. Says what each graph is and what was left out. */
+    post: operations['ImportProjectMaterials'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/pictures': {
     parameters: {
       query?: never;
@@ -3100,6 +3117,8 @@ export interface components {
       environments: string[];
       /** @description What a project takes as its mesh, its detailed mesh or a cage. */
       meshes: string[];
+      /** @description What a project brings materials in from, as graphs (#157). */
+      materials: string[];
     };
     /** @description The body of `POST /api/v1/library/folders`. */
     FolderCreateRequest: {
@@ -4365,6 +4384,23 @@ export interface components {
     MaterialBrush: {
       /** @description The picture, relative to the project's stacks, as a brush names it. */
       alpha: string;
+    };
+    /** @description The body of `POST /api/v1/library/project/materials`. */
+    MaterialImportRequest: {
+      /** @description The project, below `projects/`, that the materials become graphs of. */
+      project: string;
+      /**
+       * @description A file on the Server's machine that describes materials: a glTF (`.gltf`, `.glb`) or another model
+       *     file, a MaterialX document (`.mtlx`) or a USD layer in its text form (`.usda`).
+       */
+      file: string;
+    };
+    /** @description What importing a material file made. */
+    MaterialImportResult: {
+      /** @description The graph made for each material, in the file's order: its path below the library, which the graph routes take. */
+      documents: string[];
+      /** @description What a person should know: an input left out, and why. */
+      warnings: string[];
     };
     /** @description Something a layer can be filled with (ADR 0012). */
     MaterialInfo: {
@@ -9633,6 +9669,57 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ImportProjectMaterials: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MaterialImportRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialImportResult'];
         };
       };
       /** @description Bad Request */

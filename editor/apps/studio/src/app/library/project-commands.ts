@@ -41,6 +41,14 @@ export class ProjectCommands {
       }
     );
     handle(
+      'importMaterials',
+      () => bridge !== undefined && (project.current() !== null || arriving()),
+      async () => {
+        const path = await bridge?.openMaterial(this.status.materials());
+        return path ? project.importMaterials(path) : undefined;
+      }
+    );
+    handle(
       'reloadMesh',
       () => project.mesh() !== null || arriving(),
       () => inFront(() => (project.mesh() ? project.reloadMesh() : undefined))

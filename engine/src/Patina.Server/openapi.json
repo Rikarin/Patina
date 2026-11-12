@@ -2612,6 +2612,67 @@
         }
       }
     },
+    "/api/v1/library/project/materials": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings the materials of a glTF or another model, a MaterialX document or a USD text layer into a project, each as a material graph of its own that reads the file\u0027s pictures from the project. Says what each graph is and what was left out.",
+        "operationId": "ImportProjectMaterials",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialImportResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/pictures": {
       "post": {
         "tags": [
@@ -9816,7 +9877,8 @@
         "required": [
           "pictures",
           "environments",
-          "meshes"
+          "meshes",
+          "materials"
         ],
         "type": "object",
         "properties": {
@@ -9840,6 +9902,13 @@
               "type": "string"
             },
             "description": "What a project takes as its mesh, its detailed mesh or a cage."
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What a project brings materials in from, as graphs (#157)."
           }
         },
         "description": "What a client may offer, with the dot."
@@ -12843,6 +12912,48 @@
           }
         },
         "description": "A graph rendered to a picture a brush stamps."
+      },
+      "MaterialImportRequest": {
+        "required": [
+          "project",
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060, that the materials become graphs of."
+          },
+          "file": {
+            "type": "string",
+            "description": "A file on the Server\u0027s machine that describes materials: a glTF (\u0060.gltf\u0060, \u0060.glb\u0060) or another model\nfile, a MaterialX document (\u0060.mtlx\u0060) or a USD layer in its text form (\u0060.usda\u0060)."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/project/materials\u0060."
+      },
+      "MaterialImportResult": {
+        "required": [
+          "documents",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The graph made for each material, in the file\u0027s order: its path below the library, which the graph routes take."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What a person should know: an input left out, and why."
+          }
+        },
+        "description": "What importing a material file made."
       },
       "MaterialInfo": {
         "required": [

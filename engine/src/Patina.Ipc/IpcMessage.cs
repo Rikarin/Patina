@@ -111,6 +111,12 @@ public static class IpcTypes {
 
     public const string MeshPartMask = "mesh.part-mask";
 
+    /// <summary>
+    ///     Server to Worker: read the materials of the model at <see cref="IpcMessage.MaterialRead" />'s file, writing
+    ///     the pictures inside it to its folder (#157). Uses no device.
+    /// </summary>
+    public const string MaterialRead = "material.read";
+
     /// <summary>Renders each fill of a stack alone, small.</summary>
     public const string StackThumbnails = "stack.thumbnails";
 
@@ -291,6 +297,11 @@ public sealed class IpcMessage {
 
     /// <summary>What a mesh is, in the answer to <see cref="IpcTypes.MeshFacts" />.</summary>
     public MeshFacts? Facts { get; set; }
+
+    public MaterialReadAsk? MaterialRead { get; set; }
+
+    /// <summary>A model's materials as maps, in the answer to <see cref="IpcTypes.MaterialRead" />.</summary>
+    public IReadOnlyList<ImportedMaterial>? MaterialsRead { get; set; }
 
     /// <summary>The model's other texture sets, worn along with <see cref="Following" />.</summary>
     public IReadOnlyList<string>? FollowingAlso { get; set; }
@@ -786,6 +797,14 @@ public sealed record StackPixelsAsk(
     StackFileAsk? File = null,
     bool Mask = false
 );
+
+/// <summary>A model file whose materials are wanted, and where the pictures inside it go.</summary>
+/// <param name="File">The model.</param>
+/// <param name="Folder">
+///     Where a picture the model holds inside it is written, since pixels never cross the socket: the project's own
+///     pictures, so the graph made from it reads it there.
+/// </param>
+public sealed record MaterialReadAsk(string File, string Folder);
 
 /// <summary>A map's file in a format other than the PNG a stack's export writes by default, settled by the Server.</summary>
 /// <param name="Format">One of the export formats.</param>

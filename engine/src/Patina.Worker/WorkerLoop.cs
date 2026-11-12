@@ -117,6 +117,7 @@ sealed class WorkerLoop(
                 IpcTypes.MeshMaterials => Materials(request),
                 IpcTypes.MeshParts => Parts(request),
                 IpcTypes.MeshFacts => Facts(request),
+                IpcTypes.MaterialRead => ReadMaterials(request),
                 IpcTypes.MeshPartMask => PartMask(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),
@@ -173,6 +174,16 @@ sealed class WorkerLoop(
             return new() { Type = IpcTypes.Ok, Id = request.Id, Facts = MeshFactsReader.Read(file) };
         } catch (Exception e) when (e is ModelFormatException or IOException or UnauthorizedAccessException) {
             throw new IpcException($"'{Path.GetFileName(file)}' would not read: {e.Message}");
+        }
+    }
+
+    /// <summary>A model's materials as maps (#157). Uses no device; Assimp is native, so it runs here.</summary>
+    static IpcMessage ReadMaterials(IpcMessage request) {
+        var ask = request.MaterialRead ?? throw new IpcException("material.read names no file.");
+        try {
+            return new() { Type = IpcTypes.Ok, Id = request.Id, MaterialsRead = ModelMaterials.Read(ask.File, ask.Folder) };
+        } catch (Exception e) when (e is ModelFormatException or IOException or UnauthorizedAccessException) {
+            throw new IpcException($"'{Path.GetFileName(ask.File)}' would not read: {e.Message}");
         }
     }
 

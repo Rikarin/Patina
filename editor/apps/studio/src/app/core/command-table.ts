@@ -43,6 +43,12 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'newLibrary', label: 'New Library…', section: 'File' },
   { id: 'openLibrary', label: 'Open Library…', section: 'File', keys: ['Mod+O'] },
   { id: 'import', label: 'Import…', section: 'File', keys: ['Mod+I'] },
+  {
+    id: 'importMaterials',
+    label: 'Import Materials…',
+    section: 'File',
+    hint: 'Brings the materials of a glTF, MaterialX or USD file into the project, each as a graph'
+  },
   { id: 'export', label: 'Export…', section: 'File', keys: ['Mod+Shift+E'] },
   { id: 'bake', label: 'Bake…', section: 'File', keys: ['Mod+Shift+B'], hint: 'Bakes mesh maps' },
   {
@@ -356,6 +362,7 @@ export const MenuBar: readonly {
       { native: 'recent' },
       '-',
       'import',
+      'importMaterials',
       'export',
       'bake',
       'quickBake',
