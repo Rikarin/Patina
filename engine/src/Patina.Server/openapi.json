@@ -17108,7 +17108,9 @@
           "tolerance",
           "softness",
           "lane",
-          "enabled"
+          "enabled",
+          "inside",
+          "outside"
         ],
         "type": "object",
         "properties": {
@@ -17148,26 +17150,29 @@
             "description": "The mesh map a bake mask reads.",
             "default": ""
           },
-          "colour": {
+          "colours": {
             "type": [
               "null",
               "array"
             ],
             "items": {
-              "type": "number",
-              "format": "float"
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "float"
+              }
             },
-            "description": "The colour a bake mask selects from its map, as three numbers, or null for all of it."
+            "description": "The colours a bake or texture mask selects from its picture, each three numbers, or null for all of it. A texel\nnear any of them is selected."
           },
           "tolerance": {
             "type": "number",
-            "description": "How far from that colour still counts.",
+            "description": "How far from a colour still counts.",
             "format": "float",
             "default": 0.02
           },
           "softness": {
             "type": "number",
-            "description": "How much further the mask takes to reach nothing.",
+            "description": "How much further the selection takes to reach the background.",
             "format": "float",
             "default": 0
           },
@@ -17230,6 +17235,18 @@
             "type": "boolean",
             "description": "Whether the mask applies. Switched off, the layer composites unmasked, keeping every source, layer and effect of\nits mask for when it is switched on again, and still keeps to the meshes it is limited to.",
             "default": true
+          },
+          "inside": {
+            "type": "number",
+            "description": "With colours, what the mask is where they are: its output value, 0 to 1.",
+            "format": "float",
+            "default": 1
+          },
+          "outside": {
+            "type": "number",
+            "description": "With colours, what the mask is everywhere else: its background, 0 to 1.",
+            "format": "float",
+            "default": 0
           }
         },
         "description": "What decides where a layer shows."

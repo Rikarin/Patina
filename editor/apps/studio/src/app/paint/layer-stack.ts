@@ -2079,7 +2079,8 @@ export class LayerStack {
   }
 
   protected maskColour(layer: StackLayer): string | null {
-    return layer.mask.colour ? hexOf(layer.mask.colour) : null;
+    const [first] = layer.mask.colours ?? [];
+    return first ? hexOf(first) : null;
   }
 
   /**

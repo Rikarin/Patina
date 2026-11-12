@@ -36,17 +36,20 @@ class StackMask:
             asset (str): The image a texture mask reads. Default: ''.
             generator (str): The compound a generator runs, such as Generators/Dirt. Default: ''.
             map_ (str): The mesh map a bake mask reads. Default: ''.
-            tolerance (float): How far from that colour still counts. Default: 0.02.
-            softness (float): How much further the mask takes to reach nothing. Default: 0.0.
+            tolerance (float): How far from a colour still counts. Default: 0.02.
+            softness (float): How much further the selection takes to reach the background. Default: 0.0.
             lane (str): Which lane of its picture the base reads: Red, Green, Blue or Alpha. A mesh map that measures a
                 direction keeps
                 its X, Y and Z in the first three. Default: 'Red'.
             enabled (bool): Whether the mask applies. Switched off, the layer composites unmasked, keeping every source,
                 layer and effect of
                 its mask for when it is switched on again, and still keeps to the meshes it is limited to. Default: True.
+            inside (float): With colours, what the mask is where they are: its output value, 0 to 1. Default: 1.0.
+            outside (float): With colours, what the mask is everywhere else: its background, 0 to 1. Default: 0.0.
             anchor (None | StackAnchorRef | Unset):
-            colour (list[float] | None | Unset): The colour a bake mask selects from its map, as three numbers, or null for
-                all of it.
+            colours (list[list[float]] | None | Unset): The colours a bake or texture mask selects from its picture, each
+                three numbers, or null for all of it. A texel
+                near any of them is selected.
             effects (list[StackMaskEffect] | None | Unset): What runs on the mask, in order, or null to keep them.
             parameters (None | StackMaskParametersType1 | Unset): What a generator's knobs are set to, as text, or null to
                 keep them.
@@ -67,8 +70,10 @@ class StackMask:
     softness: float = 0.0
     lane: str = 'Red'
     enabled: bool = True
+    inside: float = 1.0
+    outside: float = 0.0
     anchor: None | StackAnchorRef | Unset = UNSET
-    colour: list[float] | None | Unset = UNSET
+    colours: list[list[float]] | None | Unset = UNSET
     effects: list[StackMaskEffect] | None | Unset = UNSET
     parameters: None | StackMaskParametersType1 | Unset = UNSET
     mesh_parts: list[str] | None | Unset = UNSET
@@ -104,6 +109,10 @@ class StackMask:
 
         enabled = self.enabled
 
+        inside = self.inside
+
+        outside = self.outside
+
         anchor: dict[str, Any] | None | Unset
         if isinstance(self.anchor, Unset):
             anchor = UNSET
@@ -112,15 +121,20 @@ class StackMask:
         else:
             anchor = self.anchor
 
-        colour: list[float] | None | Unset
-        if isinstance(self.colour, Unset):
-            colour = UNSET
-        elif isinstance(self.colour, list):
-            colour = self.colour
+        colours: list[list[float]] | None | Unset
+        if isinstance(self.colours, Unset):
+            colours = UNSET
+        elif isinstance(self.colours, list):
+            colours = []
+            for colours_type_1_item_data in self.colours:
+                colours_type_1_item = colours_type_1_item_data
+
+
+                colours.append(colours_type_1_item)
 
 
         else:
-            colour = self.colour
+            colours = self.colours
 
         effects: list[dict[str, Any]] | None | Unset
         if isinstance(self.effects, Unset):
@@ -187,11 +201,13 @@ class StackMask:
             "softness": softness,
             "lane": lane,
             "enabled": enabled,
+            "inside": inside,
+            "outside": outside,
         })
         if anchor is not UNSET:
             field_dict["anchor"] = anchor
-        if colour is not UNSET:
-            field_dict["colour"] = colour
+        if colours is not UNSET:
+            field_dict["colours"] = colours
         if effects is not UNSET:
             field_dict["effects"] = effects
         if parameters is not UNSET:
@@ -233,6 +249,10 @@ class StackMask:
 
         enabled = d.pop("enabled")
 
+        inside = d.pop("inside")
+
+        outside = d.pop("outside")
+
         def _parse_anchor(data: object) -> None | StackAnchorRef | Unset:
             if data is None:
                 return data
@@ -253,7 +273,7 @@ class StackMask:
         anchor = _parse_anchor(d.pop("anchor", UNSET))
 
 
-        def _parse_colour(data: object) -> list[float] | None | Unset:
+        def _parse_colours(data: object) -> list[list[float]] | None | Unset:
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -261,14 +281,19 @@ class StackMask:
             try:
                 if not isinstance(data, list):
                     raise TypeError()
-                colour_type_1 = cast(list[float], data)
+                colours_type_1 = []
+                _colours_type_1 = data
+                for colours_type_1_item_data in (_colours_type_1):
+                    colours_type_1_item = cast(list[float], colours_type_1_item_data)
 
-                return colour_type_1
+                    colours_type_1.append(colours_type_1_item)
+
+                return colours_type_1
             except (TypeError, ValueError, AttributeError, KeyError):
                 pass
-            return cast(list[float] | None | Unset, data)
+            return cast(list[list[float]] | None | Unset, data)
 
-        colour = _parse_colour(d.pop("colour", UNSET))
+        colours = _parse_colours(d.pop("colours", UNSET))
 
 
         def _parse_effects(data: object) -> list[StackMaskEffect] | None | Unset:
@@ -389,8 +414,10 @@ class StackMask:
             softness=softness,
             lane=lane,
             enabled=enabled,
+            inside=inside,
+            outside=outside,
             anchor=anchor,
-            colour=colour,
+            colours=colours,
             effects=effects,
             parameters=parameters,
             mesh_parts=mesh_parts,

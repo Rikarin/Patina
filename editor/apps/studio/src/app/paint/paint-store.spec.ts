@@ -63,7 +63,9 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
       tolerance: 0.02,
       softness: 0,
       lane: 'Red',
-      enabled: true
+      enabled: true,
+      inside: 1,
+      outside: 0
     }
   };
 }
@@ -1216,6 +1218,41 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     gesture.release();
     await vi.waitFor(() => expect(sent(bodies)).toHaveLength(2));
     expect(sent(bodies)[1]).toMatchObject({ outline: false, stamps: [{ x: 50, y: 25 }] });
+  });
+
+  it('adds a colour picked off the id map to the selection once, beside those it has (#110)', async () => {
+    const { store, bodies, server } = await onMesh();
+    let at = [0, 0, 1];
+    server.reply = (_method, path) => (path.endsWith('/id-colours') ? Response.json({ colours: [], at }) : null);
+    store.state.update(state =>
+      state
+        ? {
+            ...state,
+            layers: state.layers.map((layer, index) =>
+              index === 0
+                ? { ...layer, mask: { ...layer.mask, source: 'Bake', map: 'id', colours: [[1, 0, 0]] } }
+                : layer
+            )
+          }
+        : state
+    );
+    const layer = store.state()?.layers[0]?.id ?? '';
+    const masks = () =>
+      bodies.flatMap(body => (body as { commands: { mask?: { colours: number[][] } }[] }).commands).map(c => c.mask);
+
+    store.picking.set(layer);
+    await store.pickColourAt(0.5, 0.5);
+    await vi.waitFor(() => expect(masks()).toHaveLength(1));
+    expect(masks()[0]?.colours).toEqual([
+      [1, 0, 0],
+      [0, 0, 1]
+    ]);
+
+    at = [1, 0.001, 0];
+    store.picking.set(layer);
+    await store.pickColourAt(0.5, 0.5);
+    await vi.waitFor(() => expect(masks()).toHaveLength(2));
+    expect(masks()[1]?.colours).toEqual([[1, 0.001, 0]]);
   });
 
   it('fills nothing where the viewport draws nothing under a click, as when an isolation hides it (#136)', async () => {

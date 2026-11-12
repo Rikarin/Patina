@@ -97,6 +97,11 @@ export type BrushSettings = Omit<StackBrush, 'radius'>;
 
 export type PaintTool = 'brush' | 'eraser' | 'smudge' | 'clone' | 'projection' | 'fill' | 'line' | 'path' | 'picker';
 
+/** Whether two colours of a selection are one, as an id map's 8-bit texels read back. */
+export function sameColour(left: readonly number[], right: readonly number[]): boolean {
+  return [0, 1, 2].every(lane => Math.abs((left[lane] ?? 0) - (right[lane] ?? 0)) < 0.002);
+}
+
 /** How much of the mesh a click of the fill tool takes: the Server's words (`StackBrushes.Fills`). */
 export type FillMode = 'triangle' | 'polygon' | 'part' | 'shell';
 
@@ -520,8 +525,10 @@ export class PaintStore {
       const client = await this.api();
       const params = { path: { id }, query: { u, v } };
       const colour = unwrap(await client.GET('/api/v1/stacks/{id}/id-colours', { params })).at;
+      // A colour picked joins the selection, once (#110).
       if (colour) {
-        await this.setMask(layer, { ...layer.mask, colour: [...colour] });
+        const held = (layer.mask.colours ?? []).filter(other => !sameColour(other, colour));
+        await this.setMask(layer, { ...layer.mask, colours: [...held, [...colour].slice(0, 3)] });
       }
     } catch (failure) {
       this.failure.set(messageOf(failure));
@@ -708,7 +715,7 @@ export class PaintStore {
     const id = this.layer();
     const layer = this.layers().find(row => row.layer.id === id)?.layer;
     if (layer) {
-      const mask = { ...layer.mask, source: 'Bake', map: 'id', colour: [...colour], enabled: true };
+      const mask = { ...layer.mask, source: 'Bake', map: 'id', colours: [[...colour].slice(0, 3)], enabled: true };
       await this.edit({ op: 'setLayer', layer: layer.id, fill: 'Graph', graph, mask });
     }
   }

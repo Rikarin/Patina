@@ -28,7 +28,7 @@ import { FilterInputs, type FilterSources } from './filter-inputs';
 import { tagSwatch } from './layer-tags';
 import { LayerDraft } from './live-value';
 import { MaterialUse } from './material-use';
-import { colourOf, hexOf, PaintStore, writesChannel } from './paint-store';
+import { colourOf, hexOf, PaintStore, sameColour, writesChannel } from './paint-store';
 import { SurfaceFields } from './surface-fields';
 
 const Axes: readonly string[] = ['X', 'Y', 'Z'];
@@ -794,10 +794,16 @@ function stemOf(source: string): string | undefined {
                         [attr.aria-label]="
                           'Select ' + colourName(entry.colour) + ', ' + percent(entry.share) + ' of the map'
                         "
-                        [class.outline]="same(layer.mask.colour, entry.colour)"
+                        [attr.aria-pressed]="chosenColour(layer, entry.colour)"
+                        [class.outline]="chosenColour(layer, entry.colour)"
                         [style.background]="hexOf(entry.colour)"
-                        [title]="colourName(entry.colour) + ', ' + percent(entry.share) + ' of the map'"
-                        (click)="setMask(layer, { colour: [...entry.colour] })"
+                        [title]="
+                          colourName(entry.colour) +
+                          ', ' +
+                          percent(entry.share) +
+                          ' of the map. Click to add it to the selection or take it away'
+                        "
+                        (click)="toggleColour(layer, entry.colour)"
                       ></button>
                     } @empty {
                       <span class="text-foreground-muted text-xs" data-testid="paint-id-none">
@@ -816,12 +822,16 @@ function stemOf(source: string): string | undefined {
                     >
                       {{ store.picking() === layer.id ? 'Click the mesh or map…' : 'Pick from Mesh' }}
                     </button>
-                    @if (layer.mask.colour; as colour) {
-                      <span
+                    @for (colour of layer.mask.colours ?? []; track $index) {
+                      <button
+                        type="button"
                         class="border-hairline size-5 rounded-sm border"
                         data-testid="paint-picked"
+                        [attr.aria-label]="'Take ' + colourName(colour) + ' out of the selection'"
                         [style.background]="hexOf(colour)"
-                      ></span>
+                        [title]="colourName(colour) + '. Click to take it out of the selection'"
+                        (click)="toggleColour(layer, colour)"
+                      ></button>
                     }
                   </div>
                   <div class="flex items-center gap-2">
@@ -853,6 +863,40 @@ function stemOf(source: string): string | undefined {
                       (valueChange)="setMask(layer, { softness: $event })"
                     />
                     <span class="readout w-9 shrink-0 text-end text-xs">{{ percent(layer.mask.softness) }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-foreground-muted w-16 shrink-0 text-xs" title="What the mask is on the colors"
+                      >Value</span
+                    >
+                    <xui-slider
+                      class="min-w-0 flex-1"
+                      labelStepSize="0"
+                      aria-label="Selection value"
+                      data-testid="paint-mask-inside"
+                      [max]="1"
+                      [min]="0"
+                      [stepSize]="0.01"
+                      [value]="layer.mask.inside"
+                      (valueChange)="setMask(layer, { inside: $event })"
+                    />
+                    <span class="readout w-9 shrink-0 text-end text-xs">{{ percent(layer.mask.inside) }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-foreground-muted w-16 shrink-0 text-xs" title="What the mask is everywhere else"
+                      >Background</span
+                    >
+                    <xui-slider
+                      class="min-w-0 flex-1"
+                      labelStepSize="0"
+                      aria-label="Selection background"
+                      data-testid="paint-mask-outside"
+                      [max]="1"
+                      [min]="0"
+                      [stepSize]="0.01"
+                      [value]="layer.mask.outside"
+                      (valueChange)="setMask(layer, { outside: $event })"
+                    />
+                    <span class="readout w-9 shrink-0 text-end text-xs">{{ percent(layer.mask.outside) }}</span>
                   </div>
                 </div>
               }
@@ -1363,8 +1407,16 @@ export class LayerPanel {
     }
   }
 
-  protected same(left: readonly number[] | null | undefined, right: readonly number[]): boolean {
-    return !!left && right.every((lane, index) => Math.abs(lane - (left[index] ?? 0)) < 0.002);
+  /** Whether the mask selects a colour already. */
+  protected chosenColour(layer: StackLayer, colour: readonly number[]): boolean {
+    return (layer.mask.colours ?? []).some(held => sameColour(held, colour));
+  }
+
+  /** Adds a colour to the mask's selection, or takes it away when it is there (#110). */
+  protected toggleColour(layer: StackLayer, colour: readonly number[]): void {
+    const held = layer.mask.colours ?? [];
+    const others = held.filter(other => !sameColour(other, colour));
+    this.setMask(layer, { colours: others.length < held.length ? others : [...held, [...colour].slice(0, 3)] });
   }
 
   protected readonly percent = percent;

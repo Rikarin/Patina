@@ -6272,17 +6272,20 @@ export interface components {
        * @default
        */
       map: string;
-      /** @description The colour a bake mask selects from its map, as three numbers, or null for all of it. */
-      colour?: null | number[];
+      /**
+       * @description The colours a bake or texture mask selects from its picture, each three numbers, or null for all of it. A texel
+       *     near any of them is selected.
+       */
+      colours?: null | number[][];
       /**
        * Format: float
-       * @description How far from that colour still counts.
+       * @description How far from a colour still counts.
        * @default 0.02
        */
       tolerance: number;
       /**
        * Format: float
-       * @description How much further the mask takes to reach nothing.
+       * @description How much further the selection takes to reach the background.
        * @default 0
        */
       softness: number;
@@ -6315,6 +6318,18 @@ export interface components {
        * @default true
        */
       enabled: boolean;
+      /**
+       * Format: float
+       * @description With colours, what the mask is where they are: its output value, 0 to 1.
+       * @default 1
+       */
+      inside: number;
+      /**
+       * Format: float
+       * @description With colours, what the mask is everywhere else: its background, 0 to 1.
+       * @default 0
+       */
+      outside: number;
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {
