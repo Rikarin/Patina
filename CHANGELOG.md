@@ -190,6 +190,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Bake settings changed one after another in quick succession are all kept in the project. A change made while the one before it was still being written could be undone by it, so the project kept an earlier setting.
 - The first stroke on a dense mesh starts sooner: the engine lays out the mesh for the brush in about half the time, 0.7 to 1.3 s instead of 2.1 to 3.6 s for two million triangles.
 - A new image material is authored at 1024, as every new graph is, so a radius in it means what it does in any other graph.
 - Auto Unwrap laid every island out mirrored, so a picture on an unwrapped mesh showed backwards and a tangent-space normal map lit it the wrong way. Islands now face the way the file's other layouts do. A mesh unwrapped before keeps its layout until it is unwrapped again.
@@ -305,6 +306,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- A layer's menu is shorter, so it fits a small window: Add Effect holds Paint, Fill, Levels, Blur, Invert and Filter, as the Add button's Effect does, and Content and Mask holds Copy Content, Paste into Mask and Paste as Content.
 - Every list, switch and number field in the app is xUI's, as the rest of its controls are: the brush's, the layer's and the mask's settings, the viewport's View, Environment and Look, the 2D view's channel, New Project, a new document, the shortcut presets and the export's file lists. Add Channel… is a menu, a mask's effects are added from a list that finds one by name, and failures and notices are callouts. A layer's eye, folder, mask and arrows are icons, and every button named only for a screen reader has a tooltip too.
 - Vixen's words reach no one as it spells them: a node filed under Colour, a mode named Grey and a mask effect that reads an anchor point (`mask effect Filters/Warp Warp`) read Color, Gray and Mask effect Warp, Warp. Refusals a person reads say document, not stack, and name a channel by its label; more of them carry a code the app says in its own words. The Layers pane says how long an evaluation took, not how many nodes ran.
 - One word for each thing, from a glossary in docs/02-glossary.md: the app spells Color as Base Color does; a document of nodes is a Graph, not a Material Graph; a box around nodes is a frame (Graph > Frame Selection); a layer's channels are Channels; a mask filter is removed, not taken off; masks wait for mesh maps; the Library's Inspector counts Materials used; and every question about unsaved changes says so in those words and offers Don't Save.
