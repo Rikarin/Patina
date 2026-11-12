@@ -351,11 +351,14 @@ export class ViewportClient {
     this.following.set(state.following ?? null);
   }
 
-  /** What lies on the mesh changed without this client asking, as when a followed graph evaluates: read it again. */
+  /**
+   * What lies on the mesh changed without this client asking, as when a followed graph evaluates: read it again. The
+   * first frame is read too, since a mesh the Server laid where there was none is what starts the frames.
+   */
   private heardLaid(laid: number): void {
     const seen = this.laid;
     this.laid = laid;
-    if (seen !== null && seen !== laid) {
+    if (seen !== laid) {
       void this.refresh().catch(() => undefined); // the next change reads it again
     }
   }

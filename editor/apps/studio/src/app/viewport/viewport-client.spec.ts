@@ -110,11 +110,13 @@ describe('ViewportClient', () => {
     await client.follow('g1', true);
     expect(client.following()).toEqual({ graph: 'g1', node: true });
 
-    // The first frame only says where the count stands; the next that moves it is a change made elsewhere.
+    // A frame whose count has not moved reads nothing; one that moved it was a change made elsewhere, and the first
+    // frame is one, since a mesh laid where there was none is what starts the frames.
+    const before = server.reads;
     frame(3);
-    const reads = server.reads;
+    await vi.waitFor(() => expect(server.reads).toBe(before + 1));
     frame(3);
-    expect(server.reads).toBe(reads);
+    expect(server.reads).toBe(before + 1);
     frame(4);
     await vi.waitFor(() => expect(client.node()).toEqual({ graph: 'g1', node: 4, port: 'Out' }));
 
