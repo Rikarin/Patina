@@ -760,9 +760,9 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
         /// <summary>
         ///     The mesh as a stroke reaches it, at the size of its canvas, in the set's layout: only the faces the
-        ///     viewport drew when it began, with an isolation (#136). ⚠ Built again when the shelf reads the file again:
-        ///     a mesh reloaded on the same layout keeps its documents open (#89), and its triangles may have moved
-        ///     under the same coordinates.
+        ///     viewport drew when it began, with an isolation (#136). ⚠ Built again when the shelf reads the file
+        ///     again: a mesh reloaded on the same layout keeps its documents open (#89), and its triangles may have
+        ///     moved under the same coordinates.
         /// </summary>
         PaintMeshSurface? Surface(string model, int width, int height, ViewportIsolation? isolation) {
             if (model.Trim().Length == 0) {

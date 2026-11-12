@@ -13,3 +13,24 @@ public sealed record StackMeshMaskRequest(IReadOnlyList<string> Parts);
 /// <param name="Parts">The named meshes in its texture set.</param>
 /// <param name="Asset">The picture, when one was asked for.</param>
 public sealed record StackMeshParts(IReadOnlyList<string> Parts, string? Asset = null);
+
+/// <summary>
+///     A camera in the mesh's own space, which a stroke keeps because a position on a picture means nothing without
+///     it. Any client with a camera can fill this in; <c>POST /viewport/pick</c> gives the viewport's.
+/// </summary>
+/// <param name="Eye">Where it is: three numbers.</param>
+/// <param name="Right">The unit direction a column grows in: three numbers.</param>
+/// <param name="Up">The unit direction a row shrinks in: three numbers.</param>
+/// <param name="Forward">The unit direction it looks: three numbers.</param>
+/// <param name="VerticalFieldOfView">In radians.</param>
+/// <param name="Width">The picture's width, in the units stamps and the brush's radius are in.</param>
+/// <param name="Height">Its height.</param>
+public sealed record StackView(
+    IReadOnlyList<float> Eye,
+    IReadOnlyList<float> Right,
+    IReadOnlyList<float> Up,
+    IReadOnlyList<float> Forward,
+    float VerticalFieldOfView,
+    int Width,
+    int Height
+);

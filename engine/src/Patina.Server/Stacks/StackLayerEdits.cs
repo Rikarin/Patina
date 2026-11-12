@@ -55,14 +55,16 @@ static class StackLayerEdits {
     ) =>
         new StackMaskLayerEdits(editor).MaskLayerCanvas(layer, index, set, run);
 
-    /// <summary>The canvas a brush paints over a mask that is a picture.</summary>
-    public static string CanvasOverMask(
+    /// <summary>The canvas a brush paints over a mask that is a picture, or null for a mask that is not one.</summary>
+    public static string? CanvasOverMask(
         StackEditor editor,
         LayerAsset layer,
         string set,
         Action<IAuthoringCommand> run
     ) =>
-        new StackMaskLayerEdits(editor).CanvasOverMask(layer, set, run);
+        StackMaskLayers.IsPicture(layer.Mask.Source)
+            ? new StackMaskLayerEdits(editor).CanvasOverMask(layer, set, run)
+            : null;
 
     /// <summary>A copy pasted as instances of what was copied.</summary>
     public static void PasteInstances(

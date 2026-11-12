@@ -623,8 +623,8 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     ///     stays one, live, and the brush paints a paint layer of the mask's own stack over it (#72, #109).
     /// </summary>
     (string Paint, uint? Start) MaskCanvas(LayerAsset layer, string set, Action<IAuthoringCommand> run) {
-        if (StackMaskLayers.IsPicture(layer.Mask.Source)) {
-            return (StackLayerEdits.CanvasOverMask(this, layer, set, run), null);
+        if (StackLayerEdits.CanvasOverMask(this, layer, set, run) is { } over) {
+            return (over, null);
         }
 
         var paint = layer.Mask.Paint.Trim();

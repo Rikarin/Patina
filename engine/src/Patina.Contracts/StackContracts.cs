@@ -743,27 +743,6 @@ public sealed record StackSetSeed(uint Seed) : StackCommand;
 /// <param name="Pressure">How hard, 0 to 1.</param>
 public sealed record StackStamp(float X, float Y, float Pressure = 1f);
 
-/// <summary>
-///     A camera in the mesh's own space, which a stroke keeps because a position on a picture means nothing without
-///     it. Any client with a camera can fill this in; <c>POST /viewport/pick</c> gives the viewport's.
-/// </summary>
-/// <param name="Eye">Where it is: three numbers.</param>
-/// <param name="Right">The unit direction a column grows in: three numbers.</param>
-/// <param name="Up">The unit direction a row shrinks in: three numbers.</param>
-/// <param name="Forward">The unit direction it looks: three numbers.</param>
-/// <param name="VerticalFieldOfView">In radians.</param>
-/// <param name="Width">The picture's width, in the units stamps and the brush's radius are in.</param>
-/// <param name="Height">Its height.</param>
-public sealed record StackView(
-    IReadOnlyList<float> Eye,
-    IReadOnlyList<float> Right,
-    IReadOnlyList<float> Up,
-    IReadOnlyList<float> Forward,
-    float VerticalFieldOfView,
-    int Width,
-    int Height
-);
-
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 
