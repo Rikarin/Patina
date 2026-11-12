@@ -304,7 +304,8 @@ test('a picture on the viewport projects through the brush, and as a stencil mas
   expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
   await window.screenshot({ path: join(shots, 'tool-projection-painted.png') });
 
-  await window.getByTestId('paint-stencil').check();
+  await window.getByTestId('paint-stencil').click();
+  await expect(window.getByTestId('paint-stencil')).toBeChecked();
   await window.getByTestId('tool-strip-brush').click();
   await colour('#1060e0');
   const projected = await shot();
@@ -312,7 +313,8 @@ test('a picture on the viewport projects through the brush, and as a stencil mas
   await expect.poll(async () => changed(projected, await shot()), { timeout: 60_000 }).toBeGreaterThan(100);
   await settled();
   await window.screenshot({ path: join(shots, 'tool-stencil.png') });
-  await window.getByTestId('paint-stencil').uncheck();
+  await window.getByTestId('paint-stencil').click();
+  await expect(window.getByTestId('paint-stencil')).not.toBeChecked();
   await expect(window.getByTestId('screen-picture-frame')).toHaveCount(0);
   await window.screenshot({ path: join(shots, 'tool-stencil-result.png') });
 });
@@ -329,7 +331,8 @@ test('a dab on the strap paints the top under it only with the occlusion test of
 
   await colour('#e01810');
   const atlas = window.getByTestId('paint-canvas');
-  await window.getByTestId('paint-occlusion').uncheck();
+  await window.getByTestId('paint-occlusion').click();
+  await expect(window.getByTestId('paint-occlusion')).not.toBeChecked();
   await click(0.5, 0.5);
   await settled();
   await window.screenshot({ path: join(shots, 'occlusion-off-window.png') });
@@ -338,7 +341,8 @@ test('a dab on the strap paints the top under it only with the occlusion test of
 
   await window.getByTestId('app-undo').click();
   await settled();
-  await window.getByTestId('paint-occlusion').check();
+  await window.getByTestId('paint-occlusion').click();
+  await expect(window.getByTestId('paint-occlusion')).toBeChecked();
   await click(0.5, 0.5);
   await settled();
   await window.screenshot({ path: join(shots, 'occlusion-on-window.png') });

@@ -175,7 +175,8 @@ const overflowing = () =>
 /** Whether nothing in the Library's top bar or search row runs past another, or past the pane. */
 async function laidOut(what: string): Promise<void> {
   const pane = await window.locator('ptn-library').boundingBox();
-  const shown = window.locator('ptn-library [aria-label="Library view"]:visible');
+  // The control, not an xUI select's host, which carries the label it hands its button.
+  const shown = window.locator('ptn-library :not(xui-select)[aria-label="Library view"]:visible');
   await expect(shown).toHaveCount(1);
   const [switches, search, toggle] = await Promise.all(
     [shown, window.getByTestId('library-search'), window.getByTestId('library-layout')].map(part => part.boundingBox())

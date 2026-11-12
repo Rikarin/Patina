@@ -120,6 +120,11 @@ describe('PresetEditor', () => {
 
     expect(page.querySelector<HTMLInputElement>('[data-testid="preset-id"]')?.value).toBe('unreal-copy');
     expect(page.querySelector('[data-testid="preset-file-written"]')?.textContent.trim()).toBe('T_Crate_Copy_ORM.png');
+    const gltf = () => page.querySelector<HTMLElement>('[data-testid="preset-material-gltf"] [role="checkbox"]');
+    expect(gltf()?.getAttribute('aria-checked')).toBe('false');
+    gltf()?.click();
+    await settled(fixture);
+    expect(gltf()?.getAttribute('aria-checked')).toBe('true');
     page.querySelector<HTMLButtonElement>('[data-testid="preset-editor-save"]')?.click();
     await settled(fixture, 10);
 

@@ -363,7 +363,8 @@ test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads
 
   await window.locator('[data-testid^=paint-layer-fill]').getByTestId('layer-mesh-mask').click();
   await expect(window.getByTestId('layer-meshes')).toContainText('Hinge');
-  await window.getByTestId('layer-mesh-Hinge').uncheck();
+  await window.getByTestId('layer-mesh-Hinge').click();
+  await expect(window.getByTestId('layer-mesh-Hinge')).not.toBeChecked();
   await window.mouse.click(4, 300); // anywhere else closes the list
   await expect.poll(() => greenAt(0.75), { timeout: 30_000 }).toBeLessThan(200);
   expect(await greenAt(0.25)).toBeGreaterThan(200);
