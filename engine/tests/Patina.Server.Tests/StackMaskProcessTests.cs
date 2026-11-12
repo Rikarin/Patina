@@ -167,13 +167,17 @@ public sealed partial class StackProcessTests {
         );
     }
 
-    /// <summary>A stroke cannot keep a picture it would replace, so it says so instead of taking it.</summary>
+    /// <summary>
+    ///     A brush on a mask that is a picture paints over it and never replaces it (#72): the source stays, live, and
+    ///     a paint layer on top of the mask's own stack takes the strokes, the next stroke as well as the first.
+    ///     Undone, the mask is as it was.
+    /// </summary>
     [Theory]
     [InlineData("Generator")]
     [InlineData("Texture")]
     [InlineData("Bake")]
     [InlineData("Anchor")]
-    public async Task A_brush_leaves_a_mask_that_is_a_picture_alone(string source) {
+    public async Task A_brush_paints_over_a_mask_that_is_a_picture(string source) {
         using var deadline = Deadline(120);
         var (_, state) = await StartAsync("Picture.vxlayers", deadline.Token);
         var fill = await MaskedFillAsync(
@@ -188,9 +192,54 @@ public sealed partial class StackProcessTests {
             deadline.Token
         );
 
-        await RefusedAsync(state.Id, deadline.Token, MaskStroke("hole", fill, 300f, 300f, [0f, 0f, 0f, 1f]));
+        await EditAsync(state.Id, deadline.Token, MaskStroke("first", fill, 300f, 300f, [0f, 0f, 0f, 1f]));
+        await EditAsync(state.Id, deadline.Token, MaskStroke("second", fill, 600f, 600f, [1f, 1f, 1f, 1f]));
 
-        Assert.Equal(source, Layer(await StateAsync(state.Id, deadline.Token), fill).Mask.Source);
+        var mask = Layer(await StateAsync(state.Id, deadline.Token), fill).Mask;
+        Assert.Equal(source, mask.Source);
+        var entry = Assert.Single(mask.Layers!);
+        Assert.Equal(("Paint", true), (entry.Source, entry.Painted));
+
+        await ActAsync(state.Id, "undo", deadline.Token);
+        await ActAsync(state.Id, "undo", deadline.Token);
+        mask = Layer(await StateAsync(state.Id, deadline.Token), fill).Mask;
+        Assert.Equal(source, mask.Source);
+        Assert.Empty(mask.Layers!);
+    }
+
+    /// <summary>
+    ///     Over a picture, a stroke changes only what it touches: elsewhere the picture still masks the layer, and
+    ///     where the brush laid black the layer is as hidden as a mask of nothing would hide it.
+    /// </summary>
+    [Fact]
+    public async Task A_stroke_over_a_picture_mask_changes_only_what_it_touches() {
+        using var deadline = Deadline(180);
+        var (_, state) = await StartAsync("OverPicture.vxlayers", deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackSetLayer("paint", AnchorPoint: "Paint"));
+        await PaintAsync(state.Id, "picture", Line(250, 280, 40), false, deadline.Token);
+        var fill = await MaskedFillAsync(state.Id, new("Constant", 0f), deadline.Token);
+        var hidden = await TexelsAsync(state.Id, "hidden", deadline.Token);
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(fill, Mask: new("Anchor", Anchor: new("Paint", "baseColor")))
+        );
+        var before = await TexelsAsync(state.Id, "before", deadline.Token);
+        Assert.NotEqual(Texel(hidden, 800, 800), Texel(before, 800, 800));
+
+        await EditAsync(state.Id, deadline.Token, MaskStroke("hole", fill, 300f, 300f, [0f, 0f, 0f, 1f]));
+
+        var after = await TexelsAsync(state.Id, "after", deadline.Token);
+        Near(Texel(before, 800, 800), Texel(after, 800, 800));
+        Near(Texel(hidden, 350, 300), Texel(after, 350, 300));
+        Assert.NotEqual(Texel(before, 350, 300), Texel(after, 350, 300));
+        Assert.Equal("Anchor", Layer(await StateAsync(state.Id, deadline.Token), fill).Mask.Source);
+
+        await ActAsync(state.Id, "undo", deadline.Token);
+        Assert.Equal(
+            Digest(before.Maps, "baseColor"),
+            Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor")
+        );
     }
 
     /// <summary>

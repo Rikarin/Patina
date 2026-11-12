@@ -28,7 +28,7 @@ import { FilterInputs, type FilterSources } from './filter-inputs';
 import { tagSwatch } from './layer-tags';
 import { LayerDraft } from './live-value';
 import { MaterialUse } from './material-use';
-import { colourOf, hexOf, PaintStore, writesChannel } from './paint-store';
+import { colourOf, hexOf, paintsOverMask, PaintStore, writesChannel } from './paint-store';
 import { SurfaceFields } from './surface-fields';
 
 const Axes: readonly string[] = ['X', 'Y', 'Z'];
@@ -648,9 +648,9 @@ function stemOf(source: string): string | undefined {
               (valueChange)="setMask(layer, { source: $event ?? 'None' })"
             />
           </div>
-          @if (store.masking() && store.maskLayer() === null && !store.canPaint()) {
-            <p class="text-foreground-muted text-xs" data-testid="paint-mask-no-brush">
-              A brush would replace this mask. Set Mask to Paint to paint it.
+          @if (store.masking() && store.maskLayer() === null && paintsOver(layer)) {
+            <p class="text-foreground-muted text-xs" data-testid="paint-mask-over">
+              A brush paints over this mask in a paint layer of its own, and the mask stays as it is.
             </p>
           }
           @switch (layer.mask.source) {
@@ -1002,6 +1002,7 @@ export class LayerPanel {
   /** The lanes of a picture a mask can read, which a direction's mesh map holds its axes in. */
   protected readonly lanes = computed(() => this.store.vocabulary()?.lanes?.map(term => term.value) ?? ['Red']);
   protected readonly termName = termName;
+  protected readonly paintsOver = paintsOverMask;
 
   /** A knob as the app calls it: its label, or its name in words, never the key a graph stores it by (#198). */
   protected knobName(parameter: { name: string; label?: string | null }): string {

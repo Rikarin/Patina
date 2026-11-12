@@ -131,8 +131,13 @@ export interface Aim {
 /** How the Worker says a stack read mesh maps with no bake, before their names. */
 const NeedsBake = 'Needs a bake: ';
 
-/** The masks a brush can paint: a picture has to stay itself, and these are one number or a canvas already. */
+/** The masks that are one number or a canvas: a brush on any other paints a paint layer over it (#72). */
 const FlatMasks: ReadonlySet<string> = new Set(['None', 'Constant', 'Paint']);
+
+/** Whether a brush on a layer's mask paints a paint layer over its picture rather than the mask itself (#72). */
+export function paintsOverMask(layer: StackLayer): boolean {
+  return !FlatMasks.has(layer.mask.source);
+}
 
 export interface LayerRow {
   layer: StackLayer;
@@ -370,9 +375,8 @@ export class PaintStore {
       return layer.mask.layers?.[entry]?.source === 'Paint';
     }
 
-    return this.masking()
-      ? FlatMasks.has(layer.mask.source)
-      : (layer.kind === 'paint' || layer.flattened) && writesChannel(layer, this.channel());
+    // Every mask takes a brush: a picture keeps itself under a paint layer the first stroke puts over it.
+    return this.masking() || ((layer.kind === 'paint' || layer.flattened) && writesChannel(layer, this.channel()));
   });
 
   /** Whether one would land on the mesh, which also takes a mesh: a layered material's sphere is only a preview. */

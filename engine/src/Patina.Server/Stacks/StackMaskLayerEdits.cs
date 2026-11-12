@@ -45,6 +45,29 @@ sealed class StackMaskLayerEdits(StackEditor editor) {
     }
 
     /// <summary>
+    ///     The canvas a brush on a mask that is a picture paints: the paint layer on top of the mask's stack, or a new
+    ///     one put there by the first stroke. The picture stays itself and live beneath it, and the canvas starts
+    ///     transparent, so a stroke changes only what it touches (#72).
+    /// </summary>
+    public string CanvasOverMask(LayerAsset layer, string set, Action<IAuthoringCommand> run) {
+        var count = StackMaskLayers.Count(layer.Mask);
+        if (count > 0 && StackMaskLayers.At(layer, count - 1) is { Source: LayerMaskSource.Paint, Enabled: true }) {
+            return MaskLayerCanvas(layer, count - 1, set, run);
+        }
+
+        var paint = editor.FreeCanvas(
+            Path.GetFileNameWithoutExtension(editor.AssetPath),
+            set,
+            string.Create(CultureInfo.InvariantCulture, $"{layer.Id}-{count + 1}"),
+            true,
+            new HashSet<string>()
+        );
+        var entry = new MaskLayerAsset { Source = LayerMaskSource.Paint, Paint = paint };
+        run(editor.Named(layer, layer with { Mask = StackMaskLayers.Added(layer, entry, null) }, set));
+        return paint;
+    }
+
+    /// <summary>
     ///     An edit of a layer's mask stack, as one change of the layer, so that undo puts the whole mask back.
     /// </summary>
     public SetLayerCommand MaskLayers(StackCommand command, string set) {
