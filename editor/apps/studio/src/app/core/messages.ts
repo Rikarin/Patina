@@ -38,7 +38,8 @@ const Words: Readonly<Record<string, string>> = {
   'package-refused': 'This graph can’t be published as a package. {reason}',
   'preset-factory': '{preset} is a Starter preset, so it can’t be changed or deleted. Duplicate it to change a copy.',
   'preset-missing': 'There is no preset {preset} there any more. It may have been deleted outside Patina.',
-  'export-unbuilt': 'The maps of this project are not built as they are now. Build them first, then look again.'
+  'export-unbuilt': 'The maps of this project are not built as they are now. Build them first, then look again.',
+  'mesh-layout-changed': 'Something moved on the new mesh, so reloading it moves paint. {reason}'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };

@@ -164,7 +164,9 @@ test('File > Import says what it did, lists the file, and refuses what nothing r
   expect(existsSync(join(library, 'projects', 'crate', 'pictures', 'model.blend'))).toBe(false);
 });
 
-test('Reloading a mesh asks first, keeps paint on the same layout and moves it on a new one', async () => {
+test('Reloading a mesh keeps the document open on the same layout, and asks first on a new one', async () => {
+  // Two reloads on the GPU engine, and the last closes and opens the document again.
+  test.setTimeout(240_000);
   const mesh = join(scratch, 'plate.glb');
   writeFileSync(mesh, colouredGlb());
   await launch();
@@ -180,24 +182,28 @@ test('Reloading a mesh asks first, keeps paint on the same layout and moves it o
 
   const backup = join(library, 'projects', 'plate', '.paint-backup');
 
-  // A sculpt: the file changed and the islands did not.
+  // A sculpt: the file changed and the islands did not, so nothing moves and nothing asks (#89). The document stays
+  // open, and its undo with it.
   writeFileSync(mesh, colouredGlb(1.5));
   await command('reloadMesh');
-  await expect(window.getByTestId('mesh-reload')).toContainText('lose their undo');
+  await expect(window.getByTestId('app-notice')).toHaveText(
+    'Reloaded the mesh. Its layout is the same, so paint and undo stay as they were.',
+    { timeout: 60_000 }
+  );
+  await expect(window.getByTestId('mesh-reload')).toHaveCount(0);
+  await expect(window.getByTestId('document-tab')).toHaveCount(1);
+  await expect(window.getByTestId('app-undo')).toBeEnabled();
+  await expect(window.getByTestId('app-failure')).toHaveCount(0);
+  expect(existsSync(backup)).toBe(false);
+
+  // A new layout asks first, and then moves the paint and keeps what it was.
+  writeFileSync(mesh, colouredGlb(1.5, 0.25));
+  await command('reloadMesh');
+  await expect(window.getByTestId('mesh-reload')).toContainText('lose their undo', { timeout: 60_000 });
   await window.getByRole('button', { name: 'Cancel' }).click();
   await expect(window.getByTestId('mesh-reload')).toHaveCount(0);
   expect(existsSync(backup)).toBe(false);
 
-  await command('reloadMesh');
-  await window.getByTestId('mesh-reload-confirm').click();
-  await expect(window.getByTestId('mesh-reload')).toHaveCount(0);
-  await expect(window.getByTestId('document-tab')).toHaveCount(1, { timeout: 60_000 });
-  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 60_000 });
-  await expect(window.getByTestId('app-failure')).toHaveCount(0);
-  expect(existsSync(backup)).toBe(false);
-
-  // A new layout moves the paint, and keeps what it was.
-  writeFileSync(mesh, colouredGlb(1.5, 0.25));
   await command('reloadMesh');
   await window.getByTestId('mesh-reload-confirm').click();
   await expect.poll(() => existsSync(backup), { timeout: 60_000 }).toBe(true);

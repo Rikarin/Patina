@@ -634,13 +634,38 @@ export class ProjectStore {
       const client = await this.library.api();
       const query = { project: project?.path ?? '', mesh: source };
       const { changed } = unwrap(await client.GET('/api/v1/library/project/mesh-change', { params: { query } }));
-      if (changed) {
-        this.mutableReloading.set(source);
-      } else {
+      if (!changed) {
         this.mutableNotice.set('The mesh has not changed.');
+      } else if (project && (await this.reloadInPlace(project.path, source))) {
+        this.mutableNotice.set('Reloaded the mesh. Its layout is the same, so paint and undo stay as they were.');
+      } else {
+        this.mutableReloading.set(source);
       }
     } catch (failure) {
       this.mutableFailure.set(messageOf(failure));
+    }
+  }
+
+  /**
+   * Reloads a mesh on which nothing moved, leaving open documents open with their undo (#89). False when something
+   * moved, which the Server says before it changes anything, so that reloading asks what it costs first.
+   */
+  private async reloadInPlace(project: string, mesh: string): Promise<boolean> {
+    const client = await this.library.api();
+    try {
+      const contents = unwrap(
+        await client.PATCH('/api/v1/library/project/settings', {
+          body: { project, mesh, high: null, autoUnwrap: null, sameLayout: true }
+        })
+      );
+      this.mutableContents.update(all => new Map(all).set(project, contents));
+      return true;
+    } catch (failure) {
+      if (failure instanceof ApiError && failure.code === 'mesh-layout-changed') {
+        return false;
+      }
+
+      throw failure;
     }
   }
 

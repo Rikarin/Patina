@@ -141,6 +141,12 @@ public static class Refusals {
     /// </summary>
     public const string PackageRefused = "package-refused";
 
+    /// <summary>
+    ///     A mesh to reload only if nothing on it moves (#89), on which something would: a material, a texture set's
+    ///     layout or the file's name. Nothing changed. Values: <c>reason</c>, which is the Server's own sentence.
+    /// </summary>
+    public const string MeshLayoutChanged = "mesh-layout-changed";
+
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(
         string detail,

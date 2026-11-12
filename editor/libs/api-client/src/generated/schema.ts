@@ -5043,6 +5043,13 @@ export interface components {
       reassign?: null | {
         [key: string]: string;
       };
+      /**
+       * @description True reloads Mesh only when nothing on it moves (#89): the same file name, the same
+       *     materials, and every texture set laid out as it was. Then no paint is touched and open documents stay open,
+       *     with their undo. Otherwise it is refused with `mesh-layout-changed` and nothing changes, and a client asks
+       *     what reloading costs before it reloads without this.
+       */
+      sameLayout?: null | boolean;
     };
     /** @description One project as the browser shows it. The project itself loads on open. */
     ProjectSummary: {

@@ -28,8 +28,8 @@ const Keep = '';
     >
       <xui-dialog-body data-testid="mesh-reload">
         <p>
-          The mesh file changed. Open documents close and lose their undo history. Bakes made on the old mesh go out of
-          date.
+          The mesh file changed, and its layout or its materials with it. Open documents close and lose their undo
+          history. Bakes made on the old mesh go out of date.
         </p>
         @if (vanished().length > 0 && appeared().length > 0) {
           <p class="text-foreground-muted mt-2 text-xs">

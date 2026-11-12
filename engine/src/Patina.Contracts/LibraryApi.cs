@@ -217,6 +217,12 @@ public sealed record ProjectFileRequest(string Project, string File);
 ///     Preserve Paint) and its bake folder's name changes with it. A set left out, or sent to a material another set
 ///     holds, stays as it is, and a new material no set takes gets a set of its own.
 /// </param>
+/// <param name="SameLayout">
+///     True reloads <paramref name="Mesh" /> only when nothing on it moves (#89): the same file name, the same
+///     materials, and every texture set laid out as it was. Then no paint is touched and open documents stay open,
+///     with their undo. Otherwise it is refused with <c>mesh-layout-changed</c> and nothing changes, and a client asks
+///     what reloading costs before it reloads without this.
+/// </param>
 public sealed record ProjectSettingsRequest(
     string Project,
     string? Mesh,
@@ -224,7 +230,8 @@ public sealed record ProjectSettingsRequest(
     bool? AutoUnwrap,
     bool? PreservePaint = null,
     UnwrapOptions? Unwrap = null,
-    IReadOnlyDictionary<string, string>? Reassign = null
+    IReadOnlyDictionary<string, string>? Reassign = null,
+    bool? SameLayout = null
 );
 
 /// <summary>One preset file as a project's export last had it.</summary>
