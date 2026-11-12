@@ -240,18 +240,22 @@ test('a fill takes what a rectangle or a lasso holds, and the outline shows whil
   await expect.poll(async () => changed(before, await shot()), { timeout: 60_000 }).toBeGreaterThan(1500);
   await settled();
   await window.screenshot({ path: join(shots, 'fill-rectangle.png') });
-  const boxed = await shot();
 
   await window.getByTestId('paint-fill-shape').selectOption('lasso');
   await colour('#e03010');
+  // A loop on the housing's left face, which the box left alone. The brush ring ends where the loop does, so the
+  // picture before is taken with the pointer there too and only the paint differs.
   const loop = [
-    [0.2, 0.75],
-    [0.3, 0.6],
-    [0.45, 0.8],
-    [0.3, 0.9]
+    [0.2, 0.45],
+    [0.35, 0.4],
+    [0.4, 0.6],
+    [0.22, 0.6]
   ] as const;
-  const [start] = loop;
-  const first = await at(start[0], start[1]);
+  const last = await at(loop[3][0], loop[3][1]);
+  await window.mouse.move(last.x, last.y);
+  await settled();
+  const boxed = await shot();
+  const first = await at(loop[0][0], loop[0][1]);
   await window.mouse.move(first.x, first.y);
   await window.mouse.down();
   for (const [x, y] of loop.slice(1)) {
@@ -260,7 +264,7 @@ test('a fill takes what a rectangle or a lasso holds, and the outline shows whil
   }
 
   await window.mouse.up();
-  await expect.poll(async () => changed(boxed, await shot()), { timeout: 60_000 }).toBeGreaterThan(300);
+  await expect.poll(async () => changed(boxed, await shot()), { timeout: 60_000 }).toBeGreaterThan(1500);
   await settled();
   await window.screenshot({ path: join(shots, 'fill-lasso.png') });
   expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
