@@ -114,6 +114,7 @@ sealed class WorkerLoop(
                     or IpcTypes.ViewportStack => OnDevice(request),
                 IpcTypes.MeshUnwrap => Unwrap(request),
                 IpcTypes.MeshMovePaint => MovePaint(request),
+                IpcTypes.MeshSameLayout => SameLayout(request),
                 IpcTypes.MeshMaterials => Materials(request),
                 IpcTypes.MeshParts => Parts(request),
                 IpcTypes.MeshFacts => Facts(request),
@@ -183,6 +184,25 @@ sealed class WorkerLoop(
         } catch (Exception e) when (e is ModelFormatException or IOException or UnauthorizedAccessException) {
             throw new IpcException($"'{Path.GetFileName(file)}' would not read: {e.Message}");
         }
+    }
+
+    /// <summary>
+    ///     Whether a texture set keeps its layout from one mesh to the other. A set the new mesh lacks, or a file that
+    ///     will not read as a mesh with a layout, does not: the reload that follows says why.
+    /// </summary>
+    IpcMessage SameLayout(IpcMessage request) {
+        var ask = request.MeshMovePaint ?? throw new IpcException("mesh.same-layout compares nothing.");
+        bool same;
+        try {
+            same = PaintTransfer.SameLayout(
+                meshes.Of(ask.From, ask.FromSet ?? ask.Set, ask.UvSet).Projection,
+                meshes.Of(ask.To, ask.Set, ask.UvSet).Projection
+            );
+        } catch (IpcException) {
+            same = false;
+        }
+
+        return new() { Type = IpcTypes.Ok, Id = request.Id, SameLayout = same };
     }
 
     /// <summary>

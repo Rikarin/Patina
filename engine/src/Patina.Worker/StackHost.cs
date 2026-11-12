@@ -336,7 +336,10 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         readonly LayerStackPictures fill;
         readonly List<Applied> applied = [];
         readonly Dictionary<long, Applied> known = [];
-        readonly Dictionary<string, PaintMeshSurface> surfaces = new(StringComparer.Ordinal);
+
+        readonly Dictionary<string, (PaintProjection Over, PaintMeshSurface Surface)> surfaces =
+            new(StringComparer.Ordinal);
+
         readonly Dictionary<string, IBrushMask> alphas = new(StringComparer.Ordinal);
         readonly Dictionary<string, PaintImage> pictures = new(StringComparer.Ordinal);
         readonly Dictionary<string, Dictionary<string, PaintImage>> composites = new(StringComparer.Ordinal);
@@ -751,7 +754,11 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         BoundingBox? Bounds(string model) =>
             model.Trim().Length == 0 ? null : meshes.Of(Path.GetFullPath(model, folder)).Projection.Bounds;
 
-        /// <summary>The mesh as a stroke reaches it, at the size of its canvas, in the set's layout.</summary>
+        /// <summary>
+        ///     The mesh as a stroke reaches it, at the size of its canvas, in the set's layout. ⚠ Built again when the
+        ///     shelf reads the file again: a mesh reloaded on the same layout keeps its documents open (#89), and its
+        ///     triangles may have moved under the same coordinates.
+        /// </summary>
         PaintMeshSurface? Surface(string model, int width, int height) {
             if (model.Trim().Length == 0) {
                 return null;
@@ -759,11 +766,12 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
             var file = Path.GetFullPath(model, folder);
             var key = $"{file}\n{UvSet}\n{width}x{height}";
-            if (!surfaces.TryGetValue(key, out var surface)) {
-                surfaces[key] = surface = new(meshes.Of(file, set, UvSet).Projection, width, height);
+            var over = meshes.Of(file, set, UvSet).Projection;
+            if (!surfaces.TryGetValue(key, out var held) || !ReferenceEquals(held.Over, over)) {
+                surfaces[key] = held = (over, new(over, width, height));
             }
 
-            return surface;
+            return held.Surface;
         }
 
         /// <summary>

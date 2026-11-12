@@ -49,6 +49,10 @@ switch (args) {
         return rest is [var cell]
             ? BakeFixture.Write(folder, float.Parse(cell, CultureInfo.InvariantCulture))
             : BakeFixture.Write(folder);
+    case ["knot", { } knotFolder, { } quads]:
+        // A dense mesh for the stamps bench (#25): the knot's high skin, quads × quads.
+        Console.WriteLine(BakeFixture.WriteKnot(knotFolder, int.Parse(quads, CultureInfo.InvariantCulture)).High);
+        return 0;
     case ["s9", var folder, .. var rest]:
         return BakeFixture.Spike(
             folder,

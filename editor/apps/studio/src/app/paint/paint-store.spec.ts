@@ -12,6 +12,7 @@ import {
   PaintStore,
   colourOf,
   hexOf,
+  paintsOverMask,
   pressureOf,
   rowsOf,
   stackSocketUrl,
@@ -421,7 +422,8 @@ describe('PaintStore', () => {
     expect(store.canPaint()).toBe(true);
     store.chooseMask(stacked);
     expect(store.maskLayer()).toBeNull();
-    expect(store.canPaint()).toBe(false);
+    expect(store.canPaint()).toBe(true);
+    expect(paintsOverMask(stacked)).toBe(true);
 
     store.chooseMaskLayer(stacked, 1);
     store.begin({ x: 1, y: 2, pressure: 1 });
@@ -461,16 +463,18 @@ describe('PaintStore', () => {
     const masked = (source: string) => ({ ...(base as StackLayer), mask: { ...(base as StackLayer).mask, source } });
     store.state.update(state => (state ? { ...state, model: 'crate.glb' } : state));
     expect(store.canPaintMesh()).toBe(true);
-    for (const [source, paintable] of [
-      ['Constant', true],
-      ['Paint', true],
-      ['Generator', false],
-      ['Texture', false],
-      ['Bake', false],
-      ['Anchor', false]
+    // A picture takes a brush too, which paints a paint layer over it (#72).
+    for (const [source, over] of [
+      ['Constant', false],
+      ['Paint', false],
+      ['Generator', true],
+      ['Texture', true],
+      ['Bake', true],
+      ['Anchor', true]
     ] as const) {
       store.state.update(state => (state ? { ...state, layers: [masked(source)] } : state));
-      expect(store.canPaint()).toBe(paintable);
+      expect(store.canPaint()).toBe(true);
+      expect(paintsOverMask(masked(source))).toBe(over);
     }
   });
 

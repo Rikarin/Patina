@@ -102,6 +102,13 @@ public static class IpcTypes {
 
     public const string MeshMovePaint = "mesh.move-paint";
 
+    /// <summary>
+    ///     Server to Worker: say whether a texture set keeps its layout from one mesh to another, so that its paint and
+    ///     its open document stay as they are (#89). Asked with <see cref="IpcMessage.MeshMovePaint" />, whose paints
+    ///     are not read; answered in <see cref="IpcMessage.SameLayout" />.
+    /// </summary>
+    public const string MeshSameLayout = "mesh.same-layout";
+
     public const string MeshMaterials = "mesh.materials";
 
     public const string MeshParts = "mesh.parts";
@@ -265,6 +272,11 @@ public sealed class IpcMessage {
     public IReadOnlyList<UnwrapSet>? MeshUnwrapped { get; set; }
 
     public MeshMovePaintAsk? MeshMovePaint { get; set; }
+
+    /// <summary>
+    ///     Whether a texture set keeps its layout, in the answer to <see cref="IpcTypes.MeshSameLayout" />.
+    /// </summary>
+    public bool? SameLayout { get; set; }
 
     /// <summary>The file for <see cref="IpcTypes.MeshMaterials" /> and <see cref="IpcTypes.MeshParts" />.</summary>
     public string? MeshFile { get; set; }

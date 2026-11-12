@@ -36,7 +36,7 @@ static class ImageMaterial {
                             groups: []
                             comments: []
                             interface: []
-                            settings: { baseWidth: '2048', baseHeight: '2048', seed: '1', size: 'SIZE' }
+                            settings: { baseWidth: '1024', baseHeight: '1024', seed: '1', size: 'SIZE' }
                             parameters: []
                             """;
 

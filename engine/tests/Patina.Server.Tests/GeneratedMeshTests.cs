@@ -13,9 +13,8 @@ namespace Patina.Server.Tests;
 ///     Every mesh Patina makes turns its faces the way its normals say, and shows a picture the right way round
 ///     (#242). The preview sphere did neither (#184): it was drawn inside out, and a tangent-space normal map on it lit
 ///     the wrong way because its layout was mirrored. Each is read the way the viewport and the bake read a file.
-///     ⚠ Not a mesh Unwrap lays out: Vixen's unwrapper flattens each chart anticlockwise with v up, and so lays every
-///     chart out mirrored in a layout whose v runs down. Its own tests take that orientation as unfolded, so the fix is
-///     Vixen's, and a test here would fail on every face.
+///     ⚠ Auto Unwrap's mesh is one of them: Vixen's unwrapper flattens each chart anticlockwise with v up, which a file
+///     whose v runs down shows mirrored on every face, so Patina turns the atlas over as it writes it.
 /// </summary>
 public sealed class GeneratedMeshTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-generated-");
@@ -33,7 +32,8 @@ public sealed class GeneratedMeshTests : IDisposable {
         "two materials cage",
         "knot low",
         "knot high",
-        "level of detail"
+        "level of detail",
+        "unwrapped"
     ];
 
     [Theory]
@@ -133,7 +133,13 @@ public sealed class GeneratedMeshTests : IDisposable {
     }
 
     static bool Closed(string name) =>
-        name is "preview sphere" or "preview cube" or "preview cylinder" or "housing high" or "knot high" or "knot low";
+        name is "preview sphere"
+            or "preview cube"
+            or "preview cylinder"
+            or "housing high"
+            or "knot high"
+            or "knot low"
+            or "unwrapped";
 
     /// <summary>Makes the mesh of that name, as the code that makes it for real does.</summary>
     string Made(string name) {
@@ -177,6 +183,32 @@ public sealed class GeneratedMeshTests : IDisposable {
                         Token
                     );
                 return Path.Combine(made, Assert.Single(built.Files));
+            case "unwrapped":
+                // A box with no layout, as Auto Unwrap is given one.
+                var bare = Path.Combine(at, "bare.obj");
+                File.WriteAllText(
+                    bare,
+                    """
+                    v -1 -1 -1
+                    v 1 -1 -1
+                    v 1 1 -1
+                    v -1 1 -1
+                    v -1 -1 1
+                    v 1 -1 1
+                    v 1 1 1
+                    v -1 1 1
+                    f 1 4 3 2
+                    f 5 6 7 8
+                    f 1 2 6 5
+                    f 2 3 7 6
+                    f 3 4 8 7
+                    f 4 1 5 8
+
+                    """
+                );
+                var unwrapped = Path.Combine(at, "bare_unwrapped.glb");
+                Assert.NotNull(MeshUnwrapRun.Run(bare, unwrapped));
+                return unwrapped;
             default:
                 throw new ArgumentOutOfRangeException(nameof(name), name, "No such mesh.");
         }

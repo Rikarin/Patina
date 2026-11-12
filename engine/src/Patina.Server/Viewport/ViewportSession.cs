@@ -88,6 +88,7 @@ public sealed class ViewportSession(
     IpcConnection? told;
     string? toldMesh;
     string toldLayouts = string.Empty;
+    DateTime toldWritten;
     ViewportMapSet? toldMaps;
     ViewportDisplaySet? toldDisplay;
     ViewportCamera? toldCamera;
@@ -505,7 +506,12 @@ public sealed class ViewportSession(
         var connection = await worker.ConnectionAsync(cancellationToken);
         // A texture set moved to another coordinate set is the mesh read again with it (#210).
         var layouts = string.Join(';', work.Worn.UvSets.Select(static pair => $"{pair.Key}={pair.Value}"));
-        if (!ReferenceEquals(connection, told) || work.Mesh != toldMesh || layouts != toldLayouts) {
+        // A mesh reloaded on the same layout is the same file rewritten, under documents that stay open (#89).
+        var written = work.Mesh is { } path && File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
+        if (!ReferenceEquals(connection, told)
+            || work.Mesh != toldMesh
+            || layouts != toldLayouts
+            || written != toldWritten) {
             (toldMesh, toldCamera, toldMaps, toldStack, toldDisplay) = (null, null, null, null, null);
             await connection.SendAsync(
                 new() {
@@ -515,7 +521,7 @@ public sealed class ViewportSession(
                 },
                 cancellationToken
             );
-            (told, toldMesh, toldMaps, toldLayouts) = (connection, work.Mesh, new(), layouts);
+            (told, toldMesh, toldMaps, toldLayouts, toldWritten) = (connection, work.Mesh, new(), layouts, written);
         }
 
         if (work.Maps != toldMaps) {

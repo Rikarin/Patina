@@ -44,6 +44,11 @@ class ProjectSettingsRequest:
                 old material that the new mesh lacks becomes, by name. The set keeps its layers, its paint (moved across with
                 Preserve Paint) and its bake folder's name changes with it. A set left out, or sent to a material another set
                 holds, stays as it is, and a new material no set takes gets a set of its own.
+            same_layout (bool | None | Unset): True reloads Mesh only when nothing on it moves (#89): the same file name,
+                the same
+                materials, and every texture set laid out as it was. Then no paint is touched and open documents stay open,
+                with their undo. Otherwise it is refused with `mesh-layout-changed` and nothing changes, and a client asks
+                what reloading costs before it reloads without this.
      """
 
     project: str
@@ -53,6 +58,7 @@ class ProjectSettingsRequest:
     preserve_paint: bool | None | Unset = UNSET
     unwrap: None | Unset | UnwrapOptions = UNSET
     reassign: None | ProjectSettingsRequestReassignType1 | Unset = UNSET
+    same_layout: bool | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -104,6 +110,12 @@ class ProjectSettingsRequest:
         else:
             reassign = self.reassign
 
+        same_layout: bool | None | Unset
+        if isinstance(self.same_layout, Unset):
+            same_layout = UNSET
+        else:
+            same_layout = self.same_layout
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -122,6 +134,8 @@ class ProjectSettingsRequest:
             field_dict["unwrap"] = unwrap
         if reassign is not UNSET:
             field_dict["reassign"] = reassign
+        if same_layout is not UNSET:
+            field_dict["sameLayout"] = same_layout
 
         return field_dict
 
@@ -214,6 +228,16 @@ class ProjectSettingsRequest:
         reassign = _parse_reassign(d.pop("reassign", UNSET))
 
 
+        def _parse_same_layout(data: object) -> bool | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(bool | None | Unset, data)
+
+        same_layout = _parse_same_layout(d.pop("sameLayout", UNSET))
+
+
         project_settings_request = cls(
             project=project,
             mesh=mesh,
@@ -222,6 +246,7 @@ class ProjectSettingsRequest:
             preserve_paint=preserve_paint,
             unwrap=unwrap,
             reassign=reassign,
+            same_layout=same_layout,
         )
 
 

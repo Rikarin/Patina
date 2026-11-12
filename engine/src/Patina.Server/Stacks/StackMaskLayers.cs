@@ -39,6 +39,16 @@ static class StackMaskLayers {
             )
     ];
 
+    /// <summary>How many entries a client sees.</summary>
+    public static int Count(MaskAsset mask) => Shown(mask).Count;
+
+    /// <summary>
+    ///     Whether a mask is a picture rather than one number or a canvas: a generator, an image, a bake or an anchor,
+    ///     which a brush paints over and never replaces.
+    /// </summary>
+    public static bool IsPicture(LayerMaskSource source) =>
+        source is not (LayerMaskSource.None or LayerMaskSource.Constant or LayerMaskSource.Paint);
+
     /// <summary>The entry at a place a client counts, bottom first.</summary>
     /// <exception cref="StackEditRefusedException">There is none there.</exception>
     public static MaskLayerAsset At(LayerAsset layer, int index) => Shown(layer.Mask)[Checked(layer, index, false)];

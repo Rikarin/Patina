@@ -789,16 +789,23 @@ describe('ProjectStore', () => {
       meshes: [{ id: 'm', path: 'projects/a/low.glb', high: null, source: '/art/low.glb' }]
     };
 
-    function reloadable(changed: boolean) {
+    /** A reload whose file changed or not, and which kept its layout or moved something (#89). */
+    function reloadable(changed: boolean, kept = false) {
       const test = harness();
       test.client.GET.mockImplementation(((route: string) =>
         Promise.resolve({
           data: route === '/api/v1/library/project/mesh-change' ? { changed } : onSource,
           response: new Response()
         })) as never);
-      const patch = vi.fn(() => Promise.resolve({ data: onSource, response: new Response() }));
+      const patch = vi.fn((_route: string, options: { body: { sameLayout?: boolean } }) =>
+        options.body.sameLayout && !kept
+          ? Promise.reject(new ApiError(409, 'moved', [], 'mesh-layout-changed', { reason: 'moved' }))
+          : Promise.resolve({ data: onSource, response: new Response() })
+      );
       (test.client as unknown as { PATCH: unknown }).PATCH = patch;
-      return { ...test, patch };
+      /** The reloads that close documents: every one but those asked to keep the layout. */
+      const closing = () => patch.mock.calls.filter(([, options]) => !options.body.sameLayout);
+      return { ...test, patch, closing };
     }
 
     it('leaves everything open when the file has not changed, and says so', async () => {
@@ -814,30 +821,45 @@ describe('ProjectStore', () => {
       expect(store.tabs()).toHaveLength(1);
     });
 
-    it('asks first when it has, and closes nothing until told', async () => {
-      const { store, patch, removed } = reloadable(true);
+    it('asks first when something moved, and closes nothing until told', async () => {
+      const { store, closing, removed } = reloadable(true);
       await store.open('a');
 
       await store.reloadMesh();
 
       expect(store.reloading()).toBe('/art/low.glb');
-      expect(patch).not.toHaveBeenCalled();
+      expect(closing()).toEqual([]);
       expect(removed.filter(id => id.startsWith('session'))).toEqual([]);
+      expect(store.failure()).toBeNull();
 
       await store.resolveReloading(false);
       expect(store.reloading()).toBeNull();
-      expect(patch).not.toHaveBeenCalled();
+      expect(closing()).toEqual([]);
     });
 
     it('reloads on the answer', async () => {
-      const { store, patch } = reloadable(true);
+      const { store, closing } = reloadable(true);
       await store.open('a');
       await store.reloadMesh();
 
       await store.resolveReloading(true);
 
-      expect(patch).toHaveBeenCalledTimes(1);
+      expect(closing()).toHaveLength(1);
       expect(store.active()?.path).toBe(paths.texturing);
+    });
+
+    it('reloads a mesh on which nothing moved without asking, keeping its documents open (#89)', async () => {
+      const { store, patch, closing, removed } = reloadable(true, true);
+      await store.open('a');
+
+      await store.reloadMesh();
+
+      expect(store.reloading()).toBeNull();
+      expect(patch).toHaveBeenCalledTimes(1);
+      expect(closing()).toEqual([]);
+      expect(removed.filter(id => id.startsWith('session'))).toEqual([]);
+      expect(store.tabs()).toHaveLength(1);
+      expect(store.notice()).toBe('Reloaded the mesh. Its layout is the same, so paint and undo stay as they were.');
     });
 
     it('reassigns the project a tab on its way to the front belongs to, once it has arrived (#89, #237)', async () => {

@@ -613,8 +613,15 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         return paint;
     }
 
-    /// <summary>The canvas of a mask, and what it starts as if this is the stroke that makes one.</summary>
+    /// <summary>
+    ///     The canvas of a mask, and what it starts as if this is the stroke that makes one. A mask that is a picture
+    ///     stays one, live, and the brush paints a paint layer of the mask's own stack over it (#72, #109).
+    /// </summary>
     (string Paint, uint? Start) MaskCanvas(LayerAsset layer, string set, Action<IAuthoringCommand> run) {
+        if (StackMaskLayers.IsPicture(layer.Mask.Source)) {
+            return (StackLayerEdits.CanvasOverMask(this, layer, set, run), null);
+        }
+
         var paint = layer.Mask.Paint.Trim();
         if (layer.Mask.Source == LayerMaskSource.Paint && paint.Length > 0) {
             return (paint, null);
@@ -628,21 +635,10 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     }
 
     /// <summary>
-    ///     The one number a mask stood at, which is what a canvas taking its place starts as, so that a stroke changes
-    ///     only what it touches. A paint mask nobody has painted reads nothing, and so hides nothing.
+    ///     The one number a flat mask stood at, which is what a canvas taking its place starts as, so that a stroke
+    ///     changes only what it touches. A paint mask nobody has painted reads nothing, and so hides nothing.
     /// </summary>
-    /// <exception cref="StackEditRefusedException">
-    ///     The mask is a picture, which one number cannot stand for.
-    /// </exception>
-    static float Showed(LayerAsset layer) =>
-        layer.Mask.Source switch {
-            LayerMaskSource.None or LayerMaskSource.Paint => 1f,
-            LayerMaskSource.Constant => layer.Mask.Value,
-            var source => throw new StackEditRefusedException(
-                $"A brush would replace the {StackDocuments.SourceName(source)} mask of '{layer.Name}'. "
-                + "Set the mask's source to Paint to paint it."
-            )
-        };
+    static float Showed(LayerAsset layer) => layer.Mask.Source == LayerMaskSource.Constant ? layer.Mask.Value : 1f;
 
     /// <summary>
     ///     A file for a new canvas. ⚠ Never one anything can reach: a removed layer's strokes can still be undone back

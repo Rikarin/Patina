@@ -41,3 +41,5 @@ Vixen's own settings: the compiler doesn't read it, and `GraphSize` tells the co
 - There is no size per node, no size per compound instance and no size relative to a parent.
 - Export has no size per run in its pane. A build can already say one, through the output's `size` setting.
 - A layer stack's base still means what a graph's used to. Stacks aren't part of this.
+
+ADR 0028 designs the rest, and a new image material is authored at 1024 as every new graph is.

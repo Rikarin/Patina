@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Vixen.Core.Mathematics;
 using Vixen.Geometry;
 using Vixen.Geometry.Uv;
 using Vixen.Interchange;
@@ -65,13 +66,25 @@ public static class MeshUnwrapRun {
                 Packing(options),
                 out var coordinates
             );
-            written.AddRange(ModelGeometry.ToParts(flat, coordinates));
+            written.AddRange(ModelGeometry.ToParts(flat, Downward(coordinates)));
             sets.Add(Summary(material < names.Length ? names[material] : string.Empty, report));
         }
 
         Write(output, written, read);
         return sets;
     }
+
+    /// <summary>
+    ///     The unwrapper's layout with v running down the picture, as a glTF file and every reader here take it (#242).
+    /// </summary>
+    /// <remarks>
+    ///     ⚠ Vixen's unwrapper lays each chart out anticlockwise with v up, which in a file whose v runs down shows
+    ///     every chart's picture mirrored and turns a tangent-space normal map's green the wrong way. Turning the
+    ///     atlas over keeps each chart where it was packed and on the texel grid, since 1 − v maps the unit square
+    ///     onto itself.
+    /// </remarks>
+    static Vector2[] Downward(IReadOnlyList<Vector2> coordinates) =>
+        [..coordinates.Select(static uv => new Vector2(uv.X, 1f - uv.Y))];
 
     static PackSettings Packing(UnwrapOptions options) =>
         new() {
