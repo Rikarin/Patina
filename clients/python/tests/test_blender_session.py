@@ -18,12 +18,24 @@ from patina_client.api.graphs import (
     write_graph_image,
 )
 from patina_client.api.jobs import get_job, start_bake
-from patina_client.api.library import get_materials, get_package_plan, publish_package
+from patina_client.api.library import (
+    create_graph,
+    create_project,
+    get_graph_templates,
+    get_materials,
+    get_package_plan,
+    get_project_contents,
+    publish_package,
+    set_project_settings,
+)
+from patina_client.api.stacks import apply_stack_commands, export_stack, get_stack, open_stack
 from patina_client.api.system import get_system
 from patina_client.api.viewport import (
     follow_graph_in_viewport,
     get_viewport,
+    set_viewport_display,
     set_viewport_mesh,
+    show_bake_in_viewport,
     show_graph_in_viewport,
 )
 from patina_client.models import (
@@ -45,7 +57,24 @@ from patina_client.models import (
     GraphCommandGraphSetInfoOp,
     GraphCommandGraphSetValue,
     GraphCommandGraphSetValueOp,
+    GraphCreateRequest,
     PackageRequest,
+    ProblemDetails,
+    ProjectCreateRequest,
+    ProjectSettingsRequest,
+    StackBrush,
+    StackCommandBatch,
+    StackCommandStackAddLayer,
+    StackCommandStackAddLayerOp,
+    StackCommandStackSetLayer,
+    StackCommandStackSetLayerOp,
+    StackCommandStackStroke,
+    StackCommandStackStrokeOp,
+    StackExportRequest,
+    StackMask,
+    StackOpenRequest,
+    StackStamp,
+    ViewportBakeRequest,
     ViewportFollow,
     ViewportGraphRequest,
     ViewportMeshRequest,
@@ -196,6 +225,10 @@ def test_a_blender_shaped_session(session) -> None:
     for map_file in baked.result.maps:
         assert pathlib.Path(map_file.path).is_file()
 
+    # One map of the bake alone on the mesh, through the picture view.
+    alone = show_bake_in_viewport.sync(client=client, body=ViewportBakeRequest(job=bake.id, map_="height"))
+    assert alone.display.view == "picture"
+
     # Change a parameter, and receive the texture it changed.
     before, first = picture(client, graph.id)
     edit = apply_graph_commands.sync(
@@ -281,3 +314,136 @@ def test_a_graph_publishes_as_a_package_that_every_shelf_offers(session) -> None
     offered = [material for material in shelf.items if material.origin == "package"]
     assert [material.name for material in offered] == ["Rust"]
     assert offered[0].description == "Rust for a Blender add-on."
+
+
+def test_a_document_on_a_mesh_from_an_add_on(session) -> None:
+    """A texturing project made, its mesh reloaded where nothing moved, a selection of two colors, an outline filled,
+    and a mask written alone in a format: every field the requests have, through the generated client."""
+    client = attach(session)
+    worker_connected(client)
+    low = session.meshes / "housing_low.glb"
+
+    # A new graph from a template the Server offers.
+    templates = get_graph_templates.sync(client=client)
+    assert templates
+    created = create_graph.sync(
+        client=client,
+        body=GraphCreateRequest(name="Outputs", project=None, resolution=512, template=templates[-1].value),
+    )
+    assert created.path.endswith(".vxtexgraph")
+
+    # The viewport's lens.
+    display = get_viewport.sync(client=client).display
+    display.depth_of_field = 0.4
+    display.focus = -0.2
+    lens = set_viewport_display.sync(client=client, body=display).display
+    assert (lens.depth_of_field, lens.focus) == (0.4, -0.2)
+
+    # A texturing project, and its mesh reloaded on the same layout, which moves nothing and keeps documents open.
+    create_project.sync(
+        client=client,
+        body=ProjectCreateRequest(
+            name="Housing",
+            folder=None,
+            tags=None,
+            mesh=str(low),
+            resolution=256,
+            kind="texturing",
+            image=None,
+            high=None,
+        ),
+    )
+    contents = get_project_contents.sync(client=client, path="housing")
+    document = contents.documents[0]
+    stack = open_stack.sync(client=client, body=StackOpenRequest(path=document.path))
+    reloaded = set_project_settings.sync(
+        client=client,
+        body=ProjectSettingsRequest(
+            project="housing",
+            mesh=str(low),
+            high=None,
+            auto_unwrap=False,
+            preserve_paint=True,
+            unwrap=None,
+            reassign=None,
+            same_layout=True,
+        ),
+    )
+    assert not isinstance(reloaded, ProblemDetails), reloaded
+    assert get_stack.sync(id=stack.id, client=client).id == stack.id
+
+    # A fill under a selection of two colors of the ID map, and an outline filled on the paint layer.
+    paint = next(layer.id for layer in stack.layers if layer.kind.lower() == "paint")
+    apply_stack_commands.sync(
+        id=stack.id,
+        client=client,
+        body=StackCommandBatch(
+            commands=[
+                StackCommandStackAddLayer(op=StackCommandStackAddLayerOp.ADDLAYER, kind="fill", name="Painted Parts")
+            ],
+            label=None,
+        ),
+    )
+    fill = get_stack.sync(id=stack.id, client=client).layers[-1].id
+    side = 256.0
+    corners = [StackStamp(x=x * side, y=y * side, pressure=1.0) for x, y in ((0.1, 0.1), (0.9, 0.1), (0.9, 0.9), (0.1, 0.9))]
+    edited = apply_stack_commands.sync(
+        id=stack.id,
+        client=client,
+        body=StackCommandBatch(
+            commands=[
+                StackCommandStackSetLayer(
+                    op=StackCommandStackSetLayerOp.SETLAYER,
+                    layer=fill,
+                    mask=StackMask(
+                        source="Bake",
+                        map_="id",
+                        colours=[[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+                        tolerance=0.05,
+                        softness=0.0,
+                        inside=1.0,
+                        outside=0.0,
+                    ),
+                ),
+                StackCommandStackStroke(
+                    op=StackCommandStackStrokeOp.STROKE,
+                    stroke="outline",
+                    layer=paint,
+                    channel="baseColor",
+                    brush=StackBrush(radius=1.0),
+                    colour=[0.9, 0.1, 0.05, 1.0],
+                    stamps=corners,
+                    open_=False,
+                    mask=False,
+                    curve="fill",
+                    fill="triangle",
+                    outline=True,
+                    through=False,
+                ),
+            ],
+            label=None,
+        ),
+    )
+    assert not isinstance(edited, ProblemDetails), edited
+    masked = next(layer for layer in get_stack.sync(id=stack.id, client=client).layers if layer.id == fill)
+    assert len(masked.mask.colours) == 2
+
+    # The fill's mask alone, as a 16-bit PNG.
+    written = export_stack.sync_detailed(
+        id=stack.id,
+        client=client,
+        body=StackExportRequest(
+            folder=str(session.output / "mask"),
+            layer=fill,
+            format_="png16",
+            compression="none",
+            quality=None,
+            mips=False,
+            mask=True,
+        ),
+    )
+    if written.status_code.value >= 400:
+        needs_gpu(written.content.decode())
+        raise AssertionError(written.content.decode())
+    assert [pixels.usage for pixels in written.parsed] == ["mask"]
+    assert pathlib.Path(written.parsed[0].file).is_file()
