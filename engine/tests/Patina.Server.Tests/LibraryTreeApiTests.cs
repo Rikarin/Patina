@@ -710,9 +710,15 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
             Token
         );
 
-        Assert.Equal("projects/crate/pictures/wood.png", (await copied.Content.ReadFromJsonAsync<ProjectPicture>(Token))!.Path);
+        Assert.Equal(
+            "projects/crate/pictures/wood.png",
+            (await copied.Content.ReadFromJsonAsync<ProjectPicture>(Token))!.Path
+        );
         Assert.Equal("wood", await File.ReadAllTextAsync(Path.Combine(own.FullName, "wood.png"), Token));
-        Assert.Equal("projects/crate/pictures/rust.png", (await kept.Content.ReadFromJsonAsync<ProjectPicture>(Token))!.Path);
+        Assert.Equal(
+            "projects/crate/pictures/rust.png",
+            (await kept.Content.ReadFromJsonAsync<ProjectPicture>(Token))!.Path
+        );
         Assert.Equal(HttpStatusCode.BadRequest, climbed.StatusCode);
         Assert.False(File.Exists(Path.Combine(own.FullName, "outside.png")));
     }

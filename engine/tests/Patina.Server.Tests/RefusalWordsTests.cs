@@ -53,7 +53,9 @@ public sealed class RefusalWordsTests {
     /// </summary>
     const int Uncoded = 93;
 
-    /// <summary>A new refusal goes out through <see cref="Refusals.Problem" />, with a code the app has words for.</summary>
+    /// <summary>
+    ///     A new refusal goes out through <see cref="Refusals.Problem" />, with a code the app has words for.
+    /// </summary>
     [Fact]
     public void No_new_refusal_goes_out_without_a_code() {
         var server = Path.Combine(Engine.Root, "src", "Patina.Server");

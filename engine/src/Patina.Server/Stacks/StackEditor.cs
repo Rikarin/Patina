@@ -929,9 +929,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
 
     internal LayerAsset Require(string id) =>
         LayerStackEdit.Find(Document, new(Set.Name, id))
-        ?? throw new StackEditRefusedException(
-            "That layer is not in this document any more."
-        );
+        ?? throw new StackEditRefusedException("That layer is not in this document any more.");
 
     /// <summary>One undo step: what it is called, what a jump names it by, and what it did.</summary>
     public sealed record UndoStep(long Id, string Label) {

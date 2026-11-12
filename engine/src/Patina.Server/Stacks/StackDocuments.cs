@@ -290,7 +290,8 @@ public static class StackDocuments {
     /// <summary>The anchor points a set publishes, and who reads each, for a client to list.</summary>
     public static IReadOnlyList<StackAnchor> Anchors(TextureSetAsset set) {
         var uses = LayerStackEdit.AnchorUses(set);
-        string[] effects = [..Everything(set.Layers).SelectMany(static layer => layer.Mask.Effects).Select(static e => e.Node)];
+        string[] effects =
+            [..Everything(set.Layers).SelectMany(static layer => layer.Mask.Effects).Select(static e => e.Node)];
         return [
             ..LayerStackEdit.AnchorPoints(set)
                 .Select(point => new StackAnchor(

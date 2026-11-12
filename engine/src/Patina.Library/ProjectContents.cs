@@ -682,7 +682,11 @@ static class ProjectFiles {
             .ThenBy(static project => project, StringComparer.OrdinalIgnoreCase);
         foreach (var project in inOrder) {
             var full = Path.Combine(projects, project);
-            foreach (var below in Files(full).Where(below => wanted(below) && !Nested(full, below))) {
+            foreach (var below in Files(full)) {
+                if (!wanted(below) || Nested(full, below)) {
+                    continue;
+                }
+
                 if (found.Count == limit) {
                     return (found, true);
                 }
@@ -694,7 +698,9 @@ static class ProjectFiles {
         return (found, false);
     }
 
-    /// <summary>Whether a file below a project is another project's, or hidden, which is not the project's to offer.</summary>
+    /// <summary>
+    ///     Whether a file below a project is another project's, or hidden, which is not the project's to offer.
+    /// </summary>
     static bool Nested(string full, string below) {
         var parts = below.Split('/');
         if (parts.Any(static part => part.StartsWith('.'))) {
