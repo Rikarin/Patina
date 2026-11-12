@@ -353,8 +353,8 @@ public static class StackDocuments {
     static StackFilterKind Kind(NodeTypeDefinition type, NodeTypeRegistry library, ISubGraphSource compounds) =>
         new(
             type.Path,
-            type.Title,
-            type.Category,
+            Terms.Spelled(type.Title),
+            Terms.Spelled(type.Category),
             type.Summary,
             [
                 ..type.Ports.Where(static port => port is { Direction: PortDirection.Input, Kind: not PortKind.Image })
