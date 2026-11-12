@@ -2612,6 +2612,74 @@
         }
       }
     },
+    "/api/v1/library/files": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The pictures or meshes the library\u0027s projects hold, a project\u0027s own first: what a client offers to pick from, where a dialog of its own machine cannot see this one\u0027s disk.",
+        "operationId": "ListLibraryFiles",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryFileList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/picture": {
       "get": {
         "tags": [
@@ -12525,6 +12593,50 @@
         },
         "description": "The body of \u0060PUT /api/v1/library/export\u0060."
       },
+      "LibraryFile": {
+        "required": [
+          "path",
+          "name",
+          "project"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its path below the library."
+          },
+          "name": {
+            "type": "string",
+            "description": "Its file\u0027s name."
+          },
+          "project": {
+            "type": "string",
+            "description": "The project it is in, below \u0060projects/\u0060."
+          }
+        },
+        "description": "A file the library holds, for a client to pick from where a native dialog cannot see (#4)."
+      },
+      "LibraryFileList": {
+        "required": [
+          "files",
+          "more"
+        ],
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LibraryFile"
+            },
+            "description": "The files, the asked project\u0027s first, then the rest by project."
+          },
+          "more": {
+            "type": "boolean",
+            "description": "Whether there were more than the list holds."
+          }
+        },
+        "description": "The answer to \u0060GET /api/v1/library/files\u0060."
+      },
       "LibraryInfo": {
         "required": [
           "id",
@@ -14249,7 +14361,7 @@
           },
           "picture": {
             "type": "string",
-            "description": "A picture file on the Server\u0027s machine."
+            "description": "A picture the library holds, by its path below the library, or a picture file on the Server\u0027s machine by its\nfull path. One of another project is copied into this one, as one from the machine is."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/project/pictures\u0060."

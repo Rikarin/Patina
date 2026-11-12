@@ -208,12 +208,38 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     }
 
     /// <summary>Brings a picture into a project, so that the project travels with what it reads.</summary>
+    /// <param name="path">The project, below <c>projects/</c>.</param>
+    /// <param name="picture">
+    ///     A picture the library holds, by its path below the library, or a file on this machine by its full path.
+    /// </param>
     /// <returns>Its path below the library.</returns>
     /// <exception cref="FileNotFoundException">The project or the picture is not there.</exception>
+    /// <exception cref="ProjectRefusedException">A path below the library climbs out of it.</exception>
     public string AddPicture(string path, string picture) {
-        lock (createGate) {
-            return ProjectFiles.AddPicture(RootPath, path, picture);
+        var file = picture;
+        if (!Path.IsPathFullyQualified(picture)) {
+            var root = Path.GetFullPath(RootPath);
+            file = Path.GetFullPath(picture, root);
+            if (!file.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
+                throw new ProjectRefusedException($"'{picture}' is not a picture this library holds.");
+            }
         }
+
+        lock (createGate) {
+            return ProjectFiles.AddPicture(RootPath, path, file);
+        }
+    }
+
+    /// <summary>
+    ///     The pictures or meshes every project holds, the asked project's first, for a client that cannot see this
+    ///     machine's disk to pick from (#4).
+    /// </summary>
+    /// <param name="wanted">Whether a file is one asked for, by its name.</param>
+    /// <param name="first">The project, below <c>projects/</c>, whose files come first, if any.</param>
+    /// <param name="limit">How many to give at most.</param>
+    public LibraryFileList Files(Func<string, bool> wanted, string? first, int limit) {
+        var (files, more) = ProjectFiles.Library(RootPath, wanted, first, limit);
+        return new(files, more);
     }
 
     /// <summary>The file a new document of a project would have.</summary>

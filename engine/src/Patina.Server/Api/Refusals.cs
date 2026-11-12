@@ -141,6 +141,9 @@ public static class Refusals {
     /// </summary>
     public const string PackageRefused = "package-refused";
 
+    /// <summary>A list of the library's files of a kind it does not list. Values: <c>kind</c>.</summary>
+    public const string FileKindUnknown = "file-kind-unknown";
+
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(
         string detail,

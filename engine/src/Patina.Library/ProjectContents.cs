@@ -650,6 +650,68 @@ static class ProjectFiles {
         return (Path.GetDirectoryName(file)!, DocumentCodec.ReadProject(SharedFile.ReadAllText(file), file).Document);
     }
 
+    /// <summary>
+    ///     The files of every project that a test says yes to, with paths below the library and the project each is in,
+    ///     the asked project's first. A project holds what its own folder holds, not a project folder inside it.
+    /// </summary>
+    /// <param name="root">The library.</param>
+    /// <param name="wanted">Whether a file is one asked for, by its name.</param>
+    /// <param name="first">The project, below <c>projects/</c>, whose files come first, if any.</param>
+    /// <param name="limit">How many to give at most.</param>
+    /// <returns>The files, and whether more were left out.</returns>
+    public static (IReadOnlyList<LibraryFile> Files, bool More) Library(
+        string root,
+        Func<string, bool> wanted,
+        string? first,
+        int limit
+    ) {
+        var projects = Path.Combine(root, LibraryLayout.ProjectsFolder);
+        if (!Directory.Exists(projects)) {
+            return ([], false);
+        }
+
+        List<LibraryFile> found = [];
+        var inOrder = Directory.EnumerateFiles(
+                projects,
+                LibraryLayout.ProjectFile,
+                new EnumerationOptions { RecurseSubdirectories = true }
+            )
+            .Select(file => Path.GetRelativePath(projects, Path.GetDirectoryName(file)!).Replace('\\', '/'))
+            .Where(static project => !project.Split('/').Any(static part => part.StartsWith('.')))
+            .OrderBy(project => project == first ? 0 : 1)
+            .ThenBy(static project => project, StringComparer.OrdinalIgnoreCase);
+        foreach (var project in inOrder) {
+            var full = Path.Combine(projects, project);
+            foreach (var below in Files(full).Where(below => wanted(below) && !Nested(full, below))) {
+                if (found.Count == limit) {
+                    return (found, true);
+                }
+
+                found.Add(new(Below(project, below), Path.GetFileName(below), project));
+            }
+        }
+
+        return (found, false);
+    }
+
+    /// <summary>Whether a file below a project is another project's, or hidden, which is not the project's to offer.</summary>
+    static bool Nested(string full, string below) {
+        var parts = below.Split('/');
+        if (parts.Any(static part => part.StartsWith('.'))) {
+            return true;
+        }
+
+        var folder = full;
+        foreach (var part in parts[..^1]) {
+            folder = Path.Combine(folder, part);
+            if (File.Exists(Path.Combine(folder, LibraryLayout.ProjectFile))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>The files in a project, relative to it, leaving out what its bakes wrote.</summary>
     static List<string> Files(string full) => [
         ..Directory.EnumerateFiles(full, "*", new EnumerationOptions { RecurseSubdirectories = true })

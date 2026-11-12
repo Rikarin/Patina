@@ -27,6 +27,7 @@ import { desktop } from './core/desktop';
 import { DiagnosticsDialog } from './core/diagnostics-dialog';
 import { EditCommands } from './core/edit-commands';
 import { FileConflictDialog } from './core/file-conflict-dialog';
+import { FilePicker } from './core/file-picker';
 import { Links } from './core/help-links';
 import { HistoryPane } from './core/history-pane';
 import { PreferencesDialog } from './core/preferences-dialog';
@@ -56,6 +57,7 @@ import { LibraryActions } from './library/library-actions';
 import { LibraryPane } from './library/library-pane';
 import { LibraryTreeStore } from './library/library-tree-store';
 import { MeshReloadDialog } from './library/mesh-reload-dialog';
+import { PickFileDialog } from './library/pick-file-dialog';
 import { ProjectCommands } from './library/project-commands';
 import { ProjectSettingsDialog } from './library/project-settings-dialog';
 import { ProjectStore } from './library/project-store';
@@ -97,6 +99,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     XuiInputImports,
     PaintAtlas,
     PaintPane,
+    PickFileDialog,
     StartPane,
     TextureView,
     ViewportPane,
@@ -513,6 +516,10 @@ import { ViewportPane } from './viewport/viewport-pane';
       <ptn-about [(open)]="about" />
     }
 
+    @defer (when picker.request()) {
+      <ptn-pick-file />
+    }
+
     @defer (when keys()) {
       <ptn-shortcuts [(open)]="keys" />
     }
@@ -631,6 +638,7 @@ export class App {
   protected readonly preferencesOpen = signal(false);
   protected readonly diagnosing = signal(false);
   protected readonly about = signal(false);
+  protected readonly picker = inject(FilePicker);
   protected readonly paint = inject(PaintStore);
   /** The one thing that went wrong last, which stays until it is read. */
   protected readonly failure = computed(() => this.paint.failure() ?? this.project.failure());

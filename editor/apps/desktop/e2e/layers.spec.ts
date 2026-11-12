@@ -6,7 +6,7 @@ import {
   type Locator,
   type Page
 } from '@playwright/test';
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { answerOpen, colouredGlb, leave, newLibrary, newProject, pick } from './projects';
@@ -563,4 +563,39 @@ test('a flattened folder exports on its own, named after it', async () => {
       timeout: 60_000
     })
     .toBe(true);
+});
+
+test('a picture is picked from the library, the project’s own first, and comes into the project (#4)', async () => {
+  await newProject(app, window, 'Barrel');
+  await expect(window.getByTestId('paint-layer-paint')).toBeVisible({ timeout: 30_000 });
+  // A picture of this project's and one of another's, as an artist or git put them there.
+  const pixel = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGP4DwABAQEAG7buVgAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  for (const [project, name] of [
+    ['barrel', 'wood.png'],
+    ['crate', 'rust.png']
+  ] as const) {
+    const folder = join(scratch, 'Game.ptlib', 'projects', project, 'pictures');
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(join(folder, name), pixel);
+  }
+
+  await window.getByTestId('paint-screen-picture-choose').click();
+  const dialog = window.getByTestId('pick-file');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByTestId('pick-file-item')).toHaveText(['wood.png', 'rust.png']);
+  await expect(dialog).toContainText('This project');
+  await expect(dialog.locator('img')).toHaveCount(2);
+  await window.screenshot({ path: join(shots, 'pick-file.png') });
+
+  await window.getByTestId('pick-file-search').fill('rust');
+  await expect(dialog.getByTestId('pick-file-item')).toHaveText(['rust.png']);
+  await dialog.getByTestId('pick-file-item').click();
+  await window.getByTestId('pick-file-choose').click();
+  await expect(dialog).toHaveCount(0);
+  // Another project's picture comes into this one, so the project travels with what it reads.
+  await expect(window.getByTestId('paint-screen-picture-name')).toHaveText('rust.png', { timeout: 30_000 });
+  expect(existsSync(join(scratch, 'Game.ptlib', 'projects', 'barrel', 'pictures', 'rust.png'))).toBe(true);
 });

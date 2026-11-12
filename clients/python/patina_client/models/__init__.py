@@ -168,6 +168,8 @@ from .job_event import JobEvent
 from .job_page import JobPage
 from .job_state import JobState
 from .library_export_request import LibraryExportRequest
+from .library_file import LibraryFile
+from .library_file_list import LibraryFileList
 from .library_info import LibraryInfo
 from .library_move_request import LibraryMoveRequest
 from .library_moved import LibraryMoved
@@ -546,6 +548,8 @@ __all__ = (
     "JobPage",
     "JobState",
     "LibraryExportRequest",
+    "LibraryFile",
+    "LibraryFileList",
     "LibraryInfo",
     "LibraryMoved",
     "LibraryMoveRequest",

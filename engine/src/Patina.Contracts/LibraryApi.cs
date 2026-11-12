@@ -337,8 +337,22 @@ public sealed record MaterialBrush(string Alpha);
 
 /// <summary>The body of <c>POST /api/v1/library/project/pictures</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>
-/// <param name="Picture">A picture file on the Server's machine.</param>
+/// <param name="Picture">
+///     A picture the library holds, by its path below the library, or a picture file on the Server's machine by its
+///     full path. One of another project is copied into this one, as one from the machine is.
+/// </param>
 public sealed record ProjectPictureRequest(string Project, string Picture);
+
+/// <summary>A file the library holds, for a client to pick from where a native dialog cannot see (#4).</summary>
+/// <param name="Path">Its path below the library.</param>
+/// <param name="Name">Its file's name.</param>
+/// <param name="Project">The project it is in, below <c>projects/</c>.</param>
+public sealed record LibraryFile(string Path, string Name, string Project);
+
+/// <summary>The answer to <c>GET /api/v1/library/files</c>.</summary>
+/// <param name="Files">The files, the asked project's first, then the rest by project.</param>
+/// <param name="More">Whether there were more than the list holds.</param>
+public sealed record LibraryFileList(IReadOnlyList<LibraryFile> Files, bool More);
 
 /// <summary>A picture a project now holds.</summary>
 /// <param name="Path">Its path below the library, which a layer or a mask reads.</param>

@@ -12,6 +12,7 @@ import {
 } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { desktop } from '../core/desktop';
+import { type FileChoice, FilePicker } from '../core/file-picker';
 import { messageOf } from '../core/messages';
 import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice } from '../core/session-return';
@@ -79,6 +80,7 @@ function remember(key: string, value: string | null): void {
 @Injectable({ providedIn: 'root' })
 export class ProjectStore {
   private readonly library = inject(LibraryStore);
+  private readonly picker = inject(FilePicker);
   private readonly paint = inject(PaintStore);
   private readonly brushes = inject(BrushStore);
   private readonly graph = inject(GraphStore);
@@ -817,15 +819,15 @@ export class ProjectStore {
   /** Asks the user for a picture and brings it into the project, for a layer or a mask to read. */
   async pickPicture(): Promise<string | null> {
     const project = this.current();
-    const picture = await desktop()?.openImage(this.status.pictures());
-    if (!project || !picture) {
+    const choice = project ? await this.choosePicture(project.path) : null;
+    if (!project || !choice) {
       return null;
     }
 
     this.startAction();
     try {
       const client = await this.library.api();
-      const body = { project: project.path, picture };
+      const body = { project: project.path, picture: 'library' in choice ? choice.library : choice.machine };
       const added = unwrap(await client.POST('/api/v1/library/project/pictures', { body })).path;
       await this.read(project.path);
       return added;
@@ -833,6 +835,25 @@ export class ProjectStore {
       this.mutableFailure.set(messageOf(failure));
       return null;
     }
+  }
+
+  /**
+   * A picture from the library, the project's own first, or from this machine (#4). With nothing in the library to
+   * pick from, this machine's dialog is all there is, so it opens at once where there is one.
+   */
+  private async choosePicture(project: string): Promise<FileChoice | null> {
+    const bridge = desktop();
+    if (bridge) {
+      const client = await this.library.api();
+      const query = { kind: 'picture', project };
+      const listed = await client.GET('/api/v1/library/files', { params: { query } }).catch(() => null);
+      if (!listed?.data?.files.length) {
+        const file = await bridge.openImage(this.status.pictures());
+        return file ? { machine: file } : null;
+      }
+    }
+
+    return this.picker.pick({ kind: 'picture', title: 'Choose a Picture', project });
   }
 
   /**
