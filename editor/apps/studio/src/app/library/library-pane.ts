@@ -458,8 +458,13 @@ function targetOf(row: LibraryRow): LibraryTarget {
             </svg>
           </button>
         </footer>
-        <ptn-new-project [(open)]="creating" [folder]="creatingIn()" [startKind]="creatingKind()" />
-        <ptn-new-graph [(open)]="creatingGraph" />
+        <!-- Dialogs are in no first bundle: each comes the first time it opens, and stays. -->
+        @defer (when creating()) {
+          <ptn-new-project [(open)]="creating" [folder]="creatingIn()" [startKind]="creatingKind()" />
+        }
+        @defer (when creatingGraph()) {
+          <ptn-new-graph [(open)]="creatingGraph" />
+        }
         @defer (when actions.asking()) {
           <ptn-library-dialogs />
         }
