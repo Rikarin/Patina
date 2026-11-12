@@ -6060,6 +6060,23 @@ export interface components {
        *     null for the whole stack. Its files are named after it.
        */
       layer?: null | string;
+      /**
+       * @description The file format of every map, as `GET /export/presets` lists them, or null for 8-bit RGBA PNGs, which
+       *     hold exactly the pixels string StackPixels.Digest is of. A map keeps its own lanes where the format
+       *     holds them, and otherwise the nearest it does: a JPEG of a color with alpha drops the alpha.
+       */
+      format?: null | string;
+      /** @description What a KTX2 or DDS file holds: none, half, float or bc1 to bc7. Null is none. */
+      compression?: null | string;
+      /** @description For JPEG, 1 to 100; for BC6H and BC7, fast, balanced or best. Null is the format's default. */
+      quality?: null | string;
+      /** @description Whether a KTX2 or DDS file carries a mip chain. */
+      mips?: null | boolean;
+      /**
+       * @description With string? StackExportRequest.Layer, whether to write the layer's mask alone rather than the layer: one map,
+       *     `mask`, white where the layer shows, with the mask's own layers and effects, even while it is turned off.
+       */
+      mask?: null | boolean;
     };
     /** @description One image a filter reads, as Properties offers a slot for it. */
     StackFilterInput: {

@@ -324,7 +324,8 @@ static class MeshMapSettings {
 }
 
 /// <summary>A plan image's bytes as numbers, keeping how many bits they had.</summary>
-static class RawPictures {
+public static class RawPictures {
+    /// <summary>The samples, and whether they came from bytes.</summary>
     public static (FloatImage Image, bool EightBit) ToFloat(TextureRawImage raw) {
         var texels = raw.Width * raw.Height;
         var (lanes, width) = raw.Format switch {

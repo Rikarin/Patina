@@ -94,6 +94,13 @@ disagree. An output that composes a baked normal says `green: up` in its setting
 the same one the viewport's shader reads, so this is a one-minus in unit space and not a sign flip of the byte. `Export Maps` writes
 a stack's numbers as they are, so its normal is Y-.
 
+`Export Maps` (`POST /stacks/{id}/export`) writes 8-bit RGBA PNGs unless it is given a format, because those PNGs hold exactly
+the pixels its digests are of, which is what "what you paint is what exports" compares. Given one (#47), each map is the file a
+preset would write that reads only that map's lanes (`MapFile`): packed by `ChannelPacker` and encoded by `ExportEncoder`, from
+the map at the depth it was evaluated at, with its own lanes where the format holds them and otherwise the nearest it does. One
+layer's maps can be written alone, and so can a layer's mask, as one map `mask`: a white fill under that mask over black, the only
+layer of a set whose one channel is `mask`, so the mask is evaluated by the code a layer's is (#153).
+
 The viewport's shader reads Y+ and takes a sign: `-1` for a graph's maps (`PUT /viewport/graph`) and for a stack on the mesh, and `+1`
 for a bake. A stack's green was once declared Y+ and shown Y+, so the two agreed with each other and both disagreed with its fills.
 

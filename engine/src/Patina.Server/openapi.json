@@ -16687,6 +16687,41 @@
               "string"
             ],
             "description": "One layer to write on its own, such as a flattened folder, composited alone over the channels\u0027 defaults, or\nnull for the whole stack. Its files are named after it."
+          },
+          "format": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The file format of every map, as \u0060GET /export/presets\u0060 lists them, or null for 8-bit RGBA PNGs, which\nhold exactly the pixels string StackPixels.Digest is of. A map keeps its own lanes where the format\nholds them, and otherwise the nearest it does: a JPEG of a color with alpha drops the alpha."
+          },
+          "compression": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What a KTX2 or DDS file holds: none, half, float or bc1 to bc7. Null is none."
+          },
+          "quality": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For JPEG, 1 to 100; for BC6H and BC7, fast, balanced or best. Null is the format\u0027s default."
+          },
+          "mips": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether a KTX2 or DDS file carries a mip chain."
+          },
+          "mask": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "With string? StackExportRequest.Layer, whether to write the layer\u0027s mask alone rather than the layer: one map,\n\u0060mask\u0060, white where the layer shows, with the mask\u0027s own layers and effects, even while it is turned off."
           }
         },
         "description": "Writes each channel of a stack to a file."

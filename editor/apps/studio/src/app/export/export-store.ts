@@ -300,12 +300,14 @@ export class ExportStore {
     return id ? this.jobs.find(id) : null;
   });
 
-  /** Writes each map of an open stack to a folder, from what is on screen, saved or not. */
-  async exportStack(id: string, folder: string): Promise<void> {
+  /**
+   * Writes each map of an open stack to a folder, from what is on screen, saved or not: as 8-bit RGBA PNGs, or in a
+   * format of the export's, each map keeping the lanes it has where the format holds them.
+   */
+  async exportStack(id: string, folder: string, format: string | null = null): Promise<void> {
     const client = await this.api();
-    const maps = unwrap(
-      await client.POST('/api/v1/stacks/{id}/export', { params: { path: { id } }, body: { folder } })
-    );
+    const body = format ? { folder, format } : { folder };
+    const maps = unwrap(await client.POST('/api/v1/stacks/{id}/export', { params: { path: { id } }, body }));
     this.exported.set(maps.map(map => map.file ?? map.usage));
   }
 

@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Export;
+using Patina.Export.Presets;
 using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
@@ -561,6 +563,32 @@ static class StackEndpoints {
         StackEvaluator evaluator,
         CancellationToken cancellationToken
     ) {
+        if (request.Mask == true && request.Layer is null) {
+            return TypedResults.Problem(
+                "A mask is exported with its layer; name the layer.",
+                statusCode: StatusCodes.Status400BadRequest
+            );
+        }
+
+        StackFileAsk? file = null;
+        if (request.Format is { } format) {
+            if (MapFile.Problem(format, request.Compression, request.Quality) is { } problem) {
+                return TypedResults.Problem(problem, statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            file = new(
+                format,
+                request.Compression ?? ExportCompressions.None,
+                MapFile.Quality(format, request.Quality),
+                request.Mips == true
+            );
+        } else if (request.Compression is not null || request.Quality is not null || request.Mips == true) {
+            return TypedResults.Problem(
+                "A compression, a quality or mips go with a format; the default PNG takes none.",
+                statusCode: StatusCodes.Status400BadRequest
+            );
+        }
+
         try {
             return await ReadAsync(
                 id,
@@ -569,7 +597,9 @@ static class StackEndpoints {
                 true,
                 sessions.Resolve(request.Folder),
                 cancellationToken,
-                layer: request.Layer
+                layer: request.Layer,
+                file: file,
+                mask: request.Mask == true
             );
         } catch (StackEditRefusedException e) {
             return Refusals.Of(e, Refused);
@@ -586,7 +616,9 @@ static class StackEndpoints {
         string? folder,
         CancellationToken cancellationToken,
         bool sampled = false,
-        string? layer = null
+        string? layer = null,
+        StackFileAsk? file = null,
+        bool mask = false
     ) {
         if (sessions.Find(id) is not { } session) {
             return NoSession(id);
@@ -603,7 +635,7 @@ static class StackEndpoints {
 
         try {
             return TypedResults.Ok(
-                await evaluator.PixelsAsync(session, clean, folder, cancellationToken, sampled, layer)
+                await evaluator.PixelsAsync(session, clean, folder, cancellationToken, sampled, layer, file, mask)
             );
         } catch (TimeoutException e) {
             return Refusals.Of(e, Unavailable);

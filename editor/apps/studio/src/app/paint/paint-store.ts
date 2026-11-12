@@ -1152,10 +1152,11 @@ export class PaintStore {
   }
 
   /**
-   * Writes one layer's maps on their own, composited alone over the channels' defaults: a flattened folder exported
-   * by itself (#107). The files are named after the layer. Null when no stack is open.
+   * Writes one layer's maps on their own, composited alone over the channels' defaults, as a flattened folder exported
+   * by itself (#107), or with `mask` its mask alone as one grey map (#153). The files are named after the layer. Null
+   * when no stack is open.
    */
-  async exportLayer(layer: string, folder: string): Promise<readonly StackPixels[] | null> {
+  async exportLayer(layer: string, folder: string, mask = false): Promise<readonly StackPixels[] | null> {
     const id = this.state()?.id;
     if (!id) {
       return null;
@@ -1163,7 +1164,7 @@ export class PaintStore {
 
     const client = await this.api();
     return unwrap(
-      await client.POST('/api/v1/stacks/{id}/export', { params: { path: { id } }, body: { folder, layer } })
+      await client.POST('/api/v1/stacks/{id}/export', { params: { path: { id } }, body: { folder, layer, mask } })
     );
   }
 

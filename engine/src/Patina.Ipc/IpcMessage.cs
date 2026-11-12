@@ -773,13 +773,26 @@ public sealed record StackSave(string Session, string? Folder);
 ///     A layer to evaluate alone, from nothing, over the channels' defaults, rather than the whole set: a flattened
 ///     folder exported on its own (#107). Null for the whole set.
 /// </param>
+/// <param name="Mask">With a layer, whether to write its mask alone as one map, <c>mask</c>, rather than the layer.</param>
+/// <param name="File">
+///     The file each map is written as, or null for 8-bit RGBA PNGs: what the pixels' digest is of (#47).
+/// </param>
 public sealed record StackPixelsAsk(
     string Session,
     bool Clean,
     string? Folder,
     bool Viewport = false,
-    string? Layer = null
+    string? Layer = null,
+    StackFileAsk? File = null,
+    bool Mask = false
 );
+
+/// <summary>A map's file in a format other than the PNG a stack's export writes by default, settled by the Server.</summary>
+/// <param name="Format">One of the export formats.</param>
+/// <param name="Compression">For KTX2 and DDS, what the file holds; none for any other.</param>
+/// <param name="Quality">JPEG's 1 to 100, or a block search's fast, balanced or best.</param>
+/// <param name="Mips">Whether a KTX2 or DDS file carries a mip chain.</param>
+public sealed record StackFileAsk(string Format, string Compression, string Quality, bool Mips);
 
 /// <summary>Where a preview lives in the cache, for the Worker that writes it and the Server that serves it.</summary>
 public static class GraphPreviewFiles {

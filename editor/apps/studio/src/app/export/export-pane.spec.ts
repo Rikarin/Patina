@@ -249,7 +249,7 @@ describe('ExportPane', () => {
     expect(text('export-preset-info')[0]).toContain('default');
     expect(page.querySelector('[data-testid="export-make-default"]')).toBeNull();
 
-    fixture.componentInstance['choosePreset']('unreal');
+    (fixture.componentInstance as unknown as { choosePreset(id: string): void }).choosePreset('unreal');
     await settled(fixture);
     expect(text('export-preset-info')[0]).not.toContain('default');
     (page.querySelector('[data-testid="export-make-default"]') as HTMLButtonElement).click();

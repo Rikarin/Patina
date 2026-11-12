@@ -165,11 +165,18 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'unflattenFolder', label: 'Unflatten Folder', section: 'Layers', area: 'stack' },
   { id: 'flattenStack', label: 'Flatten Stack', section: 'Layers', area: 'stack' },
   {
-    id: 'exportFolder',
-    label: 'Export Flattened Folder…',
+    id: 'exportLayer',
+    label: 'Export Layer Alone…',
     section: 'Layers',
     area: 'stack',
-    hint: 'Writes the folder’s maps on their own, over the channels’ defaults, into a folder you choose'
+    hint: 'Writes the layer’s maps on their own, over the channels’ defaults, into a folder you choose'
+  },
+  {
+    id: 'exportMask',
+    label: 'Export Mask Alone…',
+    section: 'Layers',
+    area: 'stack',
+    hint: 'Writes the layer’s mask as one grey map, white where the layer shows, into a folder you choose'
   },
   {
     id: 'createInstance',
@@ -390,7 +397,8 @@ export const MenuBar: readonly {
       'flattenFolder',
       'unflattenFolder',
       'flattenStack',
-      'exportFolder',
+      'exportLayer',
+      'exportMask',
       '-',
       'createInstance',
       'pasteAsInstance',

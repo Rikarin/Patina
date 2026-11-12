@@ -492,9 +492,18 @@ function lanesOf(hex: string): number[] {
 
           @if (paint.state(); as stack) {
             <div class="flex items-center gap-2 text-xs" data-testid="export-document">
-              <span class="text-foreground-muted min-w-0 flex-1"
-                >Or write this document's maps as they are on screen, as PNG.</span
-              >
+              <span class="text-foreground-muted min-w-0 flex-1">Or write this document's maps as they are, as</span>
+              <xui-select
+                class="w-36"
+                size="sm"
+                ariaLabel="Format of the document's maps"
+                data-testid="export-stack-format"
+                [filterable]="false"
+                [itemText]="stackFormatName"
+                [items]="stackFormats()"
+                [value]="stackFormat()"
+                (valueChange)="stackFormat.set($event ?? onScreen)"
+              />
               <button
                 type="button"
                 xuiButton
@@ -712,6 +721,12 @@ export class ExportPane implements OnInit {
   /** The Server's texture sides, after the maps' own size. */
   protected readonly sizes = computed(() => ['native', ...this.status.textureSides().map(String)]);
 
+  /** The document's maps as the 8-bit RGBA PNGs the screen shows, which is what Export Maps writes unless told. */
+  protected readonly onScreen = 'screen';
+  protected readonly stackFormat = signal<string>(this.onScreen);
+  protected readonly stackFormats = computed(() => [this.onScreen, ...this.store.formats().map(format => format.id)]);
+  protected readonly stackFormatName = (format: string): string =>
+    format === this.onScreen ? 'PNG, as on screen' : this.formatName(format);
   protected readonly presetIds = computed(() => this.store.presets().map(preset => preset.id));
   protected readonly chosen = computed<ExportPresetInfo | null>(
     () => this.store.presets().find(preset => preset.id === this.settings().preset) ?? null
@@ -1088,11 +1103,15 @@ export class ExportPane implements OnInit {
     void desktop()?.reveal(path);
   }
 
-  /** Painted work reaches a file with no build behind it: the stack that is open, in a folder chosen now. */
+  /**
+   * Painted work reaches a file with no build behind it: the stack that is open, in a folder chosen now, as the PNGs the
+   * screen shows or in another format (#47).
+   */
   protected async exportStack(id: string): Promise<void> {
     const folder = await desktop()?.openFolder();
+    const format = this.stackFormat();
     if (folder) {
-      await this.attempt(() => this.store.exportStack(id, folder));
+      await this.attempt(() => this.store.exportStack(id, folder, format === this.onScreen ? null : format));
     }
   }
 

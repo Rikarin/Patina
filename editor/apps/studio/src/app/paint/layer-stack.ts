@@ -1281,9 +1281,17 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 Flatten Folder
               </button>
             }
-            @if (layer.flattened) {
-              <button type="button" xuiMenuItem data-testid="layer-menu-export-alone" (triggered)="exportAlone(layer)">
-                {{ commands.label('exportFolder') }}
+            <button type="button" xuiMenuItem data-testid="layer-menu-export-alone" (triggered)="exportAlone(layer)">
+              {{ commands.label('exportLayer') }}
+            </button>
+            @if (layer.mask.source !== 'None') {
+              <button
+                type="button"
+                xuiMenuItem
+                data-testid="layer-menu-export-mask"
+                (triggered)="exportAlone(layer, true)"
+              >
+                {{ commands.label('exportMask') }}
               </button>
             }
             <button type="button" xuiMenuItem data-testid="layer-menu-tag" [xuiMenuTriggerFor]="tagMenu">
@@ -1725,21 +1733,25 @@ export class LayerStack {
     return this.store.edit(...layers.map(layer => ({ op: 'setLayer' as const, layer, tag })));
   }
 
-  /** Writes a flattened folder's maps on their own, into a folder chosen now (#107). */
-  protected async exportAlone(layer: StackLayer): Promise<void> {
+  /**
+   * Writes a layer's maps on their own, or its mask alone as one grey map, into a folder chosen now (#107, #153). A
+   * flattened folder writes the picture it was flattened to.
+   */
+  protected async exportAlone(layer: StackLayer, mask = false): Promise<void> {
     const folder = await desktop()?.openFolder();
     if (!folder) {
       return;
     }
 
     try {
-      const maps = await this.store.exportLayer(layer.id, folder);
+      const maps = await this.store.exportLayer(layer.id, folder, mask);
       if (maps) {
         const count = maps.length;
+        const what = mask ? `the mask of ${layer.name}` : layer.name;
         this.activity.report({
           tone: 'done',
           source: 'Layers',
-          text: `Exported ${layer.name} on its own: ${count} ${count === 1 ? 'map' : 'maps'} in ${folder}.`
+          text: `Exported ${what} on its own: ${count} ${count === 1 ? 'map' : 'maps'} in ${folder}.`
         });
       }
     } catch (failure) {
@@ -1963,11 +1975,19 @@ export class LayerStack {
       }
     );
     handle(
-      'exportFolder',
-      () => chosen()?.flattened === true,
+      'exportLayer',
+      () => chosen() !== null,
       () => {
         const layer = chosen();
         return layer ? this.exportAlone(layer) : undefined;
+      }
+    );
+    handle(
+      'exportMask',
+      () => (chosen()?.mask.source ?? 'None') !== 'None',
+      () => {
+        const layer = chosen();
+        return layer ? this.exportAlone(layer, true) : undefined;
       }
     );
     handle(

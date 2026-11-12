@@ -564,3 +564,33 @@ test('a flattened folder exports on its own, named after it', async () => {
     })
     .toBe(true);
 });
+
+test('any layer exports on its own, and so does its mask as one map', async () => {
+  // Waits on two exports, each an evaluation.
+  test.setTimeout(120_000);
+  await window.getByTestId('paint-add-fill').click();
+  const fill = window.locator('[data-testid^=paint-layer-fill]').first();
+  await fill.click({ button: 'right' });
+  await expect(window.getByTestId('layer-menu-export-mask')).toHaveCount(0);
+  await window.keyboard.press('Escape');
+  await fill.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-white').click();
+
+  const layer = join(scratch, 'layer-alone');
+  await answerOpen(app, layer);
+  await fill.click({ button: 'right' });
+  await window.getByTestId('layer-menu-export-alone').click();
+  await expect
+    .poll(() => (existsSync(layer) ? readdirSync(layer) : []).some(file => file.endsWith('.baseColor.png')), {
+      timeout: 60_000
+    })
+    .toBe(true);
+
+  const mask = join(scratch, 'mask-alone');
+  await answerOpen(app, mask);
+  await fill.click({ button: 'right' });
+  await window.getByTestId('layer-menu-export-mask').click();
+  await expect
+    .poll(() => (existsSync(mask) ? readdirSync(mask) : []), { timeout: 60_000 })
+    .toEqual([expect.stringMatching(/\.mask\.png$/)]);
+});
