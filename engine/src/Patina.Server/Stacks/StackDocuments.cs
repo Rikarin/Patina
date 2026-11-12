@@ -21,6 +21,12 @@ public static class StackDocuments {
 
     const string SelectTolerance = "Tolerance";
     const string SelectSoftness = "Softness";
+    const string SelectInside = "Value";
+    const string SelectOutside = "Background";
+
+    /// <summary>The most colours one selection picks out: a bound on effects nobody reads, not on the id map.</summary>
+    const int MostColours = 32;
+
     const float DefaultTolerance = 0.02f;
 
     /// <exception cref="StackEditRefusedException">It is not a stack.</exception>
@@ -175,27 +181,62 @@ public static class StackDocuments {
         LibraryFiles.Replace(path, Text(stack));
     }
 
-    /// <summary>A mask's effects with its colour selection as the mask asks, and the others as they were.</summary>
+    /// <summary>
+    ///     A mask's effects with its colour selection as the mask asks, and the others as they were. Each colour is a
+    ///     Colour Select of its own, the first reading the mask beneath it and each after it the mask's own picture,
+    ///     joined by the lighter of the two where the selection is above its background and the darker where it is
+    ///     below: either way the selection of every colour.
+    /// </summary>
+    /// <exception cref="StackEditRefusedException">The colours are not ones a mask can select.</exception>
     public static List<MaskEffectAsset> WithSelection(List<MaskEffectAsset> effects, StackMask mask) {
         List<MaskEffectAsset> kept = mask.Effects is { } chosen
             ? [..chosen.Select(static effect => Effect(effect))]
             : [..effects.Where(static effect => effect.Node != ColourSelect)];
-        if (mask.Colour is { Count: >= 3 } colour) {
-            kept.Insert(
-                0,
-                new() {
+        var colours = mask.Colours ?? [];
+        if (colours.Count == 0) {
+            return kept;
+        }
+
+        if (colours.Count > MostColours
+            || colours.Any(static colour => colour is not { Count: 3 or 4 } || !colour.All(float.IsFinite))
+            || !float.IsFinite(mask.Inside)
+            || !float.IsFinite(mask.Outside)) {
+            throw new StackEditRefusedException(
+                $"A selection is up to {MostColours} colours of three numbers each, on a value and a background."
+            );
+        }
+
+        var picture = colours.Count == 1 ? null : PictureOf(mask);
+        var join = mask.Inside >= mask.Outside ? LayerBlendMode.Lighten : LayerBlendMode.Darken;
+        kept.InsertRange(
+            0,
+            colours.Select((colour, at) => new MaskEffectAsset {
                     Node = ColourSelect,
                     Values = {
                         [SelectColour] = [colour[0], colour[1], colour[2], 1f],
                         [SelectTolerance] = [mask.Tolerance],
-                        [SelectSoftness] = [mask.Softness]
-                    }
+                        [SelectSoftness] = [mask.Softness],
+                        [SelectInside] = [mask.Inside],
+                        [SelectOutside] = [mask.Outside]
+                    },
+                    Inputs = at == 0 || picture is null ? [] : new() { ["Input"] = picture },
+                    Blend = at == 0 ? LayerBlendMode.Copy : join
                 }
-            );
-        }
-
+            )
+        );
         return kept;
     }
+
+    /// <summary>What a second colour reads: the mesh map or the picture the mask's base is.</summary>
+    /// <exception cref="StackEditRefusedException">The base is neither.</exception>
+    static LayerInputAsset PictureOf(StackMask mask) =>
+        mask.Source switch {
+            nameof(LayerMaskSource.Bake) => new() { Source = LayerInputSource.Bake, Map = mask.Map },
+            nameof(LayerMaskSource.Texture) => new() { Source = LayerInputSource.Texture, Asset = mask.Asset },
+            _ => throw new StackEditRefusedException(
+                "Several colours are picked out of a mesh map or a picture, so the mask needs one beneath it."
+            )
+        };
 
     static MaskEffectAsset Effect(StackMaskEffect effect) =>
         new() {
@@ -406,6 +447,16 @@ public static class StackDocuments {
     static MaskEffectAsset? Selection(MaskAsset mask) =>
         mask.Effects.Find(static effect => effect.Node == ColourSelect);
 
+    /// <summary>The colours a mask selects, one for each of its colour selections, or null for none.</summary>
+    static IReadOnlyList<float>[]? Colours(MaskAsset mask) {
+        IReadOnlyList<float>[] colours = [
+            ..mask.Effects.Where(static effect => effect.Node == ColourSelect)
+                .Select(static effect => effect.Values.GetValueOrDefault(SelectColour))
+                .OfType<float[]>()
+        ];
+        return colours.Length == 0 ? null : colours;
+    }
+
     /// <summary>Points a stack that is not open at a mesh, relative to its file.</summary>
     /// <summary>Names a stack's texture set after the material it paints.</summary>
     public static void SetSetName(string path, string name) {
@@ -490,7 +541,7 @@ public static class StackDocuments {
                 Wire(layer.Mask.Anchor),
                 layer.Mask.Generator,
                 layer.Mask.Map,
-                Selection(layer.Mask)?.Values.GetValueOrDefault(SelectColour),
+                Colours(layer.Mask),
                 Selection(layer.Mask)?.Values.GetValueOrDefault(SelectTolerance)?[0] ?? DefaultTolerance,
                 Selection(layer.Mask)?.Values.GetValueOrDefault(SelectSoftness)?[0] ?? 0f,
                 [
@@ -511,7 +562,9 @@ public static class StackDocuments {
                 Wire(layer.Mask.GeneratorInputs),
                 StackMaskLayers.Wire(layer.Mask),
                 layer.Mask.Lane.ToString(),
-                layer.Mask.Enabled
+                layer.Mask.Enabled,
+                Selection(layer.Mask)?.Values.GetValueOrDefault(SelectInside)?[0] ?? 1f,
+                Selection(layer.Mask)?.Values.GetValueOrDefault(SelectOutside)?[0] ?? 0f
             ),
             layer.PlanarAxis.ToString(),
             new(

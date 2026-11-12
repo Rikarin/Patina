@@ -119,9 +119,12 @@ public sealed record StackAnchorUse(string Layer, string Where, string Channel);
 /// <param name="Anchor">The anchor point an anchor mask reads, and the channel it reads it in.</param>
 /// <param name="Generator">The compound a generator runs, such as Generators/Dirt.</param>
 /// <param name="Map">The mesh map a bake mask reads.</param>
-/// <param name="Colour">The colour a bake mask selects from its map, as three numbers, or null for all of it.</param>
-/// <param name="Tolerance">How far from that colour still counts.</param>
-/// <param name="Softness">How much further the mask takes to reach nothing.</param>
+/// <param name="Colours">
+///     The colours a bake or texture mask selects from its picture, each three numbers, or null for all of it. A texel
+///     near any of them is selected.
+/// </param>
+/// <param name="Tolerance">How far from a colour still counts.</param>
+/// <param name="Softness">How much further the selection takes to reach the background.</param>
 /// <param name="Effects">What runs on the mask, in order, or null to keep them.</param>
 /// <param name="Parameters">What a generator's knobs are set to, as text, or null to keep them.</param>
 /// <param name="MeshParts">The named meshes the layer is limited to, or null for the whole model.</param>
@@ -138,6 +141,8 @@ public sealed record StackAnchorUse(string Layer, string Where, string Channel);
 ///     Whether the mask applies. Switched off, the layer composites unmasked, keeping every source, layer and effect of
 ///     its mask for when it is switched on again, and still keeps to the meshes it is limited to.
 /// </param>
+/// <param name="Inside">With colours, what the mask is where they are: its output value, 0 to 1.</param>
+/// <param name="Outside">With colours, what the mask is everywhere else: its background, 0 to 1.</param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
@@ -145,7 +150,7 @@ public sealed record StackMask(
     StackAnchorRef? Anchor = null,
     string Generator = "",
     string Map = "",
-    IReadOnlyList<float>? Colour = null,
+    IReadOnlyList<IReadOnlyList<float>>? Colours = null,
     float Tolerance = 0.02f,
     float Softness = 0f,
     IReadOnlyList<StackMaskEffect>? Effects = null,
@@ -154,7 +159,9 @@ public sealed record StackMask(
     IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null,
     IReadOnlyList<StackMaskLayer>? Layers = null,
     string Lane = "Red",
-    bool Enabled = true
+    bool Enabled = true,
+    float Inside = 1f,
+    float Outside = 0f
 );
 
 /// <summary>
@@ -189,20 +196,6 @@ public sealed record StackMaskLayer(
     bool Enabled = true,
     string Lane = "Red"
 );
-
-/// <summary>Limits a layer to some of the model's named meshes, on top of any mask it has.</summary>
-/// <param name="Parts">The named meshes it stays on. Empty is the whole model.</param>
-/// <param name="Asset">The picture of where they lie, from <c>POST /stacks/{id}/mesh-mask</c>.</param>
-public sealed record StackMeshMask(IReadOnlyList<string> Parts, string Asset);
-
-/// <summary>The body of <c>POST /api/v1/stacks/{id}/mesh-mask</c>.</summary>
-/// <param name="Parts">The named meshes to draw.</param>
-public sealed record StackMeshMaskRequest(IReadOnlyList<string> Parts);
-
-/// <summary>The named meshes of a stack's model, and the picture of some of them.</summary>
-/// <param name="Parts">The named meshes in its texture set.</param>
-/// <param name="Asset">The picture, when one was asked for.</param>
-public sealed record StackMeshParts(IReadOnlyList<string> Parts, string? Asset = null);
 
 /// <summary>One step run on a mask.</summary>
 /// <param name="Node">The node type or compound it is.</param>
@@ -919,6 +912,16 @@ public sealed record StackPicture(
 ///     With the fill curve, how much of the mesh a click takes: <c>triangle</c>, <c>polygon</c> (the flat polygon it
 ///     is part of), <c>part</c> (the named mesh it belongs to) or <c>shell</c> (its UV island). It needs a mesh.
 /// </param>
+/// <param name="Outline">
+///     With the fill curve, whether the stamps are one outline rather than clicks: a rectangle's four corners or a
+///     lasso, closed from the last back to the first, in the stamps' units. Every triangle it holds is filled, grown as
+///     <paramref name="Fill" /> says. It is sent whole, as one part with three corners at least.
+/// </param>
+/// <param name="Through">
+///     With an outline through a view, whether what the camera cannot see inside it is filled too: the far side of the
+///     mesh, and what lies behind something nearer. False fills only what is seen. The atlas has no camera, so an
+///     outline there takes everything inside it.
+/// </param>
 /// <param name="Resume">
 ///     Where the brush already stands when this stroke carries on the one before it, as two numbers in the units of
 ///     its stamps, or null. The stroke starts there without a stamp, as a pen lifted in the middle of one stroke and
@@ -941,7 +944,9 @@ public sealed record StackStroke(
     StackStrokeSource? Source = null,
     StackPicture? Stencil = null,
     string? Fill = null,
-    IReadOnlyList<float>? Resume = null
+    IReadOnlyList<float>? Resume = null,
+    bool Outline = false,
+    bool Through = false
 ) : StackCommand;
 #pragma warning restore SK7005
 

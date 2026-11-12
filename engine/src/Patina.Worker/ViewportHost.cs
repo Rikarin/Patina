@@ -93,6 +93,9 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
             ? meshes.Shown(pick.Mesh, isolatedParts, isolatedMaterials)
             : (shelf.Projection, null);
         var found = through.TryHit(ray, out var hit);
+        var triangle = Original(triangles, found ? hit.Triangle : -1);
+        // A model with no names gives its parts none, which says nothing a client can use.
+        var part = shelf.Geometry.PartOf(triangle) is { Length: > 0 } named ? named : null;
         var box = shelf.Projection.Bounds;
         IReadOnlyList<float> extent = [..Numbers(box.Minimum), ..Numbers(box.Maximum)];
         return new() {
@@ -101,16 +104,21 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
                 ? new(
                     true,
                     wire,
-                    triangles?[hit.Triangle] ?? hit.Triangle,
+                    triangle,
                     hit.Coordinate.X,
                     hit.Coordinate.Y,
                     Numbers(hit.Point),
                     extent,
-                    Numbers(Facing(through, hit.Triangle, ray.Direction))
+                    Numbers(Facing(through, hit.Triangle, ray.Direction)),
+                    part
                 )
                 : new(false, wire, Bounds: extent)
         };
     }
+
+    /// <summary>The model's own number for a triangle an isolation drew, or -1 for none.</summary>
+    static int Original(int[]? triangles, int triangle) =>
+        triangle < 0 || triangles is null ? triangle : triangles[triangle];
 
     /// <summary>Whether a stack is worn, so its evaluations reach the mesh.</summary>
     public bool Follows(string session) => followed.Contains(session);

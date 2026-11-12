@@ -13,8 +13,8 @@ import { ProjectStore } from '../library/project-store';
 import { LibraryThumbnails } from '../library/thumbnails';
 import { BrushPresets } from './brush-presets';
 import { maximumRadius } from './paint-commands';
-import { type BrushSettings, type FillMode, PaintStore } from './paint-store';
-import { FillModes, PaintToolIcons, PaintTools } from './paint-tools';
+import { type BrushSettings, type FillMode, type FillShape, PaintStore } from './paint-store';
+import { FillModes, FillShapes, PaintToolIcons, PaintTools } from './paint-tools';
 
 type NumberSetting = {
   [K in keyof BrushSettings]-?: NonNullable<BrushSettings[K]> extends number ? K : never;
@@ -120,6 +120,37 @@ const PreviewQuiet = 200;
             }
           </select>
         </div>
+        <div class="flex items-center gap-2">
+          <span
+            class="text-foreground-muted w-16 shrink-0 text-xs"
+            title="Whether a click fills what is under it, or a drag fills everything a rectangle or a lasso holds"
+            >Selects</span
+          >
+          <select
+            class="well h-7 min-w-0 flex-1 px-1 text-sm"
+            aria-label="Fill selection"
+            data-testid="paint-fill-shape"
+            (change)="store.fillShape.set(fillShape($event))"
+          >
+            @for (shape of fillShapes; track shape.value) {
+              <option [value]="shape.value" [selected]="store.fillShape() === shape.value">{{ shape.label }}</option>
+            }
+          </select>
+        </div>
+        @if (store.fillShape() !== 'click') {
+          <label
+            class="flex items-center gap-1 ps-[4.5rem] text-xs"
+            title="Also fills what the viewport cannot see inside the outline: the far side, and what is hidden behind"
+          >
+            <input
+              type="checkbox"
+              data-testid="paint-fill-through"
+              [checked]="store.fillThrough()"
+              (change)="store.fillThrough.set(checked($event))"
+            />
+            Through
+          </label>
+        }
       }
       @case ('clone') {
         <div class="flex flex-wrap items-center gap-2" data-testid="paint-clone">
@@ -673,6 +704,13 @@ export class BrushPanel {
       }
     }
   }
+
+  protected fillShape(event: Event): FillShape {
+    const value = (event.target as HTMLSelectElement).value;
+    return FillShapes.find(shape => shape.value === value)?.value ?? 'click';
+  }
+
+  protected readonly fillShapes = FillShapes;
 
   protected fillMode(event: Event): FillMode {
     const value = (event.target as HTMLSelectElement).value;

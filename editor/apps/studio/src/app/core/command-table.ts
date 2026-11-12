@@ -118,6 +118,27 @@ export const CommandTable: readonly CommandSpec[] = [
     hint: 'The picture on the viewport masks the brush by its brightness'
   },
   {
+    id: 'moveStencilLeft',
+    label: 'Move Stencil Left',
+    section: 'Painting',
+    keys: ['Alt+Left'],
+    area: 'viewport',
+    hint: 'Moves the picture on the viewport, which a stencil or the projection tool reads'
+  },
+  { id: 'moveStencilRight', label: 'Move Stencil Right', section: 'Painting', keys: ['Alt+Right'], area: 'viewport' },
+  { id: 'moveStencilUp', label: 'Move Stencil Up', section: 'Painting', keys: ['Alt+Up'], area: 'viewport' },
+  { id: 'moveStencilDown', label: 'Move Stencil Down', section: 'Painting', keys: ['Alt+Down'], area: 'viewport' },
+  {
+    id: 'growStencil',
+    label: 'Enlarge Stencil',
+    section: 'Painting',
+    keys: ['Alt+Plus', 'Alt+='],
+    area: 'viewport'
+  },
+  { id: 'shrinkStencil', label: 'Shrink Stencil', section: 'Painting', keys: ['Alt+-'], area: 'viewport' },
+  { id: 'turnStencilLeft', label: 'Turn Stencil Left', section: 'Painting', keys: ['Alt+['], area: 'viewport' },
+  { id: 'turnStencilRight', label: 'Turn Stencil Right', section: 'Painting', keys: ['Alt+]'], area: 'viewport' },
+  {
     id: 'pickerTool',
     label: 'Color Picker',
     section: 'Painting',

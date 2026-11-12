@@ -660,6 +660,8 @@ public sealed record StackLoad(
 ///     What the viewport drew alone when a stroke on the mesh began (#136), which is all it reaches; null for the whole
 ///     model.
 /// </param>
+/// <param name="Outline">For a fill, whether its stamps are one outline to fill inside, not clicks.</param>
+/// <param name="Through">For an outline through a view, whether what the camera cannot see is filled too.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -682,7 +684,9 @@ public sealed record StackPaintPart(
     int Width = 0,
     int Height = 0,
     IReadOnlyList<float>? Resume = null,
-    ViewportIsolation? Isolation = null
+    ViewportIsolation? Isolation = null,
+    bool Outline = false,
+    bool Through = false
 );
 
 /// <summary>What a flattened group's canvas is made of.</summary>

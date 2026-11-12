@@ -495,7 +495,9 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                         entry.Width,
                         entry.Height,
                         entry.Resume,
-                        entry.Isolation
+                        entry.Isolation,
+                        entry.Outline,
+                        entry.Through
                     )
                 );
                 sent[entry.Id] = (entry.Stamps.Count, entry.Open);

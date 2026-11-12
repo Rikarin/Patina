@@ -257,6 +257,9 @@ public sealed record ViewportPickRequest(
     int? Height = null
 );
 
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
+
 /// <summary>What a position in the viewport landed on.</summary>
 /// <param name="Found">Whether it met the mesh.</param>
 /// <param name="View">The camera it was looked through, which a stroke on the mesh carries.</param>
@@ -272,6 +275,10 @@ public sealed record ViewportPickRequest(
 ///     The face it met, as a unit direction out of the side the camera sees: three numbers. A decal placed there faces
 ///     it, and a path drawn through it keeps to faces that turn the same way.
 /// </param>
+/// <param name="Part">
+///     The named mesh it met, as the model names it, which a layer kept to some meshes takes or leaves; null when the
+///     model names none.
+/// </param>
 public sealed record ViewportPick(
     bool Found,
     StackView View,
@@ -280,8 +287,10 @@ public sealed record ViewportPick(
     float V = 0f,
     IReadOnlyList<float>? Position = null,
     IReadOnlyList<float>? Bounds = null,
-    IReadOnlyList<float>? Normal = null
+    IReadOnlyList<float>? Normal = null,
+    string? Part = null
 );
+#pragma warning restore SK7005
 
 /// <summary>
 ///     What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The

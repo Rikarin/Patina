@@ -35,6 +35,11 @@ export class IsolationStore {
     return this.set(Whole);
   }
 
+  /** Draws these named meshes alone, hiding the rest of the model; none at all is the whole model. */
+  showParts(parts: readonly string[]): Promise<void> {
+    return this.set({ parts: [...parts], materials: [] });
+  }
+
   /**
    * What the Server says it draws alone, read when the viewport connects and again when it reconnects. The Server keeps
    * isolation in memory only, so after a restart it draws the whole model and the controls say so, rather than claiming

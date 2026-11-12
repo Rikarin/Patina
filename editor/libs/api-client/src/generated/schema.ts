@@ -5867,6 +5867,20 @@ export interface components {
        *     brush keeps its string. Only a free stroke carries one on; it is still an undo step of its own.
        */
       resume?: null | number[];
+      /**
+       * @description With the fill curve, whether the stamps are one outline rather than clicks: a rectangle's four corners or a
+       *     lasso, closed from the last back to the first, in the stamps' units. Every triangle it holds is filled, grown as
+       *     Fill says. It is sent whole, as one part with three corners at least.
+       * @default false
+       */
+      outline: boolean;
+      /**
+       * @description With an outline through a view, whether what the camera cannot see inside it is filled too: the far side of the
+       *     mesh, and what lies behind something nearer. False fills only what is seen. The atlas has no camera, so an
+       *     outline there takes everything inside it.
+       * @default false
+       */
+      through: boolean;
     };
     /** @description Takes a flattened group back to its children, which composite again. */
     StackCommandStackUnflattenLayer: {
@@ -6282,17 +6296,20 @@ export interface components {
        * @default
        */
       map: string;
-      /** @description The colour a bake mask selects from its map, as three numbers, or null for all of it. */
-      colour?: null | number[];
+      /**
+       * @description The colours a bake or texture mask selects from its picture, each three numbers, or null for all of it. A texel
+       *     near any of them is selected.
+       */
+      colours?: null | number[][];
       /**
        * Format: float
-       * @description How far from that colour still counts.
+       * @description How far from a colour still counts.
        * @default 0.02
        */
       tolerance: number;
       /**
        * Format: float
-       * @description How much further the mask takes to reach nothing.
+       * @description How much further the selection takes to reach the background.
        * @default 0
        */
       softness: number;
@@ -6325,6 +6342,18 @@ export interface components {
        * @default true
        */
       enabled: boolean;
+      /**
+       * Format: float
+       * @description With colours, what the mask is where they are: its output value, 0 to 1.
+       * @default 1
+       */
+      inside: number;
+      /**
+       * Format: float
+       * @description With colours, what the mask is everywhere else: its background, 0 to 1.
+       * @default 0
+       */
+      outside: number;
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {
@@ -7449,6 +7478,11 @@ export interface components {
        *     it, and a path drawn through it keeps to faces that turn the same way.
        */
       normal?: null | number[];
+      /**
+       * @description The named mesh it met, as the model names it, which a layer kept to some meshes takes or leaves; null when the
+       *     model names none.
+       */
+      part?: null | string;
     };
     /** @description Asks what is under a position in the viewport. */
     ViewportPickRequest: {

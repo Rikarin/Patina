@@ -26,14 +26,26 @@ sealed partial class StackHost {
             }
         }
 
-        /// <summary>Where a stroke's stamps land: a fill's clicks on the mesh, or the stroke's own placement.</summary>
+        /// <summary>
+        ///     Where a stroke's stamps land: a fill's clicks or outline on the mesh, or the stroke's own placement.
+        /// </summary>
         IPaintPlacement? PlacementOf(StackPaintPart part, PaintMeshSurface? surface) {
             if (part.Curve != "fill") {
                 return StrokeShapes.Placement(part, surface, Bounds(part.Model));
             }
 
             var mesh = surface ?? throw new IpcException("A fill needs a mesh.");
-            return mesh.Fill(StrokeSources.Fill(part.Fill), part.View is { } view ? StrokeShapes.View(view) : null);
+            // A fill is copied as a brush is: a mirror fills the mirror image of what a click or an outline takes.
+            var symmetry = StrokeShapes.Symmetry(part.Symmetry, Bounds(part.Model) ?? mesh.Projection.Bounds);
+            PaintFillOutline? outline = part.Outline
+                ? new([..part.Stamps.Select(static stamp => new Vector2(stamp.X, stamp.Y))], part.Through)
+                : null;
+            return mesh.Fill(
+                StrokeSources.Fill(part.Fill),
+                part.View is { } view ? StrokeShapes.View(view) : null,
+                symmetry,
+                outline
+            );
         }
 
         /// <summary>

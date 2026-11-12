@@ -48,6 +48,14 @@ class StackCommandStackStroke:
             curve (str): free follows the stamps; line and path run through them as control points when it ends; fill takes
                 each stamp
                 as a click and fills the piece of the mesh under it, whole, as Fill says. Default: 'free'.
+            outline (bool): With the fill curve, whether the stamps are one outline rather than clicks: a rectangle's four
+                corners or a
+                lasso, closed from the last back to the first, in the stamps' units. Every triangle it holds is filled, grown as
+                Fill says. It is sent whole, as one part with three corners at least. Default: False.
+            through (bool): With an outline through a view, whether what the camera cannot see inside it is filled too: the
+                far side of the
+                mesh, and what lies behind something nearer. False fills only what is seen. The atlas has no camera, so an
+                outline there takes everything inside it. Default: False.
             view (None | StackView | Unset):
             symmetry (None | StackSymmetry | Unset):
             mask_layer (int | None | Unset): With Mask, the entry of the mask's stack it paints, counted from the bottom,
@@ -75,6 +83,8 @@ class StackCommandStackStroke:
     open_: bool = False
     mask: bool = False
     curve: str = 'free'
+    outline: bool = False
+    through: bool = False
     view: None | StackView | Unset = UNSET
     symmetry: None | StackSymmetry | Unset = UNSET
     mask_layer: int | None | Unset = UNSET
@@ -121,6 +131,10 @@ class StackCommandStackStroke:
         mask = self.mask
 
         curve = self.curve
+
+        outline = self.outline
+
+        through = self.through
 
         view: dict[str, Any] | None | Unset
         if isinstance(self.view, Unset):
@@ -190,6 +204,8 @@ class StackCommandStackStroke:
             "open": open_,
             "mask": mask,
             "curve": curve,
+            "outline": outline,
+            "through": through,
         })
         if view is not UNSET:
             field_dict["view"] = view
@@ -253,6 +269,10 @@ class StackCommandStackStroke:
         mask = d.pop("mask")
 
         curve = d.pop("curve")
+
+        outline = d.pop("outline")
+
+        through = d.pop("through")
 
         def _parse_view(data: object) -> None | StackView | Unset:
             if data is None:
@@ -383,6 +403,8 @@ class StackCommandStackStroke:
             open_=open_,
             mask=mask,
             curve=curve,
+            outline=outline,
+            through=through,
             view=view,
             symmetry=symmetry,
             mask_layer=mask_layer,

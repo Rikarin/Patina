@@ -263,6 +263,60 @@ public sealed class StackMaskStackTests {
         );
     }
 
+    /// <summary>
+    ///     A selection of several colours is a Colour Select for each (#110): the first reads the mask beneath it, each
+    ///     after it the mask's own map, joined by the lighter where the value is above the background and the darker
+    ///     where it is below. The colours, the value and the background read back as they were set, and several colours
+    ///     with no map or picture beneath to pick them from are refused.
+    /// </summary>
+    [Fact]
+    public void A_selection_of_several_colours_picks_each_out_of_the_map() {
+        var editor = Generated();
+        IReadOnlyList<float> red = [1f, 0f, 0f];
+        IReadOnlyList<float> blue = [0f, 0f, 1f];
+
+        editor.Apply(
+            new(
+                [
+                    new StackSetLayer(
+                        "paint",
+                        Mask: new("Bake", Map: "id", Colours: [red, blue], Inside: 0.75f, Outside: 0.25f)
+                    )
+                ]
+            )
+        );
+
+        var effects = Layer(editor).Mask.Effects;
+        Assert.Equal(2, effects.Count);
+        Assert.All(effects, static effect => Assert.Equal("Analysis/Colour Select", effect.Node));
+        Assert.Equal((LayerBlendMode.Copy, LayerBlendMode.Lighten), (effects[0].Blend, effects[1].Blend));
+        Assert.Empty(effects[0].Inputs);
+        Assert.Equal(
+            (LayerInputSource.Bake, "id"),
+            (effects[1].Inputs["Input"].Source, effects[1].Inputs["Input"].Map)
+        );
+        Assert.Equal([0.75f], effects[1].Values["Value"]);
+        Assert.Equal([0.25f], effects[1].Values["Background"]);
+
+        var wire = StackDocuments.Layers([Layer(editor)])[0].Mask;
+        Assert.Equal([[1f, 0f, 0f, 1f], [0f, 0f, 1f, 1f]], wire.Colours!.Select(static colour => colour.ToArray()));
+        Assert.Equal((0.75f, 0.25f), (wire.Inside, wire.Outside));
+        Assert.Empty(wire.Effects!);
+
+        editor.Apply(new([new StackSetLayer("paint", Mask: wire with { Inside = 0f, Outside = 1f })]));
+        Assert.Equal(LayerBlendMode.Darken, Layer(editor).Mask.Effects[1].Blend);
+
+        editor.Apply(new([new StackSetLayer("paint", Mask: wire with { Colours = [blue] })]));
+        Assert.Single(Layer(editor).Mask.Effects);
+
+        Assert.Throws<StackEditRefusedException>(() =>
+            editor.Apply(new([new StackSetLayer("paint", Mask: new("Constant", Colours: [red, blue]))]))
+        );
+        Assert.Throws<StackEditRefusedException>(() =>
+            editor.Apply(new([new StackSetLayer("paint", Mask: new("Bake", Map: "id", Colours: [[1f, 0f]]))]))
+        );
+    }
+
     static StackStroke Stroke(int entry) =>
         new("s", "paint", "baseColor", new(4f), White, [new(10f, 10f)], Mask: true, MaskLayer: entry);
 

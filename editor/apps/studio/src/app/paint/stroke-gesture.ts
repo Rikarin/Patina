@@ -5,6 +5,12 @@ import type { Aim, PaintStore, PaintTool } from './paint-store';
 /** The tools a drag paints with as it moves, each with the brush. */
 export const DragTools: ReadonlySet<PaintTool> = new Set(['brush', 'eraser', 'smudge', 'clone', 'projection']);
 
+/** How far a rectangle has to be dragged, in the stroke's units, before it is a rectangle rather than a click. */
+const ClickReach = 3;
+
+/** How far the pointer moves before a lasso takes another corner, in the stroke's units. */
+const LassoStep = 4;
+
 /** The steps a line snaps to with Cmd or Ctrl held, in radians. */
 const SnapStep = Math.PI / 36;
 
@@ -24,8 +30,17 @@ export interface PressKeys {
 export class StrokeGesture {
   private pressed = false;
 
-  /** The points of a line or a path so far, for the pane to draw over itself. Nothing has been sent for these. */
+  /**
+   * The points of a line or a path so far, or the corners of a fill's rectangle or lasso, for the pane to draw over
+   * itself. Nothing has been sent for these.
+   */
   readonly points = signal<readonly StackStamp[]>([]);
+
+  /** Whether the points are a fill's outline, which the pane draws closed. */
+  readonly outlining = signal(false);
+
+  /** Where a fill's rectangle was pressed. */
+  private corner: StackStamp | null = null;
 
   /** What the points of a line or a path were placed through: a position on a picture means nothing without it. */
   private placedOn: Aim | undefined;
@@ -57,7 +72,7 @@ export class StrokeGesture {
 
     const tool = this.store.tool();
     if (tool === 'fill') {
-      void this.store.fillAt(stamp, this.aim());
+      this.pressFill(stamp);
       return;
     }
 
@@ -116,6 +131,11 @@ export class StrokeGesture {
     }
 
     const tool = this.store.tool();
+    if (this.outlining()) {
+      this.outline(stamp);
+      return;
+    }
+
     if (DragTools.has(tool)) {
       this.brushAt = this.brushAt ? trailed(this.brushAt, stamp, this.store.brush().lazy) : stamp;
       this.store.move(stamp);
@@ -133,7 +153,9 @@ export class StrokeGesture {
     }
 
     this.pressed = false;
-    if (DragTools.has(this.store.tool())) {
+    if (this.outlining()) {
+      this.fillOutline();
+    } else if (DragTools.has(this.store.tool())) {
       this.ended = this.brushAt ? { stamp: this.brushAt, aim: this.aim(), layer: this.store.layer() } : null;
       this.brushAt = null;
       this.store.end();
@@ -151,8 +173,64 @@ export class StrokeGesture {
 
   /** Lets go of whatever is under way: the points placed, and a mask waiting for its colour. */
   cancel(): void {
+    this.pressed = false;
+    this.outlining.set(false);
+    this.corner = null;
     this.points.set([]);
     this.store.picking.set(null);
+  }
+
+  /** A click fills the piece under it; with a rectangle or a lasso in hand, a press starts the outline. */
+  private pressFill(stamp: StackStamp): void {
+    const shape = this.store.fillShape();
+    if (shape === 'click') {
+      void this.store.fillAt(stamp, this.aim());
+      return;
+    }
+
+    this.pressed = true;
+    this.placedOn = this.aim();
+    this.corner = stamp;
+    this.outlining.set(true);
+    this.points.set(shape === 'rectangle' ? box(stamp, stamp) : [stamp]);
+  }
+
+  /** The outline as the pointer drags it: a rectangle from its first corner, or a lasso along the pointer's path. */
+  private outline(stamp: StackStamp): void {
+    if (this.store.fillShape() === 'rectangle' && this.corner) {
+      this.points.set(box(this.corner, stamp));
+      return;
+    }
+
+    const last = this.points().at(-1);
+    if (!last || Math.hypot(stamp.x - last.x, stamp.y - last.y) >= LassoStep) {
+      this.points.update(points => [...points, stamp]);
+    }
+  }
+
+  /**
+   * Fills what the outline holds. A rectangle hardly dragged is a click, which fills the piece under it, and a lasso
+   * with no room inside fills nothing.
+   */
+  private fillOutline(): void {
+    const points = this.points();
+    const corner = this.corner;
+    this.outlining.set(false);
+    this.corner = null;
+    this.points.set([]);
+    const [xs, ys] = [points.map(point => point.x), points.map(point => point.y)];
+    const reach = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+    if (reach < ClickReach) {
+      if (corner && this.store.fillShape() === 'rectangle') {
+        void this.store.fillAt(corner, this.placedOn);
+      }
+
+      return;
+    }
+
+    if (points.length >= 3) {
+      void this.store.fillOutline(points, this.placedOn);
+    }
   }
 
   private commit(curve: 'line' | 'path'): void {
@@ -165,6 +243,11 @@ export class StrokeGesture {
 
     void this.store.paintCurve(points, curve, this.placedOn);
   }
+}
+
+/** A rectangle's four corners, from one corner and the one across from it. */
+export function box(from: StackStamp, to: StackStamp): StackStamp[] {
+  return [from, { ...from, x: to.x }, to, { ...from, y: to.y }];
 }
 
 /** A double click is two presses in one place, and a second point there adds nothing. */

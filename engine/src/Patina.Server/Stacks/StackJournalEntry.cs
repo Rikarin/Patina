@@ -44,6 +44,12 @@ public sealed class StackJournalEntry(
 
     public string? Fill { get; } = first.Fill;
 
+    /// <summary>Whether a fill's stamps are one outline rather than clicks.</summary>
+    public bool Outline { get; } = first.Outline;
+
+    /// <summary>Whether an outline fills what its camera cannot see too.</summary>
+    public bool Through { get; } = first.Through;
+
     /// <summary>Where the brush already stood when this stroke carries the last one on, or null.</summary>
     public IReadOnlyList<float>? Resume { get; } = first.Resume;
 

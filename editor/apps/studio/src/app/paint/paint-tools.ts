@@ -9,7 +9,7 @@ import {
   matPolyline,
   matWallpaper
 } from '@ng-icons/material-icons/baseline';
-import type { FillMode, PaintTool } from './paint-store';
+import type { FillMode, FillShape, PaintTool } from './paint-store';
 
 /**
  * The tools, by the command that chooses each, in the order the strip and Properties show them. The command table names
@@ -42,3 +42,10 @@ export const PaintToolIcons = {
 
 /** What a click of the fill tool can take, in the Server's words until its vocabulary gives the labels. */
 export const FillModes: readonly FillMode[] = ['triangle', 'polygon', 'part', 'shell'];
+
+/** How the fill tool chooses what it fills (#129). The editor's own, since the Server only ever sees an outline. */
+export const FillShapes: readonly { value: FillShape; label: string }[] = [
+  { value: 'click', label: 'Click' },
+  { value: 'rectangle', label: 'Rectangle' },
+  { value: 'lasso', label: 'Lasso' }
+];

@@ -64,7 +64,9 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
       tolerance: 0.02,
       softness: 0,
       lane: 'Red',
-      enabled: true
+      enabled: true,
+      inside: 1,
+      outside: 0
     }
   };
 }
@@ -1102,6 +1104,8 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     channel: string;
     curve: string;
     fill: string | null;
+    outline: boolean;
+    through: boolean;
     symmetry: unknown;
     source: { kind: string; graph?: string; offset?: number[]; picture?: { image: string } } | null;
     stencil: { image: string } | null;
@@ -1135,15 +1139,170 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     return test;
   }
 
-  it('fills the piece of the mesh under a click as one stroke in its mode, with no symmetry', async () => {
+  it('fills the piece of the mesh under a click as one stroke in its mode, copied as a brush is', async () => {
     const { store, bodies } = await onMesh();
     store.tool.set('fill');
     store.fillMode.set('shell');
     store.symmetry.set({ kind: 'mirror', axis: 'x', centre: 'model', offset: 0, count: 2 });
     new StrokeGesture(store, () => aim).press({ x: 50, y: 25, pressure: 1 });
     await vi.waitFor(() => expect(sent(bodies)).toHaveLength(1));
-    expect(sent(bodies)[0]).toMatchObject({ curve: 'fill', fill: 'shell', source: null, stamps: [{ x: 50, y: 25 }] });
-    expect(sent(bodies)[0]?.symmetry).toBeNull();
+    expect(sent(bodies)[0]).toMatchObject({
+      curve: 'fill',
+      fill: 'shell',
+      source: null,
+      outline: false,
+      stamps: [{ x: 50, y: 25 }]
+    });
+    expect(sent(bodies)[0]?.symmetry).toMatchObject({ kind: 'mirror', axis: 'x' });
+  });
+
+  it('fills what a dragged rectangle holds as one outline of its four corners, through when asked (#129)', async () => {
+    const { store, bodies } = await onMesh();
+    store.tool.set('fill');
+    store.fillShape.set('rectangle');
+    const gesture = new StrokeGesture(store, () => aim);
+    gesture.press({ x: 10, y: 20, pressure: 1 });
+    gesture.move({ x: 30, y: 25, pressure: 1 });
+    gesture.move({ x: 40, y: 60, pressure: 1 });
+    expect(gesture.outlining()).toBe(true);
+    expect(gesture.points().map(point => [point.x, point.y])).toEqual([
+      [10, 20],
+      [40, 20],
+      [40, 60],
+      [10, 60]
+    ]);
+    gesture.release();
+    expect(gesture.points()).toEqual([]);
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(1));
+    expect(sent(bodies)[0]).toMatchObject({ curve: 'fill', outline: true, through: false });
+    expect(sent(bodies)[0]?.stamps.map(point => [point.x, point.y])).toEqual([
+      [10, 20],
+      [40, 20],
+      [40, 60],
+      [10, 60]
+    ]);
+
+    store.fillThrough.set(true);
+    gesture.press({ x: 10, y: 20, pressure: 1 });
+    gesture.move({ x: 40, y: 60, pressure: 1 });
+    gesture.release();
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(2));
+    expect(sent(bodies)[1]).toMatchObject({ outline: true, through: true });
+
+    // The 2D view has no camera, so nothing there is hidden.
+    const flat = new StrokeGesture(store, () => undefined);
+    flat.press({ x: 10, y: 20, pressure: 1 });
+    flat.move({ x: 40, y: 60, pressure: 1 });
+    flat.release();
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(3));
+    expect(sent(bodies)[2]).toMatchObject({ outline: true, through: false });
+  });
+
+  it('fills what a lasso holds, and a rectangle hardly dragged is a click (#129)', async () => {
+    const { store, bodies } = await onMesh();
+    store.tool.set('fill');
+    store.fillShape.set('lasso');
+    const gesture = new StrokeGesture(store, () => aim);
+    gesture.press({ x: 10, y: 10, pressure: 1 });
+    gesture.move({ x: 10.5, y: 10, pressure: 1 });
+    gesture.move({ x: 30, y: 10, pressure: 1 });
+    gesture.move({ x: 30, y: 30, pressure: 1 });
+    gesture.release();
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(1));
+    expect(sent(bodies)[0]).toMatchObject({ outline: true });
+    expect(sent(bodies)[0]?.stamps.map(point => [point.x, point.y])).toEqual([
+      [10, 10],
+      [30, 10],
+      [30, 30]
+    ]);
+
+    store.fillShape.set('rectangle');
+    gesture.press({ x: 50, y: 25, pressure: 1 });
+    gesture.move({ x: 51, y: 26, pressure: 1 });
+    gesture.release();
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(2));
+    expect(sent(bodies)[1]).toMatchObject({ outline: false, stamps: [{ x: 50, y: 25 }] });
+  });
+
+  it('adds a colour picked off the id map to the selection once, beside those it has (#110)', async () => {
+    const { store, bodies, server } = await onMesh();
+    let at = [0, 0, 1];
+    server.reply = (_method, path) => (path.endsWith('/id-colours') ? Response.json({ colours: [], at }) : null);
+    store.state.update(state =>
+      state
+        ? {
+            ...state,
+            layers: state.layers.map((layer, index) =>
+              index === 0
+                ? { ...layer, mask: { ...layer.mask, source: 'Bake', map: 'id', colours: [[1, 0, 0]] } }
+                : layer
+            )
+          }
+        : state
+    );
+    const layer = store.state()?.layers[0]?.id ?? '';
+    const masks = () =>
+      bodies.flatMap(body => (body as { commands: { mask?: { colours: number[][] } }[] }).commands).map(c => c.mask);
+
+    store.picking.set(layer);
+    await store.pickColourAt(0.5, 0.5);
+    await vi.waitFor(() => expect(masks()).toHaveLength(1));
+    expect(masks()[0]?.colours).toEqual([
+      [1, 0, 0],
+      [0, 0, 1]
+    ]);
+
+    at = [1, 0.001, 0];
+    store.picking.set(layer);
+    await store.pickColourAt(0.5, 0.5);
+    await vi.waitFor(() => expect(masks()).toHaveLength(2));
+    expect(masks()[1]?.colours).toEqual([[1, 0.001, 0]]);
+  });
+
+  it('takes the mesh under a click into the layer, or out of it, and keeps the last one (#110)', async () => {
+    const { store, bodies, server } = await onMesh();
+    server.reply = (_method, path) => {
+      if (path.endsWith('/viewport/pick')) {
+        return Response.json({ found: true, view: PickedView, u: 0.5, v: 0.5, part: 'lid' });
+      }
+
+      if (path.endsWith('/mesh-parts')) {
+        return Response.json({ parts: ['lid', 'box', 'hinge'] });
+      }
+
+      return path.endsWith('/mesh-mask') ? Response.json({ parts: [], asset: 'parts.png' }) : null;
+    };
+    const id = store.state()?.layers[0]?.id ?? '';
+    const keep = (parts: string[] | undefined) =>
+      store.state.update(state =>
+        state
+          ? {
+              ...state,
+              layers: state.layers.map(layer =>
+                layer.id === id ? { ...layer, mask: { ...layer.mask, meshParts: parts ?? null } } : layer
+              )
+            }
+          : state
+      );
+    const sent = () =>
+      bodies
+        .flatMap(body => (body as { commands: { meshMask?: { parts: string[] } }[] }).commands)
+        .map(c => c.meshMask);
+    store.pickingPart.set(id);
+
+    keep(undefined);
+    await store.togglePartOnMesh({ x: 50, y: 50, pressure: 1 }, aim);
+    await vi.waitFor(() => expect(sent()).toHaveLength(1));
+    expect(sent()[0]?.parts).toEqual(['box', 'hinge']);
+
+    keep(['box']);
+    await store.togglePartOnMesh({ x: 50, y: 50, pressure: 1 }, aim);
+    await vi.waitFor(() => expect(sent()).toHaveLength(2));
+    expect(sent()[1]?.parts).toEqual(['lid', 'box']);
+
+    keep(['lid']);
+    await store.togglePartOnMesh({ x: 50, y: 50, pressure: 1 }, aim);
+    expect(sent()).toHaveLength(2);
   });
 
   it('fills nothing where the viewport draws nothing under a click, as when an isolation hides it (#136)', async () => {
@@ -1245,5 +1404,24 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     store.end();
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
     expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { image: picture.image } });
+  });
+
+  it('moves, scales and turns the picture on the viewport by a step, only while a tool reads it (#128)', async () => {
+    const { store } = await onMesh();
+    const picture = { image: 'projects/crate/pictures/decal.png', centre: [50, 50], scale: 2, angle: 0, tiled: false };
+    store.screenPicture.set(picture);
+    store.tool.set('brush');
+    store.moveScreenPicture({ x: 10 });
+    expect(store.screenPicture()).toEqual(picture);
+
+    store.stencil.set(true);
+    store.moveScreenPicture({ x: 10, y: -5 });
+    store.moveScreenPicture({ scale: 1.5, angle: 0.25 });
+    expect(store.screenPicture()).toEqual({ ...picture, centre: [60, 45], scale: 3, angle: 0.25 });
+
+    store.stencil.set(false);
+    store.tool.set('projection');
+    store.moveScreenPicture({ scale: 0 });
+    expect(store.screenPicture()?.scale).toBeGreaterThan(0);
   });
 });

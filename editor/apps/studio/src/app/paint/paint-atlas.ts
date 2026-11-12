@@ -132,6 +132,21 @@ import { StrokeGesture } from './stroke-gesture';
             aria-hidden="true"
             >V 1 · 1001</span
           >
+          @if (gesture.outlining() && gesture.points().length > 1) {
+            <svg
+              class="pointer-events-none absolute inset-0 size-full"
+              data-testid="atlas-outline"
+              preserveAspectRatio="none"
+              [attr.viewBox]="viewBox()"
+            >
+              <polygon
+                class="fill-white/10 stroke-white/80"
+                stroke-dasharray="4 3"
+                vector-effect="non-scaling-stroke"
+                [attr.points]="outline()"
+              />
+            </svg>
+          }
         </div>
         @if (under(); as at) {
           <span
@@ -181,6 +196,15 @@ import { StrokeGesture } from './stroke-gesture';
 export class PaintAtlas {
   protected readonly store = inject(PaintStore);
   protected readonly gesture = new StrokeGesture(this.store, () => undefined);
+  /** The picture's box in texels, which a fill's outline is drawn in. */
+  protected readonly viewBox = computed(() => `0 0 ${this.side()[0]} ${this.side()[1]}`);
+  /** A fill's rectangle or lasso as it is dragged, in texels. */
+  protected readonly outline = computed(() =>
+    this.gesture
+      .points()
+      .map(point => `${point.x},${point.y}`)
+      .join(' ')
+  );
   protected readonly commands = inject(Commands);
 
   constructor() {

@@ -41,6 +41,9 @@ class ViewportPick:
             normal (list[float] | None | Unset): The face it met, as a unit direction out of the side the camera sees: three
                 numbers. A decal placed there faces
                 it, and a path drawn through it keeps to faces that turn the same way.
+            part (None | str | Unset): The named mesh it met, as the model names it, which a layer kept to some meshes takes
+                or leaves; null when the
+                model names none.
      """
 
     found: bool
@@ -51,6 +54,7 @@ class ViewportPick:
     position: list[float] | None | Unset = UNSET
     bounds: list[float] | None | Unset = UNSET
     normal: list[float] | None | Unset = UNSET
+    part: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -99,6 +103,12 @@ class ViewportPick:
         else:
             normal = self.normal
 
+        part: None | str | Unset
+        if isinstance(self.part, Unset):
+            part = UNSET
+        else:
+            part = self.part
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -115,6 +125,8 @@ class ViewportPick:
             field_dict["bounds"] = bounds
         if normal is not UNSET:
             field_dict["normal"] = normal
+        if part is not UNSET:
+            field_dict["part"] = part
 
         return field_dict
 
@@ -191,6 +203,16 @@ class ViewportPick:
         normal = _parse_normal(d.pop("normal", UNSET))
 
 
+        def _parse_part(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        part = _parse_part(d.pop("part", UNSET))
+
+
         viewport_pick = cls(
             found=found,
             view=view,
@@ -200,6 +222,7 @@ class ViewportPick:
             position=position,
             bounds=bounds,
             normal=normal,
+            part=part,
         )
 
 

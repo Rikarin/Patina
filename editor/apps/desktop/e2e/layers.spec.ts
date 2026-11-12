@@ -211,8 +211,14 @@ test('colours painted in Blender bake to an id map, and a mask selects one', asy
   }
 
   await window.mouse.click(box.x + box.width * 0.75, box.y + box.height / 2);
+  // A colour picked joins the selection, so both halves are filled now (#110).
   await expect.poll(() => greenAt(0.75), { timeout: 30_000 }).toBeGreaterThan(200);
-  expect(await greenAt(0.25)).toBeLessThan(200);
+  expect(await greenAt(0.25)).toBeGreaterThan(200);
+
+  // A chosen swatch clicked again takes its colour out of the selection.
+  await window.getByRole('button', { name: /^Select red/u }).click();
+  await expect.poll(() => greenAt(0.25), { timeout: 30_000 }).toBeLessThan(200);
+  expect(await greenAt(0.75)).toBeGreaterThan(200);
 
   // It finds one on the mesh too. Which side faces the camera is the camera's business, so it tries both.
   const canvas = await window.getByRole('application', { name: 'Viewport' }).boundingBox();

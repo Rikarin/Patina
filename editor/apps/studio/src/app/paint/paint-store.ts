@@ -97,8 +97,19 @@ export type BrushSettings = Omit<StackBrush, 'radius'>;
 
 export type PaintTool = 'brush' | 'eraser' | 'smudge' | 'clone' | 'projection' | 'fill' | 'line' | 'path' | 'picker';
 
+/** Whether two colours of a selection are one, as an id map's 8-bit texels read back. */
+export function sameColour(left: readonly number[], right: readonly number[]): boolean {
+  return [0, 1, 2].every(lane => Math.abs((left[lane] ?? 0) - (right[lane] ?? 0)) < 0.002);
+}
+
 /** How much of the mesh a click of the fill tool takes: the Server's words (`StackBrushes.Fills`). */
 export type FillMode = 'triangle' | 'polygon' | 'part' | 'shell';
+
+/**
+ * How the fill tool chooses (#129): the piece under each click, or every piece inside a rectangle or a lasso drawn on
+ * the picture, which the stroke sends as one outline.
+ */
+export type FillShape = 'click' | 'rectangle' | 'lasso';
 
 /**
  * Where a clone reads from: a place on the map, 0 to 1 across and down. Relative keeps the step from it to where the
@@ -272,6 +283,12 @@ export class PaintStore {
   readonly symmetry = signal<StackSymmetry | null>(null);
   /** How much of the mesh a click of the fill tool takes. */
   readonly fillMode = signal<FillMode>('polygon');
+  /** The layer whose meshes a click on the model takes or leaves (#110), or null. */
+  readonly pickingPart = signal<string | null>(null);
+  /** Whether the fill tool takes what is under a click, or what a rectangle or a lasso holds. */
+  readonly fillShape = signal<FillShape>('click');
+  /** Whether a rectangle or a lasso in the viewport also fills what the camera cannot see inside it. */
+  readonly fillThrough = signal(false);
   /** Where the clone tool reads from, or null until one is set. */
   readonly cloneSource = signal<CloneSource | null>(null);
   /** Whether the clone keeps its step from the first stroke after the source was set, or starts at the source each time. */
@@ -293,6 +310,11 @@ export class PaintStore {
   readonly screenPicture = signal<ScreenPicture | null>(null);
   /** Whether the picture on the viewport masks every brush, by its brightness. */
   readonly stencil = signal(false);
+  /** Whether the picture on the viewport is there to move: placed, and read by the tool in hand or as a stencil. */
+  readonly screenPictureShown = computed(() => {
+    const picture = this.screenPicture();
+    return picture !== null && picture.scale > 0 && (this.tool() === 'projection' || this.stencil());
+  });
   /**
    * Texels of the map per pixel of the 2D view as it is drawn, so that a size in the screen's units is the same under
    * the pointer at any zoom. The 2D view sets it as a stroke starts.
@@ -509,8 +531,10 @@ export class PaintStore {
       const client = await this.api();
       const params = { path: { id }, query: { u, v } };
       const colour = unwrap(await client.GET('/api/v1/stacks/{id}/id-colours', { params })).at;
+      // A colour picked joins the selection, once (#110).
       if (colour) {
-        await this.setMask(layer, { ...layer.mask, colour: [...colour] });
+        const held = (layer.mask.colours ?? []).filter(other => !sameColour(other, colour));
+        await this.setMask(layer, { ...layer.mask, colours: [...held, [...colour].slice(0, 3)] });
       }
     } catch (failure) {
       this.failure.set(messageOf(failure));
@@ -697,7 +721,7 @@ export class PaintStore {
     const id = this.layer();
     const layer = this.layers().find(row => row.layer.id === id)?.layer;
     if (layer) {
-      const mask = { ...layer.mask, source: 'Bake', map: 'id', colour: [...colour], enabled: true };
+      const mask = { ...layer.mask, source: 'Bake', map: 'id', colours: [[...colour].slice(0, 3)], enabled: true };
       await this.edit({ op: 'setLayer', layer: layer.id, fill: 'Graph', graph, mask });
     }
   }
@@ -782,6 +806,33 @@ export class PaintStore {
     if (added) {
       this.layer.set(added.layer.id);
       this.masking.set(false);
+    }
+  }
+
+  /**
+   * Takes the named mesh under a click on the model into the meshes of the layer {@link pickingPart} names, or out of
+   * them (#110). The last one stays, as it does in the list, since none at all is the whole model.
+   */
+  async togglePartOnMesh(stamp: StackStamp, aim: Aim): Promise<void> {
+    const layer = this.layers().find(row => row.layer.id === this.pickingPart())?.layer;
+    if (!layer) {
+      return;
+    }
+
+    try {
+      const [hit, parts] = await Promise.all([this.picked(stamp, aim), this.meshParts()]);
+      const part = hit.found ? hit.part : null;
+      if (!part || !parts.includes(part)) {
+        return;
+      }
+
+      const held = layer.mask.meshParts?.length ? layer.mask.meshParts : parts;
+      const kept = parts.filter(name => (name === part ? !held.includes(part) : held.includes(name)));
+      if (kept.length > 0) {
+        await this.keepToMeshes(layer, kept.length === parts.length ? [] : kept);
+      }
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
     }
   }
 
@@ -1347,6 +1398,48 @@ export class PaintStore {
     }
   }
 
+  /**
+   * Moves, scales or turns the picture on the viewport by a step, as its keys do (#128): a move in the viewport's
+   * pixels, a scale as a factor and a turn in radians, all about its centre.
+   */
+  moveScreenPicture(step: { x?: number; y?: number; scale?: number; angle?: number }): void {
+    const picture = this.screenPicture();
+    if (!picture || !this.screenPictureShown()) {
+      return;
+    }
+
+    const [x, y] = picture.centre as [number, number];
+    this.screenPicture.set({
+      ...picture,
+      centre: [x + (step.x ?? 0), y + (step.y ?? 0)],
+      scale: Math.max(picture.scale * (step.scale ?? 1), 1e-3),
+      angle: picture.angle + (step.angle ?? 0)
+    });
+  }
+
+  /**
+   * Fills every piece of the mesh an outline holds, grown as the fill tool's mode says, as one undo step: a rectangle's
+   * corners or a lasso, on the viewport's picture or in the 2D view's texels (#129). Unless the tool fills through, the
+   * viewport takes only what it sees.
+   */
+  async fillOutline(outline: readonly StackStamp[], aim?: Aim): Promise<void> {
+    const layer = this.layer();
+    const [first] = outline;
+    if (!layer || !first || outline.length < 3 || !this.state()?.model.trim()) {
+      return;
+    }
+
+    this.startAction();
+    try {
+      const view = aim ? await this.pick(first, aim) : null;
+      this.strokes += 1;
+      const stroke = `fill-${Date.now()}-${this.strokes}`;
+      await this.send(stroke, layer, [...outline], false, view, 'fill', performance.now(), true);
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
   /** Where on the map a position on the viewport lands, or null off the mesh. */
   private async hitAt(stamp: StackStamp, aim: Aim): Promise<CloneSource | null> {
     const client = await this.api();
@@ -1512,7 +1605,8 @@ export class PaintStore {
     open: boolean,
     view: StackView | null,
     curve: 'free' | 'line' | 'path' | 'fill',
-    since: number
+    since: number,
+    outline = false
   ): Promise<void> {
     const tool = this.tool();
     const picture = this.screenPicture();
@@ -1521,7 +1615,8 @@ export class PaintStore {
       return;
     }
 
-    const symmetry = this.state()?.model.trim() && curve !== 'fill' ? this.symmetry() : null;
+    // A fill is copied as a brush is: a mirror fills the mirror image of what it takes.
+    const symmetry = this.state()?.model.trim() ? this.symmetry() : null;
     // A size in the screen's units is pixels of the 2D view as drawn, which the stroke takes as texels of the map.
     const brush = this.wholeBrush();
     const radius =
@@ -1571,6 +1666,8 @@ export class PaintStore {
         source,
         stencil: view && this.stencil() && tool !== 'projection' ? picture : null,
         fill: curve === 'fill' ? this.fillMode() : null,
+        outline,
+        through: outline && view !== null && this.fillThrough(),
         resume: curve === 'free' ? resume : null
       }))
     });
