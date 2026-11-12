@@ -55,7 +55,9 @@ export const DefaultDisplay: ViewportDisplay = {
   grid: false,
   pictureLane: 'rgb',
   pictureScale: 1,
-  shape: 'sphere'
+  shape: 'sphere',
+  depthOfField: 0,
+  focus: 0
 };
 
 /** What a material or a graph with no mesh of its own is seen on, as the Display panel offers them. */

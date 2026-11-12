@@ -67,6 +67,12 @@ class ViewportDisplay:
             shape (str): What a material or a graph with no mesh of its own is seen on: one of IReadOnlyList&lt;string&gt;
                 ViewportShapes.All. A model
                 that has a mesh is seen on its mesh whatever this says. Default: 'sphere'.
+            depth_of_field (float): How shallow the depth of field is, 0 none to 1 a lens wide open. The lens is the same
+                against any model, as if
+                it were a small object close up. Default: 0.0.
+            focus (float): Where the lens focuses, -1 to 1: zero on the point the camera circles, and each unit a bounding
+                radius nearer
+                (negative) or further (positive). Default: 0.0.
             look (None | str | Unset): A `.cube` table the frame is viewed through after the curve, or null.
             picture (None | str | Unset): The picture the `picture` view shows, on the Server's machine, or null.
      """
@@ -97,6 +103,8 @@ class ViewportDisplay:
     picture_lane: str = 'rgb'
     picture_scale: float = 1.0
     shape: str = 'sphere'
+    depth_of_field: float = 0.0
+    focus: float = 0.0
     look: None | str | Unset = UNSET
     picture: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -158,6 +166,10 @@ class ViewportDisplay:
 
         shape = self.shape
 
+        depth_of_field = self.depth_of_field
+
+        focus = self.focus
+
         look: None | str | Unset
         if isinstance(self.look, Unset):
             look = UNSET
@@ -200,6 +212,8 @@ class ViewportDisplay:
             "pictureLane": picture_lane,
             "pictureScale": picture_scale,
             "shape": shape,
+            "depthOfField": depth_of_field,
+            "focus": focus,
         })
         if look is not UNSET:
             field_dict["look"] = look
@@ -265,6 +279,10 @@ class ViewportDisplay:
 
         shape = d.pop("shape")
 
+        depth_of_field = d.pop("depthOfField")
+
+        focus = d.pop("focus")
+
         def _parse_look(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -312,6 +330,8 @@ class ViewportDisplay:
             picture_lane=picture_lane,
             picture_scale=picture_scale,
             shape=shape,
+            depth_of_field=depth_of_field,
+            focus=focus,
             look=look,
             picture=picture,
         )

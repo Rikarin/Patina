@@ -102,6 +102,13 @@ sealed class ViewportShaders(ShaderCache cache) {
             [..PostFx, ..Read(static name => name.EndsWith("PostFx.Vignette.rvn", StringComparison.Ordinal))]
         );
 
+    /// <summary>Vixen's thin-lens defocus, a gather of 64 samples over the diaphragm's six blades.</summary>
+    public EffectData DepthOfField() =>
+        cache.Get(
+            EffectKey.Of("DepthOfField", [new("Samples", "64"), new("UseBladeShape", "true")]),
+            [..PostFx, ..Read(static name => name.EndsWith("PostFx.DepthOfField.rvn", StringComparison.Ordinal))]
+        );
+
     /// <summary>AMD's contrast-adaptive sharpening.</summary>
     public EffectData Sharpen() =>
         cache.Get(

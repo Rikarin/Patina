@@ -202,6 +202,8 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     static ViewportShading Shading(ViewportDisplay settings) =>
         new() {
             Bloom = (float)settings.Bloom,
+            DepthOfField = (float)settings.DepthOfField,
+            Focus = (float)settings.Focus,
             Warmth = (float)settings.Warmth,
             Tint = (float)settings.Tint,
             BackgroundColour = Linear(settings.BackgroundColor),

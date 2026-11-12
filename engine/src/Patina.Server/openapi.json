@@ -18880,7 +18880,9 @@
           "grid",
           "pictureLane",
           "pictureScale",
-          "shape"
+          "shape",
+          "depthOfField",
+          "focus"
         ],
         "type": "object",
         "properties": {
@@ -19044,6 +19046,18 @@
             "type": "string",
             "description": "What a material or a graph with no mesh of its own is seen on: one of IReadOnlyList\u0026lt;string\u0026gt; ViewportShapes.All. A model\nthat has a mesh is seen on its mesh whatever this says.",
             "default": "sphere"
+          },
+          "depthOfField": {
+            "type": "number",
+            "description": "How shallow the depth of field is, 0 none to 1 a lens wide open. The lens is the same against any model, as if\nit were a small object close up.",
+            "format": "double",
+            "default": 0
+          },
+          "focus": {
+            "type": "number",
+            "description": "Where the lens focuses, -1 to 1: zero on the point the camera circles, and each unit a bounding radius nearer\n(negative) or further (positive).",
+            "format": "double",
+            "default": 0
           }
         },
         "description": "How the viewport is lit, shown and finished. None of it reaches a file that is exported; a project keeps it, so\nit opens as it was left. Angles are radians and exposure is in stops; an effect at zero is off. A field left out\nof a request is the one the viewport opens with."

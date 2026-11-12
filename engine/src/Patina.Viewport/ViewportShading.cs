@@ -117,6 +117,15 @@ public sealed record ViewportShading {
     /// <summary>How much light spills past what is brighter than white, 0 none to 1.</summary>
     public float Bloom { get; init; }
 
+    /// <summary>How shallow the depth of field is, 0 none to 1 a lens wide open (<see cref="ViewportFocus" />).</summary>
+    public float DepthOfField { get; init; }
+
+    /// <summary>
+    ///     Where the lens focuses, in bounding radii nearer than the point the camera circles (negative) or further
+    ///     (positive).
+    /// </summary>
+    public float Focus { get; init; }
+
     /// <summary>Blue towards red, -1 to 1, with zero leaving the frame alone.</summary>
     public float Warmth { get; init; }
 

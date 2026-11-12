@@ -7309,6 +7309,20 @@ export interface components {
        * @default sphere
        */
       shape: string;
+      /**
+       * Format: double
+       * @description How shallow the depth of field is, 0 none to 1 a lens wide open. The lens is the same against any model, as if
+       *     it were a small object close up.
+       * @default 0
+       */
+      depthOfField: number;
+      /**
+       * Format: double
+       * @description Where the lens focuses, -1 to 1: zero on the point the camera circles, and each unit a bounding radius nearer
+       *     (negative) or further (positive).
+       * @default 0
+       */
+      focus: number;
     };
     /**
      * @description Asks the viewport to show a graph on the mesh it is showing, or on the display's shape with none, as it stands

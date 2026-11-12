@@ -43,6 +43,10 @@ public sealed class ViewportRenderer : IDisposable {
     string[] isolatedMaterials = [];
     readonly ViewportShadows shadows;
     readonly ViewportPost post;
+    readonly ViewportShaders shaders;
+
+    /// <summary>The depth of field, made the first time a frame asks for it.</summary>
+    ViewportFocus? focus;
     readonly BufferHandle frameConstants;
     readonly BufferHandle skyConstants;
     readonly DescriptorSetHandle frameSet;
@@ -64,7 +68,7 @@ public sealed class ViewportRenderer : IDisposable {
     ViewportRenderer(VulkanDevice device, ShaderCache cache) {
         this.device = device;
         loader = new(device);
-        var shaders = new ViewportShaders(cache);
+        shaders = new(cache);
         sampler = device.CreateSampler(SamplerDescription.LinearClamp);
         cleanup.Add(() => device.Destroy(sampler));
         mapSampler = device.CreateSampler(
@@ -358,12 +362,15 @@ public sealed class ViewportRenderer : IDisposable {
         if (targets is not { } current || current.Width != width || current.Height != height) {
             targets?.Dispose();
             post.Forget();
+            focus?.Forget();
             current = targets = new(device, width, height);
         }
 
         var shading = Shading;
         WriteFrame(camera, shading, scene.Mesh.Bounds, (float)width / height);
         post.Plan(shading, current);
+        var lens = Defocuses(shading) ? Focus() : null;
+        lens?.Plan(current, camera, scene.Mesh.Bounds, shading.DepthOfField, shading.Focus);
 
         if (shading.Wireframe) {
             scene.EnsureEdges();
@@ -371,7 +378,7 @@ public sealed class ViewportRenderer : IDisposable {
 
         device.BeginFrame();
         using (var commands = device.BeginCommandList(QueueKind.Graphics, "viewport")) {
-            Record(commands, current, scene, shading);
+            Record(commands, current, scene, shading, lens);
             commands.Finish();
             device.GraphicsQueue.Submit([commands]);
         }
@@ -384,6 +391,7 @@ public sealed class ViewportRenderer : IDisposable {
     public void Dispose() {
         device.WaitIdle();
         targets?.Dispose();
+        focus?.Dispose();
         geometry?.Dispose();
         foreach (var map in live.Values.SelectMany(static maps => maps)) {
             map?.Dispose();
@@ -598,7 +606,8 @@ public sealed class ViewportRenderer : IDisposable {
         ICommandList commands,
         ViewportTargets target,
         Geometry scene,
-        ViewportShading shading
+        ViewportShading shading,
+        ViewportFocus? lens
     ) {
         var shown = Shown(scene.Mesh);
         shadows.Record(commands, scene.Vertices, scene.Indices, shown);
@@ -607,7 +616,7 @@ public sealed class ViewportRenderer : IDisposable {
                 [],
                 [
                     new(target.HdrSamples, ResourceState.Undefined, ResourceState.ColourTarget),
-                    new(target.Hdr, ResourceState.Undefined, ResourceState.ColourTarget),
+                    ..lens?.Resolving() ?? [new(target.Hdr, ResourceState.Undefined, ResourceState.ColourTarget)],
                     new(target.Depth, ResourceState.Undefined, ResourceState.DepthStencilWrite)
                 ]
             )
@@ -615,8 +624,9 @@ public sealed class ViewportRenderer : IDisposable {
         var behind = shading.BackgroundColour * (1f - Math.Clamp(shading.BackgroundOpacity, 0f, 1f));
         commands.BeginRenderPass(
             new(
-                [target.Cleared(behind)],
-                new DepthStencilAttachment(target.DepthView, LoadAction.Clear, StoreAction.DontCare),
+                [target.Cleared(behind, lens?.UnfocusedView)],
+                lens?.Depth(target.DepthView)
+                ?? new DepthStencilAttachment(target.DepthView, LoadAction.Clear, StoreAction.DontCare),
                 "viewport forward"
             )
         );
@@ -646,9 +656,29 @@ public sealed class ViewportRenderer : IDisposable {
 
         commands.EndRenderPass();
 
+        lens?.Record(commands, target);
         var reading = post.Record(commands, target);
         commands.Barrier(new BarrierGroup([], [new(reading, ResourceState.ColourTarget, ResourceState.CopySource)]));
         commands.CopyTextureToBuffer(new(reading), new(target.Width, target.Height, 1), target.Readback, 0);
+    }
+
+    /// <summary>Whether a frame is defocused: a lens opened at all, on a picture and not a stored value.</summary>
+    static bool Defocuses(ViewportShading shading) => shading.DepthOfField > 0f && !shading.ShowsData;
+
+    ViewportFocus Focus() {
+        if (focus is null) {
+            var pass = Pipeline(
+                shaders.DepthOfField(),
+                [new(HdrFormat, BlendState.Opaque)],
+                1,
+                DepthStencilState.Disabled,
+                PixelFormat.Undefined,
+                false
+            );
+            focus = new(device, (pass.Effect, pass.Pipeline));
+        }
+
+        return focus;
     }
 
     Pass Pipeline(

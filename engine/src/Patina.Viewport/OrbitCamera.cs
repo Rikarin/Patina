@@ -84,12 +84,16 @@ public readonly record struct OrbitCamera(
 
     /// <summary>The view-projection matrix for a model with these bounds, on Vixen's reversed depth.</summary>
     public Matrix4x4 ViewProjection(BoundingBox bounds, float aspectRatio) {
+        var view = Matrix4x4.LookAt(Eye(bounds, aspectRatio), Target(bounds), Up);
+        var (near, far) = Planes(bounds, aspectRatio);
+        return view * Matrix4x4.PerspectiveFieldOfView(Lens, aspectRatio, near, far);
+    }
+
+    /// <summary>How near and how far the camera sees, round the model and whatever it has panned to.</summary>
+    public (float Near, float Far) Planes(BoundingBox bounds, float aspectRatio) {
         var radius = Radius(bounds);
         var reach = Reach(bounds, aspectRatio);
-        var view = Matrix4x4.LookAt(Eye(bounds, aspectRatio), Target(bounds), Up);
-        var near = Math.Max(0.01f * radius, reach - (1.5f + Pan.Length()) * radius);
-        var far = reach + (2f + Pan.Length()) * radius;
-        return view * Matrix4x4.PerspectiveFieldOfView(Lens, aspectRatio, near, far);
+        return (Math.Max(0.01f * radius, reach - (1.5f + Pan.Length()) * radius), reach + (2f + Pan.Length()) * radius);
     }
 
     /// <summary>
