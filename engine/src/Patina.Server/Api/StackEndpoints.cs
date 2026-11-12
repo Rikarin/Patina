@@ -298,9 +298,21 @@ static class StackEndpoints {
     static Results<Ok<StackEditResult>, ProblemHttpResult> Apply(
         string id,
         StackCommandBatch batch,
-        StackSessions sessions
+        StackSessions sessions,
+        ViewportSession viewport
     ) =>
-        Step(id, sessions, session => session.Apply(batch), "apply");
+        Step(id, sessions, session => session.Apply(batch, Isolation(session, viewport.State)), "apply");
+
+    /// <summary>
+    ///     What the viewport draws alone of a stack's model (#136), or null: an isolation names the parts of the mesh
+    ///     the viewport shows, which say nothing about another.
+    /// </summary>
+    static ViewportIsolation? Isolation(StackSession session, ViewportState viewport) =>
+        viewport.Isolation is { } isolation
+        && session.ModelFile is { } model
+        && string.Equals(model, viewport.Mesh, StringComparison.Ordinal)
+            ? isolation
+            : null;
 
     static Results<Ok<StackEditResult>, ProblemHttpResult> Undo(string id, StackSessions sessions) =>
         Step(id, sessions, static session => session.Undo(), "undo");

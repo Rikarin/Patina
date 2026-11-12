@@ -175,6 +175,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A stroke on the model reaches only what the viewport shows: with parts or texture sets isolated, a part isolated away takes no paint and no longer hides what is behind it from the brush. The stroke keeps what was shown when it began, so showing everything again changes nothing it painted, and a stroke the engine replays after a restart lands where it did.
 - Quitting Patina no longer takes 3 s longer than it has to, and the engine's Server stops cleanly instead of being stopped by force, which left its entry in the discovery file and its socket behind. A client following events or viewport frames kept the Server stopping until it was killed; those connections now close as it stops.
 - The Library's top bar keeps its two switches apart at the narrowest window: the grid or list switch sits beside the search field, and where Projects and Materials cannot fit side by side they become a list to choose from.
 - A stroke on a layer painted larger than its texture set, or at another size earlier in the session, is refused before it begins, with the same reason as before. It used to stand anyway, and the stack failed to show until it was undone. Through the API the refusal's code is `stroke-canvas-larger` or `stroke-canvas-painted-at-size`.

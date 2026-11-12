@@ -635,6 +635,10 @@ public sealed record StackLoad(
 /// <param name="Width">The set's width when the stroke began, which its stamps are texels of; 0 is today's.</param>
 /// <param name="Height">The set's height when the stroke began.</param>
 /// <param name="Resume">Where the brush already stood when a free stroke carries the last one on, or null.</param>
+/// <param name="Isolation">
+///     What the viewport drew alone when a stroke on the mesh began (#136), which is all it reaches; null for the whole
+///     model.
+/// </param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -656,7 +660,8 @@ public sealed record StackPaintPart(
     string? SourceDocument = null,
     int Width = 0,
     int Height = 0,
-    IReadOnlyList<float>? Resume = null
+    IReadOnlyList<float>? Resume = null,
+    ViewportIsolation? Isolation = null
 );
 
 /// <summary>What a flattened group's canvas is made of.</summary>

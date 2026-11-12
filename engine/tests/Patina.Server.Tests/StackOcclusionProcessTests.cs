@@ -40,6 +40,48 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
+    ///     A stroke reaches only what the viewport draws (#136): with the housing shown alone, the strap isolated away
+    ///     takes no paint and no longer hides the top under it, so the same dab from above lands on the top. The stroke
+    ///     keeps what was shown when it began, so showing the strap again afterwards changes nothing it painted.
+    /// </summary>
+    [Fact]
+    public async Task A_stroke_leaves_what_is_isolated_away_alone() {
+        using var deadline = Deadline(300);
+        var (instance, state) = await StartAsync("StrapAlone.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await BindMeshAsync(state.Id, deadline.Token);
+        using var frames = await WearAsync(instance, state.Id, deadline.Token);
+        var above = await AboveAsync(deadline.Token);
+        await IsolateAsync(new(["housing_low"], []), deadline.Token);
+
+        var dab = new StackStroke(
+            "dab",
+            "paint",
+            "baseColor",
+            new(24f, Occlusion: true),
+            Red,
+            [new(Picture / 2f, Picture / 2f)],
+            View: above
+        );
+        await EditAsync(state.Id, deadline.Token, dab);
+        await IsolateAsync(new([], []), deadline.Token);
+        var (top, strap) = await ChartsAsync(state.Id, "alone", deadline.Token);
+
+        Assert.Equal(0, strap);
+        Assert.True(top > 50, $"The top took {top} texels with the strap isolated away.");
+    }
+
+    async Task IsolateAsync(ViewportIsolation isolation, CancellationToken token) {
+        using var response = await http.PutAsJsonAsync(
+            "/api/v1/viewport/isolation",
+            isolation,
+            ContractsJsonContext.Default.ViewportIsolation,
+            token
+        );
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync(token));
+    }
+
+    /// <summary>
     ///     A dab's red texels in the top cap's chart and in the strap's, from an exported base colour, then undone. The
     ///     low housing lays its charts on a four-by-four grid: the top is chart 8, the strap chart 10.
     /// </summary>
@@ -50,6 +92,13 @@ public sealed partial class StackProcessTests {
         CancellationToken token
     ) {
         await EditAsync(id, token, stroke);
+        var counted = await ChartsAsync(id, name, token);
+        await ActAsync(id, "undo", token);
+        return counted;
+    }
+
+    /// <summary>The red texels in the top cap's chart and in the strap's, from an exported base colour.</summary>
+    async Task<(int Top, int Strap)> ChartsAsync(string id, string name, CancellationToken token) {
         var exported = await ExportAsync(id, Path.Combine(folder.FullName, name), token);
         var file = PngCodec.Decode(File.ReadAllBytes(exported.Single(static map => map.Usage == "baseColor").File!));
         var (top, strap) = (0, 0);
@@ -65,7 +114,6 @@ public sealed partial class StackProcessTests {
             }
         }
 
-        await ActAsync(id, "undo", token);
         return (top, strap);
     }
 

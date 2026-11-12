@@ -63,6 +63,12 @@ public sealed class StackJournalEntry(
     /// <summary>The texture set's height when the stroke began.</summary>
     public int Height { get; init; }
 
+    /// <summary>
+    ///     What the viewport drew alone when a stroke on the mesh began (#136), or null for the whole model: a stroke
+    ///     reaches only what was shown. In the journal so a replay reaches the same faces whatever is shown since.
+    /// </summary>
+    public ViewportIsolation? Isolation { get; init; }
+
     public List<StackStamp> Stamps { get; } = [..first.Stamps];
 
     public bool Open { get; set; } = first.Open;
