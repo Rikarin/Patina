@@ -1,9 +1,15 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { type ViewportInput, type ViewportIsolation, createPatinaClient } from '@patina/api-client';
+import {
+  type ViewportFollow,
+  type ViewportInput,
+  type ViewportIsolation,
+  createPatinaClient
+} from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
+import type { ViewportFrame } from './frame-transport';
 import { IsolationStore } from './isolation-store';
 import { DefaultCamera } from './orbit';
 import { DefaultDisplay, FRAME_TRANSPORT_FACTORY, ViewportClient } from './viewport-client';
@@ -13,10 +19,20 @@ function setup() {
   const displays: unknown[] = [];
   const opens: (() => void)[] = [];
   /** What the Server draws alone, which one that restarts forgets. */
-  const server: { isolation: ViewportIsolation | null } = { isolation: null };
-  const shown: { graph: string; node: number | null }[] = [];
+  const server: { isolation: ViewportIsolation | null; following: ViewportFollow | null; reads: number } = {
+    isolation: null,
+    following: null,
+    reads: 0
+  };
+  const frames: ((frame: ViewportFrame) => void)[] = [];
   const fetcher = (async (input: Request) => {
     const path = new URL(input.url).pathname;
+    if (input.method === 'PUT' && path.endsWith('/viewport/follow')) {
+      const follow = (await input.json()) as ViewportFollow;
+      server.following = follow.graph === null ? null : follow;
+      return Response.json({ mesh: '/cache/preview/sphere.glb', camera: DefaultCamera, following: server.following });
+    }
+
     if (input.method === 'PUT' && path.endsWith('/viewport/display')) {
       const display: unknown = await input.json();
       displays.push(display);
@@ -25,11 +41,14 @@ function setup() {
       return Response.json({ mesh: `/cache/preview/${shape}.glb`, camera: DefaultCamera, display });
     }
 
+    server.reads++;
     return Response.json({
       mesh: '/a/crate.glb',
       camera: DefaultCamera,
       display: DefaultDisplay,
-      isolation: server.isolation
+      isolation: server.isolation,
+      following: server.following,
+      node: server.following?.node ? { graph: server.following.graph, node: 4, port: 'Out' } : null
     });
   }) as unknown as typeof fetch;
   TestBed.configureTestingModule({
@@ -39,28 +58,17 @@ function setup() {
       { provide: API_CLIENT_FACTORY, useValue: (c: never) => createPatinaClient(c, fetcher) },
       {
         provide: FRAME_TRANSPORT_FACTORY,
-        useValue: (_connection: unknown, _onFrame: unknown, onOpen: () => void) => {
+        useValue: (_connection: unknown, onFrame: (frame: ViewportFrame) => void, onOpen: () => void) => {
+          frames.push(onFrame);
           opens.push(onOpen);
           return { send: (input: ViewportInput) => inputs.push(input), close: () => undefined };
         }
       },
-      {
-        provide: BakeStore,
-        useValue: {
-          viewportChanged: signal(0),
-          showGraphOnMesh: (graph: string, node: number | null) => {
-            shown.push({ graph, node });
-            return Promise.resolve({
-              mesh: '/cache/preview/sphere.glb',
-              node: node === null ? null : { graph, node, port: 'Out' }
-            });
-          }
-        }
-      },
+      { provide: BakeStore, useValue: { viewportChanged: signal(0) } },
       { provide: ProjectStore, useValue: { active: signal(null), current: signal(null) } }
     ]
   });
-  return { client: TestBed.inject(ViewportClient), inputs, displays, opens, server, shown };
+  return { client: TestBed.inject(ViewportClient), inputs, displays, opens, server, frames };
 }
 
 describe('ViewportClient', () => {
@@ -83,16 +91,35 @@ describe('ViewportClient', () => {
     await vi.waitFor(() => expect(displays).toEqual([expect.objectContaining({ exposure: 1.25 })]));
   });
 
-  it('shows one node of a graph alone, says so, and lets it go for the material', async () => {
-    const { client, shown } = setup();
+  it('asks the Server to follow a graph, and reads what lies on the mesh again when a frame says it changed', async () => {
+    const { client, server, frames } = setup();
+    await vi.waitFor(() => expect(frames).toHaveLength(1));
+    const frame = (laid: number) => {
+      frames[0]?.({
+        sequence: 1,
+        width: 2,
+        height: 2,
+        input: 0,
+        renderMs: 1,
+        painted: 0,
+        laid,
+        pixels: new Uint8Array(16)
+      });
+    };
 
-    await client.showGraph('g1', 4);
-    expect(shown).toEqual([{ graph: 'g1', node: 4 }]);
-    expect(client.node()).toEqual({ graph: 'g1', node: 4, port: 'Out' });
+    await client.follow('g1', true);
+    expect(client.following()).toEqual({ graph: 'g1', node: true });
 
-    await client.showGraph('g1');
-    expect(shown.at(-1)).toEqual({ graph: 'g1', node: null });
-    expect(client.node()).toBeNull();
+    // The first frame only says where the count stands; the next that moves it is a change made elsewhere.
+    frame(3);
+    const reads = server.reads;
+    frame(3);
+    expect(server.reads).toBe(reads);
+    frame(4);
+    await vi.waitFor(() => expect(client.node()).toEqual({ graph: 'g1', node: 4, port: 'Out' }));
+
+    await client.follow(null);
+    expect(client.following()).toBeNull();
   });
 
   it('takes the mesh the Server answers a new shape with', async () => {

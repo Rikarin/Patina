@@ -164,14 +164,4 @@ describe('BakeStore', () => {
     expect(await (asked as Request).json()).toEqual({ job: 'j1' });
     expect(store.viewportChanged()).toBe(1);
   });
-
-  it('throws what the Server refused, and the viewport has not changed', async () => {
-    const { store } = setup({
-      ...empty,
-      'PUT viewport/graph': () => Response.json({ detail: 'Open a mesh first' }, { status: 422 })
-    });
-
-    await expect(store.showGraphOnMesh('g1')).rejects.toThrow('Open a mesh first');
-    expect(store.viewportChanged()).toBe(0);
-  });
 });

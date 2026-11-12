@@ -25,13 +25,6 @@ static class ViewportMapEndpoints {
     const int Conflict = StatusCodes.Status409Conflict;
     const int Unavailable = StatusCodes.Status503ServiceUnavailable;
 
-    /// <summary>An Output node's usages the viewport has a slot for.</summary>
-    static readonly IReadOnlySet<string> Slots =
-        new HashSet<string>(
-            ["baseColor", "normal", "roughness", "metalness", "occlusion", "emissive", "opacity"],
-            StringComparer.Ordinal
-        );
-
     public static void MapViewportMaps(this IEndpointRouteBuilder api) {
         api.MapPut("/viewport/maps", SetMapsAsync)
             .WithName("SetViewportMaps")
@@ -88,12 +81,21 @@ static class ViewportMapEndpoints {
             .WithTags(Tag)
             .WithSummary(
                 "Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or "
-                + "shows one node's picture there. Ask again to see a later edit."
+                + "shows one node's picture there. Ask again to see a later edit, or follow the graph instead."
             )
             .ProducesProblem(Missing)
             .ProducesProblem(Refused)
             .ProducesProblem(Conflict)
             .ProducesProblem(Unavailable);
+        api.MapPut("/viewport/follow", Follow)
+            .WithName("FollowGraphInViewport")
+            .WithTags(Tag)
+            .WithSummary(
+                "Keeps a graph on the viewport: its Output nodes, or with node the node its selection views, laid "
+                + "on the mesh again after each evaluation and each change of selection, until something else is "
+                + "laid there. A null graph stops."
+            )
+            .ProducesProblem(Missing);
     }
 
     static async Task<Results<Ok<ViewportState>, ProblemHttpResult>> SetMapsAsync(
@@ -102,7 +104,10 @@ static class ViewportMapEndpoints {
         CancellationToken cancellationToken
     ) {
         try {
-            session.SetMaps(await Task.Run(() => Hashed(request), cancellationToken));
+            var hashed = await Task.Run(() => Hashed(request), cancellationToken);
+            // Pictures laid by hand take the place of a graph followed.
+            session.Follow(null);
+            session.SetMaps(hashed);
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
             return TypedResults.Problem(e.Message, statusCode: Missing);
@@ -288,47 +293,35 @@ static class ViewportMapEndpoints {
             return TypedResults.Problem($"There is no graph session '{request.Graph}'.", statusCode: Missing);
         }
 
-        if (request.Node is { } shownNode) {
-            return await ShowNodeAsync(
-                graph,
-                shownNode,
-                request.Port,
-                evaluator,
-                store,
-                session,
-                identity,
-                cancellationToken
-            );
-        }
-
-        var outputs = graph.Outputs(Slots);
-        if (outputs.Count == 0) {
-            return TypedResults.Problem("This graph has no Output node the viewport can show.", statusCode: Refused);
-        }
-
         try {
-            Dictionary<string, ViewportMapFile> files = new(StringComparer.Ordinal);
-            foreach (var (node, usage) in outputs) {
-                var image = await evaluator.ImageAsync(graph, node, usage, cancellationToken);
-                files[usage] = new(GraphPreviewFiles.PathOf(store.Root, image.Hash), image.Hash);
+            GraphOnMesh shown;
+            if (request.Node is { } node) {
+                if (GraphOnMesh.PortOf(graph, node, request.Port) is not { } port) {
+                    return TypedResults.Problem(
+                        $"Node {node} has no picture yet. Ask again once the graph has evaluated it.",
+                        statusCode: Conflict
+                    );
+                }
+
+                shown = await GraphOnMesh.NodeAsync(graph, node, port, evaluator, store.Root, cancellationToken);
+            } else if (await GraphOnMesh.OutputsAsync(graph, evaluator, store.Root, cancellationToken) is { } outputs) {
+                shown = outputs;
+            } else {
+                return TypedResults.Problem(
+                    "This graph has no Output node the viewport can show.",
+                    statusCode: Refused
+                );
             }
 
+            // A picture asked for now takes the place of a graph followed.
+            session.Follow(null);
             StandIn(session, identity);
+            if (shown.Node is { } picture) {
+                session.ShowNode(picture.Shown, picture.File);
+            } else {
+                session.SetMaps(shown.Maps);
+            }
 
-            session.SetMaps(
-                new(
-                    files.GetValueOrDefault("baseColor"),
-                    files.GetValueOrDefault("normal"),
-                    files.GetValueOrDefault("roughness"),
-                    files.GetValueOrDefault("metalness"),
-                    files.GetValueOrDefault("occlusion"),
-                    files.GetValueOrDefault("emissive"),
-                    files.GetValueOrDefault("opacity")
-                ) {
-                    // A graph's Height to Normal points green down, and the shader reads green up (ADR 0011).
-                    GreenDown = true
-                }
-            );
             return TypedResults.Ok(session.State);
         } catch (IpcException e) {
             return TypedResults.Problem(e.Message, statusCode: Conflict);
@@ -337,39 +330,21 @@ static class ViewportMapEndpoints {
         }
     }
 
-    /// <summary>One node's picture on the mesh, as stored, in place of the material.</summary>
-    static async Task<Results<Ok<ViewportState>, ProblemHttpResult>> ShowNodeAsync(
-        GraphSession graph,
-        int node,
-        string? port,
-        GraphEvaluator evaluator,
-        PreviewStore store,
-        ViewportSession session,
-        ServerIdentity identity,
-        CancellationToken cancellationToken
+    /// <summary>
+    ///     Keeps a graph on the viewport, or stops. The follower lays it on the mesh as soon as the graph has pictures,
+    ///     so the reply may come before it shows; the frames say when it has (ADR 0003).
+    /// </summary>
+    static Results<Ok<ViewportState>, ProblemHttpResult> Follow(
+        ViewportFollow request,
+        GraphSessions graphs,
+        ViewportSession session
     ) {
-        // The output a node's preview shows is the one that has a picture, which a client need not know.
-        var output = port ?? graph.State.Previews.FirstOrDefault(preview => preview.Node == node)?.Port;
-        if (output is null) {
-            return TypedResults.Problem(
-                $"Node {node} has no picture yet. Ask again once the graph has evaluated it.",
-                statusCode: Conflict
-            );
+        if (request.Graph is { } id && graphs.Find(id) is null) {
+            return TypedResults.Problem($"There is no graph session '{id}'.", statusCode: Missing);
         }
 
-        try {
-            var image = await evaluator.ImageAsync(graph, node, output, cancellationToken);
-            StandIn(session, identity);
-            session.ShowNode(
-                new(graph.Id, node, output),
-                new(GraphPreviewFiles.PathOf(store.Root, image.Hash), image.Hash)
-            );
-            return TypedResults.Ok(session.State);
-        } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Conflict);
-        } catch (Exception e) when (e is IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
-        }
+        session.Follow(request);
+        return TypedResults.Ok(session.State);
     }
 
     /// <summary>A graph has no surface of its own, so with no mesh open it is seen on the display's shape.</summary>

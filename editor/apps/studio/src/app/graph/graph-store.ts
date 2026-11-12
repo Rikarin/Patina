@@ -10,6 +10,7 @@ import {
   type GraphInterfacePort,
   type GraphNodeType,
   type GraphPresetState,
+  type GraphSelection,
   type GraphSettingDefinition,
   type GraphState,
   type HistoryList,
@@ -289,6 +290,19 @@ export class GraphStore {
       this.stopped = true;
       this.stopFollowing();
       this.previews.dispose();
+    });
+
+    // The session's selection is the Server's too, so a client that follows it, the viewport included, needs no editor
+    // (#244). What this client chooses goes; what it starts with when it joins does not, or opening a graph would take
+    // away what another client chose.
+    const session = computed(() => this.mutableDocument()?.id ?? null);
+    const pinnedId = computed(() => this.pinned()?.id ?? null);
+    effect(() => {
+      const id = session();
+      const chosen = { nodes: [...this.mutableSelection()], pinned: pinnedId() };
+      untracked(() => {
+        this.reportSelection(id, chosen);
+      });
     });
 
     // One selection on screen: the Inspector shows what was touched last, a library item or a node.
@@ -1105,6 +1119,45 @@ export class GraphStore {
 
   dismissSaveConflict(): void {
     this.mutableSaveConflict.set(false);
+  }
+
+  /** The session and selection last told, or held as the start; then the newest waiting while one is on its way. */
+  private selectionTold: { id: string | null; key: string } = { id: null, key: '' };
+  private selectionWaiting: { id: string; selection: GraphSelection } | null = null;
+  private selectionSending = false;
+
+  /** Tells the Server what this client chose, one request at a time and only the newest, since clicks come fast. */
+  private reportSelection(id: string | null, selection: GraphSelection): void {
+    const key = JSON.stringify(selection);
+    const told = this.selectionTold;
+    this.selectionTold = { id, key };
+    if (id === null || told.id !== id || told.key === key) {
+      return;
+    }
+
+    this.selectionWaiting = { id, selection };
+    if (!this.selectionSending) {
+      void this.sendSelection();
+    }
+  }
+
+  private async sendSelection(): Promise<void> {
+    this.selectionSending = true;
+    try {
+      for (let next = this.selectionWaiting; next !== null; next = this.selectionWaiting) {
+        this.selectionWaiting = null;
+        try {
+          await this.api().PUT('/api/v1/graphs/{id}/selection', {
+            params: { path: { id: next.id } },
+            body: next.selection
+          });
+        } catch {
+          // A selection is no edit: one that does not arrive is followed by the next.
+        }
+      }
+    } finally {
+      this.selectionSending = false;
+    }
   }
 
   private newLoader(): PreviewLoader {

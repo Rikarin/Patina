@@ -346,6 +346,18 @@ public sealed record ViewportBakeRequest(string Job);
 /// <param name="Port">The node's output, or null for the one its preview shows.</param>
 public sealed record ViewportGraphRequest(string Graph, int? Node = null, string? Port = null);
 
+/// <summary>
+///     Keeps a graph session on the viewport, shown again after each of its evaluations, until something else is laid
+///     on the mesh. The Server does the following, so a client that asks needs to do nothing more (#244).
+/// </summary>
+/// <param name="Graph">The graph's session, or null to stop following.</param>
+/// <param name="Node">
+///     Show the node the session's selection views, its pinned node or else its first chosen one, alone in place of the
+///     material, as <c>PUT /viewport/graph</c> with a node does; its Output nodes when it views none or the node has no
+///     picture. False shows the Output nodes.
+/// </param>
+public sealed record ViewportFollow(string? Graph, bool Node = false);
+
 /// <summary>A graph node whose picture the viewport shows in place of a material.</summary>
 /// <param name="Graph">The graph's session.</param>
 /// <param name="Node">The node.</param>
@@ -372,6 +384,7 @@ public sealed record ViewportNodeShown(string Graph, int Node, string Port);
 ///     The graph node whose picture is shown in place of the material, or null. While it is, the picture view is
 ///     what the frames show, whatever <see cref="ViewportDisplay.View" /> says.
 /// </param>
+/// <param name="Following">The graph the viewport keeps up with, or null.</param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 public sealed record ViewportState(
@@ -386,7 +399,8 @@ public sealed record ViewportState(
     ViewportDisplay Display,
     string? Stack = null,
     ViewportIsolation? Isolation = null,
-    ViewportNodeShown? Node = null
+    ViewportNodeShown? Node = null,
+    ViewportFollow? Following = null
 );
 #pragma warning restore SK7005
 

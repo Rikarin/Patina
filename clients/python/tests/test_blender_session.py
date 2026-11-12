@@ -14,12 +14,18 @@ from patina_client.api.graphs import (
     get_preview,
     open_graph,
     save_graph,
+    set_graph_selection,
     write_graph_image,
 )
 from patina_client.api.jobs import get_job, start_bake
 from patina_client.api.library import get_materials, get_package_plan, publish_package
 from patina_client.api.system import get_system
-from patina_client.api.viewport import get_viewport, set_viewport_mesh, show_graph_in_viewport
+from patina_client.api.viewport import (
+    follow_graph_in_viewport,
+    get_viewport,
+    set_viewport_mesh,
+    show_graph_in_viewport,
+)
 from patina_client.models import (
     BakeColourOptions,
     BakeHeightOptions,
@@ -34,13 +40,16 @@ from patina_client.models import (
     GraphCommandBatch,
     GraphImageRequest,
     GraphOpenRequest,
+    GraphSelection,
     GraphCommandGraphSetInfo,
     GraphCommandGraphSetInfoOp,
     GraphCommandGraphSetValue,
     GraphCommandGraphSetValueOp,
     PackageRequest,
+    ViewportFollow,
     ViewportGraphRequest,
     ViewportMeshRequest,
+    ViewportNodeShown,
 )
 
 from patina_client.types import Unset
@@ -93,6 +102,17 @@ def evaluated(client, graph: str, revision: int) -> None:
     raise TimeoutError("The graph never evaluated.")
 
 
+def shown_node(client, node: int) -> None:
+    """Waits for the viewport to show a node alone, which the Server lays on the mesh by itself."""
+    deadline = time.monotonic() + DEADLINE
+    while time.monotonic() < deadline:
+        state = get_viewport.sync(client=client)
+        if isinstance(state.node, ViewportNodeShown) and state.node.node == node:
+            return
+        time.sleep(0.05)
+    raise TimeoutError(f"The viewport never showed node {node}.")
+
+
 def picture(client, graph: str, port: str = "Out") -> tuple[str, bytes]:
     image = write_graph_image.sync(id=graph, client=client, body=GraphImageRequest(node=HSL_NODE, port=port))
     response = get_preview.sync_detailed(hash_=image.hash_, client=client)
@@ -115,6 +135,14 @@ def test_a_blender_shaped_session(session) -> None:
     applied = show_graph_in_viewport.sync_detailed(client=client, body=ViewportGraphRequest(graph=graph.id))
     if applied.status_code.value >= 400:
         needs_gpu(applied.content.decode())
+
+    # Follow the graph's selection: the Server keeps the chosen node on the mesh, and nothing of the editor is needed.
+    chosen = set_graph_selection.sync(id=graph.id, client=client, body=GraphSelection(nodes=[HSL_NODE], pinned=None))
+    assert chosen.nodes == [HSL_NODE]
+    following = follow_graph_in_viewport.sync(client=client, body=ViewportFollow(graph=graph.id, node=True))
+    assert following.following.graph == graph.id
+    shown_node(client, HSL_NODE)
+    follow_graph_in_viewport.sync(client=client, body=ViewportFollow(graph=None, node=False))
 
     # Bake: paths in, paths out.
     bake = start_bake.sync(

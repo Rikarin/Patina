@@ -76,6 +76,17 @@ public sealed class ViewportSession(
     /// <summary>A graph node's picture shown in place of the material, and its file, or null.</summary>
     (ViewportNodeShown Shown, ViewportMapFile File)? node;
 
+    /// <summary>The graph the viewport keeps up with, or null.</summary>
+    ViewportFollow? following;
+
+    /// <summary>Goes up each time the following starts, stops or changes, so a follower can tell its own from a later one.</summary>
+    long followings;
+
+    TaskCompletionSource followChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Counts changes to what lies on the mesh, for the frame header: a client that sees it move reads the state.</summary>
+    long laid;
+
     int width = DefaultWidth;
     int height = DefaultHeight;
     bool interacting;
@@ -107,13 +118,12 @@ public sealed class ViewportSession(
                     display.Display,
                     stack,
                     display.Isolation,
-                    node?.Shown
+                    node?.Shown,
+                    following
                 );
             }
         }
     }
-
-    public void SetMesh(string path) => Show(path, new());
 
     /// <summary>Whether the viewport is wearing this stack.</summary>
     public bool Wears(string session) {
@@ -187,6 +197,8 @@ public sealed class ViewportSession(
                 layouts[material] = uvSet;
             }
 
+            Unfollow();
+            laid++;
             revision++;
         }
 
@@ -231,18 +243,28 @@ public sealed class ViewportSession(
         Wake();
     }
 
-    /// <summary>Shows a mesh and pictures together, so that no frame has the one without the other.</summary>
+    /// <summary>
+    ///     Opens a mesh bare. A graph the viewport follows stays followed, and is laid on the new mesh again.
+    /// </summary>
+    public void SetMesh(string path) {
+        lock (changing) {
+            Lay(path, new());
+            if (following is not null) {
+                Retell();
+            }
+        }
+
+        Wake();
+    }
+
+    /// <summary>
+    ///     Shows a mesh and pictures together, so that no frame has the one without the other. A graph the viewport
+    ///     followed is let go.
+    /// </summary>
     public void Show(string path, ViewportMapSet pictures) {
         lock (changing) {
-            mesh = path;
-            stack = null;
-            also = [];
-            layouts.Clear();
-            maps = pictures;
-            node = null;
-            error = null;
-            mapsError = null;
-            revision++;
+            Lay(path, pictures);
+            Unfollow();
         }
 
         Wake();
@@ -258,6 +280,8 @@ public sealed class ViewportSession(
             node = null;
             error = null;
             mapsError = null;
+            Unfollow();
+            laid++;
             revision++;
         }
 
@@ -267,12 +291,7 @@ public sealed class ViewportSession(
     /// <summary>Lays pictures over the open mesh. A mesh leaving takes its pictures with it.</summary>
     public void SetMaps(ViewportMapSet pictures) {
         lock (changing) {
-            stack = null;
-            also = [];
-            maps = pictures;
-            node = null;
-            mapsError = null;
-            revision++;
+            LayMaps(pictures);
         }
 
         Wake();
@@ -286,11 +305,7 @@ public sealed class ViewportSession(
         ArgumentNullException.ThrowIfNull(shown);
         ArgumentNullException.ThrowIfNull(file);
         lock (changing) {
-            stack = null;
-            also = [];
-            node = (shown, file);
-            mapsError = null;
-            revision++;
+            LayNode(shown, file);
         }
 
         Wake();
@@ -304,10 +319,135 @@ public sealed class ViewportSession(
         lock (changing) {
             mesh = path;
             error = null;
+            laid++;
             revision++;
         }
 
         Wake();
+    }
+
+    /// <summary>The graph the viewport keeps up with, and the number of this following, to check a show against.</summary>
+    public (ViewportFollow? Following, long Number) Following {
+        get {
+            lock (changing) {
+                return (following, followings);
+            }
+        }
+    }
+
+    /// <summary>Keeps a graph on the viewport from now on, or stops with null. Whatever lies on the mesh stays.</summary>
+    public void Follow(ViewportFollow? graph) {
+        lock (changing) {
+            if (following is null && graph?.Graph is null) {
+                return;
+            }
+
+            following = graph is { Graph: not null } ? graph : null;
+            Retell();
+            laid++;
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>Stops following, if the following is still this one: its graph has gone.</summary>
+    public void Unfollow(long number) {
+        lock (changing) {
+            if (number == followings && following is not null) {
+                Unfollow();
+                laid++;
+                revision++;
+            }
+        }
+
+        Wake();
+    }
+
+    /// <summary>Completes when the following is no longer this one.</summary>
+    public Task FollowChangedAsync(long number, CancellationToken cancellationToken) {
+        lock (changing) {
+            return number != followings ? Task.CompletedTask : followChanged.Task.WaitAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>
+    ///     Lays a followed graph's outputs on the mesh, or one node's picture with a node, if the following is still this
+    ///     one: a client that laid something else meanwhile keeps it. A viewport with no mesh takes the stand-in shape.
+    /// </summary>
+    /// <returns>Whether it was laid.</returns>
+    public bool ShowFollowed(long number, string? standIn, GraphOnMesh shown) {
+        ArgumentNullException.ThrowIfNull(shown);
+        lock (changing) {
+            if (number != followings || following is null) {
+                return false;
+            }
+
+            if (mesh is null && standIn is not null) {
+                mesh = standIn;
+                error = null;
+            }
+
+            if (shown.Node is { } picture) {
+                LayNode(picture.Shown, picture.File);
+            } else {
+                LayMaps(shown.Maps);
+            }
+        }
+
+        Wake();
+        return true;
+    }
+
+    /// <summary>Under the lock.</summary>
+    void Lay(string path, ViewportMapSet pictures) {
+        mesh = path;
+        stack = null;
+        also = [];
+        layouts.Clear();
+        maps = pictures;
+        node = null;
+        error = null;
+        mapsError = null;
+        laid++;
+        revision++;
+    }
+
+    /// <summary>Under the lock.</summary>
+    void LayMaps(ViewportMapSet pictures) {
+        stack = null;
+        also = [];
+        maps = pictures;
+        node = null;
+        mapsError = null;
+        laid++;
+        revision++;
+    }
+
+    /// <summary>Under the lock.</summary>
+    void LayNode(ViewportNodeShown shown, ViewportMapFile file) {
+        stack = null;
+        also = [];
+        node = (shown, file);
+        mapsError = null;
+        laid++;
+        revision++;
+    }
+
+    /// <summary>Lets the followed graph go. Under the lock.</summary>
+    void Unfollow() {
+        if (following is not null) {
+            following = null;
+            Retell();
+        }
+    }
+
+    /// <summary>Tells the follower its following changed, or must be shown again. Under the lock.</summary>
+    void Retell() {
+        followings++;
+        var signal = followChanged;
+        followChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        signal.TrySetResult();
     }
 
     /// <summary>
@@ -661,7 +801,8 @@ public sealed class ViewportSession(
                     Lens(camera, display.Display),
                     (width, height, scale.Value),
                     interacting,
-                    lastInput
+                    lastInput,
+                    laid
                 ),
                     revision);
         }
@@ -722,7 +863,7 @@ public sealed class ViewportSession(
             audience = [..subscribers];
         }
 
-        var header = Header(sequence, frame, work.Input, work.Worn.Revision);
+        var header = Header(sequence, frame, work);
         var bytes = frame.Width * frame.Height * 4;
         foreach (var subscriber in audience) {
             slot.Hold();
@@ -730,16 +871,21 @@ public sealed class ViewportSession(
         }
     }
 
-    static byte[] Header(uint sequence, ViewportFrame frame, uint input, long stackRevision) {
+    /// <summary>
+    ///     The header: magic, sequence, width, height, the newest input, render microseconds, the worn stack's revision,
+    ///     and how many times what lies on the mesh has changed, which tells a client when to read the state again.
+    /// </summary>
+    static byte[] Header(uint sequence, ViewportFrame frame, Work work) {
         var header = new byte[HeaderBytes];
         var span = header.AsSpan();
         BinaryPrimitives.WriteUInt32LittleEndian(span, Magic);
         BinaryPrimitives.WriteUInt32LittleEndian(span[4..], sequence);
         BinaryPrimitives.WriteUInt32LittleEndian(span[8..], (uint)frame.Width);
         BinaryPrimitives.WriteUInt32LittleEndian(span[12..], (uint)frame.Height);
-        BinaryPrimitives.WriteUInt32LittleEndian(span[16..], input);
+        BinaryPrimitives.WriteUInt32LittleEndian(span[16..], work.Input);
         BinaryPrimitives.WriteUInt32LittleEndian(span[20..], (uint)(frame.RenderMilliseconds * 1000d));
-        BinaryPrimitives.WriteUInt32LittleEndian(span[24..], (uint)stackRevision);
+        BinaryPrimitives.WriteUInt32LittleEndian(span[24..], (uint)work.Worn.Revision);
+        BinaryPrimitives.WriteUInt32LittleEndian(span[28..], (uint)work.Laid);
         return header;
     }
 
@@ -791,6 +937,7 @@ public sealed class ViewportSession(
         ViewportCamera Camera,
         (int Width, int Height, double Scale) Size,
         bool Interacting,
-        uint Input
+        uint Input,
+        long Laid = 0
     );
 }

@@ -289,6 +289,7 @@ public sealed record GraphEvaluation(
 ///     True when this graph cannot be edited or saved: a compound that ships with Patina, or a package's graph.
 /// </param>
 /// <param name="Info">What it says about itself: a description, an author, tags and a physical size.</param>
+/// <param name="Selection">The nodes chosen in it, as the last client to say so chose them.</param>
 public sealed record GraphState(
     string Id,
     string Path,
@@ -309,9 +310,18 @@ public sealed record GraphState(
     GraphEvaluation? Evaluation,
     long Settled,
     bool ReadOnly,
-    GraphInfoState Info
+    GraphInfoState Info,
+    GraphSelection Selection
 );
 #pragma warning restore SK7005
+
+/// <summary>
+///     The nodes chosen in a graph session, and the one kept on view whatever is chosen. A session has one selection,
+///     whichever client made it last, so a client that follows it, such as the viewport, needs no editor (#244).
+/// </summary>
+/// <param name="Nodes">The chosen nodes, the first being the one a single-node view shows.</param>
+/// <param name="Pinned">The node the views keep showing while the choice moves on, or null.</param>
+public sealed record GraphSelection(IReadOnlyList<int> Nodes, int? Pinned = null);
 
 /// <summary>An open graph, for a list.</summary>
 public sealed record GraphSummary(string Id, string Path, string Name, long Revision, bool Dirty);
@@ -619,6 +629,10 @@ public enum GraphEventKind {
     [JsonStringEnumMemberName("closed")]
     Closed,
 
+    /// <summary>A client chose other nodes, or pinned one: <see cref="GraphEvent.Selection" /> says which.</summary>
+    [JsonStringEnumMemberName("selected")]
+    Selected,
+
     /// <summary>The events after the asked number are gone: read the state again.</summary>
     [JsonStringEnumMemberName("resync")]
     Resync
@@ -635,6 +649,7 @@ public enum GraphEventKind {
 /// <param name="Label">What the edit, undo or redo was called.</param>
 /// <param name="Delta">What changed in the document.</param>
 /// <param name="Evaluation">What an evaluation did.</param>
+/// <param name="Selection">The selection, on a <c>selected</c> event.</param>
 public sealed record GraphEvent(
     long Sequence,
     GraphEventKind Kind,
@@ -642,7 +657,8 @@ public sealed record GraphEvent(
     GraphHistoryState History,
     string? Label = null,
     GraphDelta? Delta = null,
-    GraphEvaluation? Evaluation = null
+    GraphEvaluation? Evaluation = null,
+    GraphSelection? Selection = null
 );
 
 /// <summary>Asks for a node's picture at the size the graph computes it.</summary>

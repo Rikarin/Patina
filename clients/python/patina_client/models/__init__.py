@@ -154,6 +154,7 @@ from .graph_port_range import GraphPortRange
 from .graph_preset_state import GraphPresetState
 from .graph_preset_state_values import GraphPresetStateValues
 from .graph_preview import GraphPreview
+from .graph_selection import GraphSelection
 from .graph_setting_condition import GraphSettingCondition
 from .graph_setting_definition import GraphSettingDefinition
 from .graph_state import GraphState
@@ -364,6 +365,7 @@ from .viewport_bake_preview import ViewportBakePreview
 from .viewport_bake_request import ViewportBakeRequest
 from .viewport_camera_state import ViewportCameraState
 from .viewport_display import ViewportDisplay
+from .viewport_follow import ViewportFollow
 from .viewport_graph_request import ViewportGraphRequest
 from .viewport_isolation import ViewportIsolation
 from .viewport_map_paths import ViewportMapPaths
@@ -532,6 +534,7 @@ __all__ = (
     "GraphPresetState",
     "GraphPresetStateValues",
     "GraphPreview",
+    "GraphSelection",
     "GraphSettingCondition",
     "GraphSettingDefinition",
     "GraphState",
@@ -742,6 +745,7 @@ __all__ = (
     "ViewportBakeRequest",
     "ViewportCameraState",
     "ViewportDisplay",
+    "ViewportFollow",
     "ViewportGraphRequest",
     "ViewportIsolation",
     "ViewportMapPaths",
