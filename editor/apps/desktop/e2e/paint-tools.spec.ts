@@ -218,6 +218,54 @@ test('the tool strip follows the tool, stays when a fill is chosen, and a polygo
   expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
 });
 
+test('a fill takes what a rectangle or a lasso holds, and the outline shows while it is drawn (#129)', async () => {
+  await openOnMesh();
+  await window.getByTestId('tool-strip-fill').click();
+  await window.getByTestId('paint-fill-mode').selectOption('triangle');
+  await window.getByTestId('paint-fill-shape').selectOption('rectangle');
+  await expect(window.getByTestId('paint-fill-through')).not.toBeChecked();
+  await colour('#1060e0');
+  const before = await shot();
+
+  // The outline shows while the pointer is down, and goes when it is let go.
+  const from = await at(0.35, 0.35);
+  const to = await at(0.65, 0.65);
+  await window.mouse.move(from.x, from.y);
+  await window.mouse.down();
+  await window.mouse.move(to.x, to.y, { steps: 12 });
+  await expect(window.getByTestId('viewport-outline')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'fill-rectangle-drawn.png') });
+  await window.mouse.up();
+  await expect(window.getByTestId('viewport-outline')).toHaveCount(0);
+  await expect.poll(async () => changed(before, await shot()), { timeout: 60_000 }).toBeGreaterThan(1500);
+  await settled();
+  await window.screenshot({ path: join(shots, 'fill-rectangle.png') });
+  const boxed = await shot();
+
+  await window.getByTestId('paint-fill-shape').selectOption('lasso');
+  await colour('#e03010');
+  const loop = [
+    [0.2, 0.75],
+    [0.3, 0.6],
+    [0.45, 0.8],
+    [0.3, 0.9]
+  ] as const;
+  const [start] = loop;
+  const first = await at(start[0], start[1]);
+  await window.mouse.move(first.x, first.y);
+  await window.mouse.down();
+  for (const [x, y] of loop.slice(1)) {
+    const next = await at(x, y);
+    await window.mouse.move(next.x, next.y, { steps: 8 });
+  }
+
+  await window.mouse.up();
+  await expect.poll(async () => changed(boxed, await shot()), { timeout: 60_000 }).toBeGreaterThan(300);
+  await settled();
+  await window.screenshot({ path: join(shots, 'fill-lasso.png') });
+  expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
+});
+
 test('the brush panel pictures the brush, and the picker takes back every channel painted', async () => {
   await openOnMesh();
   const preview = window.getByTestId('paint-brush-preview');
@@ -297,6 +345,17 @@ test('a picture on the viewport projects through the brush, and as a stencil mas
   await window.mouse.move(handle.x + handle.width / 2 + 20, handle.y + handle.height / 2, { steps: 4 });
   await window.mouse.up();
   await expect(window.getByTestId('screen-picture-frame')).not.toHaveAttribute('data-centre', /^0,0$/u);
+
+  // Its keys move it as its handles do, a step at a time, with the viewport focused (#128).
+  const moved = (await window.getByTestId('screen-picture-frame').getAttribute('data-centre')) ?? '';
+  await canvas().focus();
+  await window.keyboard.press('Alt+ArrowRight');
+  await window.keyboard.press('Alt+ArrowDown');
+  const [x, y] = moved.split(',').map(Number);
+  await expect(window.getByTestId('screen-picture-frame')).toHaveAttribute(
+    'data-centre',
+    `${(x ?? 0) + 10},${(y ?? 0) + 10}`
+  );
 
   await drag(0.4, 0.5, 0.6, 0.5);
   await expect.poll(async () => changed(before, await shot()), { timeout: 60_000 }).toBeGreaterThan(800);
