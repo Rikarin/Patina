@@ -19,7 +19,7 @@ import { desktop } from '../core/desktop';
 import { termName } from '../core/labels';
 import { SystemStatus } from '../core/system-status';
 import { ViewOptions } from '../core/view-options';
-import { GraphStore } from '../graph/graph-store';
+import { GraphViews } from '../graph/graph-views';
 import { ProjectStore } from '../library/project-store';
 import { MaterialUse } from '../paint/material-use';
 import { PaintStore, pressureOf } from '../paint/paint-store';
@@ -104,7 +104,7 @@ const PickLook = '…';
         <button type="button" xuiButton size="sm" [disabled]="!canOpen" (click)="open()">Open mesh…</button>
       }
       <span class="readout truncate" data-testid="viewport-mesh">{{ meshName() }}</span>
-      @if (graph.document(); as document) {
+      @if (graphs.front().document(); as document) {
         <button
           type="button"
           xuiButton
@@ -317,7 +317,8 @@ export class ViewportPane implements AfterViewInit {
   protected readonly viewport = inject(ViewportClient);
   protected readonly display = this.viewport.display;
   private readonly bakes = inject(BakeStore);
-  protected readonly graph = inject(GraphStore);
+  /** The graph touched last, which Show and Node lay on the mesh (#40). */
+  protected readonly graphs = inject(GraphViews);
   protected readonly paint = inject(PaintStore);
   private readonly using = inject(MaterialUse);
   private readonly activity = inject(Activity);

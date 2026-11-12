@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { GraphStore } from '../graph/graph-store';
+import { GraphViews } from '../graph/graph-views';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
 import { Commands } from './commands';
@@ -16,7 +16,8 @@ const TextEdits: readonly TextEdit[] = ['undo', 'redo', 'cut', 'copy', 'paste', 
 @Injectable({ providedIn: 'root' })
 export class EditCommands {
   private readonly commands = inject(Commands);
-  private readonly graph = inject(GraphStore);
+  /** The graph touched last, which Undo and Redo mean when a graph is in front (#40). */
+  private readonly graphs = inject(GraphViews);
   private readonly paint = inject(PaintStore);
   private readonly project = inject(ProjectStore);
   private installed = false;
@@ -40,13 +41,15 @@ export class EditCommands {
     }
 
     const graphInFront = this.project.graphInFront;
-    const history = () => (graphInFront() ? this.graph.document()?.history : this.paint.state()?.history) ?? null;
+    const history = () =>
+      (graphInFront() ? this.graphs.front().document()?.history : this.paint.state()?.history) ?? null;
     // A key for either waits for the edits in flight, since each can turn the other on (#223): in a stack, its undos
     // and redos and every other edit, a mask entry, an instance or a filter's input as much as a stroke.
-    const waiting = () => (graphInFront() ? this.graph.settling() : this.stepping() > 0 || this.paint.settling());
+    const waiting = () =>
+      graphInFront() ? this.graphs.front().settling() : this.stepping() > 0 || this.paint.settling();
     const step = (action: 'undo' | 'redo') => {
       if (graphInFront()) {
-        this.graph[action]();
+        this.graphs.front()[action]();
         return;
       }
 
@@ -54,13 +57,13 @@ export class EditCommands {
       void this.paint.act(action).finally(() => this.stepping.update(count => count - 1));
     };
     this.commands.handle('undo', {
-      enabled: () => (graphInFront() ? this.graph.editable() : true) && history()?.canUndo === true,
+      enabled: () => (graphInFront() ? this.graphs.front().editable() : true) && history()?.canUndo === true,
       waiting,
       label: () => (history()?.undoLabel ? `Undo ${history()?.undoLabel}` : null),
       run: () => step('undo')
     });
     this.commands.handle('redo', {
-      enabled: () => (graphInFront() ? this.graph.editable() : true) && history()?.canRedo === true,
+      enabled: () => (graphInFront() ? this.graphs.front().editable() : true) && history()?.canRedo === true,
       waiting,
       label: () => (history()?.redoLabel ? `Redo ${history()?.redoLabel}` : null),
       run: () => step('redo')

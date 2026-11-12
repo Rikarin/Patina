@@ -63,7 +63,7 @@ export interface NamedLayout {
 const Starting: NamedLayout = { name: 'Start', layout: root(library, pane('start', 'Start', 3), inspector) };
 
 /**
- * Each workspace's layouts, the first being the one it opens in. Window > Layout and Cmd or Ctrl+1 to 3 choose among them, as a
+ * Each workspace's layouts, the first being the one it opens in. Window > Layout and Cmd or Ctrl+1 to 4 choose among them, as a
  * painting tool switches between its 3D and 2D views.
  */
 const Layouts: Readonly<Record<WorkspaceName, readonly NamedLayout[]>> = {
@@ -126,6 +126,15 @@ const Layouts: Readonly<Record<WorkspaceName, readonly NamedLayout[]>> = {
         pane('graph', 'Graph', 2),
         down(3, across(1, pane('texture', '2D View'), pane('viewport', 'Preview')), graphInspector)
       )
+    },
+    // Two of the project's graphs side by side; the panes at the right follow whichever was touched last (#40).
+    {
+      name: 'Two Graphs',
+      layout: root(
+        graphSources,
+        across(5, pane('graph', 'Graph'), pane('beside', 'Second Graph')),
+        down(1.6, tabs(2, pane('texture', '2D View'), pane('viewport', 'Preview')), graphInspector)
+      )
     }
   ]
 };
@@ -133,7 +142,7 @@ const Layouts: Readonly<Record<WorkspaceName, readonly NamedLayout[]>> = {
 const key = (name: WorkspaceName, choice: number) => `patina.workspace.${Version}.${name}.${choice}`;
 const choiceKey = (name: WorkspaceName) => `patina.workspace.${Version}.${name}.chosen`;
 
-/** The names of a workspace's layouts, in the order Cmd or Ctrl+1 to 3 choose them. */
+/** The names of a workspace's layouts, in the order Cmd or Ctrl+1 to 4 choose them. */
 export function layoutNames(name: WorkspaceName): readonly string[] {
   return Layouts[name].map(held => held.name);
 }

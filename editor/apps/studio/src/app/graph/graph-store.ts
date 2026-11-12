@@ -84,6 +84,10 @@ export const GRAPH_SOCKET = new InjectionToken<(url: string) => GraphSocket>('GR
 
 const PasteOffset = 40;
 
+/** What Copy took: nodes as they were, and the wires between them. Every graph on screen shares it, so a copy from one
+ * pastes into another (#40), and it survives closing the graph. */
+const clipboard: { held: Pick<GraphState, 'nodes' | 'edges'> | null } = { held: null };
+
 type DraftValue = readonly number[] | string;
 
 const valueKey = (node: number, port: string): string => `${String(node)}/${port}`;
@@ -801,15 +805,12 @@ export class GraphStore {
     }
   }
 
-  /** What Copy took: nodes as they were, and the wires between them. It survives closing the graph. */
-  private clipboard: Pick<GraphState, 'nodes' | 'edges'> | null = null;
-
   /** Remembers the selected nodes, and the wires that stay inside them. */
   copySelection(): void {
     const document = this.mutableDocument();
     const chosen = this.selection();
     if (document && chosen.size > 0) {
-      this.clipboard = {
+      clipboard.held = {
         nodes: [...document.nodes.values()].filter(node => chosen.has(node.id)),
         edges: [...document.edges.values()].filter(edge => chosen.has(edge.fromNode) && chosen.has(edge.toNode))
       };
@@ -818,7 +819,7 @@ export class GraphStore {
 
   /** Puts a copy of what Copy took beside the original, with its numbers, settings and inner wires. */
   async paste(): Promise<void> {
-    const held = this.clipboard;
+    const held = clipboard.held;
     if (!held || !this.editable()) {
       return;
     }
@@ -861,10 +862,10 @@ export class GraphStore {
 
   /** Copy and Paste in one go, leaving what was copied before alone. */
   async duplicate(): Promise<void> {
-    const before = this.clipboard;
+    const before = clipboard.held;
     this.copySelection();
     await this.paste();
-    this.clipboard = before;
+    clipboard.held = before;
   }
 
   remove(nodes: readonly number[], edges: readonly string[]): void {

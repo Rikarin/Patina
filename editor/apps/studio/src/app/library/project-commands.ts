@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
 import { SystemStatus } from '../core/system-status';
+import { GraphViews } from '../graph/graph-views';
 import { ProjectStore } from './project-store';
 
 /**
@@ -14,6 +15,7 @@ export class ProjectCommands {
   private readonly commands = inject(Commands);
   private readonly project = inject(ProjectStore);
   private readonly status = inject(SystemStatus);
+  private readonly graphs = inject(GraphViews);
   private installed = false;
 
   install(): void {
@@ -58,6 +60,12 @@ export class ProjectCommands {
         const focused = globalThis.document.activeElement;
         if (focused instanceof HTMLElement && focused.matches('input, textarea')) {
           focused.blur();
+        }
+
+        // A graph beside the one in front that was touched last is the one Save means (#40).
+        const front = this.graphs.front();
+        if (front !== this.graphs.main && front.document() !== null) {
+          return front.save();
         }
 
         return inFront(() => (project.active() ? project.saveActive() : undefined));
