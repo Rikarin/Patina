@@ -101,6 +101,7 @@ builder.Services.AddSingleton<Preferences>();
 builder.Services.AddSingleton<AutosaveGate>();
 builder.Services.AddSingleton<GraphEvaluator>();
 builder.Services.AddHostedService(static services => services.GetRequiredService<GraphEvaluator>());
+builder.Services.AddHostedService<GraphFollower>();
 builder.Services.AddSingleton<StackClips>();
 builder.Services.AddSingleton<StackSessions>();
 builder.Services.AddSingleton<StackEvaluator>();

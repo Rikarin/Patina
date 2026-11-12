@@ -2,9 +2,11 @@ import { DestroyRef, Injectable, InjectionToken, effect, inject, signal, untrack
 import type {
   ViewportCameraState,
   ViewportDisplay,
+  ViewportFollow,
   ViewportInput,
   ViewportNodeShown,
-  ViewportScreenshot
+  ViewportScreenshot,
+  ViewportState
 } from '@patina/api-client';
 import { unwrap } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
@@ -115,6 +117,10 @@ export class ViewportClient {
   readonly mesh = signal<string | null>(null);
   /** The graph node whose picture is on the mesh in place of the material, or null. */
   readonly node = signal<ViewportNodeShown | null>(null);
+  /** The graph the Server keeps on the mesh, or null. */
+  readonly following = signal<ViewportFollow | null>(null);
+  /** The frames' count of changes to what lies on the mesh, once a frame has said it. */
+  private laid: number | null = null;
   /** How the model is lit, shown and finished, as the Server has it or as it was just asked for. */
   readonly display = signal<ViewportDisplay>(DefaultDisplay);
   readonly error = signal<string | null>(null);
@@ -194,13 +200,16 @@ export class ViewportClient {
     }
   }
 
-  /** Lays a graph's outputs over the mesh on screen, or one node's picture alone with a node. */
-  async showGraph(graph: string, node: number | null = null): Promise<void> {
+  /**
+   * Has the Server keep a graph on the mesh: its outputs, or with `node` the node its selection views, laid again after
+   * each evaluation and each change of selection (#244). Null stops. The Server does the following, so any client that
+   * asks gets it; the frames say when what lies on the mesh has changed.
+   */
+  async follow(graph: string | null, node = false): Promise<void> {
     try {
-      const state = await this.bakes.showGraphOnMesh(graph, node);
-      this.mesh.set(state.mesh ?? null);
-      this.node.set(state.node ?? null);
-      this.error.set(null);
+      const client = this.createClient(await this.connection());
+      const state = unwrap(await client.PUT('/api/v1/viewport/follow', { body: { graph, node } }));
+      this.hear(state);
     } catch (error) {
       this.error.set(messageOf(error));
     }
@@ -331,11 +340,29 @@ export class ViewportClient {
 
   private async refresh(): Promise<void> {
     const state = unwrap(await this.createClient(await this.connection()).GET('/api/v1/viewport'));
-    this.mesh.set(state.mesh ?? null);
-    this.node.set(state.node ?? null);
+    this.hear(state);
     this.display.set(state.display);
     this.isolation.heard(state.isolation);
     this.error.set(state.error ?? null);
+  }
+
+  /** What lies on the mesh, as the Server says. */
+  private hear(state: ViewportState): void {
+    this.mesh.set(state.mesh ?? null);
+    this.node.set(state.node ?? null);
+    this.following.set(state.following ?? null);
+  }
+
+  /**
+   * What lies on the mesh changed without this client asking, as when a followed graph evaluates: read it again. The
+   * first frame is read too, since a mesh the Server laid where there was none is what starts the frames.
+   */
+  private heardLaid(laid: number): void {
+    const seen = this.laid;
+    this.laid = laid;
+    if (seen !== laid) {
+      void this.refresh().catch(() => undefined); // the next change reads it again
+    }
   }
 
   private async hearIsolation(): Promise<void> {
@@ -357,8 +384,7 @@ export class ViewportClient {
     try {
       const connection = await this.connection();
       const state = unwrap(await this.createClient(connection).GET('/api/v1/viewport'));
-      this.mesh.set(state.mesh ?? null);
-      this.node.set(state.node ?? null);
+      this.hear(state);
       this.camera.set(state.camera);
       this.isolation.heard(state.isolation);
       if (this.adopted === null) {
@@ -368,7 +394,10 @@ export class ViewportClient {
       this.error.set(state.error ?? null);
       this.transport = this.createTransport(
         connection,
-        frame => this.onFrame?.(frame),
+        frame => {
+          this.heardLaid(frame.laid);
+          this.onFrame?.(frame);
+        },
         () => {
           if (this.size) {
             this.resize(this.size.width, this.size.height);

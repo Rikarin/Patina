@@ -328,6 +328,7 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'layout1', label: 'First Layout', section: 'Window', keys: ['Mod+1'] },
   { id: 'layout2', label: 'Second Layout', section: 'Window', keys: ['Mod+2'] },
   { id: 'layout3', label: 'Third Layout', section: 'Window', keys: ['Mod+3'] },
+  { id: 'layout4', label: 'Fourth Layout', section: 'Window', keys: ['Mod+4'] },
   { id: 'resetLayout', label: 'Reset Layout', section: 'Window' },
   { id: 'showHistory', label: 'History', section: 'Window', hint: 'Shows every undo step' },
   {
@@ -518,7 +519,7 @@ export const MenuBar: readonly {
   {
     label: 'Window',
     items: [
-      { submenu: 'Layout', items: ['layout1', 'layout2', 'layout3', '-', 'resetLayout'] },
+      { submenu: 'Layout', items: ['layout1', 'layout2', 'layout3', 'layout4', '-', 'resetLayout'] },
       'showHistory',
       'showChecks',
       'showActivity',

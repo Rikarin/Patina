@@ -14,6 +14,7 @@ from typing import cast
 if TYPE_CHECKING:
   from ..models.viewport_camera_state import ViewportCameraState
   from ..models.viewport_display import ViewportDisplay
+  from ..models.viewport_follow import ViewportFollow
   from ..models.viewport_isolation import ViewportIsolation
   from ..models.viewport_map_paths import ViewportMapPaths
   from ..models.viewport_node_shown import ViewportNodeShown
@@ -50,6 +51,7 @@ class ViewportState:
             stack (None | str | Unset): The stack session it is wearing, or null.
             isolation (None | Unset | ViewportIsolation):
             node (None | Unset | ViewportNodeShown):
+            following (None | Unset | ViewportFollow):
      """
 
     maps: ViewportMapPaths
@@ -64,6 +66,7 @@ class ViewportState:
     stack: None | str | Unset = UNSET
     isolation: None | Unset | ViewportIsolation = UNSET
     node: None | Unset | ViewportNodeShown = UNSET
+    following: None | Unset | ViewportFollow = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -73,6 +76,7 @@ class ViewportState:
     def to_dict(self) -> dict[str, Any]:
         from ..models.viewport_camera_state import ViewportCameraState # noqa: PLC0415
         from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
+        from ..models.viewport_follow import ViewportFollow # noqa: PLC0415
         from ..models.viewport_isolation import ViewportIsolation # noqa: PLC0415
         from ..models.viewport_map_paths import ViewportMapPaths # noqa: PLC0415
         from ..models.viewport_node_shown import ViewportNodeShown # noqa: PLC0415
@@ -124,6 +128,14 @@ class ViewportState:
         else:
             node = self.node
 
+        following: dict[str, Any] | None | Unset
+        if isinstance(self.following, Unset):
+            following = UNSET
+        elif isinstance(self.following, ViewportFollow):
+            following = self.following.to_dict()
+        else:
+            following = self.following
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -146,6 +158,8 @@ class ViewportState:
             field_dict["isolation"] = isolation
         if node is not UNSET:
             field_dict["node"] = node
+        if following is not UNSET:
+            field_dict["following"] = following
 
         return field_dict
 
@@ -155,6 +169,7 @@ class ViewportState:
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.viewport_camera_state import ViewportCameraState # noqa: PLC0415
         from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
+        from ..models.viewport_follow import ViewportFollow # noqa: PLC0415
         from ..models.viewport_isolation import ViewportIsolation # noqa: PLC0415
         from ..models.viewport_map_paths import ViewportMapPaths # noqa: PLC0415
         from ..models.viewport_node_shown import ViewportNodeShown # noqa: PLC0415
@@ -252,6 +267,26 @@ class ViewportState:
         node = _parse_node(d.pop("node", UNSET))
 
 
+        def _parse_following(data: object) -> None | Unset | ViewportFollow:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                following_type_1 = ViewportFollow.from_dict(data)
+
+
+
+                return following_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | Unset | ViewportFollow, data)
+
+        following = _parse_following(d.pop("following", UNSET))
+
+
         viewport_state = cls(
             maps=maps,
             camera=camera,
@@ -265,6 +300,7 @@ class ViewportState:
             stack=stack,
             isolation=isolation,
             node=node,
+            following=following,
         )
 
 

@@ -30,11 +30,15 @@ class GraphCreateRequest:
                 own.
             resolution (int | None | Unset): The side it evaluates at. Null is 2048. Its authoring base does not depend on
                 this.
+            template (None | str | Unset): What it starts from: null or `empty` for nothing, `outputs` for an Output node
+                per material
+                channel, or a starter preset by name, as `GET /api/v1/library/graph-templates` lists them.
      """
 
     name: str
     project: None | str | Unset = UNSET
     resolution: int | None | Unset = UNSET
+    template: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -56,6 +60,12 @@ class GraphCreateRequest:
         else:
             resolution = self.resolution
 
+        template: None | str | Unset
+        if isinstance(self.template, Unset):
+            template = UNSET
+        else:
+            template = self.template
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -66,6 +76,8 @@ class GraphCreateRequest:
             field_dict["project"] = project
         if resolution is not UNSET:
             field_dict["resolution"] = resolution
+        if template is not UNSET:
+            field_dict["template"] = template
 
         return field_dict
 
@@ -96,10 +108,21 @@ class GraphCreateRequest:
         resolution = _parse_resolution(d.pop("resolution", UNSET))
 
 
+        def _parse_template(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        template = _parse_template(d.pop("template", UNSET))
+
+
         graph_create_request = cls(
             name=name,
             project=project,
             resolution=resolution,
+            template=template,
         )
 
 

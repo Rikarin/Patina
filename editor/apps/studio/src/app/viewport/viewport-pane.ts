@@ -19,7 +19,7 @@ import { desktop } from '../core/desktop';
 import { termName } from '../core/labels';
 import { SystemStatus } from '../core/system-status';
 import { ViewOptions } from '../core/view-options';
-import { GraphStore } from '../graph/graph-store';
+import { GraphViews } from '../graph/graph-views';
 import { ProjectStore } from '../library/project-store';
 import { MaterialUse } from '../paint/material-use';
 import { PaintStore, pressureOf } from '../paint/paint-store';
@@ -117,7 +117,7 @@ const PickLook = '…';
         <button type="button" xuiButton size="sm" [disabled]="!canOpen" (click)="open()">Open mesh…</button>
       }
       <span class="readout truncate" data-testid="viewport-mesh">{{ meshName() }}</span>
-      @if (graph.document(); as document) {
+      @if (graphs.front().document(); as document) {
         <button
           type="button"
           xuiButton
@@ -339,7 +339,8 @@ export class ViewportPane implements AfterViewInit {
   protected readonly viewport = inject(ViewportClient);
   protected readonly display = this.viewport.display;
   private readonly bakes = inject(BakeStore);
-  protected readonly graph = inject(GraphStore);
+  /** The graph touched last, which Show and Node lay on the mesh (#40). */
+  protected readonly graphs = inject(GraphViews);
   protected readonly paint = inject(PaintStore);
   private readonly using = inject(MaterialUse);
   private readonly activity = inject(Activity);
@@ -453,18 +454,6 @@ export class ViewportPane implements AfterViewInit {
       this.view();
       untracked(() => this.gesture.finish());
     });
-    // The graph on the mesh keeps up with its evaluations, and with the node on view when it shows one node.
-    effect(() => {
-      const followed = this.followed();
-      const document = this.graph.document();
-      const revision = document?.evaluation?.revision;
-      const viewed = this.followsNode() ? this.graph.viewedNode() : null;
-      // A node with no picture, such as a reroute dot, leaves the material on.
-      const node = viewed && document?.previews.has(viewed.id) ? viewed.id : null;
-      if (followed && document?.id === followed && revision !== undefined) {
-        void this.viewport.showGraph(followed, node);
-      }
-    });
     // The guide follows the camera once it rests, since each look is a round trip to the Worker.
     effect(() => {
       const key = this.view();
@@ -537,21 +526,22 @@ export class ViewportPane implements AfterViewInit {
       : null;
   });
 
-  /** The graph on the mesh, which follows its evaluations until asked to stop. */
-  protected readonly followed = signal<string | null>(null);
+  /**
+   * The graph on the mesh, which the Server keeps up with its evaluations until something else is laid there (#244).
+   * Any client can ask for it, and the Server says which it follows.
+   */
+  protected readonly followed = computed(() => this.viewport.following()?.graph ?? null);
 
-  /** Whether the graph on the mesh shows the node on view alone rather than its Output nodes. */
-  protected readonly followsNode = signal(false);
+  /** Whether the graph on the mesh shows the node its selection views alone rather than its Output nodes. */
+  protected readonly followsNode = computed(() => this.viewport.following()?.node ?? false);
 
   protected follow(graph: string): void {
-    this.followed.update(now => (now === graph ? null : graph));
+    void this.viewport.follow(this.followed() === graph ? null : graph, this.followsNode());
   }
 
   /** Shows the node on view alone, or the material again. Either way the graph is followed from here on. */
   protected toggleNode(graph: string): void {
-    const on = !(this.followsNode() && this.followed() === graph);
-    this.followsNode.set(on);
-    this.followed.set(graph);
+    void this.viewport.follow(graph, !(this.followsNode() && this.followed() === graph));
   }
 
   protected async chooseEnvironment(event: Event): Promise<void> {

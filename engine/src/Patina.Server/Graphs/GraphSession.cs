@@ -56,6 +56,7 @@ public sealed class GraphSession(
     bool reload;
     bool closed;
     GraphEvaluation? evaluation;
+    GraphSelection selection = new([]);
 
     public string Id { get; } = Guid.NewGuid().ToString("N");
 
@@ -145,11 +146,62 @@ public sealed class GraphSession(
                     evaluation,
                     settled,
                     ReadOnly,
-                    GraphDocuments.Info(document)
+                    GraphDocuments.Info(document),
+                    Chosen(nodes)
                 );
             }
         }
     }
+
+    /// <summary>The nodes chosen, of those the document still holds.</summary>
+    public GraphSelection Selection {
+        get {
+            lock (Changing) {
+                return Chosen([..editor.Document.Nodes.Select(static node => node.Id)]);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     The node a single-node view shows: the pinned one, else the first chosen, else none. A node the document no
+    ///     longer holds is none.
+    /// </summary>
+    public int? Viewed {
+        get {
+            var chosen = Selection;
+            return chosen.Pinned ?? (chosen.Nodes.Count > 0 ? chosen.Nodes[0] : null);
+        }
+    }
+
+    /// <summary>
+    ///     Takes a client's choice of nodes, of those the document holds, and tells every client when it differs. It is
+    ///     no edit: the revision and the undo history stay.
+    /// </summary>
+    /// <returns>The selection as it now stands.</returns>
+    public GraphSelection Select(GraphSelection chosen) {
+        ArgumentNullException.ThrowIfNull(chosen);
+        lock (Changing) {
+            HashSet<int> nodes = [..editor.Document.Nodes.Select(static node => node.Id)];
+            GraphSelection next = new(
+                [..chosen.Nodes.Distinct().Where(nodes.Contains)],
+                chosen.Pinned is { } pinned && nodes.Contains(pinned) ? pinned : null
+            );
+            var held = Chosen(nodes);
+            selection = next;
+            if (held.Pinned != next.Pinned || !held.Nodes.SequenceEqual(next.Nodes)) {
+                Log.Append(new(Log.Sequence + 1, GraphEventKind.Selected, revision, editor.History, Selection: next));
+            }
+
+            return next;
+        }
+    }
+
+    /// <summary>The selection, less the nodes the document no longer holds. Called under the lock.</summary>
+    GraphSelection Chosen(HashSet<int> nodes) =>
+        new(
+            [..selection.Nodes.Where(nodes.Contains)],
+            selection.Pinned is { } pinned && nodes.Contains(pinned) ? pinned : null
+        );
 
     public IReadOnlyList<string> PreviewHashes {
         get {

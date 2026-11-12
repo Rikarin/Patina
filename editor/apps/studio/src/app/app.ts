@@ -43,9 +43,11 @@ import {
 } from './core/workspaces';
 import { ChecksPane } from './export/checks-pane';
 import { ExportPane } from './export/export-pane';
+import { GraphBeside } from './graph/graph-beside';
 import { Inspector } from './graph/graph-inspector';
 import { GraphPane } from './graph/graph-pane';
 import { GraphStore } from './graph/graph-store';
+import { FrontGraph, GraphViews } from './graph/graph-views';
 import { ImageMaterialPane } from './graph/image-material-pane';
 import { NodeLibrary } from './graph/node-library';
 import { TextureView } from './graph/texture-view';
@@ -74,6 +76,8 @@ import { ViewportPane } from './viewport/viewport-pane';
     BakePane,
     ChecksPane,
     ExportPane,
+    FrontGraph,
+    GraphBeside,
     GraphPane,
     HistoryPane,
     PreferencesDialog,
@@ -204,7 +208,7 @@ import { ViewportPane } from './viewport/viewport-pane';
           class="px-1.5"
           aria-label="Save"
           data-testid="app-save"
-          [disabled]="!commands.enabled('save') || !project.active()?.dirty"
+          [disabled]="!commands.enabled('save') || !unsaved()"
           [title]="commands.tooltip('save')"
           (click)="commands.run('save')"
         >
@@ -301,9 +305,17 @@ import { ViewportPane } from './viewport/viewport-pane';
           <ptn-viewport />
         }
       </ng-template>
+      <!--
+        The panes that follow a graph show the one touched last, of the graph in front and a second beside it (#40):
+        each is made again, with that graph's store, when the other is touched.
+      -->
       <ng-template xuiDockContent="texture">
-        @defer (on immediate) {
-          <ptn-texture-view />
+        @for (front of [graphs.front()]; track front) {
+          <ng-container ptnFrontGraph>
+            @defer (on immediate) {
+              <ptn-texture-view />
+            }
+          </ng-container>
         }
       </ng-template>
       <ng-template xuiDockContent="graph">
@@ -311,14 +323,27 @@ import { ViewportPane } from './viewport/viewport-pane';
           <ptn-graph />
         }
       </ng-template>
-      <ng-template xuiDockContent="nodes">
+      <ng-template xuiDockContent="beside">
         @defer (on immediate) {
-          <ptn-node-library />
+          <ptn-graph-beside />
+        }
+      </ng-template>
+      <ng-template xuiDockContent="nodes">
+        @for (front of [graphs.front()]; track front) {
+          <ng-container ptnFrontGraph>
+            @defer (on immediate) {
+              <ptn-node-library />
+            }
+          </ng-container>
         }
       </ng-template>
       <ng-template xuiDockContent="inspector">
-        @defer (on immediate) {
-          <ptn-inspector />
+        @for (front of [graphs.front()]; track front) {
+          <ng-container ptnFrontGraph>
+            @defer (on immediate) {
+              <ptn-inspector />
+            }
+          </ng-container>
         }
       </ng-template>
       <ng-template xuiDockContent="paint">
@@ -327,8 +352,12 @@ import { ViewportPane } from './viewport/viewport-pane';
         }
       </ng-template>
       <ng-template xuiDockContent="history">
-        @defer (on immediate) {
-          <ptn-history />
+        @for (front of [graphs.front()]; track front) {
+          <ng-container ptnFrontGraph>
+            @defer (on immediate) {
+              <ptn-history />
+            }
+          </ng-container>
         }
       </ng-template>
       <ng-template xuiDockContent="checks">
@@ -613,6 +642,14 @@ export class App {
   private readonly options = inject(ViewOptions);
   protected readonly commands = inject(Commands);
   private readonly graph = inject(GraphStore);
+  protected readonly graphs = inject(GraphViews);
+  /** Whether Save has something to write: the document in front, or a graph beside it touched last (#40). */
+  protected readonly unsaved = computed(() => {
+    const front = this.graphs.front();
+    return front !== this.graphs.main && front.document() !== null
+      ? front.unsaved()
+      : this.project.active()?.dirty === true;
+  });
   private readonly destroyRef = inject(DestroyRef);
   protected readonly keys = signal(false);
   protected readonly preferencesOpen = signal(false);
@@ -783,7 +820,7 @@ export class App {
     handle('bake', { enabled: () => project.current() !== null, run: () => this.baking.set(true) });
     handle('quickBake', { enabled: () => this.bakeSettings.blocked() === null, run: () => this.quickBake() });
     handle('toggleStats', { checked: () => this.options.stats(), run: () => this.options.toggleStats() });
-    for (const [at, id] of ['layout1', 'layout2', 'layout3'].entries()) {
+    for (const [at, id] of ['layout1', 'layout2', 'layout3', 'layout4'].entries()) {
       handle(id, {
         enabled: () => at < layoutNames(project.workspace()).length,
         label: () => layoutNames(project.workspace())[at] ?? null,

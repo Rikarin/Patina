@@ -99,7 +99,7 @@ def sync_detailed(
 
 ) -> Response[ProblemDetails | ViewportState]:
     """ Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or
-    shows one node's picture there. Ask again to see a later edit.
+    shows one node's picture there. Ask again to see a later edit, or follow the graph instead.
 
     Args:
         body (ViewportGraphRequest): Asks the viewport to show a graph on the mesh it is showing,
@@ -133,7 +133,7 @@ def sync(
 
 ) -> ProblemDetails | ViewportState | None:
     """ Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or
-    shows one node's picture there. Ask again to see a later edit.
+    shows one node's picture there. Ask again to see a later edit, or follow the graph instead.
 
     Args:
         body (ViewportGraphRequest): Asks the viewport to show a graph on the mesh it is showing,
@@ -162,7 +162,7 @@ async def asyncio_detailed(
 
 ) -> Response[ProblemDetails | ViewportState]:
     """ Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or
-    shows one node's picture there. Ask again to see a later edit.
+    shows one node's picture there. Ask again to see a later edit, or follow the graph instead.
 
     Args:
         body (ViewportGraphRequest): Asks the viewport to show a graph on the mesh it is showing,
@@ -196,7 +196,7 @@ async def asyncio(
 
 ) -> ProblemDetails | ViewportState | None:
     """ Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or
-    shows one node's picture there. Ask again to see a later edit.
+    shows one node's picture there. Ask again to see a later edit, or follow the graph instead.
 
     Args:
         body (ViewportGraphRequest): Asks the viewport to show a graph on the mesh it is showing,

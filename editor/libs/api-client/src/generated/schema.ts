@@ -236,8 +236,25 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or shows one node's picture there. Ask again to see a later edit. */
+    /** Lays a graph's Output nodes over the mesh, or the display's shape with none, as they stand now, or shows one node's picture there. Ask again to see a later edit, or follow the graph instead. */
     put: operations['ShowGraphInViewport'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/viewport/follow': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps a graph on the viewport: its Output nodes, or with node the node its selection views, laid on the mesh again after each evaluation and each change of selection, until something else is laid there. A null graph stops. */
+    put: operations['FollowGraphInViewport'];
     post?: never;
     delete?: never;
     options?: never;
@@ -340,8 +357,25 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Writes a new, empty graph file. It reaches the listings once the index has caught up. */
+    /** Writes a new graph file, empty or from a template. It reaches the listings once the index has caught up. */
     post: operations['CreateGraph'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/graph-templates': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What a new graph can start from: nothing, an Output node per channel, or a starter preset. */
+    get: operations['GetGraphTemplates'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1293,6 +1327,23 @@ export interface paths {
     get?: never;
     /** Chooses the folder of baked maps this graph's Mesh Map nodes read, and remembers it beside the file. */
     put: operations['SetGraphMeshMaps'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/selection': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Chooses nodes, and pins one or none, for every client. It is no edit, so undo never sees it. A client that follows the selection, as the viewport can, sees the change. Nodes the graph does not hold are left out. */
+    put: operations['SetGraphSelection'];
     post?: never;
     delete?: never;
     options?: never;
@@ -3594,6 +3645,11 @@ export interface components {
        * @description The side it evaluates at. Null is 2048. Its authoring base does not depend on this.
        */
       resolution?: null | number;
+      /**
+       * @description What it starts from: null or `empty` for nothing, `outputs` for an Output node per material
+       *     channel, or a starter preset by name, as `GET /api/v1/library/graph-templates` lists them.
+       */
+      template?: null | string;
     };
     /** @description What changed in the document, the same for an edit, an undo and a redo. */
     GraphDelta: {
@@ -3719,13 +3775,23 @@ export interface components {
       label?: null | string;
       delta?: null | components['schemas']['GraphDelta'];
       evaluation?: null | components['schemas']['GraphEvaluation'];
+      selection?: null | components['schemas']['GraphSelection'];
     };
     /**
      * @description What an event reports.
      * @enum {unknown}
      */
     GraphEventKind:
-      'edited' | 'undone' | 'redone' | 'saved' | 'evaluated' | 'settled' | 'typesChanged' | 'closed' | 'resync';
+      | 'edited'
+      | 'undone'
+      | 'redone'
+      | 'saved'
+      | 'evaluated'
+      | 'settled'
+      | 'typesChanged'
+      | 'closed'
+      | 'selected'
+      | 'resync';
     /** @description The events after a number, for a client that does not hold a WebSocket or has missed some. */
     GraphEventPage: {
       /**
@@ -4012,6 +4078,19 @@ export interface components {
        */
       height: number;
     };
+    /**
+     * @description The nodes chosen in a graph session, and the one kept on view whatever is chosen. A session has one selection,
+     *     whichever client made it last, so a client that follows it, such as the viewport, needs no editor (#244).
+     */
+    GraphSelection: {
+      /** @description The chosen nodes, the first being the one a single-node view shows. */
+      nodes: number[];
+      /**
+       * Format: int32
+       * @description The node the views keep showing while the choice moves on, or null.
+       */
+      pinned?: null | number;
+    };
     /** @description When a parameter or a setting is shown: while another of the same graph or node holds a value. */
     GraphSettingCondition: {
       /** @description The other one, by name. */
@@ -4117,6 +4196,8 @@ export interface components {
       readOnly: boolean;
       /** @description What it says about itself: a description, an author, tags and a physical size. */
       info: components['schemas']['GraphInfoState'];
+      /** @description The nodes chosen in it, as the last client to say so chose them. */
+      selection: components['schemas']['GraphSelection'];
     };
     /** @description An open graph, for a list. */
     GraphSummary: {
@@ -7378,6 +7459,21 @@ export interface components {
       focus: number;
     };
     /**
+     * @description Keeps a graph session on the viewport, shown again after each of its evaluations, until something else is laid
+     *     on the mesh. The Server does the following, so a client that asks needs to do nothing more (#244).
+     */
+    ViewportFollow: {
+      /** @description The graph's session, or null to stop following. */
+      graph?: null | string;
+      /**
+       * @description Show the node the session's selection views, its pinned node or else its first chosen one, alone in place of the
+       *     material, as `PUT /viewport/graph` with a node does; its Output nodes when it views none or the node has no
+       *     picture. False shows the Output nodes.
+       * @default false
+       */
+      node: boolean;
+    };
+    /**
      * @description Asks the viewport to show a graph on the mesh it is showing, or on the display's shape with none, as it stands
      *     now: its Output nodes as a material, or one node's picture alone.
      */
@@ -7582,6 +7678,7 @@ export interface components {
       stack?: null | string;
       isolation?: null | components['schemas']['ViewportIsolation'];
       node?: null | components['schemas']['ViewportNodeShown'];
+      following?: null | components['schemas']['ViewportFollow'];
     };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {
@@ -8187,6 +8284,39 @@ export interface operations {
       };
     };
   };
+  FollowGraphInViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportFollow'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetPreview: {
     parameters: {
       query?: never;
@@ -8480,6 +8610,35 @@ export interface operations {
         };
         content: {
           'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetGraphTemplates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackTerm'][];
         };
       };
     };
@@ -11705,6 +11864,41 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetGraphSelection: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphSelection'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphSelection'];
+        };
       };
       /** @description Not Found */
       404: {

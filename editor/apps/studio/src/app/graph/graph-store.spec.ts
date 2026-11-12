@@ -32,7 +32,8 @@ function harness(opening: GraphState = state()): Harness {
     'POST graphs/g1/undo': () => editReply(2),
     'POST graphs/g1/save': () => editReply(2),
     'POST graphs/g1/evaluate': () => new Response(null, { status: 202 }),
-    'DELETE graphs/g1': () => new Response(null, { status: 204 })
+    'DELETE graphs/g1': () => new Response(null, { status: 204 }),
+    'PUT graphs/g1/selection': async request => Response.json(await request.json())
   };
   const answer = async (input: RequestInfo | URL): Promise<Response> => {
     const request = input as Request;
@@ -115,6 +116,57 @@ describe('GraphStore', () => {
     expect(store.types().get('Source/Noise')?.title).toBe('Noise');
     expect(socket().url).toContain('since=12');
     expect(requests[0]).toEqual({ key: 'POST graphs', body: { path: 'projects/a/a.vxtexgraph' } });
+  });
+
+  it('tells the Server what it chooses and pins, the newest only, and not what it starts with (#244)', async () => {
+    const { store, requests } = await opened();
+    const told = () => requests.filter(request => request.key === 'PUT graphs/g1/selection').map(r => r.body);
+    TestBed.tick();
+    await settle();
+    expect(told()).toEqual([]);
+
+    store.select([2]);
+    TestBed.tick();
+    store.select([1, 2]);
+    TestBed.tick();
+    await settle();
+    expect(told()).toEqual([
+      { nodes: [2], pinned: null },
+      { nodes: [1, 2], pinned: null }
+    ]);
+
+    store.pin(2);
+    TestBed.tick();
+    await settle();
+    expect(told().at(-1)).toEqual({ nodes: [1, 2], pinned: 2 });
+
+    // An event that leaves the choice as it was tells nothing again.
+    const before = told().length;
+    store.select([1, 2]);
+    TestBed.tick();
+    await settle();
+    expect(told()).toHaveLength(before);
+  });
+
+  it('makes a graph from the template asked for, from the list the Server offers (#183)', async () => {
+    const test = harness();
+    test.routes['GET library/graph-templates'] = () =>
+      Response.json([
+        { value: 'empty', label: 'Empty' },
+        { value: 'outputs', label: 'Material Outputs' }
+      ]);
+    test.routes['POST library/graphs'] = () => Response.json({ path: 'projects/a/a.vxtexgraph' }, { status: 201 });
+
+    expect((await test.store.templates()).map(term => term.label)).toEqual(['Empty', 'Material Outputs']);
+    await test.store.create('A', 'a', 512, 'outputs');
+
+    expect(test.requests.find(request => request.key === 'POST library/graphs')?.body).toEqual({
+      name: 'A',
+      project: 'a',
+      resolution: 512,
+      template: 'outputs'
+    });
+    expect(test.store.session().kind).toBe('open');
   });
 
   it('says why a file did not open, and can try again', async () => {
@@ -554,7 +606,8 @@ describe('what a graph holds besides its nodes', () => {
     expect(test.requests.find(request => request.key === 'POST library/graphs')?.body).toEqual({
       name: 'Rust',
       project: null,
-      resolution: 4096
+      resolution: 4096,
+      template: null
     });
     expect(test.requests.find(request => request.key === 'POST graphs')?.body).toEqual({
       path: 'shared/graphs/rust.vxtexgraph'

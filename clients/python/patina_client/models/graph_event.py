@@ -16,6 +16,7 @@ if TYPE_CHECKING:
   from ..models.graph_delta import GraphDelta
   from ..models.graph_evaluation import GraphEvaluation
   from ..models.graph_history_state import GraphHistoryState
+  from ..models.graph_selection import GraphSelection
 
 
 
@@ -38,6 +39,7 @@ class GraphEvent:
             label (None | str | Unset): What the edit, undo or redo was called.
             delta (GraphDelta | None | Unset):
             evaluation (GraphEvaluation | None | Unset):
+            selection (GraphSelection | None | Unset):
      """
 
     sequence: int
@@ -47,6 +49,7 @@ class GraphEvent:
     label: None | str | Unset = UNSET
     delta: GraphDelta | None | Unset = UNSET
     evaluation: GraphEvaluation | None | Unset = UNSET
+    selection: GraphSelection | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -57,6 +60,7 @@ class GraphEvent:
         from ..models.graph_delta import GraphDelta # noqa: PLC0415
         from ..models.graph_evaluation import GraphEvaluation # noqa: PLC0415
         from ..models.graph_history_state import GraphHistoryState # noqa: PLC0415
+        from ..models.graph_selection import GraphSelection # noqa: PLC0415
         sequence = self.sequence
 
         kind = self.kind.value
@@ -87,6 +91,14 @@ class GraphEvent:
         else:
             evaluation = self.evaluation
 
+        selection: dict[str, Any] | None | Unset
+        if isinstance(self.selection, Unset):
+            selection = UNSET
+        elif isinstance(self.selection, GraphSelection):
+            selection = self.selection.to_dict()
+        else:
+            selection = self.selection
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -102,6 +114,8 @@ class GraphEvent:
             field_dict["delta"] = delta
         if evaluation is not UNSET:
             field_dict["evaluation"] = evaluation
+        if selection is not UNSET:
+            field_dict["selection"] = selection
 
         return field_dict
 
@@ -112,6 +126,7 @@ class GraphEvent:
         from ..models.graph_delta import GraphDelta # noqa: PLC0415
         from ..models.graph_evaluation import GraphEvaluation # noqa: PLC0415
         from ..models.graph_history_state import GraphHistoryState # noqa: PLC0415
+        from ..models.graph_selection import GraphSelection # noqa: PLC0415
         d = dict(src_dict)
         sequence = d.pop("sequence")
 
@@ -177,6 +192,26 @@ class GraphEvent:
         evaluation = _parse_evaluation(d.pop("evaluation", UNSET))
 
 
+        def _parse_selection(data: object) -> GraphSelection | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                selection_type_1 = GraphSelection.from_dict(data)
+
+
+
+                return selection_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(GraphSelection | None | Unset, data)
+
+        selection = _parse_selection(d.pop("selection", UNSET))
+
+
         graph_event = cls(
             sequence=sequence,
             kind=kind,
@@ -185,6 +220,7 @@ class GraphEvent:
             label=label,
             delta=delta,
             evaluation=evaluation,
+            selection=selection,
         )
 
 

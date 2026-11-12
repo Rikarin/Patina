@@ -522,6 +522,14 @@ export class ProjectStore {
     return isGraph(this.active()) ? this.graph.save() : this.paint.act('save');
   }
 
+  /** A tab behind was edited where it is shown beside the one in front (#40), so it says what that left unsaved. */
+  noteDirty(path: string, dirty: boolean): void {
+    const tab = this.mutableTabs().find(held => held.path === path);
+    if (tab && tab.dirty !== dirty && !this.switching) {
+      this.update(path, { dirty });
+    }
+  }
+
   askToBake(): void {
     this.mutableBakeAsked.update(count => count + 1);
   }

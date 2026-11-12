@@ -113,23 +113,27 @@ public static class MaterialShelf {
         return true;
     }
 
+    /// <summary>The names of the starter presets that ship with Patina, in order.</summary>
+    public static IReadOnlyList<string> StarterNames { get; } = [
+        ..typeof(MaterialShelf).Assembly.GetManifestResourceNames()
+            .Where(static resource => resource.StartsWith(StarterResource, StringComparison.Ordinal))
+            .Select(static resource => resource[StarterResource.Length..])
+            .Order(StringComparer.Ordinal)
+    ];
+
     /// <summary>The graphs that ship with Patina. They are CC0, and using one puts a copy in the project.</summary>
     static IEnumerable<MaterialInfo> Starters() =>
-        typeof(MaterialShelf).Assembly.GetManifestResourceNames()
-            .Where(static resource => resource.StartsWith(StarterResource, StringComparison.Ordinal))
-            .Order(StringComparer.Ordinal)
-            .Select(static resource => {
-                    var name = resource[StarterResource.Length..];
-                    return new MaterialInfo(
-                        name,
-                        DocumentKinds.Graph,
-                        StarterPrefix + name,
-                        GraphRoles.Material,
-                        "shipped",
-                        Usages(GraphDocuments.Parse(StarterText(name)))
-                    );
-                }
-            );
+        StarterNames.Select(static name => {
+                return new MaterialInfo(
+                    name,
+                    DocumentKinds.Graph,
+                    StarterPrefix + name,
+                    GraphRoles.Material,
+                    "shipped",
+                    Usages(GraphDocuments.Parse(StarterText(name)))
+                );
+            }
+        );
 
     /// <summary>A starter material's document.</summary>
     /// <exception cref="StackEditRefusedException">No starter has that name.</exception>

@@ -23,6 +23,7 @@ if TYPE_CHECKING:
   from ..models.graph_node_state import GraphNodeState
   from ..models.graph_preset_state import GraphPresetState
   from ..models.graph_preview import GraphPreview
+  from ..models.graph_selection import GraphSelection
   from ..models.graph_setting_definition import GraphSettingDefinition
   from ..models.graph_state_settings import GraphStateSettings
 
@@ -61,6 +62,9 @@ class GraphState:
             info (GraphInfoState): What a graph says about itself to whoever finds it on a shelf or in a package. Nothing it
                 says changes what the
                 graph makes.
+            selection (GraphSelection): The nodes chosen in a graph session, and the one kept on view whatever is chosen. A
+                session has one selection,
+                whichever client made it last, so a client that follows it, such as the viewport, needs no editor (#244).
             evaluation (GraphEvaluation | None | Unset):
      """
 
@@ -83,6 +87,7 @@ class GraphState:
     settled: int
     read_only: bool
     info: GraphInfoState
+    selection: GraphSelection
     evaluation: GraphEvaluation | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -102,6 +107,7 @@ class GraphState:
         from ..models.graph_node_state import GraphNodeState # noqa: PLC0415
         from ..models.graph_preset_state import GraphPresetState # noqa: PLC0415
         from ..models.graph_preview import GraphPreview # noqa: PLC0415
+        from ..models.graph_selection import GraphSelection # noqa: PLC0415
         from ..models.graph_setting_definition import GraphSettingDefinition # noqa: PLC0415
         from ..models.graph_state_settings import GraphStateSettings # noqa: PLC0415
         id = self.id
@@ -187,6 +193,8 @@ class GraphState:
 
         info = self.info.to_dict()
 
+        selection = self.selection.to_dict()
+
         evaluation: dict[str, Any] | None | Unset
         if isinstance(self.evaluation, Unset):
             evaluation = UNSET
@@ -218,6 +226,7 @@ class GraphState:
             "settled": settled,
             "readOnly": read_only,
             "info": info,
+            "selection": selection,
         })
         if evaluation is not UNSET:
             field_dict["evaluation"] = evaluation
@@ -239,6 +248,7 @@ class GraphState:
         from ..models.graph_node_state import GraphNodeState # noqa: PLC0415
         from ..models.graph_preset_state import GraphPresetState # noqa: PLC0415
         from ..models.graph_preview import GraphPreview # noqa: PLC0415
+        from ..models.graph_selection import GraphSelection # noqa: PLC0415
         from ..models.graph_setting_definition import GraphSettingDefinition # noqa: PLC0415
         from ..models.graph_state_settings import GraphStateSettings # noqa: PLC0415
         d = dict(src_dict)
@@ -361,6 +371,11 @@ class GraphState:
 
 
 
+        selection = GraphSelection.from_dict(d.pop("selection"))
+
+
+
+
         def _parse_evaluation(data: object) -> GraphEvaluation | None | Unset:
             if data is None:
                 return data
@@ -401,6 +416,7 @@ class GraphState:
             settled=settled,
             read_only=read_only,
             info=info,
+            selection=selection,
             evaluation=evaluation,
         )
 

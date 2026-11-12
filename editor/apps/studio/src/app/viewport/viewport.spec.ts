@@ -10,6 +10,7 @@ function header(width: number, height: number, magic = 0x464e5450): ArrayBuffer 
   view.setUint32(12, height, true);
   view.setUint32(16, 3, true);
   view.setUint32(20, 2500, true);
+  view.setUint32(28, 5, true);
   return bytes;
 }
 
@@ -21,7 +22,8 @@ describe('parseHeader', () => {
       height: 4,
       input: 3,
       renderMs: 2.5,
-      painted: 0
+      painted: 0,
+      laid: 5
     });
   });
 

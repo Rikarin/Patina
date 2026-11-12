@@ -8,12 +8,14 @@ import {
   model,
   signal
 } from '@angular/core';
+import type { StackTerm } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
 import { XuiFormFieldImports } from '@xui/form-field';
 import { XuiInputImports } from '@xui/input';
 import { XuiSelectImports } from '@xui/select';
+import { labelIn } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
@@ -58,6 +60,19 @@ import { GraphStore } from './graph-store';
               (valueChange)="side.set($event ?? side())"
             />
           </xui-form-field>
+          <xui-form-field
+            label="Start from"
+            helperText="An Output node for each channel, or a starter preset to change."
+          >
+            <xui-select
+              ariaLabel="Start from"
+              data-testid="new-graph-template"
+              [itemText]="templateName"
+              [items]="templateValues()"
+              [value]="template()"
+              (valueChange)="template.set($event ?? template())"
+            />
+          </xui-form-field>
           @if (refused(); as reason) {
             <xui-callout color="error" data-testid="new-graph-refused" compact>{{ reason }}</xui-callout>
           }
@@ -84,6 +99,11 @@ export class NewGraphDialog {
   protected readonly sides = computed(() => this.status.textureSides().map(String));
   protected readonly side = linkedSignal(() => String(this.status.defaultTextureSide() ?? ''));
   protected readonly refused = signal<string | null>(null);
+  /** What a new graph can start from, as the Server lists them. */
+  private readonly templates = signal<readonly StackTerm[]>([{ value: 'empty', label: 'Empty' }]);
+  protected readonly templateValues = computed(() => this.templates().map(term => term.value));
+  protected readonly template = signal('empty');
+  protected readonly templateName = (value: string): string => labelIn(this.templates(), value);
   protected readonly canCreate = computed(() => this.name().trim() !== '' && !this.saving());
   private readonly project = computed(() => {
     const item = this.selection.item();
@@ -99,6 +119,12 @@ export class NewGraphDialog {
     effect(() => {
       if (this.open()) {
         this.refused.set(null); // a refusal is about the last attempt, not this one
+        void this.store
+          .templates()
+          .then(terms => {
+            this.templates.set(terms);
+          })
+          .catch(() => undefined); // Empty is always there
       }
     });
   }
@@ -116,7 +142,7 @@ export class NewGraphDialog {
     this.saving.set(true);
     this.refused.set(null);
     try {
-      await this.store.create(this.name().trim(), this.project(), Number(this.side()) || null);
+      await this.store.create(this.name().trim(), this.project(), Number(this.side()) || null, this.template());
       this.name.set('');
       this.open.set(false);
     } catch (error) {

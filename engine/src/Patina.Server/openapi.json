@@ -615,7 +615,7 @@
         "tags": [
           "Viewport"
         ],
-        "summary": "Lays a graph\u0027s Output nodes over the mesh, or the display\u0027s shape with none, as they stand now, or shows one node\u0027s picture there. Ask again to see a later edit.",
+        "summary": "Lays a graph\u0027s Output nodes over the mesh, or the display\u0027s shape with none, as they stand now, or shows one node\u0027s picture there. Ask again to see a later edit, or follow the graph instead.",
         "operationId": "ShowGraphInViewport",
         "requestBody": {
           "content": {
@@ -670,6 +670,47 @@
           },
           "503": {
             "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/viewport/follow": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Keeps a graph on the viewport: its Output nodes, or with node the node its selection views, laid on the mesh again after each evaluation and each change of selection, until something else is laid there. A null graph stops.",
+        "operationId": "FollowGraphInViewport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportFollow"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -1014,7 +1055,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Writes a new, empty graph file. It reaches the listings once the index has caught up.",
+        "summary": "Writes a new graph file, empty or from a template. It reaches the listings once the index has caught up.",
         "operationId": "CreateGraph",
         "requestBody": {
           "content": {
@@ -1063,6 +1104,40 @@
               "application/problem\u002Bjson": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/graph-templates": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What a new graph can start from: nothing, an Output node per channel, or a starter preset.",
+        "operationId": "GetGraphTemplates",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StackTerm"
+                  }
                 }
               }
             }
@@ -5101,6 +5176,57 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/selection": {
+      "put": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Chooses nodes, and pins one or none, for every client. It is no edit, so undo never sees it. A client that follows the selection, as the viewport can, sees the change. Nodes the graph does not hold are left out.",
+        "operationId": "SetGraphSelection",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphSelection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphSelection"
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found",
@@ -11070,6 +11196,13 @@
             ],
             "description": "The side it evaluates at. Null is 2048. Its authoring base does not depend on this.",
             "format": "int32"
+          },
+          "template": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What it starts from: null or \u0060empty\u0060 for nothing, \u0060outputs\u0060 for an Output node per material\nchannel, or a starter preset by name, as \u0060GET /api/v1/library/graph-templates\u0060 lists them."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/graphs\u0060."
@@ -11404,6 +11537,17 @@
                 "$ref": "#/components/schemas/GraphEvaluation"
               }
             ]
+          },
+          "selection": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The selection, on a \u0060selected\u0060 event.",
+                "$ref": "#/components/schemas/GraphSelection"
+              }
+            ]
           }
         },
         "description": "One numbered event of a session. Sequence numbers rise by one, so a client that sees a gap has missed something\nand reads \u0060/events\u0060 or the state. Every client gets every event, its own edits included."
@@ -11418,6 +11562,7 @@
           "settled",
           "typesChanged",
           "closed",
+          "selected",
           "resync"
         ],
         "description": "What an event reports."
@@ -12034,6 +12179,31 @@
         },
         "description": "Where a node\u0027s picture is: \u0060GET /api/v1/previews/{hash}\u0060. Pixels never cross JSON."
       },
+      "GraphSelection": {
+        "required": [
+          "nodes"
+        ],
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "The chosen nodes, the first being the one a single-node view shows."
+          },
+          "pinned": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The node the views keep showing while the choice moves on, or null.",
+            "format": "int32"
+          }
+        },
+        "description": "The nodes chosen in a graph session, and the one kept on view whatever is chosen. A session has one selection,\nwhichever client made it last, so a client that follows it, such as the viewport, needs no editor (#244)."
+      },
       "GraphSettingCondition": {
         "required": [
           "setting",
@@ -12170,7 +12340,8 @@
           "repairs",
           "settled",
           "readOnly",
-          "info"
+          "info",
+          "selection"
         ],
         "type": "object",
         "properties": {
@@ -12293,6 +12464,10 @@
           "info": {
             "description": "What it says about itself: a description, an author, tags and a physical size.",
             "$ref": "#/components/schemas/GraphInfoState"
+          },
+          "selection": {
+            "description": "The nodes chosen in it, as the last client to say so chose them.",
+            "$ref": "#/components/schemas/GraphSelection"
           }
         },
         "description": "The reply to \u0060GET /api/v1/graphs/{id}\u0060: the whole document as the Server holds it."
@@ -19159,6 +19334,27 @@
         },
         "description": "How the viewport is lit, shown and finished. None of it reaches a file that is exported; a project keeps it, so\nit opens as it was left. Angles are radians and exposure is in stops; an effect at zero is off. A field left out\nof a request is the one the viewport opens with."
       },
+      "ViewportFollow": {
+        "required": [
+          "node"
+        ],
+        "type": "object",
+        "properties": {
+          "graph": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The graph\u0027s session, or null to stop following."
+          },
+          "node": {
+            "type": "boolean",
+            "description": "Show the node the session\u0027s selection views, its pinned node or else its first chosen one, alone in place of the\nmaterial, as \u0060PUT /viewport/graph\u0060 with a node does; its Output nodes when it views none or the node has no\npicture. False shows the Output nodes.",
+            "default": false
+          }
+        },
+        "description": "Keeps a graph session on the viewport, shown again after each of its evaluations, until something else is laid\non the mesh. The Server does the following, so a client that asks needs to do nothing more (#244)."
+      },
       "ViewportGraphRequest": {
         "required": [
           "graph"
@@ -19580,6 +19776,17 @@
               {
                 "description": "The graph node whose picture is shown in place of the material, or null. While it is, the picture view is\nwhat the frames show, whatever string ViewportDisplay.View says.",
                 "$ref": "#/components/schemas/ViewportNodeShown"
+              }
+            ]
+          },
+          "following": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The graph the viewport keeps up with, or null.",
+                "$ref": "#/components/schemas/ViewportFollow"
               }
             ]
           }

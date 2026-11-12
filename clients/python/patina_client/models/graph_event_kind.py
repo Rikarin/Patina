@@ -7,6 +7,7 @@ class GraphEventKind(StrEnum):
     REDONE = "redone"
     RESYNC = "resync"
     SAVED = "saved"
+    SELECTED = "selected"
     SETTLED = "settled"
     TYPESCHANGED = "typesChanged"
     UNDONE = "undone"

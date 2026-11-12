@@ -9,6 +9,8 @@ export interface FrameHeader {
   renderMs: number;
   /** The newest revision of the stack the viewport wears that this frame shows, or 0. */
   painted: number;
+  /** Counts changes to what lies on the mesh: when it moves, the state the Server reports has changed. */
+  laid: number;
 }
 
 /** One frame: RGBA, tightly packed, top row first. `pixels` is valid until the next frame arrives. */
@@ -38,7 +40,8 @@ export function parseHeader(bytes: ArrayBuffer): FrameHeader | null {
     height: header.getUint32(12, true),
     input: header.getUint32(16, true),
     renderMs: header.getUint32(20, true) / 1000,
-    painted: header.getUint32(24, true)
+    painted: header.getUint32(24, true),
+    laid: header.getUint32(28, true)
   };
 }
 

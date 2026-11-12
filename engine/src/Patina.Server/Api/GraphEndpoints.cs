@@ -124,6 +124,14 @@ static class GraphEndpoints {
                 "Chooses the folder of baked maps this graph's Mesh Map nodes read, and remembers it beside the file.",
                 Missing
             );
+        graphs.MapPut("/{id}/selection", Select)
+            .Describe(
+                "SetGraphSelection",
+                "Chooses nodes, and pins one or none, for every client. It is no edit, so undo never sees it. A client "
+                + "that follows the selection, as the viewport can, sees the change. Nodes the graph does not hold are "
+                + "left out.",
+                Missing
+            );
         graphs.MapGet("/{id}/events", GetEvents)
             .Describe(
                 "GetGraphEvents",
@@ -169,6 +177,13 @@ static class GraphEndpoints {
         session.UseMeshMaps(request.Folder is { } folder ? Path.GetFullPath(folder) : null);
         return TypedResults.NoContent();
     }
+
+    static Results<Ok<GraphSelection>, ProblemHttpResult> Select(
+        string id,
+        GraphSelection request,
+        GraphSessions sessions
+    ) =>
+        sessions.Find(id) is { } session ? TypedResults.Ok(session.Select(request)) : NoSession(id);
 
     static Results<Ok<GraphState>, ProblemHttpResult> GetState(string id, GraphSessions sessions) =>
         sessions.Find(id) is { } session ? TypedResults.Ok(session.State) : NoSession(id);

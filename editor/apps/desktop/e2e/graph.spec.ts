@@ -246,10 +246,17 @@ async function addNodeAt(search: string, x: number, y: number): Promise<void> {
   await expect(window.getByTestId('inspector-title')).toHaveText(search.split('/').at(-1) ?? search);
 }
 
-async function newGraph(name: string): Promise<void> {
+async function newGraph(name: string, template?: string): Promise<void> {
   await window.getByRole('radio', { name: 'Materials' }).click();
   await window.getByTestId('library-new-graph').click();
   await window.getByTestId('new-graph-name').fill(name);
+  if (template) {
+    await window.getByTestId('new-graph-template').getByRole('combobox').click();
+    await expect(window.getByRole('option', { name: template })).toBeVisible();
+    await window.screenshot({ path: join(shots, 'graph-new-templates.png') });
+    await window.getByRole('option', { name: template }).click();
+  }
+
   await window.getByTestId('new-graph-create').click();
   await expect(window.getByTestId('graph-name')).toHaveText(name);
 }
@@ -460,19 +467,62 @@ test('the 2D view shows the node on view at full size, tiles it and pins it, and
   await window.getByTestId('viewport-show-node').click();
   await expect(window.getByTestId('viewport-mesh')).toHaveText('Sphere.glb', { timeout: 30_000 });
   await expect(window.getByTestId('viewport-view')).toBeDisabled();
+  // The Server lays the node on the shape and the frames say so, so a frame drawn after the plane is chosen is one
+  // of the plane: the count is read before it is chosen.
+  const viewport = window.getByRole('application', { name: 'Viewport' });
+  const drawn = Number(await viewport.getAttribute('data-frames'));
   await window.getByTestId('viewport-display-toggle').click();
   await window.getByTestId('viewport-shape').selectOption('plane');
   await expect(window.getByTestId('viewport-mesh')).toHaveText('Plane.glb');
   await window.getByTestId('viewport-display-toggle').click();
   await expect(window.getByTestId('viewport-display')).toHaveCount(0);
-  const viewport = window.getByRole('application', { name: 'Viewport' });
-  const drawn = Number(await viewport.getAttribute('data-frames'));
   await expect
     .poll(async () => Number(await viewport.getAttribute('data-frames')), { timeout: 30_000 })
     .toBeGreaterThan(drawn);
   await window.screenshot({ path: join(shots, 'graph-node-on-plane.png') });
   await window.getByTestId('viewport-show-node').click();
   await expect(window.getByTestId('viewport-view')).toBeEnabled();
+});
+
+test('shows a second graph beside the first, and the panes follow the one touched last (#40)', async () => {
+  test.setTimeout(120_000);
+  await openGraph();
+  // A new graph can start from an Output node for each channel (#183).
+  await newGraph('Beside Rust', 'Material Outputs');
+  const Outputs = 6;
+  await expect(nodes()).toHaveCount(Outputs);
+
+  // The fourth layout puts a second graph beside the one in front, which joins an open tab's session.
+  await window.keyboard.press('ControlOrMeta+4');
+  const beside = window.getByTestId('graph-beside');
+  await expect(beside.getByTestId('graph-beside-empty')).toBeVisible();
+  await beside.getByTestId('graph-beside-choice').selectOption({ label: Name });
+  await expect(beside.getByTestId('graph-node')).toHaveCount(Nodes);
+  await expect(nodes()).toHaveCount(Outputs + Nodes);
+  const besideNode = (id: number) => beside.locator(`[data-testid=graph-node][data-node="${String(id)}"]`);
+
+  // Touching it puts it in front of the Inspector, and its edits are its tab's, behind.
+  await besideNode(1).locator('xui-graph-node-preview').click();
+  await expect(window.getByTestId('inspector-title')).toHaveText('Noise');
+  await expect(beside.getByTestId('graph-beside-front')).toBeVisible();
+  await window.getByTestId('field-Scale').getByRole('spinbutton').fill('31');
+  await window.getByTestId('field-Scale').getByRole('spinbutton').press('Enter');
+  await expect(window.getByTestId('tab-unsaved')).toBeVisible();
+  await expect(window.getByTestId('active-unsaved')).toHaveCount(0);
+
+  // Undo is the graph's touched last, and so is Copy; the graph in front, touched, takes the paste.
+  await besideNode(1).locator('xui-graph-node-preview').click();
+  await window.keyboard.press('ControlOrMeta+z');
+  await expect(window.getByTestId('tab-unsaved')).toHaveCount(0);
+  await window.keyboard.press('ControlOrMeta+c');
+  await window.getByTestId('graph-name').first().click();
+  await expect(beside.getByTestId('graph-beside-front')).toHaveCount(0);
+  await window.keyboard.press('ControlOrMeta+v');
+  await expect(nodes()).toHaveCount(Outputs + Nodes + 1);
+  await expect(beside.getByTestId('graph-node')).toHaveCount(Nodes);
+  await expect(window.getByTestId('inspector-title')).toHaveText('Noise');
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'graph-two-side-by-side.png') });
 });
 
 test('finds a node by name, stars a node for the palette, and adds one from several', async () => {

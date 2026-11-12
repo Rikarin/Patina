@@ -7,7 +7,6 @@ import {
   type JobState,
   type PatinaClient,
   type ViewportBakePreview,
-  type ViewportState,
   unwrap
 } from '@patina/api-client';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
@@ -182,14 +181,6 @@ export class BakeStore {
   async setup(): Promise<BakePreviewState> {
     const client = await this.api();
     return unwrap(await client.GET('/api/v1/viewport/bake-preview'));
-  }
-
-  /** Lays a graph's outputs over the mesh in the viewport, as they stand now. */
-  async showGraphOnMesh(graph: string, node: number | null = null): Promise<ViewportState> {
-    const client = await this.api();
-    const state = unwrap(await client.PUT('/api/v1/viewport/graph', { body: { graph, node } }));
-    this.viewportChanged.update(count => count + 1);
-    return state;
   }
 
   /** Shows one map of a finished job in the Texture pane. */

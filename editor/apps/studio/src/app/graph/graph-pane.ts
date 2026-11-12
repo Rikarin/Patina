@@ -64,6 +64,7 @@ import {
 import { isWireable, wireFamily } from './graph-fields';
 import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
 import { GraphStore, type NodeLink, type NodeWire, RerouteIn, RerouteOut, RerouteType } from './graph-store';
+import { GraphViews } from './graph-views';
 import { NewGraphDialog } from './new-graph-dialog';
 import { NodeDragType } from './node-library';
 import { PublishPackageDialog } from './publish-package-dialog';
@@ -225,7 +226,12 @@ export class GraphThumbnail {
     XuiTagImports
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'flex h-full min-h-0 flex-col', 'data-commands': 'graph' },
+  host: {
+    class: 'flex h-full min-h-0 flex-col',
+    'data-commands': 'graph',
+    '(pointerdown)': 'graphViews.touch(store)',
+    '(focusin)': 'graphViews.touch(store)'
+  },
   styles: `
     /* xUI gap: a node always draws a header, and a reroute dot is only its two connectors. */
     [data-reroute] [data-xui-graph-node-header] {
@@ -704,6 +710,7 @@ export class GraphThumbnail {
 })
 export class GraphCanvas {
   protected readonly store = inject(GraphStore);
+  protected readonly graphViews = inject(GraphViews);
   protected readonly preferences = inject(Preferences);
   private readonly status = inject(SystemStatus);
   private readonly destroyed = inject(DestroyRef);
@@ -1196,13 +1203,15 @@ export class GraphCanvas {
 
   /**
    * What the canvas answers. The Edit commands work on the selection while focus is in the graph, or nowhere; Add Node
-   * opens the palette at the pointer when it is over the canvas, and beside the selection otherwise.
+   * opens the palette at the pointer when it is over the canvas, and beside the selection otherwise. With two graphs
+   * on screen, the one touched last answers (#40).
    */
   private installCommands(): void {
+    const mine = () => this.graphViews.front() === this.store;
     const handle = (id: string, enabled: () => boolean, run: (via: string) => unknown) =>
-      this.commands.handle(id, { enabled, run }, this.destroyed);
+      this.commands.handle(id, { enabled: () => mine() && enabled(), run }, this.destroyed);
     const here = () => this.commands.focus().area === 'graph' || this.commands.focus().area === null;
-    const editable = () => this.store.editable() && this.store.document() !== null;
+    const editable = () => mine() && this.store.editable() && this.store.document() !== null;
     const selected = () => here() && this.store.selection().size > 0;
     handle('copy', selected, () => this.store.copySelection());
     handle(

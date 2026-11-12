@@ -10,12 +10,14 @@ import {
   type GraphInterfacePort,
   type GraphNodeType,
   type GraphPresetState,
+  type GraphSelection,
   type GraphSettingDefinition,
   type GraphState,
   type HistoryList,
   type PackagePlan,
   type PackagePublished,
   type PatinaClient,
+  type StackTerm,
   unwrap
 } from '@patina/api-client';
 import { desktop } from '../core/desktop';
@@ -82,6 +84,10 @@ export const GRAPH_SOCKET = new InjectionToken<(url: string) => GraphSocket>('GR
 });
 
 const PasteOffset = 40;
+
+/** What Copy took: nodes as they were, and the wires between them. Every graph on screen shares it, so a copy from one
+ * pastes into another (#40), and it survives closing the graph. */
+const clipboard: { held: Pick<GraphState, 'nodes' | 'edges'> | null } = { held: null };
 
 type DraftValue = readonly number[] | string;
 
@@ -291,6 +297,19 @@ export class GraphStore {
       this.previews.dispose();
     });
 
+    // The session's selection is the Server's too, so a client that follows it, the viewport included, needs no editor
+    // (#244). What this client chooses goes; what it starts with when it joins does not, or opening a graph would take
+    // away what another client chose.
+    const session = computed(() => this.mutableDocument()?.id ?? null);
+    const pinnedId = computed(() => this.pinned()?.id ?? null);
+    effect(() => {
+      const id = session();
+      const chosen = { nodes: [...this.mutableSelection()], pinned: pinnedId() };
+      untracked(() => {
+        this.reportSelection(id, chosen);
+      });
+    });
+
     // One selection on screen: the Inspector shows what was touched last, a library item or a node.
     const library = inject(LibrarySelection);
     let seen = library.item();
@@ -364,10 +383,23 @@ export class GraphStore {
   }
 
   /** Writes a new graph into the library and opens it. The Server's refusal is what the caller shows. */
-  async create(name: string, project: string | null, resolution: number | null = null): Promise<void> {
+  async create(
+    name: string,
+    project: string | null,
+    resolution: number | null = null,
+    template: string | null = null
+  ): Promise<void> {
     const client = await this.reconnect();
-    const { path } = unwrap(await client.POST('/api/v1/library/graphs', { body: { name, project, resolution } }));
+    const { path } = unwrap(
+      await client.POST('/api/v1/library/graphs', { body: { name, project, resolution, template } })
+    );
     await this.open(path);
+  }
+
+  /** What a new graph can start from, with what a person calls each (#183). */
+  async templates(): Promise<readonly StackTerm[]> {
+    const client = await this.reconnect();
+    return unwrap(await client.GET('/api/v1/library/graph-templates'));
   }
 
   /** Closes the session on the Server, which ends it for every client that joined. Unsaved edits ask first. */
@@ -787,15 +819,12 @@ export class GraphStore {
     }
   }
 
-  /** What Copy took: nodes as they were, and the wires between them. It survives closing the graph. */
-  private clipboard: Pick<GraphState, 'nodes' | 'edges'> | null = null;
-
   /** Remembers the selected nodes, and the wires that stay inside them. */
   copySelection(): void {
     const document = this.mutableDocument();
     const chosen = this.selection();
     if (document && chosen.size > 0) {
-      this.clipboard = {
+      clipboard.held = {
         nodes: [...document.nodes.values()].filter(node => chosen.has(node.id)),
         edges: [...document.edges.values()].filter(edge => chosen.has(edge.fromNode) && chosen.has(edge.toNode))
       };
@@ -804,7 +833,7 @@ export class GraphStore {
 
   /** Puts a copy of what Copy took beside the original, with its numbers, settings and inner wires. */
   async paste(): Promise<void> {
-    const held = this.clipboard;
+    const held = clipboard.held;
     if (!held || !this.editable()) {
       return;
     }
@@ -847,10 +876,10 @@ export class GraphStore {
 
   /** Copy and Paste in one go, leaving what was copied before alone. */
   async duplicate(): Promise<void> {
-    const before = this.clipboard;
+    const before = clipboard.held;
     this.copySelection();
     await this.paste();
-    this.clipboard = before;
+    clipboard.held = before;
   }
 
   remove(nodes: readonly number[], edges: readonly string[]): void {
@@ -1105,6 +1134,45 @@ export class GraphStore {
 
   dismissSaveConflict(): void {
     this.mutableSaveConflict.set(false);
+  }
+
+  /** The session and selection last told, or held as the start; then the newest waiting while one is on its way. */
+  private selectionTold: { id: string | null; key: string } = { id: null, key: '' };
+  private selectionWaiting: { id: string; selection: GraphSelection } | null = null;
+  private selectionSending = false;
+
+  /** Tells the Server what this client chose, one request at a time and only the newest, since clicks come fast. */
+  private reportSelection(id: string | null, selection: GraphSelection): void {
+    const key = JSON.stringify(selection);
+    const told = this.selectionTold;
+    this.selectionTold = { id, key };
+    if (id === null || told.id !== id || told.key === key) {
+      return;
+    }
+
+    this.selectionWaiting = { id, selection };
+    if (!this.selectionSending) {
+      void this.sendSelection();
+    }
+  }
+
+  private async sendSelection(): Promise<void> {
+    this.selectionSending = true;
+    try {
+      for (let next = this.selectionWaiting; next !== null; next = this.selectionWaiting) {
+        this.selectionWaiting = null;
+        try {
+          await this.api().PUT('/api/v1/graphs/{id}/selection', {
+            params: { path: { id: next.id } },
+            body: next.selection
+          });
+        } catch {
+          // A selection is no edit: one that does not arrive is followed by the next.
+        }
+      }
+    } finally {
+      this.selectionSending = false;
+    }
   }
 
   private newLoader(): PreviewLoader {
