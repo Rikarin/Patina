@@ -148,7 +148,13 @@ test('the eye hides a layer, and Properties follows what is chosen', async () =>
 
 test('a fill shows only the projection controls that apply', async () => {
   await window.getByTestId('paint-add-fill').click();
-  await expect(window.getByTestId('paint-fill-projection')).toHaveCount(0); // a constant is the same from every side
+  // A constant is the same from every side: it lands over the UVs or on a decal or a path, and nothing projects it.
+  // ⚠ Waits for the new fill to be in Properties: a count of none passed before it got there, whatever it offered.
+  await expect(window.getByTestId('paint-fill-source')).toContainText('Constant');
+  await window.getByTestId('paint-fill-projection').click();
+  await expect(window.getByRole('option', { name: 'UV', exact: true }).locator('visible=true')).toHaveCount(1);
+  await expect(window.getByRole('option', { name: 'Tri-planar' }).locator('visible=true')).toHaveCount(0);
+  await window.keyboard.press('Escape');
 
   await window.getByTestId('paint-fill-source').click();
   await window.getByRole('option', { name: 'Bitmap' }).click();
@@ -413,6 +419,8 @@ test('the layer menu and the Add menu work from the keyboard alone', async () =>
 
   // A filter from the menu, by its heading, with no mouse.
   await paint.press('Shift+F10');
+  await window.getByTestId('layer-menu-effect').focus();
+  await window.keyboard.press('ArrowRight');
   await window.getByTestId('layer-menu-filter').focus();
   await window.keyboard.press('ArrowRight');
   await expect(window.getByTestId('layer-menu-filters')).toBeVisible();
