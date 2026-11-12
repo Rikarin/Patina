@@ -41,6 +41,43 @@ export function labelIn(terms: readonly StackTerm[] | undefined, value: string):
   return terms?.find(term => term.value === value)?.label ?? termName(value);
 }
 
+const noTerms: readonly string[] = [];
+const valueLists = new WeakMap<readonly StackTerm[], readonly string[]>();
+const labelReaders = new WeakMap<readonly StackTerm[], (value: string) => string>();
+
+/**
+ * The values of a list the Server sent with its labels, for an `xui-select`'s `items`. The same list gives the same
+ * array each time, so a template can ask for it on every check without the select starting over.
+ */
+export function valuesOf(terms: readonly StackTerm[] | undefined): readonly string[] {
+  if (!terms) {
+    return noTerms;
+  }
+
+  let values = valueLists.get(terms);
+  if (!values) {
+    values = terms.map(term => term.value);
+    valueLists.set(terms, values);
+  }
+
+  return values;
+}
+
+/** What each value of {@link valuesOf} is called, for the same select's `itemText`: one reader for one list. */
+export function labelsOf(terms: readonly StackTerm[] | undefined): (value: string) => string {
+  if (!terms) {
+    return termName;
+  }
+
+  let read = labelReaders.get(terms);
+  if (!read) {
+    read = value => labelIn(terms, value);
+    labelReaders.set(terms, read);
+  }
+
+  return read;
+}
+
 /** What a setting's chosen value is called, from the labels its definition carries. */
 export function choiceName(
   setting: { accepted: readonly string[]; labels?: readonly string[] | null },

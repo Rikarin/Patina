@@ -11,12 +11,14 @@ import {
   untracked
 } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
+import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
 import { XuiInputImports } from '@xui/input';
 import { BakePane } from './bake/bake-pane';
 import { BakeSettings } from './bake/bake-settings';
 import { BakeStore } from './bake/bake-store';
+import { AboutDialog } from './core/about-dialog';
 import { Activity } from './core/activity';
 import { ActivityPanel } from './core/activity-panel';
 import { menuModel } from './core/app-menu';
@@ -25,6 +27,8 @@ import { desktop } from './core/desktop';
 import { DiagnosticsDialog } from './core/diagnostics-dialog';
 import { EditCommands } from './core/edit-commands';
 import { FileConflictDialog } from './core/file-conflict-dialog';
+import { FilePicker } from './core/file-picker';
+import { Links } from './core/help-links';
 import { HistoryPane } from './core/history-pane';
 import { PreferencesDialog } from './core/preferences-dialog';
 import { ShortcutsDialog } from './core/shortcuts-dialog';
@@ -55,6 +59,7 @@ import { LibraryActions } from './library/library-actions';
 import { LibraryPane } from './library/library-pane';
 import { LibraryTreeStore } from './library/library-tree-store';
 import { MeshReloadDialog } from './library/mesh-reload-dialog';
+import { PickFileDialog } from './library/pick-file-dialog';
 import { ProjectCommands } from './library/project-commands';
 import { ProjectSettingsDialog } from './library/project-settings-dialog';
 import { ProjectStore } from './library/project-store';
@@ -72,6 +77,7 @@ import { ViewportPane } from './viewport/viewport-pane';
 @Component({
   selector: 'ptn-root',
   imports: [
+    AboutDialog,
     ActivityPanel,
     BakePane,
     ChecksPane,
@@ -97,10 +103,12 @@ import { ViewportPane } from './viewport/viewport-pane';
     XuiInputImports,
     PaintAtlas,
     PaintPane,
+    PickFileDialog,
     StartPane,
     TextureView,
     ViewportPane,
     XuiButtonImports,
+    XuiCalloutImports,
     XuiDialogImports,
     XuiDockManagerImports
   ],
@@ -143,16 +151,24 @@ import { ViewportPane } from './viewport/viewport-pane';
             </button>
             <button
               type="button"
-              [attr.aria-label]="'Close ' + tab.name"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              class="size-5 px-0"
               data-testid="document-tab-close"
+              [attr.aria-label]="'Close ' + tab.name"
+              [title]="'Close ' + tab.name"
               (click)="project.closeTab(tab.path)"
             >
-              ×
+              <svg viewBox="0 0 16 16" class="size-3" aria-hidden="true">
+                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+              </svg>
             </button>
           </div>
         }
       </div>
-      <!-- Undo, Redo and Save are the app's, for whichever document is in front, so no pane has its own (#200). -->
+      <!-- Undo, Redo and Save are the app's, for whichever document is in front, so no pane has its own (#200). The
+           title bar draws its few icons itself: ng-icon in the first bundle would cost it 11 kB. -->
       <div class="flex shrink-0 items-center" role="toolbar" aria-label="Document">
         <button
           type="button"
@@ -372,46 +388,42 @@ import { ViewportPane } from './viewport/viewport-pane';
     }
 
     @if (failure(); as reason) {
-      <div
-        class="bg-error-subtle flex shrink-0 items-center gap-2 px-3 py-1 text-sm"
-        role="alert"
-        data-testid="app-failure"
-      >
-        <span class="min-w-0 flex-1 truncate" [title]="reason">{{ reason }}</span>
-        @if (reason.includes('no texture coordinates')) {
+      <xui-callout class="shrink-0 rounded-none" color="error" compact role="alert" data-testid="app-failure">
+        <span class="flex items-center gap-2">
+          <span class="min-w-0 flex-1 truncate" [title]="reason">{{ reason }}</span>
+          @if (reason.includes('no texture coordinates')) {
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              data-testid="app-unwrap"
+              [disabled]="project.unwrapping()"
+              (click)="project.applySettings({ autoUnwrap: true })"
+            >
+              {{ project.unwrapping() ? 'Unwrapping…' : 'Unwrap Mesh' }}
+            </button>
+          }
           <button
             type="button"
             xuiButton
             size="sm"
-            data-testid="app-unwrap"
-            [disabled]="project.unwrapping()"
-            (click)="project.applySettings({ autoUnwrap: true })"
+            variant="ghost"
+            data-testid="app-failure-dismiss"
+            (click)="dismissFailure()"
           >
-            {{ project.unwrapping() ? 'Unwrapping…' : 'Unwrap Mesh' }}
+            Dismiss
           </button>
-        }
-        <button
-          type="button"
-          xuiButton
-          size="sm"
-          variant="ghost"
-          data-testid="app-failure-dismiss"
-          (click)="dismissFailure()"
-        >
-          Dismiss
-        </button>
-      </div>
+        </span>
+      </xui-callout>
     }
 
     @if (paint.notice(); as notice) {
-      <div
-        class="bg-warning-subtle flex shrink-0 items-center gap-2 px-3 py-1 text-sm"
-        role="status"
-        data-testid="paint-notice"
-      >
-        <span class="min-w-0 flex-1 truncate" [title]="notice">{{ notice }}</span>
-        <button type="button" xuiButton size="sm" variant="ghost" (click)="paint.notice.set(null)">Dismiss</button>
-      </div>
+      <xui-callout class="shrink-0 rounded-none" color="warning" compact role="status" data-testid="paint-notice">
+        <span class="flex items-center gap-2">
+          <span class="min-w-0 flex-1 truncate" [title]="notice">{{ notice }}</span>
+          <button type="button" xuiButton size="sm" variant="ghost" (click)="paint.notice.set(null)">Dismiss</button>
+        </span>
+      </xui-callout>
     }
 
     <footer class="chrome-bar flex h-7 shrink-0 items-center gap-4 px-3" role="status" aria-label="Server status">
@@ -527,6 +539,14 @@ import { ViewportPane } from './viewport/viewport-pane';
 
     @defer (when diagnosing()) {
       <ptn-diagnostics [(open)]="diagnosing" />
+    }
+
+    @defer (when about()) {
+      <ptn-about [(open)]="about" />
+    }
+
+    @defer (when picker.request()) {
+      <ptn-pick-file />
     }
 
     @defer (when keys()) {
@@ -654,6 +674,8 @@ export class App {
   protected readonly keys = signal(false);
   protected readonly preferencesOpen = signal(false);
   protected readonly diagnosing = signal(false);
+  protected readonly about = signal(false);
+  protected readonly picker = inject(FilePicker);
   protected readonly paint = inject(PaintStore);
   /** The one thing that went wrong last, which stays until it is read. */
   protected readonly failure = computed(() => this.paint.failure() ?? this.project.failure());
@@ -845,8 +867,8 @@ export class App {
     handle('shortcuts', { run: () => this.keys.set(true) });
     handle('preferences', { run: () => this.preferencesOpen.set(true) });
     handle('diagnostics', { run: () => this.diagnosing.set(true) });
-    handle('reportProblem', {
-      run: () => globalThis.open('https://github.com/Rikarin/Patina/issues/new', '_blank')
-    });
+    handle('documentation', { run: () => globalThis.open(Links.documentation, '_blank') });
+    handle('reportProblem', { run: () => globalThis.open(Links.issues, '_blank') });
+    handle('about', { run: () => this.about.set(true) });
   }
 }

@@ -6,6 +6,7 @@ export type LibraryInfo = components['schemas']['LibraryInfo'];
 export type ProjectSummary = components['schemas']['ProjectSummary'];
 export type ProjectContents = components['schemas']['ProjectContents'];
 export type ProjectFile = components['schemas']['ProjectFile'];
+export type LibraryFile = components['schemas']['LibraryFile'];
 export type MaterialInfo = components['schemas']['MaterialInfo'];
 export type StackIdColour = components['schemas']['StackIdColour'];
 export type StackPixels = components['schemas']['StackPixels'];

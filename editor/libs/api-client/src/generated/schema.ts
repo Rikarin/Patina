@@ -730,6 +730,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/files': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The pictures or meshes the library's projects hold, a project's own first: what a client offers to pick from, where a dialog of its own machine cannot see this one's disk. */
+    get: operations['ListLibraryFiles'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/picture': {
     parameters: {
       query?: never;
@@ -4313,6 +4330,22 @@ export interface components {
       /** @description What an export of the whole library is set to now. */
       export: components['schemas']['ProjectExportSettings'];
     };
+    /** @description A file the library holds, for a client to pick from where a native dialog cannot see (#4). */
+    LibraryFile: {
+      /** @description Its path below the library. */
+      path: string;
+      /** @description Its file's name. */
+      name: string;
+      /** @description The project it is in, below `projects/`. */
+      project: string;
+    };
+    /** @description The answer to `GET /api/v1/library/files`. */
+    LibraryFileList: {
+      /** @description The files, the asked project's first, then the rest by project. */
+      files: components['schemas']['LibraryFile'][];
+      /** @description Whether there were more than the list holds. */
+      more: boolean;
+    };
     /** @description The reply to `GET /api/v1/library`: what opening a library reads, and nothing more. */
     LibraryInfo: {
       /**
@@ -5043,7 +5076,10 @@ export interface components {
     ProjectPictureRequest: {
       /** @description The project, below `projects/`. */
       project: string;
-      /** @description A picture file on the Server's machine. */
+      /**
+       * @description A picture the library holds, by its path below the library, or a picture file on the Server's machine by its
+       *     full path. One of another project is copied into this one, as one from the machine is.
+       */
       picture: string;
     };
     /** @description A project's reference to an asset, as it now stands. */
@@ -5216,7 +5252,7 @@ export interface components {
     StackAnchorUse: {
       /** @description The id of the layer that reads it. */
       layer: string;
-      /** @description What part of that layer: fill, mask, mask entry 2, or an input's port. */
+      /** @description What part of that layer reads it, in words to show: Fill, Mask, Mask layer 2, Input Warp. */
       where: string;
       /** @description The channel it reads, or empty for the channel being written. */
       channel: string;
@@ -9837,6 +9873,56 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectPicture'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ListLibraryFiles: {
+    parameters: {
+      query: {
+        kind: string;
+        project?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryFileList'];
         };
       };
       /** @description Bad Request */

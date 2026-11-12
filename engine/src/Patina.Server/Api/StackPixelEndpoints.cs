@@ -52,7 +52,12 @@ static class StackPixelEndpoints {
         CancellationToken cancellationToken
     ) {
         if (Problem(request) is { } problem) {
-            return TypedResults.Problem(problem, statusCode: StatusCodes.Status400BadRequest);
+            return Refusals.Problem(
+                problem,
+                StatusCodes.Status400BadRequest,
+                Refusals.ExportSettingsInvalid,
+                new Dictionary<string, string> { ["reason"] = problem }
+            );
         }
 
         try {
@@ -106,7 +111,7 @@ static class StackPixelEndpoints {
 
         if (reading.Layer is { } layer && !session.Has(layer)) {
             return Refusals.Problem(
-                $"This stack has no layer '{layer}'.",
+                "That layer is not in this document any more.",
                 Refused,
                 Refusals.StackLayerMissing,
                 new Dictionary<string, string> { ["layer"] = layer }

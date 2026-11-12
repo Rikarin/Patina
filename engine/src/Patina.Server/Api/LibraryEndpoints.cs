@@ -171,7 +171,13 @@ static class LibraryEndpoints {
             host.RequestRescan();
             return TypedResults.Created((string?)null, new GraphCreated(path));
         } catch (GraphEditRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            // Only a template the library does not have refuses a new graph.
+            return Refusals.Problem(
+                e.Message,
+                StatusCodes.Status422UnprocessableEntity,
+                Refusals.GraphTemplateUnknown,
+                new Dictionary<string, string> { ["template"] = request.Template ?? string.Empty }
+            );
         } catch (ProjectExistsException e) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
         } catch (ProjectRefusedException e) {

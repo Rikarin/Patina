@@ -75,6 +75,7 @@ const ToneWords: Readonly<Record<NoticeTone, string>> = {
         variant="ghost"
         class="px-1.5"
         aria-label="Close"
+        title="Close"
         data-testid="activity-close"
         (click)="activity.hide()"
       >

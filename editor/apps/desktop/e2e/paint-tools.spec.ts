@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
-import { answerOpen, leave, newLibrary, newProject } from './projects';
+import { answerOpen, leave, newLibrary, newProject, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -206,7 +206,7 @@ test('the tool strip follows the tool, stays when a fill is chosen, and a polygo
   await window.screenshot({ path: join(shots, 'tool-strip-polygon-fill.png') });
   const polygon = await shot();
 
-  await window.getByTestId('paint-fill-mode').selectOption('part');
+  await pick(window, 'paint-fill-mode', 'Mesh Part');
   await click(0.5, 0.5);
   await expect.poll(async () => changed(polygon, await shot()), { timeout: 60_000 }).toBeGreaterThan(1500);
   await settled();
@@ -221,8 +221,8 @@ test('the tool strip follows the tool, stays when a fill is chosen, and a polygo
 test('a fill takes what a rectangle or a lasso holds, and the outline shows while it is drawn (#129)', async () => {
   await openOnMesh();
   await window.getByTestId('tool-strip-fill').click();
-  await window.getByTestId('paint-fill-mode').selectOption('triangle');
-  await window.getByTestId('paint-fill-shape').selectOption('rectangle');
+  await pick(window, 'paint-fill-mode', 'Triangle');
+  await pick(window, 'paint-fill-shape', 'Rectangle');
   await expect(window.getByTestId('paint-fill-through')).not.toBeChecked();
   await colour('#1060e0');
   const before = await shot();
@@ -241,7 +241,7 @@ test('a fill takes what a rectangle or a lasso holds, and the outline shows whil
   await settled();
   await window.screenshot({ path: join(shots, 'fill-rectangle.png') });
 
-  await window.getByTestId('paint-fill-shape').selectOption('lasso');
+  await pick(window, 'paint-fill-shape', 'Lasso');
   await colour('#e03010');
   // A loop on the housing's left face, which the box left alone. The brush ring ends where the loop does, so the
   // picture before is taken with the pointer there too and only the paint differs.
@@ -367,7 +367,8 @@ test('a picture on the viewport projects through the brush, and as a stencil mas
   expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
   await window.screenshot({ path: join(shots, 'tool-projection-painted.png') });
 
-  await window.getByTestId('paint-stencil').check();
+  await window.getByTestId('paint-stencil').click();
+  await expect(window.getByTestId('paint-stencil')).toBeChecked();
   await window.getByTestId('tool-strip-brush').click();
   await colour('#1060e0');
   const projected = await shot();
@@ -375,7 +376,8 @@ test('a picture on the viewport projects through the brush, and as a stencil mas
   await expect.poll(async () => changed(projected, await shot()), { timeout: 60_000 }).toBeGreaterThan(100);
   await settled();
   await window.screenshot({ path: join(shots, 'tool-stencil.png') });
-  await window.getByTestId('paint-stencil').uncheck();
+  await window.getByTestId('paint-stencil').click();
+  await expect(window.getByTestId('paint-stencil')).not.toBeChecked();
   await expect(window.getByTestId('screen-picture-frame')).toHaveCount(0);
   await window.screenshot({ path: join(shots, 'tool-stencil-result.png') });
 });
@@ -392,7 +394,8 @@ test('a dab on the strap paints the top under it only with the occlusion test of
 
   await colour('#e01810');
   const atlas = window.getByTestId('paint-canvas');
-  await window.getByTestId('paint-occlusion').uncheck();
+  await window.getByTestId('paint-occlusion').click();
+  await expect(window.getByTestId('paint-occlusion')).not.toBeChecked();
   await click(0.5, 0.5);
   await settled();
   await window.screenshot({ path: join(shots, 'occlusion-off-window.png') });
@@ -401,7 +404,8 @@ test('a dab on the strap paints the top under it only with the occlusion test of
 
   await window.getByTestId('app-undo').click();
   await settled();
-  await window.getByTestId('paint-occlusion').check();
+  await window.getByTestId('paint-occlusion').click();
+  await expect(window.getByTestId('paint-occlusion')).toBeChecked();
   await click(0.5, 0.5);
   await settled();
   await window.screenshot({ path: join(shots, 'occlusion-on-window.png') });

@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen, leave, newLibrary, newProject } from './projects';
+import { answerOpen, leave, newLibrary, newProject, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -129,7 +129,8 @@ async function drag(fromX: number, fromY: number, toX: number, toY: number): Pro
 
 test('height painted on the mesh lights it as a bump, sharp or smooth', async () => {
   await openOnMesh();
-  await window.getByTestId('paint-add-channel').selectOption('height');
+  await window.getByTestId('paint-add-channel').click();
+  await window.getByTestId('paint-add-channel-height').click();
   await expect(window.getByTestId('texture-set-height-normal')).toBeVisible({ timeout: 30_000 });
   await window.getByTestId('layers-channel').click();
   await window.getByRole('option', { name: 'Height' }).locator('visible=true').click();
@@ -362,7 +363,8 @@ test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads
 
   await window.locator('[data-testid^=paint-layer-fill]').getByTestId('layer-mesh-mask').click();
   await expect(window.getByTestId('layer-meshes')).toContainText('Hinge');
-  await window.getByTestId('layer-mesh-Hinge').uncheck();
+  await window.getByTestId('layer-mesh-Hinge').click();
+  await expect(window.getByTestId('layer-mesh-Hinge')).not.toBeChecked();
   await window.mouse.click(4, 300); // anywhere else closes the list
   await expect.poll(() => greenAt(0.75), { timeout: 30_000 }).toBeLessThan(200);
   expect(await greenAt(0.25)).toBeGreaterThan(200);
@@ -459,7 +461,7 @@ test('a line, a mirrored stroke and an alpha paint through the same journal', as
   const lined = await shot();
 
   await window.getByTestId('paint-tool-brush').click();
-  await window.getByRole('combobox', { name: 'Symmetry', exact: true }).selectOption('mirror');
+  await pick(window, 'paint-symmetry', /^mirror$/iu);
   await drag(0.62, 0.55, 0.66, 0.62);
   await expect.poll(async () => changed(lined, await shot()), { timeout: 30_000 }).toBeGreaterThan(200);
   await window.screenshot({ path: join(shots, 'paint-tools.png') });
@@ -483,8 +485,8 @@ test('a preset takes up its brush, a radial symmetry paints its copies, and the 
 
   await window.getByTestId('app-undo').click();
   await settled();
-  await window.getByRole('combobox', { name: 'Symmetry', exact: true }).selectOption('radial');
-  await window.getByRole('combobox', { name: 'Symmetry axis' }).selectOption('y');
+  await pick(window, 'paint-symmetry', /^radial$/iu);
+  await pick(window, 'paint-symmetry-axis', /^y$/iu);
   // The axis the copies turn round is drawn over the picture, where the Worker puts it.
   await expect(window.getByTestId('viewport-symmetry')).toBeVisible({ timeout: 10_000 });
   await window.mouse.move(0, 0);
@@ -497,8 +499,8 @@ test('a preset takes up its brush, a radial symmetry paints its copies, and the 
   // Four copies round the up axis, of which the camera sees two or three: more than one stroke's worth either way.
   expect(await changed(plain, await shot())).toBeGreaterThan(one * 1.5);
   await window.screenshot({ path: join(shots, 'paint-radial.png') });
-  await window.getByRole('combobox', { name: 'Symmetry', exact: true }).selectOption('mirror');
-  await window.getByRole('combobox', { name: 'Symmetry axis' }).selectOption('x');
+  await pick(window, 'paint-symmetry', /^mirror$/iu);
+  await pick(window, 'paint-symmetry-axis', /^x$/iu);
   await expect(window.getByTestId('viewport-symmetry').locator('polygon')).toBeVisible();
   await window.screenshot({ path: join(shots, 'paint-mirror-plane.png') });
 

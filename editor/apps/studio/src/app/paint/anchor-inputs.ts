@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import type { StackAnchorRef, StackFilterKind } from '@patina/api-client';
+import { XuiSelectImports } from '@xui/select';
 import { channelName } from '../core/labels';
 import { PaintStore } from './paint-store';
 
@@ -13,6 +14,7 @@ export type AnchorSources = Readonly<Record<string, StackAnchorRef>>;
  */
 @Component({
   selector: 'ptn-anchor-inputs',
+  imports: [XuiSelectImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-1' },
   template: `
@@ -20,30 +22,29 @@ export type AnchorSources = Readonly<Record<string, StackAnchorRef>>;
       @let held = inputs()[slot.port];
       <div class="flex items-center gap-2" [attr.data-testid]="testId() + slot.port">
         <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="slot.summary">{{ slot.port }}</span>
-        <select
-          class="well h-7 min-w-0 flex-1 px-1 text-sm"
-          [attr.aria-label]="slot.port + ' reads the anchor point'"
+        <xui-select
+          class="min-w-0 flex-1"
+          [aria-label]="slot.port + ' reads the anchor point'"
           [attr.data-testid]="testId() + slot.port + '-anchor'"
-          (change)="choose(slot.port, text($event), held?.channel)"
-        >
-          <option value="" [selected]="!held?.anchor">
-            {{ slot.optional ? 'Nothing' : 'Choose an anchor point' }}
-          </option>
-          @for (anchor of anchors(); track anchor) {
-            <option [value]="anchor" [selected]="anchor === held?.anchor">{{ anchor }}</option>
-          }
-        </select>
+          [filterable]="false"
+          [itemText]="slot.optional ? optionalAnchor : requiredAnchor"
+          [items]="anchorChoices()"
+          [placeholder]="slot.optional ? 'Nothing' : 'Choose an anchor point'"
+          [value]="held?.anchor ?? ''"
+          (valueChange)="choose(slot.port, $event ?? '', held?.channel)"
+        />
         @if (held?.anchor) {
-          <select
-            class="well h-7 w-24 shrink-0 px-1 text-sm"
-            [attr.aria-label]="slot.port + ' anchor channel'"
+          <xui-select
+            class="w-24 min-w-0 shrink-0"
+            [aria-label]="slot.port + ' anchor channel'"
             [attr.data-testid]="testId() + slot.port + '-channel'"
-            (change)="choose(slot.port, held.anchor, text($event))"
-          >
-            @for (channel of channels(); track channel) {
-              <option [value]="channel" [selected]="channel === channelOf(held)">{{ channelName(channel) }}</option>
-            }
-          </select>
+            [filterable]="false"
+            [itemText]="channelName"
+            [items]="channels()"
+            [matchTargetWidth]="false"
+            [value]="channelOf(held)"
+            (valueChange)="choose(slot.port, held.anchor, $event ?? undefined)"
+          />
         }
       </div>
     }
@@ -65,6 +66,10 @@ export class AnchorInputs {
   readonly inputsChange = output<AnchorSources>();
 
   protected readonly channelName = channelName;
+  /** Nothing first, for a slot to read nothing again, then every anchor point it may read. */
+  protected readonly anchorChoices = computed(() => ['', ...this.anchors()]);
+  protected readonly optionalAnchor = (anchor: string) => anchor || 'Nothing';
+  protected readonly requiredAnchor = (anchor: string) => anchor || 'Choose an anchor point';
   protected readonly channels = computed(() => (this.store.state()?.channels ?? []).map(channel => channel.usage));
 
   /** The channel a reference reads, or the one a mask reads when it names none: height when there is one, as wear is. */
@@ -81,9 +86,5 @@ export class AnchorInputs {
     const others = Object.entries(this.inputs()).filter(([held]) => held !== port);
     const reference = { anchor, channel: this.channelOf(channel ? { anchor, channel } : undefined) };
     this.inputsChange.emit(Object.fromEntries(anchor ? [...others, [port, reference]] : others));
-  }
-
-  protected text(event: Event): string {
-    return (event.target as HTMLSelectElement).value;
   }
 }

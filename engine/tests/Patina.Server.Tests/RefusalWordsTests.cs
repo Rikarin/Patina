@@ -46,4 +46,33 @@ public sealed class RefusalWordsTests {
             $"Refusals.cs sends '{code}', and editor/apps/studio/src/app/core/messages.ts has no words for it."
         );
     }
+
+    /// <summary>
+    ///     How many refusals still go out with no code, and so show the Server's own sentence. Each that gains a code
+    ///     takes one off; none may be added, since a client can only say a refusal in its words by its code (#198).
+    /// </summary>
+    const int Uncoded = 91;
+
+    /// <summary>
+    ///     A new refusal goes out through <see cref="Refusals.Problem" />, with a code the app has words for.
+    /// </summary>
+    [Fact]
+    public void No_new_refusal_goes_out_without_a_code() {
+        var server = Path.Combine(Engine.Root, "src", "Patina.Server");
+        var found = Directory.EnumerateFiles(server, "*.cs", SearchOption.AllDirectories)
+            .Where(static file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+            .Where(static file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+            .Where(static file => Path.GetFileName(file) != "Refusals.cs")
+            .Sum(static file => File.ReadAllText(file).Split("TypedResults.Problem(").Length - 1);
+
+        Assert.True(
+            found <= Uncoded,
+            $"{found} refusals go out with no code, more than the {Uncoded} there were: send a new one through "
+            + "Refusals.Problem with a code, and give the code words in messages.ts."
+        );
+        Assert.True(
+            found >= Uncoded,
+            $"{found} refusals go out with no code, fewer than the {Uncoded} there were: lower Uncoded to {found}."
+        );
+    }
 }

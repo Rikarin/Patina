@@ -61,7 +61,7 @@ static class StackMeshEndpoints {
         }
 
         if (session.ModelFile is not { } mesh) {
-            return TypedResults.Problem("This stack is on no mesh, so it has no UV layout.", statusCode: Missing);
+            return Refusals.Problem("This document is on no mesh, so it has no UV layout.", Missing, Refusals.NoMesh);
         }
 
         var (reply, problem) = await AskAboutMeshAsync(
@@ -75,7 +75,7 @@ static class StackMeshEndpoints {
 
         return reply?.ThumbnailHash is { } hash && store.Find(hash, GraphPreviewFiles.Drawing) is { } file
             ? TypedResults.PhysicalFile(file, "image/svg+xml")
-            : TypedResults.Problem("The Worker drew no layout.", statusCode: Unavailable);
+            : Refusals.Problem("The Worker drew no layout.", Unavailable, Refusals.UvLayoutUndrawn);
     }
 
     /// <summary>
@@ -123,7 +123,7 @@ static class StackMeshEndpoints {
         }
 
         if (session.ModelFile is not { } mesh || identity.Library is not { } library) {
-            return TypedResults.Problem("This stack is on no mesh.", statusCode: Refused);
+            return Refusals.Problem("This document is on no mesh.", Refused, Refusals.NoMesh);
         }
 
         var side = session.State.Width;

@@ -147,6 +147,7 @@ interface Closing {
               tabindex="-1"
               data-testid="tree-toggle"
               [attr.aria-label]="row.expanded ? 'Close ' + row.folder.name : 'Open ' + row.folder.name"
+              [title]="row.expanded ? 'Close ' + row.folder.name : 'Open ' + row.folder.name"
               (click)="toggle($event, row.path)"
             >
               <svg viewBox="0 0 16 16" class="size-3" [class.rotate-90]="row.expanded" aria-hidden="true">
@@ -174,6 +175,7 @@ interface Closing {
               tabindex="-1"
               data-testid="tree-toggle"
               [attr.aria-label]="row.expanded ? 'Close ' + row.project.name : 'Open ' + row.project.name"
+              [title]="row.expanded ? 'Close ' + row.project.name : 'Open ' + row.project.name"
               (click)="toggleProject($event, row.path)"
             >
               <svg viewBox="0 0 16 16" class="size-3" [class.rotate-90]="row.expanded" aria-hidden="true">

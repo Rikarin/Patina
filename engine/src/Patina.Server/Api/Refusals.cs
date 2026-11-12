@@ -147,6 +147,54 @@ public static class Refusals {
     /// </summary>
     public const string MeshLayoutChanged = "mesh-layout-changed";
 
+    /// <summary>A list of the library's files of a kind it does not list. Values: <c>kind</c>.</summary>
+    public const string FileKindUnknown = "file-kind-unknown";
+
+    /// <summary>An undo or a redo with nothing to take back or put back. Values: <c>what</c>.</summary>
+    public const string HistoryEmpty = "history-empty";
+
+    /// <summary>A new file where one of that name already is. Values: <c>file</c>, its name.</summary>
+    public const string FileExists = "file-exists";
+
+    /// <summary>A file a request named that is not there. Values: <c>file</c>, its name.</summary>
+    public const string FileMissing = "file-missing";
+
+    /// <summary>An ID map asked of a document whose bake made none.</summary>
+    public const string IdMapMissing = "id-map-missing";
+
+    /// <summary>No job has the id. Values: <c>id</c>.</summary>
+    public const string JobMissing = "job-missing";
+
+    /// <summary>A graph shown on the mesh that has no Output node to show.</summary>
+    public const string GraphNoOutput = "graph-no-output";
+
+    /// <summary>A new graph from a template the library does not have. Values: <c>template</c>.</summary>
+    public const string GraphTemplateUnknown = "graph-template-unknown";
+
+    /// <summary>
+    ///     A document's export in a format, compression, quality or mips no file can be written with (#47). Values:
+    ///     <c>reason</c>, which is the Server's own sentence.
+    /// </summary>
+    public const string ExportSettingsInvalid = "export-settings-invalid";
+
+    /// <summary>A mesh reload asked about with no mesh named (#89).</summary>
+    public const string MeshUnnamed = "mesh-unnamed";
+
+    /// <summary>A UV layout the GPU process was asked to draw and did not (#137).</summary>
+    public const string UvLayoutUndrawn = "uv-layout-undrawn";
+
+    /// <summary>
+    ///     A color selection of more colors than a mask takes, or of colors that are not three numbers each, or a
+    ///     value or background that is not a number (#110). Values: <c>most</c>.
+    /// </summary>
+    public const string SelectionRefused = "selection-refused";
+
+    /// <summary>
+    ///     Several colors selected on a mask whose base is neither a mesh map nor a picture, which the colors after the
+    ///     first read (#110).
+    /// </summary>
+    public const string SelectionNeedsPicture = "selection-needs-picture";
+
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(
         string detail,

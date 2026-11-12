@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import type { StackFilterInput, StackFilterKind, StackInput } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
-import { channelName, labelIn } from '../core/labels';
+import { XuiSelectImports } from '@xui/select';
+import { channelName, labelIn, termName, valuesOf } from '../core/labels';
 import { ProjectStore } from '../library/project-store';
 import { FilterFields } from './filter-fields';
 import { PaintStore } from './paint-store';
@@ -19,7 +20,7 @@ const FirstGenerator = 'Noise/Clouds';
  */
 @Component({
   selector: 'ptn-filter-inputs',
-  imports: [FilterFields, XuiButtonImports],
+  imports: [FilterFields, XuiButtonImports, XuiSelectImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-1.5' },
   template: `
@@ -30,86 +31,76 @@ const FirstGenerator = 'Noise/Clouds';
           <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="slot.summary">{{
             slot.port
           }}</span>
-          <select
-            class="well h-7 min-w-0 flex-1 px-1 text-sm"
-            [attr.aria-label]="slot.port + ' reads'"
+          <xui-select
+            class="min-w-0 flex-1"
+            [aria-label]="slot.port + ' reads'"
             [attr.data-testid]="testId() + slot.port + '-source'"
-            (change)="choose(slot, text($event))"
-          >
-            <option value="" [selected]="!held">{{ unset(slot) }}</option>
-            @for (term of sourceTerms(); track term.value) {
-              <option [value]="term.value" [selected]="held?.source === term.value">{{ term.label }}</option>
-            }
-          </select>
+            [filterable]="false"
+            [itemText]="sourceNames().get(slot.port) ?? termName"
+            [items]="sources()"
+            [placeholder]="unset(slot)"
+            [value]="held?.source ?? ''"
+            (valueChange)="choose(slot, $event ?? '')"
+          />
         </div>
         @if (held) {
           @switch (held.source) {
             @case ('Beneath') {
               <div class="flex items-center gap-2 ps-[4.5rem]">
-                <select
-                  class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                  [attr.aria-label]="slot.port + ' channel'"
+                <xui-select
+                  class="min-w-0 flex-1"
+                  placeholder="This channel"
+                  [aria-label]="slot.port + ' channel'"
                   [attr.data-testid]="testId() + slot.port + '-channel'"
-                  (change)="change(slot.port, { channel: text($event) })"
-                >
-                  @if (!mask()) {
-                    <option value="" [selected]="!held.channel">This channel</option>
-                  }
-                  @for (channel of channels(); track channel) {
-                    <option [value]="channel" [selected]="channel === held.channel">{{ channelName(channel) }}</option>
-                  }
-                </select>
+                  [filterable]="false"
+                  [itemText]="channelChoiceName"
+                  [items]="channelChoices()"
+                  [value]="held.channel"
+                  (valueChange)="change(slot.port, { channel: $event ?? '' })"
+                />
               </div>
             }
             @case ('Anchor') {
               <div class="flex items-center gap-2 ps-[4.5rem]">
-                <select
-                  class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                  [attr.aria-label]="slot.port + ' anchor point'"
+                <xui-select
+                  class="min-w-0 flex-1"
+                  placeholder="None"
+                  [aria-label]="slot.port + ' anchor point'"
                   [attr.data-testid]="testId() + slot.port + '-anchor'"
-                  (change)="
-                    change(slot.port, { anchor: { anchor: text($event), channel: held.anchor?.channel ?? '' } })
+                  [filterable]="false"
+                  [itemText]="anchorChoiceName"
+                  [items]="anchorChoices()"
+                  [value]="held.anchor?.anchor ?? ''"
+                  (valueChange)="
+                    change(slot.port, { anchor: { anchor: $event ?? '', channel: held.anchor?.channel ?? '' } })
                   "
-                >
-                  <option value="" [selected]="!held.anchor?.anchor">None</option>
-                  @for (anchor of anchors(); track anchor) {
-                    <option [value]="anchor" [selected]="anchor === held.anchor?.anchor">{{ anchor }}</option>
-                  }
-                </select>
-                <select
-                  class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                  [attr.aria-label]="slot.port + ' anchor channel'"
-                  (change)="change(slot.port, { anchor: { anchor: held.anchor?.anchor ?? '', channel: text($event) } })"
-                >
-                  @if (!mask()) {
-                    <option value="" [selected]="!held.anchor?.channel">This channel</option>
-                  }
-                  @for (channel of channels(); track channel) {
-                    <option [value]="channel" [selected]="channel === held.anchor?.channel">
-                      {{ channelName(channel) }}
-                    </option>
-                  }
-                </select>
+                />
+                <xui-select
+                  class="min-w-0 flex-1"
+                  placeholder="This channel"
+                  [aria-label]="slot.port + ' anchor channel'"
+                  [filterable]="false"
+                  [itemText]="channelChoiceName"
+                  [items]="channelChoices()"
+                  [value]="held.anchor?.channel ?? ''"
+                  (valueChange)="
+                    change(slot.port, { anchor: { anchor: held.anchor?.anchor ?? '', channel: $event ?? '' } })
+                  "
+                />
               </div>
             }
             @case ('Generator') {
               <div class="flex items-center gap-2 ps-[4.5rem]">
-                <select
-                  class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                  [attr.aria-label]="slot.port + ' generator'"
+                <xui-select
+                  class="min-w-0 flex-1"
+                  [aria-label]="slot.port + ' generator'"
                   [attr.data-testid]="testId() + slot.port + '-generator'"
-                  (change)="change(slot.port, { generator: text($event), values: null, parameters: null })"
-                >
-                  @for (group of generatorGroups(); track group.category) {
-                    <optgroup [label]="group.category">
-                      @for (source of group.sources; track source.node) {
-                        <option [value]="source.node" [selected]="source.node === held.generator">
-                          {{ source.name }}
-                        </option>
-                      }
-                    </optgroup>
-                  }
-                </select>
+                  [itemText]="generatorName"
+                  [items]="generatorNodes()"
+                  [matchTargetWidth]="false"
+                  [value]="held.generator || null"
+                  (valueChange)="$event && change(slot.port, { generator: $event, values: null, parameters: null })"
+                />
               </div>
               @if (generatorOf(held.generator); as generator) {
                 <ptn-filter-fields
@@ -134,6 +125,7 @@ const FirstGenerator = 'Noise/Clouds';
                   size="sm"
                   variant="outline"
                   [attr.aria-label]="'Choose the picture ' + slot.port + ' reads'"
+                  [title]="'Choose the picture ' + slot.port + ' reads'"
                   (click)="pickPicture(slot.port)"
                 >
                   Choose…
@@ -142,16 +134,16 @@ const FirstGenerator = 'Noise/Clouds';
             }
             @case ('Bake') {
               <div class="flex items-center gap-2 ps-[4.5rem]">
-                <select
-                  class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                  [attr.aria-label]="slot.port + ' mesh map'"
-                  (change)="change(slot.port, { map: text($event) })"
-                >
-                  <option value="" [selected]="!held.map">None</option>
-                  @for (map of meshMaps(); track map.value) {
-                    <option [value]="map.value" [selected]="map.value === held.map">{{ map.label }}</option>
-                  }
-                </select>
+                <xui-select
+                  class="min-w-0 flex-1"
+                  placeholder="None"
+                  [aria-label]="slot.port + ' mesh map'"
+                  [filterable]="false"
+                  [itemText]="meshMapName()"
+                  [items]="meshMapChoices()"
+                  [value]="held.map"
+                  (valueChange)="change(slot.port, { map: $event ?? '' })"
+                />
               </div>
             }
           }
@@ -178,7 +170,7 @@ export class FilterInputs {
   /** Every input, replacing what it read before. */
   readonly inputsChange = output<FilterSources>();
 
-  protected readonly channelName = channelName;
+  protected readonly termName = termName;
 
   /** A slot for each image, but a mask step's subject, which is the mask. */
   protected readonly slots = computed(() => (this.kind().inputs ?? []).filter(slot => !(this.mask() && slot.subject)));
@@ -191,13 +183,41 @@ export class FilterInputs {
     () => new Map((this.store.vocabulary()?.sources ?? []).map(source => [source.node, source] as const))
   );
 
-  protected readonly generatorGroups = computed(() => {
-    const groups = new Map<string, StackFilterKind[]>();
+  /** Every generator, a category's together in the order the categories first come. */
+  protected readonly generatorNodes = computed(() => {
+    const groups = new Map<string, string[]>();
     for (const source of this.generators().values()) {
-      groups.set(source.category, [...(groups.get(source.category) ?? []), source]);
+      groups.set(source.category, [...(groups.get(source.category) ?? []), source.node]);
     }
 
-    return [...groups].map(([category, sources]) => ({ category, sources }));
+    return [...groups.values()].flat();
+  });
+
+  /** A generator by its name and category, as the Filter list names a filter. */
+  protected readonly generatorName = (node: string): string => {
+    const source = this.generators().get(node);
+    return source ? `${source.name} · ${source.category}` : termName(node);
+  };
+
+  /** Nothing first, for a slot to read what it reads by itself again, then every source. */
+  protected readonly sources = computed(() => ['', ...valuesOf(this.sourceTerms())]);
+  /** What each slot's sources are called: its own words for nothing, and the Server's for the rest. */
+  protected readonly sourceNames = computed(() => {
+    const terms = this.sourceTerms();
+    return new Map(
+      this.slots().map(slot => [slot.port, (source: string) => (source ? labelIn(terms, source) : this.unset(slot))])
+    );
+  });
+
+  /** This channel first, on a layer, where a picture can name none. A mask's pictures always name their channel. */
+  protected readonly channelChoices = computed(() => (this.mask() ? this.channels() : ['', ...this.channels()]));
+  protected readonly channelChoiceName = (channel: string): string => (channel ? channelName(channel) : 'This channel');
+  protected readonly anchorChoices = computed(() => ['', ...this.anchors()]);
+  protected readonly anchorChoiceName = (anchor: string): string => anchor || 'None';
+  protected readonly meshMapChoices = computed(() => ['', ...valuesOf(this.meshMaps())]);
+  protected readonly meshMapName = computed(() => {
+    const maps = this.meshMaps();
+    return (map: string) => (map ? labelIn(maps, map) : 'None');
   });
 
   protected generatorOf(node: string | undefined): StackFilterKind | undefined {
@@ -242,10 +262,6 @@ export class FilterInputs {
     if (picture) {
       this.change(port, { asset: picture });
     }
-  }
-
-  protected text(event: Event): string {
-    return (event.target as HTMLSelectElement).value;
   }
 
   protected fileOf(path: string | undefined | null): string {

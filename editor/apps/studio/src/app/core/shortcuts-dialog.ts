@@ -1,11 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, model, signal } from '@angular/core';
+import { provideIcons } from '@ng-icons/core';
+import { matClose } from '@ng-icons/material-icons/baseline';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
+import { XuiSelectImports } from '@xui/select';
 import { type Chord, chordOf, chordText, isMac } from './chords';
 import { type CommandSpec, FixedKeys, KeyPresets, Sections, reservedKeys } from './command-table';
 import { Commands } from './commands';
 import { desktop } from './desktop';
+import { IconImports } from './icons';
 
 /** A key the dialog could not give, and what has it: a command, which can swap, or the app menu or a control. */
 interface Refused {
@@ -23,29 +27,29 @@ interface Refused {
  */
 @Component({
   selector: 'ptn-shortcuts',
-  imports: [XuiButtonImports, XuiCalloutImports, XuiDialogImports],
+  imports: [IconImports, XuiButtonImports, XuiCalloutImports, XuiDialogImports, XuiSelectImports],
+  viewProviders: [provideIcons({ matClose })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <xui-dialog size="md" title="Keyboard Shortcuts" [(open)]="open">
       <xui-dialog-body>
         <div class="flex flex-col gap-3" data-testid="shortcuts">
-          <label class="flex items-center gap-2 text-sm">
+          <div class="flex items-center gap-2 text-sm">
             <span class="text-foreground-muted">Preset</span>
-            <select
-              class="well h-7 px-1 text-sm"
+            <xui-select
+              class="min-w-44"
+              aria-label="Preset"
               data-testid="shortcuts-preset"
               title="A preset is where keys start. Choosing one drops keys changed since."
-              (change)="choosePreset($event)"
-            >
-              @for (preset of presets; track preset.id) {
-                <option [value]="preset.id" [selected]="preset.id === commands.settings().preset">
-                  {{ preset.label }}
-                </option>
-              }
-            </select>
+              [filterable]="false"
+              [itemText]="presetName"
+              [items]="presets"
+              [value]="commands.settings().preset"
+              (valueChange)="$event && choosePreset($event)"
+            />
             <span class="flex-1"></span>
             <button type="button" xuiButton size="sm" variant="ghost" (click)="reset()">Reset to Preset</button>
-          </label>
+          </div>
 
           @if (refused(); as refusal) {
             <xui-callout color="warning" data-testid="shortcuts-taken" compact>
@@ -80,6 +84,7 @@ interface Refused {
                     data-testid="shortcut-key"
                     [variant]="listening() === command.id ? 'default' : 'ghost'"
                     [attr.aria-label]="'Change the key for ' + command.label"
+                    [title]="'Change the key for ' + command.label"
                     (click)="listening.set(command.id)"
                     (keydown)="bind($event, command.id)"
                     (blur)="listening() === command.id && listening.set(null)"
@@ -93,10 +98,11 @@ interface Refused {
                     variant="ghost"
                     class="w-6 px-0"
                     [attr.aria-label]="'Remove the key for ' + command.label"
+                    [title]="'Remove the key for ' + command.label"
                     [disabled]="!keysOf(command.id)"
                     (click)="commands.clear(command.id)"
                   >
-                    ×
+                    <ng-icon xui size="sm" name="matClose" />
                   </button>
                 </div>
               }
@@ -137,7 +143,9 @@ export class ShortcutsDialog {
   protected readonly refused = signal<Refused | null>(null);
   private readonly mac = isMac(desktop()?.platform);
 
-  protected readonly presets = Object.entries(KeyPresets).map(([id, preset]) => ({ id, label: preset.label }));
+  protected readonly presets = Object.keys(KeyPresets);
+  protected readonly presetName = (id: string): string =>
+    Object.entries(KeyPresets).find(([key]) => key === id)?.[1].label ?? id;
 
   protected readonly sections = Sections.map(name => ({
     name,
@@ -207,8 +215,8 @@ export class ShortcutsDialog {
     this.refused.set(null);
   }
 
-  protected choosePreset(event: Event): void {
-    this.commands.usePreset((event.target as HTMLSelectElement).value);
+  protected choosePreset(preset: string): void {
+    this.commands.usePreset(preset);
     this.refused.set(null);
   }
 

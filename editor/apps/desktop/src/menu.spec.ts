@@ -131,4 +131,36 @@ describe('menus from the studio', () => {
     const other = built('linux');
     expect(ids(other.find(menu => menu.label === 'Edit'))).toEqual(['undo', 'separator', 'preferences']);
   });
+
+  it('keeps About first in the app menu on a Mac, as the studio’s own, and in Help elsewhere (#190)', () => {
+    const menus = [
+      {
+        label: 'Help',
+        items: [
+          { type: 'command' as const, id: 'documentation', label: 'Documentation', enabled: true },
+          { type: 'separator' as const },
+          { type: 'command' as const, id: 'about', label: 'About Patina', enabled: true }
+        ]
+      }
+    ];
+    const built = (platform: string) => {
+      const was = process.platform;
+      Object.defineProperty(process, 'platform', { value: platform });
+      try {
+        return template(actions(), menus);
+      } finally {
+        Object.defineProperty(process, 'platform', { value: was });
+      }
+    };
+    const ids = (menu: { submenu?: unknown } | undefined) =>
+      ((menu?.submenu ?? []) as { id?: string; role?: string; type?: string }[]).map(
+        item => item.id ?? item.role ?? item.type
+      );
+
+    const mac = built('darwin');
+    expect(ids(mac[0])[0]).toBe('about');
+    expect(ids(mac[0])).not.toContain(undefined);
+    expect(ids(mac.find(menu => menu.label === 'Help'))).toEqual(['documentation']);
+    expect(ids(built('linux').find(menu => menu.label === 'Help'))).toEqual(['documentation', 'separator', 'about']);
+  });
 });

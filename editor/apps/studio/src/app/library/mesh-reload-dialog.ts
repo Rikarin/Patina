@@ -41,7 +41,7 @@ const Keep = '';
               <dd>
                 <xui-select
                   size="sm"
-                  [ariaLabel]="'New material for ' + set"
+                  [aria-label]="'New material for ' + set"
                   [attr.data-testid]="'mesh-reassign-' + set"
                   [filterable]="false"
                   [items]="choices()"

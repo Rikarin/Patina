@@ -24,7 +24,9 @@ class ProjectPictureRequest:
 
         Attributes:
             project (str): The project, below `projects/`.
-            picture (str): A picture file on the Server's machine.
+            picture (str): A picture the library holds, by its path below the library, or a picture file on the Server's
+                machine by its
+                full path. One of another project is copied into this one, as one from the machine is.
      """
 
     project: str

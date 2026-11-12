@@ -87,7 +87,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     /// <summary>The texture set this session paints.</summary>
     public TextureSetAsset Set =>
         LayerStackEdit.SetFor(Document, PaintSet)
-        ?? throw new StackEditRefusedException("This stack has no texture set.");
+        ?? throw new StackEditRefusedException("This document has no texture set.");
 
     public GraphHistoryState History =>
         new(
@@ -499,7 +499,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
 
         var chosen = Set;
         if (chosen.Channels.Exists(channel => channel.Usage == usage)) {
-            throw new StackEditRefusedException($"This stack has {StackDocuments.ChannelName(usage)} already.");
+            throw new StackEditRefusedException($"This document has {StackDocuments.ChannelName(usage)} already.");
         }
 
         var added = chosen with { Channels = [..chosen.Channels, new() { Usage = usage, Default = DefaultOf(usage) }] };
@@ -588,7 +588,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
 
         var channel = StackDocuments.ChannelName(stroke.Channel);
         if (Set.Channels.TrueForAll(held => held.Usage != stroke.Channel)) {
-            throw new StackEditRefusedException($"This stack has no {channel} channel.");
+            throw new StackEditRefusedException($"This document has no {StackDocuments.ChannelName(channel)} channel.");
         }
 
         if (!layer.Writes(stroke.Channel)) {
@@ -840,7 +840,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         if (id is null) {
             var layers = Set.Layers;
             if (layers.Count == 0) {
-                throw new StackEditRefusedException("This stack has no layers to flatten.");
+                throw new StackEditRefusedException("This document has no layers to flatten.");
             }
 
             id = LayerStackEdit.FreeId(Set, "flattened");
@@ -913,7 +913,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             || stroke.Curve == "fill"
             || stroke.Source is { Kind: "material", Projection: not (null or "Uv") };
         if (onMesh && Document.Model.Trim().Length == 0) {
-            throw new StackEditRefusedException("This stack has no mesh to paint on.", Api.Refusals.NoMesh);
+            throw new StackEditRefusedException("This document has no mesh to paint on.", Api.Refusals.NoMesh);
         }
 
         if (stroke.View is not { } view) {
@@ -930,9 +930,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
 
     internal LayerAsset Require(string id) =>
         LayerStackEdit.Find(Document, new(Set.Name, id))
-        ?? throw new StackEditRefusedException(
-            string.Create(CultureInfo.InvariantCulture, $"This stack has no layer '{id}'.")
-        );
+        ?? throw new StackEditRefusedException("That layer is not in this document any more.");
 
     /// <summary>One undo step: what it is called, what a jump names it by, and what it did.</summary>
     public sealed record UndoStep(long Id, string Label) {

@@ -110,3 +110,35 @@ test('the History pane lists the undo steps and goes back to one', async () => {
   await steps.nth(2).click();
   await expect(layers).toHaveCount(count + 2);
 });
+
+test('Help has the guide, the keys, a problem report, and About with the versions and whose work is whose', async () => {
+  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready', { timeout: 60_000 });
+  const ids = () =>
+    app.evaluate(({ Menu }) =>
+      (Menu.getApplicationMenu()?.items ?? []).flatMap(menu => (menu.submenu?.items ?? []).map(item => item.id))
+    );
+  await expect.poll(ids).toEqual(expect.arrayContaining(['documentation', 'shortcuts', 'reportProblem', 'about']));
+
+  // A link opens in the browser, never in the app's own window.
+  await app.evaluate(({ shell }) => {
+    Object.assign(globalThis, { opened: [] as string[] });
+    Object.assign(shell, {
+      openExternal: (url: string) => {
+        (globalThis as unknown as { opened: string[] }).opened.push(url);
+        return Promise.resolve();
+      }
+    });
+  });
+  await command('documentation');
+  await expect
+    .poll(() => app.evaluate(() => (globalThis as unknown as { opened: string[] }).opened))
+    .toEqual(['https://github.com/Rikarin/Patina/blob/master/docs/03-guide.md']);
+
+  await command('about');
+  const about = window.getByTestId('about');
+  await expect(about).toBeVisible();
+  await expect(window.getByTestId('about-ownership')).toContainText('Your work is yours');
+  await expect(window.getByTestId('about-version-patina')).not.toBeEmpty();
+  await expect(window.getByTestId('about-version-electron')).toHaveText(/^\d+\./u);
+  await expect(about).toContainText('GNU General Public License');
+});

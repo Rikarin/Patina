@@ -1,10 +1,14 @@
 import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
 import type { ViewportDisplay } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { XuiColorPickerImports } from '@xui/color-picker';
+import { XuiNumericInputImports } from '@xui/numeric-input';
 import { type XuiSegmentedOption, XuiSegmentedControlImports } from '@xui/segmented-control';
+import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { Commands } from '../core/commands';
+import { labelsOf, valuesOf } from '../core/labels';
 import { degrees, percent } from '../core/numbers';
 import type { AxisView } from './orbit';
 import { DefaultDisplay, Shapes, ViewportClient } from './viewport-client';
@@ -188,28 +192,36 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
  */
 @Component({
   selector: 'ptn-viewport-display',
-  imports: [XuiButtonImports, XuiSegmentedControlImports, XuiSliderImports, XuiSwitchImports],
+  imports: [
+    XuiButtonImports,
+    XuiColorPickerImports,
+    XuiNumericInputImports,
+    XuiSegmentedControlImports,
+    XuiSelectImports,
+    XuiSliderImports,
+    XuiSwitchImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'pane flex w-64 flex-col gap-2 overflow-y-auto p-2', 'data-testid': 'viewport-display' },
   template: `
     <div class="flex items-center gap-2" title="What a material or a graph with no mesh of its own is seen on">
       <span class="text-foreground-muted w-20 shrink-0 text-xs">Shape</span>
-      <select
-        class="well h-7 min-w-0 flex-1 px-1 text-sm"
+      <xui-select
+        class="min-w-0 flex-1"
         aria-label="Shape"
         data-testid="viewport-shape"
-        (change)="viewport.setDisplay({ shape: text($event) })"
-      >
-        @for (shape of shapes; track shape.value) {
-          <option [value]="shape.value" [selected]="shape.value === display().shape">{{ shape.label }}</option>
-        }
-      </select>
+        [filterable]="false"
+        [itemText]="shapeName"
+        [items]="shapes"
+        [value]="display().shape"
+        (valueChange)="$event && viewport.setDisplay({ shape: $event })"
+      />
     </div>
 
     <span class="section-label mt-1">Camera</span>
     <xui-segmented-control
       size="sm"
-      ariaLabel="Projection"
+      aria-label="Projection"
       data-testid="viewport-projection"
       [options]="projections"
       [value]="display().orthographic ? 'orthographic' : 'perspective'"
@@ -266,19 +278,17 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
     }
     <div class="flex items-center gap-2" title="What shows where the environment does not, as Background takes it away">
       <span class="text-foreground-muted w-20 shrink-0 text-xs">Behind</span>
-      <input
-        type="color"
-        class="well h-6 w-10 shrink-0"
+      <xui-color-picker
         aria-label="Background color"
         data-testid="viewport-background-colour"
         [value]="display().backgroundColor"
-        (change)="viewport.setDisplay({ backgroundColor: text($event) })"
+        (valueChange)="viewport.setDisplay({ backgroundColor: $event })"
       />
     </div>
     <div class="flex items-center gap-2" [title]="commands.tooltip('toggleGrid')">
       <span class="text-foreground-muted w-20 shrink-0 text-xs">Grid</span>
       <xui-switch
-        ariaLabel="Grid"
+        aria-label="Grid"
         data-testid="viewport-grid"
         [checked]="display().grid"
         (checkedChange)="viewport.setDisplay({ grid: $event })"
@@ -289,32 +299,32 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
       <span class="section-label mt-1">Picture</span>
       <div class="flex items-center gap-2" title="One lane of the picture as a grey, or all of it as its color">
         <span class="text-foreground-muted w-20 shrink-0 text-xs">Lane</span>
-        <select
-          class="well h-7 min-w-0 flex-1 px-1 text-sm"
+        <xui-select
+          class="min-w-0 flex-1"
           aria-label="Picture lane"
           data-testid="viewport-picture-lane"
-          (change)="viewport.setDisplay({ pictureLane: text($event) })"
-        >
-          @for (lane of lanes; track lane.value) {
-            <option [value]="lane.value" [selected]="lane.value === display().pictureLane">{{ lane.label }}</option>
-          }
-        </select>
+          [filterable]="false"
+          [itemText]="laneName"
+          [items]="lanes"
+          [value]="display().pictureLane"
+          (valueChange)="$event && viewport.setDisplay({ pictureLane: $event })"
+        />
       </div>
       <div
         class="flex items-center gap-2"
         title="What the picture's numbers are multiplied by before they show, for a height or a position"
       >
         <span class="text-foreground-muted w-20 shrink-0 text-xs">Scale</span>
-        <input
-          type="number"
-          class="well h-7 min-w-0 flex-1 px-1 text-sm"
+        <xui-numeric-input
+          class="min-w-0 flex-1"
+          size="sm"
           aria-label="Picture scale"
           data-testid="viewport-picture-scale"
-          min="0.001"
-          max="1000"
-          step="0.1"
+          [max]="1000"
+          [min]="0.001"
+          [stepSize]="0.1"
           [value]="display().pictureScale"
-          (change)="scale($event)"
+          (valueChange)="scale($event)"
         />
       </div>
     }
@@ -322,16 +332,16 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
     <span class="section-label mt-1">Finish</span>
     <div class="flex items-center gap-2" title="The curve that takes the light to the screen">
       <span class="text-foreground-muted w-20 shrink-0 text-xs">Tone map</span>
-      <select
-        class="well h-7 min-w-0 flex-1 px-1 text-sm"
+      <xui-select
+        class="min-w-0 flex-1"
         aria-label="Tone mapping"
         data-testid="viewport-tonemap"
-        (change)="viewport.setDisplay({ toneMapping: text($event) })"
-      >
-        @for (curve of curves; track curve.value) {
-          <option [value]="curve.value" [selected]="curve.value === display().toneMapping">{{ curve.label }}</option>
-        }
-      </select>
+        [filterable]="false"
+        [itemText]="curveName"
+        [items]="curves"
+        [value]="display().toneMapping"
+        (valueChange)="$event && viewport.setDisplay({ toneMapping: $event })"
+      />
     </div>
     @for (slider of finish; track slider.key) {
       <div class="flex items-center gap-2" [title]="slider.title">
@@ -353,7 +363,7 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
     <div class="flex items-center gap-2" [title]="commands.tooltip('toggleWireframe')">
       <span class="text-foreground-muted w-20 shrink-0 text-xs">Wireframe</span>
       <xui-switch
-        ariaLabel="Wireframe"
+        aria-label="Wireframe"
         data-testid="viewport-wireframe"
         [checked]="display().wireframe"
         (checkedChange)="viewport.setDisplay({ wireframe: $event })"
@@ -393,10 +403,13 @@ export class ViewportDisplayPanel {
   protected readonly projections = Projections;
   protected readonly lighting = Lighting;
   protected readonly finish = Finish;
-  protected readonly curves = ToneMappings;
+  protected readonly curves = valuesOf(ToneMappings);
+  protected readonly curveName = labelsOf(ToneMappings);
   protected readonly snaps = Snaps;
-  protected readonly lanes = Lanes;
-  protected readonly shapes = Shapes;
+  protected readonly lanes = valuesOf(Lanes);
+  protected readonly laneName = labelsOf(Lanes);
+  protected readonly shapes = valuesOf(Shapes);
+  protected readonly shapeName = labelsOf(Shapes);
   /** A snap moves the camera, which is the pane's. */
   readonly snap = output<AxisView>();
 
@@ -404,18 +417,10 @@ export class ViewportDisplayPanel {
     this.viewport.setDisplay({ [key]: value });
   }
 
-  protected text(event: Event): string {
-    return (event.target as HTMLSelectElement | HTMLInputElement).value;
-  }
-
-  /** A scale the Server takes, or the one it has for anything else. */
-  protected scale(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const value = Number(input.value);
-    if (Number.isFinite(value) && value >= 0.001 && value <= 1000) {
+  /** A scale the Server takes. The field keeps itself within the same bounds. */
+  protected scale(value: number | null): void {
+    if (value !== null && Number.isFinite(value) && value >= 0.001 && value <= 1000) {
       this.viewport.setDisplay({ pictureScale: value });
-    } else {
-      input.value = String(this.display().pictureScale);
     }
   }
 

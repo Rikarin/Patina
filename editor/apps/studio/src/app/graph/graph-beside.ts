@@ -9,11 +9,15 @@ import {
   untracked
 } from '@angular/core';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
+import { XuiSelectImports } from '@xui/select';
 import { Activity } from '../core/activity';
 import { ProjectStore } from '../library/project-store';
 import { GraphPane } from './graph-pane';
 import { GraphStore } from './graph-store';
 import { GraphViews } from './graph-views';
+
+/** The choice that shows no graph here. */
+const None = '';
 
 /**
  * A second graph beside the one in front, so two can be seen and edited side by side (#40). It has a store of its own,
@@ -23,24 +27,24 @@ import { GraphViews } from './graph-views';
  */
 @Component({
   selector: 'ptn-graph-beside',
-  imports: [GraphPane, XuiNonIdealStateImports],
+  imports: [GraphPane, XuiNonIdealStateImports, XuiSelectImports],
   providers: [GraphStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col', 'data-testid': 'graph-beside' },
   template: `
     <div class="chrome-bar flex min-h-8 shrink-0 items-center gap-2 px-2 py-1">
-      <select
-        class="well h-6 max-w-64 min-w-0 flex-1 px-1 text-xs"
+      <xui-select
+        class="max-w-64 min-w-0 flex-1"
         aria-label="Graph beside"
+        placeholder="Choose a graph…"
         data-testid="graph-beside-choice"
         title="One of the open graphs, to see and edit beside the one in front"
-        (change)="choose($event)"
-      >
-        <option value="" [selected]="shown() === null">Choose a graph…</option>
-        @for (tab of graphs(); track tab.path) {
-          <option [value]="tab.path" [selected]="tab.path === shown()">{{ tab.name }}</option>
-        }
-      </select>
+        [filterable]="false"
+        [itemText]="graphName()"
+        [items]="choices()"
+        [value]="shown()"
+        (valueChange)="choose($event)"
+      />
       @if (views.front() === store && store.document() !== null) {
         <span class="readout text-xs" data-testid="graph-beside-front">In front</span>
       }
@@ -65,6 +69,13 @@ export class GraphBeside {
 
   /** The open graphs, each a tab that holds its session. */
   protected readonly graphs = computed(() => this.project.tabs().filter(tab => tab.kind === 'graph'));
+
+  /** What the choice offers: None, which lets the graph go, then each open graph. */
+  protected readonly choices = computed(() => [None, ...this.graphs().map(tab => tab.path)]);
+  protected readonly graphName = computed(() => {
+    const tabs = this.graphs();
+    return (path: string) => (path === None ? 'None' : (tabs.find(tab => tab.path === path)?.name ?? path));
+  });
 
   protected readonly emptyText = computed(() =>
     this.graphs().length > 0
@@ -135,9 +146,8 @@ export class GraphBeside {
     });
   }
 
-  protected choose(event: Event): void {
-    const path = (event.target as HTMLSelectElement).value;
-    if (!path) {
+  protected choose(path: string | null): void {
+    if (!path || path === None) {
       this.leave();
       return;
     }

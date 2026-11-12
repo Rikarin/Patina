@@ -2003,7 +2003,7 @@ export function writesChannel(layer: StackLayer, usage: string): boolean {
   return layer.channels.length === 0 || layer.channels.includes(usage);
 }
 
-/** What a stack's toolbar says about its last evaluation, in the graph's words. */
+/** What a stack's toolbar says about its last evaluation: how long it took, not how many nodes ran. */
 export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'evaluation'>): string {
   if (state.settled < state.revision) {
     return 'Evaluating…';
@@ -2018,9 +2018,7 @@ export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'e
     return 'Not evaluated';
   }
 
-  return evaluation.ran === 0
-    ? 'Up to date'
-    : `${String(evaluation.ran)} ran, ${evaluation.milliseconds.toFixed(0)} ms`;
+  return evaluation.ran === 0 ? 'Up to date' : `Updated in ${evaluation.milliseconds.toFixed(0)} ms`;
 }
 
 /** A mask's effects with one more of a node, or none of it if it had one: what a toggle such as Invert sends. */

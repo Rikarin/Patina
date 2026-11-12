@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, injec
 import { unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
+import { XuiSelectImports } from '@xui/select';
 import { XuiSpinnerImports } from '@xui/spinner';
 import { Commands } from '../core/commands';
 import { channelName } from '../core/labels';
@@ -11,30 +12,31 @@ import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf, toTexels } from './paint-store';
 import { StrokeGesture } from './stroke-gesture';
 
+/** What the channel list means by the one being painted, whichever that is. */
+const Painting = 'painting:';
+
 /** The stack flat, in UV space. It paints like the mesh does, and it is the whole picture for a layered material. */
 @Component({
   selector: 'ptn-paint-atlas',
-  imports: [XuiButtonImports, XuiNonIdealStateImports, XuiSpinnerImports],
+  imports: [XuiButtonImports, XuiNonIdealStateImports, XuiSelectImports, XuiSpinnerImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2',
     'data-commands': 'atlas'
   },
   template: `
-    @if (store.state(); as state) {
-      <select
-        class="well absolute top-3 left-3 z-10 h-7 px-1 text-sm"
+    @if (store.state()) {
+      <xui-select
+        class="absolute top-3 left-3 z-10 min-w-0"
         aria-label="Channel to look at"
         data-testid="paint-view-channel"
-        (change)="look($event)"
-      >
-        <option value="">Painting channel</option>
-        @for (channel of state.channels; track channel.usage) {
-          <option [value]="channel.usage" [selected]="store.viewed() === channel.usage">
-            {{ nameOf(channel.usage) }}
-          </option>
-        }
-      </select>
+        [filterable]="false"
+        [itemText]="lookName"
+        [items]="looks()"
+        [matchTargetWidth]="false"
+        [value]="store.viewed() ?? paintingChannel"
+        (valueChange)="store.viewChannel($event === paintingChannel ? null : $event)"
+      />
     }
     @if (store.picture()) {
       <div class="absolute top-3 right-3 z-10 flex gap-1">
@@ -273,7 +275,13 @@ export class PaintAtlas {
   protected readonly wireFailure = signal<string | null>(null);
   private wiredFor: string | null = null;
   private panning = false;
-  protected readonly nameOf = channelName;
+  /** What the 2D view can show: the channel being painted, or any other to look at. */
+  protected readonly paintingChannel = Painting;
+  protected readonly looks = computed(() => [
+    Painting,
+    ...(this.store.state()?.channels.map(channel => channel.usage) ?? [])
+  ]);
+  protected readonly lookName = (usage: string) => (usage === Painting ? 'Painting channel' : channelName(usage));
   protected readonly transform = computed(() => {
     const [x, y] = this.shift();
     return `translate(${x}px, ${y}px) scale(${this.scale()})`;
@@ -309,10 +317,6 @@ export class PaintAtlas {
     }
 
     this.wire.set(null);
-  }
-
-  protected look(event: Event): void {
-    this.store.viewChannel((event.target as HTMLSelectElement).value || null);
   }
 
   protected wheel(event: WheelEvent): void {

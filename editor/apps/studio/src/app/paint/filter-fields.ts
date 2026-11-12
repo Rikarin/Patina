@@ -82,14 +82,14 @@ export interface FilterText {
                 <xui-numeric-input
                   class="w-20 shrink-0"
                   size="sm"
-                  [ariaLabel]="field.name"
+                  [aria-label]="field.name"
                   [stepSize]="field.whole ? 1 : 0.05"
                   [value]="current"
                   (valueChange)="setNumber(field, $event)"
                 />
               }
               @case ('switch') {
-                <xui-switch [ariaLabel]="field.name" [checked]="isOn(field)" (checkedChange)="setOn(field, $event)" />
+                <xui-switch [aria-label]="field.name" [checked]="isOn(field)" (checkedChange)="setOn(field, $event)" />
               }
               @case ('colour') {
                 <xui-color-picker showAlpha [value]="hexOf(field)" (valueChange)="setHex(field, $event)" />
@@ -97,7 +97,7 @@ export interface FilterText {
               @case ('choice') {
                 <xui-select
                   class="min-w-0 flex-1"
-                  [ariaLabel]="field.name"
+                  [aria-label]="field.name"
                   [filterable]="false"
                   [itemText]="field.label"
                   [items]="field.choices"

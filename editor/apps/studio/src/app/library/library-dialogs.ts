@@ -5,8 +5,10 @@ import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
 import { XuiFormFieldImports } from '@xui/form-field';
 import { XuiInputImports } from '@xui/input';
+import { XuiSelectImports } from '@xui/select';
 import { XuiTagInputImports } from '@xui/tag-input';
 import { desktop } from '../core/desktop';
+import { labelsOf, valuesOf } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { LibraryActions } from './library-actions';
@@ -32,6 +34,7 @@ const DocumentKinds = [
     XuiDialogImports,
     XuiFormFieldImports,
     XuiInputImports,
+    XuiSelectImports,
     XuiTagInputImports
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -117,34 +120,35 @@ const DocumentKinds = [
               (input)="newName.set(text($event))"
             />
           </xui-form-field>
-          <label class="flex flex-col gap-1">
-            <span class="section-label">Kind</span>
-            <select class="well h-7 w-full px-1" data-testid="new-document-kind" (change)="kind.set(text($event))">
-              @for (option of kinds; track option.value) {
-                <option
-                  [value]="option.value"
-                  [selected]="option.value === kind()"
-                  [disabled]="option.value === 'texturing' && meshes().length === 0"
-                >
-                  {{ option.label }}
-                </option>
-              }
-            </select>
-          </label>
+          <xui-form-field label="Kind">
+            <xui-select
+              class="w-full"
+              data-testid="new-document-kind"
+              [filterable]="false"
+              [itemDisabled]="kindDisabled()"
+              [itemText]="kindName"
+              [items]="kinds"
+              [value]="kind()"
+              (valueChange)="$event && kind.set($event)"
+            />
+          </xui-form-field>
           @if (meshes().length === 0) {
             <p class="text-foreground-muted text-xs">
               Texturing paints a mesh of the project, and this one has none yet: add one in Project Settings.
             </p>
           }
           @if (kind() === 'texturing' && meshes().length > 1) {
-            <label class="flex flex-col gap-1">
-              <span class="section-label">Mesh</span>
-              <select class="well h-7 w-full px-1" data-testid="new-document-mesh" (change)="mesh.set(text($event))">
-                @for (choice of meshes(); track choice.id) {
-                  <option [value]="choice.id" [selected]="choice.id === mesh()">{{ fileName(choice.path) }}</option>
-                }
-              </select>
-            </label>
+            <xui-form-field label="Mesh">
+              <xui-select
+                class="w-full"
+                data-testid="new-document-mesh"
+                [filterable]="false"
+                [itemText]="meshName()"
+                [items]="meshIds()"
+                [value]="mesh()"
+                (valueChange)="$event && mesh.set($event)"
+              />
+            </xui-form-field>
           }
           @if (kind() === 'image-material') {
             <div class="flex items-center gap-2">
@@ -171,7 +175,13 @@ export class LibraryDialogs {
   private readonly library = inject(LibraryStore);
   private readonly status = inject(SystemStatus);
 
-  protected readonly kinds = DocumentKinds;
+  protected readonly kinds = valuesOf(DocumentKinds);
+  protected readonly kindName = labelsOf(DocumentKinds);
+  /** Texturing paints a mesh of the project, so it waits for the project to have one. */
+  protected readonly kindDisabled = computed(() => {
+    const meshless = this.meshes().length === 0;
+    return (kind: string) => meshless && kind === 'texturing';
+  });
   protected readonly canPick = desktop() !== undefined;
   protected readonly name = linkedSignal(() => this.actions.renaming()?.name ?? '');
   protected readonly tags = linkedSignal<string[]>(() => [...(this.actions.tagging()?.tags ?? [])]);
@@ -180,6 +190,12 @@ export class LibraryDialogs {
   protected readonly image = signal('');
   protected readonly meshes = signal<readonly ProjectMeshInfo[]>([]);
   protected readonly mesh = linkedSignal(() => this.meshes().find(choice => choice.id)?.id ?? '');
+  protected readonly meshIds = computed(() => this.meshes().flatMap(choice => (choice.id ? [choice.id] : [])));
+  /** A mesh by its file's name, which is what a person gave the project. */
+  protected readonly meshName = computed(() => {
+    const paths = new Map(this.meshes().map(choice => [choice.id, choice.path] as const));
+    return (id: string) => this.fileName(paths.get(id) ?? id);
+  });
   private readonly busy = signal(false);
   protected readonly canAdd = computed(
     () =>

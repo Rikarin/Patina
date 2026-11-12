@@ -92,7 +92,7 @@ static class ProjectSettingsEndpoint {
         CancellationToken cancellationToken
     ) {
         if (request.Mesh is not { } mesh) {
-            return TypedResults.Problem("Name the mesh to reload.", statusCode: StatusCodes.Status400BadRequest);
+            return Refusals.Problem("Name the mesh to reload.", StatusCodes.Status400BadRequest, Refusals.MeshUnnamed);
         }
 
         return await MeshReloadCheck.WhyItMovesAsync(

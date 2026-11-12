@@ -14,12 +14,14 @@ import {
 } from '@angular/core';
 import type { AssetSummary, ProjectSummary } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { XuiCalloutImports } from '@xui/callout';
 import { XuiContextMenuImports } from '@xui/context-menu';
 import { XuiInputImports } from '@xui/input';
 import { XuiMenuImports } from '@xui/menu';
 import { XuiMultiSelectImports } from '@xui/multi-select';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
+import { XuiSelectImports } from '@xui/select';
 import { XuiSkeletonImports } from '@xui/skeleton';
 import { XuiSpinnerImports } from '@xui/spinner';
 import { Commands } from '../core/commands';
@@ -81,12 +83,14 @@ function targetOf(row: LibraryRow): LibraryTarget {
     ScrollingModule,
     ViewportFit,
     XuiButtonImports,
+    XuiCalloutImports,
     XuiContextMenuImports,
     XuiInputImports,
     XuiMenuImports,
     XuiMultiSelectImports,
     XuiNonIdealStateImports,
     XuiSegmentedControlImports,
+    XuiSelectImports,
     XuiSkeletonImports,
     XuiSpinnerImports
   ],
@@ -150,16 +154,16 @@ function targetOf(row: LibraryRow): LibraryTarget {
             [value]="viewName()"
             (valueChange)="switchTo($event)"
           />
-          <select
-            class="well h-7 min-w-0 flex-1 px-1 text-sm @min-[9.5rem]:hidden"
+          <xui-select
+            class="min-w-0 flex-1 @min-[9.5rem]:hidden"
             aria-label="Library view"
             data-testid="library-view-narrow"
-            (change)="switchTo(choiceOf($event))"
-          >
-            @for (view of views; track view.value) {
-              <option [value]="view.value" [selected]="viewName() === view.value">{{ view.label }}</option>
-            }
-          </select>
+            [filterable]="false"
+            [itemText]="viewLabel"
+            [items]="viewValues"
+            [value]="viewName()"
+            (valueChange)="switchTo($event)"
+          />
         </div>
         <div class="flex shrink-0 flex-col gap-1.5 p-2">
           <div class="flex gap-1.5">
@@ -339,23 +343,27 @@ function targetOf(row: LibraryRow): LibraryTarget {
                 }
               </xui-non-ideal-state>
             } @else if (view().list.error(); as reason) {
-              <p
-                class="bg-error-subtle text-error absolute inset-x-0 bottom-0 flex items-center gap-2 px-2 py-1 text-xs"
-              >
-                <span class="min-w-0 flex-1 truncate" [title]="reason">{{ reason }}</span>
-                <button type="button" xuiButton size="sm" (click)="view().list.retry()">Try again</button>
-              </p>
+              <xui-callout class="absolute inset-x-0 bottom-0 text-xs" color="error" compact>
+                <span class="flex items-center gap-2">
+                  <span class="min-w-0 flex-1 truncate" [title]="reason">{{ reason }}</span>
+                  <button type="button" xuiButton size="sm" (click)="view().list.retry()">Try again</button>
+                </span>
+              </xui-callout>
             }
             @if (actions.failure(); as reason) {
-              <p
-                class="bg-error-subtle text-error absolute inset-x-0 bottom-0 flex items-center gap-2 px-2 py-1 text-xs"
+              <xui-callout
+                class="absolute inset-x-0 bottom-0 text-xs"
+                color="error"
+                compact
                 data-testid="library-failure"
               >
-                <span class="min-w-0 flex-1 truncate" [title]="reason">{{ reason }}</span>
-                <button type="button" xuiButton size="sm" variant="ghost" (click)="actions.failure.set(null)">
-                  Dismiss
-                </button>
-              </p>
+                <span class="flex items-center gap-2">
+                  <span class="min-w-0 flex-1 truncate" [title]="reason">{{ reason }}</span>
+                  <button type="button" xuiButton size="sm" variant="ghost" (click)="actions.failure.set(null)">
+                    Dismiss
+                  </button>
+                </span>
+              </xui-callout>
             }
           </div>
         }
@@ -450,8 +458,13 @@ function targetOf(row: LibraryRow): LibraryTarget {
             </svg>
           </button>
         </footer>
-        <ptn-new-project [(open)]="creating" [folder]="creatingIn()" [startKind]="creatingKind()" />
-        <ptn-new-graph [(open)]="creatingGraph" />
+        <!-- Dialogs are in no first bundle: each comes the first time it opens, and stays. -->
+        @defer (when creating()) {
+          <ptn-new-project [(open)]="creating" [folder]="creatingIn()" [startKind]="creatingKind()" />
+        }
+        @defer (when creatingGraph()) {
+          <ptn-new-graph [(open)]="creatingGraph" />
+        }
         @defer (when actions.asking()) {
           <ptn-library-dialogs />
         }
@@ -727,11 +740,9 @@ export class LibraryPane {
     );
   }
 
-  /** The view a list of views was set to. */
-  protected choiceOf(event: Event): LibraryTabChoice | null {
-    const value = (event.target as HTMLSelectElement).value;
-    return views.find(view => view.value === value)?.value ?? null;
-  }
+  protected readonly viewValues = views.map(view => view.value);
+  protected readonly viewLabel = (value: LibraryTabChoice): string =>
+    views.find(view => view.value === value)?.label ?? value;
 
   protected switchTo(name: LibraryTabChoice | null): void {
     if (name !== null && name !== this.viewName()) {

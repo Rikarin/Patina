@@ -90,6 +90,13 @@ static class LibraryTreeEndpoints {
         library.MapPost("/project/pictures", AddPicture)
             .Described("AddProjectPicture", "Brings a picture into a project, for a layer or a mask to read.");
 
+        library.MapGet("/files", ListFiles)
+            .Described(
+                "ListLibraryFiles",
+                "The pictures or meshes the library's projects hold, a project's own first: what a client offers to "
+                + "pick from, where a dialog of its own machine cannot see this one's disk."
+            );
+
         library.MapGet("/picture", GetPicture)
             .Produces<byte[]>(StatusCodes.Status200OK, "image/png")
             .Described(
@@ -291,6 +298,26 @@ static class LibraryTreeEndpoints {
             host,
             library => TypedResults.Ok(new ProjectPicture(library.AddPicture(request.Project, request.Picture)))
         );
+
+    /// <summary>How many files a list of the library's holds at most, which a person can still look through.</summary>
+    const int MaxListedFiles = 1000;
+
+    /// <summary>The pictures or the meshes the library holds, by kind: <c>picture</c> or <c>mesh</c>.</summary>
+    static Results<Ok<LibraryFileList>, ProblemHttpResult> ListFiles(LibraryHost host, string kind, string? project) {
+        Func<string, bool>? wanted = kind switch {
+            "picture" => PictureFormats.IsPicture,
+            "mesh" => MeshFormats.IsMesh,
+            _ => null
+        };
+        return wanted is null
+            ? Refusals.Problem(
+                $"'{kind}' is no kind of file the library lists: picture or mesh.",
+                StatusCodes.Status400BadRequest,
+                Refusals.FileKindUnknown,
+                new Dictionary<string, string> { ["kind"] = kind }
+            )
+            : Guarded(host, library => TypedResults.Ok(library.Files(wanted, project, MaxListedFiles)));
+    }
 
     /// <summary>
     ///     A picture file below the library, served as it is. ⚠ Below the library and nowhere else, and only a picture:

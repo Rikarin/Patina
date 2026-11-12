@@ -39,7 +39,21 @@ const Words: Readonly<Record<string, string>> = {
   'preset-factory': '{preset} is a Starter preset, so it can’t be changed or deleted. Duplicate it to change a copy.',
   'preset-missing': 'There is no preset {preset} there any more. It may have been deleted outside Patina.',
   'export-unbuilt': 'The maps of this project are not built as they are now. Build them first, then look again.',
-  'mesh-layout-changed': 'Something moved on the new mesh, so reloading it moves paint. {reason}'
+  'file-kind-unknown': 'The library lists pictures and meshes, and nothing else.',
+  'history-empty': 'There is nothing to {what}.',
+  'file-exists': 'There is a {file} there already. Choose another name.',
+  'file-missing': '{file} isn’t there any more. It may have been moved or deleted outside Patina.',
+  'id-map-missing': 'This document has no ID map yet. Bake one, with ID among the maps.',
+  'job-missing': 'That bake or export is no longer in Activity. The engine may have restarted since.',
+  'graph-no-output': 'This graph has no Output node, so there is nothing to show on the mesh. Add one.',
+  'mesh-layout-changed': 'Something moved on the new mesh, so reloading it moves paint. {reason}',
+  'graph-template-unknown': 'There is no template {template} to start a graph from. Choose another in Start from.',
+  'export-settings-invalid': 'Those export settings can’t be written. {reason}',
+  'mesh-unnamed': 'Choose the mesh to reload first.',
+  'uv-layout-undrawn': 'The UV layout could not be drawn. Try again once the GPU engine is running.',
+  'selection-refused': 'A Color Selection picks out up to {most} colors. Remove some before adding another.',
+  'selection-needs-picture':
+    'Several colors are picked out of a mesh map or a picture, so this mask needs one as its source. Choose a mesh map or a picture first.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };

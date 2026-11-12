@@ -210,11 +210,16 @@ export function template(actions: MenuActions, menus: MenuModel, starting = fals
       }
     });
 
-  // A Mac keeps Preferences in the app menu, where every Mac app has it; elsewhere it stays where the studio put it.
+  // A Mac keeps About and Preferences in the app menu, where every Mac app has them; elsewhere they stay where the
+  // studio put them, About in Help.
+  const about = mac ? findCommand(menus, AboutCommand) : null;
   const preferences = mac ? findCommand(menus, PreferencesCommand) : null;
-  const shown = preferences ? withoutCommand(menus, PreferencesCommand) : menus;
+  const shown = [about && AboutCommand, preferences && PreferencesCommand].reduce(
+    (kept, id) => (id ? withoutCommand(kept, id) : kept),
+    menus
+  );
   return [
-    ...(mac ? [appMenu(preferences ? build([preferences]) : [])] : []),
+    ...(mac ? [appMenu(about ? build([about]) : [{ role: 'about' }], preferences ? build([preferences]) : [])] : []),
     ...shown.map((menu): MenuItemConstructorOptions => ({
       label: menu.label,
       ...(menu.label === 'Help' ? { role: 'help' as const } : {}),
@@ -223,15 +228,19 @@ export function template(actions: MenuActions, menus: MenuModel, starting = fals
   ];
 }
 
-/** The command a Mac lifts into the app menu. */
+/** The commands a Mac lifts into the app menu. */
 export const PreferencesCommand = 'preferences';
+export const AboutCommand = 'about';
 
-/** A Mac's app menu, with the items Electron's `appMenu` role gives it and Preferences where a Mac has it. */
-function appMenu(preferences: MenuItemConstructorOptions[]): MenuItemConstructorOptions {
+/** A Mac's app menu, with the items Electron's `appMenu` role gives it, and About and Preferences where a Mac has them. */
+function appMenu(
+  about: MenuItemConstructorOptions[],
+  preferences: MenuItemConstructorOptions[]
+): MenuItemConstructorOptions {
   return {
     label: 'Patina',
     submenu: [
-      { role: 'about' },
+      ...about,
       { type: 'separator' },
       ...preferences,
       ...(preferences.length ? [{ type: 'separator' as const }] : []),

@@ -2,7 +2,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject } from './projects';
+import { leave, newLibrary, newProject, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
@@ -129,7 +129,7 @@ test('a document deleted from the tree waits in the bin, and Empty Bin deletes i
   await project.click({ button: 'right' });
   await window.getByTestId('menu-new-document').click();
   await window.getByTestId('new-document-name').fill('Planks');
-  await window.getByTestId('new-document-kind').selectOption('graph');
+  await pick(window, 'new-document-kind', /^Graph/u);
   await window.getByTestId('new-document-create').click();
   await expect(window.getByTestId('document-tab-name').filter({ hasText: 'Planks' })).toBeVisible({ timeout: 30_000 });
   // Closed at once, while its graph may still be opening: the close ends the session the open gets (#232).
@@ -175,7 +175,8 @@ const overflowing = () =>
 /** Whether nothing in the Library's top bar or search row runs past another, or past the pane. */
 async function laidOut(what: string): Promise<void> {
   const pane = await window.locator('ptn-library').boundingBox();
-  const shown = window.locator('ptn-library [aria-label="Library view"]:visible');
+  // The control, not an xUI select's host, which carries the label it hands its button.
+  const shown = window.locator('ptn-library :not(xui-select)[aria-label="Library view"]:visible');
   await expect(shown).toHaveCount(1);
   const [switches, search, toggle] = await Promise.all(
     [shown, window.getByTestId('library-search'), window.getByTestId('library-layout')].map(part => part.boundingBox())
@@ -221,11 +222,9 @@ test('the Library keeps to its width at the narrowest window', async () => {
   await expect.poll(async () => (await pane.boundingBox())?.width ?? 0).toBeLessThan(170);
   const views = window.getByRole('combobox', { name: 'Library view' });
   await expect(views).toBeVisible();
-  for (const [value, view] of [
-    ['projects', 'Projects'],
-    ['assets', 'Materials']
-  ] as const) {
-    await views.selectOption(value);
+  for (const view of ['Projects', 'Materials'] as const) {
+    await views.click();
+    await window.getByRole('option', { name: view, exact: true }).click();
     for (const as of ['grid', 'list'] as const) {
       await layOut(as);
       await pane.screenshot({ path: join(shots, `library-narrow-${view.toLowerCase()}-${as}.png`) });

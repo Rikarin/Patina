@@ -87,7 +87,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
                 >Gives a mesh with no UVs a layout. The original file stays.</span
               >
             </span>
-            <xui-switch ariaLabel="Auto Unwrap" data-testid="project-settings-unwrap" [(checked)]="autoUnwrap" />
+            <xui-switch aria-label="Auto Unwrap" data-testid="project-settings-unwrap" [(checked)]="autoUnwrap" />
           </label>
           @if (autoUnwrap()) {
             <div class="well grid grid-cols-2 gap-2 px-2 py-2" data-testid="project-settings-unwrap-options">
@@ -95,7 +95,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
                 <span class="text-foreground-muted text-xs">Atlas</span>
                 <xui-select
                   size="sm"
-                  ariaLabel="Unwrap atlas size"
+                  aria-label="Unwrap atlas size"
                   data-testid="unwrap-resolution"
                   [items]="resolutions()"
                   [itemText]="texels"
@@ -107,7 +107,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
                 <span class="text-foreground-muted text-xs">Margin, in texels</span>
                 <xui-numeric-input
                   size="sm"
-                  ariaLabel="Unwrap margin in texels"
+                  aria-label="Unwrap margin in texels"
                   data-testid="unwrap-margin"
                   [min]="0"
                   [max]="64"
@@ -120,7 +120,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
                 <span class="text-foreground-muted text-xs">Packing</span>
                 <xui-select
                   size="sm"
-                  ariaLabel="Unwrap packing"
+                  aria-label="Unwrap packing"
                   data-testid="unwrap-quality"
                   [items]="qualities"
                   [itemText]="qualityName"
@@ -132,7 +132,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
                 <span class="text-foreground-muted text-xs">Island turns</span>
                 <xui-select
                   size="sm"
-                  ariaLabel="Unwrap island turns"
+                  aria-label="Unwrap island turns"
                   data-testid="unwrap-rotations"
                   [items]="turns"
                   [itemText]="turnName"
@@ -144,7 +144,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
                 <span class="text-foreground-muted text-xs">Texels per unit, 0 for each island's own</span>
                 <xui-numeric-input
                   size="sm"
-                  ariaLabel="Unwrap texel density"
+                  aria-label="Unwrap texel density"
                   data-testid="unwrap-density"
                   [min]="0"
                   [stepSize]="64"
@@ -156,7 +156,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
                 <span class="text-foreground-muted text-xs">If islands do not fit</span>
                 <xui-select
                   size="sm"
-                  ariaLabel="Unwrap overflow"
+                  aria-label="Unwrap overflow"
                   data-testid="unwrap-overflow"
                   [items]="overflows"
                   [itemText]="overflowName"
@@ -199,7 +199,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
               </span>
             </span>
             <xui-switch
-              ariaLabel="Preserve Paint"
+              aria-label="Preserve Paint"
               data-testid="project-settings-preserve"
               [(checked)]="preservePaint"
             />

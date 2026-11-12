@@ -192,7 +192,12 @@ static class StackEndpoints {
         return Refusable(() => act(session)) switch {
             { Result: Ok<StackEditResult?> { Value: { } done } } => TypedResults.Ok(done),
             { Result: ProblemHttpResult problem } => problem,
-            _ => TypedResults.Problem($"There is nothing to {what}.", statusCode: Conflict)
+            _ => Refusals.Problem(
+                $"There is nothing to {what}.",
+                Conflict,
+                Refusals.HistoryEmpty,
+                new Dictionary<string, string> { ["what"] = what }
+            )
         };
     }
 
@@ -215,11 +220,16 @@ static class StackEndpoints {
         }
 
         if (File.Exists(path)) {
-            return TypedResults.Problem($"'{path}' already exists.", statusCode: Conflict);
+            return Refusals.Problem(
+                $"'{Path.GetFileName(path)}' already exists.",
+                Conflict,
+                Refusals.FileExists,
+                new Dictionary<string, string> { ["file"] = Path.GetFileName(path) }
+            );
         }
 
         if (request.Width <= 0 || request.Height <= 0) {
-            return TypedResults.Problem("A stack has a size.", statusCode: Refused);
+            return TypedResults.Problem("A document has a size.", statusCode: Refused);
         }
 
         StackDocuments.Create(path, request.Width, request.Height);
@@ -239,7 +249,7 @@ static class StackEndpoints {
         var session = sessions.Find(id);
         if (session?.Summary.Dirty == true && !discard) {
             return Refusals.Problem(
-                "This stack has unsaved edits. Save it first, or close it discarding them.",
+                "This document has unsaved changes. Save it first, or close it without saving.",
                 Conflict,
                 Refusals.Unsaved
             );
@@ -381,7 +391,7 @@ static class StackEndpoints {
         return StackDocuments.Kind(node, session.Folder) is { } kind
             ? TypedResults.Ok(kind)
             : Refusals.Problem(
-                $"'{node}' is not a node type or a compound this stack can run.",
+                $"'{node}' is not a node or a compound this document can run.",
                 Missing,
                 Refusals.NodeUnknown,
                 new Dictionary<string, string> { ["node"] = node }
@@ -400,7 +410,11 @@ static class StackEndpoints {
 
         return session.MeshMaps is { } folder && IdColours.Read(folder, u, v) is { } colours
             ? TypedResults.Ok(colours)
-            : TypedResults.Problem("This stack has no bake with an id map.", statusCode: StatusCodes.Status404NotFound);
+            : Refusals.Problem(
+                "This document has no bake with an ID map.",
+                StatusCodes.Status404NotFound,
+                Refusals.IdMapMissing
+            );
     }
 
     static Results<NoContent, ProblemHttpResult> UseMeshMaps(

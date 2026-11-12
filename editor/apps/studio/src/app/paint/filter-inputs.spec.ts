@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { StackFilterKind, StackInput } from '@patina/api-client';
+import { chooseIn } from '../core/select-testing';
 import { ProjectStore } from '../library/project-store';
 import { FilterInputs, type FilterSources } from './filter-inputs';
 import { PaintStore } from './paint-store';
@@ -49,23 +50,16 @@ function render(mask = false, inputs: FilterSources = {}) {
   fixture.componentInstance.inputsChange.subscribe(next => emitted.push(next));
   fixture.detectChanges();
   const element = fixture.nativeElement as HTMLElement;
-  const source = (port: string) => element.querySelector<HTMLSelectElement>(`[data-testid="in-${port}-source"]`);
-  const pick = (port: string, value: string) => {
-    const select = source(port);
-    if (!select) {
-      throw new Error(`No slot for ${port}`);
-    }
-    select.value = value;
-    select.dispatchEvent(new Event('change'));
-  };
+  const source = (port: string) => element.querySelector<HTMLElement>(`[data-testid="in-${port}-source"]`);
+  const pick = (port: string, name: string) => chooseIn(fixture, element, `in-${port}-source`, name);
   return { fixture, element, emitted, source, pick };
 }
 
 describe('a filter input slot', () => {
   it('offers a slot for each image, the subject reading the layers beneath until told otherwise', () => {
     const { source } = render();
-    expect(source('Input')?.options[0]?.text).toContain('Layers Beneath · this channel');
-    expect(source('Warp')?.options[0]?.text).toBe('Choose what it reads');
+    expect(source('Input')?.textContent).toContain('Layers Beneath · this channel');
+    expect(source('Warp')?.textContent.trim()).toBe('Choose what it reads');
   });
 
   it('has no slot for a mask step’s subject, which is the mask', () => {
@@ -74,24 +68,24 @@ describe('a filter input slot', () => {
     expect(source('Warp')).not.toBeNull();
   });
 
-  it('starts a generator from a soft noise, and a mask reading beneath from a named channel', () => {
+  it('starts a generator from a soft noise, and a mask reading beneath from a named channel', async () => {
     const generator = render();
-    generator.pick('Warp', 'Generator');
+    await generator.pick('Warp', 'Generator');
     expect(generator.emitted.at(-1)?.['Warp']).toMatchObject({ source: 'Generator', generator: 'Noise/Clouds' });
 
     TestBed.resetTestingModule();
     const beneath = render(true);
-    beneath.pick('Warp', 'Beneath');
+    await beneath.pick('Warp', 'Layers Beneath');
     expect(beneath.emitted.at(-1)?.['Warp']).toMatchObject({ source: 'Beneath', channel: 'baseColor' });
   });
 
-  it('sends the generator’s own fields with the rest of what it reads, and clears a slot back to its default', () => {
+  it('sends the generator’s own fields with the rest of what it reads, and clears a slot back to its default', async () => {
     const held: StackInput = { source: 'Generator', channel: '', generator: 'Noise/Clouds', asset: '', map: '' };
     const { element, emitted, pick } = render(false, { Warp: held, Input: { ...held, source: 'Beneath' } });
     const scale = element.querySelector('[data-testid="in-Warp-Scale"]');
     expect(scale).not.toBeNull();
 
-    pick('Warp', '');
+    await pick('Warp', 'Choose what it reads');
     expect(Object.keys(emitted.at(-1) ?? {})).toEqual(['Input']);
   });
 });

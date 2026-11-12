@@ -108,7 +108,9 @@ public sealed record StackAnchor(string Name, string Layer, IReadOnlyList<StackA
 
 /// <summary>One place a stack reads an anchor point.</summary>
 /// <param name="Layer">The id of the layer that reads it.</param>
-/// <param name="Where">What part of that layer: fill, mask, mask entry 2, or an input's port.</param>
+/// <param name="Where">
+///     What part of that layer reads it, in words to show: Fill, Mask, Mask layer 2, Input Warp.
+/// </param>
 /// <param name="Channel">The channel it reads, or empty for the channel being written.</param>
 public sealed record StackAnchorUse(string Layer, string Where, string Channel);
 

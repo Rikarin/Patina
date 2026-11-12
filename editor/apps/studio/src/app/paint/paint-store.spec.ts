@@ -518,7 +518,7 @@ describe('PaintStore', () => {
       problems: []
     };
     expect(stackSummary({ revision: 3, settled: 2, evaluation })).toBe('Evaluating…');
-    expect(stackSummary({ revision: 2, settled: 2, evaluation })).toBe('3 ran, 12 ms');
+    expect(stackSummary({ revision: 2, settled: 2, evaluation })).toBe('Updated in 12 ms');
     expect(stackSummary({ revision: 2, settled: 2, evaluation: { ...evaluation, ran: 0 } })).toBe('Up to date');
     const stopped = { ...evaluation, problems: [{ layer: 'a', severity: 'Error', message: 'No.' }] };
     expect(stackSummary({ revision: 2, settled: 2, evaluation: stopped })).toBe('Not evaluated');

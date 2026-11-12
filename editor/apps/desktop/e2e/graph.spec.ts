@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave } from './projects';
+import { leave, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -466,13 +466,13 @@ test('the 2D view shows the node on view at full size, tiles it and pins it, and
   await window.getByRole('tab', { name: 'Preview' }).click();
   await window.getByTestId('viewport-show-node').click();
   await expect(window.getByTestId('viewport-mesh')).toHaveText('Sphere.glb', { timeout: 30_000 });
-  await expect(window.getByTestId('viewport-view')).toBeDisabled();
+  await expect(window.getByTestId('viewport-view').getByRole('combobox')).toBeDisabled();
   // The Server lays the node on the shape and the frames say so, so a frame drawn after the plane is chosen is one
   // of the plane: the count is read before it is chosen.
   const viewport = window.getByRole('application', { name: 'Viewport' });
   const drawn = Number(await viewport.getAttribute('data-frames'));
   await window.getByTestId('viewport-display-toggle').click();
-  await window.getByTestId('viewport-shape').selectOption('plane');
+  await pick(window, 'viewport-shape', 'Plane');
   await expect(window.getByTestId('viewport-mesh')).toHaveText('Plane.glb');
   await window.getByTestId('viewport-display-toggle').click();
   await expect(window.getByTestId('viewport-display')).toHaveCount(0);
@@ -481,7 +481,7 @@ test('the 2D view shows the node on view at full size, tiles it and pins it, and
     .toBeGreaterThan(drawn);
   await window.screenshot({ path: join(shots, 'graph-node-on-plane.png') });
   await window.getByTestId('viewport-show-node').click();
-  await expect(window.getByTestId('viewport-view')).toBeEnabled();
+  await expect(window.getByTestId('viewport-view').getByRole('combobox')).toBeEnabled();
 });
 
 test('shows a second graph beside the first, and the panes follow the one touched last (#40)', async () => {
@@ -496,7 +496,7 @@ test('shows a second graph beside the first, and the panes follow the one touche
   await window.keyboard.press('ControlOrMeta+4');
   const beside = window.getByTestId('graph-beside');
   await expect(beside.getByTestId('graph-beside-empty')).toBeVisible();
-  await beside.getByTestId('graph-beside-choice').selectOption({ label: Name });
+  await pick(window, 'graph-beside-choice', Name);
   await expect(beside.getByTestId('graph-node')).toHaveCount(Nodes);
   await expect(nodes()).toHaveCount(Outputs + Nodes);
   const besideNode = (id: number) => beside.locator(`[data-testid=graph-node][data-node="${String(id)}"]`);

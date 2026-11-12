@@ -75,7 +75,7 @@ async function render(channels: readonly string[] = ['baseColor', 'roughness'], 
 
 describe('DocumentSection', () => {
   it('shows the document, its size and its channels, and adds a channel whatever is chosen', async () => {
-    const { element, edit } = await render();
+    const { element, edit, fixture } = await render();
     const text = (id: string) => element.querySelector(`[data-testid=${id}]`)?.textContent.trim();
 
     expect(text('paint-project')).toBe('Crate');
@@ -85,12 +85,12 @@ describe('DocumentSection', () => {
     expect(text('texture-set-height')).toContain('1024');
     expect(text('paint-channel-roughness')).toBe('Roughness');
 
-    const add = element.querySelector<HTMLSelectElement>('[data-testid=paint-add-channel]');
-    expect([...(add?.options ?? [])].map(option => option.text.trim())).toEqual(['Add Channel…', 'Ambient Occlusion']);
-    if (add) {
-      add.value = 'occlusion';
-      add.dispatchEvent(new Event('change'));
-    }
+    element.querySelector<HTMLElement>('[data-testid=paint-add-channel]')?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const offered = [...document.querySelectorAll<HTMLElement>('[role=menu] button[data-testid^=paint-add-channel-]')];
+    expect(offered.map(item => item.textContent.trim())).toEqual(['Ambient Occlusion']);
+    offered[0]?.click();
 
     expect(edit).toHaveBeenCalledWith({ op: 'addChannel', usage: 'occlusion' });
   });

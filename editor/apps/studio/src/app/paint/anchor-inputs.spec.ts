@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { StackFilterKind } from '@patina/api-client';
+import { chooseIn } from '../core/select-testing';
 import { AnchorInputs, type AnchorSources } from './anchor-inputs';
 import { tagSwatch } from './layer-tags';
 import { PaintStore } from './paint-store';
@@ -22,38 +23,31 @@ function render(inputs: AnchorSources = {}, channels = ['baseColor', 'height']) 
   fixture.componentInstance.inputsChange.subscribe(next => emitted.push(next));
   fixture.detectChanges();
   const element = fixture.nativeElement as HTMLElement;
-  const choose = (testId: string, value: string) => {
-    const select = element.querySelector<HTMLSelectElement>(`[data-testid="${testId}"]`);
-    if (!select) {
-      throw new Error(`No ${testId}`);
-    }
-    select.value = value;
-    select.dispatchEvent(new Event('change'));
-  };
+  const choose = (testId: string, name: string) => chooseIn(fixture, element, testId, name);
   return { element, emitted, choose };
 }
 
 describe('a mask generator’s anchor slots (#111)', () => {
-  it('feeds an image from an anchor point in height, which wear is read from, until a channel is chosen', () => {
+  it('feeds an image from an anchor point in height, which wear is read from, until a channel is chosen', async () => {
     const { emitted, choose } = render();
-    choose('in-Input-anchor', 'Wear');
+    await choose('in-Input-anchor', 'Wear');
     expect(emitted.at(-1)).toEqual({ Input: { anchor: 'Wear', channel: 'height' } });
   });
 
-  it('reads the first channel in a stack with no height', () => {
+  it('reads the first channel in a stack with no height', async () => {
     const { emitted, choose } = render({}, ['baseColor', 'roughness']);
-    choose('in-Input-anchor', 'Ground');
+    await choose('in-Input-anchor', 'Ground');
     expect(emitted.at(-1)).toEqual({ Input: { anchor: 'Ground', channel: 'baseColor' } });
   });
 
-  it('changes the channel of a fed slot, and lets the slot go back to nothing', () => {
+  it('changes the channel of a fed slot, and lets the slot go back to nothing', async () => {
     const { emitted, choose, element } = render({ Input: { anchor: 'Ground', channel: 'height' } });
     expect(element.querySelector('[data-testid="in-Input-channel"]')).not.toBeNull();
 
-    choose('in-Input-channel', 'baseColor');
+    await choose('in-Input-channel', 'Base Color');
     expect(emitted.at(-1)).toEqual({ Input: { anchor: 'Ground', channel: 'baseColor' } });
 
-    choose('in-Input-anchor', '');
+    await choose('in-Input-anchor', 'Choose an anchor point');
     expect(emitted.at(-1)).toEqual({});
   });
 });

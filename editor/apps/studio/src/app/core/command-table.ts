@@ -203,7 +203,7 @@ export const CommandTable: readonly CommandSpec[] = [
     label: 'Export Mask Alone…',
     section: 'Layers',
     area: 'stack',
-    hint: 'Writes the layer’s mask as one grey map, white where the layer shows, into a folder you choose'
+    hint: 'Writes the layer’s mask as one gray map, white where the layer shows, into a folder you choose'
   },
   {
     id: 'createInstance',
@@ -344,9 +344,16 @@ export const CommandTable: readonly CommandSpec[] = [
     hint: 'Bakes and exports with how far each is, and everything the app has said'
   },
 
+  {
+    id: 'documentation',
+    label: 'Documentation',
+    section: 'Help',
+    hint: 'A guide to Patina, from a library to an export, in the browser'
+  },
   { id: 'shortcuts', label: 'Keyboard Shortcuts…', section: 'Help', keys: ['Mod+/'] },
   { id: 'diagnostics', label: 'Diagnostics…', section: 'Help' },
-  { id: 'reportProblem', label: 'Report a Problem…', section: 'Help' }
+  { id: 'reportProblem', label: 'Report a Problem…', section: 'Help' },
+  { id: 'about', label: 'About Patina', section: 'Help', hint: 'The version, the licences, and whose your work is' }
 ];
 
 /** Whether two areas can be live at once, which is when one key cannot mean both. */
@@ -527,7 +534,7 @@ export const MenuBar: readonly {
       { native: 'windowItems' }
     ]
   },
-  { label: 'Help', items: ['shortcuts', 'diagnostics', '-', 'reportProblem'] }
+  { label: 'Help', items: ['documentation', 'shortcuts', '-', 'diagnostics', 'reportProblem', '-', 'about'] }
 ];
 
 /** What has focus when a control answers a key itself: a list or tree, the graph canvas, or a text field. */

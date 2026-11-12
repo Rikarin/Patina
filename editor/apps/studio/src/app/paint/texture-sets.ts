@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { XuiButtonImports } from '@xui/button';
 import { XuiContextMenuImports } from '@xui/context-menu';
 import { XuiMenuImports } from '@xui/menu';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
+import { XuiSwitchImports } from '@xui/switch';
 import { Commands } from '../core/commands';
 import { MenuKeys } from '../core/menu-keys';
 import { ProjectStore } from '../library/project-store';
@@ -14,7 +16,14 @@ import { PaintStore } from './paint-store';
  */
 @Component({
   selector: 'ptn-texture-sets',
-  imports: [XuiContextMenuImports, XuiMenuImports, XuiNonIdealStateImports, MenuKeys],
+  imports: [
+    XuiButtonImports,
+    XuiContextMenuImports,
+    XuiMenuImports,
+    XuiNonIdealStateImports,
+    XuiSwitchImports,
+    MenuKeys
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col overflow-auto p-1' },
   template: `
@@ -118,24 +127,26 @@ import { PaintStore } from './paint-store';
           @if (isolated()) {
             <button
               type="button"
-              class="text-xs underline"
+              xuiButton
+              size="sm"
+              variant="ghost"
               data-testid="texture-set-show-all"
               (click)="isolation.showAll()"
             >
-              Show all
+              Show All
             </button>
           }
         </div>
         @for (part of parts(); track part) {
-          <label class="flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
+          <div class="flex h-7 items-center gap-2 text-xs">
+            <span class="min-w-0 flex-1 truncate" [title]="part">{{ part }}</span>
+            <xui-switch
+              [aria-label]="'Show ' + part + ' alone'"
               [attr.data-testid]="'texture-set-part-' + part"
               [checked]="isolation.isolation().parts.includes(part)"
-              (change)="isolation.togglePart(part)"
+              (checkedChange)="isolation.togglePart(part)"
             />
-            <span class="truncate">{{ part }}</span>
-          </label>
+          </div>
         }
       </div>
     }

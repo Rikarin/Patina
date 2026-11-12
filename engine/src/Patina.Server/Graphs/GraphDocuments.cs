@@ -145,8 +145,8 @@ public static class GraphDocuments {
     public static GraphNodeType Definition(NodeTypeDefinition type) =>
         new(
             type.Path,
-            type.Title,
-            type.Category,
+            Terms.Spelled(type.Title),
+            Terms.Spelled(type.Category),
             type.Summary,
             type.Preview,
             [

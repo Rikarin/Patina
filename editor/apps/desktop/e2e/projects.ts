@@ -14,6 +14,27 @@ export const answerOpen = (app: ElectronApplication, path: string) =>
     Object.assign(dialog, { showOpenDialog: () => Promise.resolve({ canceled: false, filePaths: [filePath] }) });
   }, path);
 
+/**
+ * Chooses in one of xUI's selects the way a person does: opens it, then clicks the choice by its name. A name is
+ * matched whole, or from its start when it is a pattern.
+ */
+export async function pick(window: Page, testId: string, name: string | RegExp): Promise<void> {
+  await window.getByTestId(testId).click();
+  await window
+    .getByRole('option', typeof name === 'string' ? { name, exact: true } : { name })
+    .locator('visible=true')
+    .first()
+    .click();
+}
+
+/** What New Project calls each kind a project can start as. */
+export const ProjectKinds = {
+  texturing: /^Texturing/u,
+  'layered-material': /^Layered Material/u,
+  'image-material': /^Image Material/u,
+  graph: /^Graph/u
+} as const;
+
 /** Makes a library the way a person does. */
 export async function newLibrary(app: ElectronApplication, window: Page, path: string): Promise<void> {
   await answerSave(app, path);
@@ -33,11 +54,11 @@ export async function newProject(
   window: Page,
   name: string,
   mesh?: string,
-  kind = mesh ? 'texturing' : 'layered-material'
+  kind: keyof typeof ProjectKinds = mesh ? 'texturing' : 'layered-material'
 ): Promise<void> {
   await window.getByTestId('library-new-project').click();
   await window.getByTestId('new-project-name').fill(name);
-  await window.getByTestId('new-project-kind').selectOption(kind);
+  await pick(window, 'new-project-kind', ProjectKinds[kind]);
   if (mesh) {
     await answerOpen(app, mesh);
     await window.getByTestId('new-project-mesh').click();

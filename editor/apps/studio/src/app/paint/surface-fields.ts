@@ -2,8 +2,10 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, un
 import type { StackDecal, StackLayer, StackSurfacePath } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiNumericInputImports } from '@xui/numeric-input';
+import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { labelsOf, valuesOf } from '../core/labels';
 import { PaintStore } from './paint-store';
 import { Unwarped } from './surface-frame';
 
@@ -20,7 +22,7 @@ const Samplings: readonly { value: string; label: string }[] = [
  */
 @Component({
   selector: 'ptn-surface-fields',
-  imports: [XuiButtonImports, XuiNumericInputImports, XuiSliderImports, XuiSwitchImports],
+  imports: [XuiButtonImports, XuiNumericInputImports, XuiSelectImports, XuiSliderImports, XuiSwitchImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-1.5' },
   template: `
@@ -71,7 +73,7 @@ const Samplings: readonly { value: string; label: string }[] = [
           <xui-numeric-input
             class="min-w-0 flex-1"
             size="sm"
-            ariaLabel="Decal width, in the model's units"
+            aria-label="Decal width, in the model's units"
             data-testid="surface-decal-width"
             [stepSize]="step(box.width)"
             [value]="box.width"
@@ -80,7 +82,7 @@ const Samplings: readonly { value: string; label: string }[] = [
           <xui-numeric-input
             class="min-w-0 flex-1"
             size="sm"
-            ariaLabel="Decal height, in the model's units"
+            aria-label="Decal height, in the model's units"
             data-testid="surface-decal-height"
             [stepSize]="step(box.height)"
             [value]="box.height"
@@ -92,7 +94,7 @@ const Samplings: readonly { value: string; label: string }[] = [
           <xui-numeric-input
             class="min-w-0 flex-1"
             size="sm"
-            ariaLabel="How deep the decal reaches through the surface, in the model's units"
+            aria-label="How deep the decal reaches through the surface, in the model's units"
             data-testid="surface-decal-depth"
             [stepSize]="step(box.depth)"
             [value]="box.depth"
@@ -104,7 +106,7 @@ const Samplings: readonly { value: string; label: string }[] = [
           <xui-numeric-input
             class="min-w-0 flex-1"
             size="sm"
-            ariaLabel="Widest angle a face takes the decal at, in degrees"
+            aria-label="Widest angle a face takes the decal at, in degrees"
             data-testid="surface-decal-angle"
             [max]="180"
             [min]="0"
@@ -130,21 +132,21 @@ const Samplings: readonly { value: string; label: string }[] = [
         <div class="flex items-center gap-2">
           <span class="text-foreground-muted w-16 shrink-0 text-xs">Tile</span>
           <xui-switch
-            ariaLabel="Repeat the picture past its edges"
+            aria-label="Repeat the picture past its edges"
             data-testid="surface-decal-tiled"
             [checked]="box.tiled"
             (checkedChange)="setDecal({ tiled: $event })"
           />
-          <select
-            class="well h-7 min-w-0 flex-1 px-1 text-sm"
+          <xui-select
+            class="min-w-0 flex-1"
             aria-label="How the picture is read between its pixels"
             data-testid="surface-decal-sampling"
-            (change)="setDecal({ sampling: text($event) })"
-          >
-            @for (option of samplings; track option.value) {
-              <option [value]="option.value" [selected]="option.value === box.sampling">{{ option.label }}</option>
-            }
-          </select>
+            [filterable]="false"
+            [itemText]="samplingName"
+            [items]="samplings"
+            [value]="box.sampling"
+            (valueChange)="$event && setDecal({ sampling: $event })"
+          />
         </div>
       }
     } @else if (layer().projection === 'Path') {
@@ -182,7 +184,7 @@ const Samplings: readonly { value: string; label: string }[] = [
           <xui-numeric-input
             class="min-w-0 flex-1"
             size="sm"
-            ariaLabel="Path radius, in the model's units"
+            aria-label="Path radius, in the model's units"
             data-testid="surface-path-radius"
             [stepSize]="step(curve.radius)"
             [value]="curve.radius"
@@ -209,7 +211,7 @@ const Samplings: readonly { value: string; label: string }[] = [
         >
           <span class="text-foreground-muted w-16 shrink-0 text-xs">Ribbon</span>
           <xui-switch
-            ariaLabel="Lay the picture along the path"
+            aria-label="Lay the picture along the path"
             data-testid="surface-path-ribbon"
             [checked]="curve.ribbon"
             (checkedChange)="setPath({ ribbon: $event })"
@@ -218,7 +220,7 @@ const Samplings: readonly { value: string; label: string }[] = [
             <xui-numeric-input
               class="min-w-0 flex-1"
               size="sm"
-              ariaLabel="How far along the path the picture repeats, in the model's units; 0 keeps its shape"
+              aria-label="How far along the path the picture repeats, in the model's units; 0 keeps its shape"
               data-testid="surface-path-repeat"
               [min]="0"
               [stepSize]="step(curve.radius * 4)"
@@ -232,7 +234,7 @@ const Samplings: readonly { value: string; label: string }[] = [
           <xui-numeric-input
             class="min-w-0 flex-1"
             size="sm"
-            ariaLabel="Widest angle a face takes the path at, in degrees"
+            aria-label="Widest angle a face takes the path at, in degrees"
             data-testid="surface-path-angle"
             [max]="180"
             [min]="0"
@@ -248,7 +250,8 @@ const Samplings: readonly { value: string; label: string }[] = [
 export class SurfaceFields {
   protected readonly paint = inject(PaintStore);
   readonly layer = input.required<StackLayer>();
-  protected readonly samplings = Samplings;
+  protected readonly samplings = valuesOf(Samplings);
+  protected readonly samplingName = labelsOf(Samplings);
   /** Whether the stack is on a mesh a click can land on. */
   protected readonly onMesh = computed(() => !!this.paint.state()?.model.trim());
   protected readonly decal = computed(() => this.layer().decal ?? null);
@@ -308,9 +311,5 @@ export class SurfaceFields {
 
   protected radians(degrees: number | null): number {
     return ((degrees ?? 0) * Math.PI) / 180;
-  }
-
-  protected text(event: Event): string {
-    return (event.target as HTMLSelectElement).value;
   }
 }

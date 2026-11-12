@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject } from './projects';
+import { leave, newLibrary, newProject, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -113,7 +113,7 @@ test('a decal is placed with a click and scaled by its handle, a path takes poin
   await window.keyboard.press('Escape');
   await settled();
   // A red fill with no projection covers the whole housing; as a decal not yet placed it covers none of it.
-  await window.getByTestId('paint-fill-projection').selectOption('Decal');
+  await pick(window, 'paint-fill-projection', 'Decal');
   await settled();
   const before = await shot();
   await window.screenshot({ path: join(shots, 'surface-decal-before.png') });
@@ -146,7 +146,7 @@ test('a decal is placed with a click and scaled by its handle, a path takes poin
   await expect.poll(async () => changed(placed, await shot()), { timeout: 60_000 }).toBeLessThan(red * 0.2);
 
   // The same fill along a path through three clicks.
-  await window.getByTestId('paint-fill-projection').selectOption('Path');
+  await pick(window, 'paint-fill-projection', 'Path');
   await settled();
   const unpathed = await shot();
   await window.getByTestId('surface-add-points').click();

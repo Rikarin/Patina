@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { provideIcons } from '@ng-icons/core';
+import { matPublish, matRadioButtonUnchecked } from '@ng-icons/material-icons/baseline';
 import type { GraphEdgeState, GraphNodeState, GraphPresetState } from '@patina/api-client';
 import {
   AngleDial,
@@ -19,6 +21,7 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { IconImports } from '../core/icons';
 import { LibraryInspector } from '../library/library-inspector';
 import { holds } from './graph-authoring';
 import { type GraphField, expressionKey, fieldsOf, hexOfLanes, lanesOfHex, sliderRange } from './graph-fields';
@@ -45,6 +48,7 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
 @Component({
   selector: 'ptn-graph-inspector',
   imports: [
+    IconImports,
     AngleDial,
     CurveEditor,
     GradientRamp,
@@ -57,6 +61,7 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
     XuiSliderImports,
     XuiSwitchImports
   ],
+  viewProviders: [provideIcons({ matPublish, matRadioButtonUnchecked })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block h-full overflow-auto p-3', '(pointerup)': 'release()', '(focusout)': 'release()' },
   template: `
@@ -81,7 +86,7 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
       <div class="mb-3 flex flex-col gap-1" data-testid="node-presets">
         <span class="text-foreground-muted text-xs">Preset</span>
         <xui-select
-          ariaLabel="Preset"
+          aria-label="Preset"
           placeholder="Choose a preset"
           [disabled]="!store.editable()"
           [itemText]="presetName"
@@ -114,7 +119,7 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
                     [disabled]="!store.editable()"
                     (click)="exposeSetting(field)"
                   >
-                    ⇱
+                    <ng-icon xui size="sm" name="matPublish" />
                   </button>
                 }
                 @if (canShowPort(field)) {
@@ -129,7 +134,7 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
                     [attr.data-testid]="'port-' + field.name"
                     (click)="store.togglePort(node().id, field.name)"
                   >
-                    ○
+                    <ng-icon xui size="sm" name="matRadioButtonUnchecked" />
                   </button>
                 }
               </div>
@@ -190,7 +195,7 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
                       <xui-numeric-input
                         class="w-24 shrink-0"
                         size="sm"
-                        [ariaLabel]="field.name + ' value'"
+                        [aria-label]="field.name + ' value'"
                         [disabled]="!store.editable()"
                         [stepSize]="field.whole ? 1 : 0.1"
                         [value]="current"
@@ -222,7 +227,7 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
                             [disabled]="!store.editable()"
                             (click)="expose(field)"
                           >
-                            ⇱
+                            <ng-icon xui size="sm" name="matPublish" />
                           </button>
                         }
                       }
@@ -255,7 +260,7 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
                       </button>
                     } @else {
                       <xui-switch
-                        [ariaLabel]="field.title"
+                        [aria-label]="field.title"
                         [checked]="isOn(field)"
                         [disabled]="!store.editable()"
                         (checkedChange)="setOn(field, $event)"
@@ -273,7 +278,7 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
                       @for (lane of lanes; track lane) {
                         <xui-numeric-input
                           size="sm"
-                          [ariaLabel]="field.name + ' ' + lane"
+                          [aria-label]="field.name + ' ' + lane"
                           [disabled]="!store.editable()"
                           buttonPosition="none"
                           [stepSize]="0.01"

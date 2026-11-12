@@ -6,10 +6,10 @@ import {
   type Locator,
   type Page
 } from '@playwright/test';
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen, colouredGlb, leave, newLibrary, newProject } from './projects';
+import { answerOpen, colouredGlb, leave, newLibrary, newProject, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
@@ -153,18 +153,18 @@ test('a fill shows only the projection controls that apply', async () => {
   await window.getByTestId('paint-fill-source').click();
   await window.getByRole('option', { name: 'Bitmap' }).click();
   const projection = window.getByTestId('paint-fill-projection');
-  await expect(projection).toHaveValue('Uv');
+  await expect(projection).toContainText('UV');
   await expect(window.getByTestId('paint-fill-scale')).toBeVisible(); // a UV fill can repeat, turn and move
   await expect(window.getByTestId('paint-fill-rotation')).toBeVisible();
   await expect(window.getByTestId('paint-fill-sharpness')).toHaveCount(0);
 
-  await projection.selectOption('Triplanar');
+  await pick(window, 'paint-fill-projection', 'Tri-planar');
   await expect(window.getByTestId('paint-fill-sharpness')).toBeVisible();
   await expect(window.getByTestId('paint-fill-axis')).toHaveCount(0);
 
-  await projection.selectOption('Planar');
-  await window.getByTestId('paint-fill-axis').selectOption('Z');
-  await expect(window.getByTestId('paint-fill-axis')).toHaveValue('Z');
+  await pick(window, 'paint-fill-projection', 'Planar');
+  await pick(window, 'paint-fill-axis', 'Z');
+  await expect(window.getByTestId('paint-fill-axis')).toContainText('Z');
   await expect(window.getByTestId('paint-fill-scale')).toBeVisible();
 });
 
@@ -284,9 +284,9 @@ test('a mask runs effects, and they stay in order', async () => {
   await fill.click({ button: 'right' });
   await window.getByTestId('layer-menu-mask-colour').click();
 
-  await window.getByTestId('paint-mask-effect-add').selectOption({ label: 'Invert' });
+  await pick(window, 'paint-mask-effect-add', /^Invert/u);
   await expect(window.getByTestId('paint-mask-effect-0')).toContainText('Invert');
-  await window.getByTestId('paint-mask-effect-add').selectOption({ label: 'Blur' });
+  await pick(window, 'paint-mask-effect-add', /^Blur/u);
   await expect(window.getByTestId('paint-mask-effect-1')).toContainText('Blur');
 
   await window.getByRole('button', { name: 'Remove Invert', exact: true }).click();
@@ -341,7 +341,7 @@ test('a filter layer runs any filter, with the fields its node declares', async 
   await expect(window.getByTestId('paint-setting-Gamma')).toHaveCount(0);
 
   // A filter that reads one channel takes the grey of what is beneath it, rather than being refused.
-  await expect(window.getByTestId('layers-evaluation')).toHaveText(/ran|Up to date/, { timeout: 30_000 });
+  await expect(window.getByTestId('layers-evaluation')).toHaveText(/Updated|Up to date/, { timeout: 30_000 });
   await expect(window.locator('[data-testid^=paint-layer-filter] [data-testid=layer-fault]')).toHaveCount(0);
 
   await filter.click();
@@ -364,9 +364,9 @@ test('a filter that reads a second image has a slot for it, which a generator fi
     timeout: 30_000
   });
 
-  await field.selectOption('Generator');
-  await expect(window.getByTestId('paint-input-Warp-generator')).toHaveValue('Noise/Clouds');
-  await expect(window.getByTestId('layers-evaluation')).toHaveText(/ran|Up to date/, { timeout: 30_000 });
+  await pick(window, 'paint-input-Warp-source', 'Generator');
+  await expect(window.getByTestId('paint-input-Warp-generator')).toContainText('Clouds');
+  await expect(window.getByTestId('layers-evaluation')).toHaveText(/Updated|Up to date/, { timeout: 30_000 });
   await expect(window.locator('[data-testid^=paint-layer-filter] [data-testid=layer-fault]')).toHaveCount(0, {
     timeout: 30_000
   });
@@ -496,11 +496,11 @@ test('an anchor point is named, read by a mask in one channel, and lists who rea
   await expect(window.getByRole('option', { name: 'Ground' })).toBeVisible();
   await window.getByRole('option', { name: 'Ground' }).click();
   await expect(window.getByTestId('paint-mask-anchor')).toContainText('Ground');
-  await window.getByTestId('paint-mask-anchor-channel').selectOption('roughness');
-  await expect(window.getByTestId('paint-mask-anchor-channel')).toHaveValue('roughness');
+  await pick(window, 'paint-mask-anchor-channel', 'Roughness');
+  await expect(window.getByTestId('paint-mask-anchor-channel')).toContainText('Roughness');
 
   await window.getByTestId('paint-layer-base').click();
-  await expect(window.getByTestId('paint-anchor-uses')).toContainText('Read by Paint · mask · Roughness');
+  await expect(window.getByTestId('paint-anchor-uses')).toContainText('Read by Paint · Mask · Roughness');
   await window.screenshot({ path: join(shots, 'layers-anchor-uses.png') });
 });
 
@@ -609,4 +609,39 @@ test('any layer exports on its own, and so does its mask as one map', async () =
   await expect
     .poll(() => (existsSync(mask) ? readdirSync(mask) : []), { timeout: 60_000 })
     .toEqual([expect.stringMatching(/\.mask\.png$/)]);
+});
+
+test('a picture is picked from the library, the project’s own first, and comes into the project (#4)', async () => {
+  await newProject(app, window, 'Barrel');
+  await expect(window.getByTestId('paint-layer-paint')).toBeVisible({ timeout: 30_000 });
+  // A picture of this project's and one of another's, as an artist or git put them there.
+  const pixel = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGP4DwABAQEAG7buVgAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  for (const [project, name] of [
+    ['barrel', 'wood.png'],
+    ['crate', 'rust.png']
+  ] as const) {
+    const folder = join(scratch, 'Game.ptlib', 'projects', project, 'pictures');
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(join(folder, name), pixel);
+  }
+
+  await window.getByTestId('paint-screen-picture-choose').click();
+  const dialog = window.getByTestId('pick-file');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByTestId('pick-file-item')).toHaveText(['wood.png', 'rust.png']);
+  await expect(dialog).toContainText('This project');
+  await expect(dialog.locator('img')).toHaveCount(2);
+  await window.screenshot({ path: join(shots, 'pick-file.png') });
+
+  await window.getByTestId('pick-file-search').fill('rust');
+  await expect(dialog.getByTestId('pick-file-item')).toHaveText(['rust.png']);
+  await dialog.getByTestId('pick-file-item').click();
+  await window.getByTestId('pick-file-choose').click();
+  await expect(dialog).toHaveCount(0);
+  // Another project's picture comes into this one, so the project travels with what it reads.
+  await expect(window.getByTestId('paint-screen-picture-name')).toHaveText('rust.png', { timeout: 30_000 });
+  expect(existsSync(join(scratch, 'Game.ptlib', 'projects', 'barrel', 'pictures', 'rust.png'))).toBe(true);
 });

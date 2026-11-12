@@ -11,6 +11,8 @@ import {
   signal,
   untracked
 } from '@angular/core';
+import { provideIcons } from '@ng-icons/core';
+import { matArrowUpward, matClose } from '@ng-icons/material-icons/baseline';
 import type {
   ExportPresetCheck,
   ExportPresetDocument,
@@ -19,12 +21,14 @@ import type {
 } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
+import { XuiCheckboxImports } from '@xui/checkbox';
 import { XuiInputImports } from '@xui/input';
 import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
+import { IconImports } from '../core/icons';
 import { labelIn } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
@@ -87,14 +91,17 @@ function blank(id: string): ExportPresetDocument {
 @Component({
   selector: 'ptn-preset-editor',
   imports: [
+    IconImports,
     XuiButtonImports,
     XuiCalloutImports,
+    XuiCheckboxImports,
     XuiInputImports,
     XuiNumericInputImports,
     XuiSegmentedControlImports,
     XuiSelectImports,
     XuiSwitchImports
   ],
+  viewProviders: [provideIcons({ matArrowUpward, matClose })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex min-h-0 flex-col', 'data-testid': 'preset-editor' },
   template: `
@@ -234,7 +241,7 @@ function blank(id: string): ExportPresetDocument {
               <span class="text-foreground-muted">Kept in</span>
               <xui-segmented-control
                 size="sm"
-                ariaLabel="Where the preset is kept"
+                aria-label="Where the preset is kept"
                 data-testid="preset-keep"
                 [disabled]="readOnly()"
                 [options]="places()"
@@ -244,7 +251,7 @@ function blank(id: string): ExportPresetDocument {
             }
             <span class="text-foreground-muted">Normal map</span>
             <xui-select
-              ariaLabel="Normal map green"
+              aria-label="Normal map green"
               data-testid="preset-normal"
               [disabled]="readOnly()"
               [filterable]="false"
@@ -255,7 +262,7 @@ function blank(id: string): ExportPresetDocument {
             />
             <span class="text-foreground-muted">Size</span>
             <xui-select
-              ariaLabel="Preset size"
+              aria-label="Preset size"
               data-testid="preset-size"
               [disabled]="readOnly()"
               [filterable]="false"
@@ -266,7 +273,7 @@ function blank(id: string): ExportPresetDocument {
             />
             <span class="text-foreground-muted">Padding</span>
             <xui-select
-              ariaLabel="Preset padding"
+              aria-label="Preset padding"
               data-testid="preset-padding"
               [disabled]="readOnly()"
               [filterable]="false"
@@ -277,7 +284,7 @@ function blank(id: string): ExportPresetDocument {
             />
             <span class="text-foreground-muted">Dither</span>
             <xui-switch
-              ariaLabel="Dither 8-bit files"
+              aria-label="Dither 8-bit files"
               data-testid="preset-dither"
               [disabled]="readOnly()"
               [checked]="preset.dither"
@@ -286,16 +293,14 @@ function blank(id: string): ExportPresetDocument {
             <span class="text-foreground-muted">Material files</span>
             <span class="flex flex-wrap gap-3">
               @for (kind of store.materialTerms(); track kind.value) {
-                <label class="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    [attr.data-testid]="'preset-material-' + kind.value"
-                    [disabled]="readOnly()"
-                    [checked]="preset.materials.includes(kind.value)"
-                    (change)="toggleMaterial(kind.value)"
-                  />
+                <xui-checkbox
+                  [attr.data-testid]="'preset-material-' + kind.value"
+                  [disabled]="readOnly()"
+                  [checked]="preset.materials.includes(kind.value)"
+                  (checkedChange)="toggleMaterial(kind.value)"
+                >
                   {{ kind.label }}
-                </label>
+                </xui-checkbox>
               }
             </span>
           </div>
@@ -338,7 +343,7 @@ function blank(id: string): ExportPresetDocument {
                   [disabled]="readOnly() || at === 0"
                   (click)="moveFile(at, -1)"
                 >
-                  ↑
+                  <ng-icon xui size="sm" name="matArrowUpward" />
                 </button>
                 <button
                   type="button"
@@ -356,7 +361,7 @@ function blank(id: string): ExportPresetDocument {
                 <xui-select
                   class="w-40"
                   data-testid="preset-file-format"
-                  [ariaLabel]="'Format of file ' + (at + 1)"
+                  [aria-label]="'Format of file ' + (at + 1)"
                   [disabled]="readOnly()"
                   [filterable]="false"
                   [itemText]="formatName"
@@ -367,7 +372,7 @@ function blank(id: string): ExportPresetDocument {
                 <xui-select
                   class="w-24"
                   data-testid="preset-file-space"
-                  [ariaLabel]="'Numbers of file ' + (at + 1)"
+                  [aria-label]="'Numbers of file ' + (at + 1)"
                   [disabled]="readOnly()"
                   [filterable]="false"
                   [itemText]="spaceName"
@@ -379,7 +384,7 @@ function blank(id: string): ExportPresetDocument {
                   <xui-select
                     class="w-36"
                     data-testid="preset-file-compression"
-                    [ariaLabel]="'Compression of file ' + (at + 1)"
+                    [aria-label]="'Compression of file ' + (at + 1)"
                     [disabled]="readOnly()"
                     [filterable]="false"
                     [itemText]="compressionName"
@@ -387,21 +392,19 @@ function blank(id: string): ExportPresetDocument {
                     [value]="texture.compression"
                     (valueChange)="editFile(at, { compression: $event ?? 'none', quality: null })"
                   />
-                  <label class="flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      [attr.aria-label]="'Mips of file ' + (at + 1)"
-                      [disabled]="readOnly()"
-                      [checked]="texture.mips"
-                      (change)="editFile(at, { mips: !texture.mips })"
-                    />
+                  <xui-checkbox
+                    [aria-label]="'Mips of file ' + (at + 1)"
+                    [disabled]="readOnly()"
+                    [checked]="texture.mips"
+                    (checkedChange)="editFile(at, { mips: !texture.mips })"
+                  >
                     Mips
-                  </label>
+                  </xui-checkbox>
                 }
                 <xui-select
                   class="w-28"
                   data-testid="preset-file-scale"
-                  [ariaLabel]="'Scale of file ' + (at + 1)"
+                  [aria-label]="'Scale of file ' + (at + 1)"
                   [disabled]="readOnly()"
                   [filterable]="false"
                   [itemText]="scaleName"
@@ -412,7 +415,7 @@ function blank(id: string): ExportPresetDocument {
                 <xui-select
                   class="w-32"
                   data-testid="preset-file-dither"
-                  [ariaLabel]="'Dither of file ' + (at + 1)"
+                  [aria-label]="'Dither of file ' + (at + 1)"
                   [disabled]="readOnly()"
                   [filterable]="false"
                   [itemText]="ditherName"
@@ -437,7 +440,7 @@ function blank(id: string): ExportPresetDocument {
                     <xui-select
                       class="w-32"
                       data-testid="preset-lane-map"
-                      [ariaLabel]="'Lane ' + laneNames[lane] + ' of file ' + (at + 1)"
+                      [aria-label]="'Lane ' + laneNames[lane] + ' of file ' + (at + 1)"
                       [disabled]="readOnly()"
                       [filterable]="true"
                       [itemText]="mapName"
@@ -456,28 +459,27 @@ function blank(id: string): ExportPresetDocument {
                     @if (read.kind === 'map') {
                       <xui-select
                         class="w-14"
-                        [ariaLabel]="'Which lane of ' + read.map"
+                        [aria-label]="'Which lane of ' + read.map"
                         [disabled]="readOnly()"
                         [filterable]="false"
                         [items]="laneNames"
                         [value]="laneNames[read.lane]"
                         (valueChange)="setLane(at, lane, { ...read, lane: laneNames.indexOf($event ?? 'r') })"
                       />
-                      <label class="flex items-center gap-0.5" title="One minus the map: smoothness from roughness">
-                        <input
-                          type="checkbox"
-                          [attr.aria-label]="'Invert lane ' + laneNames[lane] + ' of file ' + (at + 1)"
-                          [disabled]="readOnly()"
-                          [checked]="read.inverted"
-                          (change)="setLane(at, lane, { ...read, inverted: !read.inverted })"
-                        />
+                      <xui-checkbox
+                        title="One minus the map: smoothness from roughness"
+                        [aria-label]="'Invert lane ' + laneNames[lane] + ' of file ' + (at + 1)"
+                        [disabled]="readOnly()"
+                        [checked]="read.inverted"
+                        (checkedChange)="setLane(at, lane, { ...read, inverted: !read.inverted })"
+                      >
                         1 −
-                      </label>
+                      </xui-checkbox>
                     } @else {
                       <xui-numeric-input
                         class="w-20"
                         size="sm"
-                        [ariaLabel]="'Value of lane ' + laneNames[lane] + ' of file ' + (at + 1)"
+                        [aria-label]="'Value of lane ' + laneNames[lane] + ' of file ' + (at + 1)"
                         [disabled]="readOnly()"
                         [min]="0"
                         [max]="1"
@@ -491,10 +493,11 @@ function blank(id: string): ExportPresetDocument {
                         type="button"
                         class="text-foreground-muted px-0.5"
                         [attr.aria-label]="'Remove lane ' + laneNames[lane] + ' of file ' + (at + 1)"
+                        [title]="'Remove lane ' + laneNames[lane] + ' of file ' + (at + 1)"
                         [disabled]="readOnly()"
                         (click)="removeLane(at, lane)"
                       >
-                        ×
+                        <ng-icon xui size="sm" name="matClose" />
                       </button>
                     }
                   </div>

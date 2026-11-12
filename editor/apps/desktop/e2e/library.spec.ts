@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { pick, ProjectKinds } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -99,7 +100,7 @@ test('a new project reaches the list through the index', async () => {
   await window.getByTestId('library-new-project').click();
   await expect(window.getByTestId('new-project-name')).toBeFocused();
   await window.getByTestId('new-project-name').fill('Zebra Crate');
-  await window.getByTestId('new-project-kind').selectOption('layered-material');
+  await pick(window, 'new-project-kind', ProjectKinds['layered-material']);
   await window.locator('xui-tag-input input').fill('striped');
   await window.locator('xui-tag-input input').press('Enter');
   await expect(window.getByTestId('new-project-name')).toBeVisible(); // Enter in the tag field does not submit
@@ -118,7 +119,7 @@ test('a new project reaches the list through the index', async () => {
 test('the Server says why a new project is refused', async () => {
   await window.getByTestId('library-new-project').click();
   await window.getByTestId('new-project-name').fill('---');
-  await window.getByTestId('new-project-kind').selectOption('graph');
+  await pick(window, 'new-project-kind', ProjectKinds.graph);
   await window.getByRole('button', { name: 'Create' }).click();
 
   await expect(window.getByTestId('new-project-refused')).toContainText('a letter or a digit');

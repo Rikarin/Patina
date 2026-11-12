@@ -7,11 +7,13 @@ import {
   computed,
   effect,
   inject,
+  linkedSignal,
   signal,
   untracked,
   viewChild
 } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
+import { XuiSelectImports } from '@xui/select';
 import { BakeStore } from '../bake/bake-store';
 import { Activity } from '../core/activity';
 import { Commands } from '../core/commands';
@@ -100,14 +102,17 @@ const DragZoom = 4;
 
 /** What a value of the view list means when it is a mesh map rather than a view. */
 const MapPrefix = 'map:';
-/** What the look list means by none, and by asking for a file. */
-const NoLook = '';
-const PickLook = '…';
+/** What the view list shows while the viewport shows a node's picture, which only the graph can change. */
+const NodeView = 'node:';
+/** What the look list means by none. */
+const NoLook = 'none:';
+/** What the environment and look lists mean by asking for a file. */
+const PickFile = '…';
 
 /** The docked viewport: frames from the Worker on a canvas, and orbit input going the other way. */
 @Component({
   selector: 'ptn-viewport',
-  imports: [XuiButtonImports, ViewportDisplayPanel, ToolStrip, ScreenPictureOverlay, SurfaceGuide],
+  imports: [XuiButtonImports, XuiSelectImports, ViewportDisplayPanel, ToolStrip, ScreenPictureOverlay, SurfaceGuide],
   providers: [ViewportClient],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
@@ -158,8 +163,9 @@ const PickLook = '…';
         </button>
       }
       <span class="flex-1"></span>
-      <select
-        class="well h-6 max-w-28 px-1 text-xs"
+      <xui-select
+        class="w-28 min-w-0 [&_button]:text-xs"
+        style="--control-height-md: 1.5rem; --control-padding-md: 0.375rem"
         aria-label="View"
         [title]="
           'What the model shows: lit, its shape, or one stored channel as the file holds it' +
@@ -167,57 +173,39 @@ const PickLook = '…';
         "
         data-testid="viewport-view"
         [disabled]="viewport.node() !== null"
-        (change)="chooseView($event)"
-      >
-        @if (viewport.node() !== null) {
-          <option selected>Node picture</option>
-        }
-        @for (view of views; track view) {
-          <option [value]="view" [selected]="view === display().view">{{ viewName(view) }}</option>
-        }
-        @if (meshMaps().length > 0 || shownPicture()) {
-          <optgroup label="Mesh maps">
-            @for (map of meshMaps(); track map.path) {
-              <option [value]="mapPrefix + map.path" [selected]="isShown(map.path)">{{ map.label }}</option>
-            }
-            @if (shownPicture(); as file) {
-              <option [value]="mapPrefix + display().picture" selected>{{ file }}</option>
-            }
-          </optgroup>
-        }
-      </select>
-      <select
-        class="well h-6 max-w-28 px-1 text-xs"
+        [filterable]="false"
+        [itemText]="viewChoiceName()"
+        [items]="viewChoices()"
+        [matchTargetWidth]="false"
+        [value]="viewChoice()"
+        (valueChange)="$event && chooseView($event)"
+      />
+      <xui-select
+        class="w-28 min-w-0 [&_button]:text-xs"
+        style="--control-height-md: 1.5rem; --control-padding-md: 0.375rem"
         aria-label="Environment"
         title="What lights the model"
         data-testid="viewport-environment"
-        (change)="chooseEnvironment($event)"
-      >
-        @for (room of rooms; track room.value) {
-          <option [value]="room.value" [selected]="room.value === display().environment">{{ room.label }}</option>
-        }
-        @if (panorama(); as file) {
-          <option [value]="display().environment" selected>{{ file }}</option>
-        }
-        @if (canPick) {
-          <option value="">From a file…</option>
-        }
-      </select>
-      <select
-        class="well h-6 max-w-28 px-1 text-xs"
+        [filterable]="false"
+        [itemText]="environmentName()"
+        [items]="environments()"
+        [matchTargetWidth]="false"
+        [(value)]="environmentChoice"
+        (valueChange)="chooseEnvironment($event)"
+      />
+      <xui-select
+        class="w-28 min-w-0 [&_button]:text-xs"
+        style="--control-height-md: 1.5rem; --control-padding-md: 0.375rem"
         aria-label="Look"
         title="A .cube table the picture is viewed through. Nothing that is exported sees it."
         data-testid="viewport-look"
-        (change)="chooseLook($event)"
-      >
-        <option [value]="noLook" [selected]="display().look === null">No look</option>
-        @if (lookName(); as file) {
-          <option [value]="display().look" selected>{{ file }}</option>
-        }
-        @if (canPick) {
-          <option [value]="pickLook">From a file…</option>
-        }
-      </select>
+        [filterable]="false"
+        [itemText]="lookChoiceName()"
+        [items]="looks()"
+        [matchTargetWidth]="false"
+        [(value)]="lookChoice"
+        (valueChange)="chooseLook($event)"
+      />
       <button
         type="button"
         xuiButton
@@ -496,12 +484,7 @@ export class ViewportPane implements AfterViewInit {
     this.fit();
   }
 
-  protected readonly rooms = Rooms;
-  protected readonly views = Views;
   protected readonly viewName = (view: string): string => ViewNames[view] ?? termName(view);
-  protected readonly mapPrefix = MapPrefix;
-  protected readonly noLook = NoLook;
-  protected readonly pickLook = PickLook;
   protected readonly canPick = desktop() !== undefined;
   /** Whether the display settings are open beside the picture. */
   protected readonly showDisplay = signal(false);
@@ -518,6 +501,52 @@ export class ViewportPane implements AfterViewInit {
   protected readonly meshMaps = computed(() =>
     (this.bakes.current()?.result?.maps ?? []).map(map => ({ path: map.path, label: termName(map.map) }))
   );
+  /** What the view list offers: the node on view, while one is, each view, then the mesh maps it can show. */
+  protected readonly viewChoices = computed(() => [
+    ...(this.viewport.node() === null ? [] : [NodeView]),
+    ...Views,
+    ...this.meshMaps().map(map => MapPrefix + map.path),
+    ...(this.shownPicture() ? [MapPrefix + (this.display().picture ?? '')] : [])
+  ]);
+  protected readonly viewChoice = computed(() => {
+    const { view, picture } = this.display();
+    return this.viewport.node() !== null ? NodeView : view === 'picture' ? MapPrefix + (picture ?? '') : view;
+  });
+  protected readonly viewChoiceName = computed(() => {
+    const maps = new Map(this.meshMaps().map(map => [MapPrefix + map.path, `Mesh map · ${map.label}`] as const));
+    return (choice: string): string =>
+      choice === NodeView
+        ? 'Node picture'
+        : choice.startsWith(MapPrefix)
+          ? (maps.get(choice) ?? fileName(choice.slice(MapPrefix.length)))
+          : this.viewName(choice);
+  });
+  /** The rooms, the file lighting the model when it is none of them, and a file to choose, where there are files. */
+  protected readonly environments = computed(() => [
+    ...Rooms.map(room => room.value),
+    ...(this.panorama() ? [this.display().environment] : []),
+    ...(this.canPick ? [PickFile] : [])
+  ]);
+  protected readonly environmentChoice = linkedSignal(() => this.display().environment);
+  protected readonly environmentName = computed(() => {
+    const panorama = this.panorama();
+    return (source: string): string =>
+      source === PickFile
+        ? 'From a file…'
+        : (Rooms.find(room => room.value === source)?.label ?? panorama ?? fileName(source));
+  });
+  protected readonly looks = computed(() => [
+    NoLook,
+    ...(this.display().look ? [this.display().look ?? ''] : []),
+    ...(this.canPick ? [PickFile] : [])
+  ]);
+  protected readonly lookChoice = linkedSignal(() => this.display().look ?? NoLook);
+  protected readonly lookChoiceName = computed(() => {
+    const look = this.lookName();
+    return (choice: string): string =>
+      choice === PickFile ? 'From a file…' : choice === NoLook ? 'No look' : (look ?? fileName(choice));
+  });
+
   /** The picture on view when it is none of the last bake's maps, such as one a project kept. */
   protected readonly shownPicture = computed(() => {
     const { view, picture } = this.display();
@@ -544,39 +573,37 @@ export class ViewportPane implements AfterViewInit {
     void this.viewport.follow(graph, !(this.followsNode() && this.followed() === graph));
   }
 
-  protected async chooseEnvironment(event: Event): Promise<void> {
-    const select = event.target as HTMLSelectElement;
-    const source = select.value || (await desktop()?.openEnvironment(this.status.environments()));
+  /** A room, or a panorama from a file. A file not chosen leaves the list on what lights the model now. */
+  protected async chooseEnvironment(choice: string | null): Promise<void> {
+    const source = choice === PickFile ? await desktop()?.openEnvironment(this.status.environments()) : choice;
     if (source) {
       this.viewport.setDisplay({ environment: source });
     } else {
-      select.value = this.display().environment;
+      this.environmentChoice.set(this.display().environment);
     }
   }
 
-  protected async chooseLook(event: Event): Promise<void> {
-    const select = event.target as HTMLSelectElement;
-    const chosen = select.value === PickLook ? await desktop()?.openLook() : select.value || null;
-    if (chosen === undefined || (chosen === null && select.value === PickLook)) {
-      select.value = this.display().look ?? NoLook;
+  /** No look, or a table from a file. A file not chosen leaves the list on the look there is. */
+  protected async chooseLook(choice: string | null): Promise<void> {
+    const chosen = choice === PickFile ? await desktop()?.openLook() : choice === NoLook ? null : choice;
+    if (chosen === undefined || (chosen === null && choice === PickFile)) {
+      this.lookChoice.set(this.display().look ?? NoLook);
       return;
     }
 
     this.viewport.setDisplay({ look: chosen });
   }
 
-  protected chooseView(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
+  protected chooseView(value: string): void {
+    if (value === NodeView) {
+      return;
+    }
+
     this.viewport.setDisplay(
       value.startsWith(MapPrefix)
         ? { view: 'picture', picture: value.slice(MapPrefix.length) }
         : { view: value, picture: null }
     );
-  }
-
-  protected isShown(path: string): boolean {
-    const { view, picture } = this.display();
-    return view === 'picture' && picture === path;
   }
 
   /** Looks along an axis at the whole model. */

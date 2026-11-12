@@ -121,7 +121,7 @@ public static class Terms {
             words.Append(at == 0 || name[at - 1] == ' ' ? char.ToUpperInvariant(letter) : letter);
         }
 
-        return words.ToString();
+        return Spelled(words.ToString());
     }
 
     /// <summary>
@@ -185,4 +185,26 @@ public static class Terms {
     /// <summary>The labels of a setting's accepted values, in their order, or null when it takes any value.</summary>
     public static IReadOnlyList<string>? LabelsOf(IReadOnlyList<string> accepted) =>
         accepted.Count == 0 ? null : [..accepted.Select(Label)];
+
+    /// <summary>
+    ///     Words as the product spells them (docs/02-glossary.md): Vixen files a node under Colour and names a mode
+    ///     Grey, and a person reads Color and Gray. A node's category and title pass through here as a label does.
+    /// </summary>
+    /// <param name="words">Words a person reads, spaced.</param>
+    public static string Spelled(string words) {
+        if (!words.Contains("Colour", StringComparison.Ordinal) && !words.Contains("Grey", StringComparison.Ordinal)) {
+            return words;
+        }
+
+        return string.Join(' ', words.Split(' ').Select(static word => Spellings.GetValueOrDefault(word, word)));
+    }
+
+    /// <summary>The words the product spells the American way, whole words only.</summary>
+    static readonly Dictionary<string, string> Spellings = new(StringComparer.Ordinal) {
+        ["Colour"] = "Color",
+        ["Colours"] = "Colors",
+        ["Coloured"] = "Colored",
+        ["Grey"] = "Gray",
+        ["Greyscale"] = "Grayscale"
+    };
 }

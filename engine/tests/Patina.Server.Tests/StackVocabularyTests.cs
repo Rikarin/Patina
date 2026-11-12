@@ -136,6 +136,25 @@ public sealed class StackVocabularyTests {
         );
     }
 
+    /// <summary>
+    ///     What Vixen spells the British way a person reads as the product spells it: a node filed under Colour is
+    ///     a Color one, and a mode named Colour or Grey reads Color or Gray, while the values stay as files hold them
+    ///     (#198, docs/02-glossary.md).
+    /// </summary>
+    [Fact]
+    public void Vixens_colour_reads_as_color_and_its_grey_as_gray() {
+        var levels = StackDocuments.Vocabulary.Filters.Single(static held => held.Node == "Colour/Levels");
+        Assert.Equal("Color", levels.Category);
+        Assert.DoesNotContain(
+            StackDocuments.Vocabulary.Filters.Concat(StackDocuments.Vocabulary.Sources),
+            static kind => kind.Category.Contains("Colour", StringComparison.Ordinal)
+                || kind.Name.Contains("Colour", StringComparison.Ordinal)
+        );
+        Assert.Equal(["Color", "Gray", "Luminance"], Terms.LabelsOf(["Colour", "Grey", "Luminance"]));
+        Assert.Equal("Colored Grayscale", Terms.Spelled("Coloured Greyscale"));
+        Assert.Equal("Colourful", Terms.Spelled("Colourful"));
+    }
+
     /// <summary>A number a client shows until it is set has to be the one the filter runs with.</summary>
     [Theory]
     [InlineData("Filters/Blur", "Radius", "Float", 8f)]

@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { provideIcons } from '@ng-icons/core';
+import { matClose } from '@ng-icons/material-icons/baseline';
 import type {
   GraphSettingDefinition,
   MaterialInfo,
@@ -18,7 +20,8 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { colourName } from '../core/colour-names';
-import { blendName, channelName, choiceName, termName } from '../core/labels';
+import { IconImports } from '../core/icons';
+import { blendName, channelName, choiceName, labelsOf, termName, valuesOf } from '../core/labels';
 import { amount, percent } from '../core/numbers';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
@@ -65,6 +68,7 @@ function stemOf(source: string): string | undefined {
     AnchorInputs,
     FilterFields,
     FilterInputs,
+    IconImports,
     SurfaceFields,
     XuiButtonImports,
     XuiColorPickerImports,
@@ -75,6 +79,7 @@ function stemOf(source: string): string | undefined {
     XuiSliderImports,
     XuiSwitchImports
   ],
+  viewProviders: [provideIcons({ matClose })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-1.5' },
   template: `
@@ -231,18 +236,16 @@ function stemOf(source: string): string | undefined {
               @if (layer.fill !== 'Anchor') {
                 <div class="flex items-center gap-2">
                   <span class="text-foreground-muted w-16 shrink-0 text-xs">Projection</span>
-                  <select
-                    class="well h-7 min-w-0 flex-1 px-1 text-sm"
+                  <xui-select
+                    class="min-w-0 flex-1"
                     aria-label="Projection"
                     data-testid="paint-fill-projection"
-                    (change)="store.edit({ op: 'setLayer', layer: layer.id, projection: text($event) })"
-                  >
-                    @for (option of projectionsFor(layer); track option.value) {
-                      <option [value]="option.value" [selected]="option.value === layer.projection">
-                        {{ option.label }}
-                      </option>
-                    }
-                  </select>
+                    [filterable]="false"
+                    [itemText]="labelsOf(projectionsFor(layer))"
+                    [items]="valuesOf(projectionsFor(layer))"
+                    [value]="layer.projection"
+                    (valueChange)="$event && store.edit({ op: 'setLayer', layer: layer.id, projection: $event })"
+                  />
                 </div>
               }
               @if (layer.projection === 'Decal' || layer.projection === 'Path') {
@@ -251,16 +254,15 @@ function stemOf(source: string): string | undefined {
                 @if (layer.projection === 'Planar' || layer.projection === 'Cylindrical') {
                   <div class="flex items-center gap-2">
                     <span class="text-foreground-muted w-16 shrink-0 text-xs">Axis</span>
-                    <select
-                      class="well h-7 min-w-0 flex-1 px-1 text-sm"
+                    <xui-select
+                      class="min-w-0 flex-1"
                       aria-label="Projection axis"
                       data-testid="paint-fill-axis"
-                      (change)="store.edit({ op: 'setLayer', layer: layer.id, planarAxis: text($event) })"
-                    >
-                      @for (axis of axes; track axis) {
-                        <option [value]="axis" [selected]="axis === layer.planarAxis">{{ axis }}</option>
-                      }
-                    </select>
+                      [filterable]="false"
+                      [items]="axes"
+                      [value]="layer.planarAxis"
+                      (valueChange)="$event && store.edit({ op: 'setLayer', layer: layer.id, planarAxis: $event })"
+                    />
                   </div>
                 }
                 <p class="section-label mt-1">UV Transformations</p>
@@ -269,7 +271,7 @@ function stemOf(source: string): string | undefined {
                   <xui-numeric-input
                     class="min-w-0 flex-1"
                     size="sm"
-                    ariaLabel="Projection scale"
+                    aria-label="Projection scale"
                     data-testid="paint-fill-scale"
                     [stepSize]="0.1"
                     [value]="layer.placement?.scale ?? 1"
@@ -281,7 +283,7 @@ function stemOf(source: string): string | undefined {
                   <xui-numeric-input
                     class="min-w-0 flex-1"
                     size="sm"
-                    ariaLabel="Projection rotation in degrees"
+                    aria-label="Projection rotation in degrees"
                     data-testid="paint-fill-rotation"
                     [stepSize]="5"
                     [value]="degrees(layer.placement?.rotation)"
@@ -293,7 +295,7 @@ function stemOf(source: string): string | undefined {
                   <xui-numeric-input
                     class="min-w-0 flex-1"
                     size="sm"
-                    ariaLabel="Projection offset across"
+                    aria-label="Projection offset across"
                     data-testid="paint-fill-offset-x"
                     [stepSize]="0.05"
                     [value]="layer.placement?.offsetX ?? 0"
@@ -302,7 +304,7 @@ function stemOf(source: string): string | undefined {
                   <xui-numeric-input
                     class="min-w-0 flex-1"
                     size="sm"
-                    ariaLabel="Projection offset along"
+                    aria-label="Projection offset along"
                     data-testid="paint-fill-offset-y"
                     [stepSize]="0.05"
                     [value]="layer.placement?.offsetY ?? 0"
@@ -315,7 +317,7 @@ function stemOf(source: string): string | undefined {
                     <xui-numeric-input
                       class="min-w-0 flex-1"
                       size="sm"
-                      ariaLabel="Projection blending"
+                      aria-label="Projection blending"
                       data-testid="paint-fill-sharpness"
                       [stepSize]="0.5"
                       [value]="layer.placement?.sharpness ?? 4"
@@ -365,7 +367,8 @@ function stemOf(source: string): string | undefined {
                         xuiButton
                         size="sm"
                         variant="ghost"
-                        [attr.aria-label]="'Choose ' + channel.usage + ' picture'"
+                        [attr.aria-label]="'Choose the ' + channelName(channel.usage) + ' picture'"
+                        [title]="'Choose the ' + channelName(channel.usage) + ' picture'"
                         [attr.data-testid]="'paint-texture-' + channel.usage"
                         (click)="chooseTexture(layer, channel.usage)"
                       >
@@ -411,19 +414,17 @@ function stemOf(source: string): string | undefined {
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="text-foreground-muted w-16 shrink-0 text-xs">Channel</span>
-                  <select
-                    class="well h-7 min-w-0 flex-1 px-1 text-sm"
+                  <xui-select
+                    class="min-w-0 flex-1"
                     aria-label="Channel the fill reads"
                     data-testid="paint-fill-anchor-channel"
-                    (change)="setFillAnchor(layer, { channel: text($event) })"
-                  >
-                    <option value="" [selected]="!layer.anchor?.channel">Each channel its own</option>
-                    @for (channel of store.state()?.channels ?? []; track channel.usage) {
-                      <option [value]="channel.usage" [selected]="channel.usage === layer.anchor?.channel">
-                        {{ channelName(channel.usage) }}
-                      </option>
-                    }
-                  </select>
+                    placeholder="Each channel its own"
+                    [filterable]="false"
+                    [itemText]="eachChannelName"
+                    [items]="eachChannel()"
+                    [value]="layer.anchor?.channel ?? ''"
+                    (valueChange)="setFillAnchor(layer, { channel: $event ?? '' })"
+                  />
                 </div>
               }
             }
@@ -432,7 +433,7 @@ function stemOf(source: string): string | undefined {
                 <span class="text-foreground-muted w-16 shrink-0 text-xs">Filter</span>
                 <xui-select
                   class="min-w-0 flex-1"
-                  ariaLabel="Filter"
+                  aria-label="Filter"
                   data-testid="paint-filter"
                   [itemText]="filterName"
                   [items]="filtersWith(layer.filterNode)"
@@ -481,35 +482,32 @@ function stemOf(source: string): string | undefined {
                 knobName(parameter)
               }}</span>
               @if (parameter.accepted.length > 0) {
-                <select
-                  class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                  [attr.aria-label]="knobName(parameter)"
+                <xui-select
+                  class="min-w-0 flex-1"
+                  [aria-label]="knobName(parameter)"
                   [attr.data-testid]="'paint-knob-' + parameter.name"
-                  (change)="setKnob(layer, parameter.name, text($event))"
-                >
-                  @for (value of parameter.accepted; track value) {
-                    <option [value]="value" [selected]="value === knob(layer, parameter)">
-                      {{ choiceName(parameter, value) }}
-                    </option>
-                  }
-                </select>
+                  [filterable]="false"
+                  [itemText]="choicesOf(parameter)"
+                  [items]="parameter.accepted"
+                  [value]="knob(layer, parameter)"
+                  (valueChange)="$event && setKnob(layer, parameter.name, $event)"
+                />
               } @else if (parameter.kind === 'Float' || parameter.kind === 'Int') {
                 <xui-numeric-input
                   class="min-w-0 flex-1"
                   size="sm"
-                  [ariaLabel]="knobName(parameter)"
+                  [aria-label]="knobName(parameter)"
                   [attr.data-testid]="'paint-knob-' + parameter.name"
                   [stepSize]="parameter.kind === 'Int' ? 1 : 0.1"
                   [value]="+knob(layer, parameter)"
                   (valueChange)="setKnob(layer, parameter.name, ($event ?? 0).toString())"
                 />
               } @else if (parameter.kind === 'Bool') {
-                <input
-                  type="checkbox"
-                  [attr.aria-label]="knobName(parameter)"
+                <xui-switch
+                  [aria-label]="knobName(parameter)"
                   [attr.data-testid]="'paint-knob-' + parameter.name"
                   [checked]="knob(layer, parameter) === 'true'"
-                  (change)="setKnob(layer, parameter.name, checked($event).toString())"
+                  (checkedChange)="setKnob(layer, parameter.name, $event.toString())"
                 />
               } @else {
                 <input
@@ -697,18 +695,16 @@ function stemOf(source: string): string | undefined {
                 [value]="layer.mask.anchor?.anchor || null"
                 (valueChange)="setMaskAnchor(layer, { anchor: $event ?? '' })"
               />
-              <select
-                class="well h-7 px-1 text-sm"
+              <xui-select
+                class="min-w-0"
                 aria-label="Channel the mask reads"
                 data-testid="paint-mask-anchor-channel"
-                (change)="setMaskAnchor(layer, { channel: text($event) })"
-              >
-                @for (channel of store.state()?.channels ?? []; track channel.usage) {
-                  <option [value]="channel.usage" [selected]="channel.usage === maskChannel(layer)">
-                    {{ channelName(channel.usage) }}
-                  </option>
-                }
-              </select>
+                [filterable]="false"
+                [itemText]="channelName"
+                [items]="channels()"
+                [value]="maskChannel(layer)"
+                (valueChange)="$event && setMaskAnchor(layer, { channel: $event })"
+              />
             }
             @case ('Generator') {
               <xui-select
@@ -725,23 +721,21 @@ function stemOf(source: string): string | undefined {
                     knobName(parameter)
                   }}</span>
                   @if (parameter.accepted.length > 0) {
-                    <select
-                      class="well h-7 min-w-0 flex-1 px-1 text-sm"
-                      [attr.aria-label]="knobName(parameter)"
+                    <xui-select
+                      class="min-w-0 flex-1"
+                      [aria-label]="knobName(parameter)"
                       [attr.data-testid]="'paint-mask-knob-' + parameter.name"
-                      (change)="setGeneratorKnob(layer, parameter.name, text($event))"
-                    >
-                      @for (value of parameter.accepted; track value) {
-                        <option [value]="value" [selected]="value === generatorKnob(layer, parameter)">
-                          {{ choiceName(parameter, value) }}
-                        </option>
-                      }
-                    </select>
+                      [filterable]="false"
+                      [itemText]="choicesOf(parameter)"
+                      [items]="parameter.accepted"
+                      [value]="generatorKnob(layer, parameter)"
+                      (valueChange)="$event && setGeneratorKnob(layer, parameter.name, $event)"
+                    />
                   } @else {
                     <xui-numeric-input
                       class="min-w-0 flex-1"
                       size="sm"
-                      [ariaLabel]="knobName(parameter)"
+                      [aria-label]="knobName(parameter)"
                       [attr.data-testid]="'paint-mask-knob-' + parameter.name"
                       [stepSize]="parameter.kind === 'Int' ? 1 : 0.05"
                       [value]="+generatorKnob(layer, parameter)"
@@ -827,9 +821,9 @@ function stemOf(source: string): string | undefined {
                         type="button"
                         class="border-hairline size-5 rounded-sm border"
                         data-testid="paint-picked"
-                        [attr.aria-label]="'Take ' + colourName(colour) + ' out of the selection'"
+                        [attr.aria-label]="'Remove ' + colourName(colour) + ' from the selection'"
                         [style.background]="hexOf(colour)"
-                        [title]="colourName(colour) + '. Click to take it out of the selection'"
+                        [title]="colourName(colour) + '. Click to remove it from the selection'"
                         (click)="toggleColour(layer, colour)"
                       ></button>
                     }
@@ -909,30 +903,29 @@ function stemOf(source: string): string | undefined {
         @if (layer.mask.source !== 'None') {
           <div class="flex items-center gap-2" data-testid="paint-mask-effects">
             <span class="text-foreground-muted w-16 shrink-0 text-xs">Effects</span>
-            <select
-              class="well h-7 min-w-0 flex-1 px-1 text-sm"
-              aria-label="Add mask effect"
-              data-testid="paint-mask-effect-add"
-              (change)="addEffect(layer, $event)"
-            >
-              <option value="">Add…</option>
-              @for (group of effectGroups(); track group.category) {
-                <optgroup [label]="group.category">
-                  @for (effect of group.effects; track effect.node) {
-                    <option [value]="effect.node">{{ effect.name }}</option>
-                  }
-                </optgroup>
-              }
-            </select>
+            <!-- A choice adds an effect and the list starts again, empty, as a list made new. -->
+            @for (round of [effectsAdded()]; track round) {
+              <xui-select
+                class="min-w-0 flex-1"
+                aria-label="Add mask effect"
+                data-testid="paint-mask-effect-add"
+                placeholder="Add…"
+                searchPlaceholder="Find an effect"
+                [itemText]="effectChoiceName"
+                [items]="effectNodes()"
+                [matchTargetWidth]="false"
+                [value]="null"
+                (valueChange)="addEffect(layer, $event)"
+              />
+            }
           </div>
           @for (effect of layer.mask.effects ?? []; track $index; let index = $index) {
             <div class="well flex flex-col gap-1 p-1" [attr.data-testid]="'paint-mask-effect-' + index">
               <div class="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  [attr.aria-label]="'Run ' + effectName(effect.node)"
+                <xui-switch
+                  [aria-label]="'Run ' + effectName(effect.node)"
                   [checked]="effect.enabled"
-                  (change)="setEffect(layer, index, { enabled: checked($event) })"
+                  (checkedChange)="setEffect(layer, index, { enabled: $event })"
                 />
                 <span class="min-w-0 flex-1 truncate text-xs">{{ effectName(effect.node) }}</span>
                 <button
@@ -940,16 +933,18 @@ function stemOf(source: string): string | undefined {
                   xuiButton
                   size="sm"
                   variant="ghost"
+                  class="w-6 px-0"
                   [attr.aria-label]="'Remove ' + effectName(effect.node)"
+                  [title]="'Remove ' + effectName(effect.node)"
                   (click)="removeEffect(layer, index)"
                 >
-                  ✕
+                  <ng-icon xui size="sm" name="matClose" />
                 </button>
               </div>
               <div class="flex items-center gap-2">
                 <xui-select
                   class="w-28 shrink-0 [&_button]:text-xs"
-                  [ariaLabel]="'Blend mode of ' + effectName(effect.node)"
+                  [aria-label]="'Blend mode of ' + effectName(effect.node)"
                   [attr.data-testid]="'paint-effect-' + index + '-blend'"
                   [filterable]="false"
                   [itemText]="blendName"
@@ -1001,7 +996,7 @@ function stemOf(source: string): string | undefined {
         <xui-numeric-input
           class="min-w-0 flex-1"
           size="sm"
-          ariaLabel="Seed"
+          aria-label="Seed"
           data-testid="paint-seed"
           [min]="0"
           [stepSize]="1"
@@ -1030,10 +1025,31 @@ export class LayerPanel {
   protected readonly projections = computed(() => this.store.vocabulary()?.projections ?? []);
   /** A constant is the same colour wherever it lands, so it is only put on by what decides where it covers. */
   protected projectionsFor(layer: StackLayer) {
-    return layer.fill === 'Constant'
-      ? this.projections().filter(option => SurfaceProjections.has(option.value) || option.value === 'Uv')
-      : this.projections();
+    return layer.fill === 'Constant' ? this.constantProjections() : this.projections();
   }
+
+  /** A color has no picture to place, so it lands over the UVs or on a decal or a path. */
+  private readonly constantProjections = computed(() =>
+    this.projections().filter(option => SurfaceProjections.has(option.value) || option.value === 'Uv')
+  );
+  protected readonly valuesOf = valuesOf;
+  protected readonly labelsOf = labelsOf;
+  /** Each knob's choices by the labels it carries: one reader for one knob, so a select keeps its list. */
+  private readonly choiceReaders = new Map<string, (value: string) => string>();
+  protected choicesOf(parameter: { name: string; accepted: readonly string[]; labels?: readonly string[] | null }) {
+    const key = parameter.name + '\u0000' + parameter.accepted.join('\u0000');
+    let read = this.choiceReaders.get(key);
+    if (!read) {
+      read = value => choiceName(parameter, value);
+      this.choiceReaders.set(key, read);
+    }
+
+    return read;
+  }
+  protected readonly channels = computed(() => (this.store.state()?.channels ?? []).map(channel => channel.usage));
+  /** Each channel its own first, then one channel every channel reads. */
+  protected readonly eachChannel = computed(() => ['', ...this.channels()]);
+  protected readonly eachChannelName = (usage: string): string => (usage ? channelName(usage) : 'Each channel its own');
   protected readonly axes = Axes;
   protected readonly blends = computed(() => this.store.vocabulary()?.blends.map(term => term.value) ?? []);
   /** Every filter, by the node it runs. */
@@ -1088,10 +1104,6 @@ export class LayerPanel {
         this.point.release();
       });
     });
-  }
-
-  protected checked(event: Event): boolean {
-    return (event.target as HTMLInputElement).checked;
   }
 
   protected text(event: Event): string {
@@ -1353,10 +1365,17 @@ export class LayerPanel {
     return this.maskEffects().find(effect => effect.node === node)?.name ?? node.split('/').pop() ?? node;
   }
 
-  protected addEffect(layer: StackLayer, event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const node = select.value;
-    select.value = '';
+  /** Every effect a mask can run, a category's together. */
+  protected readonly effectNodes = computed(() => this.effectGroups().flatMap(group => group.effects.map(e => e.node)));
+  protected readonly effectChoiceName = (node: string): string => {
+    const effect = this.maskEffects().find(candidate => candidate.node === node);
+    return effect ? `${effect.name} · ${effect.category}` : this.effectName(node);
+  };
+  /** How many effects the Add list has added, which makes it new after each. */
+  protected readonly effectsAdded = signal(0);
+
+  protected addEffect(layer: StackLayer, node: string | null): void {
+    this.effectsAdded.update(count => count + 1);
     if (node) {
       this.setEffects(layer, [...(layer.mask.effects ?? []), { node, enabled: true, blend: 'Copy', opacity: 1 }]);
     }
