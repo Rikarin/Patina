@@ -17,12 +17,12 @@ public sealed partial class PreviewStore(ServerIdentity identity) {
         : Path.Combine(Path.GetTempPath(), $"patina-previews-{Environment.ProcessId}");
 
     /// <summary>The file for a hash, or null when the hash is not one or the file is not there.</summary>
-    public string? Find(string hash) {
+    public string? Find(string hash, string extension = GraphPreviewFiles.Extension) {
         if (!HashPattern().IsMatch(hash)) {
             return null;
         }
 
-        var path = GraphPreviewFiles.PathOf(Root, hash);
+        var path = GraphPreviewFiles.PathOf(Root, hash, extension);
         return File.Exists(path) ? path : null;
     }
 

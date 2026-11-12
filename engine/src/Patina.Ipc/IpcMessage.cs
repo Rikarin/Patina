@@ -111,6 +111,12 @@ public static class IpcTypes {
 
     public const string MeshPartMask = "mesh.part-mask";
 
+    /// <summary>
+    ///     Draws a texture set's UV layout as lines into the preview folder (#137), answered with its hash: the edges
+    ///     of its triangles, each once, as an SVG a 2D view lays over the map.
+    /// </summary>
+    public const string MeshUvWire = "mesh.uv-wire";
+
     /// <summary>Renders each fill of a stack alone, small.</summary>
     public const string StackThumbnails = "stack.thumbnails";
 
@@ -276,6 +282,9 @@ public sealed class IpcMessage {
     public IReadOnlyList<string>? Parts { get; set; }
 
     public MeshPartMaskAsk? MeshPartMask { get; set; }
+
+    /// <summary>mesh.uv-wire: the set whose layout to draw. Its reply is <see cref="ThumbnailHash" />.</summary>
+    public UvWireAsk? UvWire { get; set; }
 
     /// <summary>
     ///     The bake's setup for <see cref="IpcTypes.ViewportBakePreview" />: paths and options, never shapes, and an
@@ -755,6 +764,13 @@ public sealed record MeshMovePaintAsk(
 /// <param name="Output">The picture.</param>
 public sealed record MeshPartMaskAsk(string Mesh, IReadOnlyList<string> Parts, int Side, string Output);
 
+/// <summary>Asks for a texture set's UV layout as lines (#137).</summary>
+/// <param name="Mesh">The mesh file.</param>
+/// <param name="Set">The texture set, which is a material of the mesh, or a name that is none for the whole mesh.</param>
+/// <param name="UvSet">The coordinate set the texture set is laid out in.</param>
+/// <param name="PreviewFolder">The content-addressed folder the drawing goes in.</param>
+public sealed record UvWireAsk(string Mesh, string Set, int UvSet, string PreviewFolder);
+
 /// <summary>Writes some canvases of a stack as they stand, under their own names, to a folder.</summary>
 /// <param name="Session">The session.</param>
 /// <param name="Paints">The paint files, relative to the stack. One that holds nothing is not written.</param>
@@ -790,8 +806,11 @@ public sealed record StackPixelsAsk(
 public static class GraphPreviewFiles {
     public const string Extension = ".png";
 
-    public static string PathOf(string folder, string hash) =>
-        Path.Combine(folder, hash[..2], string.Concat(hash, Extension));
+    /// <summary>What a drawing of lines is kept as, such as a UV layout.</summary>
+    public const string Drawing = ".svg";
+
+    public static string PathOf(string folder, string hash, string extension = Extension) =>
+        Path.Combine(folder, hash[..2], string.Concat(hash, extension));
 }
 
 /// <summary>A preview that is now in the cache. The pixels are not in the message.</summary>

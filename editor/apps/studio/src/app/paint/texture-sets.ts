@@ -1,5 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { XuiContextMenuImports } from '@xui/context-menu';
+import { XuiMenuImports } from '@xui/menu';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
+import { Commands } from '../core/commands';
+import { MenuKeys } from '../core/menu-keys';
 import { ProjectStore } from '../library/project-store';
 import { IsolationStore } from '../viewport/isolation-store';
 import { PaintStore } from './paint-store';
@@ -10,13 +14,21 @@ import { PaintStore } from './paint-store';
  */
 @Component({
   selector: 'ptn-texture-sets',
-  imports: [XuiNonIdealStateImports],
+  imports: [XuiContextMenuImports, XuiMenuImports, XuiNonIdealStateImports, MenuKeys],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col overflow-auto p-1' },
   template: `
-    <div role="listbox" aria-label="Texture sets" data-testid="texture-sets">
+    <div
+      role="listbox"
+      aria-label="Texture sets"
+      data-testid="texture-sets"
+      ptnMenuKeys
+      [xuiContextMenuTriggerFor]="setMenu"
+      (aiming)="aim($event)"
+      (contextmenu)="aim($event)"
+    >
       @for (set of sets(); track set.path) {
-        <div class="border-hairline flex h-7 w-full items-center border-b">
+        <div class="border-hairline flex h-7 w-full items-center border-b" [attr.data-set]="set.path">
           <button
             type="button"
             role="option"
@@ -56,6 +68,44 @@ import { PaintStore } from './paint-store';
         />
       }
     </div>
+    <ng-template #setMenu>
+      <xui-menu data-testid="texture-set-menu" [attr.aria-label]="aimed()?.name ?? 'Texture sets'">
+        @if (aimed(); as set) {
+          @if (set.path !== front()) {
+            <button type="button" xuiMenuItem data-testid="texture-set-menu-open" (triggered)="choose(set.path)">
+              Paint {{ set.name }}
+            </button>
+          }
+          @if (set.material) {
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="texture-set-menu-alone"
+              (triggered)="isolation.toggleMaterial(set.material)"
+            >
+              {{ isolatedMaterial() === set.material ? 'Show the Whole Model' : 'Show Alone' }}
+            </button>
+          }
+        }
+        @if (isolated() && isolatedMaterial() !== aimed()?.material) {
+          <button type="button" xuiMenuItem data-testid="texture-set-menu-all" (triggered)="isolation.showAll()">
+            Show the Whole Model
+          </button>
+        }
+        <xui-menu-divider />
+        @for (command of setCommands; track command) {
+          <button
+            type="button"
+            xuiMenuItem
+            [attr.data-testid]="'texture-set-menu-' + command"
+            [disabled]="!commands.enabled(command)"
+            (triggered)="commands.run(command)"
+          >
+            {{ commands.label(command) }}
+          </button>
+        }
+      </xui-menu>
+    </ng-template>
     @if (parts().length > 1) {
       <div
         class="flex flex-col px-2 py-1"
@@ -95,6 +145,11 @@ export class TextureSets {
   private readonly project = inject(ProjectStore);
   protected readonly store = inject(PaintStore);
   protected readonly isolation = inject(IsolationStore);
+  protected readonly commands = inject(Commands);
+  /** What a set's menu offers besides showing it: the dialogs that work on the sets. */
+  protected readonly setCommands = ['bake', 'export', 'projectSettings'] as const;
+  /** The set a menu is about. */
+  protected readonly aimed = signal<{ path: string; name: string; material: string | null } | null>(null);
   /** The named meshes of the open set, which can be shown alone. */
   protected readonly parts = signal<readonly string[]>([]);
   protected readonly isolated = computed(() => {
@@ -137,6 +192,12 @@ export class TextureSets {
     const state = this.store.state();
     return state ? `${state.width}×${state.height}` : null;
   });
+
+  /** Says which set the menu that is about to open is for: the row under the pointer, or the one with focus. */
+  protected aim(event: { target: EventTarget | null }): void {
+    const path = (event.target as HTMLElement).closest<HTMLElement>('[data-set]')?.dataset['set'] ?? null;
+    this.aimed.set(this.sets().find(set => set.path === path) ?? null);
+  }
 
   protected choose(path: string): void {
     const project = this.project.current();

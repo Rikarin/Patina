@@ -1,9 +1,12 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSpinnerImports } from '@xui/spinner';
 import { Commands } from '../core/commands';
 import { channelName } from '../core/labels';
+import { messageOf } from '../core/messages';
+import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf, toTexels } from './paint-store';
 import { StrokeGesture } from './stroke-gesture';
@@ -33,18 +36,45 @@ import { StrokeGesture } from './stroke-gesture';
         }
       </select>
     }
-    @if (tiling()) {
-      <button
-        class="absolute top-3 right-3 z-10"
-        type="button"
-        xuiButton
-        size="sm"
-        data-testid="paint-tile"
-        [attr.aria-pressed]="tiled()"
-        (click)="tiled.set(!tiled())"
-      >
-        {{ tiled() ? 'One' : 'Tile' }}
-      </button>
+    @if (store.picture()) {
+      <div class="absolute top-3 right-3 z-10 flex gap-1">
+        @if (tiling()) {
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            data-testid="paint-tile"
+            [attr.aria-pressed]="tiled()"
+            (click)="tiled.set(!tiled())"
+          >
+            {{ tiled() ? 'One' : 'Tile' }}
+          </button>
+        }
+        @if (hasMesh()) {
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            data-testid="paint-uv-wire"
+            [attr.aria-pressed]="wired()"
+            [title]="wireFailure() ?? 'Draws the texture set’s UV layout over the map'"
+            (click)="wired.set(!wired())"
+          >
+            UV
+          </button>
+        }
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          data-testid="paint-fit"
+          title="Fits the whole map in the view again"
+          [disabled]="scale() === 1 && shift()[0] === 0 && shift()[1] === 0"
+          (click)="fit()"
+        >
+          Fit
+        </button>
+      </div>
     }
     @if (store.picture(); as picture) {
       @if (tiling() && tiled()) {
@@ -56,7 +86,7 @@ import { StrokeGesture } from './stroke-gesture';
         ></div>
       } @else {
         <div
-          class="well aspect-square max-h-full max-w-full touch-none overflow-hidden"
+          class="well relative aspect-square max-h-full max-w-full touch-none overflow-hidden"
           data-testid="paint-canvas"
           [style.transform]="transform()"
           (wheel)="wheel($event)"
@@ -72,9 +102,44 @@ import { StrokeGesture } from './stroke-gesture';
             (pointermove)="move($event)"
             (pointerup)="up()"
             (pointercancel)="up()"
+            (pointerleave)="under.set(null)"
             (dblclick)="gesture.finish()"
           />
+          @if (wired() && wire(); as layout) {
+            <img
+              class="pointer-events-none absolute inset-0 size-full select-none"
+              alt="The UV layout"
+              draggable="false"
+              data-testid="paint-uv-layout"
+              [src]="layout"
+            />
+          }
+          <span
+            class="readout text-foreground pointer-events-none absolute top-0.5 left-1 [text-shadow:0_0_3px_black,0_0_1px_black]"
+            [style.font-size.px]="11 / scale()"
+            aria-hidden="true"
+            >0</span
+          >
+          <span
+            class="readout text-foreground pointer-events-none absolute top-0.5 right-1 [text-shadow:0_0_3px_black,0_0_1px_black]"
+            [style.font-size.px]="11 / scale()"
+            aria-hidden="true"
+            >U 1</span
+          >
+          <span
+            class="readout text-foreground pointer-events-none absolute bottom-0.5 left-1 [text-shadow:0_0_3px_black,0_0_1px_black]"
+            [style.font-size.px]="11 / scale()"
+            aria-hidden="true"
+            >V 1 · 1001</span
+          >
         </div>
+        @if (under(); as at) {
+          <span
+            class="readout chrome-bar absolute bottom-3 left-3 z-10 rounded px-1.5 py-0.5 text-xs"
+            data-testid="paint-under"
+            >u {{ at.u }} v {{ at.v }} · {{ at.x }}, {{ at.y }}</span
+          >
+        }
       }
     } @else if (!store.state()) {
       <xui-non-ideal-state
@@ -120,6 +185,21 @@ export class PaintAtlas {
 
   constructor() {
     const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(() => this.drop());
+    // The layout follows the stack and its mesh while it is drawn, and is let go of when it is not.
+    effect(() => {
+      const state = this.store.state();
+      const key = this.wired() && state && state.model !== '' ? `${state.id}\n${state.model}` : null;
+      if (key === this.wiredFor) {
+        return;
+      }
+
+      this.wiredFor = key;
+      this.drop();
+      if (key !== null && state) {
+        void this.fetchWire(state.id, key);
+      }
+    });
     this.commands.handle(
       'cancelStroke',
       {
@@ -151,14 +231,61 @@ export class PaintAtlas {
   private painting = false;
 
   /** The picture's own zoom and pan, which leave where a stamp lands alone: a stamp reads the box as drawn. */
-  private readonly scale = signal(1);
-  private readonly shift = signal<readonly [number, number]>([0, 0]);
+  protected readonly scale = signal(1);
+  protected readonly shift = signal<readonly [number, number]>([0, 0]);
+
+  /** Where the pointer is on the map: its UV, v down as the map lies, and its texel. */
+  protected readonly under = signal<{ u: string; v: string; x: number; y: number } | null>(null);
+
+  private readonly connection = inject(SERVER_CONNECTION);
+  private readonly createClient = inject(API_CLIENT_FACTORY);
+
+  /** Whether the set is on a mesh, so it has a UV layout to draw. */
+  protected readonly hasMesh = computed(() => (this.store.state()?.model ?? '') !== '');
+  /** Whether the UV layout is drawn over the map (#137). */
+  protected readonly wired = signal(false);
+  /** The layout as an SVG the Server sent, for the stack it was asked for. */
+  protected readonly wire = signal<string | null>(null);
+  protected readonly wireFailure = signal<string | null>(null);
+  private wiredFor: string | null = null;
   private panning = false;
   protected readonly nameOf = channelName;
   protected readonly transform = computed(() => {
     const [x, y] = this.shift();
     return `translate(${x}px, ${y}px) scale(${this.scale()})`;
   });
+
+  /** Shows the whole map again, as it opened. */
+  protected fit(): void {
+    this.scale.set(1);
+    this.shift.set([0, 0]);
+  }
+
+  /** Asks for the set's layout when it is wanted and not already here: a stack on another mesh asks again. */
+  private async fetchWire(id: string, key: string): Promise<void> {
+    try {
+      const client = this.createClient(await this.connection());
+      const blob = unwrap(
+        await client.GET('/api/v1/stacks/{id}/uv-wire', { params: { path: { id } }, parseAs: 'blob' })
+      );
+      if (this.wiredFor === key) {
+        this.drop();
+        this.wire.set(URL.createObjectURL(blob));
+        this.wireFailure.set(null);
+      }
+    } catch (error) {
+      this.wireFailure.set(messageOf(error));
+    }
+  }
+
+  private drop(): void {
+    const old = this.wire();
+    if (old) {
+      URL.revokeObjectURL(old);
+    }
+
+    this.wire.set(null);
+  }
 
   protected look(event: Event): void {
     this.store.viewChannel((event.target as HTMLSelectElement).value || null);
@@ -215,6 +342,15 @@ export class PaintAtlas {
   }
 
   protected move(event: PointerEvent): void {
+    const box = (event.target as HTMLElement).getBoundingClientRect();
+    const [width, height] = this.side();
+    const [u, v] = [(event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height];
+    this.under.set({
+      u: u.toFixed(3),
+      v: v.toFixed(3),
+      x: Math.min(width - 1, Math.max(0, Math.floor(u * width))),
+      y: Math.min(height - 1, Math.max(0, Math.floor(v * height)))
+    });
     if (this.panning) {
       this.shift.update(([x, y]) => [x + event.movementX, y + event.movementY]);
     } else if (this.painting) {

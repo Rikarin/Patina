@@ -170,6 +170,16 @@ static class StackEndpoints {
             Refused,
             Unavailable
         );
+        stacks.MapGet("/{id}/uv-wire", GetUvWire)
+            .Produces<string>(StatusCodes.Status200OK, "image/svg+xml")
+            .Describe(
+                "GetStackUvWire",
+                "The texture set's UV layout as lines, each edge of its triangles once, as an SVG over the unit square "
+                + "with v down, as the map lies: what a 2D view lays over the map. A stack on no mesh has none.",
+                Missing,
+                Refused,
+                Unavailable
+            );
         Post(
             "/{id}/mesh-mask",
             DrawMeshMask,
@@ -493,6 +503,40 @@ static class StackEndpoints {
         }
 
         return await MeshPartsAsync(session, worker, null, cancellationToken);
+    }
+
+    /// <summary>The set's layout as lines, drawn by the Worker into the preview folder and sent from there (#137).</summary>
+    static async Task<Results<PhysicalFileHttpResult, ProblemHttpResult>> GetUvWire(
+        string id,
+        StackSessions sessions,
+        WorkerLink worker,
+        PreviewStore store,
+        CancellationToken cancellationToken
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        if (session.ModelFile is not { } mesh) {
+            return TypedResults.Problem("This stack is on no mesh, so it has no UV layout.", statusCode: Missing);
+        }
+
+        try {
+            var connection = await worker.ConnectionAsync(cancellationToken);
+            var reply = await connection.SendAsync(
+                new() {
+                    Type = IpcTypes.MeshUvWire, UvWire = new(mesh, session.Set, session.UvSet, store.Root)
+                },
+                cancellationToken
+            );
+            return reply.ThumbnailHash is { } hash && store.Find(hash, GraphPreviewFiles.Drawing) is { } file
+                ? TypedResults.PhysicalFile(file, "image/svg+xml")
+                : TypedResults.Problem("The Worker drew no layout.", statusCode: Unavailable);
+        } catch (IpcException e) {
+            return TypedResults.Problem(e.Message, statusCode: Refused);
+        } catch (Exception e) when (e is IOException or TimeoutException) {
+            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+        }
     }
 
     static async Task<Results<Ok<StackMeshParts>, ProblemHttpResult>> DrawMeshMask(
