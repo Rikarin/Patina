@@ -523,7 +523,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               <p class="text-foreground-muted text-xs">
                 Blue is where the rays start, with a line out to the front distance and orange in to the rear. Parts
                 matched by name share a color; red matched no high part, so its rays strike all of the high mesh.
-                Magenta is a hard edge with no UV seam.
+                Magenta is a hard edge with no UV seam, and green a ray the skew leans inside a face.
               </p>
               @if (settings.preview(); as state) {
                 @if (state.parts.length > 0) {

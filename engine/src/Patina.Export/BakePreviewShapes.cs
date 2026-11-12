@@ -64,6 +64,12 @@ public static class BakePreviewShapes {
     static readonly Vector4 ShellEdge = new(0.2f, 0.75f, 1f, 0.5f);
     static readonly Vector4 Front = new(0.2f, 0.75f, 1f, 0.8f);
     static readonly Vector4 Rear = new(1f, 0.6f, 0.15f, 0.8f);
+    static readonly Vector4 Lean = new(0.2f, 0.8f, 0.15f, 0.95f);
+
+    /// <summary>
+    ///     A mesh with more triangles than this gets one leaned ray a triangle, at its middle, rather than three.
+    /// </summary>
+    const int FewTriangles = 20_000;
 
     /// <summary>Reads the meshes and makes the shapes.</summary>
     /// <param name="preview">What to show.</param>
@@ -167,12 +173,16 @@ public static class BakePreviewShapes {
         List<string> warnings
     ) {
         BakeReachShell shell;
+        IReadOnlyList<BakeLeanRay> leans;
         try {
             var request = new BakeRequest {
                 High = preview.High, Low = preview.Low, Output = string.Empty, Options = preview.Options
             };
             var settings = MeshMapBakeRun.Settings(request, high, low, cage, 1);
             shell = MapBaker.Reach(high.Mesh, low.Mesh, settings);
+            // The skew leans rays inside a face, which the corners cannot show: Vixen's rays from inside, if any lean.
+            var divisions = Faces(low.Mesh).Count() > FewTriangles ? 3 : 4;
+            leans = MapBaker.Leans(high.Mesh, low.Mesh, settings, divisions);
         } catch (ArgumentException e) {
             warnings.Add($"The reach cannot be drawn: {e.Message}");
             return;
@@ -200,6 +210,14 @@ public static class BakePreviewShapes {
                     Line(lines, point, shell.Inner[corner], Rear);
                 }
             }
+        }
+
+        foreach (var ray in leans) {
+            Line(lines, ray.Point, ray.Outer, Lean);
+        }
+
+        if (leans.Count > 0) {
+            warnings.Add("Green rays inside the faces are where the skew leans them, its map applied.");
         }
     }
 

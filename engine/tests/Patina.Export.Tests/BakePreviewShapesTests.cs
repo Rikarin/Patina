@@ -178,6 +178,33 @@ public sealed class BakePreviewShapesTests : IDisposable {
         Assert.Equal(BakePreviewShapes.Build(preview).Lines, bare.Lines);
     }
 
+    /// <summary>
+    ///     With a skew, the reach adds Vixen's leaned rays inside the faces, three a triangle on a small mesh, each as
+    ///     long as the front distance, and says what they are; with none it adds nothing.
+    /// </summary>
+    [Fact]
+    public void A_skew_draws_its_leaned_rays_inside_the_faces() {
+        var quad = Quads("quad.obj", "plate");
+        var preview = new ViewportBakePreview {
+            High = [quad],
+            Low = quad,
+            HighMesh = false,
+            Matches = false,
+            Options = new() { Rays = new() { Units = "absolute", Front = 0.2, Rear = 0.1 } }
+        };
+        var straight = BakePreviewShapes.Build(preview);
+        var leaned = BakePreviewShapes.Build(
+            preview with { Options = new() { Rays = new() { Units = "absolute", Front = 0.2, Rear = 0.1, Skew = 0.5 } } }
+        );
+
+        var added = (leaned.Lines.Length - straight.Lines.Length) / BakePreviewShapes.FloatsPerVertex / 2;
+        Assert.Equal(6, added);
+        var depths = Coordinate(leaned.Lines, 2).Skip(Coordinate(straight.Lines, 2).Count()).ToList();
+        Assert.Equal(6, depths.Count(static z => MathF.Abs(z - 0.2f) < 1e-4f));
+        Assert.DoesNotContain(straight.Warnings, static warning => warning.Contains("skew", StringComparison.Ordinal));
+        Assert.Contains(leaned.Warnings, static warning => warning.Contains("skew", StringComparison.Ordinal));
+    }
+
     /// <summary>An opacity outside 0 to 1 is refused, as a bake's own options are.</summary>
     [Fact]
     public void An_opacity_past_one_is_refused() {
