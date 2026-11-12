@@ -298,6 +298,11 @@ export class PaintStore {
   readonly screenPicture = signal<ScreenPicture | null>(null);
   /** Whether the picture on the viewport masks every brush, by its brightness. */
   readonly stencil = signal(false);
+  /** Whether the picture on the viewport is there to move: placed, and read by the tool in hand or as a stencil. */
+  readonly screenPictureShown = computed(() => {
+    const picture = this.screenPicture();
+    return picture !== null && picture.scale > 0 && (this.tool() === 'projection' || this.stencil());
+  });
   /**
    * Texels of the map per pixel of the 2D view as it is drawn, so that a size in the screen's units is the same under
    * the pointer at any zoom. The 2D view sets it as a stroke starts.
@@ -1351,6 +1356,25 @@ export class PaintStore {
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }
+  }
+
+  /**
+   * Moves, scales or turns the picture on the viewport by a step, as its keys do (#128): a move in the viewport's
+   * pixels, a scale as a factor and a turn in radians, all about its centre.
+   */
+  moveScreenPicture(step: { x?: number; y?: number; scale?: number; angle?: number }): void {
+    const picture = this.screenPicture();
+    if (!picture || !this.screenPictureShown()) {
+      return;
+    }
+
+    const [x, y] = picture.centre as [number, number];
+    this.screenPicture.set({
+      ...picture,
+      centre: [x + (step.x ?? 0), y + (step.y ?? 0)],
+      scale: Math.max(picture.scale * (step.scale ?? 1), 1e-3),
+      angle: picture.angle + (step.angle ?? 0)
+    });
   }
 
   /**

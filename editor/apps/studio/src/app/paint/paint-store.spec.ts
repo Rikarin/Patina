@@ -1318,4 +1318,23 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
     expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { image: picture.image } });
   });
+
+  it('moves, scales and turns the picture on the viewport by a step, only while a tool reads it (#128)', async () => {
+    const { store } = await onMesh();
+    const picture = { image: 'projects/crate/pictures/decal.png', centre: [50, 50], scale: 2, angle: 0, tiled: false };
+    store.screenPicture.set(picture);
+    store.tool.set('brush');
+    store.moveScreenPicture({ x: 10 });
+    expect(store.screenPicture()).toEqual(picture);
+
+    store.stencil.set(true);
+    store.moveScreenPicture({ x: 10, y: -5 });
+    store.moveScreenPicture({ scale: 1.5, angle: 0.25 });
+    expect(store.screenPicture()).toEqual({ ...picture, centre: [60, 45], scale: 3, angle: 0.25 });
+
+    store.stencil.set(false);
+    store.tool.set('projection');
+    store.moveScreenPicture({ scale: 0 });
+    expect(store.screenPicture()?.scale).toBeGreaterThan(0);
+  });
 });
