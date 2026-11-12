@@ -1,4 +1,3 @@
-using Patina.Contracts;
 using System.Globalization;
 using Vixen.Core.Imaging;
 
@@ -13,9 +12,10 @@ public sealed class ModelMaterialsTests : IDisposable {
 
     public void Dispose() => folder.Delete(true);
 
-    static string Png() => Convert.ToBase64String(PngCodec.Encode8(2, 2, 3, Enumerable.Repeat((byte)200, 12).ToArray()));
+    static string Png() =>
+        Convert.ToBase64String(PngCodec.Encode8(2, 2, 3, Enumerable.Repeat((byte)200, 12).ToArray()));
 
-    /// <summary>Two triangles, one per material: the first with images, one inside the file, the second factors only.</summary>
+    /// <summary>Two triangles: one material with images, one inside the file, and one with factors.</summary>
     string Gltf() {
         var floats = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1 };
         var bytes = new byte[floats.Length * 4];
@@ -31,8 +31,14 @@ public sealed class ModelMaterialsTests : IDisposable {
                        "scenes": [{ "nodes": [0, 1] }],
                        "nodes": [{ "mesh": 0, "name": "A" }, { "mesh": 1, "name": "B" }],
                        "meshes": [
-                         { "name": "A", "primitives": [{ "attributes": { "POSITION": 0, "TEXCOORD_0": 1 }, "material": 0 }] },
-                         { "name": "B", "primitives": [{ "attributes": { "POSITION": 0, "TEXCOORD_0": 1 }, "material": 1 }] }
+                         {
+                           "name": "A",
+                           "primitives": [{ "attributes": { "POSITION": 0, "TEXCOORD_0": 1 }, "material": 0 }]
+                         },
+                         {
+                           "name": "B",
+                           "primitives": [{ "attributes": { "POSITION": 0, "TEXCOORD_0": 1 }, "material": 1 }]
+                         }
                        ],
                        "materials": [
                          {
@@ -53,13 +59,19 @@ public sealed class ModelMaterialsTests : IDisposable {
                          { "uri": "orm.png" },
                          { "uri": "data:image/png;base64,{{embedded}}" }
                        ],
-                       "buffers": [{ "byteLength": {{bytes.Length.ToString(CultureInfo.InvariantCulture)}}, "uri": "data:application/octet-stream;base64,{{buffer}}" }],
+                       "buffers": [{
+                         "byteLength": {{bytes.Length.ToString(CultureInfo.InvariantCulture)}},
+                         "uri": "data:application/octet-stream;base64,{{buffer}}"
+                       }],
                        "bufferViews": [
                          { "buffer": 0, "byteOffset": 0, "byteLength": 36 },
                          { "buffer": 0, "byteOffset": 36, "byteLength": 24 }
                        ],
                        "accessors": [
-                         { "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0, 0, 0], "max": [1, 1, 0] },
+                         {
+                           "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3",
+                           "min": [0, 0, 0], "max": [1, 1, 0]
+                         },
                          { "bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC2" }
                        ]
                      }
@@ -78,9 +90,15 @@ public sealed class ModelMaterialsTests : IDisposable {
         Assert.Equal(["Painted", "Plain"], materials.Select(static m => m.Name));
         var painted = materials[0].Slots.ToDictionary(static s => s.Usage);
         Assert.Equal(Path.Combine(folder.FullName, "base colour.png"), painted["baseColor"].Texture);
-        Assert.Equal((Path.Combine(folder.FullName, "orm.png"), 1), (painted["roughness"].Texture, painted["roughness"].Lane));
+        Assert.Equal(
+            (Path.Combine(folder.FullName, "orm.png"), 1),
+            (painted["roughness"].Texture, painted["roughness"].Lane)
+        );
         Assert.Equal(0.5f, painted["roughness"].Value[0], 3);
-        Assert.Equal((Path.Combine(folder.FullName, "orm.png"), 2), (painted["metalness"].Texture, painted["metalness"].Lane));
+        Assert.Equal(
+            (Path.Combine(folder.FullName, "orm.png"), 2),
+            (painted["metalness"].Texture, painted["metalness"].Lane)
+        );
         Assert.Equal(0.25f, painted["metalness"].Value[0], 3);
         var normal = painted["normal"].Texture!;
         Assert.StartsWith(pictures, normal, StringComparison.Ordinal);

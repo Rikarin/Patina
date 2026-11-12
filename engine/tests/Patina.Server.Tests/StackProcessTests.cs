@@ -267,7 +267,8 @@ public sealed partial class StackProcessTests : IDisposable {
                 for (var lane = 0; lane < Math.Min(3, floats.Channels); lane++) {
                     var expected = picture.Pixels[at * 4 + lane] / 255f;
                     Assert.Equal(expected, read.Samples[at * read.Channels + lane], 1e-4f);
-                    var linear = ExportMaps.IsColour(png.Usage) ? MipChain.ToSrgb(floats.Samples[at * floats.Channels + lane])
+                    var linear = ExportMaps.IsColour(png.Usage)
+                        ? MipChain.ToSrgb(floats.Samples[at * floats.Channels + lane])
                         : floats.Samples[at * floats.Channels + lane];
                     Assert.Equal(expected, linear, 1.1f / 255);
                 }

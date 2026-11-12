@@ -64,7 +64,7 @@ sealed partial class StackHost {
         return file;
     }
 
-    /// <summary>The channel a mask exported alone is written as, which an Output node and an export both know.</summary>
+    /// <summary>The channel a mask exported alone is written as, which Output nodes and exports both know.</summary>
     const string MaskUsage = "mask";
 
     internal sealed partial class Session {

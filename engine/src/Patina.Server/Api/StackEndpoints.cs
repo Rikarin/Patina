@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
-using Patina.Export;
-using Patina.Export.Presets;
 using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
@@ -29,6 +27,7 @@ static class StackEndpoints {
         stacks.MapStackChecks();
         stacks.MapStackShelf();
         stacks.MapStackBrushes();
+        stacks.MapStackPixels();
 
         void Post(string route, Delegate handler, string name, string summary, params int[] problems) =>
             stacks.MapPost(route, handler).Describe(name, summary, problems);
@@ -156,14 +155,6 @@ static class StackEndpoints {
             Missing
         );
         Get(
-            "/{id}/pixels",
-            GetPixels,
-            "GetStackPixels",
-            "A digest of each map as it stands, the same one an export reports, with no pixels in the reply.",
-            Missing,
-            Unavailable
-        );
-        Get(
             "/{id}/mesh-parts",
             GetMeshParts,
             "GetStackMeshParts",
@@ -177,15 +168,6 @@ static class StackEndpoints {
             DrawMeshMask,
             "DrawStackMeshMask",
             "Draws where some named meshes lie in the layout, as a picture for a setLayer command's meshMask.",
-            Missing,
-            Refused,
-            Unavailable
-        );
-        Post(
-            "/{id}/export",
-            Export,
-            "ExportStack",
-            "Evaluates from nothing and writes each map to a file, and says where and what they hold.",
             Missing,
             Refused,
             Unavailable
@@ -462,16 +444,6 @@ static class StackEndpoints {
         return TypedResults.NoContent();
     }
 
-    static Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> GetPixels(
-        string id,
-        StackSessions sessions,
-        StackEvaluator evaluator,
-        CancellationToken cancellationToken,
-        bool clean = false,
-        bool sampled = false
-    ) =>
-        ReadAsync(id, sessions, evaluator, clean, null, cancellationToken, sampled);
-
     static async Task<Results<Ok<StackMeshParts>, ProblemHttpResult>> GetMeshParts(
         string id,
         StackSessions sessions,
@@ -553,94 +525,6 @@ static class StackEndpoints {
             return TypedResults.Problem(e.Message, statusCode: Refused);
         } catch (Exception e) when (e is IOException or TimeoutException) {
             return TypedResults.Problem(e.Message, statusCode: Unavailable);
-        }
-    }
-
-    static async Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> Export(
-        string id,
-        StackExportRequest request,
-        StackSessions sessions,
-        StackEvaluator evaluator,
-        CancellationToken cancellationToken
-    ) {
-        if (request.Mask == true && request.Layer is null) {
-            return TypedResults.Problem(
-                "A mask is exported with its layer; name the layer.",
-                statusCode: StatusCodes.Status400BadRequest
-            );
-        }
-
-        StackFileAsk? file = null;
-        if (request.Format is { } format) {
-            if (MapFile.Problem(format, request.Compression, request.Quality) is { } problem) {
-                return TypedResults.Problem(problem, statusCode: StatusCodes.Status400BadRequest);
-            }
-
-            file = new(
-                format,
-                request.Compression ?? ExportCompressions.None,
-                MapFile.Quality(format, request.Quality),
-                request.Mips == true
-            );
-        } else if (request.Compression is not null || request.Quality is not null || request.Mips == true) {
-            return TypedResults.Problem(
-                "A compression, a quality or mips go with a format; the default PNG takes none.",
-                statusCode: StatusCodes.Status400BadRequest
-            );
-        }
-
-        try {
-            return await ReadAsync(
-                id,
-                sessions,
-                evaluator,
-                true,
-                sessions.Resolve(request.Folder),
-                cancellationToken,
-                layer: request.Layer,
-                file: file,
-                mask: request.Mask == true
-            );
-        } catch (StackEditRefusedException e) {
-            return Refusals.Of(e, Refused);
-        } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
-        }
-    }
-
-    static async Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> ReadAsync(
-        string id,
-        StackSessions sessions,
-        StackEvaluator evaluator,
-        bool clean,
-        string? folder,
-        CancellationToken cancellationToken,
-        bool sampled = false,
-        string? layer = null,
-        StackFileAsk? file = null,
-        bool mask = false
-    ) {
-        if (sessions.Find(id) is not { } session) {
-            return NoSession(id);
-        }
-
-        if (layer is not null && !session.Has(layer)) {
-            return Refusals.Problem(
-                $"This stack has no layer '{layer}'.",
-                Refused,
-                Refusals.StackLayerMissing,
-                new Dictionary<string, string> { ["layer"] = layer }
-            );
-        }
-
-        try {
-            return TypedResults.Ok(
-                await evaluator.PixelsAsync(session, clean, folder, cancellationToken, sampled, layer, file, mask)
-            );
-        } catch (TimeoutException e) {
-            return Refusals.Of(e, Unavailable);
-        } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
         }
     }
 

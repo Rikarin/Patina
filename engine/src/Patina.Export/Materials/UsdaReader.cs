@@ -1,6 +1,5 @@
 using Patina.Contracts;
 using Patina.Export.Presets;
-using System.Globalization;
 using System.Text;
 
 namespace Patina.Export.Materials;
@@ -14,22 +13,13 @@ namespace Patina.Export.Materials;
 ///     carry; a <c>.usd</c> file is read when it is text.
 /// </summary>
 public sealed class UsdaReader {
-    static readonly Dictionary<string, string> Inputs = new(StringComparer.Ordinal) {
-        ["diffuseColor"] = ExportMaps.BaseColor,
-        ["roughness"] = ExportMaps.Roughness,
-        ["metallic"] = ExportMaps.Metalness,
-        ["normal"] = ExportMaps.Normal,
-        ["occlusion"] = ExportMaps.Occlusion,
-        ["emissiveColor"] = ExportMaps.Emissive,
-        ["opacity"] = ExportMaps.Opacity,
-        ["displacement"] = ExportMaps.Height
-    };
-
     readonly string folder;
     readonly Dictionary<string, Prim> prims = new(StringComparer.Ordinal);
     readonly List<string> warnings = [];
 
-    UsdaReader(string path) => folder = Path.GetDirectoryName(Path.GetFullPath(path))!;
+    UsdaReader(string path) {
+        folder = Path.GetDirectoryName(Path.GetFullPath(path))!;
+    }
 
     /// <summary>A prim: its type and its properties by name, each value as the file spells it.</summary>
     sealed record Prim(string Path, string Type, string Name, Dictionary<string, string> Properties);
@@ -60,15 +50,15 @@ public sealed class UsdaReader {
         var surface = material.Properties.TryGetValue("outputs:surface.connect", out var target)
             ? Target(target)
             : prims.Values.FirstOrDefault(p => p.Path.StartsWith(material.Path + "/", StringComparison.Ordinal)
-                && Id(p) == "UsdPreviewSurface"
+                && Id(p) == SurfaceInputs.Preview
             );
-        if (surface is null || Id(surface) != "UsdPreviewSurface") {
+        if (surface is null || Id(surface) != SurfaceInputs.Preview) {
             warnings.Add($"USD: {material.Name} has no UsdPreviewSurface, so it is brought in empty.");
             return new(material.Name, [], [..warnings]);
         }
 
         List<ImportedSlot> slots = [];
-        foreach (var (input, usage) in Inputs) {
+        foreach (var (input, usage) in SurfaceInputs.Of(SurfaceInputs.Preview)) {
             if (Slot(usage, surface, $"inputs:{input}") is { } slot) {
                 slots.Add(slot);
             }
@@ -109,9 +99,6 @@ public sealed class UsdaReader {
             "b" => 2,
             _ => 3
         };
-        if (lane == 3) {
-            return Left(usage, "it reads an image's alpha, which a graph's picture node does not give alone");
-        }
 
         if (!texture.Properties.TryGetValue("inputs:file", out var asset) || Asset(asset) is not { Length: > 0 } uri) {
             return Left(usage, "its texture names no file");
@@ -143,8 +130,7 @@ public sealed class UsdaReader {
         return at < 0 ? text : text[..at];
     }
 
-    static string? Id(Prim prim) =>
-        prim.Properties.TryGetValue("info:id", out var id) ? id.Trim().Trim('"') : null;
+    static string? Id(Prim prim) => prim.Properties.TryGetValue("info:id", out var id) ? id.Trim().Trim('"') : null;
 
     static string? Asset(string value) {
         var start = value.IndexOf('@', StringComparison.Ordinal);
@@ -167,25 +153,10 @@ public sealed class UsdaReader {
         while (tokens.Next() is { } token) {
             switch (token) {
                 case "def" or "over" or "class":
-                    var type = tokens.Peek() is { } next && !next.StartsWith('"') ? tokens.Next()! : string.Empty;
-                    var name = (tokens.Next() ?? "\"\"").Trim('"');
-                    if (tokens.Peek() == "(") {
-                        tokens.SkipGroup();
-                    }
-
-                    if (tokens.Next() != "{") {
-                        throw new InvalidDataException($"A prim '{name}' has no body.");
-                    }
-
-                    path.Push(name);
-                    var full = "/" + string.Join('/', path.Reverse());
-                    prims[full] = new(full, type, name, new(StringComparer.Ordinal));
+                    Define(tokens, path);
                     break;
                 case "}":
-                    if (path.Count > 0) {
-                        path.Pop();
-                    }
-
+                    path.TryPop(out _);
                     break;
                 case "(" or "[":
                     tokens.SkipGroup(token);
@@ -193,8 +164,7 @@ public sealed class UsdaReader {
                 default:
                     if (path.Count > 0 && tokens.Peek() == "=") {
                         tokens.Next();
-                        var owner = prims["/" + string.Join('/', path.Reverse())];
-                        owner.Properties[token] = tokens.Value();
+                        prims[PathOf(path)].Properties[token] = tokens.Value();
                     }
 
                     break;
@@ -202,8 +172,28 @@ public sealed class UsdaReader {
         }
     }
 
+    /// <summary>A prim's head, after <c>def</c>: its type if any, its name, its metadata, then its body.</summary>
+    void Define(Tokens tokens, Stack<string> path) {
+        var type = tokens.Peek() is { } next && !next.StartsWith('"') ? tokens.Next()! : string.Empty;
+        var name = (tokens.Next() ?? "\"\"").Trim('"');
+        if (tokens.Peek() == "(") {
+            tokens.SkipGroup();
+        }
+
+        if (tokens.Next() != "{") {
+            throw new InvalidDataException($"A prim '{name}' has no body.");
+        }
+
+        path.Push(name);
+        var full = PathOf(path);
+        prims[full] = new(full, type, name, new(StringComparer.Ordinal));
+    }
+
+    static string PathOf(Stack<string> path) => "/" + string.Join('/', path.Reverse());
+
     /// <summary>A USD text layer as words, strings, assets, paths and brackets.</summary>
     sealed class Tokens(string text) {
+        const string Stops = """()[]{}=,"@<#""";
         int at;
         string? peeked;
 
@@ -229,7 +219,7 @@ public sealed class UsdaReader {
             }
 
             for (var depth = 1; depth > 0 && Next() is { } token;) {
-                depth += token == open ? 1 : token == close ? -1 : 0;
+                depth += Depth(token, open!, close);
             }
         }
 
@@ -249,27 +239,24 @@ public sealed class UsdaReader {
             var close = first == "(" ? ")" : "]";
             var built = new StringBuilder(first);
             for (var depth = 1; depth > 0 && Next() is { } token;) {
-                depth += token == first ? 1 : token == close ? -1 : 0;
+                depth += Depth(token, first, close);
                 built.Append(token == "," ? ", " : token);
             }
 
             return built.ToString();
         }
 
-        string? Read() {
-            while (at < text.Length) {
-                var c = text[at];
-                if (char.IsWhiteSpace(c)) {
-                    at++;
-                } else if (c == '#') {
-                    while (at < text.Length && text[at] != '\n') {
-                        at++;
-                    }
-                } else {
-                    break;
-                }
+        /// <summary>How a token moves the depth of brackets: one in, one out, or neither.</summary>
+        static int Depth(string token, string open, string close) {
+            if (token == open) {
+                return 1;
             }
 
+            return token == close ? -1 : 0;
+        }
+
+        string? Read() {
+            SkipBlank();
             if (at >= text.Length) {
                 return null;
             }
@@ -278,41 +265,59 @@ public sealed class UsdaReader {
             var first = text[at];
             switch (first) {
                 case '"':
-                    var triple = text.AsSpan(at).StartsWith("\"\"\"");
-                    at += triple ? 3 : 1;
-                    var end = triple ? text.IndexOf("\"\"\"", at, StringComparison.Ordinal) : Closing(at);
-                    at = end < 0 ? text.Length : end + (triple ? 3 : 1);
-                    return text[start..at];
+                    at = Quoted(at);
+                    break;
                 case '@':
-                    var asset = text.IndexOf('@', at + 1);
-                    at = asset < 0 ? text.Length : asset + 1;
-                    return text[start..at];
+                    at = After(text.IndexOf('@', at + 1));
+                    break;
                 case '<':
-                    var path = text.IndexOf('>', at + 1);
-                    at = path < 0 ? text.Length : path + 1;
-                    return text[start..at];
+                    at = After(text.IndexOf('>', at + 1));
+                    break;
                 case '(' or ')' or '[' or ']' or '{' or '}' or '=' or ',':
                     at++;
-                    return first.ToString();
+                    break;
                 default:
-                    while (at < text.Length && !char.IsWhiteSpace(text[at]) && "()[]{}=,\"@<#".IndexOf(text[at]) < 0) {
+                    while (at < text.Length && !char.IsWhiteSpace(text[at]) && !Stops.Contains(text[at])) {
                         at++;
                     }
 
-                    return text[start..at];
+                    break;
+            }
+
+            return text[start..at];
+        }
+
+        /// <summary>Passes white space and comments, which run to the end of their line.</summary>
+        void SkipBlank() {
+            while (at < text.Length && (char.IsWhiteSpace(text[at]) || text[at] == '#')) {
+                if (text[at] == '#') {
+                    var line = text.IndexOf('\n', at);
+                    at = line < 0 ? text.Length : line;
+                } else {
+                    at++;
+                }
             }
         }
 
-        int Closing(int from) {
-            for (var i = from; i < text.Length; i++) {
+        /// <summary>Where a string that starts here ends: one quote, or three for a string of several lines.</summary>
+        int Quoted(int from) {
+            if (text.AsSpan(from).StartsWith("\"\"\"")) {
+                var end = text.IndexOf("\"\"\"", from + 3, StringComparison.Ordinal);
+                return end < 0 ? text.Length : end + 3;
+            }
+
+            for (var i = from + 1; i < text.Length; i++) {
                 if (text[i] == '\\') {
                     i++;
                 } else if (text[i] == '"') {
-                    return i;
+                    return i + 1;
                 }
             }
 
-            return -1;
+            return text.Length;
         }
+
+        /// <summary>Just past a closing mark, or the end of the text when there is none.</summary>
+        int After(int mark) => mark < 0 ? text.Length : mark + 1;
     }
 }

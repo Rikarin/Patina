@@ -39,7 +39,7 @@ class StackExportRequest:
             mips (bool | None | Unset): Whether a KTX2 or DDS file carries a mip chain.
             mask (bool | None | Unset): With string? StackExportRequest.Layer, whether to write the layer's mask alone
                 rather than the layer: one map,
-                `mask`, white where the layer shows, with the mask's own layers and effects, even while it is turned off.
+                `mask`, white where the layer shows, with the mask's own layers and effects, even while it is off.
      """
 
     folder: str

@@ -15,7 +15,7 @@ one minus a lane, or a constant, and for a normal which way its green runs. The 
 | The file says | The graph has |
 |---|---|
 | a picture's colour | `Source/Bitmap` |
-| one lane of it (glTF's packed occlusion, roughness, metallic) | `Colour/Channel Shuffle`, that lane in red, green and blue |
+| one lane of it (glTF's packed occlusion, roughness, metallic, or Unity's smoothness in alpha) | `Colour/Channel Shuffle`, that lane in red, green and blue |
 | a factor, or one minus the lane | `Colour/Channel Mix`, the factor on its diagonal, minus it and an offset for one minus |
 | a base colour with a factor | the mix between `sRGB to Linear` and `Linear to sRGB`, since a factor is linear and a graph's base colour is sRGB numbers |
 | an emissive picture | `sRGB to Linear`: every format stores it sRGB, and a graph's emissive is linear (ADR 0011) |
@@ -38,7 +38,7 @@ inside the file is written there. A graph reads them relative to itself, so the 
   and `bias` say one minus a lane, a factor or a green that runs down.
 
 Nothing is guessed. An input made by anything else, a node a graph would have to compute such as MaterialX's `noise2d` or a
-USD shader that is not a texture, a lane that is a picture's alpha, or a picture a graph cannot read, is left out and named
+USD shader that is not a texture, or a picture a graph cannot read, is left out and named
 in the reply's `warnings`, and the rest of the material comes in.
 
 ## What is not done, and why

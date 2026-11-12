@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
-using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
@@ -86,13 +85,7 @@ static class LibraryTreeEndpoints {
         library.MapPost("/project/files", ImportFile)
             .Described("ImportProjectFile", "Brings a mesh or a picture into a project. Anything else is refused.");
 
-        library.MapPost("/project/materials", ImportMaterialsAsync)
-            .Described(
-                "ImportProjectMaterials",
-                "Brings the materials of a glTF or another model, a MaterialX document or a USD text layer into a "
-                + "project, each as a material graph of its own that reads the file's pictures from the project. "
-                + "Says what each graph is and what was left out."
-            );
+        library.MapMaterialImport();
 
         library.MapPost("/project/pictures", AddPicture)
             .Described("AddProjectPicture", "Brings a picture into a project, for a layer or a mask to read.");
@@ -298,27 +291,6 @@ static class LibraryTreeEndpoints {
             host,
             library => TypedResults.Ok(new ProjectPicture(library.AddPicture(request.Project, request.Picture)))
         );
-
-    static async Task<Results<Ok<MaterialImportResult>, ProblemHttpResult>> ImportMaterialsAsync(
-        LibraryHost host,
-        WorkerLink worker,
-        MaterialImportRequest request,
-        CancellationToken cancellationToken
-    ) {
-        if (host.Library is not { } library) {
-            return NoLibrary();
-        }
-
-        try {
-            var imported = await MaterialImport.ImportAsync(library, worker, request, cancellationToken);
-            host.RequestRescan();
-            return TypedResults.Ok(imported);
-        } catch (IpcException e) {
-            return Problem(e, StatusCodes.Status422UnprocessableEntity);
-        } catch (Exception e) when (Refusal(e) is { } problem) {
-            return problem;
-        }
-    }
 
     /// <summary>
     ///     A picture file below the library, served as it is. ⚠ Below the library and nowhere else, and only a picture:

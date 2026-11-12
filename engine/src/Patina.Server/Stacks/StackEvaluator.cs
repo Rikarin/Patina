@@ -71,13 +71,8 @@ public sealed class StackEvaluator(
     /// <exception cref="IpcException">It would not evaluate.</exception>
     public async Task<IReadOnlyList<StackPixels>> PixelsAsync(
         StackSession session,
-        bool clean,
-        string? folder,
-        CancellationToken cancellationToken,
-        bool sampled = false,
-        string? layer = null,
-        StackFileAsk? file = null,
-        bool mask = false
+        StackReading reading,
+        CancellationToken cancellationToken
     ) {
         await ReachedAsync(session, cancellationToken);
         if (session.EvaluationError is { } failed) {
@@ -86,8 +81,17 @@ public sealed class StackEvaluator(
         }
 
         var connection = await ConnectionAsync(cancellationToken);
+        var ask = new StackPixelsAsk(
+            session.Id,
+            reading.Clean,
+            reading.Folder,
+            reading.Sampled,
+            reading.Layer,
+            reading.File,
+            reading.Mask
+        );
         var reply = await connection.SendAsync(
-            new() { Type = IpcTypes.StackPixels, StackPixels = new(session.Id, clean, folder, sampled, layer, file, mask) },
+            new() { Type = IpcTypes.StackPixels, StackPixels = ask },
             cancellationToken
         );
         return reply.StackPicture ?? [];

@@ -260,7 +260,9 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         if (ask.Layer is { } layer) {
             using var alone = stack.Alone(layer, ask.Mask, out var name);
             using var only = alone.EvaluateClean();
-            return new() { Type = IpcTypes.Ok, StackPicture = Read(alone, only, $"{stack.Name}.{name}", ask.Folder, ask.File) };
+            return new() {
+                Type = IpcTypes.Ok, StackPicture = Read(alone, only, $"{stack.Name}.{name}", ask.Folder, ask.File)
+            };
         }
 
         using var bake = ask.Clean ? stack.Run.EvaluateClean() : stack.Run.Evaluate();

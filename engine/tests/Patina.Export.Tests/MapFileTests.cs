@@ -1,7 +1,6 @@
 using Patina.Export.Presets;
 using Vixen.Core.Imaging;
 using Vixen.Graphics;
-using Vixen.Interchange;
 
 namespace Patina.Export.Tests;
 
@@ -69,8 +68,8 @@ public sealed class MapFileTests {
     }
 
     /// <summary>
-    ///     A color with alpha as a JPEG drops the alpha and keeps its sRGB numbers, and an EXR keeps the alpha and holds
-    ///     linear numbers, as an export's base color file does.
+    ///     A color with alpha as a JPEG drops the alpha and keeps its sRGB numbers, and an EXR keeps the alpha and
+    ///     holds linear numbers, as an export's base color file does.
     /// </summary>
     [Fact]
     public void A_color_fits_the_format_and_moves_to_linear_only_in_a_float_file() {

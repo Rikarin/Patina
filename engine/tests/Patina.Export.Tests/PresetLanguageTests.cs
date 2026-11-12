@@ -436,7 +436,7 @@ public sealed class PresetLanguageTests : IDisposable {
         ExportRun.Deliver("key", Path("urp-object"), urpManifest, Path("urp"), new("Crate", "unity-urp"), preset: urp);
 
         var usd = UsdaReader.Read(Path("out/Crate.usda"));
-        foreach (var read in (IReadOnlyList<ImportedMaterial>[]) [usd, MaterialXReader.Read(Path("out/Crate.mtlx"))]) {
+        foreach (var read in (IReadOnlyList<ImportedMaterial>[])[usd, MaterialXReader.Read(Path("out/Crate.mtlx"))]) {
             var material = Assert.Single(read);
             Assert.Equal("Crate", material.Name);
             var slots = material.Slots.Where(static s => s.Texture is not null).ToDictionary(static s => s.Usage);
@@ -463,7 +463,7 @@ public sealed class PresetLanguageTests : IDisposable {
     public void A_file_that_is_no_material_is_refused_with_the_reason() {
         Directory.CreateDirectory(Path("in"));
         File.WriteAllText(Path("in/binary.usd"), "PXR-USDC");
-        File.WriteAllText(Path("in/empty.mtlx"), "<materialx version=\"1.38\"/>");
+        File.WriteAllText(Path("in/empty.mtlx"), """<materialx version="1.38"/>""");
         File.WriteAllText(Path("in/broken.mtlx"), "<materialx");
 
         Assert.Contains(

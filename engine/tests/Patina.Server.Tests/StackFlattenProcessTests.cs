@@ -135,8 +135,8 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     Any layer exports on its own, not only a flattened folder, and so does its mask (#153): one grey map,
-    ///     <c>mask</c>, named after the layer, that holds the mask and nothing of the layer's content or opacity. A mask
-    ///     with no layer named is refused.
+    ///     <c>mask</c>, named after the layer, holding the mask and nothing of the layer's content or opacity. A
+    ///     mask with no layer named is refused.
     /// </summary>
     [Fact]
     public async Task A_layer_and_its_mask_export_on_their_own() {
@@ -187,7 +187,10 @@ public sealed partial class StackProcessTests {
             token
         );
         await SucceededAsync(response, token);
-        return (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.IReadOnlyListStackPixels, token))!;
+        return (await response.Content.ReadFromJsonAsync(
+            ContractsJsonContext.Default.IReadOnlyListStackPixels,
+            token
+        ))!;
     }
 
     /// <summary>Each map's file, within the rounding a canvas adds.</summary>

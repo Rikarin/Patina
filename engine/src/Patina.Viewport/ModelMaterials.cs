@@ -22,9 +22,7 @@ public static class ModelMaterials {
             SharedFile.ReadAllBytes(path),
             Path.GetExtension(path),
             Path.GetFileNameWithoutExtension(path),
-            new ModelReadOptions {
-                GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false
-            },
+            new ModelReadOptions { GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false },
             sideFiles: SharedFile.Beside(path)
         );
         var beside = Path.GetDirectoryName(Path.GetFullPath(path))!;
@@ -39,35 +37,49 @@ public static class ModelMaterials {
 
             var factors = at < read.MaterialFactors.Length ? read.MaterialFactors[at] : ModelMaterialFactors.Default;
             var textures = at < read.MaterialTextures.Length ? read.MaterialTextures[at] : new();
-            var name = names[at];
-            List<string> warnings = [];
-            string? File(ModelTexture? texture, string slot) => Picture(texture, beside, folder, $"{name}_{slot}", warnings);
-
-            var colour = factors.BaseColor;
-            List<ImportedSlot> slots = [
-                Slot(ExportMap.BaseColor, File(textures.BaseColor, "baseColor"), -1, [colour.X, colour.Y, colour.Z, 1f]),
-                Slot(ExportMap.Roughness, File(textures.MetallicRoughness, "metallicRoughness"), 1, [factors.Roughness]),
-                Slot(ExportMap.Metalness, File(textures.MetallicRoughness, "metallicRoughness"), 2, [factors.Metallic])
-            ];
-            if (File(textures.Normal, "normal") is { } normal) {
-                slots.Add(Slot(ExportMap.Normal, normal, -1, [1f]));
-                if (Math.Abs(textures.NormalScale - 1f) > 1e-4f) {
-                    warnings.Add($"{name}: its normal's scale of {textures.NormalScale:0.###} is not brought in.");
-                }
-            }
-
-            if (File(textures.Occlusion, "occlusion") is { } occlusion) {
-                slots.Add(Slot(ExportMap.Occlusion, occlusion, 0, [1f]));
-            }
-
-            if (File(textures.Emissive, "emissive") is { } emissive) {
-                slots.Add(Slot(ExportMap.Emissive, emissive, -1, [1f]));
-            }
-
-            materials.Add(new(name, slots, warnings));
+            materials.Add(Material(names[at], factors, textures, beside, folder));
         }
 
         return materials;
+    }
+
+    /// <summary>
+    ///     One material: base color, roughness and metalness from their images and factors or from the factors alone,
+    ///     and normal, occlusion and emissive when it has an image for them.
+    /// </summary>
+    static ImportedMaterial Material(
+        string name,
+        ModelMaterialFactors factors,
+        ModelMaterialTextures textures,
+        string beside,
+        string folder
+    ) {
+        List<string> warnings = [];
+
+        string? File(ModelTexture? texture, string slot) =>
+            Picture(texture, beside, folder, $"{name}_{slot}", warnings);
+
+        var colour = factors.BaseColor;
+        var packed = File(textures.MetallicRoughness, "metallicRoughness");
+        List<ImportedSlot> slots = [
+            Slot(ExportMap.BaseColor, File(textures.BaseColor, "baseColor"), -1, [colour.X, colour.Y, colour.Z, 1f]),
+            Slot(ExportMap.Roughness, packed, 1, [factors.Roughness]),
+            Slot(ExportMap.Metalness, packed, 2, [factors.Metallic])
+        ];
+        foreach (var (usage, texture, lane) in (IEnumerable<(string, ModelTexture?, int)>) [
+                     (ExportMap.Normal, textures.Normal, -1), (ExportMap.Occlusion, textures.Occlusion, 0),
+                     (ExportMap.Emissive, textures.Emissive, -1)
+                 ]) {
+            if (File(texture, usage) is { } file) {
+                slots.Add(Slot(usage, file, lane, [1f]));
+            }
+        }
+
+        if (textures.Normal is not null && Math.Abs(textures.NormalScale - 1f) > 1e-4f) {
+            warnings.Add($"{name}: its normal's scale of {textures.NormalScale:0.###} is not brought in.");
+        }
+
+        return new(name, slots, warnings);
     }
 
     /// <summary>The usages a model's material fills, as an export names its maps.</summary>
@@ -82,7 +94,7 @@ public static class ModelMaterials {
 
     /// <summary>A map: a picture's lane times a factor, or the factor alone when there is no picture.</summary>
     static ImportedSlot Slot(string usage, string? texture, int lane, float[] factor) {
-        float[] four = factor.Length == 1 ? [factor[0], factor[0], factor[0], 1f] : factor;
+        var four = factor.Length == 1 ? [factor[0], factor[0], factor[0], 1f] : factor;
         return new(usage, texture, texture is null ? -1 : lane, false, four);
     }
 
@@ -98,7 +110,7 @@ public static class ModelMaterials {
         if (texture.Embedded is { } bytes) {
             Directory.CreateDirectory(folder);
             var written = Path.Combine(folder, Clean(stem) + texture.Extension);
-            System.IO.File.WriteAllBytes(written, bytes);
+            File.WriteAllBytes(written, bytes);
             return written;
         }
 
@@ -108,7 +120,7 @@ public static class ModelMaterials {
 
         foreach (var spelled in (string[])[relative, Uri.UnescapeDataString(relative)]) {
             var full = Path.GetFullPath(Path.Combine(beside, spelled.Replace('\\', '/')));
-            if (System.IO.File.Exists(full)) {
+            if (File.Exists(full)) {
                 return full;
             }
         }

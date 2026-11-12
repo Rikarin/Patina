@@ -25,7 +25,7 @@ public sealed record StackExportRequest(string Folder, string? Layer = null) {
 
     /// <summary>
     ///     With <see cref="Layer" />, whether to write the layer's mask alone rather than the layer: one map,
-    ///     <c>mask</c>, white where the layer shows, with the mask's own layers and effects, even while it is turned off.
+    ///     <c>mask</c>, white where the layer shows, with the mask's own layers and effects, even while it is off.
     /// </summary>
     public bool? Mask { get; init; }
 }

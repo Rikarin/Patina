@@ -270,6 +270,7 @@ public sealed partial class StackProcessTests {
         Assert.Equal(0, job.Report!.Failed);
 
         var exports = Path.Combine(Library, "exports", "godot", "imported");
+
         byte[] Texel(string file) {
             var picture = Patina.Export.MapPictures.ReadFile(Path.Combine(exports, file));
             var middle = (picture.Height / 2 * picture.Width + picture.Width / 2) * picture.Channels;
@@ -277,7 +278,10 @@ public sealed partial class StackProcessTests {
         }
 
         var albedo = Texel("Imported_albedo.png");
-        Assert.True(albedo.Zip((byte[])[200, 100, 50]).All(static p => Math.Abs(p.First - p.Second) <= 1), string.Join(",", albedo));
+        Assert.True(
+            albedo.Zip((byte[])[200, 100, 50]).All(static p => Math.Abs(p.First - p.Second) <= 1),
+            string.Join(",", albedo)
+        );
         var orm = Texel("Imported_orm.png");
         Assert.InRange(orm[1], 79, 81);
         Assert.InRange(orm[2], 79, 81);
@@ -286,7 +290,8 @@ public sealed partial class StackProcessTests {
 
     /// <summary>A glTF of one triangle and one material whose three images are each one color, beside it.</summary>
     static string WriteGltf(string folder, byte[] colour, byte[] packed, byte[] normal, float roughness) {
-        foreach (var (name, texel) in (IEnumerable<(string, byte[])>) [("colour", colour), ("packed", packed), ("normal", normal)]) {
+        foreach (var (name, texel) in (IEnumerable<(string, byte[])>)
+                 [("colour", colour), ("packed", packed), ("normal", normal)]) {
             var pixels = Enumerable.Range(0, 16).SelectMany(_ => texel).ToArray();
             File.WriteAllBytes(Path.Combine(folder, $"{name}.png"), PngCodec.Encode8(4, 4, 3, pixels));
         }
@@ -304,7 +309,10 @@ public sealed partial class StackProcessTests {
                 "scene": 0,
                 "scenes": [{ "nodes": [0] }],
                 "nodes": [{ "mesh": 0, "name": "Tri" }],
-                "meshes": [{ "name": "Tri", "primitives": [{ "attributes": { "POSITION": 0, "TEXCOORD_0": 1 }, "material": 0 }] }],
+                "meshes": [{
+                  "name": "Tri",
+                  "primitives": [{ "attributes": { "POSITION": 0, "TEXCOORD_0": 1 }, "material": 0 }]
+                }],
                 "materials": [{
                   "name": "Imported",
                   "pbrMetallicRoughness": {
@@ -317,13 +325,19 @@ public sealed partial class StackProcessTests {
                 }],
                 "textures": [{ "source": 0 }, { "source": 1 }, { "source": 2 }],
                 "images": [{ "uri": "colour.png" }, { "uri": "packed.png" }, { "uri": "normal.png" }],
-                "buffers": [{ "byteLength": {{bytes.Length}}, "uri": "data:application/octet-stream;base64,{{Convert.ToBase64String(bytes)}}" }],
+                "buffers": [{
+                  "byteLength": {{bytes.Length}},
+                  "uri": "data:application/octet-stream;base64,{{Convert.ToBase64String(bytes)}}"
+                }],
                 "bufferViews": [
                   { "buffer": 0, "byteOffset": 0, "byteLength": 36 },
                   { "buffer": 0, "byteOffset": 36, "byteLength": 24 }
                 ],
                 "accessors": [
-                  { "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0, 0, 0], "max": [1, 1, 0] },
+                  {
+                    "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3",
+                    "min": [0, 0, 0], "max": [1, 1, 0]
+                  },
                   { "bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC2" }
                 ]
               }

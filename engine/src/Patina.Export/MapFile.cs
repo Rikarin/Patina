@@ -9,13 +9,13 @@ namespace Patina.Export;
 ///     encoded by the same code, and its numbers move between sRGB and linear just as an export's do.
 /// </summary>
 public static class MapFile {
-    /// <summary>The lane counts tried after the map's own, in order: drop alpha, then add grey, then one, then two.</summary>
+    /// <summary>The lane counts tried after the map's own: drop alpha, then add grey, then one, then two.</summary>
     static readonly int[] Fallbacks = [3, 4, 1, 2];
 
     /// <summary>Why a file's settings cannot be written, or null.</summary>
     /// <param name="format">One of <see cref="ExportFormats.All" />.</param>
-    /// <param name="compression">For KTX2 and DDS, one of <see cref="ExportCompressions.All" />, or null for none.</param>
-    /// <param name="quality">JPEG's 1 to 100, or a block search's fast, balanced or best, or null for the default.</param>
+    /// <param name="compression">For KTX2 and DDS, one of <see cref="ExportCompressions.All" />; null is none.</param>
+    /// <param name="quality">JPEG's 1 to 100, or a block search's fast, balanced or best; null is the default.</param>
     public static string? Problem(string format, string? compression, string? quality) {
         ArgumentNullException.ThrowIfNull(format);
         if (!ExportFormats.All.Contains(format, StringComparer.Ordinal)) {

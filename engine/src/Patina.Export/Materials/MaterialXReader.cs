@@ -15,45 +15,6 @@ namespace Patina.Export.Materials;
 ///     on the way is something a graph would have to compute, so the input is left out and said.
 /// </summary>
 public sealed class MaterialXReader {
-    /// <summary>Each shader's inputs, by the usage they become.</summary>
-    static readonly Dictionary<string, Dictionary<string, string>> Inputs = new(StringComparer.Ordinal) {
-        ["standard_surface"] = new(StringComparer.Ordinal) {
-            ["base_color"] = ExportMaps.BaseColor,
-            ["specular_roughness"] = ExportMaps.Roughness,
-            ["metalness"] = ExportMaps.Metalness,
-            ["normal"] = ExportMaps.Normal,
-            ["emission_color"] = ExportMaps.Emissive,
-            ["opacity"] = ExportMaps.Opacity
-        },
-        ["open_pbr_surface"] = new(StringComparer.Ordinal) {
-            ["base_color"] = ExportMaps.BaseColor,
-            ["specular_roughness"] = ExportMaps.Roughness,
-            ["base_metalness"] = ExportMaps.Metalness,
-            ["geometry_normal"] = ExportMaps.Normal,
-            ["emission_color"] = ExportMaps.Emissive,
-            ["geometry_opacity"] = ExportMaps.Opacity
-        },
-        ["gltf_pbr"] = new(StringComparer.Ordinal) {
-            ["base_color"] = ExportMaps.BaseColor,
-            ["roughness"] = ExportMaps.Roughness,
-            ["metallic"] = ExportMaps.Metalness,
-            ["normal"] = ExportMaps.Normal,
-            ["occlusion"] = ExportMaps.Occlusion,
-            ["emissive"] = ExportMaps.Emissive,
-            ["alpha"] = ExportMaps.Opacity
-        },
-        ["UsdPreviewSurface"] = new(StringComparer.Ordinal) {
-            ["diffuseColor"] = ExportMaps.BaseColor,
-            ["roughness"] = ExportMaps.Roughness,
-            ["metallic"] = ExportMaps.Metalness,
-            ["normal"] = ExportMaps.Normal,
-            ["occlusion"] = ExportMaps.Occlusion,
-            ["emissiveColor"] = ExportMaps.Emissive,
-            ["opacity"] = ExportMaps.Opacity,
-            ["displacement"] = ExportMaps.Height
-        }
-    };
-
     readonly string folder;
     readonly XElement root;
     readonly List<string> warnings = [];
@@ -82,11 +43,11 @@ public sealed class MaterialXReader {
     }
 
     List<ImportedMaterial> Materials() {
-        var shaders = root.Elements().Where(static e => Inputs.ContainsKey(e.Name.LocalName)).ToList();
+        var shaders = root.Elements().Where(static e => SurfaceInputs.Knows(e.Name.LocalName)).ToList();
         List<(string Name, XElement Shader)> found = [];
         foreach (var material in root.Elements().Where(static e => e.Name.LocalName == "surfacematerial")) {
             var named = Attribute(Child(material, "surfaceshader"), "nodename");
-            if (shaders.FirstOrDefault(s => Attribute(s, "name") == named) is { } shader) {
+            if (Named(shaders, named) is { } shader) {
                 found.Add((Attribute(material, "name") ?? Attribute(shader, "name") ?? "Material", shader));
             }
         }
@@ -104,13 +65,23 @@ public sealed class MaterialXReader {
         return [..found.Select(pair => Material(pair.Name, pair.Shader))];
     }
 
+    /// <summary>The element of a name among some, or null.</summary>
+    static XElement? Named(List<XElement> elements, string? name) {
+        foreach (var element in elements) {
+            if (Attribute(element, "name") == name) {
+                return element;
+            }
+        }
+
+        return null;
+    }
+
     ImportedMaterial Material(string name, XElement shader) {
         warnings.Clear();
-        var known = Inputs[shader.Name.LocalName];
+        var inputs = shader.Elements().Where(static e => e.Name.LocalName == "input").ToList();
         List<ImportedSlot> slots = [];
-        foreach (var input in shader.Elements().Where(static e => e.Name.LocalName == "input")) {
-            if (Attribute(input, "name") is { } port
-                && known.TryGetValue(port, out var usage)
+        foreach (var (port, usage) in SurfaceInputs.Of(shader.Name.LocalName)) {
+            if (inputs.FirstOrDefault(input => Attribute(input, "name") == port) is { } input
                 && Slot(usage, input, root) is { } slot) {
                 slots.Add(slot);
             }
@@ -148,15 +119,17 @@ public sealed class MaterialXReader {
                 .FirstOrDefault(e => e.Name.LocalName == "output"
                     && (Attribute(input, "output") is not { } wanted || Attribute(e, "name") == wanted)
                 );
-            return graph is null || output is null ? Left(usage, $"its node graph '{graphName}' is not there") :
-                Follow(usage, output, graph, trace);
+            return graph is null || output is null
+                ? Left(usage, $"its node graph '{graphName}' is not there")
+                : Follow(usage, output, graph, trace);
         }
 
         if (Attribute(input, "nodename") is not { } nodeName) {
             return Left(usage, "it names neither a value nor a node");
         }
 
-        var node = scope.Elements().FirstOrDefault(e => e.Name.LocalName != "output" && Attribute(e, "name") == nodeName);
+        var node = scope.Elements()
+            .FirstOrDefault(e => e.Name.LocalName != "output" && Attribute(e, "name") == nodeName);
         return node is null ? Left(usage, $"its node '{nodeName}' is not there") : Node(usage, node, scope, trace);
     }
 
@@ -176,8 +149,8 @@ public sealed class MaterialXReader {
                 )
                     ? lane
                     : 0;
-                return lane is < 0 or > 2
-                    ? Left(usage, "it reads an image's alpha, which a graph's picture node does not give alone")
+                return lane is < 0 or > 3
+                    ? Left(usage, $"it extracts lane {lane.ToString(CultureInfo.InvariantCulture)}, which no image has")
                     : Through(usage, node, "in", scope, trace with { Lane = index });
             case "invert":
                 return Through(usage, node, "in", scope, trace with { Inverted = !trace.Inverted });
@@ -197,7 +170,10 @@ public sealed class MaterialXReader {
             case "add" when usage == ExportMaps.Normal && Constant(node, "in2") is [_, 1f, ..]:
                 return Through(usage, node, "in1", scope, trace);
             default:
-                return Left(usage, $"it is made by a '{node.Name.LocalName}' node, which a graph would have to compute");
+                return Left(
+                    usage,
+                    $"it is made by a '{node.Name.LocalName}' node, which a graph would have to compute"
+                );
         }
     }
 
@@ -209,7 +185,7 @@ public sealed class MaterialXReader {
             ? Numbers(text)
             : null;
 
-    /// <summary>A file an image names, with the prefixes of the elements around it, from the document's folder.</summary>
+    /// <summary>A file an image names, with the prefixes of the elements around it, from the document.</summary>
     string Resolve(XElement node, string uri) {
         var prefix = string.Concat(
             node.AncestorsAndSelf().Reverse().Select(static e => Attribute(e, "fileprefix") ?? string.Empty)

@@ -19,14 +19,14 @@ static class MaterialImport {
     const string Shuffle = "Colour/Channel Shuffle";
     const string Mix = "Colour/Channel Mix";
     static readonly string[] Channels = ["Red", "Green", "Blue"];
-    static readonly string[] Lanes = ["FirstRed", "FirstGreen", "FirstBlue"];
+    static readonly string[] Lanes = ["FirstRed", "FirstGreen", "FirstBlue", "FirstAlpha"];
 
     /// <summary>Reads a material file and makes a graph of each of its materials.</summary>
     /// <param name="library">The library.</param>
     /// <param name="worker">The Worker, which reads a model's materials.</param>
     /// <param name="request">The project and the file.</param>
     /// <param name="cancellationToken">Stops waiting for the Worker.</param>
-    /// <exception cref="ProjectRefusedException">The file is not one materials are read from, or holds none.</exception>
+    /// <exception cref="ProjectRefusedException">Materials are not read from the file, or it has none.</exception>
     /// <exception cref="FileNotFoundException">The file or the project is not there.</exception>
     /// <exception cref="IpcException">The Worker would not read the model.</exception>
     public static async Task<MaterialImportResult> ImportAsync(
@@ -69,7 +69,7 @@ static class MaterialImport {
         foreach (var material in materials) {
             warnings.AddRange(material.Warnings);
             var name = material.Name.Length > 0 ? material.Name : stem;
-            var text = Graph(name, material, picture => Bring(picture, pictures, warnings, name));
+            var text = Graph(name, material, new(pictures, warnings));
             var graph = library.NewDocumentFile(request.Project, name, LibraryLayout.GraphExtension);
             File.WriteAllText(library.ProjectFile(request.Project, graph), text);
             library.AddDocument(request.Project, DocumentKinds.Graph, graph, name, null);
@@ -129,19 +129,30 @@ static class MaterialImport {
     }
 
     /// <summary>The graph of one material, as the text of its file.</summary>
-    static string Graph(string name, ImportedMaterial material, Func<string, string?> bring) {
+    /// <summary>Where a material's pictures go in the project, and what was said of them.</summary>
+    sealed record Pictures(string Folder, List<string> Warnings);
+
+    static string Graph(string name, ImportedMaterial material, Pictures pictures) {
         var graph = new GraphText();
         foreach (var slot in material.Slots) {
-            var made = slot.Texture is { } texture && bring(texture) is { } relative
-                ? (int?)Picture(graph, slot, relative)
-                : slot.Texture is null ? Constant(graph, slot) : null;
-            if (made is { } node) {
-                var output = graph.Node("Output/Output", texts: [("Usage", slot.Usage)]);
+            if (Made(graph, slot, pictures, name) is { } node) {
+                var output = graph.Node("Output/Output", [("Usage", slot.Usage)]);
                 graph.Edge(node, output, "Input");
             }
         }
 
         return GraphDocuments.Text(GraphDocuments.Parse(graph.Text(name)));
+    }
+
+    /// <summary>The node a slot comes out of: its picture's, its constant's, or none for a picture left out.</summary>
+    static int? Made(GraphText graph, ImportedSlot slot, Pictures pictures, string material) {
+        if (slot.Texture is null) {
+            return Constant(graph, slot);
+        }
+
+        return Bring(slot.Texture, pictures.Folder, pictures.Warnings, material) is { } relative
+            ? Picture(graph, slot, relative)
+            : null;
     }
 
     /// <summary>
@@ -151,51 +162,56 @@ static class MaterialImport {
     ///     linear, so it is taken to linear.
     /// </summary>
     static int Picture(GraphText graph, ImportedSlot slot, string relative) {
-        var node = graph.Node("Source/Bitmap", texts: [("Source", relative)]);
-        if (slot.Lane is >= 0 and < 3) {
-            var lane = Lanes[slot.Lane];
-            var shuffled = graph.Node(
-                Shuffle,
-                texts: [("Red From", lane), ("Green From", lane), ("Blue From", lane), ("Alpha From", "One")]
-            );
-            graph.Edge(node, shuffled, "First");
-            node = shuffled;
-        }
-
+        var node = Lane(graph, graph.Node("Source/Bitmap", [("Source", relative)]), slot.Lane);
         var colour = slot.Usage == "baseColor";
-        var factor = slot.Value.Take(3).ToArray();
+        float[] factor = [..slot.Value.Take(3)];
         var scaled = slot.Inverted || factor.Any(static f => Math.Abs(f - 1f) > 1e-4f);
-        var linear = slot.Usage == "emissive" || (colour && scaled);
-        if (linear) {
+        if (slot.Usage == "emissive" || (colour && scaled)) {
             node = graph.Chain(node, "Colour/sRGB to Linear");
         }
 
         if (scaled) {
-            List<(string, float[])> weights = [];
-            for (var row = 0; row < 3; row++) {
-                for (var column = 0; column < 3; column++) {
-                    var weight = row == column ? (slot.Inverted ? -factor[row] : factor[row]) : 0f;
-                    weights.Add(($"{Channels[row]} from {Channels[column]}", [weight]));
-                }
-
-                weights.Add(($"{Channels[row]} Offset", [slot.Inverted ? factor[row] : 0f]));
-            }
-
-            node = graph.Chain(node, Mix, weights);
+            node = graph.Chain(node, Mix, Weights(factor, slot.Inverted));
         }
 
         if (slot.Usage == "normal" && slot.GreenUp) {
             node = graph.Chain(node, Mix, [("Green from Green", [-1f]), ("Green Offset", [1f])]);
         }
 
-        if (colour && scaled) {
-            node = graph.Chain(node, "Colour/Linear to sRGB");
-        }
-
-        return node;
+        return colour && scaled ? graph.Chain(node, "Colour/Linear to sRGB") : node;
     }
 
-    /// <summary>A constant as a map. A base color's numbers are sRGB in a graph and linear in a material file.</summary>
+    /// <summary>One lane of a picture, alpha too, in red, green and blue, or the picture as it is for none.</summary>
+    static int Lane(GraphText graph, int picture, int lane) {
+        if (lane is < 0 or > 3) {
+            return picture;
+        }
+
+        var from = Lanes[lane];
+        var shuffled = graph.Node(
+            Shuffle,
+            [("Red From", from), ("Green From", from), ("Blue From", from), ("Alpha From", "One")]
+        );
+        graph.Edge(picture, shuffled, "First");
+        return shuffled;
+    }
+
+    /// <summary>A channel mix that multiplies each lane by its factor, or makes it factor times one minus it.</summary>
+    static List<(string Name, float[] Value)> Weights(float[] factor, bool inverted) {
+        List<(string, float[])> weights = [];
+        for (var row = 0; row < 3; row++) {
+            var scale = inverted ? -factor[row] : factor[row];
+            for (var column = 0; column < 3; column++) {
+                weights.Add(($"{Channels[row]} from {Channels[column]}", [row == column ? scale : 0f]));
+            }
+
+            weights.Add(($"{Channels[row]} Offset", [inverted ? factor[row] : 0f]));
+        }
+
+        return weights;
+    }
+
+    /// <summary>A constant as a map. A base color is sRGB numbers in a graph and linear in a material file.</summary>
     static int Constant(GraphText graph, ImportedSlot slot) {
         float[] value = [..slot.Value];
         if (slot.Usage == "baseColor") {
@@ -245,7 +261,10 @@ static class MaterialImport {
             if (values is { Count: > 0 }) {
                 nodes.Append("    values:\n");
                 foreach (var (name, value) in values) {
-                    var numbers = string.Join(", ", value.Select(static v => v.ToString("R", CultureInfo.InvariantCulture)));
+                    var numbers = string.Join(
+                        ", ",
+                        value.Select(static v => v.ToString("R", CultureInfo.InvariantCulture))
+                    );
                     nodes.Append(CultureInfo.InvariantCulture, $"      {Quoted(name)}: [{numbers}]\n");
                 }
             }

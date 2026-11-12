@@ -22,13 +22,15 @@ public sealed record MaterialImportResult(IReadOnlyList<string> Documents, IRead
 public sealed record ImportedMaterial(string Name, IReadOnlyList<ImportedSlot> Slots, IReadOnlyList<string> Warnings);
 
 /// <summary>One map of a material: lanes of a picture times a factor, or a constant.</summary>
-/// <param name="Usage">The output it is: baseColor, normal, roughness, metalness, occlusion, emissive, opacity or height.</param>
+/// <param name="Usage">
+///     The output it is: baseColor, normal, roughness, metalness, occlusion, emissive, opacity or height.
+/// </param>
 /// <param name="Texture">The picture, absolute, or null for a constant.</param>
-/// <param name="Lane">The picture's lane that holds a grey map, 0 to 2, or -1 for its first three lanes in order.</param>
+/// <param name="Lane">The picture's lane that holds a grey map, 0 to 3, or -1 for its first three in order.</param>
 /// <param name="Inverted">Whether the lane holds one minus the map.</param>
 /// <param name="Value">
-///     Four numbers: what the picture's lanes are multiplied by, or the constant when there is no picture. A color's are
-///     linear, as a material file's factors are.
+///     Four numbers: what the picture's lanes are multiplied by, or the constant when there is no picture. A
+///     color's are linear, as a material file's factors are.
 /// </param>
 public sealed record ImportedSlot(
     string Usage,

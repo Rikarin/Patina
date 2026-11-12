@@ -66,7 +66,8 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
                         <materialx version="1.38">
                           <nodegraph name="NG_Tile">
                             <image name="colour" type="color3">
-                              <input name="file" type="filename" value="textures/colour.png" colorspace="srgb_texture" />
+                              <input name="file" type="filename" value="textures/colour.png"
+                                     colorspace="srgb_texture" />
                             </image>
                             <image name="packed" type="vector3">
                               <input name="file" type="filename" value="textures/packed.png" />
