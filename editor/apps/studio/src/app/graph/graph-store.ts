@@ -17,6 +17,7 @@ import {
   type PackagePlan,
   type PackagePublished,
   type PatinaClient,
+  type StackTerm,
   unwrap
 } from '@patina/api-client';
 import { desktop } from '../core/desktop';
@@ -382,10 +383,23 @@ export class GraphStore {
   }
 
   /** Writes a new graph into the library and opens it. The Server's refusal is what the caller shows. */
-  async create(name: string, project: string | null, resolution: number | null = null): Promise<void> {
+  async create(
+    name: string,
+    project: string | null,
+    resolution: number | null = null,
+    template: string | null = null
+  ): Promise<void> {
     const client = await this.reconnect();
-    const { path } = unwrap(await client.POST('/api/v1/library/graphs', { body: { name, project, resolution } }));
+    const { path } = unwrap(
+      await client.POST('/api/v1/library/graphs', { body: { name, project, resolution, template } })
+    );
     await this.open(path);
+  }
+
+  /** What a new graph can start from, with what a person calls each (#183). */
+  async templates(): Promise<readonly StackTerm[]> {
+    const client = await this.reconnect();
+    return unwrap(await client.GET('/api/v1/library/graph-templates'));
   }
 
   /** Closes the session on the Server, which ends it for every client that joined. Unsaved edits ask first. */

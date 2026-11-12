@@ -148,6 +148,27 @@ describe('GraphStore', () => {
     expect(told()).toHaveLength(before);
   });
 
+  it('makes a graph from the template asked for, from the list the Server offers (#183)', async () => {
+    const test = harness();
+    test.routes['GET library/graph-templates'] = () =>
+      Response.json([
+        { value: 'empty', label: 'Empty' },
+        { value: 'outputs', label: 'Material Outputs' }
+      ]);
+    test.routes['POST library/graphs'] = () => Response.json({ path: 'projects/a/a.vxtexgraph' }, { status: 201 });
+
+    expect((await test.store.templates()).map(term => term.label)).toEqual(['Empty', 'Material Outputs']);
+    await test.store.create('A', 'a', 512, 'outputs');
+
+    expect(test.requests.find(request => request.key === 'POST library/graphs')?.body).toEqual({
+      name: 'A',
+      project: 'a',
+      resolution: 512,
+      template: 'outputs'
+    });
+    expect(test.store.session().kind).toBe('open');
+  });
+
   it('says why a file did not open, and can try again', async () => {
     const test = harness();
     test.routes['POST graphs'] = () => Response.json({ detail: 'There is no file.' }, { status: 404 });
@@ -585,7 +606,8 @@ describe('what a graph holds besides its nodes', () => {
     expect(test.requests.find(request => request.key === 'POST library/graphs')?.body).toEqual({
       name: 'Rust',
       project: null,
-      resolution: 4096
+      resolution: 4096,
+      template: null
     });
     expect(test.requests.find(request => request.key === 'POST graphs')?.body).toEqual({
       path: 'shared/graphs/rust.vxtexgraph'

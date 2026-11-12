@@ -56,7 +56,13 @@ static class LibraryEndpoints {
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
-            .WithSummary("Writes a new, empty graph file. It reaches the listings once the index has caught up.");
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .WithSummary(
+                "Writes a new graph file, empty or from a template. It reaches the listings once the index has caught up."
+            );
+        library.MapGet("/graph-templates", static () => TypedResults.Ok(GraphTemplates.All))
+            .WithName("GetGraphTemplates")
+            .WithSummary("What a new graph can start from: nothing, an Output node per channel, or a starter preset.");
 
         library.MapGet("/projects/tags", GetProjectTags)
             .WithName("GetProjectTags")
@@ -157,12 +163,14 @@ static class LibraryEndpoints {
         }
 
         try {
-            var text = GraphDocuments.Text(GraphDocuments.New(request.Name, request.Resolution));
+            var text = GraphDocuments.Text(GraphTemplates.Make(request.Name, request.Resolution, request.Template));
             // A graph belongs to a project, so one made with none gets one of its own.
             var project = request.Project ?? library.CreateProject(new(request.Name)).Path;
             var path = library.CreateGraph(new(request.Name, project), text);
             host.RequestRescan();
             return TypedResults.Created((string?)null, new GraphCreated(path));
+        } catch (GraphEditRefusedException e) {
+            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         } catch (ProjectExistsException e) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
         } catch (ProjectRefusedException e) {

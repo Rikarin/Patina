@@ -202,6 +202,59 @@ public sealed class LibraryApiTests : IDisposable {
         Assert.Equal(HttpStatusCode.BadRequest, lost.StatusCode);
     }
 
+    /// <summary>A new graph starts from nothing, from an Output node per channel, or from a starter preset (#183).</summary>
+    [Fact]
+    public async Task A_new_graph_starts_from_the_template_asked_for() {
+        CreateLibrary();
+        using var client = server.AuthorisedClient();
+        await WaitForIndexAsync(client);
+        var templates = await client.GetFromJsonAsync(
+            "/api/v1/library/graph-templates",
+            ContractsJsonContext.Default.IReadOnlyListStackTerm,
+            Token
+        );
+        Assert.Equal(
+            ["empty", "outputs", "Brushed Steel", "Moss", "Rough Stone", "Terracotta"],
+            templates!.Select(static term => term.Value)
+        );
+        Assert.Equal("Material Outputs", templates![1].Label);
+
+        async Task<GraphState> CreateAsync(string name, string? template, int? side = null) {
+            using var response = await client.PostAsJsonAsync(
+                "/api/v1/library/graphs",
+                new(name, "props/crate", side, template),
+                ContractsJsonContext.Default.GraphCreateRequest,
+                Token
+            );
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            var created = await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.GraphCreated, Token);
+            return await client.OpenAsync(created!.Path, Token);
+        }
+
+        var outputs = await CreateAsync("Channels", "outputs");
+        Assert.Equal(
+            ["baseColor", "normal", "roughness", "metalness", "height", "occlusion"],
+            outputs.Nodes.Select(static node => node.Texts["Usage"])
+        );
+        Assert.All(outputs.Nodes, static node => Assert.Equal("Output/Output", node.Type));
+
+        var moss = await CreateAsync("My Moss", "Moss", 512);
+        Assert.Equal("My Moss", moss.Name);
+        Assert.Contains(moss.Nodes, static node => node.Type == "Surface/Height to Normal");
+        Assert.Equal("512", moss.Settings[TextureSizes.GraphSetting]);
+        Assert.True(moss.Settings.ContainsKey("seed"));
+
+        Assert.Empty((await CreateAsync("Nothing", "empty")).Nodes);
+
+        using var unknown = await client.PostAsJsonAsync(
+            "/api/v1/library/graphs",
+            new("Odd", "props/crate", null, "Marble"),
+            ContractsJsonContext.Default.GraphCreateRequest,
+            Token
+        );
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, unknown.StatusCode);
+    }
+
     [Fact]
     public async Task Impact_counts_the_projects_and_the_pins() {
         var id = CreateLibrary();

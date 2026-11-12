@@ -678,7 +678,16 @@ public sealed record GraphImage(string Hash, int Width, int Height);
 ///     A project's path below <c>projects/</c> to put it in, or null for a new project of its own.
 /// </param>
 /// <param name="Resolution">The side it evaluates at. Null is 2048. Its authoring base does not depend on this.</param>
-public sealed record GraphCreateRequest(string Name, string? Project = null, int? Resolution = null);
+/// <param name="Template">
+///     What it starts from: null or <c>empty</c> for nothing, <c>outputs</c> for an Output node per material channel, or a
+///     starter preset by name, as <c>GET /api/v1/library/graph-templates</c> lists them.
+/// </param>
+public sealed record GraphCreateRequest(
+    string Name,
+    string? Project = null,
+    int? Resolution = null,
+    string? Template = null
+);
 
 /// <summary>A new graph's file.</summary>
 /// <param name="Path">Relative to the library, with forward slashes, as <c>POST /graphs</c> takes it.</param>

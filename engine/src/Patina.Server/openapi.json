@@ -1055,7 +1055,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Writes a new, empty graph file. It reaches the listings once the index has caught up.",
+        "summary": "Writes a new graph file, empty or from a template. It reaches the listings once the index has caught up.",
         "operationId": "CreateGraph",
         "requestBody": {
           "content": {
@@ -1104,6 +1104,40 @@
               "application/problem\u002Bjson": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/graph-templates": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What a new graph can start from: nothing, an Output node per channel, or a starter preset.",
+        "operationId": "GetGraphTemplates",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StackTerm"
+                  }
                 }
               }
             }
@@ -11101,6 +11135,13 @@
             ],
             "description": "The side it evaluates at. Null is 2048. Its authoring base does not depend on this.",
             "format": "int32"
+          },
+          "template": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What it starts from: null or \u0060empty\u0060 for nothing, \u0060outputs\u0060 for an Output node per material channel, or a\nstarter preset by name, as \u0060GET /api/v1/library/graph-templates\u0060 lists them."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/graphs\u0060."

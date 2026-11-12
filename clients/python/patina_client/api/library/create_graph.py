@@ -70,6 +70,13 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx2.Re
 
         return response_409
 
+    if response.status_code == 422:
+        response_422 = ProblemDetails.from_dict(response.json())
+
+
+
+        return response_422
+
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     else:
@@ -91,7 +98,8 @@ def sync_detailed(
     body: GraphCreateRequest,
 
 ) -> Response[GraphCreated | ProblemDetails]:
-    """ Writes a new, empty graph file. It reaches the listings once the index has caught up.
+    """ Writes a new graph file, empty or from a template. It reaches the listings once the index has caught
+    up.
 
     Args:
         body (GraphCreateRequest): The body of `POST /api/v1/library/graphs`.
@@ -122,7 +130,8 @@ def sync(
     body: GraphCreateRequest,
 
 ) -> GraphCreated | ProblemDetails | None:
-    """ Writes a new, empty graph file. It reaches the listings once the index has caught up.
+    """ Writes a new graph file, empty or from a template. It reaches the listings once the index has caught
+    up.
 
     Args:
         body (GraphCreateRequest): The body of `POST /api/v1/library/graphs`.
@@ -148,7 +157,8 @@ async def asyncio_detailed(
     body: GraphCreateRequest,
 
 ) -> Response[GraphCreated | ProblemDetails]:
-    """ Writes a new, empty graph file. It reaches the listings once the index has caught up.
+    """ Writes a new graph file, empty or from a template. It reaches the listings once the index has caught
+    up.
 
     Args:
         body (GraphCreateRequest): The body of `POST /api/v1/library/graphs`.
@@ -179,7 +189,8 @@ async def asyncio(
     body: GraphCreateRequest,
 
 ) -> GraphCreated | ProblemDetails | None:
-    """ Writes a new, empty graph file. It reaches the listings once the index has caught up.
+    """ Writes a new graph file, empty or from a template. It reaches the listings once the index has caught
+    up.
 
     Args:
         body (GraphCreateRequest): The body of `POST /api/v1/library/graphs`.

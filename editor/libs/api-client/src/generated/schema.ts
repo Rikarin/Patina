@@ -357,8 +357,25 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Writes a new, empty graph file. It reaches the listings once the index has caught up. */
+    /** Writes a new graph file, empty or from a template. It reaches the listings once the index has caught up. */
     post: operations['CreateGraph'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/graph-templates': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What a new graph can start from: nothing, an Output node per channel, or a starter preset. */
+    get: operations['GetGraphTemplates'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -3611,6 +3628,11 @@ export interface components {
        * @description The side it evaluates at. Null is 2048. Its authoring base does not depend on this.
        */
       resolution?: null | number;
+      /**
+       * @description What it starts from: null or `empty` for nothing, `outputs` for an Output node per material channel, or a
+       *     starter preset by name, as `GET /api/v1/library/graph-templates` lists them.
+       */
+      template?: null | string;
     };
     /** @description What changed in the document, the same for an edit, an undo and a redo. */
     GraphDelta: {
@@ -8494,6 +8516,35 @@ export interface operations {
         };
         content: {
           'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetGraphTemplates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackTerm'][];
         };
       };
     };

@@ -246,10 +246,17 @@ async function addNodeAt(search: string, x: number, y: number): Promise<void> {
   await expect(window.getByTestId('inspector-title')).toHaveText(search.split('/').at(-1) ?? search);
 }
 
-async function newGraph(name: string): Promise<void> {
+async function newGraph(name: string, template?: string): Promise<void> {
   await window.getByRole('radio', { name: 'Materials' }).click();
   await window.getByTestId('library-new-graph').click();
   await window.getByTestId('new-graph-name').fill(name);
+  if (template) {
+    await window.getByTestId('new-graph-template').getByRole('combobox').click();
+    await expect(window.getByRole('option', { name: template })).toBeVisible();
+    await window.screenshot({ path: join(shots, 'graph-new-templates.png') });
+    await window.getByRole('option', { name: template }).click();
+  }
+
   await window.getByTestId('new-graph-create').click();
   await expect(window.getByTestId('graph-name')).toHaveText(name);
 }
@@ -480,8 +487,10 @@ test('the 2D view shows the node on view at full size, tiles it and pins it, and
 test('shows a second graph beside the first, and the panes follow the one touched last (#40)', async () => {
   test.setTimeout(120_000);
   await openGraph();
-  await newGraph('Beside Rust');
-  await expect(nodes()).toHaveCount(0);
+  // A new graph can start from an Output node for each channel (#183).
+  await newGraph('Beside Rust', 'Material Outputs');
+  const Outputs = 6;
+  await expect(nodes()).toHaveCount(Outputs);
 
   // The fourth layout puts a second graph beside the one in front, which joins an open tab's session.
   await window.keyboard.press('ControlOrMeta+4');
@@ -489,7 +498,7 @@ test('shows a second graph beside the first, and the panes follow the one touche
   await expect(beside.getByTestId('graph-beside-empty')).toBeVisible();
   await beside.getByTestId('graph-beside-choice').selectOption({ label: Name });
   await expect(beside.getByTestId('graph-node')).toHaveCount(Nodes);
-  await expect(nodes()).toHaveCount(Nodes);
+  await expect(nodes()).toHaveCount(Outputs + Nodes);
   const besideNode = (id: number) => beside.locator(`[data-testid=graph-node][data-node="${String(id)}"]`);
 
   // Touching it puts it in front of the Inspector, and its edits are its tab's, behind.
@@ -509,7 +518,7 @@ test('shows a second graph beside the first, and the panes follow the one touche
   await window.getByTestId('graph-name').first().click();
   await expect(beside.getByTestId('graph-beside-front')).toHaveCount(0);
   await window.keyboard.press('ControlOrMeta+v');
-  await expect(nodes()).toHaveCount(Nodes + 1);
+  await expect(nodes()).toHaveCount(Outputs + Nodes + 1);
   await expect(beside.getByTestId('graph-node')).toHaveCount(Nodes);
   await expect(window.getByTestId('inspector-title')).toHaveText('Noise');
   await expect(window.getByTestId('active-unsaved')).toBeVisible();
