@@ -251,9 +251,9 @@ public sealed partial class ViewportDisplayTests {
     }
 
     /// <summary>
-    ///     Depth of field (#138) keeps what the lens focuses on sharp and softens what it does not: a checker square
-    ///     facing the camera stays as sharp as with none when the focus is on it, loses much of its edges' contrast when
-    ///     the focus is a bounding radius behind it, and the setting at zero draws exactly what it drew before.
+    ///     Depth of field (#138) keeps what the lens focuses on sharp and softens what it does not: a checker
+    ///     square facing the camera stays as sharp as with none when the focus is on it, loses much of its edges'
+    ///     contrast when the focus is a bounding radius behind it, and the setting at zero draws what it drew before.
     /// </summary>
     [Fact]
     public void Depth_of_field_softens_what_is_out_of_focus_and_leaves_the_focus_sharp() {
@@ -296,8 +296,8 @@ public sealed partial class ViewportDisplayTests {
     }
 
     /// <summary>
-    ///     Neutral draws the lit view in clay, so a bake's preview reads against plain grey (#149), and leaves a view of
-    ///     a stored channel as it is.
+    ///     Neutral draws the lit view in clay, so a bake's preview reads against plain grey (#149), and leaves a view
+    ///     of a stored channel as it is.
     /// </summary>
     [Fact]
     public void Neutral_draws_the_lit_view_in_clay_and_leaves_the_others() {

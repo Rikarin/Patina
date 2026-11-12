@@ -626,36 +626,7 @@ public sealed partial class BakeProcessTests : IDisposable {
 
         Assert.True(SamePicture(baked, again), "A new Worker drew something else.");
 
-        // One button for one map alone on the mesh (#149): the picture view, with that map, and nothing else touched.
-        using var alone = await http.PutAsJsonAsync(
-            "/api/v1/viewport/bake",
-            new(job.Id, "ao"),
-            ContractsJsonContext.Default.ViewportBakeRequest,
-            deadline.Token
-        );
-        alone.EnsureSuccessStatusCode();
-        var display = (await alone.Content.ReadFromJsonAsync(
-            ContractsJsonContext.Default.ViewportState,
-            deadline.Token
-        ))!.Display;
-        Assert.Equal(ViewportViews.Picture, display.View);
-        Assert.EndsWith("_ao.png", display.Picture, StringComparison.Ordinal);
-        Assert.Equal(new ViewportDisplay().Environment, display.Environment);
-        await SendAsync(socket, new(Input: 10), deadline.Token);
-        var occlusion = await FrameAsync(socket, deadline.Token);
-        while (BinaryPrimitives.ReadUInt32LittleEndian(occlusion.AsSpan(16)) != 10) {
-            occlusion = await FrameAsync(socket, deadline.Token);
-        }
-
-        Assert.False(SamePicture(again, occlusion), "The map alone drew the material.");
-
-        using var none = await http.PutAsJsonAsync(
-            "/api/v1/viewport/bake",
-            new(job.Id, "thickness"),
-            ContractsJsonContext.Default.ViewportBakeRequest,
-            deadline.Token
-        );
-        Assert.Equal(HttpStatusCode.NotFound, none.StatusCode);
+        await OneMapAloneAsync(job, socket, again, deadline.Token);
     }
 
     /// <summary>Shows a graph in the viewport, once its first evaluation holds a picture.</summary>

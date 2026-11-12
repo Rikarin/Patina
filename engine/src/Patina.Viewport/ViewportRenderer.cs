@@ -47,6 +47,7 @@ public sealed class ViewportRenderer : IDisposable {
 
     /// <summary>The depth of field, made the first time a frame asks for it.</summary>
     ViewportFocus? focus;
+
     readonly BufferHandle frameConstants;
     readonly BufferHandle skyConstants;
     readonly DescriptorSetHandle frameSet;
@@ -570,7 +571,7 @@ public sealed class ViewportRenderer : IDisposable {
             .Set("lightColor", new Vector3(1.2f, 1.15f, 1.1f))
             .Set("environmentYaw", shading.EnvironmentRotation)
             .Set("environmentMipCount", (float)environment.Prefiltered.LevelCount)
-            .Set("view", Neutral && shading.View == ViewportView.Lit ? (float)ViewportView.Clay : shading.ViewNumber)
+            .Set("view", shading.ViewNumberFor(Neutral))
             .Set("pictureLane", (float)Math.Clamp(shading.PictureLane, 0, 4))
             .Set("pictureScale", shading.PictureScale)
             .Set("densityTarget", Math.Max(shading.DensityTarget, 0f))
@@ -622,14 +623,7 @@ public sealed class ViewportRenderer : IDisposable {
             )
         );
         var behind = shading.BackgroundColour * (1f - Math.Clamp(shading.BackgroundOpacity, 0f, 1f));
-        commands.BeginRenderPass(
-            new(
-                [target.Cleared(behind, lens?.UnfocusedView)],
-                lens?.Depth(target.DepthView)
-                ?? new DepthStencilAttachment(target.DepthView, LoadAction.Clear, StoreAction.DontCare),
-                "viewport forward"
-            )
-        );
+        ViewportFocus.BeginForward(commands, target, behind, lens);
         ViewportShadows.Cover(commands, target.Width, target.Height);
         commands.BindPipeline(sky.Pipeline);
         commands.BindDescriptorSet(DescriptorSetSlot.PerMaterial, skySet);

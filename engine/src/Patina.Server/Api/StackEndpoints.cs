@@ -1,12 +1,9 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Ipc;
-using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
 using Patina.Server.Viewport;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Patina.Server.Api;
 
@@ -27,6 +24,7 @@ static class StackEndpoints {
         stacks.MapStackChecks();
         stacks.MapStackShelf();
         stacks.MapStackBrushes();
+        stacks.MapStackMesh();
 
         void Post(string route, Delegate handler, string name, string summary, params int[] problems) =>
             stacks.MapPost(route, handler).Describe(name, summary, problems);
@@ -161,34 +159,6 @@ static class StackEndpoints {
             Missing,
             Unavailable
         );
-        Get(
-            "/{id}/mesh-parts",
-            GetMeshParts,
-            "GetStackMeshParts",
-            "The named meshes in the stack's texture set, which a layer can be limited to.",
-            Missing,
-            Refused,
-            Unavailable
-        );
-        stacks.MapGet("/{id}/uv-wire", GetUvWire)
-            .Produces<string>(StatusCodes.Status200OK, "image/svg+xml")
-            .Describe(
-                "GetStackUvWire",
-                "The texture set's UV layout as lines, each edge of its triangles once, as an SVG over the unit square "
-                + "with v down, as the map lies: what a 2D view lays over the map. A stack on no mesh has none.",
-                Missing,
-                Refused,
-                Unavailable
-            );
-        Post(
-            "/{id}/mesh-mask",
-            DrawMeshMask,
-            "DrawStackMeshMask",
-            "Draws where some named meshes lie in the layout, as a picture for a setLayer command's meshMask.",
-            Missing,
-            Refused,
-            Unavailable
-        );
         Post(
             "/{id}/export",
             Export,
@@ -311,18 +281,7 @@ static class StackEndpoints {
         StackSessions sessions,
         ViewportSession viewport
     ) =>
-        Step(id, sessions, session => session.Apply(batch, Isolation(session, viewport.State)), "apply");
-
-    /// <summary>
-    ///     What the viewport draws alone of a stack's model (#136), or null: an isolation names the parts of the mesh
-    ///     the viewport shows, which say nothing about another.
-    /// </summary>
-    static ViewportIsolation? Isolation(StackSession session, ViewportState viewport) =>
-        viewport.Isolation is { } isolation
-        && session.ModelFile is { } model
-        && string.Equals(model, viewport.Mesh, StringComparison.Ordinal)
-            ? isolation
-            : null;
+        Step(id, sessions, session => session.Apply(batch, viewport.State), "apply");
 
     static Results<Ok<StackEditResult>, ProblemHttpResult> Undo(string id, StackSessions sessions) =>
         Step(id, sessions, static session => session.Undo(), "undo");
@@ -491,124 +450,6 @@ static class StackEndpoints {
         bool sampled = false
     ) =>
         ReadAsync(id, sessions, evaluator, clean, null, cancellationToken, sampled);
-
-    static async Task<Results<Ok<StackMeshParts>, ProblemHttpResult>> GetMeshParts(
-        string id,
-        StackSessions sessions,
-        WorkerLink worker,
-        CancellationToken cancellationToken
-    ) {
-        if (sessions.Find(id) is not { } session) {
-            return NoSession(id);
-        }
-
-        return await MeshPartsAsync(session, worker, null, cancellationToken);
-    }
-
-    /// <summary>The set's layout as lines, drawn by the Worker into the preview folder and sent from there (#137).</summary>
-    static async Task<Results<PhysicalFileHttpResult, ProblemHttpResult>> GetUvWire(
-        string id,
-        StackSessions sessions,
-        WorkerLink worker,
-        PreviewStore store,
-        CancellationToken cancellationToken
-    ) {
-        if (sessions.Find(id) is not { } session) {
-            return NoSession(id);
-        }
-
-        if (session.ModelFile is not { } mesh) {
-            return TypedResults.Problem("This stack is on no mesh, so it has no UV layout.", statusCode: Missing);
-        }
-
-        try {
-            var connection = await worker.ConnectionAsync(cancellationToken);
-            var reply = await connection.SendAsync(
-                new() {
-                    Type = IpcTypes.MeshUvWire, UvWire = new(mesh, session.Set, session.UvSet, store.Root)
-                },
-                cancellationToken
-            );
-            return reply.ThumbnailHash is { } hash && store.Find(hash, GraphPreviewFiles.Drawing) is { } file
-                ? TypedResults.PhysicalFile(file, "image/svg+xml")
-                : TypedResults.Problem("The Worker drew no layout.", statusCode: Unavailable);
-        } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
-        } catch (Exception e) when (e is IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
-        }
-    }
-
-    static async Task<Results<Ok<StackMeshParts>, ProblemHttpResult>> DrawMeshMask(
-        string id,
-        StackMeshMaskRequest request,
-        StackSessions sessions,
-        WorkerLink worker,
-        ServerIdentity identity,
-        CancellationToken cancellationToken
-    ) {
-        if (sessions.Find(id) is not { } session) {
-            return NoSession(id);
-        }
-
-        if (session.ModelFile is not { } mesh || identity.Library is not { } library) {
-            return TypedResults.Problem("This stack is on no mesh.", statusCode: Refused);
-        }
-
-        var side = session.State.Width;
-        var name = Convert.ToHexStringLower(
-            SHA256.HashData(
-                Encoding.UTF8.GetBytes($"{side}\n{string.Join('\n', request.Parts.Order(StringComparer.Ordinal))}")
-            )
-        )[..16];
-        var file = Path.Combine(
-            Path.GetDirectoryName(session.Path)!,
-            "pictures",
-            $"{LibraryLayout.MeshMaskPrefix}{name}.png"
-        );
-        try {
-            var connection = await worker.ConnectionAsync(cancellationToken);
-            await connection.SendAsync(
-                new() { Type = IpcTypes.MeshPartMask, MeshPartMask = new(mesh, request.Parts, side, file) },
-                cancellationToken
-            );
-        } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
-        } catch (Exception e) when (e is IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
-        }
-
-        return await MeshPartsAsync(
-            session,
-            worker,
-            Path.GetRelativePath(library, file).Replace('\\', '/'),
-            cancellationToken
-        );
-    }
-
-    static async Task<Results<Ok<StackMeshParts>, ProblemHttpResult>> MeshPartsAsync(
-        StackSession session,
-        WorkerLink worker,
-        string? asset,
-        CancellationToken cancellationToken
-    ) {
-        if (session.ModelFile is not { } mesh) {
-            return TypedResults.Ok(new StackMeshParts([], asset));
-        }
-
-        try {
-            var connection = await worker.ConnectionAsync(cancellationToken);
-            var reply = await connection.SendAsync(
-                new() { Type = IpcTypes.MeshParts, MeshFile = mesh, MeshSet = session.Set },
-                cancellationToken
-            );
-            return TypedResults.Ok(new StackMeshParts(reply.Parts ?? [], asset));
-        } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
-        } catch (Exception e) when (e is IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
-        }
-    }
 
     static async Task<Results<Ok<IReadOnlyList<StackPixels>>, ProblemHttpResult>> Export(
         string id,

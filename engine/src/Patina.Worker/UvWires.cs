@@ -57,10 +57,10 @@ static class UvWires {
         }
 
         // Once, drawn twice: a dark line under a light one, so it reads on a pale map and a dark one alike.
-        return "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1 1\" preserveAspectRatio=\"none\">"
-            + $"<defs><path id=\"wire\" fill=\"none\" vector-effect=\"non-scaling-stroke\" d=\"{path}\"/></defs>"
-            + "<use href=\"#wire\" stroke=\"#000000\" stroke-opacity=\"0.45\" stroke-width=\"3\"/>"
-            + "<use href=\"#wire\" stroke=\"#ffffff\" stroke-opacity=\"0.85\" stroke-width=\"1\"/></svg>";
+        return """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" preserveAspectRatio="none">"""
+            + $"""<defs><path id="wire" fill="none" vector-effect="non-scaling-stroke" d="{path}"/></defs>"""
+            + """<use href="#wire" stroke="#000000" stroke-opacity="0.45" stroke-width="3"/>"""
+            + """<use href="#wire" stroke="#ffffff" stroke-opacity="0.85" stroke-width="1"/></svg>""";
     }
 
     /// <summary>A corner as the drawing says it: u across and v down, as the map lies.</summary>

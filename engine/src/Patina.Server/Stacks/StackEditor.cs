@@ -60,7 +60,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     /// <summary>The library layered materials are read from, or null with none.</summary>
     public string? Library { get; set; }
 
-    /// <summary>What the viewport draws alone as the next batch arrives, which a stroke on the mesh keeps (#136).</summary>
+    /// <summary>What the viewport draws alone as the next batch arrives, which a stroke on the mesh keeps.</summary>
     public ViewportIsolation? Isolation { get; set; }
 
     /// <summary>What a paste finds a copy by, or nothing when it has gone.</summary>

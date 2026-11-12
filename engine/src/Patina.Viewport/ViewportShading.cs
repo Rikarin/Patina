@@ -117,7 +117,7 @@ public sealed record ViewportShading {
     /// <summary>How much light spills past what is brighter than white, 0 none to 1.</summary>
     public float Bloom { get; init; }
 
-    /// <summary>How shallow the depth of field is, 0 none to 1 a lens wide open (<see cref="ViewportFocus" />).</summary>
+    /// <summary>How shallow the depth of field is, 0 none to 1 a lens wide open (ADR 0031).</summary>
     public float DepthOfField { get; init; }
 
     /// <summary>
@@ -159,6 +159,10 @@ public sealed record ViewportShading {
 
     /// <summary>The view as the forward shader numbers it, in the order of <see cref="ViewportView" />.</summary>
     public float ViewNumber => (float)View;
+
+    /// <summary>The view's number, with the lit view drawn in clay when the model is to be neutral (#149).</summary>
+    public float ViewNumberFor(bool neutral) =>
+        neutral && View == ViewportView.Lit ? (float)ViewportView.Clay : ViewNumber;
 
     /// <summary>Whether this shows a stored value and not a picture, so no curve, look or effect touches it.</summary>
     public bool ShowsData => View is not (ViewportView.Lit or ViewportView.Clay);

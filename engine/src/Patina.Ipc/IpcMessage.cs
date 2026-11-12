@@ -766,7 +766,7 @@ public sealed record MeshPartMaskAsk(string Mesh, IReadOnlyList<string> Parts, i
 
 /// <summary>Asks for a texture set's UV layout as lines (#137).</summary>
 /// <param name="Mesh">The mesh file.</param>
-/// <param name="Set">The texture set, which is a material of the mesh, or a name that is none for the whole mesh.</param>
+/// <param name="Set">The texture set, which is a material of the mesh, or another name for the whole mesh.</param>
 /// <param name="UvSet">The coordinate set the texture set is laid out in.</param>
 /// <param name="PreviewFolder">The content-addressed folder the drawing goes in.</param>
 public sealed record UvWireAsk(string Mesh, string Set, int UvSet, string PreviewFolder);

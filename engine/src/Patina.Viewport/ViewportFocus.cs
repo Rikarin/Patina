@@ -33,7 +33,7 @@ sealed class ViewportFocus : IDisposable {
     /// <summary>A full-frame sensor's width, in metres.</summary>
     const float Sensor = 0.036f;
 
-    /// <summary>The widest a defocused pixel spreads, in pixels: a ceiling on the cost as much as on the look.</summary>
+    /// <summary>The widest a defocused pixel spreads, in pixels: a ceiling on the cost and the look.</summary>
     const float Widest = 10f;
 
     /// <summary>The f-number at full strength.</summary>
@@ -142,14 +142,35 @@ sealed class ViewportFocus : IDisposable {
     }
 
     /// <summary>The barriers that make the pictures ready for the forward pass to resolve into.</summary>
-    public IEnumerable<TextureBarrier> Resolving() =>
-        [
-            new(unfocused, ResourceState.Undefined, ResourceState.ColourTarget),
-            new(depth, ResourceState.Undefined, ResourceState.DepthStencilWrite)
-        ];
+    public TextureBarrier[] Resolving() => [
+        new(unfocused, ResourceState.Undefined, ResourceState.ColourTarget),
+        new(depth, ResourceState.Undefined, ResourceState.DepthStencilWrite)
+    ];
+
+    /// <summary>
+    ///     Begins the forward pass, cleared to the background: its light resolved into the frame's HDR picture, or with
+    ///     a lens open into the lens's own, with its nearest depth beside it.
+    /// </summary>
+    public static void BeginForward(
+        ICommandList commands,
+        ViewportTargets target,
+        Vector3 behind,
+        ViewportFocus? lens
+    ) {
+        ArgumentNullException.ThrowIfNull(commands);
+        ArgumentNullException.ThrowIfNull(target);
+        commands.BeginRenderPass(
+            new(
+                [target.Cleared(behind, lens?.UnfocusedView)],
+                lens?.Depth(target.DepthView)
+                ?? new DepthStencilAttachment(target.DepthView, LoadAction.Clear, StoreAction.DontCare),
+                "viewport forward"
+            )
+        );
+    }
 
     /// <summary>The depth attachment for a defocused frame: tested as ever, its nearest sample kept.</summary>
-    public DepthStencilAttachment Depth(TextureViewHandle samples) =>
+    DepthStencilAttachment Depth(TextureViewHandle samples) =>
         new(
             samples,
             LoadAction.Clear,

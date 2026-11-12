@@ -56,11 +56,12 @@ public static class BakePreviewShapes {
     static readonly Vector4 Shell = new(0.2f, 0.75f, 1f, 1f);
     static readonly Vector4 Seam = new(1f, 0.15f, 0.85f, 1f);
 
-    /// <summary>How far two normals at one point may turn before the edge between them is hard: about two degrees.</summary>
+    /// <summary>How far two normals at one point may turn before their edge is hard: about two degrees.</summary>
     const float SameNormal = 0.9994f;
 
     /// <summary>How far a missing seam's band reaches into each face, as a share of the low mesh's diagonal.</summary>
     const float SeamWidth = 0.006f;
+
     static readonly Vector4 ShellEdge = new(0.2f, 0.75f, 1f, 0.5f);
     static readonly Vector4 Front = new(0.2f, 0.75f, 1f, 0.8f);
     static readonly Vector4 Rear = new(1f, 0.6f, 0.15f, 0.8f);
@@ -231,33 +232,7 @@ public static class BakePreviewShapes {
             return;
         }
 
-        // Each edge by where its ends are, lower first, with the corners at each end of the first face to reach it.
-        // ⚠ By place and not by point: a file may split a point for each normal, which is exactly a hard edge.
-        Dictionary<(Vector3, Vector3), (int From, int To, int Face)> first = [];
-        List<((Vector3 A, Vector3 B) Edge, int Face, int Other)> missing = [];
-        for (var face = 0; face < mesh.FaceCount; face++) {
-            var entry = mesh.Faces[face];
-            for (var at = 0; at < entry.Count; at++) {
-                var (here, next) = (entry.Start + at, entry.Start + (at + 1) % entry.Count);
-                var (a, b) = (mesh.Positions[mesh.Corners[here]], mesh.Positions[mesh.Corners[next]]);
-                var lower = Lower(a, b);
-                var key = lower ? (a, b) : (b, a);
-                var (from, to) = lower ? (here, next) : (next, here);
-                if (first.TryAdd(key, (from, to, face))) {
-                    continue;
-                }
-
-                var (otherFrom, otherTo, other) = first[key];
-                var hard = Vector3.Dot(Unit(mesh.Normals[from]), Unit(mesh.Normals[otherFrom])) < SameNormal
-                    || Vector3.Dot(Unit(mesh.Normals[to]), Unit(mesh.Normals[otherTo])) < SameNormal;
-                var seam = mesh.TexCoords[from] != mesh.TexCoords[otherFrom]
-                    || mesh.TexCoords[to] != mesh.TexCoords[otherTo];
-                if (hard && !seam) {
-                    missing.Add((key, face, other));
-                }
-            }
-        }
-
+        var missing = Unseamed(mesh);
         if (missing.Count == 0) {
             return;
         }
@@ -273,15 +248,52 @@ public static class BakePreviewShapes {
         }
 
         var said = missing.Count == 1 ? "edge has" : "edges have";
+        const string Why = "a tangent-space normal map shows a line there.";
         warnings.Add(
             string.Create(
                 CultureInfo.InvariantCulture,
-                $"{missing.Count} hard {said} no UV seam, drawn in magenta: a tangent-space normal map will show a line along them."
+                $"{missing.Count} hard {said} no UV seam, drawn in magenta: {Why}"
             )
         );
     }
 
-    /// <summary>A strip on a face along one of its edges, reaching into the face by the width or half of it at most.</summary>
+    /// <summary>
+    ///     Each edge two faces share whose normals part at either end and whose coordinates do not, with the two faces.
+    /// </summary>
+    static List<((Vector3 A, Vector3 B) Edge, int Face, int Other)> Unseamed(EditMesh mesh) {
+        // Each edge by where its ends are, lower first, with the corners at each end of the first face to reach it.
+        // ⚠ By place and not by point: a file may split a point for each normal, which is exactly a hard edge.
+        Dictionary<(Vector3, Vector3), (int From, int To, int Face)> first = [];
+        List<((Vector3 A, Vector3 B) Edge, int Face, int Other)> missing = [];
+        for (var face = 0; face < mesh.FaceCount; face++) {
+            var entry = mesh.Faces[face];
+            for (var at = 0; at < entry.Count; at++) {
+                var (here, next) = (entry.Start + at, entry.Start + (at + 1) % entry.Count);
+                var (a, b) = (mesh.Positions[mesh.Corners[here]], mesh.Positions[mesh.Corners[next]]);
+                var lower = Lower(a, b);
+                var key = lower ? (a, b) : (b, a);
+                var ends = lower ? (here, next) : (next, here);
+                if (!first.TryAdd(key, (ends.Item1, ends.Item2, face))
+                    && first[key] is var (from, to, other)
+                    && Missing(mesh, ends, (from, to))) {
+                    missing.Add((key, face, other));
+                }
+            }
+        }
+
+        return missing;
+    }
+
+    /// <summary>Whether an edge's corners on two faces part in their normals and not in their coordinates.</summary>
+    static bool Missing(EditMesh mesh, (int From, int To) one, (int From, int To) another) {
+        var hard = Vector3.Dot(Unit(mesh.Normals[one.From]), Unit(mesh.Normals[another.From])) < SameNormal
+            || Vector3.Dot(Unit(mesh.Normals[one.To]), Unit(mesh.Normals[another.To])) < SameNormal;
+        var seam = mesh.TexCoords[one.From] != mesh.TexCoords[another.From]
+            || mesh.TexCoords[one.To] != mesh.TexCoords[another.To];
+        return hard && !seam;
+    }
+
+    /// <summary>A strip on a face along one of its edges, reaching in by the width or half the face at most.</summary>
     static void Band(List<float> triangles, EditMesh mesh, Vector3 a, Vector3 b, int face, float width) {
         var middle = Vector3.Zero;
         var loop = mesh.CornersOf(face);

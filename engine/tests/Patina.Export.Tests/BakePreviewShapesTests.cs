@@ -123,7 +123,13 @@ public sealed class BakePreviewShapesTests : IDisposable {
     }
 
     static ViewportBakePreview SeamsOnly(string mesh) =>
-        new() { High = [mesh], Low = mesh, Reach = false, HighMesh = false, Matches = false };
+        new() {
+            High = [mesh],
+            Low = mesh,
+            Reach = false,
+            HighMesh = false,
+            Matches = false
+        };
 
     /// <summary>
     ///     A hard edge whose coordinates run on across it is the line a tangent-space normal map shows, so it is drawn
@@ -137,7 +143,10 @@ public sealed class BakePreviewShapesTests : IDisposable {
         Assert.Equal(2, xs.Count);
         Assert.All(xs, static x => Assert.Equal(1f, x, 1e-6f));
         Assert.Equal([0f, 1f], Coordinate(missing.Lines, 1).Order());
-        Assert.Contains(missing.Warnings, static warning => warning.StartsWith("1 hard edge", StringComparison.Ordinal));
+        Assert.Contains(
+            missing.Warnings,
+            static warning => warning.StartsWith("1 hard edge", StringComparison.Ordinal)
+        );
         // A band either side of it, on each face: two triangles each, reaching into the face and not past x = 1.
         var band = Coordinate(missing.Triangles, 0).ToList();
         Assert.Equal(12, band.Count);
@@ -194,7 +203,9 @@ public sealed class BakePreviewShapesTests : IDisposable {
         };
         var straight = BakePreviewShapes.Build(preview);
         var leaned = BakePreviewShapes.Build(
-            preview with { Options = new() { Rays = new() { Units = "absolute", Front = 0.2, Rear = 0.1, Skew = 0.5 } } }
+            preview with {
+                Options = new() { Rays = new() { Units = "absolute", Front = 0.2, Rear = 0.1, Skew = 0.5 } }
+            }
         );
 
         var added = (leaned.Lines.Length - straight.Lines.Length) / BakePreviewShapes.FloatsPerVertex / 2;
