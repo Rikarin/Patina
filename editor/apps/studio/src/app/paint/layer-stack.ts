@@ -1048,6 +1048,25 @@ const MaskMarks: Readonly<Record<string, string>> = {
       </xui-menu>
     </ng-template>
 
+    <ng-template #exportMenu>
+      @if (menuLayer(); as layer) {
+        <xui-menu data-testid="layer-menu-exports" aria-label="Export alone">
+          <button type="button" xuiMenuItem data-testid="layer-menu-export-alone" (triggered)="exportAlone(layer)">
+            {{ commands.label('exportLayer') }}
+          </button>
+          @if (layer.mask.source !== 'None') {
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-export-mask"
+              (triggered)="exportAlone(layer, true)"
+            >
+              {{ commands.label('exportMask') }}
+            </button>
+          }
+        </xui-menu>
+      }
+    </ng-template>
     <ng-template #tagMenu>
       <xui-menu data-testid="layer-menu-tags" aria-label="Color tag">
         @for (tag of store.vocabulary()?.tags ?? []; track tag.value) {
@@ -1281,19 +1300,9 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 Flatten Folder
               </button>
             }
-            <button type="button" xuiMenuItem data-testid="layer-menu-export-alone" (triggered)="exportAlone(layer)">
-              {{ commands.label('exportLayer') }}
+            <button type="button" xuiMenuItem data-testid="layer-menu-export" [xuiMenuTriggerFor]="exportMenu">
+              Export Alone
             </button>
-            @if (layer.mask.source !== 'None') {
-              <button
-                type="button"
-                xuiMenuItem
-                data-testid="layer-menu-export-mask"
-                (triggered)="exportAlone(layer, true)"
-              >
-                {{ commands.label('exportMask') }}
-              </button>
-            }
             <button type="button" xuiMenuItem data-testid="layer-menu-tag" [xuiMenuTriggerFor]="tagMenu">
               Color Tag
             </button>
