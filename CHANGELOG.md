@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The Export dialog starts on a preset the library chose, not on whichever comes first by name: Make Default, beside the preset, keeps the choice in `library.yaml`, and until a library makes one the starter is glTF 2.0. A project that chose its own preset keeps it, and a texture set's checks measure against the same preset. Through the API `PUT /api/v1/library/export/preset` keeps it and `GET /api/v1/export/presets` names it as `default`.
 - Blue Noise, a Source node: evenly spread noise with no clumps, so every threshold of it is a well-spaced set of points, for stippling, dithering and scatters that must not bunch up. Its seed gives another arrangement just as even, and it tiles.
 - Directional Distance measures how far each texel is from a mask along one direction only, like a cast shadow or a streak behind a rivet, and UV Remap reads a picture at the coordinates another holds, so a Flood Fill's island coordinates put a whole picture in every island. Height Extrude pushes a height map's shapes out along one direction, each trailing a side that keeps its height or slopes away.
 - The Tile Sampler reads a displacement map that moves each instance, a vector map that turns it to face along the map, a color map that tints it, and an index map that chooses its pattern, and takes up to four patterns, chosen at random or by the index map. Wiring a map is enough: each has an amount that starts at full.

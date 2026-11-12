@@ -171,6 +171,7 @@ from .library_export_request import LibraryExportRequest
 from .library_info import LibraryInfo
 from .library_move_request import LibraryMoveRequest
 from .library_moved import LibraryMoved
+from .library_preset_request import LibraryPresetRequest
 from .library_report import LibraryReport
 from .material_brush import MaterialBrush
 from .material_info import MaterialInfo
@@ -549,6 +550,7 @@ __all__ = (
     "LibraryInfo",
     "LibraryMoved",
     "LibraryMoveRequest",
+    "LibraryPresetRequest",
     "LibraryReport",
     "MaterialBrush",
     "MaterialInfo",

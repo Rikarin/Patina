@@ -58,16 +58,15 @@ public static class StackChecking {
     }
 
     /// <summary>
-    ///     The preset a project exports with: the one it last chose, or the first there is, which with no library is
-    ///     the first factory preset.
+    ///     The preset a project exports with: the one it last chose, else the library's default, else the factory's
+    ///     starter, as the Export dialog starts (#240).
     /// </summary>
-    public static ExportPreset? PresetOf(ProjectContents? project, string? libraryRoot) {
-        var found = ExportPresetCatalog.Read(libraryRoot, libraryRoot is null ? null : project?.Path);
+    public static ExportPreset? PresetOf(ProjectContents? project, OpenLibrary? library) {
+        var root = library?.RootPath;
+        var found = ExportPresetCatalog.Read(root, root is null ? null : project?.Path);
         return project?.Export?.Preset is { } chosen && found.Find(chosen) is { } preset
             ? preset
-            : found.Presets.Count > 0
-                ? found.Presets[0]
-                : null;
+            : found.Default(library?.Document.DefaultPreset);
     }
 
     /// <summary>Judges what the Worker measured.</summary>

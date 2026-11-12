@@ -54,6 +54,12 @@ public sealed record LibraryDocument(
     ///     export is in its <c>project.yaml</c>; this one belongs to no project.
     /// </summary>
     public ProjectExportSettings? Export { get; init; }
+
+    /// <summary>
+    ///     The export preset a project's export starts from when it has kept none, and the one its checks measure
+    ///     against, or null for the factory's starter (#240).
+    /// </summary>
+    public string? DefaultPreset { get; init; }
 }
 
 /// <summary><c>project.yaml</c>.</summary>

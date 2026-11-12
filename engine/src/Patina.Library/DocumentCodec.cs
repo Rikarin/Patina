@@ -59,6 +59,7 @@ public static class DocumentCodec {
                     Pair("channels", YamlText.Texts(document.Channels)),
                     Pair("defaultShader", YamlText.Text(document.DefaultShader)),
                     Pair("exportTargets", YamlText.Texts(document.ExportTargets)),
+                    ..Present("defaultPreset", document.DefaultPreset),
                     ..Block(
                         ExportKey,
                         Canonical(document.Export),
@@ -292,7 +293,10 @@ public static class DocumentCodec {
                 fields.Texts("channels"),
                 fields.Optional("defaultShader") ?? string.Empty,
                 fields.Texts("exportTargets")
-            ) { Export = ReadBlock(fields, ExportKey, LibraryTreeJsonContext.Default.ProjectExportSettings, new()) }
+            ) {
+                DefaultPreset = fields.Optional("defaultPreset"),
+                Export = ReadBlock(fields, ExportKey, LibraryTreeJsonContext.Default.ProjectExportSettings, new())
+            }
         );
 
     public static ReadDocument<ProjectDocument> ReadProject(string text, string path, SchemaChain? chain = null) =>

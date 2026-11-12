@@ -230,6 +230,36 @@ describe('ExportPane', () => {
     expect(bodies).toEqual([{ presets: ['unreal'] }]);
   });
 
+  it('starts from the default preset rather than the first, and makes another the default', async () => {
+    const gltf = { ...unreal, id: 'gltf', name: 'glTF 2.0', engine: 'glTF' };
+    const bodies: unknown[] = [];
+    const { fixture, text, store } = setup({
+      'GET export/presets': () =>
+        Response.json({ presets: [unreal, gltf], problems: [], formats, paddings: [], filters: [], default: 'gltf' }),
+      'PUT library/export/preset': request => {
+        void request.json().then(body => bodies.push(body));
+        return Response.json({ id: 'l', name: 'Library', defaultPreset: 'unreal' });
+      }
+    });
+    await settled(fixture);
+    await settled(fixture);
+    const page = fixture.nativeElement as HTMLElement;
+
+    expect(text('export-preset-info')[0]).toContain('glTF');
+    expect(text('export-preset-info')[0]).toContain('default');
+    expect(page.querySelector('[data-testid="export-make-default"]')).toBeNull();
+
+    fixture.componentInstance['choosePreset']('unreal');
+    await settled(fixture);
+    expect(text('export-preset-info')[0]).not.toContain('default');
+    (page.querySelector('[data-testid="export-make-default"]') as HTMLButtonElement).click();
+    await settled(fixture);
+
+    expect(bodies).toEqual([{ preset: 'unreal' }]);
+    expect(store.defaultPreset()).toBe('unreal');
+    expect(text('export-preset-info')[0]).toContain('default');
+  });
+
   it('lists the files of the preset in the formats that hold their lanes', async () => {
     const { fixture } = setup();
     // The library's own export settings are read first.

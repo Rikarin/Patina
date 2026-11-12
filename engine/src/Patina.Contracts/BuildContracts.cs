@@ -218,6 +218,12 @@ public sealed record ExportPresetInfo(
 /// <param name="Presets">The presets.</param>
 /// <param name="Problems">One line per file that is not a preset.</param>
 public sealed record ExportPresetList(IReadOnlyList<ExportPresetInfo> Presets, IReadOnlyList<string> Problems) {
+    /// <summary>
+    ///     The preset an export starts from when nothing is kept for it: the library's <c>defaultPreset</c> while it
+    ///     names one of these, else the factory's glTF starter, and null only when there are no presets at all.
+    /// </summary>
+    public string? Default { get; init; }
+
     /// <summary>The file formats there are, for a client that offers another one.</summary>
     public IReadOnlyList<ExportFormatInfo> Formats { get; init; } = [];
 

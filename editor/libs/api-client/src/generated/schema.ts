@@ -543,6 +543,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/export/preset': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps in library.yaml the export preset a project's export starts from when it has kept none, and that checks measure against. Null forgets it, which leaves the factory's glTF starter. GET /export/presets says which preset that comes to. */
+    put: operations['SetLibraryDefaultPreset'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/export': {
     parameters: {
       query?: never;
@@ -2964,6 +2981,11 @@ export interface components {
       presets: components['schemas']['ExportPresetInfo'][];
       /** @description One line per file that is not a preset. */
       problems: string[];
+      /**
+       * @description The preset an export starts from when nothing is kept for it: the library's `defaultPreset` while it
+       *     names one of these, else the factory's glTF starter, and null only when there are no presets at all.
+       */
+      default?: null | string;
       /** @description The file formats there are, for a client that offers another one. */
       formats: components['schemas']['ExportFormatInfo'][];
       /** @description The padding modes there are, in order, each with what a person calls it. */
@@ -4255,6 +4277,11 @@ export interface components {
       /** @description Whether a rescan is running; counts and pages may lag the files until it ends. */
       indexing: boolean;
       export?: null | components['schemas']['ProjectExportSettings'];
+      /**
+       * @description The export preset a project's export starts from when it has kept none, from `library.yaml`, or null
+       *     for the factory's starter. `GET /export/presets` says which preset that comes to.
+       */
+      defaultPreset?: null | string;
     };
     /** @description Where things went. */
     LibraryMoved: {
@@ -4267,6 +4294,11 @@ export interface components {
       paths: string[];
       /** @description The folder to put them in. Null is the top. */
       into?: null | string;
+    };
+    /** @description The body of `PUT /api/v1/library/export/preset`. */
+    LibraryPresetRequest: {
+      /** @description The id of the preset a project's export starts from when it has kept none, or null for the factory's starter. */
+      preset?: null | string;
     };
     /** @description What a whole build did. */
     LibraryReport: {
@@ -9115,6 +9147,57 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['LibraryExportRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryInfo'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetLibraryDefaultPreset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LibraryPresetRequest'];
       };
     };
     responses: {

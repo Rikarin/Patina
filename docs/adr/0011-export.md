@@ -51,6 +51,11 @@ only what differs from the preset. A library export's settings belong to no proj
 `library.yaml`'s own `export` block, written by `PUT /library/export` and read with `GET /library`. A project that has kept
 nothing starts from its preset alone, never from what another project or the library was set to.
 
+Which preset that is, is chosen and never the first by id, which changed whenever a preset was added (#240). It is the library's
+`defaultPreset` in `library.yaml`, set by `PUT /library/export/preset` (the dialog's Make Default), and while that names no
+preset the factory's `gltf`, the starter every engine and Blender reads. `GET /export/presets` says which it comes to as
+`default`, and a texture set's checks measure against the same one when its project has chosen none.
+
 ## What a project builds
 
 A project made in the app writes no outputs. `ProjectOutputs` works them out from its documents on every read, and writes nothing

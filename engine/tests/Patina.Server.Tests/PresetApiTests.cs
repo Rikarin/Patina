@@ -174,4 +174,51 @@ public sealed class PresetApiTests : IAsyncLifetime {
         );
         Assert.Equal(HttpStatusCode.NotFound, picture.StatusCode);
     }
+
+    /// <summary>
+    ///     The preset an export starts from is chosen, not the first by id (#240): the factory's glTF starter until the
+    ///     library keeps another in its <c>library.yaml</c>, which the list then names, and an id that is no preset is
+    ///     refused with nothing written.
+    /// </summary>
+    [Fact]
+    public async Task The_default_preset_is_the_starter_until_the_library_keeps_another() {
+        var before = await client.GetFromJsonAsync<ExportPresetList>("/api/v1/export/presets", Token);
+        Assert.Equal("blender", before!.Presets[0].Id);
+        Assert.Equal("gltf", before.Default);
+
+        using var kept = await client.PutAsJsonAsync(
+            "/api/v1/library/export/preset",
+            new LibraryPresetRequest("godot"),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, kept.StatusCode);
+        Assert.Equal("godot", (await kept.Content.ReadFromJsonAsync<LibraryInfo>(Token))!.DefaultPreset);
+        var yaml = await File.ReadAllTextAsync(Path.Combine(server.Library, "library.yaml"), Token);
+        Assert.Contains("defaultPreset: godot", yaml, StringComparison.Ordinal);
+        var after = await client.GetFromJsonAsync<ExportPresetList>("/api/v1/export/presets?project=crate", Token);
+        Assert.Equal("godot", after!.Default);
+
+        using var unknown = await client.PutAsJsonAsync(
+            "/api/v1/library/export/preset",
+            new LibraryPresetRequest("nothing"),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+        Assert.Equal("preset-missing", await CodeOf(unknown));
+        Assert.Equal(
+            "godot",
+            (await client.GetFromJsonAsync<ExportPresetList>("/api/v1/export/presets", Token))!.Default
+        );
+
+        using var forgotten = await client.PutAsJsonAsync(
+            "/api/v1/library/export/preset",
+            new LibraryPresetRequest(null),
+            Token
+        );
+        Assert.Null((await forgotten.Content.ReadFromJsonAsync<LibraryInfo>(Token))!.DefaultPreset);
+        Assert.Equal(
+            "gltf",
+            (await client.GetFromJsonAsync<ExportPresetList>("/api/v1/export/presets", Token))!.Default
+        );
+    }
 }

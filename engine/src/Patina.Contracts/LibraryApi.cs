@@ -31,7 +31,13 @@ public sealed record LibraryInfo(
     int AssetCount,
     bool Indexing,
     ProjectExportSettings? Export
-);
+) {
+    /// <summary>
+    ///     The export preset a project's export starts from when it has kept none, from <c>library.yaml</c>, or null
+    ///     for the factory's starter. <c>GET /export/presets</c> says which preset that comes to.
+    /// </summary>
+    public string? DefaultPreset { get; init; }
+}
 #pragma warning restore SK7005
 
 /// <summary>One project as the browser shows it. The project itself loads on open.</summary>
@@ -285,6 +291,12 @@ public sealed record ProjectExportRequest(string Project, ProjectExportSettings 
 /// <summary>The body of <c>PUT /api/v1/library/export</c>.</summary>
 /// <param name="Export">What an export of the whole library is set to now.</param>
 public sealed record LibraryExportRequest(ProjectExportSettings Export);
+
+/// <summary>The body of <c>PUT /api/v1/library/export/preset</c>.</summary>
+/// <param name="Preset">
+///     The id of the preset a project's export starts from when it has kept none, or null for the factory's starter.
+/// </param>
+public sealed record LibraryPresetRequest(string? Preset);
 
 /// <summary>The body of <c>PUT /api/v1/library/project/viewport</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>

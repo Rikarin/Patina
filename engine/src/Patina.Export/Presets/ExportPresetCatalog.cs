@@ -21,7 +21,22 @@ public static class ExportPresetCatalog {
     public sealed record Found(IReadOnlyList<ExportPreset> Presets, IReadOnlyList<string> Problems) {
         /// <summary>The preset with an id, or null.</summary>
         public ExportPreset? Find(string id) => Presets.FirstOrDefault(p => p.Id == id);
+
+        /// <summary>
+        ///     The preset an export starts from when nothing is kept for it: the library's choice while it names a
+        ///     preset here, then the factory's <see cref="Starter" />, and the first by id only when both are gone, as
+        ///     when a library replaces the starter with a file that is not a preset (#240).
+        /// </summary>
+        /// <param name="chosen">The library's <c>defaultPreset</c>, or null.</param>
+        public ExportPreset? Default(string? chosen) =>
+            (chosen is null ? null : Find(chosen)) ?? Find(Starter) ?? (Presets.Count > 0 ? Presets[0] : null);
     }
+
+    /// <summary>
+    ///     The factory preset an export starts from when a library has chosen none: glTF's, since every engine and
+    ///     Blender reads its metallic-roughness files and its green.
+    /// </summary>
+    public const string Starter = "gltf";
 
     /// <summary>Where a preset comes from, which is also what can change it.</summary>
     public static class Origins {

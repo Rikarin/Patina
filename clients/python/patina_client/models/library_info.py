@@ -40,6 +40,9 @@ class LibraryInfo:
             asset_count (int): The shared assets in the index.
             indexing (bool): Whether a rescan is running; counts and pages may lag the files until it ends.
             export (None | ProjectExportSettings | Unset):
+            default_preset (None | str | Unset): The export preset a project's export starts from when it has kept none,
+                from `library.yaml`, or null
+                for the factory's starter. `GET /export/presets` says which preset that comes to.
      """
 
     id: UUID
@@ -54,6 +57,7 @@ class LibraryInfo:
     asset_count: int
     indexing: bool
     export: None | ProjectExportSettings | Unset = UNSET
+    default_preset: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -96,6 +100,12 @@ class LibraryInfo:
         else:
             export = self.export
 
+        default_preset: None | str | Unset
+        if isinstance(self.default_preset, Unset):
+            default_preset = UNSET
+        else:
+            default_preset = self.default_preset
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -114,6 +124,8 @@ class LibraryInfo:
         })
         if export is not UNSET:
             field_dict["export"] = export
+        if default_preset is not UNSET:
+            field_dict["defaultPreset"] = default_preset
 
         return field_dict
 
@@ -170,6 +182,16 @@ class LibraryInfo:
         export = _parse_export(d.pop("export", UNSET))
 
 
+        def _parse_default_preset(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        default_preset = _parse_default_preset(d.pop("defaultPreset", UNSET))
+
+
         library_info = cls(
             id=id,
             name=name,
@@ -183,6 +205,7 @@ class LibraryInfo:
             asset_count=asset_count,
             indexing=indexing,
             export=export,
+            default_preset=default_preset,
         )
 
 

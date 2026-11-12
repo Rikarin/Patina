@@ -477,6 +477,20 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     }
 
     /// <summary>
+    ///     Keeps the export preset a project starts from when it has kept none, in <c>library.yaml</c>, or forgets it
+    ///     with null, which leaves the factory's starter (#240). Whether a preset of that id exists is the caller's to
+    ///     ask: a preset is a file, and one removed later only means the starter again.
+    /// </summary>
+    public void SetDefaultPreset(string? preset) {
+        lock (documentGate) {
+            var text = DocumentCodec.Write(Document with { DefaultPreset = preset });
+            LibraryFiles.Replace(Path.Combine(RootPath, LibraryLayout.LibraryFile), text);
+            Volatile.Write(ref document, DocumentCodec.ReadLibrary(text, LibraryLayout.LibraryFile).Document);
+            Volatile.Write(ref fileSchema, SchemaChain.Library.Current);
+        }
+    }
+
+    /// <summary>
     ///     The library as <c>GET /api/v1/library</c> reports it. <see cref="Indexing" /> is read before the counts:
     ///     read after them, a scan that ends in between reports old counts as caught up.
     /// </summary>
@@ -496,7 +510,7 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
             queries.CountAssets(),
             indexing,
             settings.Export
-        );
+        ) { DefaultPreset = settings.DefaultPreset };
     }
 
     /// <summary>Rescans, then reports the library's health.</summary>
