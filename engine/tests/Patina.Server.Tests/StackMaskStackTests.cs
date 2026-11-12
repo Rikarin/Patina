@@ -291,7 +291,10 @@ public sealed class StackMaskStackTests {
         Assert.All(effects, static effect => Assert.Equal("Analysis/Colour Select", effect.Node));
         Assert.Equal((LayerBlendMode.Copy, LayerBlendMode.Lighten), (effects[0].Blend, effects[1].Blend));
         Assert.Empty(effects[0].Inputs);
-        Assert.Equal((LayerInputSource.Bake, "id"), (effects[1].Inputs["Input"].Source, effects[1].Inputs["Input"].Map));
+        Assert.Equal(
+            (LayerInputSource.Bake, "id"),
+            (effects[1].Inputs["Input"].Source, effects[1].Inputs["Input"].Map)
+        );
         Assert.Equal([0.75f], effects[1].Values["Value"]);
         Assert.Equal([0.25f], effects[1].Values["Background"]);
 

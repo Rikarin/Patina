@@ -24,8 +24,9 @@ public static class StackDocuments {
     const string SelectInside = "Value";
     const string SelectOutside = "Background";
 
-    /// <summary>The most colours one selection picks out, which is a limit on effects nobody reads, not on the id map.</summary>
+    /// <summary>The most colours one selection picks out: a bound on effects nobody reads, not on the id map.</summary>
     const int MostColours = 32;
+
     const float DefaultTolerance = 0.02f;
 
     /// <exception cref="StackEditRefusedException">It is not a stack.</exception>

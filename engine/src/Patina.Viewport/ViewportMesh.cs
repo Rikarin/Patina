@@ -32,7 +32,7 @@ readonly record struct ViewportMaterial(ModelMaterialFactors Factors, ModelMater
 /// <param name="Indices">Three corners per triangle.</param>
 /// <param name="Bounds">The box round it, which the orbit camera frames.</param>
 /// <param name="HasCoordinates">Whether it has a layout at all.</param>
-/// <param name="TriangleParts">The named mesh each triangle comes from, in order, or null where it was not kept.</param>
+/// <param name="TriangleParts">The named mesh each triangle comes from, in order, or null when not known.</param>
 public sealed record ViewportGeometry(
     Vector3[] Positions,
     Vector2[] Coordinates,
@@ -340,8 +340,8 @@ sealed class ViewportMesh {
     }
 
     /// <summary>
-    ///     The name of each triangle's mesh, for parts whose indices are laid end to end in this order, as both kinds of
-    ///     geometry lay them. Null when they do not add up to every triangle, since a name would then be another's.
+    ///     The name of each triangle's mesh, for parts whose indices are laid end to end in this order, as both kinds
+    ///     of geometry lay them. Null when they do not add up to every triangle, since a name would then be another's.
     /// </summary>
     static string[]? Named(IEnumerable<ViewportPart> parts, int triangles) {
         string[] names = [..parts.SelectMany(static part => Enumerable.Repeat(part.Name, part.IndexCount / 3))];

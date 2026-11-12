@@ -635,7 +635,7 @@ public sealed record StackLoad(
 /// <param name="Width">The set's width when the stroke began, which its stamps are texels of; 0 is today's.</param>
 /// <param name="Height">The set's height when the stroke began.</param>
 /// <param name="Resume">Where the brush already stood when a free stroke carries the last one on, or null.</param>
-/// <param name="Outline">For a fill, whether its stamps are one outline whose every triangle it fills, not clicks.</param>
+/// <param name="Outline">For a fill, whether its stamps are one outline to fill inside, not clicks.</param>
 /// <param name="Through">For an outline through a view, whether what the camera cannot see is filled too.</param>
 public sealed record StackPaintPart(
     long Id,

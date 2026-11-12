@@ -246,6 +246,9 @@ public sealed record ViewportPickRequest(
     int? Height = null
 );
 
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
+
 /// <summary>What a position in the viewport landed on.</summary>
 /// <param name="Found">Whether it met the mesh.</param>
 /// <param name="View">The camera it was looked through, which a stroke on the mesh carries.</param>
@@ -276,6 +279,7 @@ public sealed record ViewportPick(
     IReadOnlyList<float>? Normal = null,
     string? Part = null
 );
+#pragma warning restore SK7005
 
 /// <summary>
 ///     What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The

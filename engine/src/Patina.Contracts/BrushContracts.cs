@@ -301,8 +301,8 @@ public static class StackBrushes {
     }
 
     /// <summary>
-    ///     What is wrong with what a stroke paints with besides its brush and its symmetry: a fill's mode and outline, its
-    ///     source,
+    ///     What is wrong with what a stroke paints with besides its brush and its symmetry: a fill's mode and outline,
+    ///     its source,
     ///     its stencil, and a mask asked to take a material or a clone, which has no such channel. Null when a Worker
     ///     can paint it.
     /// </summary>
