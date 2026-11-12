@@ -40,12 +40,14 @@ static class PaintBench {
     public static int Stamps(string model, int size, float radius, int moves, string? file = null) {
         var clock = Stopwatch.StartNew();
         var geometry = ViewportGeometry.Read(model);
-        var surface = new PaintMeshSurface(
-            PaintProjection.Over(geometry.Positions, geometry.Coordinates, geometry.Indices),
-            size,
-            size
-        );
-        Say($"read and rastered {clock.Elapsed.TotalMilliseconds:F0} ms, {surface.Charts} charts");
+        var read = clock.Elapsed.TotalMilliseconds;
+        var projection = PaintProjection.Over(geometry.Positions, geometry.Coordinates, geometry.Indices);
+        var projected = clock.Elapsed.TotalMilliseconds;
+        var surface = new PaintMeshSurface(projection, size, size);
+        var rastered = clock.Elapsed.TotalMilliseconds;
+        var triangles = geometry.Indices.Length / 3;
+        Say($"{triangles} triangles: read {read:F0} ms, projection {projected - read:F0} ms");
+        Say($"surface {rastered - projected:F0} ms, {surface.Charts} charts");
         var orbit = OrbitCamera.Default;
         var (right, up, forward) = orbit.Axes();
         var view = new PaintView(orbit.Eye(geometry.Bounds, 565f / 260f), right, up, forward, orbit.Lens, 565, 260);

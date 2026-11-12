@@ -173,6 +173,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The first stroke on a dense mesh starts sooner: the engine lays out the mesh for the brush in about half the time, 0.7 to 1.3 s instead of 2.1 to 3.6 s for two million triangles.
+- A new image material is authored at 1024, as every new graph is, so a radius in it means what it does in any other graph.
 - Auto Unwrap laid every island out mirrored, so a picture on an unwrapped mesh showed backwards and a tangent-space normal map lit it the wrong way. Islands now face the way the file's other layouts do. A mesh unwrapped before keeps its layout until it is unwrapped again.
 - Reload Mesh on a file that changed while nothing moved on it (the same name, the same materials and every texture set laid out as it was, as after a sculpt) reloads at once without asking: open documents stay open with their undo, their paint is left as it is, and the viewport shows the new shape. Only a new layout or new materials ask first and close the documents. Asked to move paint under an open document, the engine now refuses before it overwrites the project's mesh, where it used to overwrite it and then refuse. Through the API the project settings take `sameLayout`, refused with `mesh-layout-changed` when something would move.
 - A brush on a mask that is a picture (a generator, a bitmap, a mesh map or an anchor point) paints over it instead of being refused: the first stroke puts a paint layer at the top of the mask's stack, and later strokes go on painting it, so the picture stays live beneath and only what the brush touches changes. A paint layer in a mask now really is transparent where nothing is painted; it read as black there, hiding everything beneath it.
