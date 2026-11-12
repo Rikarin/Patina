@@ -1087,13 +1087,36 @@ const MaskMarks: Readonly<Record<string, string>> = {
       <xui-menu aria-label="Effect">
         @if (menuLayer(); as layer) {
           @if (!store.masking()) {
-            <button type="button" xuiMenuItem (triggered)="addContent(layer, 'paint', 'Paint')">Paint</button>
-            <button type="button" xuiMenuItem (triggered)="addContent(layer, 'fill', 'Fill')">Fill</button>
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-effect-paint"
+              (triggered)="addContent(layer, 'paint', 'Paint')"
+            >
+              Paint
+            </button>
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-effect-fill"
+              (triggered)="addContent(layer, 'fill', 'Fill')"
+            >
+              Fill
+            </button>
           }
           @for (kind of quickSteps; track kind.node) {
-            <button type="button" xuiMenuItem (triggered)="addStep(layer, kind.node)">{{ kind.name }}</button>
+            <button
+              type="button"
+              xuiMenuItem
+              [attr.data-testid]="'layer-menu-effect-' + kind.name"
+              (triggered)="addStep(layer, kind.node)"
+            >
+              {{ kind.name }}
+            </button>
           }
-          <button type="button" xuiMenuItem [xuiMenuTriggerFor]="filterMenu">Filter</button>
+          <button type="button" xuiMenuItem data-testid="layer-menu-filter" [xuiMenuTriggerFor]="filterMenu">
+            Filter
+          </button>
         }
       </xui-menu>
     </ng-template>
@@ -1112,6 +1135,42 @@ const MaskMarks: Readonly<Record<string, string>> = {
               (triggered)="exportAlone(layer, true)"
             >
               {{ commands.label('exportMask') }}
+            </button>
+          }
+        </xui-menu>
+      }
+    </ng-template>
+    <ng-template #partsMenu>
+      @if (menuLayer(); as layer) {
+        <xui-menu data-testid="layer-menu-part-list" aria-label="Content and mask">
+          @if (layer.kind !== 'group') {
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-copy-content"
+              (triggered)="store.copyPart(layer, 'Content')"
+            >
+              Copy Content
+            </button>
+          }
+          <button
+            type="button"
+            xuiMenuItem
+            data-testid="layer-menu-paste-mask"
+            [disabled]="!store.clip()"
+            (triggered)="store.pasteInto('Mask')"
+          >
+            Paste into Mask
+          </button>
+          @if (layer.kind !== 'group') {
+            <button
+              type="button"
+              xuiMenuItem
+              data-testid="layer-menu-paste-content"
+              [disabled]="!store.clip()"
+              (triggered)="store.pasteInto('Content')"
+            >
+              Paste as Content
             </button>
           }
         </xui-menu>
@@ -1304,36 +1363,8 @@ const MaskMarks: Readonly<Record<string, string>> = {
               </button>
             }
             <xui-menu-divider />
-            @if (!store.masking()) {
-              <button
-                type="button"
-                xuiMenuItem
-                data-testid="layer-menu-effect-paint"
-                (triggered)="addContent(layer, 'paint', 'Paint')"
-              >
-                Add Paint
-              </button>
-              <button
-                type="button"
-                xuiMenuItem
-                data-testid="layer-menu-effect-fill"
-                (triggered)="addContent(layer, 'fill', 'Fill')"
-              >
-                Add Fill
-              </button>
-            }
-            @for (kind of quickSteps; track kind.node) {
-              <button
-                type="button"
-                xuiMenuItem
-                [attr.data-testid]="'layer-menu-effect-' + kind.name"
-                (triggered)="addStep(layer, kind.node)"
-              >
-                Add {{ kind.name }}{{ store.masking() ? ' to Mask' : '' }}
-              </button>
-            }
-            <button type="button" xuiMenuItem data-testid="layer-menu-filter" [xuiMenuTriggerFor]="filterMenu">
-              {{ store.masking() ? 'Add Filter to Mask' : 'Add Filter' }}
+            <button type="button" xuiMenuItem data-testid="layer-menu-effect" [xuiMenuTriggerFor]="effectMenu">
+              {{ store.masking() ? 'Add Effect to Mask' : 'Add Effect' }}
             </button>
             <xui-menu-divider />
             @if (layer.flattened) {
@@ -1385,36 +1416,9 @@ const MaskMarks: Readonly<Record<string, string>> = {
             <button type="button" xuiMenuItem data-testid="layer-menu-cut" (triggered)="store.cutLayers()">
               Cut <span menuItemLabel>{{ commands.keyText('cut') }}</span>
             </button>
-            @if (layer.kind !== 'group') {
-              <button
-                type="button"
-                xuiMenuItem
-                data-testid="layer-menu-copy-content"
-                (triggered)="store.copyPart(layer, 'Content')"
-              >
-                Copy Content
-              </button>
-            }
-            <button
-              type="button"
-              xuiMenuItem
-              data-testid="layer-menu-paste-mask"
-              [disabled]="!store.clip()"
-              (triggered)="store.pasteInto('Mask')"
-            >
-              Paste into Mask
+            <button type="button" xuiMenuItem data-testid="layer-menu-parts" [xuiMenuTriggerFor]="partsMenu">
+              Content and Mask
             </button>
-            @if (layer.kind !== 'group') {
-              <button
-                type="button"
-                xuiMenuItem
-                data-testid="layer-menu-paste-content"
-                [disabled]="!store.clip()"
-                (triggered)="store.pasteInto('Content')"
-              >
-                Paste as Content
-              </button>
-            }
           } @else {
             <button type="button" xuiMenuItem data-testid="layer-menu-new-paint" (triggered)="add('paint', 'Paint')">
               New Paint Layer

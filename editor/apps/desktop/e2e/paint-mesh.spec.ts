@@ -371,6 +371,8 @@ test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads
 
   const fillLayer = window.locator('[data-testid^=paint-layer-fill]').first();
   await fillLayer.click({ button: 'right' });
+  await window.getByTestId('layer-menu-effect').focus();
+  await window.keyboard.press('ArrowRight');
   await window.getByTestId('layer-menu-effect-fill').click();
   await expect(fillLayer.getByTestId('layer-content-mark')).toHaveClass(/bg-warning/);
   await expect(window.getByTestId('layer-effect-mark')).toHaveCount(1);
@@ -400,6 +402,8 @@ test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads
   await expect(fillLayer.getByTestId('layer-mask')).toBeVisible();
   await fillLayer.getByTestId('layer-mask').click();
   await fillLayer.click({ button: 'right' });
+  await window.getByTestId('layer-menu-effect').focus();
+  await window.keyboard.press('ArrowRight');
   await window.getByTestId('layer-menu-effect-Levels').click();
   await expect(fillLayer.getByTestId('layer-mask-mark')).toHaveClass(/bg-warning/);
   await expect(window.getByTestId('layer-work')).toContainText('Levels');
