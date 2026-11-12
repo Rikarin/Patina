@@ -677,6 +677,30 @@ public sealed class LibraryTreeApiTests : IAsyncLifetime {
         Assert.Empty(contents!.Pictures);
     }
 
+    /// <summary>
+    ///     An image material is authored at 1024 as every new graph is (ADR 0014, #96), so a radius in it means what it
+    ///     does in any other graph of the library, and it is computed at the size it was made at.
+    /// </summary>
+    [Fact]
+    public async Task An_image_material_is_authored_as_every_new_graph_is() {
+        var photo = Path.Combine(files.FullName, "wall.png");
+        await File.WriteAllBytesAsync(photo, Vixen.Core.Imaging.PngCodec.Encode8(1, 1, 4, [200, 100, 50, 255]), Token);
+        using var made = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Wall", Resolution: 2048, Kind: "image-material", Image: photo),
+            Token
+        );
+        Assert.True(made.IsSuccessStatusCode, await made.Content.ReadAsStringAsync(Token));
+
+        var graph = await File.ReadAllTextAsync(
+            Path.Combine(server.Library, "projects", "wall", "wall.vxtexgraph"),
+            Token
+        );
+        Assert.Contains("baseWidth: '1024'", graph, StringComparison.Ordinal);
+        Assert.Contains("baseHeight: '1024'", graph, StringComparison.Ordinal);
+        Assert.Contains("size: '2048'", graph, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Reloading_a_file_that_did_not_change_has_nothing_to_do() {
         var (source, project) = await MakeProjectOnMeshAsync();
