@@ -24,25 +24,29 @@ import { XuiSwitchImports } from '@xui/switch';
 import { IconImports } from '../core/icons';
 import { LibraryInspector } from '../library/library-inspector';
 import { holds } from './graph-authoring';
-import { type GraphField, expressionKey, fieldsOf, hexOfLanes, lanesOfHex, sliderRange } from './graph-fields';
+import {
+  type GraphField,
+  colorTextOf,
+  expressionKey,
+  fieldsOf,
+  hexOfLanes,
+  keptLanes,
+  lanesOfColorText,
+  lanesOfHex,
+  sliderRange
+} from './graph-fields';
 import { edgeKey } from './graph-model';
 import { GraphNoteInspector, GraphSelection, GraphSettings } from './graph-settings';
 import { GraphStore } from './graph-store';
 
 type NumberField = Extract<GraphField, { control: 'number' }>;
+type ColourField = Extract<GraphField, { control: 'colour' }>;
 
 const SliderSteps = 1000;
 /** How a setting names a parameter of its graph instead of holding a value: Vixen's name-knob reference. */
 const ReferencePrefix = '$';
 
-/**
- * A picked colour over the lanes it replaces. The picker is eight bits and clamps, so a lane it did not move keeps
- * its number: changing red must not turn a blue of 2.0 into 1, or 0.18 into 46/255.
- */
-export function keptLanes(held: readonly number[], picked: readonly number[]): readonly number[] {
-  const byte = (lane: number | undefined): number => Math.round(Math.min(1, Math.max(0, lane ?? 0)) * 255);
-  return picked.map((lane, at) => (byte(held[at] ?? (at === 3 ? 1 : 0)) === byte(lane) ? (held[at] ?? lane) : lane));
-}
+export { keptLanes } from './graph-fields';
 
 /** The parameters of the selected node. Every control writes through the store, as live edits. */
 @Component({
@@ -268,18 +272,63 @@ export function keptLanes(held: readonly number[], picked: readonly number[]): r
                     }
                   }
                   @case ('colour') {
-                    <xui-color-picker
-                      showAlpha
-                      [disabled]="!store.editable()"
-                      [value]="hexOf(field)"
-                      (valueChange)="setHex(field, $event)"
-                    />
+                    <div class="flex items-center gap-2">
+                      <xui-color-picker
+                        class="min-w-0 flex-1"
+                        showAlpha
+                        [disabled]="!store.editable() || drivenColour(field)"
+                        [value]="hexOf(field)"
+                        (valueChange)="setHex(field, $event)"
+                      />
+                      @if (field.source === 'value') {
+                        <button
+                          type="button"
+                          xuiButton
+                          size="sm"
+                          variant="ghost"
+                          title="Drive this from a Color parameter"
+                          [attr.aria-label]="field.name + ' expression'"
+                          [attr.data-testid]="'expression-toggle-' + field.name"
+                          [active]="showsExpression(field.name)"
+                          (click)="toggleExpression(field.name)"
+                        >
+                          =
+                        </button>
+                        @if (expressionOf(field.name) === '') {
+                          <button
+                            type="button"
+                            xuiButton
+                            size="sm"
+                            variant="ghost"
+                            title="Make this a Color parameter of the graph"
+                            [attr.aria-label]="'Expose ' + field.name"
+                            [attr.data-testid]="'expose-' + field.name"
+                            [disabled]="!store.editable()"
+                            (click)="exposeColour(field)"
+                          >
+                            <ng-icon xui size="sm" name="matPublish" />
+                          </button>
+                        }
+                      }
+                    </div>
+                    @if (field.source === 'value' && showsExpression(field.name)) {
+                      <input
+                        xuiInput
+                        size="sm"
+                        placeholder="A Color parameter's name"
+                        [attr.aria-label]="field.name + ' expression text'"
+                        [attr.data-testid]="'expression-' + field.name"
+                        [disabled]="!store.editable()"
+                        [value]="expressionOf(field.name)"
+                        (change)="setExpression(field.name, $event)"
+                      />
+                    }
                     <div class="mt-1 grid grid-cols-4 gap-1" data-testid="colour-lanes">
                       @for (lane of lanes; track lane) {
                         <xui-numeric-input
                           size="sm"
                           [aria-label]="field.name + ' ' + lane"
-                          [disabled]="!store.editable()"
+                          [disabled]="!store.editable() || drivenColour(field)"
                           buttonPosition="none"
                           [stepSize]="0.01"
                           [value]="laneOf(field, $index)"
@@ -499,34 +548,73 @@ export class GraphInspector {
 
   protected readonly lanes = ['R', 'G', 'B', 'A'];
 
-  protected hexOf(field: Extract<GraphField, { control: 'colour' }>): string {
-    return hexOfLanes(this.store.valueOf(this.node().id, field.name, field.fallback));
+  protected hexOf(field: ColourField): string {
+    return hexOfLanes(this.lanesOf(field));
   }
 
-  protected setHex(field: Extract<GraphField, { control: 'colour' }>, hex: string): void {
+  protected setHex(field: ColourField, hex: string): void {
     const lanes = lanesOfHex(hex);
     if (lanes && hex.toUpperCase() !== this.hexOf(field)) {
-      this.store.setValue(this.node().id, field.name, keptLanes(this.lanesOf(field), lanes));
+      this.writeLanes(field, keptLanes(this.lanesOf(field), lanes));
     }
   }
 
-  protected laneOf(field: Extract<GraphField, { control: 'colour' }>, lane: number): number {
+  protected laneOf(field: ColourField, lane: number): number {
     return this.lanesOf(field)[lane] ?? (lane === 3 ? 1 : 0);
   }
 
-  protected setLane(field: Extract<GraphField, { control: 'colour' }>, lane: number, value: number | null): void {
+  protected setLane(field: ColourField, lane: number, value: number | null): void {
     if (value === null) {
       return;
     }
 
     const lanes = [0, 1, 2, 3].map(at => this.laneOf(field, at));
     lanes[lane] = value;
-    this.store.setValue(this.node().id, field.name, lanes);
+    this.writeLanes(field, lanes);
     this.store.endGesture();
   }
 
-  private lanesOf(field: Extract<GraphField, { control: 'colour' }>): readonly number[] {
-    return this.store.valueOf(this.node().id, field.name, field.fallback);
+  /** A colour port a Color parameter drives shows the port's own lanes, which the parameter replaces. */
+  protected drivenColour(field: ColourField): boolean {
+    return field.source === 'value' && this.expressionOf(field.name) !== '';
+  }
+
+  /** Makes a Color parameter from the port's colour, and drives the port from it. */
+  protected exposeColour(field: ColourField): void {
+    if (field.source !== 'value') {
+      return;
+    }
+
+    const name = this.freeName(field.name);
+    this.store.addParameter({
+      name,
+      default: colorTextOf(this.lanesOf(field)),
+      summary: field.summary,
+      kind: 'Color',
+      minimum: null,
+      maximum: null,
+      group: '',
+      accepted: []
+    });
+    this.store.setText(this.node().id, expressionKey(field.name), name);
+    this.store.endGesture();
+  }
+
+  /** A port's lanes, or a compound's Color setting read from its text. */
+  private lanesOf(field: ColourField): readonly number[] {
+    if (field.source === 'value') {
+      return this.store.valueOf(this.node().id, field.name, field.fallback);
+    }
+
+    return lanesOfColorText(this.textOf(field)) ?? lanesOfColorText(field.fallback) ?? [1, 1, 1, 1];
+  }
+
+  private writeLanes(field: ColourField, lanes: readonly number[]): void {
+    if (field.source === 'value') {
+      this.store.setValue(this.node().id, field.name, lanes);
+    } else {
+      this.store.setText(this.node().id, field.name, colorTextOf(lanes));
+    }
   }
 
   /** A number that nothing drives yet can become a parameter in one step. */

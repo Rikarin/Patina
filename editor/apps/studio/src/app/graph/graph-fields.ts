@@ -55,6 +55,7 @@ export type GraphField = GraphFieldLook &
         /** What a person calls each choice, from the labels the Server sent. */
         label: (value: string) => string;
       }
+    | { control: 'colour'; source: 'text'; name: string; summary: string; fallback: string }
     | { control: 'text'; source: 'text'; name: string; summary: string; fallback: string }
     | { control: 'curve'; source: 'text'; name: string; summary: string; fallback: string }
     | { control: 'ramp'; source: 'text'; name: string; summary: string; fallback: string }
@@ -136,6 +137,8 @@ function fieldOfSetting(setting: GraphSettingDefinition): GraphField {
   switch (setting.kind) {
     case 'Bool':
       return { ...base, control: 'switch' };
+    case 'Color':
+      return { ...base, control: 'colour' };
     case 'Int':
     case 'Float':
       return {
@@ -205,6 +208,34 @@ export function lanesOfHex(hex: string): readonly number[] | null {
   return [match[1], match[2], match[3], match[4] ?? 'ff'].map(pair => parseInt(pair ?? '0', 16) / 255);
 }
 
+/**
+ * A picked colour over the lanes it replaces. The picker is eight bits and clamps, so a lane it did not move keeps
+ * its number: changing red must not turn a blue of 2.0 into 1, or 0.18 into 46/255.
+ */
+export function keptLanes(held: readonly number[], picked: readonly number[]): readonly number[] {
+  const byte = (lane: number | undefined): number => Math.round(Math.min(1, Math.max(0, lane ?? 0)) * 255);
+  return picked.map((lane, at) => (byte(held[at] ?? (at === 3 ? 1 : 0)) === byte(lane) ? (held[at] ?? lane) : lane));
+}
+
+/**
+ * The lanes of a Color parameter's text, in Vixen's `SettingColors` spelling: three or four numbers separated by
+ * commas, a missing alpha being one. Null for anything else.
+ */
+export function lanesOfColorText(text: string): readonly number[] | null {
+  const parts = text.split(',').map(part => part.trim());
+  if (parts.length !== 3 && parts.length !== 4) {
+    return null;
+  }
+
+  const lanes = parts.map(part => (part === '' ? NaN : Number(part)));
+  return lanes.every(lane => Number.isFinite(lane)) ? [...lanes, ...(lanes.length === 3 ? [1] : [])] : null;
+}
+
+/** RGBA lanes as a Color parameter's text, which the Server and Vixen read back exactly. */
+export function colorTextOf(lanes: readonly number[]): string {
+  return [0, 1, 2, 3].map(at => String(lanes[at] ?? (at === 3 ? 1 : 0))).join(',');
+}
+
 /** A line a card shows under its title: something the author changed on the node, and what it is now. */
 export interface CardLine {
   title: string;
@@ -258,6 +289,10 @@ function cardValueOf(field: GraphField, node: Pick<GraphNodeState, 'values' | 't
     case 'curve':
     case 'ramp':
       return 'Edited';
+    case 'colour': {
+      const lanes = lanesOfColorText(text);
+      return lanes ? hexOfLanes(lanes) : text;
+    }
     default:
       return text;
   }

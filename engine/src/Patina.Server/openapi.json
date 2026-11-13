@@ -13248,7 +13248,7 @@
           },
           "kind": {
             "type": "string",
-            "description": "Text, Bool, Int or Float."
+            "description": "Text, Bool, Int, Float or Color, whose default is four numbers separated by commas."
           },
           "minimum": {
             "type": [

@@ -118,7 +118,7 @@ export function titleOf(parameter: Pick<GraphSettingDefinition, 'name' | 'label'
 }
 
 /** The control a parameter is drawn with. */
-export type ParameterControl = 'slider' | 'number' | 'angle' | 'switch' | 'toggle' | 'choice' | 'text';
+export type ParameterControl = 'slider' | 'number' | 'angle' | 'switch' | 'toggle' | 'choice' | 'colour' | 'text';
 
 export function controlOf(parameter: GraphSettingDefinition): ParameterControl {
   if (parameter.accepted.length > 0) {
@@ -140,6 +140,8 @@ export function controlOf(parameter: GraphSettingDefinition): ParameterControl {
       }
 
       return ranged ? 'slider' : 'number';
+    case 'Color':
+      return 'colour';
     default:
       return 'text';
   }

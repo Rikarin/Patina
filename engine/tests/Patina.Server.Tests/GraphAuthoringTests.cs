@@ -264,6 +264,27 @@ public sealed class GraphAuthoringTests {
     }
 
     [Fact]
+    public void A_color_parameter_holds_a_color_and_a_preset_sets_one() {
+        var editor = Editor();
+        GraphSettingDefinition tint = new("Tint", "0.8,0.4,0.1,1", string.Empty, "Color", null, null, string.Empty, []);
+
+        editor.Apply(new([new GraphAddParameter(tint)]));
+
+        Assert.Throws<GraphEditRefusedException>(() =>
+            editor.Apply(new([new GraphSetParameter("Tint", tint with { Default = "orange" })]))
+        );
+        Assert.Throws<GraphEditRefusedException>(() =>
+            editor.Apply(new([new GraphSetParameter("Tint", tint with { Widget = "Slider" })]))
+        );
+
+        editor.Apply(new([new GraphSavePreset("Blue", new Dictionary<string, string> { ["Tint"] = "0,0,1" })]));
+        editor.Apply(new([new GraphApplyPreset("Blue")]));
+
+        var held = GraphDocuments.Definition(editor.Document.Parameters.Single(static p => p.Name == "Tint"));
+        Assert.Equal(("Color", "0,0,1"), (held.Kind, held.Default));
+    }
+
+    [Fact]
     public void A_preset_saves_the_defaults_applies_them_back_and_undoes() {
         var editor = Editor();
         editor.Apply(new([new GraphSavePreset("Clean")]));
