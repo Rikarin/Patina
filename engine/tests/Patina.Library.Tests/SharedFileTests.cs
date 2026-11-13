@@ -52,7 +52,7 @@ public sealed partial class SharedFileTests : IDisposable {
         File.WriteAllText(part, "name: Ramp");
 
         Task moving;
-        using (var reading = SharedFile.OpenRead(file)) {
+        await using (var reading = SharedFile.OpenRead(file)) {
             Assert.Equal('n', reading.ReadByte());
             moving = Task.Run(() => SharedFile.MoveOver(part, file), TestContext.Current.CancellationToken);
             await Task.Delay(150, TestContext.Current.CancellationToken); // the move meets the read
@@ -159,7 +159,7 @@ public sealed partial class SharedFileTests : IDisposable {
     )]
     private static partial Regex UnsharedRead();
 
-    /// <summary>The framework's move told to replace what is there: any third argument, which is the overwrite.</summary>
+    /// <summary>The framework's move told to replace what is there: any third argument, the overwrite.</summary>
     [GeneratedRegex(@"(?<![\w.])(System\.IO\.)?File\.Move\s*\([^,()]+(\([^()]*\))?[^,()]*,[^,]+,")]
     private static partial Regex OverwritingMove();
 

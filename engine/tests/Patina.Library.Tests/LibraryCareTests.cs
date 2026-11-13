@@ -51,8 +51,11 @@ public sealed class LibraryCareTests : IDisposable {
         var file = LibraryFiles.ProjectFile(root, made.Path);
 
         Task tagging;
-        using (Contracts.SharedFile.OpenRead(file)) {
-            tagging = Task.Run(() => library.SetProjectTags(made.Path, ["prop"]), TestContext.Current.CancellationToken);
+        await using (Contracts.SharedFile.OpenRead(file)) {
+            tagging = Task.Run(
+                () => library.SetProjectTags(made.Path, ["prop"]),
+                TestContext.Current.CancellationToken
+            );
             await Task.Delay(150, TestContext.Current.CancellationToken); // the save meets the scan's read
         }
 
