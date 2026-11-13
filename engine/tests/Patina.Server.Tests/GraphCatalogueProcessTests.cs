@@ -38,12 +38,17 @@ public sealed class GraphCatalogueProcessTests : IDisposable {
         ["Generators/Paint Chips"] = MeshBake,
         ["Generators/Sun Fade"] = MeshBake,
         ["Stylised/Baked Lighting"] = MeshBake,
+        ["Stylised/Environment Lighting"] = MeshBake,
         ["Weathering/Edge Damage"] = MeshBake,
         ["Weathering/Peeling Paint"] = MeshBake,
         ["Weathering/Rust"] = MeshBake,
         ["Weathering/Shut Lines"] = MeshBake,
         ["Weathering/Water Drops"] = MeshBake,
-        ["Weathering/Worn Edges"] = MeshBake
+        ["Weathering/Weathered Rock"] = MeshBake,
+        ["Weathering/Worn Edges"] = MeshBake,
+        ["Weathering/Worn Fabric"] = MeshBake,
+        ["Weathering/Worn Leather"] = MeshBake,
+        ["Weathering/Worn Metal"] = MeshBake
     };
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-catalogue-");

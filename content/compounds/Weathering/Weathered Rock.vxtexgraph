@@ -1,0 +1,91 @@
+version: 1
+name: Weathered Rock
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -320, y: -480 }
+  - { id: 2, type: Source/Mesh Map, x: -1600, y: 0, texts: { Map: curvature } }
+  - { id: 3, type: Filters/Blur HQ, x: -1280, y: 0, values: { Sigma: [1] } }
+  - { id: 4, type: Colour/Histogram Equalise, x: -960, y: 0 }
+  - { id: 5, type: Source/Mesh Map, x: -1600, y: 200, texts: { Map: ao } }
+  - { id: 6, type: Source/Mesh Map, x: -1600, y: 400, texts: { Map: position } }
+  - { id: 7, type: Source/Volume Noise, x: -1280, y: 400, values: { Octaves: [5], Gain: [0.6] }, texts: { Basis: Gradient, '=Scale': scale, '=Seed': seed } }
+  - { id: 14, type: Source/Mesh Map, x: -1600, y: 600, texts: { Map: world } }
+  - id: 8
+    type: Filters/Pixel Processor
+    x: -640
+    y: 0
+    texts:
+      Expression: 'float4(smoothstep(0.95f - x * 0.3f, 1f - x * 0.1f, a.x), saturate(smoothstep(0.3f, 0.02f, a.x) * 0.6f + (1f - b.x) * 1.5f), 0f, 1f)'
+      '=X': chipping
+  - id: 9
+    type: Filters/Pixel Processor
+    x: -320
+    y: 0
+    texts:
+      Expression: 'float4(a.x * saturate(1f - (0.55f - b.x) * 3f), saturate(a.y * x * 1.5f), b.x, 1f)'
+      '=X': dirt
+  - id: 15
+    type: Filters/Pixel Processor
+    x: 0
+    y: 0
+    texts:
+      Expression: 'float4(a.x, a.y, smoothstep(0.55f, 0.85f, b.y) * smoothstep(1f - x, 1.15f - x, a.z + 0.1f), a.z)'
+      '=X': lichen
+  - id: 10
+    type: Filters/Pixel Processor
+    x: 320
+    y: -480
+    texts:
+      Expression: 'float4(lerp(lerp(lerp(a.xyz * (0.85f + b.w * 0.3f), saturate(a.xyz * 1.3f + 0.06f), b.x), a.xyz * 0.45f, b.y), float3(0.5f, 0.54f, 0.32f) * (0.8f + b.w * 0.4f), b.z), 1f)'
+  - id: 11
+    type: Filters/Pixel Processor
+    x: 320
+    y: -320
+    texts:
+      Expression: 'float4(saturate(lerp(lerp(a.xyz, a.xyz * 0.8f, b.x), float3(0.95f, 0.95f, 0.95f), saturate(b.z + b.y * 0.5f))), 1f)'
+  - id: 12
+    type: Filters/Pixel Processor
+    x: 320
+    y: -160
+    texts:
+      Expression: 'float4(a.xyz - b.y * 0.04f + b.z * 0.015f + (b.w - 0.5f) * 0.01f, 1f)'
+  - { id: 99, type: Sub-graph/Output, x: 640, y: -320 }
+edges:
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: Position }
+  - { fromNode: 4, fromPort: Out, toNode: 8, toPort: A }
+  - { fromNode: 5, fromPort: Out, toNode: 8, toPort: B }
+  - { fromNode: 8, fromPort: Out, toNode: 9, toPort: A }
+  - { fromNode: 7, fromPort: Out, toNode: 9, toPort: B }
+  - { fromNode: 9, fromPort: Out, toNode: 15, toPort: A }
+  - { fromNode: 14, fromPort: Out, toNode: 15, toPort: B }
+  - { fromNode: 1, fromPort: baseColor, toNode: 10, toPort: A }
+  - { fromNode: 15, fromPort: Out, toNode: 10, toPort: B }
+  - { fromNode: 1, fromPort: roughness, toNode: 11, toPort: A }
+  - { fromNode: 15, fromPort: Out, toNode: 11, toPort: B }
+  - { fromNode: 1, fromPort: height, toNode: 12, toPort: A }
+  - { fromNode: 15, fromPort: Out, toNode: 12, toPort: B }
+  - { fromNode: 10, fromPort: Out, toNode: 99, toPort: baseColor }
+  - { fromNode: 11, fromPort: Out, toNode: 99, toPort: roughness }
+  - { fromNode: 12, fromPort: Out, toNode: 99, toPort: height }
+groups: []
+comments: []
+interface:
+  - { name: baseColor, direction: Input, kind: Image, default: [], summary: 'The stone.' }
+  - { name: roughness, direction: Input, kind: Image, default: [], summary: 'The roughness beneath.' }
+  - { name: height, direction: Input, kind: Image, default: [], summary: 'The height beneath.' }
+  - { name: baseColor, direction: Output, kind: Image, default: [], summary: 'The stone chipped pale and fresh on its edges, dark with soil in its cracks, lichen on the faces turned up, and weathered unevenly between.' }
+  - { name: roughness, direction: Output, kind: Image, default: [], summary: 'The roughness, a little smoother on fresh chips and fully rough under soil and lichen.' }
+  - { name: height, direction: Output, kind: Image, default: [], summary: 'The height, eroded in the cracks and raised a little by the lichen.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Weathered rock: fresh chips on the edges, soil in the cracks and hollows, lichen on the faces that look at the sky, in every channel at once.'
+  doesNotTile: 'Reads mesh maps, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: chipping, label: Chipping, default: '0.5', summary: 'How far the edges are chipped back to fresh stone.', kind: Float, minimum: 0, maximum: 1, group: Weather }
+  - { name: dirt, label: Soil, default: '0.5', summary: 'How much soil sits in the cracks and hollows.', kind: Float, minimum: 0, maximum: 1, group: Weather }
+  - { name: lichen, label: Lichen, default: '0.4', summary: 'How much of the upward faces lichen covers.', kind: Float, minimum: 0, maximum: 1, group: Weather }
+  - { name: scale, label: Breakup Scale, default: '5', summary: 'How many patches the weathering breaks into across the model.', kind: Float, minimum: 1, maximum: 32, group: Breakup }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the breakup. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Breakup }

@@ -7,8 +7,9 @@ using static Patina.Content.Tests.CompoundBench;
 namespace Patina.Content.Tests;
 
 /// <summary>
-///     Patina #118, #119, #120 and #177: the generators that read the mesh, the weathering filters and the stylised
-///     ones, each held to drawing something, to its seed, and to the picture it changes, over a stand-in bake.
+///     Patina #118, #119, #120, #177 and #178: the generators that read the mesh, the weathering filters, the stylised
+///     ones and the photo ones, each held to drawing something, to its seed, and to the picture it changes, over a
+///     stand-in bake.
 /// </summary>
 public sealed class MeshCompoundTests {
     /// <summary>The compounds the issues ask for by name, each of which has to ship.</summary>
@@ -25,7 +26,10 @@ public sealed class MeshCompoundTests {
         "Generators/Paint Chips",
         "Generators/Sun Fade",
         "Stylised/Baked Lighting",
+        "Photo/Clone Patch",
+        "Photo/Fix Seams",
         "Stylised/Comic",
+        "Stylised/Environment Lighting",
         "Stylised/Oil Paint",
         "Stylised/Watercolour",
         "Weathering/Edge Damage",
@@ -33,7 +37,11 @@ public sealed class MeshCompoundTests {
         "Weathering/Rust",
         "Weathering/Shut Lines",
         "Weathering/Water Drops",
-        "Weathering/Worn Edges"
+        "Weathering/Weathered Rock",
+        "Weathering/Worn Edges",
+        "Weathering/Worn Fabric",
+        "Weathering/Worn Leather",
+        "Weathering/Worn Metal"
     ];
 
     [Fact]

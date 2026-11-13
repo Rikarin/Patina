@@ -26,14 +26,16 @@ nodes:
     x: 320
     y: -480
     texts:
-      Expression: 'float4(lerp(a.xyz, lerp(float3(0.16f, 0.06f, 0.03f), float3(0.48f, 0.2f, 0.07f), saturate(b.y * 1.6f - 0.3f)) * (0.6f + x * 0.8f), b.x), 1f)'
+      Expression: 'float4(lerp(a.xyz, lerp(float3(0.16f, 0.06f, 0.03f), float3(0.48f, 0.2f, 0.07f), saturate(b.y * 1.6f - 0.3f + (b.z - 0.5f) * y * 0.8f)) * (0.6f + x * 0.8f) * (1f - y * 0.3f + b.z * y * 0.6f), b.x), 1f)'
       '=X': tone
+      '=Y': grain
   - id: 14
     type: Filters/Pixel Processor
     x: 320
     y: -320
     texts:
-      Expression: 'float4(lerp(a.xyz, float3(0.82f, 0.82f, 0.82f) + (b.y - 0.5f) * 0.2f, b.x), 1f)'
+      Expression: 'float4(saturate(lerp(a.xyz, float3(0.82f, 0.82f, 0.82f) + (b.y - 0.5f) * 0.2f + (b.z - 0.5f) * x * 0.2f, b.x)), 1f)'
+      '=X': grain
   - id: 15
     type: Filters/Pixel Processor
     x: 320
@@ -45,9 +47,18 @@ nodes:
     x: 320
     y: 0
     texts:
-      Expression: 'float4(a.xyz + (b.x * (0.4f + b.y)) * x * 0.06f, 1f)'
+      Expression: 'float4(a.xyz + (b.x * (0.4f + b.y)) * x * 0.06f - b.x * (1f - b.z) * x * y * 0.03f, 1f)'
       '=X': bumps
+      '=Y': grain
   - { id: 17, type: Filters/Pixel Processor, x: 160, y: 300, texts: { Expression: 'float4(a.x, b.x, 0f, 1f)' } }
+  - { id: 18, type: Source/Volume Noise, x: -1280, y: 820, values: { Octaves: [2], Gain: [0.5] }, texts: { Basis: Worley, '=Scale': 'scale * 24f', '=Seed': 'seed + 2' } }
+  - id: 19
+    type: Filters/Pixel Processor
+    x: 320
+    y: 300
+    texts:
+      Expression: 'float4(smoothstep(0.3f, 0.7f, a.x + (saturate(b.x * 1.6f) - 0.5f) * x * 0.8f), a.y, saturate(b.x * 1.6f), 1f)'
+      '=X': grain
   - { id: 99, type: Sub-graph/Output, x: 640, y: -240 }
 edges:
   - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
@@ -62,14 +73,17 @@ edges:
   - { fromNode: 10, fromPort: Out, toNode: 12, toPort: B }
   - { fromNode: 12, fromPort: Out, toNode: 17, toPort: A }
   - { fromNode: 11, fromPort: Out, toNode: 17, toPort: B }
+  - { fromNode: 9, fromPort: Out, toNode: 18, toPort: Position }
+  - { fromNode: 17, fromPort: Out, toNode: 19, toPort: A }
+  - { fromNode: 18, fromPort: Out, toNode: 19, toPort: B }
   - { fromNode: 1, fromPort: baseColor, toNode: 13, toPort: A }
-  - { fromNode: 17, fromPort: Out, toNode: 13, toPort: B }
+  - { fromNode: 19, fromPort: Out, toNode: 13, toPort: B }
   - { fromNode: 1, fromPort: roughness, toNode: 14, toPort: A }
-  - { fromNode: 17, fromPort: Out, toNode: 14, toPort: B }
+  - { fromNode: 19, fromPort: Out, toNode: 14, toPort: B }
   - { fromNode: 1, fromPort: metalness, toNode: 15, toPort: A }
-  - { fromNode: 17, fromPort: Out, toNode: 15, toPort: B }
+  - { fromNode: 19, fromPort: Out, toNode: 15, toPort: B }
   - { fromNode: 1, fromPort: height, toNode: 16, toPort: A }
-  - { fromNode: 17, fromPort: Out, toNode: 16, toPort: B }
+  - { fromNode: 19, fromPort: Out, toNode: 16, toPort: B }
   - { fromNode: 13, fromPort: Out, toNode: 99, toPort: baseColor }
   - { fromNode: 14, fromPort: Out, toNode: 99, toPort: roughness }
   - { fromNode: 15, fromPort: Out, toNode: 99, toPort: metalness }
@@ -98,3 +112,4 @@ parameters:
   - { name: seed, label: Seed, default: '0', summary: 'Another draw of the blooms. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Rust }
   - { name: tone, label: Tone, default: '0.5', summary: 'How bright the rust is, from a dark old crust to fresh orange.', kind: Float, minimum: 0, maximum: 1, group: Look }
   - { name: bumps, label: Bumps, default: '0.4', summary: 'How much the rust swells the surface.', kind: Float, minimum: 0, maximum: 1, group: Look }
+  - { name: grain, label: Grain, default: '0.5', summary: 'How granular the rust is up close: flaked, pitted and ragged at its rims rather than smooth.', kind: Float, minimum: 0, maximum: 1, group: Look }
