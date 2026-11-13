@@ -10,6 +10,7 @@ compatibility as each one arrives (plan §11). NuGet and npm packages are listed
 | SQLite (native `e_sqlite3`) | `Patina.Library`, through `Microsoft.Data.Sqlite` and SQLitePCLRaw | the SQLitePCLRaw that `Microsoft.Data.Sqlite` in `engine/Directory.Packages.props` brings | Public domain | https://sqlite.org |
 | HarfBuzz (native `libHarfBuzzSharp`) | `patina-worker` and `patina`, through `Vixen.TextureGraph.Drawing` → `Vixen.Ui.Text` and the NuGet package `HarfBuzzSharp`, to shape a Text node's string | see `external/Vixen/Directory.Packages.props` | MIT ("Old MIT") | https://github.com/harfbuzz/harfbuzz |
 | Open Sans (`OpenSans-Regular.ttf`, embedded in `Vixen.TextureGraph.Drawing.dll`) | The face a Text node draws with when it names none | as in `external/Vixen/Editor/Vixen.Editor.App/Fonts` | OFL-1.1, whose text is `Fonts/OFL.txt` there and ships in Vixen's `NOTICE` | https://github.com/googlefonts/opensans |
+| MoltenVK (native `libMoltenVK.dylib`, macOS package only) | `patina-worker`, which loads it as its Vulkan implementation (ADR 0010) | 1.4.1, pinned by SHA-256 in `editor/apps/desktop/scripts/publish-engine.mjs` | Apache-2.0, whose text ships beside it as `MoltenVK-LICENSE.txt` | https://github.com/KhronosGroup/MoltenVK |
 | Assimp (native `libassimp`, `Assimp64.dll`) | `patina-worker`, through `Vixen.Interchange` and the NuGet package `Ultz.Native.Assimp` 6.0.2 | 5.4.1 on Linux and macOS, 6.0.2 on Windows | BSD-3-Clause, below | https://github.com/assimp/assimp |
 
 Assimp links zlib in statically (zlib licence), with the other libraries its own source tree credits. BSD-3-Clause is compatible
@@ -18,8 +19,16 @@ with GPLv3 and requires the text below in a binary distribution, so this file sh
 HarfBuzz's MIT licence is compatible with GPLv3. The OFL lets a font be bundled with software under any licence as long as
 the font is not sold on its own and keeps its licence, which is what embedding the face in a library is.
 
+MoltenVK's Apache-2.0 is compatible with GPLv3, which may include Apache-2.0 code but not the other way round. Apache-2.0 asks a
+binary distribution for the licence's text, which ships beside the dylib, and for any `NOTICE` file, which MoltenVK's release
+archive does not have. Patina ships the release's dylib unchanged, so there are no changes to state. MoltenVK builds in parts of
+its `External` dependencies: SPIRV-Cross (Apache-2.0) and Vulkan-Headers (Apache-2.0 or MIT) are under the same terms, and cereal
+(BSD-3-Clause) asks for its notice in a binary distribution. That list comes from MoltenVK's documentation and was not checked
+against the 1.4.1 binary on a Mac: before a release, compare it with `ExternalRevisions` at the `v1.4.1` tag, and add cereal's
+notice here if it is in the dylib.
+
 Vixen (Apache-2.0, through `external/Vixen`) ships in the Worker. These are expected and must be listed here, with their licences
-confirmed, when they ship: MoltenVK and an EXR library.
+confirmed, when they ship: an EXR library.
 
 Vixen's and xUI's licence and `NOTICE` texts ship with the app.
 
