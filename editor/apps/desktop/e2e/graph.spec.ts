@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, pick } from './projects';
+import { ending, leave, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -854,7 +854,7 @@ test('asks before quitting with unsaved edits', async () => {
   await expect(window.getByTestId('app-quitting')).toHaveCount(0);
   await expect(window.getByTestId('graph-name')).toHaveText(Name);
 
-  const closed = app.waitForEvent('close');
+  const closed = ending(app);
   void app.evaluate(({ app: electronApp }) => {
     electronApp.quit();
   });

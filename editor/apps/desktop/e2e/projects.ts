@@ -93,6 +93,32 @@ export function newestGeneration(library: string): string {
     : '';
 }
 
+/**
+ * The app's end, from a quit about to begin. Past the wait it fails with every step the quit took, as the app wrote
+ * them, so a quit that stalls says where it stopped (#236).
+ */
+export function ending(app: ElectronApplication, waitMs = 30_000): Promise<void> {
+  const steps: string[] = [];
+  const heard = (chunk: Buffer | string) => {
+    steps.push(
+      ...String(chunk)
+        .split(/\r?\n/u)
+        .filter(line => line.includes('Patina quit:'))
+    );
+  };
+  app.process().stdout?.on('data', heard);
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const went = steps.join('\n') || '(no step)';
+      reject(new Error(`The app did not end within ${waitMs} ms. Its quit went:\n${went}`));
+    }, waitMs);
+    void app.waitForEvent('close', { timeout: 0 }).then(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
 /** Ends the app with no one to answer its question about unsaved paint. */
 export async function leave(app: ElectronApplication): Promise<void> {
   await app
