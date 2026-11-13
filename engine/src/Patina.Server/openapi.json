@@ -8243,6 +8243,13 @@
             "description": "The atlas\u0027s height in texels, or null for as many as int BakeOptions.Resolution: a square bake. A texture set\nauthored wider than it is tall bakes at its own shape, so its maps sit under its layers unresampled (#147).",
             "format": "int32"
           },
+          "followSetShape": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether a bake of a project\u0027s texture set takes its height from the set\u0027s own shape at\nint BakeOptions.Resolution, in place of int? BakeOptions.Rows, so that a wide set and a square one baked together\neach bake at their own (#253). Null follows too; only false keeps int? BakeOptions.Rows. A bake of no texture set keeps\nint? BakeOptions.Rows, and a finished bake\u0027s options say the height it was made at and leave this out."
+          },
           "format": {
             "type": "string",
             "description": "\u0060png8\u0060, \u0060png16\u0060, \u0060exr16\u0060 or \u0060exr32\u0060."

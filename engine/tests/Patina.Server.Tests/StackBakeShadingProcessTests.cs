@@ -136,6 +136,41 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
+    ///     A set twice as wide as it is tall bakes at its own shape (#253): the bake follows the set unless it is told
+    ///     not to, and then keeps the height it was given.
+    /// </summary>
+    [Fact]
+    public async Task A_wide_set_bakes_at_its_own_shape_unless_told_not_to() {
+        using var deadline = Deadline(300);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var meshes = Path.Combine(folder.FullName, "meshes");
+        BakeFixture.Write(meshes, 0.05f);
+        await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(Path.Combine(meshes, BakeFixture.LowFile), deadline.Token);
+        var projectFolder = Path.Combine(Library, "projects", project);
+        var state = await OpenAsync($"projects/{project}/housing.vxlayers", deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackSetSettings(Width: 512, Height: 256));
+        await SaveAsync(state.Id, deadline.Token);
+        BakeRequest request = new() {
+            High = [Path.Combine(meshes, BakeFixture.HighFile)],
+            Low = Path.Combine(projectFolder, BakeFixture.LowFile),
+            Output = Path.Combine(projectFolder, "bakes", "maps"),
+            Options = new() { Resolution = ExportSide, Maps = ["position"], Format = "png16" }
+        };
+
+        var followed = await BakeAsync(request, deadline.Token);
+
+        Assert.Equal(ExportSide / 2, followed.Bake!.Options.Rows);
+        Assert.Null(followed.Bake.Options.FollowSetShape);
+        var map = followed.Result!.Maps.Single();
+        Assert.Equal((ExportSide, ExportSide / 2), (map.Resolution, map.Rows));
+
+        request.Options = request.Options with { FollowSetShape = false, Rows = ExportSide };
+        var kept = await BakeAsync(request, deadline.Token);
+        Assert.Equal(ExportSide, kept.Bake!.Options.Rows);
+    }
+
+    /// <summary>
     ///     What the viewport draws of a set with no channel of its own for either map: with the bake beneath it, the
     ///     bevels light and the corners darken; with the bake switched off, which is how every set looked before #86,
     ///     the low mesh is flat. <c>PATINA_PICTURES</c> names a folder to keep the two frames in.

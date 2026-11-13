@@ -202,6 +202,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A merged export says what it did not use: merged sets are one set of files at the export's size, so the Export dialog turns each set's own size off while Merge is on and says why, and an export asked for through the API with a set's own changes and Merge names those sets in its report.
 - On Windows a graph opened from a project now opens in that project's tab, not in a second tab with no project, so its display settings are kept and it comes back when Patina opens again; and a document the Server brought back after a restart offers what autosave kept, as it does on Linux and macOS.
 - Exporting some of a project's texture sets, or one document, no longer deletes the files the other sets last exported into the same folder. Only an export of the whole project tidies away files it no longer makes.
 - A mesh change that touched one texture set's faces no longer says every set's mesh maps need baking again. Layers, the Bake dialog, Checks and Project Settings say so only for the sets whose own faces changed, in their UV set; the others' bakes still fit. A bake made before this release says so for every set once, until it is baked again.
@@ -326,6 +327,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Each texture set bakes at its own shape: Follow each set's shape, in the Bake dialog and on by default, bakes a set twice as wide as it is tall at Size wide and half as tall, beside a square set at Size by Size, in one Bake. Turned off, every set bakes at the Height chosen. Through the API the bake options take `followSetShape`, and a finished bake's options say the height it was made at.
 - Numbers read one way everywhere (#197): every progress readout, the 2D View's zoom, the bake's Spread, the brush's stretch and model-space size, the unwrap report's stretch, the viewport's exposure and timings, and the compression preview's quality come from one set of formatters. Sizes in memory read in MB, as sizes on disk do, so Checks says "12 MB of 16 MB with Unreal" and its budget is in MB. The compression preview's Across and Down sliders show their percentage, and a layer's fill or mask generator setting with both ends, such as Dust's amount, is a slider with its value beside it rather than a bare number box.
 - The graph's toolbar says "Updated in 12 ms", as Layers does, instead of how many nodes ran.
 - Words follow the glossary (#196, #14): New Project asks for a Size, not a Resolution; Flatten Stack is Flatten All Layers and Open Mask as Stack is Open Mask in Layers; an empty 2D View or Layers says "No document open"; the status bar is the engine's status; the gradient ramp and refusals say color, not colour. The API's summaries call the presets that ship with Patina Starter presets.
