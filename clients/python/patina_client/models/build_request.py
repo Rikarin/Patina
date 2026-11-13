@@ -30,6 +30,10 @@ class BuildRequest:
         Attributes:
             asset (None | Unset | UUID): Only what reads this shared asset, directly or not. Null for the whole library.
             projects (list[UUID] | None | Unset): Only these projects. Null or empty for all of them.
+            documents (list[str] | None | Unset): Only these documents of the one project named, by their file below it,
+                each a texture set of its own whatever
+                it is: a graph in a texturing project or one that is not a material exports too. Null or empty for what the
+                project exports.
             presets (list[str] | None | Unset): The presets to export through. Null means the library's `exportTargets`;
                 empty, no
                 export.
@@ -39,6 +43,7 @@ class BuildRequest:
 
     asset: None | Unset | UUID = UNSET
     projects: list[UUID] | None | Unset = UNSET
+    documents: list[str] | None | Unset = UNSET
     presets: list[str] | None | Unset = UNSET
     folder: None | str | Unset = UNSET
     options: ExportOptions | None | Unset = UNSET
@@ -70,6 +75,16 @@ class BuildRequest:
 
         else:
             projects = self.projects
+
+        documents: list[str] | None | Unset
+        if isinstance(self.documents, Unset):
+            documents = UNSET
+        elif isinstance(self.documents, list):
+            documents = self.documents
+
+
+        else:
+            documents = self.documents
 
         presets: list[str] | None | Unset
         if isinstance(self.presets, Unset):
@@ -104,6 +119,8 @@ class BuildRequest:
             field_dict["asset"] = asset
         if projects is not UNSET:
             field_dict["projects"] = projects
+        if documents is not UNSET:
+            field_dict["documents"] = documents
         if presets is not UNSET:
             field_dict["presets"] = presets
         if folder is not UNSET:
@@ -164,6 +181,24 @@ class BuildRequest:
         projects = _parse_projects(d.pop("projects", UNSET))
 
 
+        def _parse_documents(data: object) -> list[str] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                documents_type_1 = cast(list[str], data)
+
+                return documents_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[str] | None | Unset, data)
+
+        documents = _parse_documents(d.pop("documents", UNSET))
+
+
         def _parse_presets(data: object) -> list[str] | None | Unset:
             if data is None:
                 return data
@@ -215,6 +250,7 @@ class BuildRequest:
         build_request = cls(
             asset=asset,
             projects=projects,
+            documents=documents,
             presets=presets,
             folder=folder,
             options=options,

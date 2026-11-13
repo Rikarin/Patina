@@ -9,6 +9,7 @@ from .bake_height_options import BakeHeightOptions
 from .bake_id_options import BakeIdOptions
 from .bake_occlusion_options import BakeOcclusionOptions
 from .bake_options import BakeOptions
+from .bake_position_options import BakePositionOptions
 from .bake_preview_part import BakePreviewPart
 from .bake_preview_state import BakePreviewState
 from .bake_ray_options import BakeRayOptions
@@ -395,6 +396,7 @@ __all__ = (
     "BakeIdOptions",
     "BakeOcclusionOptions",
     "BakeOptions",
+    "BakePositionOptions",
     "BakePreviewPart",
     "BakePreviewState",
     "BakeRayOptions",

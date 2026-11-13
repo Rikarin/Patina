@@ -44,6 +44,7 @@ from patina_client.models import (
     BakeIdOptions,
     BakeOcclusionOptions,
     BakeOptions,
+    BakePositionOptions,
     BakeRayOptions,
     BakeRequest,
     BakeRoundingOptions,
@@ -182,6 +183,7 @@ def test_a_blender_shaped_session(session) -> None:
             output=str(session.output),
             options=BakeOptions(
                 resolution=64,
+                rows=32,
                 format_="png16",
                 supersampling=1,
                 gutter=4,
@@ -200,6 +202,7 @@ def test_a_blender_shaped_session(session) -> None:
                     high_suffix="_high",
                 ),
                 height=BakeHeightOptions(range_="measured", scale=0.05),
+                position=BakePositionOptions(range_="cube"),
                 occlusion=BakeOcclusionOptions(
                     rays=8,
                     distance=0.5,
@@ -224,6 +227,7 @@ def test_a_blender_shaped_session(session) -> None:
     assert baked.result.maps
     for map_file in baked.result.maps:
         assert pathlib.Path(map_file.path).is_file()
+        assert (map_file.resolution, map_file.rows) == (64, 32)
 
     # One map of the bake alone on the mesh, through the picture view.
     alone = show_bake_in_viewport.sync(client=client, body=ViewportBakeRequest(job=bake.id, map_="height"))

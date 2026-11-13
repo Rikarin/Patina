@@ -29,9 +29,9 @@ class ExportPresetSource:
         Attributes:
             document (ExportPresetDocument): A preset as its file says it, which is what the preset editor reads and writes
                 (ADR 0019).
-            origin (str): factory, library or project.
+            origin (str): factory (a Starter preset, shipped with Patina), library or project.
             text (str): The file's text, as a person would read it.
-            file (None | str | Unset): The file on the Server's machine, or null for a factory preset, which lives in
+            file (None | str | Unset): The file on the Server's machine, or null for a Starter preset, which ships with
                 Patina.
      """
 

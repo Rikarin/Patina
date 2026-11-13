@@ -92,7 +92,7 @@ def sync_detailed(
 
 ) -> Response[LibraryInfo | ProblemDetails]:
     """ Keeps in library.yaml the export preset a project's export starts from when it has kept none, and
-    that checks measure against. Null forgets it, which leaves the factory's glTF starter. GET
+    that checks measure against. Null forgets it, which leaves the Starter glTF preset. GET
     /export/presets says which preset that comes to.
 
     Args:
@@ -125,7 +125,7 @@ def sync(
 
 ) -> LibraryInfo | ProblemDetails | None:
     """ Keeps in library.yaml the export preset a project's export starts from when it has kept none, and
-    that checks measure against. Null forgets it, which leaves the factory's glTF starter. GET
+    that checks measure against. Null forgets it, which leaves the Starter glTF preset. GET
     /export/presets says which preset that comes to.
 
     Args:
@@ -153,7 +153,7 @@ async def asyncio_detailed(
 
 ) -> Response[LibraryInfo | ProblemDetails]:
     """ Keeps in library.yaml the export preset a project's export starts from when it has kept none, and
-    that checks measure against. Null forgets it, which leaves the factory's glTF starter. GET
+    that checks measure against. Null forgets it, which leaves the Starter glTF preset. GET
     /export/presets says which preset that comes to.
 
     Args:
@@ -186,7 +186,7 @@ async def asyncio(
 
 ) -> LibraryInfo | ProblemDetails | None:
     """ Keeps in library.yaml the export preset a project's export starts from when it has kept none, and
-    that checks measure against. Null forgets it, which leaves the factory's glTF starter. GET
+    that checks measure against. Null forgets it, which leaves the Starter glTF preset. GET
     /export/presets says which preset that comes to.
 
     Args:

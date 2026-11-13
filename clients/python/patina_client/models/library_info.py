@@ -42,7 +42,7 @@ class LibraryInfo:
             export (None | ProjectExportSettings | Unset):
             default_preset (None | str | Unset): The export preset a project's export starts from when it has kept none,
                 from `library.yaml`, or null
-                for the factory's starter. `GET /export/presets` says which preset that comes to.
+                for the Starter glTF preset. `GET /export/presets` says which preset that comes to.
      """
 
     id: UUID

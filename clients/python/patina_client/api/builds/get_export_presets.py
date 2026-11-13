@@ -79,7 +79,7 @@ def sync_detailed(
     project: str | Unset = UNSET,
 
 ) -> Response[ExportPresetList | ProblemDetails]:
-    """ Every preset this library can use: the factory ones and those in shared/export-presets.
+    """ Every preset this library can use: the Starter ones and those in shared/export-presets.
 
     Args:
         project (str | Unset):
@@ -110,7 +110,7 @@ def sync(
     project: str | Unset = UNSET,
 
 ) -> ExportPresetList | ProblemDetails | None:
-    """ Every preset this library can use: the factory ones and those in shared/export-presets.
+    """ Every preset this library can use: the Starter ones and those in shared/export-presets.
 
     Args:
         project (str | Unset):
@@ -136,7 +136,7 @@ async def asyncio_detailed(
     project: str | Unset = UNSET,
 
 ) -> Response[ExportPresetList | ProblemDetails]:
-    """ Every preset this library can use: the factory ones and those in shared/export-presets.
+    """ Every preset this library can use: the Starter ones and those in shared/export-presets.
 
     Args:
         project (str | Unset):
@@ -167,7 +167,7 @@ async def asyncio(
     project: str | Unset = UNSET,
 
 ) -> ExportPresetList | ProblemDetails | None:
-    """ Every preset this library can use: the factory ones and those in shared/export-presets.
+    """ Every preset this library can use: the Starter ones and those in shared/export-presets.
 
     Args:
         project (str | Unset):

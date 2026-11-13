@@ -41,7 +41,7 @@ class ExportPresetList:
             tokens (list[str]): The names a file's template can hold, such as `project` for `{project}`.
             default (None | str | Unset): The preset an export starts from when nothing is kept for it: the library's
                 `defaultPreset` while it
-                names one of these, else the factory's glTF starter, and null only when there are no presets at all.
+                names one of these, else the Starter glTF preset, and null only when there are no presets at all.
      """
 
     presets: list[ExportPresetInfo]
