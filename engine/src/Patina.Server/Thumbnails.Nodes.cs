@@ -17,7 +17,7 @@ public sealed partial class Thumbnails {
     /// <summary>The side of a node's picture, which is the size the node is computed at for it.</summary>
     public const int NodeSide = 64;
 
-    /// <summary>What a node's picture is authored at, as a new graph is, so a radius means what it does there.</summary>
+    /// <summary>What a node's picture is authored at, as a new graph is, so a radius means the same.</summary>
     const string NodeBase = "1024";
 
     /// <summary>Goes up when a node's picture would come out differently for the same node.</summary>
