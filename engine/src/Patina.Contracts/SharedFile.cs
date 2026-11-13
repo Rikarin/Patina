@@ -115,24 +115,22 @@ public static class SharedFile {
         var waited = Stopwatch.StartNew();
         for (var pause = 1;; pause = Math.Min(pause * 2, LongestPause)) {
             try {
-                if (folder) {
-                    Directory.Move(from, to);
-                } else {
-                    File.Move(from, to, true);
-                }
-
+                Move(from, to, folder);
                 return;
-            } catch (Exception e) when (Held(e) && Possible(from, to, folder)) {
-                if (waited.Elapsed >= Patience) {
-                    if (Busy(e)) {
-                        throw FileBusyException.Of(folder ? from : to, e);
-                    }
-
-                    throw;
-                }
-
+            } catch (Exception e) when (waited.Elapsed < Patience && Held(e) && Possible(from, to, folder)) {
                 Thread.Sleep(pause);
+            } catch (Exception e) when (Busy(e) && Held(e) && Possible(from, to, folder)) {
+                throw FileBusyException.Of(folder ? from : to, e);
             }
+        }
+    }
+
+    /// <summary>One try of the move, overwriting a file and never a folder.</summary>
+    static void Move(string from, string to, bool folder) {
+        if (folder) {
+            Directory.Move(from, to);
+        } else {
+            File.Move(from, to, true);
         }
     }
 
