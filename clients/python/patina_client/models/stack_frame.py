@@ -21,7 +21,7 @@ T = TypeVar("T", bound="StackFrame")
 
 @_attrs_define
 class StackFrame:
-    """ Where something fixed on a stroke's picture stands: moved, scaled and turned there, and perhaps tiled.
+    """ Where something fixed on a stroke's picture stands: moved, scaled, turned and perhaps tiled.
 
         Attributes:
             centre (list[float]): Where its middle is on the stroke's picture, in the units stamps are in: two numbers.

@@ -17479,7 +17479,7 @@
             "default": false
           }
         },
-        "description": "Where something fixed on a stroke\u0027s picture stands: moved, scaled and turned there, and perhaps tiled."
+        "description": "Where something fixed on a stroke\u0027s picture stands: moved, scaled, turned and perhaps tiled."
       },
       "StackIdColour": {
         "required": [

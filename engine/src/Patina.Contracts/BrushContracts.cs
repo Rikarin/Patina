@@ -191,7 +191,7 @@ public sealed record StackStrokeSource(
     StackFrame? Frame = null
 );
 
-/// <summary>Where something fixed on a stroke's picture stands: moved, scaled and turned there, and perhaps tiled.</summary>
+/// <summary>Where something fixed on a stroke's picture stands: moved, scaled, turned and perhaps tiled.</summary>
 /// <param name="Centre">Where its middle is on the stroke's picture, in the units stamps are in: two numbers.</param>
 /// <param name="Scale">How many of those units one of its pixels covers, above zero.</param>
 /// <param name="Angle">How far it is turned, clockwise on the screen, in radians.</param>

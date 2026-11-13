@@ -6400,7 +6400,7 @@ export interface components {
        */
       layer?: null | string;
     };
-    /** @description Where something fixed on a stroke's picture stands: moved, scaled and turned there, and perhaps tiled. */
+    /** @description Where something fixed on a stroke's picture stands: moved, scaled, turned and perhaps tiled. */
     StackFrame: {
       /** @description Where its middle is on the stroke's picture, in the units stamps are in: two numbers. */
       centre: number[];
