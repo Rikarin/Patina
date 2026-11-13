@@ -41,6 +41,25 @@ public sealed class LibraryCareTests : IDisposable {
         Assert.Equal(made.Id, library.Contents("Props/crate").Id);
     }
 
+    /// <summary>
+    ///     A project tagged while the library scan reads its <c>project.yaml</c> (#257). On Windows the save renamed
+    ///     onto the file the scan held, which refused with "Access to the path is denied", and a client saw a 409.
+    /// </summary>
+    [Fact]
+    public async Task A_project_is_tagged_while_the_scan_reads_its_file() {
+        var made = library.CreateProject(new("Crate"));
+        var file = LibraryFiles.ProjectFile(root, made.Path);
+
+        Task tagging;
+        using (Contracts.SharedFile.OpenRead(file)) {
+            tagging = Task.Run(() => library.SetProjectTags(made.Path, ["prop"]), TestContext.Current.CancellationToken);
+            await Task.Delay(150, TestContext.Current.CancellationToken); // the save meets the scan's read
+        }
+
+        await tagging;
+        Assert.Equal(["prop"], library.Contents(made.Path).Tags);
+    }
+
     [Fact]
     public void A_project_whose_place_was_taken_comes_back_beside_it() {
         var made = library.CreateProject(new("Crate"));
