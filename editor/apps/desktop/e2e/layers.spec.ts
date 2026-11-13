@@ -259,10 +259,12 @@ test('layers are selected together, deleted by key, and a material drags in wher
 
   // A material dropped below the first fill sits there and not on top.
   await window.getByLabel('Search materials').fill('Plastic');
-  await window
-    .getByTestId('shelf-material')
-    .first()
-    .dragTo(fills.first(), { targetPosition: { x: 40, y: 38 } });
+  // ⚠ The Server answers the search a moment later, and a list that narrows under a drag already begun drops nothing:
+  // the row under the pointer was another material's, or moved away.
+  const shelf = window.getByTestId('shelf-material');
+  await expect(shelf).toHaveCount(1, { timeout: 15_000 });
+  await expect(shelf).toContainText('Plastic');
+  await shelf.first().dragTo(fills.first(), { targetPosition: { x: 40, y: 38 } });
   const stack = window.getByTestId('paint-layers');
   const rows = stack.getByRole('treeitem');
   await expect(rows.nth(1)).not.toHaveAttribute('data-testid', /paint-layer-fill/u);
