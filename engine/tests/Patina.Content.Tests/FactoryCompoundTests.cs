@@ -217,6 +217,60 @@ public sealed class FactoryCompoundTests {
         }
     }
 
+    /// <summary>
+    ///     A stylised filter handed a picture that tiles hands back one that tiles, at a side that is not a power of
+    ///     two as well (#267). Oil Paint's ridges were a noise turned by a Transform 2D through any angle, and a
+    ///     lattice turned by thirty degrees does not meet itself; nothing held it, because the tiling roll call reads
+    ///     no compound that changes a picture.
+    /// </summary>
+    [Theory]
+    [InlineData("Stylised/Oil Paint", 512)]
+    [InlineData("Stylised/Oil Paint", 480)]
+    public void A_stylised_filter_keeps_a_tiling_picture_tiling(string path, int side) {
+        FactoryCompounds.Register();
+
+        if (!VulkanDevice.TryCreate(new(), out var device, out var refusal)) {
+            Gpu.Skip($"No Vulkan device: {refusal}");
+
+            return;
+        }
+
+        using (device) {
+            using TexturePlanEvaluator evaluator = new(device);
+            var (compiler, graph) = Containing(path, side);
+            // A flat picture under it, so what is left to tile is the filter's own: Oil Paint's ridges. Over a
+            // picture with anything in it the ridges are a few hundredths, and a seam in them hid in its steps.
+            var subject = graph.Add("Source/Uniform");
+            var used = graph.Nodes.First(node => node.Type == path);
+
+            subject.SetValue("Colour", 0.5f, 0.5f, 0.5f, 1f);
+            used.SetText("relief", "1");
+            used.SetText("detail", "0");
+            graph.Connect(new(subject.Id, "Out"), new(used.Id, "Input"));
+
+            var compilation = compiler.Compile(graph);
+
+            Assert.Empty(compilation.Diagnostics);
+
+            using TextureUploads uploads = new(device);
+            Assert.Empty(TextureGraphExternals.Upload(uploads, compilation.Value, compiler.Externals));
+
+            using var bake = evaluator.Evaluate(compilation.Value, uploads.Externals);
+            var (seam, inside, spread) = Measure(bake.Read(compiler.Outputs.Single().Image));
+
+            // The instrument: ridges there to tile at all, or the seam below holds of a flat grey.
+            Assert.True(spread > 0.02, $"{path} at {side} drew no ridges: its values span {spread:0.000}");
+
+            // ⚠ Tighter than the grunges' two and a half: the embossed ridges are nearly two levels, so every step
+            // inside is large. Turned ridges measured 2.4 times their inside step across the edges, and smeared
+            // ones 1.1.
+            Assert.True(
+                seam <= 1.6 * inside + 0.001,
+                $"{path} at {side}: {seam:0.0000} across the edges, {inside:0.0000} inside"
+            );
+        }
+    }
+
     /// <summary>The mean step across the two seams, the mean step between neighbours, and the value range.</summary>
     static (double Seam, double Inside, double Spread) Measure(Bitmap picture) {
         double At(int x, int y) => picture.Pixels[(y * picture.Width + x) * 4] / 255.0;
