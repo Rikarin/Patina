@@ -19,7 +19,7 @@ public sealed class PresetLanguageTests : IDisposable {
 
     public void Dispose() => folder.Delete(true);
 
-    string Path(string name) => System.IO.Path.Combine(folder.FullName, name);
+    string Path(string name) => System.IO.Path.GetFullPath(System.IO.Path.Combine(folder.FullName, name));
 
     static ExportPreset Read(string text) => ExportPresetReader.Read(text, "test");
 

@@ -23,6 +23,8 @@ has neither. A project of one set keeps the name its preset gives, and `{set}` i
 A file is `png8`, `png16`, `tga`, `jpeg`, `tiff8`, `tiff16`, `tiff32`, `webp`, `exr16`, `exr32`, `hdr`, `ktx2` or `dds`. The
 writers are Vixen's (`Vixen.Interchange`), each checked against a decoder nobody here wrote. JPEG takes one or three lanes and a
 `quality` from 1 to 100, `hdr` one or three linear lanes, WebP is lossless, and the float and 16-bit formats hold linear numbers.
+Every format but WebP reads back in Patina's own tests as the picture written; TIFF through Vixen's `TiffReader`, which is also
+tested against a file built from the TIFF 6.0 layout so that it does not only agree with Vixen's writer.
 
 A preset can also say:
 
@@ -66,6 +68,20 @@ back, because an output in a file would have to follow every change to the docum
   set in the same way. Mask, brush and filter graphs are not. Nor are the graphs in a texturing project, which are what its layers
   read and not what it ships.
 - `outputs` in `project.yaml` replace all of this, for a project that wants something else, such as mesh LODs.
+- A request that names `documents` (#153) exports just those, each a set of its own whatever it is, so a graph in a texturing
+  project or a mask graph exports from the Document scope. Its files always carry the set's name, so they never take the name of a
+  file of the whole project.
+
+**An export of part of a project leaves the rest.** The delivery file (`.patina-export.json`) keeps each delivered file's set. An
+export of some sets, or of named documents, removes only its own sets' old files; another set's, and a file it cannot place
+(from a delivery before sets were kept), stay. Only an export of the whole project tidies away everything it no longer makes. Before
+this, exporting one set deleted the others' files.
+
+**Merging sets (#211).** With `merge` (an export option, kept in the project's `export` block), the sets written become one set of
+files: each set's maps where its own `coverage` puts them, at the largest set's size, a normal turned to the first set's green, and
+a set lacking a map giving that map's default. A texel no layout covers takes the first set's, which padding fills. Overlap is
+written from the set listed first and reported in texels; a set on no mesh has no layout, so the sets are then written one by one
+with a warning. A set's own changes do not apply to a merged export. Painting across sets is not done.
 
 **An export never bakes.** It takes the bake that is there (`DocumentBakes`: the one chosen for the document, then the folder a bake
 of it goes to by default), so a project that has not baked exports what its layers make, and a preset's normal file is reported
@@ -237,3 +253,28 @@ opened per line, which is the first thing to change past this scale.
 No file has been loaded in Unreal, Unity or Godot, and none of the three is installed here. The KTX2 files of a real export passed
 `ktx validate --warnings-as-errors`, and DDS was read by `sips` and FFmpeg for the formats they read. Windows and Linux are CI's to prove. All GPU numbers are one
 Apple GPU under load. An engine's own compression of these PNGs is outside what this measures.
+
+### What is checked without the engines, and what still needs a person (#46)
+
+Two tests stand in for the engines until someone opens the files in them:
+
+- `EngineContractTests` gives every map a value no other lane holds, exports it through each engine's factory preset and reads
+  every file back, holding each lane to a table written from the engines' pages and not from the presets: what each importer reads
+  in each lane, the green it reads and whether the file holds sRGB or linear numbers. A file added to a preset fails until its
+  engine's row is written. This is the golden per preset, as numbers rather than pictures, so it needs no GPU and no tolerance per
+  GPU family.
+- `ContainerHeaderTests` reads every DDS and KTX2 file an export can write (BC1 to BC7, half, float, plain, sRGB and linear, with
+  mips) with a parser written from Microsoft's `DDS_HEADER` and `DDS_HEADER_DXT10` and Khronos's KTX 2.0 layout, and checks the
+  DXGI and Vulkan format numbers, the level count and each level's size. That covers the BC6H and 16-bit and float DDS no outside
+  tool had read, as far as their layout goes; it does not decode the blocks.
+
+What only a person with the engine can check, one import per engine, recorded here when done:
+
+- **Unreal:** that a Y− normal imported with Flip Green Channel off lights correctly on a curved surface, and that the ORM file
+  with sRGB off feeds the material's occlusion, roughness and metallic as its starter material wires them.
+- **Unity URP and HDRP:** that the importer's tangents agree with the bake's on a curved surface, and that occlusion is read from
+  green of a one-lane file (it is grey, so it cannot be wrong, but no one has looked).
+- **Godot 4:** that ORMMaterial3D reads the `_orm` file in glTF's order.
+- **Every engine:** that BC1, BC3, BC4 and BC5 decode as the encoder meant on a GPU, and that the Vixen target's tangents match on
+  curved surfaces (its importer uses Assimp's).
+- **Scale:** the 10,000-project numbers used stand-in 2×2 maps; real pixels stop at 500 projects.
