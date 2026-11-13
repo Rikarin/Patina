@@ -805,7 +805,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). */
+    /** A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). With side, any picture as a PNG whose longer side is at most that many texels, for a thumbnail (#269). */
     get: operations['GetLibraryPicture'];
     put?: never;
     post?: never;
@@ -10593,6 +10593,7 @@ export interface operations {
     parameters: {
       query: {
         path: string;
+        side?: number;
       };
       header?: never;
       path?: never;

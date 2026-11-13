@@ -2913,7 +2913,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260).",
+        "summary": "A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). With side, any picture as a PNG whose longer side is at most that many texels, for a thumbnail (#269).",
         "operationId": "GetLibraryPicture",
         "parameters": [
           {
@@ -2922,6 +2922,14 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "side",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],

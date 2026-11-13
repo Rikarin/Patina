@@ -22,6 +22,8 @@ import { LibraryStore } from './library-store';
 
 /** How many pictures are drawn at once, so that a long list fills in from the top without asking for all of it. */
 const DrawnAtOnce = 4;
+/** The longer side a picture is asked for at, which the Server keeps sized down (#269): room to fill the 40-pixel well, cropped, on a dense screen. */
+const ThumbnailSide = 160;
 
 /**
  * Choose a Picture, or a Mesh: what the library's projects hold, the project in front's first, found by name (#4). The
@@ -241,7 +243,10 @@ export class PickFileDialog {
       for (let path = queue.shift(); path !== undefined; path = queue.shift()) {
         try {
           const blob = unwrap(
-            await client.GET('/api/v1/library/picture', { params: { query: { path } }, parseAs: 'blob' })
+            await client.GET('/api/v1/library/picture', {
+              params: { query: { path, side: ThumbnailSide } },
+              parseAs: 'blob'
+            })
           );
           if (generation !== this.generation) {
             return;

@@ -101,6 +101,7 @@ builder.Services.AddSingleton<GraphSessions>();
 builder.Services.AddSingleton<Holders>();
 builder.Services.AddSingleton<PreviewStore>();
 builder.Services.AddSingleton<Thumbnails>();
+builder.Services.AddSingleton<PicturePreviews>();
 builder.Services.AddSingleton<Preferences>();
 builder.Services.AddSingleton<AutosaveGate>();
 builder.Services.AddSingleton<GraphEvaluator>();

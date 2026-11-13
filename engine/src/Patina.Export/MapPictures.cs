@@ -91,8 +91,7 @@ public static class MapPictures {
     ///     A picture as an 8-bit PNG a client can show, whatever it is stored as (#260): a value past 0 to 1, as an EXR
     ///     or an HDR holds, is clamped, and a picture of two lanes gains an empty third.
     /// </summary>
-    /// <exception cref="InvalidDataException">It is not a picture this reads.</exception>
-    public static byte[] Preview(string path) => Png8(ReadFile(path));
+    public static byte[] Preview(FloatImage image) => Png8(image);
 
     /// <summary>Whether a file holds more than a byte can, which a graph then reads at its own depth.</summary>
     public static bool IsDeep(string path) {
