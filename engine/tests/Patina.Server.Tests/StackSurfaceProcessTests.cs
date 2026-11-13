@@ -75,6 +75,16 @@ public sealed partial class StackProcessTests {
         var history = (await StateAsync(state.Id, deadline.Token)).History;
         Assert.NotNull(history);
 
+        // A 5 by 5 warp whose points are where they are lays the same pixels as none (#263).
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(badge, Decal: Decal(size * 0.1f) with { Warp = Unwarped(5) })
+        );
+        Assert.Equal(first, Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor"));
+        await ActAsync(state.Id, "undo", deadline.Token);
+        await CastsMeetTheHousingAsync(middle, size, deadline.Token);
+
         // The same layer along a path through two places either side of the middle.
         var left = await PickAsync(0.45, 0.5, deadline.Token);
         var right = await PickAsync(0.55, 0.5, deadline.Token);
@@ -107,6 +117,52 @@ public sealed partial class StackProcessTests {
         Assert.Equal(3, kept.Path!.Points.Count);
         Assert.NotNull(kept.Decal);
     }
+
+    /// <summary>
+    ///     Rays cast along the surface's own normal from in front of a picked place meet the housing there, and one cast
+    ///     away from it meets nothing (#263): a decal's surface is measured along its facing, not the camera's rays.
+    /// </summary>
+    async Task CastsMeetTheHousingAsync(ViewportPick middle, float size, CancellationToken token) {
+        var at = middle.Position!;
+        var normal = middle.Normal!;
+        float[] before = [..at.Select((lane, axis) => lane + normal[axis] * size * 0.1f)];
+        using var response = await http.PostAsJsonAsync(
+            "/api/v1/viewport/cast",
+            new([..before, ..before], [..normal.Select(static lane => -lane)]),
+            ContractsJsonContext.Default.ViewportCastRequest,
+            token
+        );
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync(token));
+        var cast = (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.ViewportCast, token))!;
+        Assert.Equal(2, cast.Hits.Count);
+        Assert.All(cast.Hits, hit => {
+            Assert.True(hit.Found, "A ray along the surface's normal should meet it.");
+            Assert.InRange(MathF.Sqrt(hit.Position!.Select((lane, axis) => MathF.Pow(lane - at[axis], 2)).Sum()), 0f, size * 0.001f);
+        });
+
+        using var away = await http.PostAsJsonAsync(
+            "/api/v1/viewport/cast",
+            new(before, normal),
+            ContractsJsonContext.Default.ViewportCastRequest,
+            token
+        );
+        var missed = (await away.Content.ReadFromJsonAsync(ContractsJsonContext.Default.ViewportCast, token))!;
+        Assert.False(Assert.Single(missed.Hits).Found);
+
+        using var refused = await http.PostAsJsonAsync(
+            "/api/v1/viewport/cast",
+            new([0f, 0f], normal),
+            ContractsJsonContext.Default.ViewportCastRequest,
+            token
+        );
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, refused.StatusCode);
+    }
+
+    /// <summary>A warp grid <paramref name="side" /> points square whose points are where they are.</summary>
+    static float[] Unwarped(int side) => [
+        ..Enumerable.Range(0, side * side)
+            .SelectMany(point => new[] { point % side / (float)(side - 1), point / side / (float)(side - 1) })
+    ];
 
     async Task<ViewportPick> PickAsync(double x, double y, CancellationToken token) {
         using var response = await http.PostAsJsonAsync(

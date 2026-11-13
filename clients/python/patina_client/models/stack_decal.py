@@ -44,9 +44,11 @@ class StackDecal:
                 It is the model's bounds as `POST /viewport/pick` gives them. Null or empty is the unit cube. A bake that
                 says the box its position map spans is read through that box instead, so this one only matters for a bake that
                 does not.
-            warp (list[float] | None | Unset): A warp (#134): where each point of a 3 by 3 grid over the picture lands on
-                the decal's square, row by row from
-                the top left, as eighteen numbers 0 to 1 across and down. Null or empty bends nothing.
+            warp (list[float] | None | Unset): A warp (#134, #263): where each point of a square grid over the picture lands
+                on the decal's square, row by row
+                from the top left, two numbers 0 to 1 across and down to a point: eighteen for 3 by 3, fifty for 5 by 5, up to
+                int StackDecal.MaximumWarpSide points on a side. A finer grid follows a surface that turns away on both sides,
+                such as round a cylinder. Null or empty bends nothing.
      """
 
     centre: list[float]

@@ -108,6 +108,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/cast': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Where rays along one direction meet the open mesh in its own space, such as a decal's surface measured along the decal's facing (#263). */
+    post: operations['CastInViewport'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/stack': {
     parameters: {
       query?: never;
@@ -6489,8 +6506,10 @@ export interface components {
        */
       box?: null | number[];
       /**
-       * @description A warp (#134): where each point of a 3 by 3 grid over the picture lands on the decal's square, row by row from
-       *     the top left, as eighteen numbers 0 to 1 across and down. Null or empty bends nothing.
+       * @description A warp (#134, #263): where each point of a square grid over the picture lands on the decal's square, row by row
+       *     from the top left, two numbers 0 to 1 across and down to a point: eighteen for 3 by 3, fifty for 5 by 5, up to
+       *     int StackDecal.MaximumWarpSide points on a side. A finer grid follows a surface that turns away on both sides,
+       *     such as round a cylinder. Null or empty bends nothing.
        */
       warp?: null | number[];
     };
@@ -7816,6 +7835,30 @@ export interface components {
        */
       panZ: number;
     };
+    /** @description Where each ray of a ViewportCastRequest met the mesh, in its order. */
+    ViewportCast: {
+      /** @description One to a ray. */
+      hits: components['schemas']['ViewportCastHit'][];
+    };
+    /** @description The first place one ray met the mesh, ahead of where it starts. */
+    ViewportCastHit: {
+      /** @description Whether it met the mesh. */
+      found: boolean;
+      /** @description Where, in the mesh's own space: three numbers. */
+      position?: null | number[];
+      /** @description The face it met, as a unit direction out of the side the ray came from: three numbers. */
+      normal?: null | number[];
+    };
+    /**
+     * @description Asks where rays along one direction meet the open mesh, in its own space and through what the viewport draws
+     *     (#263): a decal's surface measured along the decal's own direction, wherever the camera is, in one round trip.
+     */
+    ViewportCastRequest: {
+      /** @description Where each ray starts: three numbers to a ray, at most int ViewportCastRequest.MaximumRays rays. */
+      origins: number[];
+      /** @description The way every ray goes: three numbers, not all zero. */
+      direction: number[];
+    };
     /**
      * @description How the viewport is lit, shown and finished. None of it reaches a file that is exported; a project keeps it, so
      *     it opens as it was left. Angles are radians and exposure is in stops; an effect at zero is off. A field left out
@@ -8451,6 +8494,57 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ViewportPick'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CastInViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportCastRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportCast'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
       /** @description Conflict */

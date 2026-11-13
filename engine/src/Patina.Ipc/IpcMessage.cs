@@ -52,6 +52,12 @@ public static class IpcTypes {
     public const string ViewportPick = "viewport.pick";
 
     /// <summary>
+    ///     Server to Worker: where the rays of <see cref="IpcMessage.Cast" /> meet the mesh; answers with
+    ///     <see cref="IpcMessage.Casted" />. It reads the mesh and no device (#263).
+    /// </summary>
+    public const string ViewportCast = "viewport.cast";
+
+    /// <summary>
     ///     Server to Worker: from now on the viewport wears the stack <see cref="IpcMessage.Following" />, or nothing
     ///     when that is null. The maps go from the stack's evaluation to the viewport inside the Worker.
     /// </summary>
@@ -192,7 +198,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 17;
+    public const int ProtocolVersion = 18;
 
     public string Type { get; set; } = string.Empty;
 
@@ -228,6 +234,12 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to viewport.pick.</summary>
     public ViewportPick? Picked { get; set; }
+
+    /// <summary>viewport.cast: the rays and the mesh.</summary>
+    public ViewportCastAsk? Cast { get; set; }
+
+    /// <summary>The reply to viewport.cast.</summary>
+    public ViewportCast? Casted { get; set; }
 
     /// <summary>viewport.stack: which stack the viewport wears.</summary>
     public string? Following { get; set; }
@@ -525,6 +537,12 @@ public sealed record ViewportPickAsk(
     string Mesh,
     IReadOnlyDictionary<string, int>? UvSets = null
 );
+
+/// <summary>Rays along one direction to meet the mesh with (#263).</summary>
+/// <param name="Origins">Where each ray starts, in the mesh's own space: three numbers to a ray.</param>
+/// <param name="Direction">The way every ray goes: three numbers.</param>
+/// <param name="Mesh">The mesh. Only its file is read, as a pick's is.</param>
+public sealed record ViewportCastAsk(IReadOnlyList<float> Origins, IReadOnlyList<float> Direction, string Mesh);
 
 /// <summary>A frame that is now in shared memory.</summary>
 public sealed record ViewportFrame(int Width, int Height, double RenderMilliseconds);

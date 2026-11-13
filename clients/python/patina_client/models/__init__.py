@@ -385,6 +385,9 @@ from .unwrap_set import UnwrapSet
 from .viewport_bake_preview import ViewportBakePreview
 from .viewport_bake_request import ViewportBakeRequest
 from .viewport_camera_state import ViewportCameraState
+from .viewport_cast import ViewportCast
+from .viewport_cast_hit import ViewportCastHit
+from .viewport_cast_request import ViewportCastRequest
 from .viewport_display import ViewportDisplay
 from .viewport_follow import ViewportFollow
 from .viewport_graph_request import ViewportGraphRequest
@@ -787,6 +790,9 @@ __all__ = (
     "ViewportBakePreview",
     "ViewportBakeRequest",
     "ViewportCameraState",
+    "ViewportCast",
+    "ViewportCastHit",
+    "ViewportCastRequest",
     "ViewportDisplay",
     "ViewportFollow",
     "ViewportGraphRequest",

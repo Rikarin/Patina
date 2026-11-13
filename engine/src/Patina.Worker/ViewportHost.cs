@@ -121,6 +121,38 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         };
     }
 
+    /// <summary>
+    ///     Where rays along one direction first meet the mesh (#263), through what the viewport draws as a pick is: the
+    ///     surface under a decal measured along the decal's own facing, wherever the camera looks from.
+    /// </summary>
+    public IpcMessage Cast(IpcMessage request) {
+        var cast = request.Cast ?? throw new IpcException("viewport.cast says nothing.");
+        if (cast.Origins.Count % 3 != 0 || cast.Direction.Count != 3) {
+            throw new IpcException("viewport.cast's origins are three numbers to a ray, and its direction three.");
+        }
+
+        var direction = new Vector3(cast.Direction[0], cast.Direction[1], cast.Direction[2]);
+        if (!(direction.LengthSquared() > 0f) || !float.IsFinite(direction.LengthSquared())) {
+            throw new IpcException("viewport.cast's direction has no length.");
+        }
+
+        direction = Vector3.Normalize(direction);
+        var shelf = meshes.Of(cast.Mesh);
+        var (through, _) = isolatedParts.Length > 0 || isolatedMaterials.Length > 0
+            ? meshes.Shown(cast.Mesh, isolatedParts, isolatedMaterials)
+            : (shelf.Projection, null);
+        var hits = new ViewportCastHit[cast.Origins.Count / 3];
+        for (var at = 0; at < hits.Length; at++) {
+            var origin = new Vector3(cast.Origins[at * 3], cast.Origins[at * 3 + 1], cast.Origins[at * 3 + 2]);
+            var ray = new Ray(origin, direction);
+            hits[at] = through.TryHit(ray, out var hit)
+                ? new(true, Numbers(hit.Point), Numbers(Facing(through, hit.Triangle, direction)))
+                : new(false);
+        }
+
+        return new() { Type = IpcTypes.Ok, Casted = new(hits) };
+    }
+
     /// <summary>The model's own number for a triangle an isolation drew, or -1 for none.</summary>
     static int Original(int[]? triangles, int triangle) =>
         triangle < 0 || triangles is null ? triangle : triangles[triangle];
