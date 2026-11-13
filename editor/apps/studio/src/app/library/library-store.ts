@@ -287,7 +287,12 @@ export class LibraryStore {
   private async libraryless(client: PatinaClient): Promise<boolean> {
     if (this.hasLibrary === null) {
       try {
-        this.hasLibrary = !!unwrap(await client.GET('/api/v1/system')).library;
+        const { library } = unwrap(await client.GET('/api/v1/system'));
+        if (library === undefined) {
+          return false; // a Server that does not say
+        }
+
+        this.hasLibrary = library !== null;
       } catch {
         return false;
       }
