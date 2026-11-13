@@ -291,12 +291,6 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             case StackSetModel model:
                 Do(new SetModelCommand(this, model.Model, "Bind mesh"));
                 break;
-            case StackAddChannel add:
-                Do(AddChannel(add.Usage));
-                break;
-            case StackRemoveChannel remove:
-                Do(RemoveChannel(remove.Usage));
-                break;
             case StackSetSeed seed:
                 Do(new SetDocumentCommand(this, Document with { Seed = seed.Seed }, "Change seed"));
                 break;
@@ -489,55 +483,6 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     /// <remarks>Vixen's own answer, which a filter reading a channel the set lacks reads too (#254).</remarks>
     public static float[] DefaultOf(string usage) =>
         ChannelAsset.Untouched(usage) ?? throw new StackEditRefusedException($"'{usage}' is not a channel.");
-
-    SetDocumentCommand AddChannel(string usage) {
-        if (!StackDocuments.Vocabulary.Usages.Any(term => term.Value == usage)) {
-            throw new StackEditRefusedException($"'{usage}' is not a channel.");
-        }
-
-        var chosen = Set;
-        if (chosen.Channels.Exists(channel => channel.Usage == usage)) {
-            throw new StackEditRefusedException($"This document has {StackDocuments.ChannelName(usage)} already.");
-        }
-
-        var added = chosen with { Channels = [..chosen.Channels, new() { Usage = usage, Default = DefaultOf(usage) }] };
-        return new(
-            this,
-            Document with { Sets = [..Document.Sets.Select(held => held == chosen ? added : held)] },
-            $"Add {StackDocuments.ChannelName(usage)}"
-        );
-    }
-
-    /// <summary>
-    ///     The set without one of its channels. Only the set's list changes: a layer's values and paint for it stay, so
-    ///     the channel comes back as it was when it is added again.
-    /// </summary>
-    SetDocumentCommand RemoveChannel(string usage) {
-        var chosen = Set;
-        var named = new Dictionary<string, string> { ["channel"] = StackDocuments.ChannelName(usage) };
-        if (!chosen.Channels.Exists(channel => channel.Usage == usage)) {
-            throw new StackEditRefusedException(
-                $"This document has no channel '{usage}'.",
-                Api.Refusals.ChannelMissing,
-                named
-            );
-        }
-
-        if (chosen.Channels.Count == 1) {
-            throw new StackEditRefusedException(
-                $"'{usage}' is the texture set's only channel, and a set with none has nothing to write.",
-                Api.Refusals.ChannelLast,
-                named
-            );
-        }
-
-        var removed = chosen with { Channels = [..chosen.Channels.Where(channel => channel.Usage != usage)] };
-        return new(
-            this,
-            Document with { Sets = [..Document.Sets.Select(held => held == chosen ? removed : held)] },
-            $"Remove {StackDocuments.ChannelName(usage)}"
-        );
-    }
 
     /// <summary>A whole-document change as one undoable step, which is how a set's own settings change.</summary>
     internal IAuthoringCommand Replaced(LayerStackAsset after, string name) =>
