@@ -117,7 +117,7 @@ static class ViewportMapEndpoints {
             session.SetMaps(hashed);
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: Missing);
+            return Refusals.Of(e);
         }
     }
 
@@ -172,7 +172,7 @@ static class ViewportMapEndpoints {
             session.SetDisplay(new(request, look, picture));
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: Missing);
+            return Refusals.Of(e);
         }
     }
 
@@ -202,9 +202,9 @@ static class ViewportMapEndpoints {
         try {
             return TypedResults.Ok(await session.ScreenshotAsync(request, cancellationToken));
         } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
+            return Refusals.OfEngine(e, Refused);
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.Unwritable(e, Unavailable);
         } catch (TimeoutException e) {
             return Refusals.Of(e, Unavailable);
         }
@@ -244,13 +244,13 @@ static class ViewportMapEndpoints {
             session.Redraw();
             return TypedResults.Ok(shown);
         } catch (RendererMissingException e) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.OfEngine(e, Unavailable);
         } catch (IpcException e) {
             session.Redraw();
-            return TypedResults.Problem(e.Message, statusCode: Refused);
+            return Refusals.OfEngine(e, Refused);
         } catch (Exception e) when (e is IOException or TimeoutException) {
             // The Worker went, or took longer than a reply may to read the meshes: the next frame tells it again.
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.OfEngine(e, Unavailable);
         }
     }
 
@@ -271,12 +271,7 @@ static class ViewportMapEndpoints {
         CancellationToken cancellationToken
     ) {
         if (queue.Find(request.Job) is not { } job) {
-            return Refusals.Problem(
-                $"There is no job '{request.Job}'.",
-                Missing,
-                Refusals.JobMissing,
-                new Dictionary<string, string> { ["id"] = request.Job }
-            );
+            return Refusals.NoJob(request.Job);
         }
 
         if (job is not { State: JobStates.Done, Result: { } result }) {
@@ -311,7 +306,7 @@ static class ViewportMapEndpoints {
             session.Show(job.Bake.Low, hashed, alone);
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: Missing);
+            return Refusals.Of(e);
         }
     }
 
@@ -365,9 +360,9 @@ static class ViewportMapEndpoints {
 
             return TypedResults.Ok(session.State);
         } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Conflict);
+            return Refusals.OfEngine(e, Conflict);
         } catch (Exception e) when (e is IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.OfEngine(e, Unavailable);
         }
     }
 

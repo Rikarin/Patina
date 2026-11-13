@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
@@ -176,6 +177,15 @@ public static class Refusals {
     /// <summary>No job has the id. Values: <c>id</c>.</summary>
     public const string JobMissing = "job-missing";
 
+    /// <summary>A job asked for that the queue does not have: 404.</summary>
+    public static ProblemHttpResult NoJob(string id) =>
+        Problem(
+            $"There is no job '{id}'.",
+            StatusCodes.Status404NotFound,
+            JobMissing,
+            new Dictionary<string, string> { ["id"] = id }
+        );
+
     /// <summary>A graph shown on the mesh that has no Output node to show.</summary>
     public const string GraphNoOutput = "graph-no-output";
 
@@ -253,7 +263,7 @@ public static class Refusals {
     public static ProblemHttpResult Of(TimeoutException timeout, int status) =>
         timeout is RendererMissingException
             ? Problem(timeout.Message, status, RendererMissing)
-            : TypedResults.Problem(timeout.Message, statusCode: status);
+            : Problem(timeout.Message, status, EngineUnavailable);
 
     /// <summary>
     ///     The library's refusal of a change: a conflict when something is in its way, else a request it cannot make.
@@ -276,6 +286,53 @@ public static class Refusals {
 
     public static ProblemHttpResult NoLibraryOpen() =>
         Problem("The Server was started with no library.", StatusCodes.Status404NotFound, NoLibrary);
+
+    /// <summary>The GPU engine went, or did not answer in time. Asking again once it is back may work.</summary>
+    public const string EngineUnavailable = "engine-unavailable";
+
+    /// <summary>
+    ///     A request the GPU engine took and could not carry out. Values: <c>reason</c>, which is the engine's own
+    ///     sentence.
+    /// </summary>
+    public const string EngineRefused = "engine-refused";
+
+    /// <summary>
+    ///     A graph edit the graph cannot take, such as a port it does not have. Values: <c>reason</c>, which is the
+    ///     Server's own sentence.
+    /// </summary>
+    public const string GraphRefused = "graph-refused";
+
+    /// <summary>A save over a file that changed on disk after it was opened, which saving would write over.</summary>
+    public const string FileChanged = "file-changed";
+
+    /// <summary>
+    ///     A file that could not be written or read where it was asked for. Values: <c>reason</c>, the system's own
+    ///     sentence.
+    /// </summary>
+    public const string FileUnwritable = "file-unwritable";
+
+    /// <summary>
+    ///     A request to the GPU engine that failed: refused by it, or with no engine to answer. Anything else the
+    ///     request threw is the engine gone or slow.
+    /// </summary>
+    public static ProblemHttpResult OfEngine(Exception failure, int status) =>
+        failure switch {
+            RendererMissingException => Problem(failure.Message, status, RendererMissing),
+            IpcException => Problem(failure.Message, status, EngineRefused, Reason(failure.Message)),
+            _ => Problem(failure.Message, status, EngineUnavailable)
+        };
+
+    /// <summary>A graph edit's refusal: 422, with the Server's sentence as its reason.</summary>
+    public static ProblemHttpResult Of(GraphEditRefusedException refusal) =>
+        Problem(refusal.Message, StatusCodes.Status422UnprocessableEntity, GraphRefused, Reason(refusal.Message));
+
+    /// <summary>A save that would write over another program's change: 409.</summary>
+    public static ProblemHttpResult Of(GraphFileChangedException changed) =>
+        Problem(changed.Message, StatusCodes.Status409Conflict, FileChanged);
+
+    /// <summary>A file the system would not let the Server write or read, with its sentence as the reason.</summary>
+    public static ProblemHttpResult Unwritable(Exception failure, int status) =>
+        Problem(failure.Message, status, FileUnwritable, Reason(failure.Message));
 
     /// <summary>A snapshot of a document with unsaved edits, which its file does not hold yet (#209).</summary>
     public const string SnapshotUnsaved = "snapshot-unsaved";

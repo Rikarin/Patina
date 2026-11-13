@@ -159,9 +159,9 @@ static class GraphEndpoints {
         try {
             return TypedResults.Ok(sessions.Open(request.Path).State);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status404NotFound);
+            return Refusals.Of(e);
         } catch (GraphEditRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.Of(e);
         }
     }
 
@@ -305,7 +305,7 @@ static class GraphEndpoints {
         try {
             return TypedResults.Ok(session.Apply(batch));
         } catch (GraphEditRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.Of(e);
         }
     }
 
@@ -324,7 +324,7 @@ static class GraphEndpoints {
             host.RequestRescan();
             return TypedResults.Ok(extraction);
         } catch (GraphEditRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.Of(e);
         }
     }
 
@@ -371,9 +371,9 @@ static class GraphEndpoints {
 
             return TypedResults.Ok(result);
         } catch (GraphFileChangedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+            return Refusals.Of(e);
         } catch (GraphEditRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.Of(e);
         }
     }
 
@@ -392,9 +392,9 @@ static class GraphEndpoints {
             var image = await evaluator.ImageAsync(session, request.Node, request.Port, cancellationToken);
             return TypedResults.Ok(new GraphImage(image.Hash, image.Width, image.Height));
         } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+            return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
         } catch (Exception e) when (e is IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
         }
     }
 

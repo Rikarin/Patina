@@ -63,7 +63,14 @@ const Words: Readonly<Record<string, string>> = {
   'snapshot-document-open': 'Close the document first, so the snapshot isn’t written over.',
   'material-missing': 'That material isn’t in the library any more. It may have been deleted outside Patina.',
   'compound-needs-graph': 'A compound is copied beside the graph that uses it. Open that graph first.',
-  'picture-unreadable': '{file} doesn’t read as a picture, so it wasn’t brought in. It may be damaged or cut short.'
+  'picture-unreadable': '{file} doesn’t read as a picture, so it wasn’t brought in. It may be damaged or cut short.',
+  'engine-unavailable':
+    'The GPU engine didn’t answer in time. If it stopped, it starts again on its own: try again in a moment.',
+  'engine-refused': 'The GPU engine couldn’t do that. {reason}',
+  'graph-refused': 'That change can’t be made to the graph. {reason}',
+  'file-changed':
+    'The file changed outside Patina after it was opened. Save again to write over that change, or open the file again to keep it.',
+  'file-unwritable': 'Patina couldn’t write or read the file there. {reason}'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };

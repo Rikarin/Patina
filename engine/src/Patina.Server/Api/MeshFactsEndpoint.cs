@@ -43,7 +43,7 @@ static class MeshFactsEndpoint {
                 ? TypedResults.Ok(facts)
                 : TypedResults.Problem("The GPU engine said nothing about the mesh.", statusCode: 502);
         } catch (IpcException e) {
-            return LibraryTreeEndpoints.Problem(e, StatusCodes.Status422UnprocessableEntity);
+            return Refusals.OfEngine(e, StatusCodes.Status422UnprocessableEntity);
         }
     }
 }
