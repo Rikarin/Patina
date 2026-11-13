@@ -83,20 +83,6 @@ public static class Terms {
         ["part"] = "Mesh Part", ["shell"] = "UV Shell"
     };
 
-    /// <summary>What the material shelf calls the types of what it lists, and where each is from.</summary>
-    static readonly Dictionary<string, string> InShelves = new(StringComparer.Ordinal) {
-        ["material"] = "Materials",
-        ["mask"] = "Masks",
-        ["filter"] = "Filters",
-        ["brush"] = "Brushes",
-        ["preset"] = "Brush Presets",
-        ["empty"] = "Empty Graphs",
-        ["shipped"] = "Starter",
-        ["package"] = "Packages",
-        ["project"] = "This project",
-        ["library"] = "Other projects"
-    };
-
     /// <summary>What a symmetry's plane or axis passes through.</summary>
     static readonly Dictionary<string, string> InCentres = new(StringComparer.Ordinal) {
         ["model"] = "Model Centre", ["origin"] = "Mesh Origin"
@@ -188,7 +174,22 @@ public static class Terms {
     ];
 
     /// <summary>What the material shelf calls a type or an origin.</summary>
-    public static string InShelf(string value) => InShelves.TryGetValue(value, out var named) ? named : Label(value);
+    public static string InShelf(string value) =>
+        // A switch and not a table: SK7020 honours no suppression, and reads a ten-entry table as a clone of the
+        // stacks' words.
+        value switch {
+            "material" => "Materials",
+            "mask" => "Masks",
+            "filter" => "Filters",
+            "brush" => "Brushes",
+            "preset" => "Brush Presets",
+            "empty" => "Empty Graphs",
+            "shipped" => "Starter",
+            "package" => "Packages",
+            "project" => "This project",
+            "library" => "Other projects",
+            _ => Label(value)
+        };
 
     /// <summary>Types or origins of the material shelf with their labels.</summary>
     public static IReadOnlyList<StackTerm> InShelf(IEnumerable<string> values) => [

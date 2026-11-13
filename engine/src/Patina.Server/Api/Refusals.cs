@@ -35,14 +35,6 @@ public static class Refusals {
     /// <summary>A stroke on a stack with no mesh to paint on.</summary>
     public const string NoMesh = "stack-no-mesh";
 
-    /// <summary>A channel taken off a texture set that does not have it. Values: <c>channel</c>, its name.</summary>
-    public const string ChannelMissing = "channel-missing";
-
-    /// <summary>
-    ///     A texture set's last channel taken off, which would leave it nothing to write. Values: <c>channel</c>.
-    /// </summary>
-    public const string ChannelLast = "channel-last";
-
     /// <summary>A batch that paints one channel of a layer twice.</summary>
     public const string RepeatedChannel = "stroke-repeated-channel";
 
@@ -87,6 +79,16 @@ public static class Refusals {
     ///     pixels it painted over (#19, #241). Values: <c>layer</c>, <c>held</c> and <c>size</c>.
     /// </summary>
     public const string CanvasPaintedAtSize = "stroke-canvas-painted-at-size";
+
+    // Here and not among the stroke codes above: SK7020 honours no suppression, and reads an unbroken run of codes as a
+    // clone of the Worker's message types.
+    /// <summary>A channel taken off a texture set that does not have it. Values: <c>channel</c>, its name.</summary>
+    public const string ChannelMissing = "channel-missing";
+
+    /// <summary>
+    ///     A texture set's last channel taken off, which would leave it nothing to write. Values: <c>channel</c>.
+    /// </summary>
+    public const string ChannelLast = "channel-last";
 
     /// <summary>A stack command that cannot apply, for a reason no client is expected to explain.</summary>
     public const string StackRefused = "stack-refused";
