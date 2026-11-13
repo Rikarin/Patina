@@ -272,15 +272,15 @@ public sealed class StackEditorPropertyTests {
         string Refused(StackStroke stroke) =>
             Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([stroke]))).Code;
 
-        Assert.Equal(Api.Refusals.NoMesh, Refused(flat with { Symmetry = new() }));
-        Assert.Equal(Api.Refusals.NoMesh, Refused(flat with { Brush = new(2f, SizeSpace: "model") }));
+        Assert.Equal(Refusals.NoMesh, Refused(flat with { Symmetry = new() }));
+        Assert.Equal(Refusals.NoMesh, Refused(flat with { Brush = new(2f, SizeSpace: "model") }));
 
         editor.Apply(new([new StackSetModel("a.glb")]));
-        Assert.Equal(Api.Refusals.BrushRefused, Refused(flat with { Symmetry = new(Axis: "w") }));
-        Assert.Equal(Api.Refusals.BrushRefused, Refused(flat with { Symmetry = new("radial", Count: 65) }));
-        Assert.Equal(Api.Refusals.BrushRefused, Refused(flat with { Brush = new(2f, Aspect: 17f) }));
-        Assert.Equal(Api.Refusals.BrushRefused, Refused(flat with { Brush = new(5000f) }));
-        Assert.Equal(Api.Refusals.BrushRefused, Refused(flat with { Brush = new(2f, Curve: "cubic") }));
+        Assert.Equal(Refusals.BrushRefused, Refused(flat with { Symmetry = new(Axis: "w") }));
+        Assert.Equal(Refusals.BrushRefused, Refused(flat with { Symmetry = new("radial", Count: 65) }));
+        Assert.Equal(Refusals.BrushRefused, Refused(flat with { Brush = new(2f, Aspect: 17f) }));
+        Assert.Equal(Refusals.BrushRefused, Refused(flat with { Brush = new(5000f) }));
+        Assert.Equal(Refusals.BrushRefused, Refused(flat with { Brush = new(2f, Curve: "cubic") }));
         Assert.Empty(editor.Standing);
 
         editor.Apply(new([flat with { Symmetry = new("radial", "z", Count: 8), Brush = new(2f, SizeSpace: "model") }]));
@@ -330,9 +330,18 @@ public sealed class StackEditorPropertyTests {
     public void A_channel_can_be_removed_and_added_back_with_what_the_layers_held() {
         var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
         editor.Apply(new([new StackAddChannel("roughness")]));
-        editor.Apply(new([new StackSetLayer("paint", Values: new Dictionary<string, IReadOnlyList<float>> {
-            ["roughness"] = [0.25f, 0.25f, 0.25f, 1f]
-        })]));
+        editor.Apply(
+            new(
+                [
+                    new StackSetLayer(
+                        "paint",
+                        Values: new Dictionary<string, IReadOnlyList<float>> {
+                            ["roughness"] = [0.25f, 0.25f, 0.25f, 1f]
+                        }
+                    )
+                ]
+            )
+        );
         var layers = editor.Set.Layers;
 
         editor.Apply(new([new StackRemoveChannel("roughness")]));
@@ -358,8 +367,9 @@ public sealed class StackEditorPropertyTests {
 
         Assert.Equal(
             Refusals.ChannelLast,
-            Assert.Throws<StackEditRefusedException>(
-                    () => editor.Apply(new([new StackRemoveChannel(editor.Set.Channels.Single().Usage)]))
+            Assert.Throws<StackEditRefusedException>(() => editor.Apply(
+                        new([new StackRemoveChannel(editor.Set.Channels.Single().Usage)])
+                    )
                 )
                 .Code
         );

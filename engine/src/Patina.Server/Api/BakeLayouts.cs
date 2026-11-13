@@ -79,8 +79,7 @@ static class BakeLayouts {
         }
 
         var stack = StackDocuments.Parse(SharedFile.ReadAllText(LibraryLayout.Full(library.RootPath, set.Path)));
-        return ((material is null ? null : stack.SetNamed(material)) ?? stack.Sets.FirstOrDefault()) is { } own
-            ? new SetLayout(own.UvSet, stack.BaseWidth, stack.BaseHeight)
-            : null;
+        var own = (material is null ? null : stack.SetNamed(material)) ?? stack.Sets.FirstOrDefault();
+        return own is null ? null : new SetLayout(own.UvSet, stack.BaseWidth, stack.BaseHeight);
     }
 }

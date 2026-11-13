@@ -69,8 +69,8 @@ public sealed record BakeOptions {
     /// <summary>
     ///     Whether a bake of a project's texture set takes its height from the set's own shape at
     ///     <see cref="Resolution" />, in place of <see cref="Rows" />, so that a wide set and a square one baked together
-    ///     each bake at their own (#253). Null follows too; only false keeps <see cref="Rows" />. A bake of no texture set keeps
-    ///     <see cref="Rows" />, and a finished bake's options say the height it was made at and leave this out.
+    ///     each bake at their own (#253). Null follows too; only false keeps <see cref="Rows" />. A bake of no texture
+    ///     set keeps <see cref="Rows" />, and a finished bake's options say the height it was made at and leave this out.
     /// </summary>
     public bool? FollowSetShape { get; set; }
 

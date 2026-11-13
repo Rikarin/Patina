@@ -149,7 +149,7 @@ public sealed partial class StackProcessTests {
         var project = await MakeTexturingProjectAsync(Path.Combine(meshes, BakeFixture.LowFile), deadline.Token);
         var projectFolder = Path.Combine(Library, "projects", project);
         var state = await OpenAsync($"projects/{project}/housing.vxlayers", deadline.Token);
-        await EditAsync(state.Id, deadline.Token, new StackSetSettings(Width: 512, Height: 256));
+        await EditAsync(state.Id, deadline.Token, new StackSetSettings(512, 256));
         await SaveAsync(state.Id, deadline.Token);
         BakeRequest request = new() {
             High = [Path.Combine(meshes, BakeFixture.HighFile)],

@@ -1,5 +1,4 @@
 using Patina.Graphs;
-using Vixen.Core.Imaging;
 using Vixen.Graphics.Vulkan;
 using Vixen.Interchange;
 using Vixen.NodeGraph;
