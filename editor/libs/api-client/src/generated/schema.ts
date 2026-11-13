@@ -2156,6 +2156,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/builds/{id}/compare': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What differs from an earlier build: outputs by key, files by their bytes. */
+    get: operations['CompareBuilds'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/export/presets/{id}': {
     parameters: {
       query?: never;
@@ -2753,6 +2770,25 @@ export interface components {
       source: string;
       /** @description What it holds now. */
       preset: components['schemas']['BrushPreset'];
+    };
+    /** @description What differs between two builds (#217): their outputs' keys and their files' bytes, project by project. */
+    BuildComparison: {
+      /** @description The earlier build. */
+      before: string;
+      /** @description The later build. */
+      after: string;
+      /** @description Each project either build touched, by path, with what differs. */
+      projects: components['schemas']['ProjectComparison'][];
+      /**
+       * Format: int32
+       * @description Files whose bytes differ or that only one build wrote.
+       */
+      changedFiles: number;
+      /**
+       * Format: int32
+       * @description Files both builds wrote byte for byte the same.
+       */
+      sameFiles: number;
     };
     /**
      * @description What a build would do, from the build keys and with nothing run. int BuildPreview.Rebuilds and
@@ -3413,6 +3449,11 @@ export interface components {
       warnings: string[];
       /** @description Why it failed. */
       error?: null | string;
+      /**
+       * @description Each of IReadOnlyList&lt;string&gt; ExportReport.Files' SHA-256, in the same order, as the build left it, so that two builds can be
+       *     compared after the second has written over the first. Empty in a report from before builds kept them.
+       */
+      digests: string[];
     };
     /**
      * @description One texture set's changes over the whole export's (#153): its own size, padding, dithering and files. Null
@@ -3433,6 +3474,15 @@ export interface components {
       dither?: null | boolean;
       /** @description This set's files turned off or written in another format. */
       files?: null | components['schemas']['ExportFileChoice'][];
+    };
+    /** @description One exported file in two builds. */
+    FileComparison: {
+      /** @description The preset that wrote it. */
+      preset: string;
+      /** @description Where it is, below the export's folder, with forward slashes. */
+      file: string;
+      /** @description One of BuildChanges. */
+      change: string;
     };
     /** @description What a client may offer, with the dot. */
     FileFormats: {
@@ -4940,6 +4990,17 @@ export interface components {
        */
       uvSets: number;
     };
+    /** @description One output in two builds. */
+    OutputComparison: {
+      /** @description The output. */
+      name: string;
+      /** @description Its build key in the earlier build, or null when that build did not touch it. */
+      before?: null | string;
+      /** @description Its build key in the later build, or null. */
+      after?: null | string;
+      /** @description One of BuildChanges: the same key is the same result. */
+      change: string;
+    };
     /** @description One output in a project's report. */
     OutputReport: {
       /** @description The output. */
@@ -5104,6 +5165,27 @@ export interface components {
       project: string;
       /** @description What its texture sets are held to now. */
       checks: components['schemas']['ProjectCheckSettings'];
+    };
+    /** @description What differs in one project between two builds. */
+    ProjectComparison: {
+      /**
+       * Format: uuid
+       * @description The project.
+       */
+      id: string;
+      /** @description Its name. */
+      name: string;
+      /** @description Its path below `projects/`. */
+      path: string;
+      /**
+       * @description Which builds touched it: both, before or after. A build that leaves a project alone writes nothing of it, so a
+       *     project only one build touched has its files listed as that build left them.
+       */
+      touched: string;
+      /** @description Its outputs, with their keys in each build. */
+      outputs: components['schemas']['OutputComparison'][];
+      /** @description Its exported files, with their change. */
+      files: components['schemas']['FileComparison'][];
     };
     /** @description A project as it opens. */
     ProjectContents: {
@@ -14621,6 +14703,39 @@ export interface operations {
         };
         content: {
           'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CompareBuilds: {
+    parameters: {
+      query: {
+        before: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BuildComparison'];
         };
       };
       /** @description Not Found */

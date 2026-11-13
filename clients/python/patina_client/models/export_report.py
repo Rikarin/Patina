@@ -30,6 +30,9 @@ class ExportReport:
             files (list[str]): Its files, absolute.
             skipped (list[str]): What it left out, and why.
             warnings (list[str]): What needs a person.
+            digests (list[str]): Each of IReadOnlyList&lt;string&gt; ExportReport.Files' SHA-256, in the same order, as the
+                build left it, so that two builds can be
+                compared after the second has written over the first. Empty in a report from before builds kept them.
             folder (None | str | Unset): Where its files are.
             error (None | str | Unset): Why it failed.
      """
@@ -39,6 +42,7 @@ class ExportReport:
     files: list[str]
     skipped: list[str]
     warnings: list[str]
+    digests: list[str]
     folder: None | str | Unset = UNSET
     error: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -64,6 +68,10 @@ class ExportReport:
 
 
 
+        digests = self.digests
+
+
+
         folder: None | str | Unset
         if isinstance(self.folder, Unset):
             folder = UNSET
@@ -85,6 +93,7 @@ class ExportReport:
             "files": files,
             "skipped": skipped,
             "warnings": warnings,
+            "digests": digests,
         })
         if folder is not UNSET:
             field_dict["folder"] = folder
@@ -109,6 +118,9 @@ class ExportReport:
 
 
         warnings = cast(list[str], d.pop("warnings"))
+
+
+        digests = cast(list[str], d.pop("digests"))
 
 
         def _parse_folder(data: object) -> None | str | Unset:
@@ -137,6 +149,7 @@ class ExportReport:
             files=files,
             skipped=skipped,
             warnings=warnings,
+            digests=digests,
             folder=folder,
             error=error,
         )

@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export.Builds;
 using Patina.Library;
 using System.Diagnostics;
 using System.Net;
@@ -274,6 +275,37 @@ public sealed class ProcessTests : IDisposable {
         Assert.Equal(2, kept.ExitCode);
         Assert.Contains("one project", kept.Output, StringComparison.Ordinal);
         Assert.Equal(0, fine.ExitCode);
+    }
+
+    /// <summary><c>patina build compare</c> prints what differs between two builds' report folders, as JSON (#217).</summary>
+    [Fact]
+    public async Task The_cli_compares_two_builds() {
+        var project = new ProjectIdentity(Guid.NewGuid(), "Crate", "crate");
+        var file = Path.Combine(folder.FullName, "albedo.png");
+        string Build(string name, string text) {
+            File.WriteAllText(file, text);
+            var reports = Path.Combine(folder.FullName, name);
+            var journal = new BuildJournal(reports, name, DateTimeOffset.UnixEpoch);
+            journal.Ended(
+                "e",
+                project,
+                new ExportReport("unreal", BuildStatuses.Built, folder.FullName, [file], [], [], null) {
+                    Digests = BuildComparisons.Digests([file])
+                }
+            );
+            journal.Finish(0, 0, null, DateTimeOffset.UnixEpoch);
+            return reports;
+        }
+
+        var before = Build("one", "red");
+        var after = Build("two", "blue");
+
+        var compared = await PatinaAsync("build", "compare", before, after);
+        var missing = await PatinaAsync("build", "compare", before, folder.FullName);
+
+        Assert.Equal(0, compared.ExitCode);
+        Assert.Contains("\"change\": \"changed\"", compared.Output, StringComparison.Ordinal);
+        Assert.Equal(2, missing.ExitCode);
     }
 
     [Fact]

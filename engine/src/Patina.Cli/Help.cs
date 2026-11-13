@@ -16,6 +16,7 @@ static class Help {
         (["bake-maps"], "Bakes mesh maps from a high mesh onto a low one, on the CPU.", MeshMapCommand.Usage),
         (["package"], "Publishes a graph as a package: its compounds and pictures in one folder.",
             GraphCommands.PackageUsage),
+        (["build", "compare"], "Prints what differs between two builds, as JSON.", BuildCompareCommand.Usage),
         (["build"], "Rebuilds and exports a library's projects.", BuildCommand.Usage),
         (["version"], "Prints the version.", "  patina version"),
         (["help"], "Prints this, or one command's usage.", "  patina help [<command>]")

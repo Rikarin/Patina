@@ -93,6 +93,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(ProjectReport))]
 [JsonSerializable(typeof(LibraryReport))]
 [JsonSerializable(typeof(ProjectReportPage))]
+[JsonSerializable(typeof(BuildComparison))]
 [JsonSerializable(typeof(GraphNodeMatches))]
 [JsonSerializable(typeof(StackFindRequest), TypeInfoPropertyName = nameof(StackFindRequest))]
 [JsonSerializable(typeof(StackFound), TypeInfoPropertyName = nameof(StackFound))]

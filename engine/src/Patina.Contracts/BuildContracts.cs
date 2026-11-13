@@ -371,7 +371,13 @@ public sealed record ExportReport(
     IReadOnlyList<string> Skipped,
     IReadOnlyList<string> Warnings,
     string? Error
-);
+) {
+    /// <summary>
+    ///     Each of <see cref="Files" />' SHA-256, in the same order, as the build left it, so that two builds can be
+    ///     compared after the second has written over the first. Empty in a report from before builds kept them.
+    /// </summary>
+    public IReadOnlyList<string> Digests { get; init; } = [];
+}
 
 /// <summary>What a build did to one project. Only a project something happened to has one.</summary>
 /// <param name="Id">The project.</param>

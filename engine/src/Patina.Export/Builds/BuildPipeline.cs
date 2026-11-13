@@ -327,7 +327,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                     manifest.Skipped,
                     [..manifest.Warnings, ..delivered.Warnings],
                     null
-                )
+                ) { Digests = BuildComparisons.Digests(delivered.Files) }
             );
         } catch (BuildStepFailedException e) {
             journal.Ended(step, identity, FailedExport(preset.Id, e.Message));
