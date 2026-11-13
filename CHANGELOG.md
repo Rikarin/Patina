@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The brush under the pointer shows its stamp (#137): the viewport's ring becomes the brush's own stamp, its alpha, angle and stretch, drawn by the engine as one dab with nothing random, once the brush is large enough on the screen to read; a small brush keeps the ring. The 2D view shows the brush under the pointer too, at its size as the map is drawn. Through the API `POST /api/v1/stacks/{id}/brush-preview?stamp=true` draws the stamp.
 - A 3D mouse turns the viewport (#163): with a 3Dconnexion device plugged in, twisting or tipping the cap turns the model, sliding it slides the model, and pushing it away or pulling it back zooms, for as long as the cap is held; the first button frames the model. The desktop app reads the device's own reports, so no vendor driver or SDK is needed (ADR 0034).
 - The projection tool projects a material (#128): with a material from the shelf in the brush panel, it paints every channel the layer writes from the material's maps, fixed on the view where its frame stands, moved, scaled and turned by the same handles and keys as a picture, and tiled or not. A stencil still masks it. Through the API a stroke's material source takes a `frame`.
 - The projection tool and stencils work in the 2D view (#128): the picture, or the projected material, is drawn over the 2D view at the same place on the screen as over the viewport, and a stroke there reads it where each texel is drawn, at any zoom or pan. The stencil's keys work with the 2D view focused too.
@@ -218,6 +219,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A lasso fill with many corners costs far less on a large mesh (#129): the outline keeps its edges in bands of its height, so each point the fill tests crosses only the few edges at its height instead of every one.
 - A decal or a path no longer moves when its mesh maps come from a high poly mesh whose bounds differ from the low one's, when the model is swapped for one with other bounds, or when the position map is baked with the Cube, Sphere or None range. A bake now records the box its position map spans, and decals and paths are read through it, in the viewport and in every export. A bake made before this keeps the old behaviour until it is baked again.
 - Where a ribbon crosses itself, the later pass now lies over the earlier one, as tape would, instead of the nearer stretch showing alone; a half-clear ribbon is darker where it crosses.
 - A merged export says what it did not use: merged sets are one set of files at the export's size, so the Export dialog turns each set's own size off while Merge is on and says why, and an export asked for through the API with a set's own changes and Merge names those sets in its report.

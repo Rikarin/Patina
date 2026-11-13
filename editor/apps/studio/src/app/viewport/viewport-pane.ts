@@ -26,6 +26,7 @@ import { ViewOptions } from '../core/view-options';
 import { GraphViews } from '../graph/graph-views';
 import { DragType as LibraryDrag } from '../library/library-tree';
 import { ProjectStore } from '../library/project-store';
+import { BrushRing } from '../paint/brush-ring';
 import { MaterialUse } from '../paint/material-use';
 import { PaintStore, penOf } from '../paint/paint-store';
 import { ScreenPictureOverlay, handleStencilKeys } from '../paint/screen-picture';
@@ -112,7 +113,15 @@ const PickFile = '…';
 /** The docked viewport: frames from the Worker on a canvas, and orbit input going the other way. */
 @Component({
   selector: 'ptn-viewport',
-  imports: [XuiButtonImports, XuiSelectImports, ViewportDisplayPanel, ToolStrip, ScreenPictureOverlay, SurfaceGuide],
+  imports: [
+    XuiButtonImports,
+    XuiSelectImports,
+    ViewportDisplayPanel,
+    ToolStrip,
+    ScreenPictureOverlay,
+    SurfaceGuide,
+    BrushRing
+  ],
   providers: [ViewportClient],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
@@ -285,15 +294,13 @@ const PickFile = '…';
       }
       @if (paints()) {
         @if (brushAt(); as at) {
-          <div
-            class="pointer-events-none absolute rounded-full border border-white/70 mix-blend-difference"
+          <ptn-brush-ring
             data-testid="viewport-brush"
             [attr.data-space]="paint.brush().sizeSpace"
-            [style.height.px]="cursor() * 2"
-            [style.left.px]="at.x - cursor()"
-            [style.top.px]="at.y - cursor()"
-            [style.width.px]="cursor() * 2"
-          ></div>
+            [radius]="cursor()"
+            [x]="at.x"
+            [y]="at.y"
+          />
           @for (copy of mirrored(); track $index) {
             <div
               class="pointer-events-none absolute rounded-full border border-dashed border-sky-300/80"

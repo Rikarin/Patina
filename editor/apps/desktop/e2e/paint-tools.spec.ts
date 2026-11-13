@@ -384,6 +384,18 @@ test('a picture on the viewport projects through the brush, and as a stencil mas
 
 test('the projection tool paints a picture in the 2D view, and a material from the screen (#128)', async () => {
   await openOnMesh();
+  // The brush under the pointer is its own stamp on the viewport, and shows on the 2D view too (#137).
+  const middle = await at(0.5, 0.5);
+  await window.mouse.move(middle.x, middle.y);
+  await expect(window.getByTestId('viewport-brush')).toHaveAttribute('data-shape', 'stamp', { timeout: 30_000 });
+  await expect(window.getByTestId('brush-stamp')).toBeVisible();
+  const flatBox = await window.getByTestId('paint-picture').boundingBox();
+  if (flatBox) {
+    await window.mouse.move(flatBox.x + flatBox.width / 2, flatBox.y + flatBox.height / 2);
+  }
+
+  await expect(window.getByTestId('atlas-brush')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'brush-stamp-cursor.png') });
   const picture = join(scratch, 'checker.png');
   checker(picture);
   await answerOpen(app, picture);

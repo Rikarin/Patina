@@ -1462,7 +1462,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. A brush no stroke could take is refused with its reason. */
+    /** A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. With stamp, one stamp of it instead, as a cursor shows it: square, the stamp's long half-axis reaching the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke could take is refused with its reason. */
     post: operations['PreviewStackBrush'];
     delete?: never;
     options?: never;
@@ -12427,7 +12427,9 @@ export interface operations {
   };
   PreviewStackBrush: {
     parameters: {
-      query?: never;
+      query?: {
+        stamp?: boolean;
+      };
       header?: never;
       path: {
         id: string;

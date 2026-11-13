@@ -218,8 +218,8 @@ public sealed class StackEvaluator(
     }
 
     /// <summary>
-    ///     A picture of a brush, a stroke of it drawn small by the Worker into the preview cache, with the alphas this
-    ///     stack's strokes read. Not a stroke: nothing is journalled and the stack is not touched.
+    ///     A picture of a brush, a stroke of it drawn small by the Worker into the preview cache, or one stamp of it,
+    ///     with the alphas this stack's strokes read. Not a stroke: nothing is journalled and the stack is not touched.
     /// </summary>
     /// <remarks>It waits on nothing the stack does and needs no device, so it draws while a stroke evaluates.</remarks>
     /// <exception cref="TimeoutException">No Worker came.</exception>
@@ -227,12 +227,13 @@ public sealed class StackEvaluator(
     public async Task<string?> PreviewBrushAsync(
         StackSession session,
         StackBrush brush,
+        bool stamp,
         CancellationToken cancellationToken
     ) {
         var connection = await ConnectionAsync(cancellationToken);
         var folder = Path.GetDirectoryName(session.Path) ?? string.Empty;
         var reply = await connection.SendAsync(
-            new() { Type = IpcTypes.BrushPreview, BrushPreview = new(folder, brush, store.Root) },
+            new() { Type = IpcTypes.BrushPreview, BrushPreview = new(folder, brush, store.Root, stamp) },
             cancellationToken
         );
         return reply.ThumbnailHash;

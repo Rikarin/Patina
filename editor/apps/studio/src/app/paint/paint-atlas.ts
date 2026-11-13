@@ -20,6 +20,7 @@ import { messageOf } from '../core/messages';
 import { amount } from '../core/numbers';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
+import { BrushRing } from './brush-ring';
 import { PaintStore, penOf, toTexels } from './paint-store';
 import { ScreenPictureOverlay, handleStencilKeys } from './screen-picture';
 import { StrokeGesture } from './stroke-gesture';
@@ -30,7 +31,14 @@ const Painting = 'painting:';
 /** The stack flat, in UV space. It paints like the mesh does, and it is the whole picture for a layered material. */
 @Component({
   selector: 'ptn-paint-atlas',
-  imports: [XuiButtonImports, XuiNonIdealStateImports, XuiSelectImports, XuiSpinnerImports, ScreenPictureOverlay],
+  imports: [
+    XuiButtonImports,
+    XuiNonIdealStateImports,
+    XuiSelectImports,
+    XuiSpinnerImports,
+    ScreenPictureOverlay,
+    BrushRing
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2 [container-type:size]',
@@ -123,7 +131,7 @@ const Painting = 'painting:';
             (pointermove)="move($event)"
             (pointerup)="up()"
             (pointercancel)="up()"
-            (pointerleave)="under.set(null)"
+            (pointerleave)="under.set(null); brushAt.set(null)"
             (dblclick)="gesture.finish()"
           />
           @if (wired() && wire(); as layout) {
@@ -171,6 +179,9 @@ const Painting = 'painting:';
         </div>
         <ptn-screen-picture of="material" view="atlas" />
         <ptn-screen-picture view="atlas" />
+        @if (brushAt(); as at) {
+          <ptn-brush-ring data-testid="atlas-brush" [radius]="at.radius" [x]="at.x" [y]="at.y" />
+        }
         @if (under(); as at) {
           <span
             class="readout chrome-bar absolute bottom-3 left-3 z-10 rounded px-1.5 py-0.5 text-xs"
@@ -292,6 +303,12 @@ export class PaintAtlas {
   /** The picture's own zoom and pan, which leave where a stamp lands alone: a stamp reads the box as drawn. */
   protected readonly scale = signal(1);
   protected readonly shift = signal<readonly [number, number]>([0, 0]);
+
+  /**
+   * The brush under the pointer, in the view's pixels, while a tool that stamps is in hand: its radius as the map is
+   * drawn, so a size in texels shrinks and grows with the zoom and a size on the screen does not.
+   */
+  protected readonly brushAt = signal<{ x: number; y: number; radius: number } | null>(null);
 
   /** Where the pointer is on the map: its UV, v down as the map lies, and its texel. */
   protected readonly under = signal<{ u: string; v: string; x: number; y: number } | null>(null);
@@ -416,6 +433,7 @@ export class PaintAtlas {
       x: Math.min(width - 1, Math.max(0, Math.floor(u * width))),
       y: Math.min(height - 1, Math.max(0, Math.floor(v * height)))
     });
+    this.brushAt.set(this.ring(event, box));
     if (this.panning) {
       this.shift.update(([x, y]) => [x + event.movementX, y + event.movementY]);
     } else if (this.painting) {
@@ -429,6 +447,20 @@ export class PaintAtlas {
       this.painting = false;
       this.gesture.release();
     }
+  }
+
+  /** The brush's ring under the pointer, or null where nothing stamps: a fill, the picker, or no layer to paint. */
+  private ring(event: PointerEvent, box: DOMRect): { x: number; y: number; radius: number } | null {
+    const tool = this.store.tool();
+    const space = this.store.brush().sizeSpace;
+    if (!this.store.canPaint() || tool === 'fill' || tool === 'picker' || space === 'model') {
+      return null;
+    }
+
+    const view = this.host.nativeElement.getBoundingClientRect();
+    const texels = this.side()[0] / Math.max(box.width, 1);
+    const radius = space === 'texture' ? this.store.radius() / texels : this.store.radius();
+    return { x: event.clientX - view.left, y: event.clientY - view.top, radius };
   }
 
   private stamp(event: PointerEvent) {

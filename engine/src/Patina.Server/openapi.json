@@ -5608,7 +5608,7 @@
         "tags": [
           "Stacks"
         ],
-        "summary": "A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack\u0027s strokes read. A brush no stroke could take is refused with its reason.",
+        "summary": "A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack\u0027s strokes read. With stamp, one stamp of it instead, as a cursor shows it: square, the stamp\u0027s long half-axis reaching the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke could take is refused with its reason.",
         "operationId": "PreviewStackBrush",
         "parameters": [
           {
@@ -5617,6 +5617,14 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "stamp",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           }
         ],

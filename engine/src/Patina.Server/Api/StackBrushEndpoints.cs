@@ -18,8 +18,10 @@ static class StackBrushEndpoints {
             .Describe(
                 "PreviewStackBrush",
                 "A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising "
-                + "and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. A brush "
-                + "no stroke could take is refused with its reason.",
+                + "and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. With "
+                + "stamp, one stamp of it instead, as a cursor shows it: square, the stamp's long half-axis reaching "
+                + "the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke "
+                + "could take is refused with its reason.",
                 Missing,
                 Refused,
                 Unavailable
@@ -40,7 +42,8 @@ static class StackBrushEndpoints {
         StackBrush brush,
         StackSessions sessions,
         StackEvaluator evaluator,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        bool stamp = false
     ) {
         if (brush.Problem() is { } problem) {
             return Refusals.Problem(problem, Refused, Refusals.BrushRefused, Refusals.Reason(problem));
@@ -49,7 +52,7 @@ static class StackBrushEndpoints {
         return await StackEndpoints.AskWorkerAsync(
             id,
             sessions,
-            async session => new StackBrushPreview(await evaluator.PreviewBrushAsync(session, brush, cancellationToken))
+            async session => new StackBrushPreview(await evaluator.PreviewBrushAsync(session, brush, stamp, cancellationToken))
         );
     }
 

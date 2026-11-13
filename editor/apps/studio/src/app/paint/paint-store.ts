@@ -2031,6 +2031,15 @@ export class PaintStore {
 
   /** A picture of a brush, a stroke of it drawn small by the Worker (#123), or null with no stack to draw it for. */
   async previewBrush(brush: StackBrush): Promise<Blob | null> {
+    return this.brushPicture(brush, false);
+  }
+
+  /** One stamp of a brush, square, as a cursor shows it (#137), or null with no stack open. */
+  async stampPreview(brush: StackBrush): Promise<Blob | null> {
+    return this.brushPicture(brush, true);
+  }
+
+  private async brushPicture(brush: StackBrush, stamp: boolean): Promise<Blob | null> {
     const id = this.state()?.id;
     if (!id) {
       return null;
@@ -2038,7 +2047,10 @@ export class PaintStore {
 
     const client = await this.api();
     const { hash } = unwrap(
-      await client.POST('/api/v1/stacks/{id}/brush-preview', { params: { path: { id } }, body: brush })
+      await client.POST('/api/v1/stacks/{id}/brush-preview', {
+        params: { path: { id }, query: stamp ? { stamp } : {} },
+        body: brush
+      })
     );
     return hash
       ? unwrap(await client.GET('/api/v1/previews/{hash}', { params: { path: { hash } }, parseAs: 'blob' }))
