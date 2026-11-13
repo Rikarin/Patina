@@ -479,6 +479,9 @@ export class ViewportPane implements AfterViewInit {
 
   constructor() {
     this.installCommands();
+    // Properties is outside this pane and cannot reach its client, so the camera it measures through is kept on the store.
+    effect(() => this.paint.viewCamera.set(this.viewport.camera()));
+    this.destroyRef.onDestroy(() => this.paint.viewCamera.set(null));
     // A path's points are places on this picture, so one the view has left is painted as it was placed.
     effect(() => {
       this.view();

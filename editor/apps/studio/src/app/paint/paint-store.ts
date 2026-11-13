@@ -367,6 +367,11 @@ export class PaintStore {
    * its path, until it is set back to null.
    */
   readonly placing = signal<'decal' | 'path' | null>(null);
+  /**
+   * The camera the viewport looks through, which the viewport keeps here for the panes outside it, such as
+   * Properties' Warp to Geometry: null while no viewport is open.
+   */
+  readonly viewCamera = signal<ViewportCameraState | null>(null);
   /** Whether the viewport shows the chosen decal's warp grid, whose points drag the picture (#134). */
   readonly warping = signal(false);
   /** The mesh maps layers want and no bake has given, which read as grey until one does. */

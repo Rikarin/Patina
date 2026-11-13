@@ -7,7 +7,6 @@ import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { labelsOf, valuesOf } from '../core/labels';
 import { toDegrees, toRadians } from '../core/numbers';
-import { ViewportClient } from '../viewport/viewport-client';
 import { PaintStore } from './paint-store';
 import { Unwarped } from './surface-frame';
 
@@ -60,7 +59,7 @@ const Samplings: readonly { value: string; label: string }[] = [
             size="sm"
             variant="ghost"
             data-testid="surface-warp-geometry"
-            [disabled]="!onMesh()"
+            [disabled]="!onMesh() || paint.viewCamera() === null"
             title="Spreads the picture evenly along the surface under the decal, measured as the viewport sees it"
             (click)="warpToGeometry()"
           >
@@ -263,7 +262,6 @@ const Samplings: readonly { value: string; label: string }[] = [
 })
 export class SurfaceFields {
   protected readonly paint = inject(PaintStore);
-  private readonly viewport = inject(ViewportClient);
   readonly layer = input.required<StackLayer>();
   protected readonly samplings = valuesOf(Samplings);
   protected readonly samplingName = labelsOf(Samplings);
@@ -273,7 +271,10 @@ export class SurfaceFields {
   protected readonly path = computed(() => this.layer().path ?? null);
   protected readonly count = computed(() => this.path()?.points.length ?? 0);
   protected warpToGeometry(): void {
-    void this.paint.warpToGeometry(this.viewport.camera());
+    const camera = this.paint.viewCamera();
+    if (camera) {
+      void this.paint.warpToGeometry(camera);
+    }
   }
 
   protected readonly warped = computed(() => {
