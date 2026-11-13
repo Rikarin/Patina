@@ -135,6 +135,20 @@ const ProjectKinds = [
               (valueChange)="$event && resolution.set($event)"
             />
           </xui-form-field>
+          @if (layered()) {
+            <xui-form-field label="Height">
+              <xui-select
+                class="w-full"
+                data-testid="new-project-rows"
+                title="A model laid out on a sheet wider than it is tall paints at that shape"
+                [filterable]="false"
+                [itemText]="rowsName"
+                [items]="rowChoices()"
+                [value]="rows()"
+                (valueChange)="rows.set($event ?? 0)"
+              />
+            </xui-form-field>
+          }
           @if (folder()) {
             <p class="text-foreground-muted text-xs" data-testid="new-project-folder">In {{ folder() }}</p>
           }
@@ -193,7 +207,13 @@ export class NewProjectDialog {
   protected readonly sides = this.status.textureSides;
   protected readonly kinds = valuesOf(ProjectKinds);
   protected readonly kindName = labelsOf(ProjectKinds);
-  protected readonly sideName = (side: number): string => `${String(side)} × ${String(side)}`;
+  protected readonly sideName = (side: number): string =>
+    `${String(side)} × ${String(this.layered() && this.rows() ? this.rows() : side)}`;
+  /** The height of a document with layers, or 0 for as tall as it is wide (#144). A graph is always square. */
+  protected readonly rows = signal(0);
+  protected readonly rowChoices = computed(() => [0, ...this.sides()]);
+  protected readonly rowsName = (rows: number): string => (rows ? `${String(rows)} texels` : 'Same as width');
+  protected readonly layered = computed(() => this.kind() === 'texturing' || this.kind() === 'layered-material');
   protected readonly kind = linkedSignal(() => this.startKind());
   protected readonly mesh = signal('');
   protected readonly image = signal('');
@@ -244,6 +264,7 @@ export class NewProjectDialog {
         mesh: this.mesh().trim() || null,
         high: (this.kind() === 'texturing' && this.high().trim()) || null,
         resolution: this.resolution(),
+        rows: (this.layered() && this.rows()) || null,
         kind: this.kind(),
         image: this.image() || null
       });

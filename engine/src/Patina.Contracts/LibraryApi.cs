@@ -71,6 +71,10 @@ public sealed record ProjectPage(IReadOnlyList<ProjectSummary> Items, int Total,
 /// </param>
 /// <param name="Image">The picture an <c>image-material</c> starts from, on the Server\'s machine.</param>
 /// <param name="High">The detailed mesh it bakes from, on the Server's machine.</param>
+/// <param name="Rows">
+///     The height of a stack it starts with, when it is not as tall as <paramref name="Resolution" /> is wide (#144):
+///     a model laid out on a 2:1 sheet paints at 2048 × 1024. Null is square. A graph is always square.
+/// </param>
 public sealed record ProjectCreateRequest(
     string Name,
     string? Folder = null,
@@ -79,7 +83,8 @@ public sealed record ProjectCreateRequest(
     int? Resolution = null,
     string? Kind = null,
     string? Image = null,
-    string? High = null
+    string? High = null,
+    int? Rows = null
 );
 
 /// <summary>A result of a bake in a project's folder.</summary>
@@ -323,13 +328,15 @@ public sealed record ProjectViewportRequest(string Project, ViewportDisplay View
 /// <param name="Mesh">The mesh a <c>texturing</c> document is on.</param>
 /// <param name="Resolution">The width and height of a stack, or the side a graph evaluates at. Null is 2048.</param>
 /// <param name="Image">The picture an <c>image-material</c> starts from, on the Server's machine.</param>
+/// <param name="Rows">The height of a stack, when it is not square. Null is as tall as it is wide.</param>
 public sealed record ProjectDocumentRequest(
     string Project,
     string Kind,
     string Name,
     Guid? Mesh = null,
     int? Resolution = null,
-    string? Image = null
+    string? Image = null,
+    int? Rows = null
 );
 
 /// <summary>The body of <c>PATCH /api/v1/library/project/document/role</c>.</summary>

@@ -112,7 +112,8 @@ static class LibraryEndpoints {
             return NoLibrary();
         }
 
-        if (LibraryTreeEndpoints.BadResolution(request.Resolution) is { } bad) {
+        if ((LibraryTreeEndpoints.BadResolution(request.Resolution) ?? LibraryTreeEndpoints.BadResolution(request.Rows))
+            is { } bad) {
             return bad;
         }
 
@@ -139,7 +140,15 @@ static class LibraryEndpoints {
             if (kind is not null) {
                 LibraryTreeEndpoints.MakeDocument(
                     library,
-                    new(project.Path, kind, request.Name, added?.Id.Value, request.Resolution, request.Image)
+                    new(
+                        project.Path,
+                        kind,
+                        request.Name,
+                        added?.Id.Value,
+                        request.Resolution,
+                        request.Image,
+                        request.Rows
+                    )
                 );
             }
 

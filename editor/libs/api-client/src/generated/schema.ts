@@ -4921,6 +4921,12 @@ export interface components {
       image?: null | string;
       /** @description The detailed mesh it bakes from, on the Server's machine. */
       high?: null | string;
+      /**
+       * Format: int32
+       * @description The height of a stack it starts with, when it is not as tall as Resolution is wide (#144):
+       *     a model laid out on a 2:1 sheet paints at 2048 × 1024. Null is square. A graph is always square.
+       */
+      rows?: null | number;
     };
     /** @description The body of `POST /api/v1/library/project/document/copy`. */
     ProjectDocumentCopyRequest: {
@@ -5013,6 +5019,11 @@ export interface components {
       resolution?: null | number;
       /** @description The picture an `image-material` starts from, on the Server's machine. */
       image?: null | string;
+      /**
+       * Format: int32
+       * @description The height of a stack, when it is not square. Null is as tall as it is wide.
+       */
+      rows?: null | number;
     };
     /** @description The body of `PATCH /api/v1/library/project/document/role`. */
     ProjectDocumentRoleRequest: {

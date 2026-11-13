@@ -14228,6 +14228,14 @@
               "string"
             ],
             "description": "The detailed mesh it bakes from, on the Server\u0027s machine."
+          },
+          "rows": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The height of a stack it starts with, when it is not as tall as Resolution is wide (#144):\na model laid out on a 2:1 sheet paints at 2048 \u00D7 1024. Null is square. A graph is always square.",
+            "format": "int32"
           }
         },
         "description": "The body of \u0060POST /api/v1/library/projects\u0060."
@@ -14422,6 +14430,14 @@
               "string"
             ],
             "description": "The picture an \u0060image-material\u0060 starts from, on the Server\u0027s machine."
+          },
+          "rows": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The height of a stack, when it is not square. Null is as tall as it is wide.",
+            "format": "int32"
           }
         },
         "description": "The body of \u0060POST /api/v1/library/project/documents\u0060."
