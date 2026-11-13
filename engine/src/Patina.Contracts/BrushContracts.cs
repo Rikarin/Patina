@@ -174,6 +174,12 @@ public sealed record BrushPresetUpdateRequest(string Project, string Source, Bru
 /// </param>
 /// <param name="PlanarAxis">For a planar material, the axis it projects along: X, Y or Z.</param>
 /// <param name="Placement">For a material, how often its maps repeat, and how they turn and move.</param>
+/// <param name="Frame">
+///     For a material, where its maps stand fixed on the stroke's picture, as the projection tool projects one from the
+///     screen: each texel takes the map where it lands there, one of the map's pixels covering
+///     <see cref="StackFrame.Scale" /> of the stroke's units. Null lays the maps as <paramref name="Projection" />
+///     says. A material projected from the screen is not also laid in the model's space.
+/// </param>
 public sealed record StackStrokeSource(
     string Kind,
     string? Graph = null,
@@ -181,8 +187,16 @@ public sealed record StackStrokeSource(
     StackPicture? Picture = null,
     string? Projection = null,
     string? PlanarAxis = null,
-    StackPlacement? Placement = null
+    StackPlacement? Placement = null,
+    StackFrame? Frame = null
 );
+
+/// <summary>Where something fixed on a stroke's picture stands: moved, scaled and turned there, and perhaps tiled.</summary>
+/// <param name="Centre">Where its middle is on the stroke's picture, in the units stamps are in: two numbers.</param>
+/// <param name="Scale">How many of those units one of its pixels covers, above zero.</param>
+/// <param name="Angle">How far it is turned, clockwise on the screen, in radians.</param>
+/// <param name="Tiled">Whether it repeats past its edges, or is nothing there.</param>
+public sealed record StackFrame(IReadOnlyList<float> Centre, float Scale = 1f, float Angle = 0f, bool Tiled = false);
 
 /// <summary>A picture of a brush: a stroke of it drawn small, under <c>/previews/{hash}</c>.</summary>
 /// <param name="Hash">Its name in the preview cache, or null when the brush draws nothing.</param>
@@ -292,6 +306,16 @@ public static class StackBrushes {
             return $"'{axis}' is not an axis.";
         }
 
+        if (source.Frame is { } frame) {
+            if (source.Projection is not (null or "Uv")) {
+                return "A material projected from the screen is not also laid in the model's space.";
+            }
+
+            if (FrameProblem(frame.Centre, frame.Scale, frame.Angle) is { } problem) {
+                return problem;
+            }
+        }
+
         if (source.Placement is not { } placement) {
             return null;
         }
@@ -340,11 +364,16 @@ public static class StackBrushes {
             return "A picture on the screen names its file.";
         }
 
-        if (picture.Centre is not [var x, var y] || !float.IsFinite(x) || !float.IsFinite(y)) {
+        return FrameProblem(picture.Centre, picture.Scale, picture.Angle);
+    }
+
+    /// <summary>What is wrong with where something stands on the screen, or null.</summary>
+    static string? FrameProblem(IReadOnlyList<float> centre, float scale, float angle) {
+        if (centre is not [var x, var y] || !float.IsFinite(x) || !float.IsFinite(y)) {
             return "A picture on the screen stands at two numbers.";
         }
 
-        return picture.Scale > 0f && float.IsFinite(picture.Scale) && float.IsFinite(picture.Angle)
+        return scale > 0f && float.IsFinite(scale) && float.IsFinite(angle)
             ? null
             : "A picture on the screen has a size above zero and an angle.";
     }

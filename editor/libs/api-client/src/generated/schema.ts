@@ -6400,6 +6400,28 @@ export interface components {
        */
       layer?: null | string;
     };
+    /** @description Where something fixed on a stroke's picture stands: moved, scaled and turned there, and perhaps tiled. */
+    StackFrame: {
+      /** @description Where its middle is on the stroke's picture, in the units stamps are in: two numbers. */
+      centre: number[];
+      /**
+       * Format: float
+       * @description How many of those units one of its pixels covers, above zero.
+       * @default 1
+       */
+      scale: number;
+      /**
+       * Format: float
+       * @description How far it is turned, clockwise on the screen, in radians.
+       * @default 0
+       */
+      angle: number;
+      /**
+       * @description Whether it repeats past its edges, or is nothing there.
+       * @default false
+       */
+      tiled: boolean;
+    };
     /** @description One colour of a stack's id map. */
     StackIdColour: {
       /** @description Red, green and blue, 0 to 1, as the map stores them. */
@@ -7076,6 +7098,7 @@ export interface components {
       /** @description For a planar material, the axis it projects along: X, Y or Z. */
       planarAxis?: null | string;
       placement?: null | components['schemas']['StackPlacement'];
+      frame?: null | components['schemas']['StackFrame'];
     };
     /** @description An open stack, for a list. */
     StackSummary: {
