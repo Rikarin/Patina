@@ -100,7 +100,9 @@ public sealed class BakePreviewSession(WorkerLink worker) : IDisposable {
             try {
                 var reply = await connection.SendAsync(
                     new() {
-                        Type = IpcTypes.ViewportBakePreview, BakePreview = showing ?? new(), BakePreviewIsolation = alone
+                        Type = IpcTypes.ViewportBakePreview,
+                        BakePreview = showing ?? new(),
+                        BakePreviewIsolation = alone
                     },
                     cancellationToken
                 );

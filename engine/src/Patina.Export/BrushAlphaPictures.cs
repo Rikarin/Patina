@@ -9,8 +9,8 @@ namespace Patina.Export;
 /// <remarks>
 ///     ⚠ <b>A picture with any see-through texel is read by its opacity, and an opaque one by its brightness.</b> An
 ///     alpha drawn as a shape on a clear ground is a shape whatever colour it was painted in, and one drawn white on
-///     black has nothing in its opacity to read. Reading only the red, as the first version did, made a black shape on a
-///     clear ground paint nothing.
+///     black has nothing in its opacity to read. Reading only the red, as the first version did, made a black shape on
+///     a clear ground paint nothing.
 /// </remarks>
 public static class BrushAlphaPictures {
     /// <summary>Reads a picture file as an alpha's coverage, top row first.</summary>

@@ -68,6 +68,10 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
     /// </summary>
     public IEnumerable<TextureSetAsset> Siblings(StackSession asking) {
         ArgumentNullException.ThrowIfNull(asking);
+        return SiblingsOf(asking);
+    }
+
+    IEnumerable<TextureSetAsset> SiblingsOf(StackSession asking) {
         foreach (var open in table.All) {
             if (open != asking && open.Folder == asking.Folder && open.Published is { } set) {
                 yield return set;

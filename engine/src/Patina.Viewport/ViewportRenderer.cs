@@ -45,6 +45,7 @@ public sealed class ViewportRenderer : IDisposable {
 
     /// <summary>The mesh the marks were last made for, so a new one, or a new isolation, makes them again.</summary>
     ViewportMesh? markedOn;
+
     readonly ViewportShadows shadows;
     readonly ViewportPost post;
     readonly ViewportShaders shaders;
