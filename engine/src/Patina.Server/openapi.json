@@ -8248,7 +8248,7 @@
               "null",
               "boolean"
             ],
-            "description": "Whether a bake of a project\u0027s texture set takes its height from the set\u0027s own shape at\nint BakeOptions.Resolution, in place of int? BakeOptions.Rows, so that a wide set and a square one baked together\neach bake at their own (#253). Null follows too; only false keeps int? BakeOptions.Rows. A bake of no texture set keeps\nint? BakeOptions.Rows, and a finished bake\u0027s options say the height it was made at and leave this out."
+            "description": "Whether a bake of a project\u0027s texture set takes its height from the set\u0027s own shape at\nint BakeOptions.Resolution, in place of int? BakeOptions.Rows, so that a wide set and a square one baked together\neach bake at their own (#253). Null follows too; only false keeps int? BakeOptions.Rows. A bake of no texture\nset keeps int? BakeOptions.Rows, and a finished bake\u0027s options say the height it was made at and leave this out."
           },
           "format": {
             "type": "string",

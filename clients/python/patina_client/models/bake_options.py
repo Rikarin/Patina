@@ -56,6 +56,12 @@ class BakeOptions:
             rows (int | None | Unset): The atlas's height in texels, or null for as many as int BakeOptions.Resolution: a
                 square bake. A texture set
                 authored wider than it is tall bakes at its own shape, so its maps sit under its layers unresampled (#147).
+            follow_set_shape (bool | None | Unset): Whether a bake of a project's texture set takes its height from the
+                set's own shape at
+                int BakeOptions.Resolution, in place of int? BakeOptions.Rows, so that a wide set and a square one baked
+                together
+                each bake at their own (#253). Null follows too; only false keeps int? BakeOptions.Rows. A bake of no texture
+                set keeps int? BakeOptions.Rows, and a finished bake's options say the height it was made at and leave this out.
      """
 
     resolution: int
@@ -73,6 +79,7 @@ class BakeOptions:
     rounding: BakeRoundingOptions
     colour: BakeColourOptions
     rows: int | None | Unset = UNSET
+    follow_set_shape: bool | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -124,6 +131,12 @@ class BakeOptions:
         else:
             rows = self.rows
 
+        follow_set_shape: bool | None | Unset
+        if isinstance(self.follow_set_shape, Unset):
+            follow_set_shape = UNSET
+        else:
+            follow_set_shape = self.follow_set_shape
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -145,6 +158,8 @@ class BakeOptions:
         })
         if rows is not UNSET:
             field_dict["rows"] = rows
+        if follow_set_shape is not UNSET:
+            field_dict["followSetShape"] = follow_set_shape
 
         return field_dict
 
@@ -224,6 +239,16 @@ class BakeOptions:
         rows = _parse_rows(d.pop("rows", UNSET))
 
 
+        def _parse_follow_set_shape(data: object) -> bool | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(bool | None | Unset, data)
+
+        follow_set_shape = _parse_follow_set_shape(d.pop("followSetShape", UNSET))
+
+
         bake_options = cls(
             resolution=resolution,
             format_=format_,
@@ -240,6 +265,7 @@ class BakeOptions:
             rounding=rounding,
             colour=colour,
             rows=rows,
+            follow_set_shape=follow_set_shape,
         )
 
 

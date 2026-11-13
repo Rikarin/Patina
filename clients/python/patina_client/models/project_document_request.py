@@ -33,6 +33,7 @@ class ProjectDocumentRequest:
             resolution (int | None | Unset): The width and height of a stack, or the side a graph evaluates at. Null is
                 2048.
             image (None | str | Unset): The picture an `image-material` starts from, on the Server's machine.
+            rows (int | None | Unset): The height of a stack, when it is not square. Null is as tall as it is wide.
      """
 
     project: str
@@ -41,6 +42,7 @@ class ProjectDocumentRequest:
     mesh: None | Unset | UUID = UNSET
     resolution: int | None | Unset = UNSET
     image: None | str | Unset = UNSET
+    rows: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -74,6 +76,12 @@ class ProjectDocumentRequest:
         else:
             image = self.image
 
+        rows: int | None | Unset
+        if isinstance(self.rows, Unset):
+            rows = UNSET
+        else:
+            rows = self.rows
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -88,6 +96,8 @@ class ProjectDocumentRequest:
             field_dict["resolution"] = resolution
         if image is not UNSET:
             field_dict["image"] = image
+        if rows is not UNSET:
+            field_dict["rows"] = rows
 
         return field_dict
 
@@ -142,6 +152,16 @@ class ProjectDocumentRequest:
         image = _parse_image(d.pop("image", UNSET))
 
 
+        def _parse_rows(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        rows = _parse_rows(d.pop("rows", UNSET))
+
+
         project_document_request = cls(
             project=project,
             kind=kind,
@@ -149,6 +169,7 @@ class ProjectDocumentRequest:
             mesh=mesh,
             resolution=resolution,
             image=image,
+            rows=rows,
         )
 
 

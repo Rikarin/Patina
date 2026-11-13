@@ -267,6 +267,8 @@ from .stack_command_stack_nest_layer import StackCommandStackNestLayer
 from .stack_command_stack_nest_layer_op import StackCommandStackNestLayerOp
 from .stack_command_stack_paste_layers import StackCommandStackPasteLayers
 from .stack_command_stack_paste_layers_op import StackCommandStackPasteLayersOp
+from .stack_command_stack_remove_channel import StackCommandStackRemoveChannel
+from .stack_command_stack_remove_channel_op import StackCommandStackRemoveChannelOp
 from .stack_command_stack_remove_layer import StackCommandStackRemoveLayer
 from .stack_command_stack_remove_layer_op import StackCommandStackRemoveLayerOp
 from .stack_command_stack_remove_mask_layer import StackCommandStackRemoveMaskLayer
@@ -653,6 +655,8 @@ __all__ = (
     "StackCommandStackNestLayerOp",
     "StackCommandStackPasteLayers",
     "StackCommandStackPasteLayersOp",
+    "StackCommandStackRemoveChannel",
+    "StackCommandStackRemoveChannelOp",
     "StackCommandStackRemoveLayer",
     "StackCommandStackRemoveLayerOp",
     "StackCommandStackRemoveMaskLayer",

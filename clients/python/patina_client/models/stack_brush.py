@@ -33,7 +33,7 @@ class StackBrush:
                 Default: 0.15.
             falloff (float): How soft its edge is, 0 to 1. Default: 0.5.
             angle (float): Its fixed rotation, in radians. Default: 0.0.
-            rotation (str): fixed, along or random. Default: 'fixed'.
+            rotation (str): fixed, along, random, pen (the barrel's turn) or tilt (the way the pen leans). Default: 'fixed'.
             position_jitter (float): How far a stamp strays, as a share of the radius, 0 to 1. Default: 0.0.
             angle_jitter (float): How far a stamp turns either way, in radians. Default: 0.0.
             size_jitter (float): How much of its radius a stamp can lose, 0 to 1. Default: 0.0.
@@ -72,6 +72,10 @@ class StackBrush:
                 start there sends
                 where the brush stood as IReadOnlyList&lt;float&gt;? StackStroke.Resume; the brush only says whether to.
                 Default: False.
+            tilt_size (float): How much of the radius a pen held upright takes off, 0 to 1: a pen laid over paints the whole
+                radius, as a
+                pencil's side paints wider. A mouse is upright, so a brush with any of this paints smaller under one. Default:
+                0.0.
             alpha (None | str | Unset): A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or
                 null.
      """
@@ -100,6 +104,7 @@ class StackBrush:
     occlusion_tolerance: float = 2.0
     facing: float = 1.5707964
     resume: bool = False
+    tilt_size: float = 0.0
     alpha: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -156,6 +161,8 @@ class StackBrush:
 
         resume = self.resume
 
+        tilt_size = self.tilt_size
+
         alpha: None | str | Unset
         if isinstance(self.alpha, Unset):
             alpha = UNSET
@@ -190,6 +197,7 @@ class StackBrush:
             "occlusionTolerance": occlusion_tolerance,
             "facing": facing,
             "resume": resume,
+            "tiltSize": tilt_size,
         })
         if alpha is not UNSET:
             field_dict["alpha"] = alpha
@@ -249,6 +257,8 @@ class StackBrush:
 
         resume = d.pop("resume")
 
+        tilt_size = d.pop("tiltSize")
+
         def _parse_alpha(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -284,6 +294,7 @@ class StackBrush:
             occlusion_tolerance=occlusion_tolerance,
             facing=facing,
             resume=resume,
+            tilt_size=tilt_size,
             alpha=alpha,
         )
 
