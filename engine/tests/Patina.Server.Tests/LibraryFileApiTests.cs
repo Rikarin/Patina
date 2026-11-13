@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using System.Net;
+using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
 
@@ -58,9 +59,11 @@ public sealed partial class LibraryTreeApiTests {
     public async Task A_picture_the_library_holds_comes_into_a_project_by_its_path() {
         await MakeCrateAsync();
         var other = Directory.CreateDirectory(Path.Combine(server.Library, "projects/barrel/pictures"));
-        await File.WriteAllTextAsync(Path.Combine(other.FullName, "wood.png"), "wood", Token);
+        byte[] wood = PngCodec.Encode8(1, 1, 3, [120, 80, 40]);
+        await File.WriteAllBytesAsync(Path.Combine(other.FullName, "wood.png"), wood, Token);
         var own = Directory.CreateDirectory(Path.Combine(server.Library, "projects/crate/pictures"));
-        await File.WriteAllTextAsync(Path.Combine(own.FullName, "rust.png"), "rust", Token);
+        byte[] rust = PngCodec.Encode8(1, 1, 3, [150, 60, 20]);
+        await File.WriteAllBytesAsync(Path.Combine(own.FullName, "rust.png"), rust, Token);
         await File.WriteAllTextAsync(Path.Combine(files.FullName, "outside.png"), "outside", Token);
         var outside = Path.GetRelativePath(server.Library, Path.Combine(files.FullName, "outside.png"));
 
@@ -84,7 +87,7 @@ public sealed partial class LibraryTreeApiTests {
             "projects/crate/pictures/wood.png",
             (await copied.Content.ReadFromJsonAsync<ProjectPicture>(Token))!.Path
         );
-        Assert.Equal("wood", await File.ReadAllTextAsync(Path.Combine(own.FullName, "wood.png"), Token));
+        Assert.Equal(wood, await File.ReadAllBytesAsync(Path.Combine(own.FullName, "wood.png"), Token));
         Assert.Equal(
             "projects/crate/pictures/rust.png",
             (await kept.Content.ReadFromJsonAsync<ProjectPicture>(Token))!.Path

@@ -217,6 +217,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Changing a texture set's Width or Height marks its mesh maps out of date when they were baked at another shape (#262): Layers, the Bake dialog and Checks say they need baking again, as they do after a mesh or UV set change. Through the API a set's and a document's `bakeStale` says `shape`.
 - A bake that follows a texture set's shape reads the set as it is open, so Quick Bake right after changing Height bakes at the new shape before the set is saved (#253).
+- A TGA, PSD, TIFF, EXR or HDR picture in the library shows in the picker and wherever a client shows a library picture: `GET /api/v1/library/picture` serves any picture, a PNG or JPEG as its file and the rest as an 8-bit PNG of it, where before it answered 404 (#260).
+- A broken picture, or a file of another kind under a picture's name, is refused when it is brought into a project, with the code `picture-unreadable`, instead of being copied in for the layer that reads it to fail (#260). Both `POST /api/v1/library/project/files` and `POST /api/v1/library/project/pictures` read it whole first.
+- A click on the mesh finds its place on the map in the texture set's own UV set (#210): Find Layer, the color picker and the clone source on a set laid out in a second UV set read where the set paints, not where the first UV set would put it.
 - Dragging a picture from the library tree onto the mesh shows a copy cursor, not a move one: the picture stays where it was (#264).
 - A filter's slot for a channel the texture set lacks says Untouched, which is what it reads since such a channel stands untouched, not Beneath (#264).
 - The Bake dialog no longer shows a cancelled bake as still running when the answer to Cancel arrives after the bake has stopped. Through the API each job carries a `version` that rises with each change, so a client keeps the newer of an answer and an event (#264).

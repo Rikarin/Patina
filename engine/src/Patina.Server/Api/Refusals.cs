@@ -224,6 +224,12 @@ public static class Refusals {
     /// <summary>A compound copied with no graph to copy it beside.</summary>
     public const string CompoundNeedsGraph = "compound-needs-graph";
 
+    /// <summary>
+    ///     A file named as a picture that does not read as one: broken, cut short, or another kind under a picture's
+    ///     extension (#260). Values: <c>file</c>, its name, and <c>reason</c>, the reader's own sentence.
+    /// </summary>
+    public const string PictureUnreadable = "picture-unreadable";
+
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(
         string detail,

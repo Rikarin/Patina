@@ -70,8 +70,10 @@ the place of the first:
 - Preserve Paint's move to a new mesh;
 - the viewport, which reads the mesh again with each worn set's layout (`viewport.open` carries `UvSets`).
 
-A part of the set without the chosen UV set is refused by name, never painted in the first. Picks on the whole model and
-Find Layer still read the first set; painting across a UV set boundary and set-to-set projection are not done.
+A part of the set without the chosen UV set is refused by name, never painted in the first. A pick on the model says its
+place on the map in the UV set of the material it met (`viewport.pick` carries the worn sets' `UvSets`, wire version 17),
+so Find Layer, the color picker and the clone source read the set's own layout. Painting across a UV set boundary and
+set-to-set projection are not done.
 
 ## What a mesh is (#146, #231)
 

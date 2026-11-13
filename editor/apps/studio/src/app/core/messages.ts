@@ -60,7 +60,8 @@ const Words: Readonly<Record<string, string>> = {
   'library-conflict': 'Something in the library is in the way. {reason}',
   'library-refused': 'The library can’t do that. {reason}',
   'material-missing': 'That material isn’t in the library any more. It may have been deleted outside Patina.',
-  'compound-needs-graph': 'A compound is copied beside the graph that uses it. Open that graph first.'
+  'compound-needs-graph': 'A compound is copied beside the graph that uses it. Open that graph first.',
+  'picture-unreadable': '{file} doesn’t read as a picture, so it wasn’t brought in. It may be damaged or cut short.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };

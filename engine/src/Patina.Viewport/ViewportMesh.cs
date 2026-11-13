@@ -64,6 +64,24 @@ public sealed record ViewportGeometry(
         ViewportMesh.Read(path, uvSet == 0 ? null : new Dictionary<string, int> { [material] = uvSet })
             .Geometry(material, parts, materials);
 
+    /// <summary>
+    ///     The whole model with each material laid out in the coordinate set it chose (#210), triangle for triangle as
+    ///     <see cref="Read(string)" /> numbers them: one it does not name has the first.
+    /// </summary>
+    /// <exception cref="ModelFormatException">The file is not a readable model, or a part has no such set.</exception>
+    public static ViewportGeometry Read(string path, IReadOnlyDictionary<string, int> uvSets) =>
+        ViewportMesh.Read(path, uvSets).Geometry();
+
+    /// <summary>
+    ///     The place on the map a point of a triangle has, from its three corners' weights in the triangle's own order.
+    /// </summary>
+    /// <param name="triangle">The triangle.</param>
+    /// <param name="weights">Its corners' weights, which sum to one.</param>
+    public Vector2 CoordinateAt(int triangle, Vector3 weights) =>
+        Coordinates[Indices[triangle * 3]] * weights.X
+        + Coordinates[Indices[triangle * 3 + 1]] * weights.Y
+        + Coordinates[Indices[triangle * 3 + 2]] * weights.Z;
+
     /// <summary>The named meshes in a file, in one texture set if it is one of the file's materials.</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static IReadOnlyList<string> Parts(string path, string set) => ViewportMesh.Read(path).PartsOf(set);

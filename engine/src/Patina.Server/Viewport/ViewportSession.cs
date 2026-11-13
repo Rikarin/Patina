@@ -719,11 +719,13 @@ public sealed class ViewportSession(
         int across;
         int down;
         string path;
+        Dictionary<string, int>? laidOut;
         lock (changing) {
             path = mesh ?? throw new IpcException("Open a mesh first: there is nothing to pick.");
             look = Lens(request.Camera ?? camera, display.Display);
             across = request.Width ?? width;
             down = request.Height ?? height;
+            laidOut = layouts.Count == 0 ? null : new(layouts, StringComparer.Ordinal);
         }
 
         using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -736,7 +738,9 @@ public sealed class ViewportSession(
         }
 
         var reply = await connection.SendAsync(
-            new() { Type = IpcTypes.ViewportPick, Pick = new(request.X, request.Y, look, across, down, path) },
+            new() {
+                Type = IpcTypes.ViewportPick, Pick = new(request.X, request.Y, look, across, down, path, laidOut)
+            },
             cancellationToken
         );
         return reply.Picked!;
