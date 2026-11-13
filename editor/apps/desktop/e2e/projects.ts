@@ -40,7 +40,7 @@ export async function newLibrary(app: ElectronApplication, window: Page, path: s
   await answerSave(app, path);
   await window.getByTestId('library-new').click();
   await expect(window.getByRole('status', { name: 'Server status' })).toContainText(
-    (path.split('/').pop() ?? path).replace(/\.ptlib$/u, ''),
+    basename(path).replace(/\.ptlib$/u, ''), // a Windows path is split at its backslashes too
     {
       timeout: 30_000
     }
@@ -62,7 +62,7 @@ export async function newProject(
   if (mesh) {
     await answerOpen(app, mesh);
     await window.getByTestId('new-project-mesh').click();
-    await expect(window.getByTestId('new-project-mesh-name')).toHaveText(mesh.split('/').pop() ?? mesh);
+    await expect(window.getByTestId('new-project-mesh-name')).toHaveText(basename(mesh));
   }
 
   await window.getByRole('button', { name: 'Create' }).click();
