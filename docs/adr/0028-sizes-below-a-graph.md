@@ -1,6 +1,6 @@
 # ADR 0028: Sizes below a graph, and an export's own size
 
-**Status:** proposed, 2026-11-12, for issue #96. A design only: nothing here is built yet.
+**Status:** proposed, 2026-11-12, for issue #96. A compound's own base is built (2026-11-13); the rest is a design only.
 
 ## What this answers
 
@@ -31,11 +31,17 @@ resamples a stack's maps as it does now, and says so when it enlarges them.
 
 ### A compound has its own base
 
-A compound inlined into a graph keeps the base it was authored at. The compiler gives the inlined nodes a level of their
-own: the host's level, moved by the ratio of the two bases, so that a Blur of 8 in a compound authored at 512 is as wide,
-measured against the compound's picture, inside a host at 1024 as it was on its own. Bases that are not a whole power of
-two apart cannot be expressed as a level, and are refused when the compound is placed, naming both bases. Shipped
-compounds are all authored at 1024, so none of them changes.
+A compound inlined into a graph keeps the base it was authored at: a radius inside it is counted in the compound's
+base, so that a Blur of 8 in a compound authored at 512 is as wide, measured against the compound's picture, inside a
+host at 1024 as it was on its own. That is 16 of the host's texels.
+
+*Built, and not as first designed.* The first design gave the inlined nodes a level of their own. A level changes how
+many texels a picture has, not what a radius is counted in, so it would have computed the compound at half the size
+and still read its radius in the host's unit. What Vixen does instead is scale every length a node dispatches (its
+`TexelsAtBase` parameters) by the host's base over the compound's, as the node is compiled, which holds on a refresh
+too. Any two bases work, so nothing is refused, and the compound computes at the host's size. A compound that declares
+no base takes the base of what holds it, and a nested compound counts in the innermost base declared. Shipped
+compounds are all authored at 1024, so none of them changes inside a graph authored at 1024.
 
 ### A size per node is a level offset
 
@@ -75,6 +81,6 @@ is a graph and follows the rules above, computed at the set's size with radii in
 ## Order of work
 
 1. The export's size computing graphs at it (Patina's build plan; no Vixen change).
-2. A compound's own base (Vixen's compiler).
+2. A compound's own base (Vixen's compiler). Built.
 3. Keep aspect on the shape sources (Vixen's nodes).
 4. Level offsets per node and per instance (Vixen's compiler, then the Inspector).
