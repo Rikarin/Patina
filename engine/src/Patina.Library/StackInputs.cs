@@ -59,9 +59,9 @@ public static class StackInputs {
     }
 
     /// <summary>
-    ///     What a stack's texture set reads its bake by: the UV set the set named <paramref name="set" />, or its first,
-    ///     is laid out in, and the stack's Width and Height (#262). The first UV set when the file does not say, and no
-    ///     shape and the first when it cannot be read.
+    ///     What a stack's texture set reads its bake by: the UV set the set named <paramref name="set" />, or its
+    ///     first, is laid out in, and the stack's Width and Height (#262). The first UV set when the file does not say,
+    ///     and no shape and the first when it cannot be read.
     /// </summary>
     public static BakeFit.SetLayout LayoutOf(string text, string? set) {
         YamlStream yaml = [];

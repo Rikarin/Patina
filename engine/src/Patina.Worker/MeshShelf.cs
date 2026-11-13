@@ -77,8 +77,8 @@ sealed class MeshShelf {
     (string Key, DateTime Written, PaintProjection Projection, int[] Triangles)? shown;
 
     /// <summary>
-    ///     The whole model with each worn material laid out in the coordinate set it chose (#210), which a pick reads its
-    ///     place on the map from. Held for the last layouts asked about, since a pick asks again for every click.
+    ///     The whole model with each worn material laid out in the coordinate set it chose (#210), which a pick reads
+    ///     its place on the map from. Held for the last layouts asked about, since a pick asks again for every click.
     /// </summary>
     /// <exception cref="IpcException">The file cannot be read as a mesh with those layouts.</exception>
     public ViewportGeometry Laid(string path, IReadOnlyDictionary<string, int> uvSets) {

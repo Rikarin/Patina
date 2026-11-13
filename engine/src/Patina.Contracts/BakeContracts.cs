@@ -76,8 +76,8 @@ public sealed record JobState {
     public bool CancelRequested { get; init; }
 
     /// <summary>
-    ///     How many times it has changed, rising with each change: an answer and an event can arrive in either order, and
-    ///     a client keeps whichever says more.
+    ///     How many times it has changed, rising with each change: an answer and an event can arrive in either order,
+    ///     and a client keeps whichever says more.
     /// </summary>
     public long Version { get; init; }
 }

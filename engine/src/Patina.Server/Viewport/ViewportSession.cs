@@ -738,9 +738,7 @@ public sealed class ViewportSession(
         }
 
         var reply = await connection.SendAsync(
-            new() {
-                Type = IpcTypes.ViewportPick, Pick = new(request.X, request.Y, look, across, down, path, laidOut)
-            },
+            new() { Type = IpcTypes.ViewportPick, Pick = new(request.X, request.Y, look, across, down, path, laidOut) },
             cancellationToken
         );
         return reply.Picked!;

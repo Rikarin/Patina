@@ -63,8 +63,8 @@ static class BakeLayouts {
     }
 
     /// <summary>
-    ///     What a bake reads of a texture set: its UV set and the shape it is authored at, from its open session when it
-    ///     has one, so a Height changed and not yet saved bakes at the shape on screen, and from its file otherwise.
+    ///     What a bake reads of a texture set: its UV set and the shape it is authored at, from its open session when
+    ///     it has one, so a Height changed and not yet saved bakes at the shape on screen, and from its file otherwise.
     /// </summary>
     static BakeFit.SetLayout? LayoutOf(string file, string? material, StackSessions? stacks) {
         if (stacks?.All.FirstOrDefault(open => string.Equals(open.Path, file, StringComparison.Ordinal)) is { } open) {

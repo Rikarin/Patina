@@ -126,7 +126,8 @@ public static class StackChecking {
             Error,
             reason switch {
                 BakeFit.UvSet =>
-                    $"{name} is laid out in UV set {uvSet + 1}, and its mesh maps were baked in another. Bake it again.",
+                    $"{name} is laid out in UV set {uvSet + 1}, and its mesh maps were baked in another. "
+                    + "Bake it again.",
                 BakeFit.Shape => $"{name}'s Width or Height changed after its mesh maps were baked. Bake it again.",
                 _ => $"{name}'s mesh changed after its mesh maps were baked. Bake it again."
             },

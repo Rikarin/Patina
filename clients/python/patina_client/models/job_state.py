@@ -39,8 +39,8 @@ class JobState:
             created (datetime.datetime): When it was asked for, in UTC.
             cancel_requested (bool): Whether a client has asked for it to stop.
             version (int): How many times it has changed, rising with each change: an answer and an event can arrive in
-                either order, and
-                a client keeps whichever says more.
+                either order,
+                and a client keeps whichever says more.
             bake (BakeRequest | None | Unset):
             build (BuildRequest | None | Unset):
             report (LibraryReport | None | Unset):

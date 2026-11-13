@@ -154,8 +154,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     }
 
     /// <summary>
-    ///     What a bake of this texture set reads of it: its UV set and the shape it is authored at, as the last edit left
-    ///     them (#253).
+    ///     What a bake of this texture set reads of it: its UV set and the shape it is authored at, as the last edit
+    ///     left them (#253).
     /// </summary>
     public BakeFit.SetLayout Layout {
         get {

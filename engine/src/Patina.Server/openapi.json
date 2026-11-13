@@ -13011,7 +13011,7 @@
           },
           "version": {
             "type": "integer",
-            "description": "How many times it has changed, rising with each change: an answer and an event can arrive in either order, and\na client keeps whichever says more.",
+            "description": "How many times it has changed, rising with each change: an answer and an event can arrive in either order,\nand a client keeps whichever says more.",
             "format": "int64"
           }
         },

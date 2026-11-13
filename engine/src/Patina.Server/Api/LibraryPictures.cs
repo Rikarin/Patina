@@ -19,8 +19,8 @@ static class LibraryPictures {
     }
 
     /// <summary>
-    ///     The refusal of a file named as a picture that does not read as one, or null for one that does, for a file that
-    ///     is no picture, which something else judges, and for one that is not there, which the import says.
+    ///     The refusal of a file named as a picture that does not read as one, or null for one that does, for a file
+    ///     that is no picture, which something else judges, and for one that is not there, which the import says.
     /// </summary>
     public static ProblemHttpResult? Unreadable(string file) {
         if (!PictureFormats.IsPicture(file) || !File.Exists(file)) {

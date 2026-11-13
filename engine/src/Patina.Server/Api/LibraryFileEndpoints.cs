@@ -23,8 +23,8 @@ static class LibraryFileEndpoints {
             .Produces<byte[]>(StatusCodes.Status200OK, "image/png")
             .Described(
                 "GetLibraryPicture",
-                "A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture "
-                + "as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260)."
+                "A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other "
+                + "picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260)."
             );
     }
 

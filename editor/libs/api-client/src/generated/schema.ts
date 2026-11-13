@@ -4408,8 +4408,8 @@ export interface components {
       cancelRequested: boolean;
       /**
        * Format: int64
-       * @description How many times it has changed, rising with each change: an answer and an event can arrive in either order, and
-       *     a client keeps whichever says more.
+       * @description How many times it has changed, rising with each change: an answer and an event can arrive in either order,
+       *     and a client keeps whichever says more.
        */
       version: number;
     };

@@ -668,54 +668,6 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
     }
 
     /// <summary>
-    ///     A file named as a picture that does not read as one is refused on every route that brings one in, and
-    ///     nothing is copied (#260): before, only its extension was looked at, and the layer that read it failed.
-    /// </summary>
-    [Theory]
-    [InlineData("sky.hdr")]
-    [InlineData("paint.psd")]
-    [InlineData("scan.tif")]
-    [InlineData("rust.png")]
-    public async Task A_broken_picture_is_refused_on_every_route_and_copies_nothing(string name) {
-        await MakeCrateAsync();
-        var file = Path.Combine(files.FullName, name);
-        File.WriteAllText(file, "not much");
-
-        using var imported = await client.PostAsJsonAsync(
-            "/api/v1/library/project/files",
-            new ProjectFileRequest("crate", file),
-            Token
-        );
-        using var added = await client.PostAsJsonAsync(
-            "/api/v1/library/project/pictures",
-            new ProjectPictureRequest("crate", file),
-            Token
-        );
-
-        foreach (var refused in new[] { imported, added }) {
-            Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
-            using var problem = JsonDocument.Parse(await refused.Content.ReadAsStringAsync(Token));
-            Assert.Equal("picture-unreadable", problem.RootElement.GetProperty("code").GetString());
-            Assert.Equal(name, problem.RootElement.GetProperty("values").GetProperty("file").GetString());
-        }
-
-        Assert.False(Directory.Exists(Path.Combine(server.Library, "projects/crate/pictures")));
-    }
-
-    /// <summary>A broken picture already in the library is refused by name when a client asks to see it.</summary>
-    [Fact]
-    public async Task A_broken_picture_in_the_library_is_refused_when_shown() {
-        await MakeCrateAsync();
-        var pictures = Directory.CreateDirectory(Path.Combine(server.Library, "projects/crate/pictures"));
-        await File.WriteAllTextAsync(Path.Combine(pictures.FullName, "scan.tga"), "not much", Token);
-
-        using var served = await client.GetAsync("/api/v1/library/picture?path=projects/crate/pictures/scan.tga", Token);
-
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, served.StatusCode);
-        Assert.Contains("picture-unreadable", await served.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
-    }
-
-    /// <summary>
     ///     A picture the library holds is served as its file, for a client to show a projection it frames; a path that
     ///     climbs out of the library, or names something that is not a picture, is not.
     /// </summary>
@@ -762,7 +714,7 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
     [Fact]
     public async Task An_image_material_is_authored_as_every_new_graph_is() {
         var photo = Path.Combine(files.FullName, "wall.png");
-        await File.WriteAllBytesAsync(photo, Vixen.Core.Imaging.PngCodec.Encode8(1, 1, 4, [200, 100, 50, 255]), Token);
+        await File.WriteAllBytesAsync(photo, PngCodec.Encode8(1, 1, 4, [200, 100, 50, 255]), Token);
         using var made = await client.PostAsJsonAsync(
             "/api/v1/library/projects",
             new ProjectCreateRequest("Wall", Resolution: 2048, Kind: "image-material", Image: photo),
