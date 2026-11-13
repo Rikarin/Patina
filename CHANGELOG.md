@@ -203,6 +203,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Smudge drags as far at a fine spacing as at a coarse one, and its edge is smooth: it no longer shows scallops at the stamp spacing, and a fine spacing over a smooth gradient no longer smears nothing at all.
 - On Windows a graph opened from a project now opens in that project's tab, not in a second tab with no project, so its display settings are kept and it comes back when Patina opens again; and a document the Server brought back after a restart offers what autosave kept, as it does on Linux and macOS.
 - Exporting some of a project's texture sets, or one document, no longer deletes the files the other sets last exported into the same folder. Only an export of the whole project tidies away files it no longer makes.
 - A mesh change that touched one texture set's faces no longer says every set's mesh maps need baking again. Layers, the Bake dialog, Checks and Project Settings say so only for the sets whose own faces changed, in their UV set; the others' bakes still fit. A bake made before this release says so for every set once, until it is baked again.
