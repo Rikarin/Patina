@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
 using Patina.Contracts;
 using Patina.Library;
 
@@ -29,6 +31,10 @@ public sealed partial class StackProcessTests {
         Assert.Equal(["Gold", "Red"], facts!.Materials.Select(static m => m.Name).Order(StringComparer.Ordinal));
         Assert.All(facts.Materials, static material => Assert.Equal(1, material.UvSets));
         foreach (var document in new[] { "Gold", "Red" }) {
+            Shrink(Path.Combine(Library, "projects", project.Path, $"{document}.vxlayers"));
+        }
+
+        foreach (var document in new[] { "Gold", "Red" }) {
             using var opened = await http.PostAsJsonAsync(
                 "/api/v1/stacks",
                 new { path = $"projects/{project.Path}/{document}.vxlayers" },
@@ -38,10 +44,25 @@ public sealed partial class StackProcessTests {
                 ContractsJsonContext.Default.StackState,
                 deadline.Token
             );
-            using var socket = await FollowAsync(instance, state!, deadline.Token);
-            var evaluation = await EvaluatedAsync(socket, state!.Revision, deadline.Token);
+            Assert.Equal(256, state!.Width);
+            using var socket = await FollowAsync(instance, state, deadline.Token);
+            var evaluation = await EvaluatedAsync(socket, state.Revision, deadline.Token);
             Assert.Empty(evaluation.Problems);
             Assert.True(evaluation.Previews.Count > 0, $"{document} drew no maps.");
         }
     }
+
+    /// <summary>
+    ///     Draws a sample's document at an eighth of its side, its shape kept. ⚠ The sample ships at 2048 by 2048, and
+    ///     its grunges' splatters and slope blur at that size outlast the deadline on CI's software GPU: the plan is the
+    ///     same at any size, and only the pixels it covers differ.
+    /// </summary>
+    static void Shrink(string document) =>
+        File.WriteAllText(document, SampleSide().Replace(File.ReadAllText(document), Eighth));
+
+    static string Eighth(Match side) =>
+        $"{side.Groups["key"].Value}: {int.Parse(side.Groups["side"].Value, CultureInfo.InvariantCulture) / 8}";
+
+    [GeneratedRegex("^(?<key>baseWidth|baseHeight): (?<side>[0-9]+)", RegexOptions.Multiline)]
+    private static partial Regex SampleSide();
 }
