@@ -102,7 +102,7 @@ export class BakeStore {
 
   /** Holds a job a caller just heard of, which the events carry on from. */
   track(job: JobState): void {
-    this.put(job);
+    this.started(job);
   }
 
   /** Asks for a bake. Throws the Server's refusal, which is what the panel shows. */
@@ -125,7 +125,7 @@ export class BakeStore {
     this.batchIds.set([]);
     for (const request of requests) {
       const job = unwrap(await client.POST('/api/v1/jobs/bakes', { body: request }));
-      this.put(job);
+      this.started(job);
       jobs.push(job);
       this.batchIds.update(ids => [...ids, job.id]);
     }
@@ -217,6 +217,16 @@ export class BakeStore {
 
   private put(job: JobState): void {
     this.byId.update(jobs => new Map(jobs).set(job.id, job));
+  }
+
+  /**
+   * A job as the answer that started it gave it, unless the events have said more: the job can run, and even end,
+   * before that answer arrives, and the answer is then older than what is held.
+   */
+  private started(job: JobState): void {
+    if (!this.byId().has(job.id)) {
+      this.put(job);
+    }
   }
 
   /** Reads where things stand, then follows from there. A restarted Server has a new port and new numbers. */

@@ -29,7 +29,9 @@ public sealed class SetMergeTests : IDisposable {
 
     public void Dispose() => folder.Delete(true);
 
-    /// <summary>A one-lane map whose texels left of <paramref name="split" /> are one value and the rest another.</summary>
+    /// <summary>
+    ///     A one-lane map whose texels left of <paramref name="split" /> are one value and the rest another.
+    /// </summary>
     static FloatImage Split(int side, int split, float left, float right) {
         var values = new float[side * side];
         for (var at = 0; at < values.Length; at++) {

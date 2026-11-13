@@ -48,7 +48,9 @@ class StackVocabulary:
                 mesh map.
             sources (list[StackFilterKind]): The generators an image input can read: noises, patterns, grunges and the rest.
             lanes (list[StackTerm] | None | Unset): The lanes of a picture a mask can read.
-            tags (list[StackTerm] | None | Unset): The colours a layer can be marked with, None first.
+            tags (list[StackTerm] | None | Unset): The colors a layer can be marked with, None first.
+            kinds (list[StackTerm] | None | Unset): The kinds a graph's ports and parameters take: Number for Float, and the
+                rest.
      """
 
     blends: list[StackTerm]
@@ -67,6 +69,7 @@ class StackVocabulary:
     sources: list[StackFilterKind]
     lanes: list[StackTerm] | None | Unset = UNSET
     tags: list[StackTerm] | None | Unset = UNSET
+    kinds: list[StackTerm] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -192,6 +195,19 @@ class StackVocabulary:
         else:
             tags = self.tags
 
+        kinds: list[dict[str, Any]] | None | Unset
+        if isinstance(self.kinds, Unset):
+            kinds = UNSET
+        elif isinstance(self.kinds, list):
+            kinds = []
+            for kinds_type_1_item_data in self.kinds:
+                kinds_type_1_item = kinds_type_1_item_data.to_dict()
+                kinds.append(kinds_type_1_item)
+
+
+        else:
+            kinds = self.kinds
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -215,6 +231,8 @@ class StackVocabulary:
             field_dict["lanes"] = lanes
         if tags is not UNSET:
             field_dict["tags"] = tags
+        if kinds is not UNSET:
+            field_dict["kinds"] = kinds
 
         return field_dict
 
@@ -407,6 +425,31 @@ class StackVocabulary:
         tags = _parse_tags(d.pop("tags", UNSET))
 
 
+        def _parse_kinds(data: object) -> list[StackTerm] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                kinds_type_1 = []
+                _kinds_type_1 = data
+                for kinds_type_1_item_data in (_kinds_type_1):
+                    kinds_type_1_item = StackTerm.from_dict(kinds_type_1_item_data)
+
+
+
+                    kinds_type_1.append(kinds_type_1_item)
+
+                return kinds_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[StackTerm] | None | Unset, data)
+
+        kinds = _parse_kinds(d.pop("kinds", UNSET))
+
+
         stack_vocabulary = cls(
             blends=blends,
             filters=filters,
@@ -424,6 +467,7 @@ class StackVocabulary:
             sources=sources,
             lanes=lanes,
             tags=tags,
+            kinds=kinds,
         )
 
 

@@ -11,8 +11,8 @@ public sealed record OutputSelection(AssetId? Asset = null, IReadOnlyList<Projec
     public static OutputSelection All { get; } = new();
 
     /// <summary>
-    ///     Only these documents of each project, by file below it, whatever they are (<see cref="ProjectOutputs.Of" />),
-    ///     or null for what each project exports.
+    ///     Only these documents of each project, by file below it, whatever they are
+    ///     (<see cref="ProjectOutputs.Of" />), or null for what each project exports.
     /// </summary>
     public IReadOnlyList<string>? Documents { get; init; }
 

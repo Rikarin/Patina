@@ -85,7 +85,7 @@ def sync_detailed(
     v: float | Unset = UNSET,
 
 ) -> Response[ProblemDetails | StackIdColours]:
-    """ The colours of the id map the stack reads, the largest first, and the one at a place on it if asked.
+    """ The colors of the ID map the stack reads, the largest first, and the one at a place on it if asked.
 
     Args:
         id (str):
@@ -122,7 +122,7 @@ def sync(
     v: float | Unset = UNSET,
 
 ) -> ProblemDetails | StackIdColours | None:
-    """ The colours of the id map the stack reads, the largest first, and the one at a place on it if asked.
+    """ The colors of the ID map the stack reads, the largest first, and the one at a place on it if asked.
 
     Args:
         id (str):
@@ -154,7 +154,7 @@ async def asyncio_detailed(
     v: float | Unset = UNSET,
 
 ) -> Response[ProblemDetails | StackIdColours]:
-    """ The colours of the id map the stack reads, the largest first, and the one at a place on it if asked.
+    """ The colors of the ID map the stack reads, the largest first, and the one at a place on it if asked.
 
     Args:
         id (str):
@@ -191,7 +191,7 @@ async def asyncio(
     v: float | Unset = UNSET,
 
 ) -> ProblemDetails | StackIdColours | None:
-    """ The colours of the id map the stack reads, the largest first, and the one at a place on it if asked.
+    """ The colors of the ID map the stack reads, the largest first, and the one at a place on it if asked.
 
     Args:
         id (str):

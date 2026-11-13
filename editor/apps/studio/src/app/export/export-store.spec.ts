@@ -41,7 +41,12 @@ function setup(routes: Record<string, (request: Request) => Response>) {
       }
     ]
   });
-  return { store: TestBed.inject(ExportStore), jobs: TestBed.inject(BakeStore), sockets };
+  /** A job changing, as the Server's jobs socket says it. */
+  const hear = (job: JobState) => {
+    const onmessage = sockets.at(-1)?.onmessage as ((event: MessageEvent) => void) | null | undefined;
+    onmessage?.({ data: JSON.stringify({ sequence: 1, job }) } as MessageEvent);
+  };
+  return { store: TestBed.inject(ExportStore), jobs: TestBed.inject(BakeStore), sockets, hear };
 }
 
 const jobs = { 'GET jobs': () => Response.json({ jobs: [], sequence: 0 }) };
@@ -99,7 +104,7 @@ describe('ExportStore', () => {
   });
 
   it('follows the build it started through the job events', async () => {
-    const { store, jobs: following } = setup({
+    const { store, hear } = setup({
       ...jobs,
       'POST builds': () => Response.json(build, { status: 202 })
     });
@@ -107,7 +112,7 @@ describe('ExportStore', () => {
     await store.start({ presets: ['unreal'] });
     expect(store.build()?.state).toBe('queued');
 
-    following.track({ ...build, state: 'running', progress: 0.5 });
+    hear({ ...build, state: 'running', progress: 0.5 });
     expect(store.build()?.progress).toBe(0.5);
   });
 

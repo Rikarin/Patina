@@ -26,7 +26,7 @@ class LibraryPresetRequest:
 
         Attributes:
             preset (None | str | Unset): The id of the preset a project's export starts from when it has kept none, or null
-                for the factory's starter.
+                for the Starter glTF preset.
      """
 
     preset: None | str | Unset = UNSET

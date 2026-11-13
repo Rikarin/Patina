@@ -21,7 +21,9 @@ public sealed class ContainerHeaderTests : IDisposable {
 
     public void Dispose() => folder.Delete(true);
 
-    /// <summary>A compression, the lanes and space of the file, and the DXGI and Vulkan formats the specs give it.</summary>
+    /// <summary>
+    ///     A compression, the lanes and space of the file, and the DXGI and Vulkan formats the specs give it.
+    /// </summary>
     public static TheoryData<string, int, string, int[], int[]> Formats() =>
         new() {
             {
@@ -179,7 +181,9 @@ public sealed class ContainerHeaderTests : IDisposable {
 
     static ulong U64(byte[] data, int at) => BinaryPrimitives.ReadUInt64LittleEndian(data.AsSpan(at));
 
-    /// <summary>The legacy FourCC a DDS may use in place of a DX10 header for these, from the DDS programming guide.</summary>
+    /// <summary>
+    ///     The legacy FourCC a DDS may use in place of a DX10 header for these, from the DDS programming guide.
+    /// </summary>
     static string[] LegacyFourCc(string compression) =>
         compression switch {
             ExportCompressions.Bc1 => ["DXT1"],

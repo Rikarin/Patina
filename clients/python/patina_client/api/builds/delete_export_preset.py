@@ -84,7 +84,7 @@ def sync_detailed(
     project: str | Unset = UNSET,
 
 ) -> Response[Any | ProblemDetails]:
-    """ Removes a library's or a project's preset file. A factory preset cannot be removed.
+    """ Deletes a library's or a project's preset file. A Starter preset cannot be deleted.
 
     Args:
         id (str):
@@ -118,7 +118,7 @@ def sync(
     project: str | Unset = UNSET,
 
 ) -> Any | ProblemDetails | None:
-    """ Removes a library's or a project's preset file. A factory preset cannot be removed.
+    """ Deletes a library's or a project's preset file. A Starter preset cannot be deleted.
 
     Args:
         id (str):
@@ -147,7 +147,7 @@ async def asyncio_detailed(
     project: str | Unset = UNSET,
 
 ) -> Response[Any | ProblemDetails]:
-    """ Removes a library's or a project's preset file. A factory preset cannot be removed.
+    """ Deletes a library's or a project's preset file. A Starter preset cannot be deleted.
 
     Args:
         id (str):
@@ -181,7 +181,7 @@ async def asyncio(
     project: str | Unset = UNSET,
 
 ) -> Any | ProblemDetails | None:
-    """ Removes a library's or a project's preset file. A factory preset cannot be removed.
+    """ Deletes a library's or a project's preset file. A Starter preset cannot be deleted.
 
     Args:
         id (str):

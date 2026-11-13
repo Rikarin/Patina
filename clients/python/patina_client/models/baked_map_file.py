@@ -8,6 +8,8 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
+from typing import cast
 
 
 
@@ -25,16 +27,18 @@ class BakedMapFile:
         Attributes:
             map_ (str): What it measures.
             path (str): The file.
-            resolution (int): Its edge in pixels.
+            resolution (int): Its width in pixels.
             scale (float): What a stored unit value is multiplied by to get the measurement back, for a signed map in an
                 integer format;
                 zero when there is nothing to undo.
+            rows (int | None | Unset): Its height in pixels, or null when it is as tall as it is wide.
      """
 
     map_: str
     path: str
     resolution: int
     scale: float
+    rows: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -50,6 +54,12 @@ class BakedMapFile:
 
         scale = self.scale
 
+        rows: int | None | Unset
+        if isinstance(self.rows, Unset):
+            rows = UNSET
+        else:
+            rows = self.rows
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -59,6 +69,8 @@ class BakedMapFile:
             "resolution": resolution,
             "scale": scale,
         })
+        if rows is not UNSET:
+            field_dict["rows"] = rows
 
         return field_dict
 
@@ -75,11 +87,22 @@ class BakedMapFile:
 
         scale = d.pop("scale")
 
+        def _parse_rows(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        rows = _parse_rows(d.pop("rows", UNSET))
+
+
         baked_map_file = cls(
             map_=map_,
             path=path,
             resolution=resolution,
             scale=scale,
+            rows=rows,
         )
 
 

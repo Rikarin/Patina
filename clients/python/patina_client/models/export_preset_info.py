@@ -32,7 +32,7 @@ class ExportPresetInfo:
             name (str): Its label.
             engine (str): What it is for.
             normal (str): The green its target reads: y-up or y-down.
-            origin (str): Where it comes from: factory, library or project.
+            origin (str): Where it comes from: factory (a Starter preset), library or project.
             revision (str): The hash of its file.
             files (list[ExportPresetFile]): What it makes.
             padding (ExportPaddingInfo): What fills the texels a mesh's layout leaves empty.

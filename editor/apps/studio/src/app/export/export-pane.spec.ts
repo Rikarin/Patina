@@ -118,6 +118,7 @@ function setup(routes: Record<string, (request: Request) => Response> = {}) {
     'GET builds/b1/report/projects': () => Response.json({ total: 1, items: [project], offset: 0, limit: 50 }),
     ...routes
   };
+  const sockets: GraphSocket[] = [];
   const answer = (input: RequestInfo | URL) => {
     const request = input as Request;
     const key = `${request.method} ${new URL(request.url).pathname.replace('/api/v1/', '')}`;
@@ -133,7 +134,11 @@ function setup(routes: Record<string, (request: Request) => Response> = {}) {
       },
       {
         provide: GRAPH_SOCKET,
-        useValue: () => ({ onopen: null, onmessage: null, onclose: null, close: vi.fn() }) as unknown as GraphSocket
+        useValue: () => {
+          const socket = { onopen: null, onmessage: null, onclose: null, close: vi.fn() } as unknown as GraphSocket;
+          sockets.push(socket);
+          return socket;
+        }
       }
     ]
   });
@@ -146,7 +151,12 @@ function setup(routes: Record<string, (request: Request) => Response> = {}) {
     text,
     store: TestBed.inject(ExportStore),
     jobs: TestBed.inject(BakeStore),
-    selection: TestBed.inject(LibrarySelection)
+    selection: TestBed.inject(LibrarySelection),
+    /** A job changing, as the Server's jobs socket says it. */
+    hear: (job: JobState) => {
+      const onmessage = sockets.at(-1)?.onmessage as ((event: MessageEvent) => void) | null | undefined;
+      onmessage?.({ data: JSON.stringify({ sequence: 1, job }) } as MessageEvent);
+    }
   };
 }
 
@@ -157,9 +167,9 @@ async function settled(fixture: ReturnType<typeof setup>['fixture']): Promise<vo
 
 describe('ExportPane', () => {
   it('says why a build failed, and what a preset left out', async () => {
-    const { fixture, text, store, jobs } = setup();
+    const { fixture, text, store, hear } = setup();
     await store.start({ presets: ['unreal'] });
-    jobs.track({ ...build, state: 'done', progress: 1, error: "2 of this build's steps failed." });
+    hear({ ...build, state: 'done', progress: 1, error: "2 of this build's steps failed." });
     await settled(fixture);
 
     expect(text('export-report-failed')).toEqual(['2']);
@@ -175,20 +185,20 @@ describe('ExportPane', () => {
   });
 
   it.each(['cancelled', 'failed'])('reads what a %s build finished', async state => {
-    const { fixture, text, store, jobs } = setup();
+    const { fixture, text, store, hear } = setup();
     await store.start({ presets: ['unreal'] });
-    jobs.track({ ...build, state });
+    hear({ ...build, state });
     await settled(fixture);
 
     expect(text('export-report-built')).toEqual(['1']);
   });
 
   it('stays quiet when a build refused at the start has no report', async () => {
-    const { fixture, text, store, jobs } = setup({
+    const { fixture, text, store, hear } = setup({
       'GET builds/b1/report': () => Response.json({ detail: 'no report' }, { status: 404 })
     });
     await store.start({ presets: ['unreal'] });
-    jobs.track({ ...build, state: 'failed', error: 'There is no preset.' });
+    hear({ ...build, state: 'failed', error: 'There is no preset.' });
     await settled(fixture);
 
     expect(text('export-error')).toEqual([]);
