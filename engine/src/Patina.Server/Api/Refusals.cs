@@ -277,6 +277,12 @@ public static class Refusals {
     public static ProblemHttpResult NoLibraryOpen() =>
         Problem("The Server was started with no library.", StatusCodes.Status404NotFound, NoLibrary);
 
+    /// <summary>
+    ///     A document written by a newer build of Patina, at a format this build does not read whole (#162). Values:
+    ///     <c>written</c>, the file's format, and <c>reads</c>, the newest this build reads.
+    /// </summary>
+    public const string DocumentNewer = "document-newer";
+
     /// <summary>A stack proxy that is not 1, 2, 4 or 8 (#208). Values: <c>proxy</c>.</summary>
     public const string ProxyRefused = "stack-proxy-refused";
 

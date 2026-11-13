@@ -33,6 +33,7 @@ import {
   type ViewportPick,
   unwrap
 } from '@patina/api-client';
+import { type AutosaveNote, autosaveNote } from '../core/autosave-note';
 import { learnTerms } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { milliseconds, toRadians } from '../core/numbers';
@@ -305,6 +306,8 @@ export class PaintStore {
   readonly link = signal<'live' | 'reconnecting'>('live');
   /** Something the person should know that went right enough, such as edits lost when the engine restarted. */
   readonly notice = signal<string | null>(null);
+  /** What autosave last said about this document: kept, or not and why (#192). */
+  readonly autosave = signal<AutosaveNote | null>(null);
 
   /** Told as something new starts, for whoever keeps a failure of its own. */
   onAction: () => void = () => undefined;
@@ -2210,6 +2213,10 @@ export class PaintStore {
 
     if (event.kind === 'paced') {
       void this.repace(); // another client paused, resumed or chose a proxy
+    }
+
+    if (event.kind === 'autosaved' || event.kind === 'autosaveFailed') {
+      this.autosave.set(autosaveNote(this.state()?.name ?? 'the document', event));
     }
 
     const previews = event.evaluation?.previews ?? [];

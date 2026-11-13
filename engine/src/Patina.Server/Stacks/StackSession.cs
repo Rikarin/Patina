@@ -404,6 +404,10 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
+    /// <summary>A paced or autosave event: what it says, at the revision and history as they stand.</summary>
+    protected override StackEvent Noted(GraphEventKind kind, string? label) =>
+        new(Log.Sequence + 1, kind, revision, editor.History, label);
+
     /// <summary>The proxy sizes a stack can be evaluated at, as what its sides are divided by.</summary>
     public static IReadOnlyList<int> Proxies { get; } = [1, 2, 4, 8];
 
@@ -426,7 +430,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
 
             pace = next;
             forced = true;
-            Log.Append(new(Log.Sequence + 1, GraphEventKind.Paced, revision, editor.History));
+            Log.Append(Noted(GraphEventKind.Paced, null));
         }
 
         wake();

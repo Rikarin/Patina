@@ -23,6 +23,27 @@ test.afterEach(async () => {
   rmSync(scratch, { recursive: true, force: true });
 });
 
+test('a start with no library asks nothing the engine refuses (#192)', async () => {
+  // Whatever the window asked from its first request on: the listener is on before anything is drawn.
+  const refused: string[] = [];
+  window.on('response', response => {
+    if (response.status() >= 400) {
+      refused.push(`${response.status()} ${new URL(response.url()).pathname}`);
+    }
+  });
+  window.on('requestfailed', request => {
+    refused.push(`${request.failure()?.errorText ?? 'failed'} ${new URL(request.url()).pathname}`);
+  });
+  await window.reload();
+
+  const status = window.getByRole('status', { name: 'Engine status' });
+  await expect(status).toContainText('No library open');
+  await expect(status).toContainText('GPU ready');
+  await expect(window.getByText('Start', { exact: true }).first()).toBeVisible();
+
+  expect(refused.filter(line => line.includes('/api/'))).toEqual([]);
+});
+
 test('the app starts both sidecars and shows the shell', async () => {
   const status = window.getByRole('status', { name: 'Engine status' });
 

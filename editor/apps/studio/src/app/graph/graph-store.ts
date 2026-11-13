@@ -20,6 +20,7 @@ import {
   type StackTerm,
   unwrap
 } from '@patina/api-client';
+import { type AutosaveNote, autosaveNote } from '../core/autosave-note';
 import { desktop } from '../core/desktop';
 import { messageOf } from '../core/messages';
 import { RecoveryOffers } from '../core/recovery-offers';
@@ -214,6 +215,8 @@ export class GraphStore {
   readonly problem = this.mutableProblem.asReadonly();
   /** Something the user should know about what happened to the session. */
   readonly notice = this.mutableNotice.asReadonly();
+  /** What autosave last said about this graph: kept, or not and why (#192). */
+  readonly autosave = signal<AutosaveNote | null>(null);
   readonly selection = this.mutableSelection.asReadonly();
   /** What is waiting while the user decides what to do with unsaved edits. */
   readonly leaving = this.mutableLeaving.asReadonly();
@@ -1564,6 +1567,10 @@ export class GraphStore {
     if (event.kind === 'evaluated') {
       this.evaluateAsked = false;
       this.previews.retryLost();
+    }
+
+    if (event.kind === 'autosaved' || event.kind === 'autosaveFailed') {
+      this.autosave.set(autosaveNote(next.name, event));
     }
 
     if (event.kind === 'typesChanged' || event.delta?.interface) {

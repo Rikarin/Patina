@@ -87,6 +87,19 @@ describe('LibraryStore', () => {
     });
   });
 
+  it('asks the system rather than the library when the Server has none, so no start logs a 404 (#192)', async () => {
+    const { requests, store } = server({ system: () => Response.json({ library: null }) });
+
+    await vi.waitFor(() => {
+      expect(store.state()).toEqual({ kind: 'none' });
+    });
+    store.retry();
+    await vi.waitFor(() => {
+      expect(store.state()).toEqual({ kind: 'none' });
+    });
+    expect(requests.map(request => new URL(request.url).pathname)).toEqual(['/api/v1/system']);
+  });
+
   it('says why a Server cannot be reached', async () => {
     const { store } = server({ library: () => Response.json({ detail: 'on fire' }, { status: 500 }) });
 

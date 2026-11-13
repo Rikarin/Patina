@@ -63,7 +63,10 @@ const Words: Readonly<Record<string, string>> = {
   'snapshot-document-open': 'Close the document first, so the snapshot isn’t written over.',
   'material-missing': 'That material isn’t in the library any more. It may have been deleted outside Patina.',
   'compound-needs-graph': 'A compound is copied beside the graph that uses it. Open that graph first.',
-  'picture-unreadable': '{file} doesn’t read as a picture, so it wasn’t brought in. It may be damaged or cut short.'
+  'picture-unreadable': '{file} doesn’t read as a picture, so it wasn’t brought in. It may be damaged or cut short.',
+  'document-newer':
+    'This document was saved by a newer version of Patina, so it isn’t opened here: saving it would lose what is new. Open it in that version or a later one.',
+  'stack-proxy-refused': 'Choose Full, Half, Quarter or Eighth size.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };

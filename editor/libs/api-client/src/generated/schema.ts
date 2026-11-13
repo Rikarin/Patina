@@ -4121,6 +4121,8 @@ export interface components {
       | 'typesChanged'
       | 'closed'
       | 'selected'
+      | 'autosaved'
+      | 'autosaveFailed'
       | 'paced'
       | 'resync';
     /** @description The events after a number, for a client that does not hold a WebSocket or has missed some. */

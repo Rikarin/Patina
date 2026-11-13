@@ -24,7 +24,7 @@ public sealed partial class StackProcessTests {
         List<StackCommand> layers = [];
         for (var index = 0; index < BigStack; index++) {
             layers.Add(
-                index % 4 == 3
+                (index & 3) == 3
                     ? new StackAddLayer("filter", $"Filter {index}", Filter: "Hsl")
                     : new StackAddLayer("fill", $"Fill {index}", Tint)
             );
@@ -34,7 +34,9 @@ public sealed partial class StackProcessTests {
         var added = (await StateAsync(state.Id, deadline.Token)).Layers;
         List<StackCommand> set = [];
         foreach (var (layer, index) in added.Skip(1).Select(static (layer, index) => (layer, index))) {
-            set.Add(new StackSetLayer(layer.Id, Opacity: 0.2f + index % 5 * 0.1f, Blend: blends[index % blends.Length]));
+            set.Add(
+                new StackSetLayer(layer.Id, Opacity: 0.2f + index % 5 * 0.1f, Blend: blends[index % blends.Length])
+            );
         }
 
         var built = await EditAsync(state.Id, deadline.Token, [..set]);

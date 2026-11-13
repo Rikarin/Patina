@@ -12627,6 +12627,8 @@
           "typesChanged",
           "closed",
           "selected",
+          "autosaved",
+          "autosaveFailed",
           "paced",
           "resync"
         ],
@@ -19784,7 +19786,7 @@
                 "type": "null"
               },
               {
-                "description": "How the stack is evaluated while it is edited: paused or not, and at what preview size (#208).",
+                "description": "How it is evaluated while it is edited: paused or not, and at what size (#208).",
                 "$ref": "#/components/schemas/StackPace"
               }
             ]

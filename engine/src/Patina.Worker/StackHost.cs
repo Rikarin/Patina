@@ -94,9 +94,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         stack.Proxy = ask.Proxy;
         var problems = stack.Prepare();
         if (problems.Count > 0 || stack.Run.Plan is not { } plan) {
-            return Reply(
-                new(stack.Compiled, false, 0, 0, 0, Milliseconds(start), [], problems, stack.Found(problems))
-            );
+            return Reply(new(stack.Compiled, false, 0, 0, 0, Milliseconds(start), [], problems, stack.Found(problems)));
         }
 
         var (ran, repaired, reused) = (0, 0, 0);

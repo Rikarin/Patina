@@ -633,6 +633,14 @@ public enum GraphEventKind {
     [JsonStringEnumMemberName("selected")]
     Selected,
 
+    /// <summary>Autosave kept the unsaved edits, up to the event's revision (#192).</summary>
+    [JsonStringEnumMemberName("autosaved")]
+    Autosaved,
+
+    /// <summary>Autosave could not keep the unsaved edits: <see cref="GraphEvent.Label" /> says why (#192).</summary>
+    [JsonStringEnumMemberName("autosaveFailed")]
+    AutosaveFailed,
+
     /// <summary>A stack was paused, resumed or given another preview size: read its state again (#208).</summary>
     [JsonStringEnumMemberName("paced")]
     Paced,

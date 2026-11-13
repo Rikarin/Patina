@@ -442,7 +442,7 @@ public sealed record StackEvaluation(
 ///     the set no longer stands on, or <c>uvSet</c>, laid out in another of the mesh's UV sets (#238), or <c>shape</c>,
 ///     of another shape than the set's Width by Height (#262). Either way its maps need baking again.
 /// </param>
-/// <param name="Pace">How the stack is evaluated while it is edited: paused or not, and at what preview size (#208).</param>
+/// <param name="Pace">How it is evaluated while it is edited: paused or not, and at what size (#208).</param>
 public sealed record StackState(
     string Id,
     string Path,

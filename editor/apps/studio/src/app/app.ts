@@ -775,6 +775,8 @@ export class App {
     activity.listen('Layers', 'warning', this.paint.notice);
     activity.listen('Graph', 'error', this.graph.problem);
     activity.listen('Graph', 'info', this.graph.notice);
+    activity.heed('Autosave', this.paint.autosave);
+    activity.heed('Autosave', this.graph.autosave);
     activity.listen('Bake', 'error', this.bakeSettings.failure);
     activity.listen('Brush', 'error', inject(BrushStore).failure);
     activity.listen('Library', 'error', inject(LibraryActions).failure);
