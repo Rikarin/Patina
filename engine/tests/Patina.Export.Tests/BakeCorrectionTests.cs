@@ -474,11 +474,11 @@ public sealed class BakeCorrectionTests : IDisposable {
         var before = BakeFit.Geometry;
         try {
             BakeFit.Geometry = null;
-            Assert.Equal(BakeFit.Mesh, BakeFit.Stale(Into("body"), now, 0, low));
+            Assert.Equal(BakeFit.Mesh, BakeFit.Stale(Into("body"), now, new(0), low));
 
             BakeFit.Geometry = BakeKeyReads.GeometryOf;
-            Assert.Null(BakeFit.Stale(Into("body"), now, 0, low));
-            Assert.Equal(BakeFit.Mesh, BakeFit.Stale(Into("strap"), now, 0, low));
+            Assert.Null(BakeFit.Stale(Into("body"), now, new(0), low));
+            Assert.Equal(BakeFit.Mesh, BakeFit.Stale(Into("strap"), now, new(0), low));
         } finally {
             BakeFit.Geometry = before;
         }

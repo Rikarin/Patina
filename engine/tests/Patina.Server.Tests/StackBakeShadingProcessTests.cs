@@ -164,10 +164,34 @@ public sealed partial class StackProcessTests {
         Assert.Null(followed.Bake.Options.FollowSetShape);
         var map = followed.Result!.Maps.Single();
         Assert.Equal((ExportSide, ExportSide / 2), (map.Resolution, map.Rows));
+        using (var chosen = await http.PutAsJsonAsync(
+                   $"/api/v1/stacks/{state.Id}/mesh-maps",
+                   new { folder = request.Output },
+                   deadline.Token
+               )) {
+            Assert.True(chosen.IsSuccessStatusCode, await chosen.Content.ReadAsStringAsync(deadline.Token));
+        }
 
+        Assert.Null((await StateAsync(state.Id, deadline.Token)).BakeStale);
+        Assert.Null(await ProjectBakeStaleAsync(project, deadline.Token));
+
+        // Made square, the set reads its wide bake stretched (#262): it, its project and its checks say so.
+        await EditAsync(state.Id, deadline.Token, new StackSetSettings(256, 256));
+        Assert.Equal(BakeFit.Shape, (await StateAsync(state.Id, deadline.Token)).BakeStale);
+        await SaveAsync(state.Id, deadline.Token);
+        Assert.Equal(BakeFit.Shape, await ProjectBakeStaleAsync(project, deadline.Token));
+        var problem = Assert.Single(
+            (await ChecksAsync(state.Id, deadline.Token)).Problems,
+            static p => p.Code == CheckCodes.BakeStale
+        );
+        Assert.Equal(BakeFit.Shape, problem.Values["reason"]);
+
+        // Told not to follow, the bake keeps the height it was given, which is the square set's again.
         request.Options = request.Options with { FollowSetShape = false, Rows = ExportSide };
         var kept = await BakeAsync(request, deadline.Token);
         Assert.Equal(ExportSide, kept.Bake!.Options.Rows);
+        Assert.Null((await StateAsync(state.Id, deadline.Token)).BakeStale);
+        Assert.Null(await ProjectBakeStaleAsync(project, deadline.Token));
     }
 
     /// <summary>

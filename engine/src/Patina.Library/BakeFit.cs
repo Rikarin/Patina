@@ -5,10 +5,10 @@ using System.Text.Json;
 namespace Patina.Library;
 
 /// <summary>
-///     Whether a texture set's bake still fits it. A bake is of one mesh, laid out in one of its UV sets, and a set
-///     that stands on another mesh or chose another UV set reads its maps in the wrong place: decals, paths and
-///     mesh-map masks read them per texel (ADR 0021), and the set's shading reads them beneath its layers (#86).
-///     Nothing is rebaked here; the set is told, and so is whoever shows it.
+///     Whether a texture set's bake still fits it. A bake is of one mesh, laid out in one of its UV sets at one shape,
+///     and a set that stands on another mesh, chose another UV set or changed its shape reads its maps in the wrong
+///     place or stretched: decals, paths and mesh-map masks read them per texel (ADR 0021), and the set's shading
+///     reads them beneath its layers (#86). Nothing is rebaked here; the set is told, and so is whoever shows it.
 /// </summary>
 public static class BakeFit {
     /// <summary>The bake was made on a mesh the set no longer stands on.</summary>
@@ -16,6 +16,15 @@ public static class BakeFit {
 
     /// <summary>The bake is laid out in another of the mesh's UV sets than the one the set chose (#238).</summary>
     public const string UvSet = "uvSet";
+
+    /// <summary>The bake is of another shape than the set's Width by Height, so it reads stretched (#262).</summary>
+    public const string Shape = "shape";
+
+    /// <summary>The fewest rows a bake takes.</summary>
+    const int FewestRows = 16;
+
+    /// <summary>The most rows a bake takes.</summary>
+    const int MostRows = 16384;
 
     static readonly ConcurrentDictionary<string, (long Length, DateTime Written, string Digest)> Digests =
         new(StringComparer.Ordinal);
@@ -33,12 +42,12 @@ public static class BakeFit {
     /// <summary>Why a set's bake no longer fits it, or null when it does or there is none.</summary>
     /// <param name="folder">The folder of the bake the set reads, or null.</param>
     /// <param name="mesh">The digest of the mesh the set stands on, or null when that is not known.</param>
-    /// <param name="uvSet">The UV set the set is laid out in.</param>
+    /// <param name="set">The UV set the set is laid out in, and its shape.</param>
     /// <param name="meshFile">
     ///     The mesh's file, or null. With it, a bake of another digest still fits when the set's own faces are those
     ///     it was made on, so a change to one set's faces leaves the others' bakes fitting (#151).
     /// </param>
-    public static string? Stale(string? folder, string? mesh, int uvSet, string? meshFile = null) {
+    public static string? Stale(string? folder, string? mesh, SetLayout set, string? meshFile = null) {
         if (folder is null || !Directory.Exists(folder)) {
             return null;
         }
@@ -53,15 +62,43 @@ public static class BakeFit {
             return Mesh;
         }
 
-        return manifests.Exists(m => m.UvSet != uvSet) ? UvSet : null;
+        return manifests.Exists(m => m.UvSet != set.UvSet) ? UvSet
+            : manifests.Exists(m => !OfShape(m, set)) ? Shape
+            : null;
     }
+
+    /// <summary>
+    ///     The height of a bake <paramref name="resolution" /> wide that keeps a set's shape: null, a square, when the
+    ///     set is square or its shape is not known, and within what a bake takes otherwise (#253).
+    /// </summary>
+    public static int? RowsAt(int resolution, int width, int height) {
+        if (width <= 0 || height <= 0 || width == height) {
+            return null;
+        }
+
+        var rows = Math.Clamp((int)Math.Round((double)resolution * height / width), FewestRows, MostRows);
+        return rows == resolution ? null : rows;
+    }
+
+    /// <summary>
+    ///     Whether a bake's maps are as tall as the set's shape makes them at their width. A set of no known shape, and
+    ///     a bake that lists no maps, fit.
+    /// </summary>
+    static bool OfShape(BakeManifest manifest, SetLayout set) =>
+        set.Width <= 0
+        || set.Height <= 0
+        || manifest.Result.Maps.Count == 0
+        || RowsOf(manifest.Result.Maps[0]) == RowsAt(manifest.Result.Maps[0].Resolution, set.Width, set.Height);
+
+    /// <summary>A map's height when it is not square.</summary>
+    static int? RowsOf(BakedMapFile map) => map.Rows is { } rows && rows != map.Resolution ? rows : null;
 
     /// <summary>The same, for a set on a mesh file, whose digest is kept while the file stays as it was.</summary>
     /// <param name="folder">The folder of the bake the set reads, or null.</param>
     /// <param name="model">The mesh the set stands on, or null for none.</param>
-    /// <param name="uvSet">The UV set the set is laid out in.</param>
-    public static string? OfModel(string? folder, string? model, int uvSet) =>
-        folder is null ? null : Stale(folder, DigestOf(model), uvSet, model);
+    /// <param name="set">The UV set the set is laid out in, and its shape.</param>
+    public static string? OfModel(string? folder, string? model, SetLayout set) =>
+        folder is null ? null : Stale(folder, DigestOf(model), set, model);
 
     /// <summary>
     ///     Whether a mesh file still has the faces a bake was made on, in the bake's UV set: the bake's material's
@@ -133,6 +170,12 @@ public static class BakeFit {
             return null; // something half written says nothing about the mesh
         }
     }
+
+    /// <summary>What a texture set reads its bake by.</summary>
+    /// <param name="UvSet">The UV set it is laid out in.</param>
+    /// <param name="Width">Its width, or zero when not known, which leaves its shape out.</param>
+    /// <param name="Height">Its height, the same.</param>
+    public readonly record struct SetLayout(int UvSet, int Width = 0, int Height = 0);
 
     readonly record struct FacesKey(string File, string? Material, int UvSet);
 

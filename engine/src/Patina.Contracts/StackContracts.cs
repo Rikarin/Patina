@@ -419,8 +419,8 @@ public sealed record StackEvaluation(
 /// <param name="BakedOcclusion">How its occlusion does: <c>Combine</c>, <c>Replace</c>, <c>Off</c>.</param>
 /// <param name="BakeStale">
 ///     Why the bake the set reads no longer fits it, or null when it does or there is none: <c>mesh</c>, made on a mesh
-///     the set no longer stands on, or <c>uvSet</c>, laid out in another of the mesh's UV sets (#238). Either way its
-///     maps need baking again.
+///     the set no longer stands on, or <c>uvSet</c>, laid out in another of the mesh's UV sets (#238), or <c>shape</c>,
+///     of another shape than the set's Width by Height (#262). Either way its maps need baking again.
 /// </param>
 public sealed record StackState(
     string Id,

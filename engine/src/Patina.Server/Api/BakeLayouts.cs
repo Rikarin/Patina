@@ -21,26 +21,13 @@ static class BakeLayouts {
             : null;
         var options = request.Options;
         if (follow && set is { } found) {
-            options = options with { Rows = RowsOf(options.Resolution, found.Width, found.Height) };
+            options = options with { Rows = BakeFit.RowsAt(options.Resolution, found.Width, found.Height) };
         }
 
         // Followed or not, the choice is spent: the key holds the height it made, so one shape is one bake.
         return request with {
             UvSet = request.UvSet ?? set?.UvSet ?? 0, Options = options with { FollowSetShape = null }
         };
-    }
-
-    /// <summary>
-    ///     The height of a bake at a width that keeps a set's shape: none, a square, when the set is square, and
-    ///     within what a bake takes otherwise.
-    /// </summary>
-    internal static int? RowsOf(int resolution, int width, int height) {
-        if (width <= 0 || height <= 0 || width == height) {
-            return null;
-        }
-
-        var rows = Math.Clamp((int)Math.Round((double)resolution * height / width), 16, 16384);
-        return rows == resolution ? null : rows;
     }
 
     /// <summary>What a bake reads of a texture set: its UV set and the shape it is authored at.</summary>

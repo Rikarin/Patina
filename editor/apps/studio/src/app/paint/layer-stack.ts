@@ -1501,6 +1501,10 @@ export class LayerStack {
       return 'This texture set’s UV set changed after its last bake.';
     }
 
+    if (own === 'shape') {
+      return 'This texture set’s Width or Height changed after its last bake.';
+    }
+
     const mesh = state ? own === 'mesh' : this.project.bakeOutOfDate();
     return mesh ? 'The mesh changed after the last bake.' : null;
   });

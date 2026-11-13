@@ -240,10 +240,10 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     public StackState State {
         get {
             StackState state;
-            (string? Folder, string? Model, int UvSet) bake;
+            (string? Folder, string? Model, BakeFit.SetLayout Set) bake;
             lock (Changing) {
                 var set = editor.Set;
-                bake = (MeshMaps, ModelFile, set.UvSet);
+                bake = (MeshMaps, ModelFile, new(set.UvSet, editor.Document.BaseWidth, editor.Document.BaseHeight));
                 state = new(
                     Id,
                     Path,
@@ -273,7 +273,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
 
             // ⚠ Outside the lock: after a mesh change this reads the mesh once for the set's faces (#151), and strokes
             // and edits must not wait on that.
-            return state with { BakeStale = BakeFit.OfModel(bake.Folder, bake.Model, bake.UvSet) };
+            return state with { BakeStale = BakeFit.OfModel(bake.Folder, bake.Model, bake.Set) };
         }
     }
 

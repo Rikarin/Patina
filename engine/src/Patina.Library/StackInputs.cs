@@ -18,6 +18,9 @@ public static class StackInputs {
     const string PaintKey = "paint";
     const string ModelKey = "model";
 
+    /// <summary>A stack's Width and Height when its file leaves them out, as Vixen reads it.</summary>
+    const int DefaultSide = 1024;
+
     /// <summary>The paint files, the mesh and the bake a stack reads, as paths beside it, in a fixed order.</summary>
     /// <param name="stack">The stack's path.</param>
     /// <param name="text">Its text.</param>
@@ -56,29 +59,37 @@ public static class StackInputs {
     }
 
     /// <summary>
-    ///     The UV set a stack's texture set is laid out in: the set named <paramref name="set" />, or its first. Zero,
-    ///     the first, when the file does not say or cannot be read.
+    ///     What a stack's texture set reads its bake by: the UV set the set named <paramref name="set" />, or its first,
+    ///     is laid out in, and the stack's Width and Height (#262). The first UV set when the file does not say, and no
+    ///     shape and the first when it cannot be read.
     /// </summary>
-    public static int UvSetOf(string text, string? set) {
+    public static BakeFit.SetLayout LayoutOf(string text, string? set) {
         YamlStream yaml = [];
         try {
             using StringReader reader = new(text);
             yaml.Load(reader);
         } catch (YamlException) {
-            return 0;
+            return new(0);
         }
 
-        if (yaml.Documents.FirstOrDefault()?.RootNode is not YamlMappingNode root
-            || !root.Children.TryGetValue(new YamlScalarNode("sets"), out var sets)
-            || sets is not YamlSequenceNode list) {
-            return 0;
+        if (yaml.Documents.FirstOrDefault()?.RootNode is not YamlMappingNode root) {
+            return new(0);
+        }
+
+        var width = Whole(root, "baseWidth", DefaultSide);
+        var height = Whole(root, "baseHeight", DefaultSide);
+        if (!root.Children.TryGetValue(new YamlScalarNode("sets"), out var sets) || sets is not YamlSequenceNode list) {
+            return new(0, width, height);
         }
 
         var chosen = list.Children.OfType<YamlMappingNode>()
                 .FirstOrDefault(entry => set is null || Scalar(entry, "name") == set)
             ?? list.Children.OfType<YamlMappingNode>().FirstOrDefault();
-        return chosen is not null && int.TryParse(Scalar(chosen, "uvSet"), out var uvSet) ? uvSet : 0;
+        return new(chosen is null ? 0 : Whole(chosen, "uvSet", 0), width, height);
     }
+
+    static int Whole(YamlMappingNode mapping, string key, int otherwise) =>
+        int.TryParse(Scalar(mapping, key), out var value) ? value : otherwise;
 
     static string? Scalar(YamlMappingNode mapping, string key) =>
         mapping.Children.TryGetValue(new YamlScalarNode(key), out var value) && value is YamlScalarNode scalar
