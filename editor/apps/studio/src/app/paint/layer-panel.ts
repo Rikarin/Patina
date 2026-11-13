@@ -21,8 +21,8 @@ import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { colourName } from '../core/colour-names';
 import { IconImports } from '../core/icons';
-import { blendName, channelName, choiceName, labelsOf, termName, valuesOf } from '../core/labels';
-import { amount, knobRange, knobShown, percent, toDegrees, toRadians } from '../core/numbers';
+import { blendName, channelName, labelsOf, termName, valuesOf } from '../core/labels';
+import { amount, percent, toDegrees, toRadians } from '../core/numbers';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { AnchorInputs, type AnchorSources } from './anchor-inputs';
@@ -32,6 +32,7 @@ import { tagSwatch } from './layer-tags';
 import { LayerDraft } from './live-value';
 import { MaterialUse } from './material-use';
 import { colourOf, hexOf, paintsOverMask, PaintStore, sameColour, writesChannel } from './paint-store';
+import { SettingKnobs } from './setting-knobs';
 import { SurfaceFields } from './surface-fields';
 
 const Axes: readonly string[] = ['X', 'Y', 'Z'];
@@ -69,6 +70,7 @@ function stemOf(source: string): string | undefined {
     FilterFields,
     FilterInputs,
     IconImports,
+    SettingKnobs,
     SurfaceFields,
     XuiButtonImports,
     XuiColorPickerImports,
@@ -385,6 +387,7 @@ function stemOf(source: string): string | undefined {
                     class="min-w-0 flex-1"
                     aria-label="Graph"
                     data-testid="paint-fill-graph"
+                    [itemText]="graphName"
                     [items]="graphs(layer)"
                     [value]="graphOf(layer)"
                     (valueChange)="chooseGraph(layer, $event)"
@@ -476,68 +479,11 @@ function stemOf(source: string): string | undefined {
             }
           }
 
-          @for (parameter of knobs(); track parameter.name) {
-            <div class="flex items-center gap-2">
-              <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
-                knobName(parameter)
-              }}</span>
-              @if (parameter.accepted.length > 0) {
-                <xui-select
-                  class="min-w-0 flex-1"
-                  [aria-label]="knobName(parameter)"
-                  [attr.data-testid]="'paint-knob-' + parameter.name"
-                  [filterable]="false"
-                  [itemText]="choicesOf(parameter)"
-                  [items]="parameter.accepted"
-                  [value]="knob(layer, parameter)"
-                  (valueChange)="$event && setKnob(layer, parameter.name, $event)"
-                />
-              } @else if (bounded(parameter); as range) {
-                <xui-slider
-                  class="min-w-0 flex-1"
-                  labelStepSize="0"
-                  [aria-label]="knobName(parameter)"
-                  [attr.data-testid]="'paint-knob-' + parameter.name"
-                  [max]="range.maximum"
-                  [min]="range.minimum"
-                  [stepSize]="range.step"
-                  [value]="+knob(layer, parameter)"
-                  (valueChange)="setKnob(layer, parameter.name, $event.toString())"
-                />
-                <span class="readout w-12 shrink-0 text-end text-xs">{{
-                  knobShown(parameter, +knob(layer, parameter))
-                }}</span>
-              } @else if (parameter.kind === 'Float' || parameter.kind === 'Int') {
-                <xui-numeric-input
-                  class="min-w-0 flex-1"
-                  size="sm"
-                  [aria-label]="knobName(parameter)"
-                  [attr.data-testid]="'paint-knob-' + parameter.name"
-                  [stepSize]="parameter.kind === 'Int' ? 1 : 0.1"
-                  [value]="+knob(layer, parameter)"
-                  (valueChange)="setKnob(layer, parameter.name, ($event ?? 0).toString())"
-                />
-              } @else if (parameter.kind === 'Bool') {
-                <xui-switch
-                  [aria-label]="knobName(parameter)"
-                  [attr.data-testid]="'paint-knob-' + parameter.name"
-                  [checked]="knob(layer, parameter) === 'true'"
-                  (checkedChange)="setKnob(layer, parameter.name, $event.toString())"
-                />
-              } @else {
-                <input
-                  class="min-w-0 flex-1"
-                  xuiInput
-                  size="sm"
-                  autocomplete="off"
-                  [attr.aria-label]="knobName(parameter)"
-                  [attr.data-testid]="'paint-knob-' + parameter.name"
-                  [value]="knob(layer, parameter)"
-                  (change)="setKnob(layer, parameter.name, text($event))"
-                />
-              }
-            </div>
-          }
+          <ptn-setting-knobs
+            [parameters]="knobs()"
+            [values]="layer.parameters"
+            (knobChange)="setKnob(layer, $event.name, $event.value)"
+          />
         }
         @if (maskEntry(); as entry) {
           <p class="section-label mt-1">Mask Layer</p>
@@ -579,6 +525,13 @@ function stemOf(source: string): string | undefined {
                   [items]="generatorsWith(entry.layer.generator)"
                   [value]="entry.layer.generator"
                   (valueChange)="setEntry(layer, entry.index, { generator: $event ?? '' })"
+                />
+                <ptn-setting-knobs
+                  testId="paint-mask-layer-knob-"
+                  [parameters]="knobsOf(entry.layer.generator)"
+                  [step]="0.05"
+                  [values]="entry.layer.parameters"
+                  (knobChange)="setEntryKnob(layer, entry.index, $event.name, $event.value)"
                 />
                 @if (store.kindOf(entry.layer.generator); as kind) {
                   <ptn-anchor-inputs
@@ -730,50 +683,13 @@ function stemOf(source: string): string | undefined {
                 [value]="layer.mask.generator"
                 (valueChange)="setMask(layer, { generator: $event ?? '' })"
               />
-              @for (parameter of generatorKnobs(); track parameter.name) {
-                <div class="flex items-center gap-2">
-                  <span class="text-foreground-muted w-16 shrink-0 truncate text-xs" [title]="parameter.summary">{{
-                    knobName(parameter)
-                  }}</span>
-                  @if (parameter.accepted.length > 0) {
-                    <xui-select
-                      class="min-w-0 flex-1"
-                      [aria-label]="knobName(parameter)"
-                      [attr.data-testid]="'paint-mask-knob-' + parameter.name"
-                      [filterable]="false"
-                      [itemText]="choicesOf(parameter)"
-                      [items]="parameter.accepted"
-                      [value]="generatorKnob(layer, parameter)"
-                      (valueChange)="$event && setGeneratorKnob(layer, parameter.name, $event)"
-                    />
-                  } @else if (bounded(parameter); as range) {
-                    <xui-slider
-                      class="min-w-0 flex-1"
-                      labelStepSize="0"
-                      [aria-label]="knobName(parameter)"
-                      [attr.data-testid]="'paint-mask-knob-' + parameter.name"
-                      [max]="range.maximum"
-                      [min]="range.minimum"
-                      [stepSize]="range.step"
-                      [value]="+generatorKnob(layer, parameter)"
-                      (valueChange)="setGeneratorKnob(layer, parameter.name, $event.toString())"
-                    />
-                    <span class="readout w-12 shrink-0 text-end text-xs">{{
-                      knobShown(parameter, +generatorKnob(layer, parameter))
-                    }}</span>
-                  } @else {
-                    <xui-numeric-input
-                      class="min-w-0 flex-1"
-                      size="sm"
-                      [aria-label]="knobName(parameter)"
-                      [attr.data-testid]="'paint-mask-knob-' + parameter.name"
-                      [stepSize]="parameter.kind === 'Int' ? 1 : 0.05"
-                      [value]="+generatorKnob(layer, parameter)"
-                      (valueChange)="setGeneratorKnob(layer, parameter.name, ($event ?? 0).toString())"
-                    />
-                  }
-                </div>
-              }
+              <ptn-setting-knobs
+                testId="paint-mask-knob-"
+                [parameters]="knobsOf(layer.mask.generator)"
+                [step]="0.05"
+                [values]="layer.mask.parameters"
+                (knobChange)="setGeneratorKnob(layer, $event.name, $event.value)"
+              />
               @if (store.kindOf(layer.mask.generator); as kind) {
                 <ptn-anchor-inputs
                   testId="paint-mask-input-"
@@ -1066,18 +982,6 @@ export class LayerPanel {
   );
   protected readonly valuesOf = valuesOf;
   protected readonly labelsOf = labelsOf;
-  /** Each knob's choices by the labels it carries: one reader for one knob, so a select keeps its list. */
-  private readonly choiceReaders = new Map<string, (value: string) => string>();
-  protected choicesOf(parameter: { name: string; accepted: readonly string[]; labels?: readonly string[] | null }) {
-    const key = parameter.name + '\u0000' + parameter.accepted.join('\u0000');
-    let read = this.choiceReaders.get(key);
-    if (!read) {
-      read = value => choiceName(parameter, value);
-      this.choiceReaders.set(key, read);
-    }
-
-    return read;
-  }
   protected readonly channels = computed(() => (this.store.state()?.channels ?? []).map(channel => channel.usage));
   /** Each channel its own first, then one channel every channel reads. */
   protected readonly eachChannel = computed(() => ['', ...this.channels()]);
@@ -1096,14 +1000,6 @@ export class LayerPanel {
   protected readonly termName = termName;
   protected readonly paintsOver = paintsOverMask;
 
-  /** A knob as the app calls it: its label, or its name in words, never the key a graph stores it by (#198). */
-  protected knobName(parameter: { name: string; label?: string | null }): string {
-    return parameter.label ?? termName(parameter.name);
-  }
-
-  protected readonly bounded = knobRange;
-  protected readonly knobShown = knobShown;
-  protected readonly choiceName = choiceName;
   /** A layer by its name, which is what the anchor list offers rather than its id. */
   protected readonly layerName = (id: string): string =>
     this.store.layers().find(row => row.layer.id === id)?.layer.name ?? id;
@@ -1311,6 +1207,10 @@ export class LayerPanel {
       return [];
     }
 
+    if (layer?.kind === 'fill' && this.generators().includes(layer.graph)) {
+      return this.knobsOf(layer.graph);
+    }
+
     return (
       this.shelf().find(material => material.kind === 'graph' && stemOf(material.source) === graph)?.parameters ?? []
     );
@@ -1322,19 +1222,35 @@ export class LayerPanel {
     this.shelf.set(list.data?.items ?? []);
   }
 
-  /** The shelf's graphs a fill can read, and the one it reads even if the shelf has lost it. */
+  /**
+   * The shelf's graphs a fill can read, then the generators a mask runs, which fill content as well (#120), and the one
+   * it reads even if the shelf has lost it.
+   */
   protected graphs(layer: StackLayer): readonly string[] {
-    const named = this.fillGraphs().map(material => material.name);
+    const named = [...this.fillGraphs().map(material => material.name), ...this.generators()];
     const held = this.graphOf(layer);
     return held && !named.includes(held) ? [...named, held] : named;
   }
 
   protected graphOf(layer: StackLayer): string | null {
+    if (this.generators().includes(layer.graph)) {
+      return layer.graph;
+    }
+
     const stem = layer.graph.split('/').pop();
     return stem ? (this.fillGraphs().find(material => stemOf(material.source) === stem)?.name ?? stem) : null;
   }
 
+  /** A shelf graph by its name, and a generator as the vocabulary names it. */
+  protected readonly graphName = (graph: string): string =>
+    this.generators().includes(graph) ? termName(graph) : graph;
+
   protected chooseGraph(layer: StackLayer, name: string | null): void {
+    if (name && this.generators().includes(name)) {
+      void this.store.edit({ op: 'setLayer', layer: layer.id, fill: 'Graph', graph: name });
+      return;
+    }
+
     const material = this.fillGraphs().find(held => held.name === name);
     if (material) {
       void this.using.fillWith(layer, material);
@@ -1357,22 +1273,21 @@ export class LayerPanel {
     }
   }
 
-  protected knob(layer: StackLayer, parameter: GraphSettingDefinition): string {
-    return layer.parameters?.[parameter.name] ?? parameter.default;
-  }
-
   protected setKnob(layer: StackLayer, name: string, value: string): void {
     void this.store.edit({ op: 'setLayer', layer: layer.id, parameters: { [name]: value } });
   }
 
-  /** What the chosen mask's generator can be told. */
-  protected readonly generatorKnobs = computed(() => {
-    const generator = this.store.chosen()?.mask.generator ?? '';
-    return this.store.vocabulary()?.generatorParameters[generator] ?? [];
-  });
+  /**
+   * What a mask's generator can be told: a shipped one's knobs from the vocabulary, and a project's own as the Server
+   * says for this stack (#120).
+   */
+  protected knobsOf(generator: string): readonly GraphSettingDefinition[] {
+    return this.store.vocabulary()?.generatorParameters[generator] ?? this.store.kindOf(generator)?.settings ?? [];
+  }
 
-  protected generatorKnob(layer: StackLayer, parameter: GraphSettingDefinition): string {
-    return layer.mask.parameters?.[parameter.name] ?? parameter.default;
+  /** Sets one knob of a generator layer in a mask; the Server keeps the others. */
+  protected setEntryKnob(layer: StackLayer, index: number, name: string, value: string): void {
+    this.setEntry(layer, index, { parameters: { [name]: value } });
   }
 
   protected setGeneratorKnob(layer: StackLayer, name: string, value: string): void {

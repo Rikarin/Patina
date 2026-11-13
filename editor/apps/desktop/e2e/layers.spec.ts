@@ -131,6 +131,11 @@ test('a graph fill chooses its graph in Properties', async () => {
   await window.getByTestId('paint-fill-source').click();
   await window.getByRole('option', { name: 'Graph' }).click();
   await expect(window.getByTestId('paint-fill-graph')).toBeVisible();
+
+  // A mask's generator fills content too, with its knobs (#120).
+  await window.getByTestId('paint-fill-graph').click();
+  await window.getByRole('option', { name: 'Dirt' }).click();
+  await expect(window.getByTestId('paint-knob-amount')).toBeVisible({ timeout: 30_000 });
 });
 
 test('the eye hides a layer, and Properties follows what is chosen', async () => {

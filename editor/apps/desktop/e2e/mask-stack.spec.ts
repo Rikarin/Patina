@@ -119,6 +119,13 @@ test('a mask opens as a stack of its own, takes paint over its base, and goes ba
   await expect(entry).toHaveClass(/opacity-50/);
   await window.screenshot({ path: join(shots, 'mask-stack-3-entry-hidden.png') });
 
+  // A generator entry has its generator's knobs in Properties, as the mask's own generator does (#120).
+  await window.getByTestId('mask-stack-add').click();
+  await window.getByTestId('mask-stack-add-Generator').click();
+  await window.getByTestId('paint-mask-layer-generator').click();
+  await window.getByRole('option', { name: 'Dirt' }).click();
+  await expect(window.getByTestId('paint-mask-layer-knob-amount')).toBeVisible({ timeout: 30_000 });
+
   // Back to the layers, with the layer still chosen and its mask in front.
   await window.getByTestId('mask-stack-back').click();
   await expect(window.getByTestId('paint-layers')).toBeVisible();
