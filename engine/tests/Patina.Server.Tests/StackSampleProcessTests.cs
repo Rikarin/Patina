@@ -1,7 +1,7 @@
-using System.Globalization;
-using System.Text.RegularExpressions;
 using Patina.Contracts;
 using Patina.Library;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Patina.Server.Tests;
 
