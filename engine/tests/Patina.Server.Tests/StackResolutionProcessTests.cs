@@ -170,8 +170,9 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     A canvas larger than its set is painted on the model at its own size (#19): the stroke stands, shows in the
-    ///     set's maps as an evaluation from nothing shows it, and the canvas keeps the texels it had. A stroke in the 2D
-    ///     view, whose stamps are the set's texels, is still refused. Every stroke on such a canvas was refused before.
+    ///     set's maps as an evaluation from nothing shows it, and the canvas keeps the texels it had. A stroke in the
+    ///     2D view, whose stamps are the set's texels, is still refused. Every stroke on such a canvas was refused
+    ///     before.
     /// </summary>
     [Fact]
     public async Task A_canvas_larger_than_its_set_is_painted_on_the_model_at_its_own_size() {
