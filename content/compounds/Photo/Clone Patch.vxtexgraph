@@ -1,0 +1,39 @@
+version: 1
+name: Clone Patch
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -640, y: 0 }
+  - id: 2
+    type: Space/Transform 2D
+    x: -320
+    y: 160
+    texts: { Tiling: Wrap, '=Offset X': 'toX - fromX', '=Offset Y': 'toY - fromY' }
+  - id: 3
+    type: Source/Shape
+    x: -320
+    y: 360
+    texts: { Kind: Disc, '=Scale': 'radius * 2f', '=Falloff': 'softness', '=Centre X': toX, '=Centre Y': toY }
+  - { id: 4, type: Colour/Mix, x: 0, y: 0 }
+  - { id: 99, type: Sub-graph/Output, x: 320, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Input, toNode: 2, toPort: Input }
+  - { fromNode: 1, fromPort: Input, toNode: 4, toPort: Background }
+  - { fromNode: 2, fromPort: Out, toNode: 4, toPort: Foreground }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Mask }
+  - { fromNode: 4, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Input, direction: Input, kind: Image, default: [], summary: 'The photo to mend.' }
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'The photo with a round patch of it copied from one place over another, blended in at its rim.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Patch cloning: a round piece of the photo copied over a blemish, a seam or something in the way, from a clean part of the same photo.'
+parameters:
+  - { name: fromX, label: From X, default: '0.25', summary: 'Where the clean patch is taken from, across the width.', kind: Float, minimum: 0, maximum: 1, group: Source }
+  - { name: fromY, label: From Y, default: '0.25', summary: 'Where it is taken from, down the height.', kind: Float, minimum: 0, maximum: 1, group: Source }
+  - { name: toX, label: To X, default: '0.5', summary: 'Where it is laid, across the width.', kind: Float, minimum: 0, maximum: 1, group: Target }
+  - { name: toY, label: To Y, default: '0.5', summary: 'Where it is laid, down the height.', kind: Float, minimum: 0, maximum: 1, group: Target }
+  - { name: radius, label: Radius, default: '0.1', summary: 'How big the patch is, as a fraction of the width.', kind: Float, minimum: 0.01, maximum: 0.5, group: Target }
+  - { name: softness, label: Softness, default: '0.3', summary: 'How soft the patch''s rim is, as a share of its radius.', kind: Float, minimum: 0, maximum: 1, group: Target }
