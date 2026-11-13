@@ -141,7 +141,10 @@ public sealed class ExportPreviewBuildTests : IDisposable {
         Assert.Equal(2, report.Exported);
         var exported = ExportRun.Find(new ObjectStore(Root).FolderOf(sized.Projects[0].Exports[0].Key));
         Assert.NotNull(exported);
-        Assert.DoesNotContain(exported.Warnings, static warning => warning.Contains("enlarged", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            exported.Warnings,
+            static warning => warning.Contains("enlarged", StringComparison.Ordinal)
+        );
         Assert.All(exported.Files, file => Assert.Equal((64, 64), (file.Width, file.Height)));
         Assert.NotEmpty(exported.Files);
         Assert.NotEqual(plain.Projects[0].Project.Outputs[0].Key, sized.Projects[0].Project.Outputs[0].Key);

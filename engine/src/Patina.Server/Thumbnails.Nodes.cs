@@ -17,7 +17,7 @@ public sealed partial class Thumbnails {
     /// <summary>The side of a node's picture, which is the size the node is computed at for it.</summary>
     public const int NodeSide = 64;
 
-    /// <summary>What a node's picture is authored at, as every new graph is, so its radii mean what they do there.</summary>
+    /// <summary>What a node's picture is authored at, as a new graph is, so a radius means what it does there.</summary>
     const string NodeBase = "1024";
 
     /// <summary>Goes up when a node's picture would come out differently for the same node.</summary>
@@ -37,7 +37,7 @@ public sealed partial class Thumbnails {
     /// <param name="session">The graph, whose compounds and pictures a type may be made of.</param>
     /// <param name="types">The types, by path.</param>
     /// <param name="cancellationToken">Stops it between pictures.</param>
-    /// <returns>Each type with its picture's hash, or none for one with no picture output or that is not there.</returns>
+    /// <returns>Each type with its picture's hash, or none for a type with no picture output or none at all.</returns>
     /// <exception cref="TimeoutException">No Worker came to draw what had to be drawn.</exception>
     public async Task<IReadOnlyList<Thumbnail>> DrawNodesAsync(
         GraphSession session,

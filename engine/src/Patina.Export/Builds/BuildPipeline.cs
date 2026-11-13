@@ -195,9 +195,10 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
     }
 
     /// <summary>
-    ///     The sides an export's own size asks graphs to be computed at (ADR 0028): the export's, and any set's own over
-    ///     it. A graph computed at the side it is written at is exported as it was computed, and is never enlarged. Sets
-    ///     merged into one set of files are written at the export's size, so their own sides are not used.
+    ///     The sides an export's own size asks graphs to be computed at (ADR 0028): the export's, and any set's own
+    ///     over it. A graph computed at the side it is written at is exported as it was computed, and is never
+    ///     enlarged. Sets merged into one set of files are written at the export's size, so their own sides are not
+    ///     used.
     /// </summary>
     static GraphSizes? SizesOf(ExportOptions? options) {
         var perSet = (options is { Merge: true } ? [] : options?.PerSet ?? [])

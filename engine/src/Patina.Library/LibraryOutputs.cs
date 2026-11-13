@@ -28,7 +28,7 @@ public sealed record OutputSelection(AssetId? Asset = null, IReadOnlyList<Projec
     public bool IsEverything => Asset is null && Projects is not { Count: > 0 } && Documents is not { Count: > 0 };
 }
 
-/// <summary>The side every graph output of a build is computed at, and the sides of single texture sets over it.</summary>
+/// <summary>The side every graph output of a build is computed at, and single texture sets' sides over it.</summary>
 /// <param name="Every">The side of every set that has none of its own, or null for each graph's own.</param>
 /// <param name="PerSet">The sides of single sets, by name.</param>
 public sealed record GraphSizes(int? Every, IReadOnlyDictionary<string, int> PerSet) {
