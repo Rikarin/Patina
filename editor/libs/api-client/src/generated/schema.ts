@@ -2337,9 +2337,10 @@ export interface components {
       rows?: null | number;
       /**
        * @description Whether a bake of a project's texture set takes its height from the set's own shape at
-       *     int BakeOptions.Resolution, in place of int? BakeOptions.Rows, so that a wide set and a square one baked together
-       *     each bake at their own (#253). Null follows too; only false keeps int? BakeOptions.Rows. A bake of no texture
-       *     set keeps int? BakeOptions.Rows, and a finished bake's options say the height it was made at and leave this out.
+       *     int BakeOptions.Resolution, in place of int? BakeOptions.Rows, so that a wide set and a square one baked
+       *     together each bake at their own (#253). Null follows too; only false keeps int? BakeOptions.Rows. A bake of no
+       *     texture set keeps int? BakeOptions.Rows, and a finished bake's options say the height it was made at and leave
+       *     this out.
        */
       followSetShape?: null | boolean;
       /** @description `png8`, `png16`, `exr16` or `exr32`. */

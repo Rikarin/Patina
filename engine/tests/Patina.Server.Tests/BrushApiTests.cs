@@ -92,8 +92,9 @@ public sealed class BrushApiTests : IAsyncLifetime {
     }
 
     /// <summary>
-    ///     The material shelf has a type for presets (#124): the shipped ones and the project's, each named by the source
-    ///     the brush routes take, tagged with its tool so a search for the tool finds it, and the type is offered by name.
+    ///     The material shelf has a type for presets (#124): the shipped ones and the project's, each named by the
+    ///     source the brush routes take, tagged with its tool so a search for the tool finds it, and the type is
+    ///     offered by name.
     /// </summary>
     [Fact]
     public async Task The_material_shelf_lists_the_presets_as_a_type_of_their_own() {

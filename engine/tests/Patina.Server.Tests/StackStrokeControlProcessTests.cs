@@ -95,11 +95,12 @@ public sealed partial class StackProcessTests {
         static (int Wide, int High) Extent(IReadOnlyList<StackPixels> maps, string usage, int at) {
             var map = PngCodec.Decode(File.ReadAllBytes(maps.Single(map => map.Usage == usage).File!));
             var blank = map.Pixels.AsSpan(0, 4).ToArray();
-            bool Painted(int x, int y) => !map.Pixels.AsSpan((y * map.Width + x) * 4, 4).SequenceEqual(blank);
             return (
                 Enumerable.Range(0, map.Width).Count(x => Painted(x, at)),
                 Enumerable.Range(at - 200, 400).Count(y => Painted(400, y))
             );
+
+            bool Painted(int x, int y) => !map.Pixels.AsSpan((y * map.Width + x) * 4, 4).SequenceEqual(blank);
         }
     }
 

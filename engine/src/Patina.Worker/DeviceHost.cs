@@ -43,7 +43,8 @@ sealed class DeviceHost : IDisposable {
     ///     a fixed number: the budget binds only between evaluations, so an evaluation's own pool, the uploaded
     ///     canvases, the viewport's maps and every other program on the card need the rest. A session that swaps filter
     ///     after filter fills the cache to its budget, and with 6 GiB on an 8 GiB card the filter roll call peaked at
-    ///     6.2 GiB of this device's own textures, against 4.0 GiB at half. A device that does not say is given the most.
+    ///     6.2 GiB of this device's own textures, against 4.0 GiB at half. A device that does not say is given the
+    ///     most.
     /// </summary>
     /// <param name="deviceMemory">The device's own memory in bytes, or zero when it does not say.</param>
     internal static long ResultBudget(ulong deviceMemory) =>

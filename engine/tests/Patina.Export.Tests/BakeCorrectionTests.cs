@@ -413,9 +413,10 @@ public sealed class BakeCorrectionTests : IDisposable {
     }
 
     /// <summary>
-    ///     A bake records the box its position map spans, which decals and paths read the map through rather than the box
-    ///     they were placed with (#133): the high mesh's bounds, not the low one's, and for a cube range its longest side
-    ///     on every axis. Before, nothing said it and a decal on a bake from a high mesh with other bounds moved.
+    ///     A bake records the box its position map spans, which decals and paths read the map through rather than the
+    ///     box they were placed with (#133): the high mesh's bounds, not the low one's, and for a cube range its
+    ///     longest side on every axis. Before, nothing said it and a decal on a bake from a high mesh with other bounds
+    ///     moved.
     /// </summary>
     [Fact]
     public void A_bake_says_the_box_its_position_map_spans() {

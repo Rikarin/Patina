@@ -39,7 +39,9 @@ public static class MaterialShelf {
     static readonly string[] Roles =
         [GraphRoles.Material, GraphRoles.Mask, GraphRoles.Filter, GraphRoles.Brush, PresetRole];
 
-    /// <summary>The type of a brush or tool preset on the shelf, which a client takes up rather than adds (#124).</summary>
+    /// <summary>
+    ///     The type of a brush or tool preset on the shelf, which a client takes up rather than adds (#124).
+    /// </summary>
     public const string PresetRole = "preset";
 
     static readonly string[] Origins = ["shipped", PackageOrigin, "project", ElsewhereOrigin];
@@ -84,8 +86,8 @@ public static class MaterialShelf {
     }
 
     /// <summary>
-    ///     The brush and tool presets the project's brush panel lists, as the shelf shows them (#124): tagged with their
-    ///     tool, so a search for one finds them, and never added to a stack, since taking one up is the client's.
+    ///     The brush and tool presets the project's brush panel lists, as the shelf shows them (#124): tagged with
+    ///     their tool, so a search for one finds them, and never added to a stack, since taking one up is the client's.
     /// </summary>
     static IEnumerable<MaterialInfo> Presets(OpenLibrary library, string? project, string? search) =>
         BrushShelf.List(library, project, search)
