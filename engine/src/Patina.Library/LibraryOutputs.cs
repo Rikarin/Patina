@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Patina.Contracts;
 using System.Collections.Concurrent;
+using System.Globalization;
 
 namespace Patina.Library;
 
@@ -16,8 +17,42 @@ public sealed record OutputSelection(AssetId? Asset = null, IReadOnlyList<Projec
     /// </summary>
     public IReadOnlyList<string>? Documents { get; init; }
 
+    /// <summary>
+    ///     The side graphs are computed at for this build, as an export's own size asks (ADR 0028), or null for each
+    ///     graph's own size. It goes on every graph output as its size setting, so a graph is keyed and cached once per
+    ///     side, and the export finds maps already the size it writes.
+    /// </summary>
+    public GraphSizes? Sizes { get; init; }
+
     /// <summary>Whether this is the whole library.</summary>
     public bool IsEverything => Asset is null && Projects is not { Count: > 0 } && Documents is not { Count: > 0 };
+}
+
+/// <summary>The side every graph output of a build is computed at, and the sides of single texture sets over it.</summary>
+/// <param name="Every">The side of every set that has none of its own, or null for each graph's own.</param>
+/// <param name="PerSet">The sides of single sets, by name.</param>
+public sealed record GraphSizes(int? Every, IReadOnlyDictionary<string, int> PerSet) {
+    /// <summary>
+    ///     An output computed at its set's side: a graph output gains the size setting, and anything else, or a graph
+    ///     whose set has no side, is as declared.
+    /// </summary>
+    public OutputDeclaration Apply(OutputDeclaration output) {
+        ArgumentNullException.ThrowIfNull(output);
+        if (output.Tool != BuildTools.TextureGraph) {
+            return output;
+        }
+
+        var set = output.Settings.GetValueOrDefault(ProjectOutputs.SetSetting, string.Empty);
+        if ((PerSet.TryGetValue(set, out var own) ? own : Every) is not { } side) {
+            return output;
+        }
+
+        return output with {
+            Settings = new Dictionary<string, string>(output.Settings, StringComparer.Ordinal) {
+                [TextureSizes.OutputSetting] = side.ToString(CultureInfo.InvariantCulture)
+            }
+        };
+    }
 }
 
 /// <summary>An output as a build sees it.</summary>
@@ -127,6 +162,7 @@ sealed class LibraryOutputs(string root, IndexDatabase database, LibraryQueries 
             path,
             [
                 ..ProjectOutputs.Of(project, LibraryLayout.Full(root, location), selection.Documents)
+                    .Select(output => selection.Sizes?.Apply(output) ?? output)
                     .Select(output => Scan(output, project, location, selection.Asset, graph, paths, hashes))
             ]
         );

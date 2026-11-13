@@ -381,6 +381,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- An export's own size computes a graph at that size (#96, ADR 0028): a material graph exported at 4096 from a graph of 2048 is computed at 4096, not enlarged, and keeps its detail; the Export dialog's size and a texture set's own size both do it, as does `patina build --size`. Each size is built and cached once. A bake's maps and a layer stack's paint are still resampled to the size, since they cannot be computed again at another.
 - Rust has a Grain knob, and up close it is granular: flaked and pitted, ragged at its rims, with fine variation in its colour, roughness and height, where it was smooth blooms (#118).
 - The viewport's bar keeps to one line, as the other panes' bars do (#200): as the pane narrows, the frame readouts go first, then the mesh's and the graph's names shorten and View, Environment and Look narrow, and its buttons keep their size.
 - A mesh is picked from the library as a picture is (#4): New Project's mesh and high poly mesh, Project Settings' mesh, and the Bake dialog's high poly meshes and cage open Choose a Mesh, which lists every project's meshes, this one's first, with From a File… on the desktop; the bake's skew map, distance map and picture to carry, and New Project's picture, open Choose a Picture. With nothing of the kind in the library the desktop's own dialog opens at once. Outside the desktop app none of these is typed any more, and Change Mesh… shows there too; only the bake's output folder is still typed there.

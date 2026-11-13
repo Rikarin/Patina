@@ -1,6 +1,7 @@
 # ADR 0028: Sizes below a graph, and an export's own size
 
-**Status:** proposed, 2026-11-12, for issue #96. A compound's own base is built (2026-11-13); the rest is a design only.
+**Status:** proposed, 2026-11-12, for issue #96. A compound's own base and an export's size are built (2026-11-13); the rest is a
+design only.
 
 ## What this answers
 
@@ -28,6 +29,12 @@ enlarged stays for those, and goes away for graphs.
 
 A layer stack is painted at its set's size, and painted texels cannot be computed at another: an export at another size
 resamples a stack's maps as it does now, and says so when it enlarges them.
+
+*Built (2026-11-13).* The size is the run's own, from `ExportOptions.Size` and a set's `PerSet` size over it, which is
+what the Export dialog and `patina build --size` send. A preset's own `size` still resamples, because one build exports
+through several presets and their graphs are built once for all of them. Sets merged into one set of files take the
+export's size alone. A graph whose base is not square, or a side that is no whole step of its base, still meets a
+resample for the last step, as a graph at its own size does.
 
 ### A compound has its own base
 
@@ -80,7 +87,7 @@ is a graph and follows the rules above, computed at the set's size with radii in
 
 ## Order of work
 
-1. The export's size computing graphs at it (Patina's build plan; no Vixen change).
+1. The export's size computing graphs at it (Patina's build plan; no Vixen change). Built.
 2. A compound's own base (Vixen's compiler). Built.
 3. Keep aspect on the shape sources (Vixen's nodes).
 4. Level offsets per node and per instance (Vixen's compiler, then the Inspector).
