@@ -22,7 +22,7 @@ public static class MeshFixture {
     /// <summary>How many strips the knot's tube is cut into when it is laid out, so a texel is near square.</summary>
     const int KnotStrips = 4;
 
-    /// <summary>Space left around each strip, as a share of the square, so paint on one never bleeds into the next.</summary>
+    /// <summary>Space around each strip, as a share of the square, so paint never bleeds into the next.</summary>
     const float StripMargin = 0.01f;
 
     /// <summary>Writes the scene, laid out in UVs when <paramref name="uvs" /> is set.</summary>
@@ -50,7 +50,9 @@ public static class MeshFixture {
                 attributes["TEXCOORD_0"] = first + 3;
             }
 
-            var primitive = new JsonObject { ["attributes"] = attributes, ["indices"] = first + 2, ["material"] = material };
+            var primitive = new JsonObject {
+                ["attributes"] = attributes, ["indices"] = first + 2, ["material"] = material
+            };
             meshes.Add(new JsonObject { ["primitives"] = new JsonArray(primitive) });
             nodes.Add(new JsonObject { ["mesh"] = nodes.Count });
         }
@@ -150,7 +152,7 @@ public static class MeshFixture {
         return centre + (side * MathF.Cos(angle) + lift * MathF.Sin(angle)) * tube;
     }
 
-    /// <summary>A grid's vertices and triangles, and where each vertex lies in the UV square if it is laid out.</summary>
+    /// <summary>A grid's vertices and triangles, and where each vertex lies in the UV square if laid out.</summary>
     sealed record Surface(Vector3[] Positions, Vector3[] Normals, uint[] Indices, Vector2[]? Uvs);
 
     /// <summary>A closed grid over a surface, with normals taken from its own differences.</summary>

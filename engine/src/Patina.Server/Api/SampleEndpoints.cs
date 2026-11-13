@@ -47,7 +47,7 @@ static class SampleEndpoints {
 
     /// <summary>A new project for the sample, named for it, with a number when that name is taken.</summary>
     static ProjectSummary NewProject(OpenLibrary library, SampleRequest request) {
-        for (var copy = 1; ; copy++) {
+        for (var copy = 1;; copy++) {
             var name = copy == 1 ? request.Name : $"{request.Name} {copy}";
             try {
                 return library.CreateProject(new(name, request.Folder, ["sample"]));
@@ -74,7 +74,11 @@ static class SampleEndpoints {
             }
         }
 
-        var added = library.AddMesh(project, mesh ?? throw new InvalidOperationException("A sample has no mesh."), null);
+        var added = library.AddMesh(
+            project,
+            mesh ?? throw new InvalidOperationException("A sample has no mesh."),
+            null
+        );
         foreach (var file in files.Where(static file => file.EndsWith(StackExtension, StringComparison.Ordinal))) {
             var name = Path.GetFileNameWithoutExtension(file);
             var document = library.AddDocument(
@@ -88,7 +92,7 @@ static class SampleEndpoints {
         }
     }
 
-    /// <summary>The embedded samples. A resource's folder may be written with either slash, by the build's system.</summary>
+    /// <summary>The embedded samples. A resource's folder has the build system's slash.</summary>
     static ImmutableSortedDictionary<string, ImmutableArray<string>> Embedded() =>
         typeof(SampleEndpoints).Assembly.GetManifestResourceNames()
             .Where(static name => name.StartsWith(Resource, StringComparison.Ordinal))

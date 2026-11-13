@@ -20,7 +20,7 @@ public sealed class SnapshotTests : IDisposable {
 
     string Paint(string name) => LibraryLayout.Full(library.Root, $"projects/crate/paint/{name}.vxpaint");
 
-    void Write(string file, string text) => LibraryFiles.Replace(file, text);
+    static void Write(string file, string text) => LibraryFiles.Replace(file, text);
 
     [Fact]
     public void A_restore_puts_back_the_document_and_its_paint_and_takes_away_paint_painted_since() {

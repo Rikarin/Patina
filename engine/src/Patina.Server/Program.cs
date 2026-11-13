@@ -71,6 +71,7 @@ builder.Services.ConfigureHttpJsonOptions(static o => {
         o.SerializerOptions.TypeInfoResolverChain.Insert(1, LibraryTreeJsonContext.Default);
         o.SerializerOptions.TypeInfoResolverChain.Insert(2, ExportJsonContext.Default);
         o.SerializerOptions.TypeInfoResolverChain.Insert(3, PackageJsonContext.Default);
+        o.SerializerOptions.TypeInfoResolverChain.Insert(4, LibraryQueryJsonContext.Default);
         // Numbers are numbers: the web default also accepts "1", which turns every number in the OpenAPI document
         // (and so in generated clients) into number | string.
         o.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;

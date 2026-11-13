@@ -136,7 +136,7 @@ public static class Snapshots {
         }
     }
 
-    /// <summary>Forgets a snapshot. Its bytes stay under <c>.revisions/</c>, where a pin or another may share them.</summary>
+    /// <summary>Forgets a snapshot. Its bytes stay under <c>.revisions/</c>, which others may share.</summary>
     /// <exception cref="FileNotFoundException">The snapshot is not there.</exception>
     public static void Forget(string document, Guid id) {
         var entries = Read(document);
@@ -226,10 +226,7 @@ public static class Snapshots {
             list.Add(WriteEntry(entry));
         }
 
-        var root = new YamlMappingNode {
-            { SchemaKey, YamlText.Plain(Schema) },
-            { ListKey, list }
-        };
+        var root = new YamlMappingNode { { SchemaKey, YamlText.Plain(Schema) }, { ListKey, list } };
         LibraryFiles.Replace(ListPath(document), YamlText.Write(root));
     }
 

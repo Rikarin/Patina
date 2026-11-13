@@ -17,7 +17,7 @@ static class PatinaApi {
     /// <summary>How much of Vixen's commit its version keeps, as Git abbreviates one.</summary>
     const int CommitShown = 9;
 
-    /// <summary>The version of Vixen the Server was built with, and its commit after a plus when the build knew it.</summary>
+    /// <summary>The Vixen the Server was built with: its version, then its commit after a plus.</summary>
     static readonly string VixenVersion = Shortened(
         typeof(Vixen.Texturing.Layers.LayerStackAsset).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()

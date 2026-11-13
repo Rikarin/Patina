@@ -56,8 +56,8 @@ public static class StackInputs {
     }
 
     /// <summary>
-    ///     What a stack exports at, for what it costs (#207): its size, and how many maps its texture sets make, one per
-    ///     channel of each. Null when the file cannot be read as a stack.
+    ///     What a stack exports at, for what it costs (#207): its size, and how many maps its texture sets make,
+    ///     one per channel of each. Null when the file cannot be read as a stack.
     /// </summary>
     public static TextureSize? SizeOf(string text) {
         YamlStream yaml = [];
