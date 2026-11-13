@@ -4210,7 +4210,7 @@ export interface components {
       default: string;
       /** @description One line about it. */
       summary: string;
-      /** @description Text, Bool, Int or Float. */
+      /** @description Text, Bool, Int, Float or Color, whose default is four numbers separated by commas. */
       kind: string;
       /**
        * Format: float

@@ -88,6 +88,49 @@ describe('the colour control', () => {
     picker.value.set('#00F');
     expect(store.setValue).not.toHaveBeenCalled();
   });
+
+  it('exposes the colour as a Color parameter starting where it is, and drives the port from it', () => {
+    const { store, fixture } = render();
+    const addParameter = vi.fn();
+    Object.assign(store, { addParameter });
+    const expose = fixture.debugElement.query(By.css('[data-testid="expose-Colour"]'));
+    (expose.nativeElement as HTMLButtonElement).click();
+    expect(addParameter).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Colour', kind: 'Color', default: '1,0,0,1', minimum: null, maximum: null })
+    );
+    expect(store.setText).toHaveBeenCalledWith(1, '=Colour', 'Colour');
+  });
+});
+
+describe("a compound's Color setting", () => {
+  const swatchType: GraphNodeType = {
+    path: 'Compounds/Swatch',
+    title: 'Swatch',
+    category: 'Compounds',
+    summary: '',
+    hasPreview: true,
+    ports: [],
+    settings: [
+      { name: 'Tint', default: '0.5,0.25,2,1', summary: '', kind: 'Color', group: '', accepted: [], minimum: null }
+    ]
+  };
+
+  it('reads its text as lanes past 1, and writes a lane back as text', () => {
+    const store = fakeStore();
+    store.types.set(new Map([[swatchType.path, swatchType]]));
+    TestBed.configureTestingModule({ providers: [{ provide: GraphStore, useValue: store }] });
+    const fixture = TestBed.createComponent(GraphInspector);
+    fixture.componentRef.setInput('node', { ...node(1), type: swatchType.path });
+    fixture.detectChanges();
+    const lanes = fixture.debugElement
+      .queryAll(By.directive(XuiNumericInput))
+      .map(input => input.componentInstance as XuiNumericInput)
+      .slice(-4);
+    expect(lanes.map(input => input.value())).toEqual([0.5, 0.25, 2, 1]);
+    lanes[0]?.valueChange.emit(1);
+    expect(store.setText).toHaveBeenCalledWith(1, 'Tint', '1,0.25,2,1');
+    expect(store.setValue).not.toHaveBeenCalled();
+  });
 });
 
 describe('a number port from the Inspector', () => {

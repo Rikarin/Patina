@@ -30,7 +30,7 @@ class GraphSettingDefinition:
             name (str): What it is called.
             default (str): Its default, as text.
             summary (str): One line about it.
-            kind (str): Text, Bool, Int or Float.
+            kind (str): Text, Bool, Int, Float or Color, whose default is four numbers separated by commas.
             group (str): The heading it sits under.
             accepted (list[str]): The values it may take; empty for any.
             minimum (float | None | Unset): Its lower bound, or null for none.

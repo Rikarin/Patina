@@ -117,6 +117,7 @@ public static class GraphFactsOf {
             SettingKind.Int when parsed != MathF.Round(parsed) => false,
             SettingKind.Float or SettingKind.Int when parsed < parameter.Minimum || parsed > parameter.Maximum => false,
             SettingKind.Bool => parameter.Default is "true" or "false",
+            SettingKind.Color => SettingColors.TryRead(parameter.Default, out _),
             _ => parameter.Accepts(parameter.Default)
         };
     }

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import type { GraphSettingDefinition } from '@patina/api-client';
+import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiInputImports } from '@xui/input';
 import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
@@ -7,6 +8,7 @@ import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { choiceName, termName } from '../core/labels';
 import { knobRange, knobShown } from '../core/numbers';
+import { colorTextOf, hexOfLanes, keptLanes, lanesOfColorText, lanesOfHex } from '../graph/graph-fields';
 
 /** A setting a knob changed to. */
 export interface KnobChange {
@@ -21,7 +23,14 @@ export interface KnobChange {
  */
 @Component({
   selector: 'ptn-setting-knobs',
-  imports: [XuiInputImports, XuiNumericInputImports, XuiSelectImports, XuiSliderImports, XuiSwitchImports],
+  imports: [
+    XuiColorPickerImports,
+    XuiInputImports,
+    XuiNumericInputImports,
+    XuiSelectImports,
+    XuiSliderImports,
+    XuiSwitchImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'contents' },
   template: `
@@ -64,6 +73,14 @@ export interface KnobChange {
             [stepSize]="parameter.kind === 'Int' ? 1 : step()"
             [value]="+current"
             (valueChange)="set(parameter, ($event ?? 0).toString())"
+          />
+        } @else if (parameter.kind === 'Color') {
+          <xui-color-picker
+            class="min-w-0 flex-1"
+            showAlpha
+            [attr.data-testid]="testId() + parameter.name"
+            [value]="hexOf(current)"
+            (valueChange)="setHex(parameter, current, $event)"
           />
         } @else if (parameter.kind === 'Bool') {
           <xui-switch
@@ -124,6 +141,18 @@ export class SettingKnobs {
 
   protected set(parameter: GraphSettingDefinition, value: string): void {
     this.knobChange.emit({ name: parameter.name, value });
+  }
+
+  protected hexOf(text: string): string {
+    return hexOfLanes(lanesOfColorText(text) ?? [1, 1, 1, 1]);
+  }
+
+  /** A picked colour, keeping each lane the eight-bit picker did not move. */
+  protected setHex(parameter: GraphSettingDefinition, current: string, hex: string): void {
+    const picked = lanesOfHex(hex);
+    if (picked && hex.toUpperCase() !== this.hexOf(current)) {
+      this.set(parameter, colorTextOf(keptLanes(lanesOfColorText(current) ?? [1, 1, 1, 1], picked)));
+    }
   }
 
   protected text(event: Event): string {

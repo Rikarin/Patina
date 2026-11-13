@@ -9,6 +9,7 @@ import type {
 } from '@patina/api-client';
 import { AngleDial } from '@patina/studio-ui';
 import { XuiButtonImports } from '@xui/button';
+import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiInputImports } from '@xui/input';
 import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
@@ -21,9 +22,10 @@ import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { FrameColours, frameColourName } from './frame-colours';
 import { controlOf, freePresetName, grouped, holds, titleOf, widgetsFor } from './graph-authoring';
+import { colorTextOf, hexOfLanes, keptLanes, lanesOfColorText, lanesOfHex } from './graph-fields';
 import { GraphStore } from './graph-store';
 
-const Kinds = ['Float', 'Int', 'Bool', 'Text'];
+const Kinds = ['Float', 'Int', 'Bool', 'Text', 'Color'];
 const BitDepths = ['16', '32'];
 const PortKinds = ['Image', 'Float', 'Int', 'Bool', 'Float2', 'Float3', 'Float4'];
 const DefaultBitDepth = '16';
@@ -45,6 +47,8 @@ function startOf(kind: string): string {
       return 'false';
     case 'Text':
       return '';
+    case 'Color':
+      return '1,1,1,1';
     default:
       return '0';
   }
@@ -80,6 +84,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
     IconImports,
     AngleDial,
     XuiButtonImports,
+    XuiColorPickerImports,
     XuiInputImports,
     XuiNumericInputImports,
     XuiSelectImports,
@@ -443,6 +448,29 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                 >
                   {{ titleOf(parameter) }}
                 </button>
+              }
+              @case ('colour') {
+                <div class="flex flex-col gap-1" [attr.data-testid]="'parameter-colour-' + parameter.name">
+                  <xui-color-picker
+                    showAlpha
+                    [disabled]="!store.editable()"
+                    [value]="hexOfParameter(parameter)"
+                    (valueChange)="setHexDefault(parameter, $event)"
+                  />
+                  <div class="grid grid-cols-4 gap-1">
+                    @for (lane of lanes; track lane) {
+                      <xui-numeric-input
+                        size="sm"
+                        buttonPosition="none"
+                        [aria-label]="parameter.name + ' ' + lane"
+                        [disabled]="!store.editable()"
+                        [stepSize]="0.01"
+                        [value]="lanesOfParameter(parameter)[$index] ?? 1"
+                        (valueChange)="setLaneDefault(parameter, $index, $event)"
+                      />
+                    }
+                  </div>
+                </div>
               }
               @case ('choice') {
                 <xui-select
@@ -1066,6 +1094,34 @@ export class GraphSettings {
   protected setDefault(parameter: GraphSettingDefinition, value: string): void {
     this.store.setParameterDefault(parameter, value);
     this.store.endGesture();
+  }
+
+  protected readonly lanes = ['R', 'G', 'B', 'A'];
+
+  /** A Color parameter's default as lanes, in floats, so a value above one is kept. */
+  protected lanesOfParameter(parameter: GraphSettingDefinition): readonly number[] {
+    return lanesOfColorText(this.store.parameterDefault(parameter)) ?? [1, 1, 1, 1];
+  }
+
+  protected hexOfParameter(parameter: GraphSettingDefinition): string {
+    return hexOfLanes(this.lanesOfParameter(parameter));
+  }
+
+  protected setHexDefault(parameter: GraphSettingDefinition, hex: string): void {
+    const picked = lanesOfHex(hex);
+    if (picked && hex.toUpperCase() !== this.hexOfParameter(parameter)) {
+      this.store.setParameterDefault(parameter, colorTextOf(keptLanes(this.lanesOfParameter(parameter), picked)));
+    }
+  }
+
+  protected setLaneDefault(parameter: GraphSettingDefinition, lane: number, value: number | null): void {
+    if (value === null || !Number.isFinite(value)) {
+      return;
+    }
+
+    const next = [...this.lanesOfParameter(parameter)];
+    next[lane] = value;
+    this.setDefault(parameter, colorTextOf(next));
   }
 
   protected setDefaultText(parameter: GraphSettingDefinition, event: Event): void {
