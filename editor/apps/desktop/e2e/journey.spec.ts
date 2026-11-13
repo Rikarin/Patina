@@ -80,7 +80,7 @@ test('a new user makes a library, groups projects in folders, and comes back to 
 
   await answerSave(library);
   await window.getByTestId('library-new').click();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Ember', { timeout: 30_000 });
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('Ember', { timeout: 30_000 });
   expect(existsSync(join(library, 'library.yaml'))).toBe(true);
   await expect(window.getByText('No projects yet')).toBeVisible();
 
@@ -150,7 +150,7 @@ test('a new user makes a library, groups projects in folders, and comes back to 
   // Back again later: the library and the tree are as they were left.
   await app.close();
   await launch();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Ember', { timeout: 30_000 });
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('Ember', { timeout: 30_000 });
   await expect(row('Hero Props/Metal Doors/housing')).toBeVisible({ timeout: 15_000 });
 
   await row('Hero Props/Metal Doors/housing').dblclick();
@@ -277,7 +277,7 @@ test('painted work asks before the project is left', async () => {
   await launch();
   await answerSave(join(scratch, 'Ember.ptlib'));
   await window.getByTestId('library-new').click();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Ember', { timeout: 30_000 });
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('Ember', { timeout: 30_000 });
   for (const name of ['First', 'Second']) {
     await window.getByTestId('library-new-project').click();
     await window.getByTestId('new-project-name').fill(name);

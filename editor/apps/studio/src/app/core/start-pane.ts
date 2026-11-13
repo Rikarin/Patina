@@ -6,7 +6,7 @@ import { desktop } from './desktop';
 
 const Kinds = [
   { kind: 'texturing', title: 'Texturing', text: 'Paint and layer materials on a mesh.' },
-  { kind: 'layered-material', title: 'Layered Material', text: 'Stack materials into a new one, with no mesh.' },
+  { kind: 'layered-material', title: 'Layered Material', text: 'Layer materials into a new one, with no mesh.' },
   { kind: 'image-material', title: 'Image Material', text: 'Make a material from one photo.' },
   { kind: 'graph', title: 'Graph', text: 'Build a material, a mask or a brush from nodes.' }
 ];

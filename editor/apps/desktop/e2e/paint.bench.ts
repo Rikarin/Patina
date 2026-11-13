@@ -58,7 +58,7 @@ test('a stamp reaches the screen through the real window', async () => {
     env: { ...process.env, PATINA_USER_DATA: join(scratch, 'user-data'), PATINA_LIBRARY: library }
   });
   const window = await app.firstWindow();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('GPU ready');
 
   const opened = Date.now();
   await window.locator('[data-testid=tree-row][data-path="s4"]').dblclick();

@@ -19,6 +19,7 @@ import { Activity } from '../core/activity';
 import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
 import { termName } from '../core/labels';
+import { milliseconds } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { ViewOptions } from '../core/view-options';
 import { GraphViews } from '../graph/graph-views';
@@ -225,12 +226,12 @@ const PickFile = '…';
           data-testid="viewport-stamp"
           [attr.data-stamp-ms]="stampTimes()"
         >
-          stamp {{ stampMs() }} ms
+          Stamp {{ milliseconds(stampMs() ?? 0) }}
         </span>
       }
       @if (viewport.stats(); as stats) {
         <span class="readout" data-testid="viewport-stats" [class.hidden]="!options.stats()">
-          {{ stats.width }}×{{ stats.height }} · {{ stats.fps }} fps · {{ stats.latencyMs.toFixed(0) }} ms
+          {{ stats.width }}×{{ stats.height }} · {{ stats.fps }} fps · {{ milliseconds(stats.latencyMs) }}
         </span>
       }
     </div>
@@ -396,6 +397,7 @@ export class ViewportPane implements AfterViewInit {
       .join(' ')
   );
 
+  protected readonly milliseconds = milliseconds;
   protected readonly stampTimes = computed(() => this.paint.stampTimes().join(','));
   protected readonly stampMs = computed(() => {
     const times = [...this.paint.stampTimes().slice(-60)].sort((a, b) => a - b);

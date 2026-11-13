@@ -24,7 +24,7 @@ function clamp(value: number): number {
       class="well relative h-6 w-full touch-none"
       data-testid="gradient-ramp"
       role="group"
-      aria-label="Colour ramp"
+      aria-label="Color ramp"
       [style.background]="css()"
       (lostpointercapture)="release()"
       (pointerdown)="press($event)"

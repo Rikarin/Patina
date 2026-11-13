@@ -955,7 +955,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
           @if (store.state()) {
             <xui-non-ideal-state
               title="No layers yet"
-              description="Layers stack paint, fills and filters into the maps this document makes. Add one, or drag a material from the shelf."
+              description="Layers lay paint, fills and filters one over another into the maps this document makes. Add one, or drag a material from the shelf."
               data-testid="layers-empty"
             >
               <button
@@ -971,7 +971,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
             </xui-non-ideal-state>
           } @else {
             <xui-non-ideal-state
-              title="No stack open"
+              title="No document open"
               description="Open a texturing document or a layered material to see its layers here."
               data-testid="layers-empty"
             />
@@ -1455,7 +1455,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
             [disabled]="(store.state()?.layers?.length ?? 0) === 0"
             (triggered)="store.flatten()"
           >
-            Flatten Stack
+            Flatten All Layers
           </button>
           @if (menuLayer(); as layer) {
             <xui-menu-divider />

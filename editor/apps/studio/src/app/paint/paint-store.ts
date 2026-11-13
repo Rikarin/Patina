@@ -31,6 +31,7 @@ import {
 } from '@patina/api-client';
 import { learnTerms } from '../core/labels';
 import { messageOf } from '../core/messages';
+import { milliseconds } from '../core/numbers';
 import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
@@ -2018,7 +2019,7 @@ export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'e
     return 'Not evaluated';
   }
 
-  return evaluation.ran === 0 ? 'Up to date' : `Updated in ${evaluation.milliseconds.toFixed(0)} ms`;
+  return evaluation.ran === 0 ? 'Up to date' : `Updated in ${milliseconds(evaluation.milliseconds)}`;
 }
 
 /** A mask's effects with one more of a node, or none of it if it had one: what a toggle such as Invert sends. */

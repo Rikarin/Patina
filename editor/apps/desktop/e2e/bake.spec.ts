@@ -24,7 +24,7 @@ test.beforeEach(async () => {
     env: { ...process.env, PATINA_USER_DATA: join(scratch, 'user-data') }
   });
   window = await app.firstWindow();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('GPU ready');
   await newLibrary(app, window, join(scratch, 'Game.ptlib'));
   await newProject(app, window, 'Housing', join(scratch, 'meshes', 'housing_low.glb'));
 });

@@ -6,6 +6,7 @@ import { XuiInputImports } from '@xui/input';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { Commands } from '../core/commands';
 import { checkWords, messageOf } from '../core/messages';
+import { bytes } from '../core/numbers';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
@@ -26,7 +27,7 @@ interface Limit {
 const Limits: readonly Limit[] = [
   {
     key: 'memoryBudget',
-    label: 'Budget (MiB)',
+    label: 'Budget (MB)',
     title: 'The most GPU memory one texture set’s exported files may take, or 0 for no limit',
     scale: 1
   },
@@ -254,9 +255,8 @@ export class ChecksPane {
   }
 
   protected memory(checks: StackChecks): string {
-    const mebibytes = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1);
-    const budget = checks.memoryBudget > 0 ? ` of ${mebibytes(checks.memoryBudget)}` : '';
-    return `${mebibytes(checks.memoryBytes)}${budget} MiB with ${checks.preset}`;
+    const budget = checks.memoryBudget > 0 ? ` of ${bytes(checks.memoryBudget)}` : '';
+    return `${bytes(checks.memoryBytes)}${budget} with ${checks.preset}`;
   }
 
   protected shownLimit(limit: Limit): number {

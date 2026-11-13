@@ -33,7 +33,7 @@ test.afterEach(async () => {
 });
 
 test('Preferences opens from its key, changes the theme and keeps autosave with the engine', async () => {
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready', { timeout: 30_000 });
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('GPU ready', { timeout: 30_000 });
   await window.keyboard.press(process.platform === 'darwin' ? 'Meta+Comma' : 'Control+Comma');
   const dialog = window.getByTestId('preferences');
   await expect(dialog).toBeVisible();

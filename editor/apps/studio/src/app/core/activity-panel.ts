@@ -6,6 +6,7 @@ import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { Activity, type ActivityJob, type NoticeTone } from './activity';
 import { messageOf } from './messages';
+import { percent, toPercent } from './numbers';
 
 /** A session the engine holds that no tab shows, which only this panel can reach. */
 interface LeftOpen {
@@ -219,11 +220,11 @@ export class ActivityPanel {
   }
 
   protected stateText(job: ActivityJob): string {
-    return job.state === 'running' ? `${String(this.percent(job))}%` : (StateWords[job.state] ?? job.state);
+    return job.state === 'running' ? percent(job.progress) : (StateWords[job.state] ?? job.state);
   }
 
   protected percent(job: ActivityJob): number {
-    return Math.round(job.progress * 100);
+    return toPercent(job.progress);
   }
 
   protected async closeSession(held: LeftOpen): Promise<void> {

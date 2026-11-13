@@ -337,7 +337,7 @@ test('builds a tiling material from a new graph, down to its channels and full s
   await window.keyboard.press('Escape');
   await expect(window.getByRole('slider', { name: 'Stop 2' })).toHaveAttribute('aria-valuenow', '0.45');
   await expect(thumbnail(3)).not.toHaveAttribute('data-hash', curved);
-  await expect(window.getByTestId('graph-evaluation')).toHaveText(/ran, \d+ ms|Up to date/);
+  await expect(window.getByTestId('graph-evaluation')).toHaveText(/Updated in \d+ ms|Up to date/);
 
   // The Texture pane: a histogram that says where it came from, a channel, and the real size without asking for it.
   await expect(window.getByTestId('texture-histogram-label')).toHaveText('Histogram of the 256 × 256 reduction');
@@ -800,7 +800,7 @@ test('a graph computes at 32 bits from its settings, and the file says so', asyn
   await window.getByTestId('setting-bitDepth').getByRole('combobox').click();
   await window.getByRole('option', { name: '32' }).click();
   await expect(window.getByTestId('active-unsaved')).toBeVisible();
-  await expect(window.getByTestId('graph-evaluation')).toHaveText(/ran, \d+ ms|Up to date/);
+  await expect(window.getByTestId('graph-evaluation')).toHaveText(/Updated in \d+ ms|Up to date/);
   await hashOf(thumbnail(1));
   await window.getByTestId('app-save').click();
   await expect(window.getByTestId('active-unsaved')).toHaveCount(0);

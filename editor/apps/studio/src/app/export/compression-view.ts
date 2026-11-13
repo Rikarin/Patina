@@ -16,7 +16,7 @@ import { XuiCalloutImports } from '@xui/callout';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { messageOf } from '../core/messages';
-import { bytes } from '../core/numbers';
+import { bytes, decibels, fromPercent, levels, percent } from '../core/numbers';
 import { ExportStore } from './export-store';
 
 type Picture = 'source' | 'written' | 'difference';
@@ -89,6 +89,7 @@ type Picture = 'source' | 'written' | 'difference';
           [value]="across()"
           (valueChange)="across.set($event)"
         />
+        <span class="readout w-10 text-end">{{ share(fromPercent(across())) }}</span>
         <span class="text-foreground-muted">Down</span>
         <xui-slider
           class="w-24"
@@ -100,6 +101,7 @@ type Picture = 'source' | 'written' | 'difference';
           [value]="down()"
           (valueChange)="down.set($event)"
         />
+        <span class="readout w-10 text-end">{{ share(fromPercent(down())) }}</span>
       </span>
     </div>
 
@@ -215,8 +217,8 @@ export class CompressionView {
         options: this.options(),
         level: this.level(),
         side: this.side(),
-        x: this.across() / 100,
-        y: this.down() / 100
+        x: fromPercent(this.across()),
+        y: fromPercent(this.down())
       };
       this.built();
       void untracked(() => this.show(request));
@@ -234,14 +236,10 @@ export class CompressionView {
     return this.store.compressionTerms().find(term => term.value === shown.compression)?.label ?? shown.compression;
   }
 
-  protected decibels(psnr: number | null | undefined): string {
-    return psnr === null || psnr === undefined ? 'Lossless' : `${psnr.toFixed(1)} dB`;
-  }
-
-  /** An error in 8-bit levels, which is how far off a person reads it. */
-  protected levelsOf(error: number): string {
-    return `${(error * 255).toFixed(error * 255 < 10 ? 1 : 0)} / 255`;
-  }
+  protected readonly decibels = decibels;
+  protected readonly levelsOf = levels;
+  protected readonly share = percent;
+  protected readonly fromPercent = fromPercent;
 
   /** Builds the project's maps, with no export, so there is something to compress; the preview asks again after. */
   protected async buildMaps(): Promise<void> {

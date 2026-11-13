@@ -84,7 +84,7 @@ async function colours(): Promise<{ gold: number; red: number; total: number }> 
 }
 
 test('a glTF opened in the docked viewport shows up lit, and a drag orbits it', async () => {
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('GPU ready');
   await expect(window.locator('html')).toHaveAttribute('data-skin', 'bezel');
 
   await openMesh();
@@ -190,7 +190,7 @@ test('the display settings change the picture, and the project keeps them', asyn
     env: { ...process.env, PATINA_USER_DATA: join(scratch, 'user-data') }
   });
   window = await app.firstWindow();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('Game', { timeout: 30_000 });
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('Game', { timeout: 30_000 });
   // The library reopens on what was in front, once it has read the project. The tree is no way in meanwhile: Preview
   // comes back maximized, which takes the Library pane out of the page.
   await expect(window.getByTestId('document-tab-name').filter({ hasText: 'Test' })).toBeVisible({ timeout: 30_000 });
@@ -255,5 +255,5 @@ test('killing the Worker keeps the view, and frames come back from its successor
     )
     .toBeGreaterThan(before);
   console.warn(`S5: a frame from the new Worker ${Date.now() - killed} ms after the kill`);
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('GPU ready');
 });

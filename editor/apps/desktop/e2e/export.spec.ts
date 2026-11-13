@@ -21,7 +21,7 @@ test.beforeEach(async () => {
     env: { ...process.env, PATINA_USER_DATA: join(scratch, 'user-data'), PATINA_LIBRARY: library }
   });
   window = await app.firstWindow();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('GPU ready');
 });
 
 test.afterEach(async () => {

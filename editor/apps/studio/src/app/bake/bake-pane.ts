@@ -19,7 +19,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
 import { imageFormatName, jobStateName, termName } from '../core/labels';
 import { messageOf } from '../core/messages';
-import { percent } from '../core/numbers';
+import { angle, fromPercent, percent, toPercent } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
@@ -437,8 +437,8 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 [max]="100"
                 [min]="0"
                 [stepSize]="1"
-                [value]="Math.round(options.rays.skew * 100)"
-                (valueChange)="setRays({ skew: $event / 100 })"
+                [value]="toPercent(options.rays.skew)"
+                (valueChange)="setRays({ skew: fromPercent($event) })"
               />
               <span class="readout w-12 shrink-0 text-end text-xs">{{ share(options.rays.skew) }}</span>
             </div>
@@ -738,7 +738,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     [value]="options.occlusion.spread"
                     (valueChange)="setOcclusion({ spread: $event })"
                   />
-                  <span class="readout w-12 shrink-0 text-end text-xs">{{ options.occlusion.spread }}°</span>
+                  <span class="readout w-12 shrink-0 text-end text-xs">{{ angle(options.occlusion.spread) }}</span>
                 </div>
                 <div class="flex items-center justify-between gap-2 text-sm">
                   Distribution
@@ -919,17 +919,17 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               >{{ finished() }} of {{ store.batch().length }} texture sets</span
             >
           }
-          <span class="readout ms-auto" data-testid="bake-percent">{{ percent() }}%</span>
+          <span class="readout ms-auto" data-testid="bake-percent">{{ share(progress()) }}</span>
         </div>
         <div
           class="bg-surface-sunken h-1.5 shrink-0 overflow-hidden rounded-sm"
           role="progressbar"
           aria-label="Bake progress"
-          [attr.aria-valuenow]="percent()"
+          [attr.aria-valuenow]="toPercent(progress())"
           aria-valuemin="0"
           aria-valuemax="100"
         >
-          <div class="bg-primary h-full" [style.width.%]="percent()"></div>
+          <div class="bg-primary h-full" [style.width.%]="toPercent(progress())"></div>
         </div>
         @for (each of store.batch(); track each.id) {
           @if (store.batch().length > 1) {
@@ -1079,6 +1079,9 @@ export class BakePane {
   /** A map by the label the stack vocabulary gives it, as a bake mask names it. */
   protected readonly label = termName;
   protected readonly share = percent;
+  protected readonly toPercent = toPercent;
+  protected readonly fromPercent = fromPercent;
+  protected readonly angle = angle;
   protected readonly falloffName = (value: string) => FalloffNames[value] ?? value;
   protected readonly idSourceName = (value: string) => IdSourceNames[value] ?? value;
   protected readonly sideName = (value: string) => `${value} × ${value}`;
@@ -1139,9 +1142,10 @@ export class BakePane {
   protected readonly finished = computed(
     () => this.store.batch().filter(job => job.state !== 'queued' && job.state !== 'running').length
   );
-  protected readonly percent = computed(() => {
+  /** How far the jobs of the bake are, together, as a share. */
+  protected readonly progress = computed(() => {
     const jobs = this.store.batch();
-    return jobs.length === 0 ? 0 : Math.round((jobs.reduce((sum, job) => sum + job.progress, 0) / jobs.length) * 100);
+    return jobs.length === 0 ? 0 : jobs.reduce((sum, job) => sum + job.progress, 0) / jobs.length;
   });
 
   protected readonly bakeLabel = computed(() => {
@@ -1151,13 +1155,13 @@ export class BakePane {
 
   /** A distance as the field shows it: a percentage of the size, or model units. */
   protected shown(value: number): number {
-    return this.absolute() ? value : Math.round(value * 100 * 1000) / 1000;
+    return this.absolute() ? value : toPercent(value, 3);
   }
 
   /** A distance from the field, as the settings keep it. */
   protected stored(value: number | null): number {
     const number = value ?? 0;
-    return this.absolute() ? number : number / 100;
+    return this.absolute() ? number : fromPercent(number);
   }
 
   protected about(name: string): string {

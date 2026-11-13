@@ -3,7 +3,23 @@ import { colourName, hexColourName } from './colour-names';
 import { blendName, choiceName, kindName, labelsOf, learnTerms, termName, valuesOf, wordsOf } from './labels';
 import { asksForMenu } from './menu-keys';
 import { checkWords, diagnosticOf, messageOf } from './messages';
-import { amount, bytes, degrees, percent } from './numbers';
+import {
+  amount,
+  angle,
+  bytes,
+  decibels,
+  degrees,
+  figure,
+  fromPercent,
+  knobRange,
+  knobShown,
+  levels,
+  milliseconds,
+  percent,
+  stops,
+  times,
+  toPercent
+} from './numbers';
 
 const term = (value: string, label: string) => ({ value, label });
 
@@ -18,7 +34,8 @@ describe('labels', () => {
       projections: [],
       generators: [term('Generators/Edge Wear', 'Edge Wear')],
       meshMaps: [term('ao', 'Ambient Occlusion')],
-      alphas: []
+      alphas: [],
+      kinds: [term('Float2', '2 Numbers')]
     } as unknown as StackVocabulary);
 
     expect(blendName('Copy')).toBe('Normal');
@@ -100,7 +117,7 @@ describe('messages', () => {
 });
 
 describe('check words', () => {
-  it('says a problem in the app’s words, with shares as percentages and bytes as mebibytes', () => {
+  it('says a problem in the app’s words, with shares as percentages and bytes in MB', () => {
     expect(checkWords('pbr-albedo-dark', { share: '0.25' }, 'server')).toBe(
       'In 25% of texels a surface that is not metal is darker than sRGB 30.'
     );
@@ -111,7 +128,7 @@ describe('check words', () => {
         { bytes: String(12 * 1024 * 1024), budget: String(8 * 1024 * 1024), preset: 'Unreal' },
         ''
       )
-    ).toBe('Takes 12.0 MiB of GPU memory as Unreal writes it, over the budget of 8.0 MiB.');
+    ).toBe('Takes 12 MB of GPU memory as Unreal writes it, over the budget of 8.0 MB.');
   });
 
   it('falls back to the Server’s sentence for a code it does not know', () => {
@@ -127,6 +144,34 @@ describe('numbers', () => {
     expect(percent(0.42)).toBe('42%');
     expect(degrees(Math.PI / 2)).toBe('90°');
     expect(amount(0.5)).toBe('0.50');
+  });
+
+  it('gives sliders and bars whole percents, and shows every other unit one way (#197)', () => {
+    expect(toPercent(0.426)).toBe(43);
+    expect(toPercent(0.12345, 3)).toBe(12.345);
+    expect(fromPercent(25)).toBe(0.25);
+    expect(percent(0.004, 1)).toBe('0.4%');
+    expect(angle(44.6)).toBe('45°');
+    expect(times(1.5)).toBe('1.5×');
+    expect(milliseconds(12.4)).toBe('12 ms');
+    expect(stops(-1)).toBe('-1.0 stops');
+    expect(stops(0.5)).toBe('+0.5 stops');
+    expect(decibels(null)).toBe('Lossless');
+    expect(decibels(41.26)).toBe('41.3 dB');
+    expect(levels(0.01)).toBe('2.6 / 255');
+    expect(figure(3.14159)).toBe('3.14');
+    expect(figure(42.4)).toBe('42');
+  });
+
+  it('slides a setting with both ends and shows it as what it is', () => {
+    expect(knobRange({ kind: 'Float', minimum: 0, maximum: 1 })).toEqual({ minimum: 0, maximum: 1, step: 0.01 });
+    expect(knobRange({ kind: 'Int', minimum: 1, maximum: 8 })?.step).toBe(1);
+    expect(knobRange({ kind: 'Float', minimum: 0, maximum: null })).toBeNull();
+    expect(knobRange({ kind: 'Text', minimum: 0, maximum: 1 })).toBeNull();
+    expect(knobShown({ kind: 'Float', minimum: 0, maximum: 1 }, 0.25)).toBe('25%');
+    expect(knobShown({ kind: 'Float', minimum: 0, maximum: 4 }, 2)).toBe('2.00');
+    expect(knobShown({ kind: 'Float', minimum: -180, maximum: 180, widget: 'Angle' }, 90)).toBe('90°');
+    expect(knobShown({ kind: 'Int', minimum: 1, maximum: 8 }, 3)).toBe('3');
   });
 
   it('shows sizes on disk in the largest unit that keeps them at 1 or more', () => {

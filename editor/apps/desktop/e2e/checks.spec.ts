@@ -83,7 +83,7 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
   await window.getByRole('tab', { name: 'Checks' }).click();
   await window.getByTestId('checks-run').click();
   await expect(window.getByTestId('checks-density')).toHaveText(/\d+ per unit/u, { timeout: 120_000 });
-  await expect(window.getByTestId('checks-memory')).toHaveText(/MiB with /u);
+  await expect(window.getByTestId('checks-memory')).toHaveText(/ MB with /u);
 
   // A density far past what the set has is one it falls short of, and the problem shows it on the mesh.
   await window.getByTestId('checks-limits').locator('summary').click();
