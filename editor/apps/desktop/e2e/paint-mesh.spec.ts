@@ -503,6 +503,10 @@ test('a preset takes up its brush, a radial symmetry paints its copies, and the 
   // Four copies round the up axis, of which the camera sees two or three: more than one stroke's worth either way.
   expect(await changed(plain, await shot())).toBeGreaterThan(one * 1.5);
   await window.screenshot({ path: join(shots, 'paint-radial.png') });
+  // The project keeps the symmetry once the brush has rested, before it changes again.
+  const project = filesBelow(join(scratch, 'Game.ptlib', 'projects')).find(file => file.endsWith('project.yaml'));
+  expect(project).toBeDefined();
+  await expect.poll(() => readFileSync(project ?? '', 'utf8'), { timeout: 10_000 }).toContain('kind: radial');
   await pick(window, 'paint-symmetry', /^mirror$/iu);
   await pick(window, 'paint-symmetry-axis', /^x$/iu);
   await expect(window.getByTestId('viewport-symmetry').locator('polygon')).toBeVisible();
@@ -518,10 +522,10 @@ test('a preset takes up its brush, a radial symmetry paints its copies, and the 
 
   await window.getByTestId('paint-keep-colour').click();
   await expect(window.getByTestId('paint-palette').locator('button')).toHaveCount(1);
-  const project = filesBelow(join(scratch, 'Game.ptlib', 'projects')).find(file => file.endsWith('project.yaml'));
-  expect(project).toBeDefined();
-  await expect.poll(() => readFileSync(project ?? '', 'utf8'), { timeout: 10_000 }).toContain('palette:');
-  expect(readFileSync(project ?? '', 'utf8')).toContain('kind: radial');
+  // ⚠ Waited for by the colour kept and not by `palette:`, which an earlier write has as an empty list: the file read
+  // then was whichever write had landed, radial on a fast machine and the mirror on a slow one.
+  await expect.poll(() => readFileSync(project ?? '', 'utf8'), { timeout: 10_000 }).toMatch(/palette:\s*\n\s+- '#/u);
+  expect(readFileSync(project ?? '', 'utf8')).toContain('kind: mirror');
 });
 
 test('layers of every kind compose on the mesh', async () => {
