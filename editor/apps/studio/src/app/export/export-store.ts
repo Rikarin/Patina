@@ -170,7 +170,12 @@ export function settingsOf(stored: ProjectExportSettings, preset: ExportPresetIn
 export function requestFor(
   settings: ExportSettings,
   preset: ExportPresetInfo,
-  scope: { projects?: readonly string[]; sets?: readonly string[] | null; asset?: string | null }
+  scope: {
+    projects?: readonly string[];
+    sets?: readonly string[] | null;
+    documents?: readonly string[] | null;
+    asset?: string | null;
+  }
 ): BuildRequest {
   const options: NonNullable<BuildRequest['options']> = {};
   if (settings.size !== (preset.size ?? null)) {
@@ -218,6 +223,7 @@ export function requestFor(
   return {
     presets: [preset.id],
     ...(scope.projects?.length ? { projects: [...scope.projects] } : {}),
+    ...(scope.documents?.length ? { documents: [...scope.documents] } : {}),
     ...(scope.asset ? { asset: scope.asset } : {}),
     ...(settings.folder ? { folder: settings.folder } : {}),
     ...(Object.keys(options).length > 0 ? { options } : {})

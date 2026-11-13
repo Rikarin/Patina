@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The Export dialog's Document scope exports a graph that its project does not ship, such as a graph in a texturing project or a mask graph, on its own: it is a texture set of its own, its files carry its name so they never take the name of one of the project's, and the project's other files in that folder stay. Through the API `POST /api/v1/builds` takes `documents`, and `patina build` takes `--document <file>`.
 - The 2D view draws the texture set's UV layout over the map (UV, at its top right), each edge once, a light line over a dark one so it reads on any map; Fit shows the whole map again after zooming and panning; the corners say which way U and V run and that the map is UDIM tile 1001; and the pointer's UV and texel are read out at the bottom. Through the API `GET /api/v1/stacks/{id}/uv-wire` gives the layout as an SVG over the unit square, drawn by the engine from the mesh.
 - A texture set's menu, on a right-click in Texture Sets or the Menu key: Paint it, Show Alone or Show the Whole Model, and Bake…, Export… and Project Settings….
 - Depth of field in the viewport: Depth of field and Focus in the Display panel's Finish section. The lens focuses on the point the camera turns round, or nearer or further, and blurs what is in front and behind as a lens opened wide on something small, whatever the model's size; the blur is Vixen's, before the bloom and the curve. A view of a stored channel is never blurred. Through the API the display takes `depthOfField` and `focus`, and the project keeps them.
@@ -190,6 +191,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Exporting some of a project's texture sets, or one document, no longer deletes the files the other sets last exported into the same folder. Only an export of the whole project tidies away files it no longer makes.
 - Bake settings changed one after another in quick succession are all kept in the project. A change made while the one before it was still being written could be undone by it, so the project kept an earlier setting.
 - The first stroke on a dense mesh starts sooner: the engine lays out the mesh for the brush in about half the time, 0.7 to 1.3 s instead of 2.1 to 3.6 s for two million triangles.
 - A new image material is authored at 1024, as every new graph is, so a radius in it means what it does in any other graph.

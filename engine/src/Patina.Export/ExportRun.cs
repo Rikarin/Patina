@@ -19,6 +19,17 @@ public sealed record ExportSet(string Name, IReadOnlyDictionary<string, MapPictu
 public sealed record ExportDelivered(IReadOnlyList<string> Files, IReadOnlyList<string> Warnings);
 
 /// <summary>
+///     An export of some of a project's texture sets into the folder of all of them: it replaces only these sets'
+///     files, and leaves the rest of what was delivered there.
+/// </summary>
+/// <param name="Sets">The sets it is the export of.</param>
+/// <param name="Named">
+///     Whether its files take their set's name even when there is only one, as they do for a document exported on its
+///     own, so that they never take the name of a file of the whole project.
+/// </param>
+public sealed record ExportPart(IReadOnlyCollection<string> Sets, bool Named);
+
+/// <summary>
 ///     A preset from maps to files. The object under an export key holds the files under names of its own, and a
 ///     project's name goes on when they are delivered, so that two projects with one key share one encode.
 /// </summary>
@@ -190,6 +201,7 @@ public static class ExportRun {
     ///     name.
     /// </param>
     /// <param name="preset">The preset, whose material files are written beside the textures, or null for none.</param>
+    /// <param name="part">The sets this export is of, when it is not of the whole project, or null.</param>
     /// <returns>The files, absolute, and what a person should know of the material files.</returns>
     public static ExportDelivered Deliver(
         string key,
@@ -198,16 +210,19 @@ public static class ExportRun {
         string target,
         NamingValues values,
         IReadOnlyList<(string From, string Name)>? beside = null,
-        ExportPreset? preset = null
+        ExportPreset? preset = null,
+        ExportPart? part = null
     ) {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(values);
         Directory.CreateDirectory(target);
         var before = BuildObjects.Delivered(target);
 
-        var several = manifest.PerSet
+        var several = part is { Named: true }
+            || manifest.PerSet
             || manifest.Files.Select(static file => file.Set).Distinct(StringComparer.Ordinal).Count() > 1;
         List<string> delivered = [];
+        Dictionary<string, string> sets = new(StringComparer.Ordinal);
         List<(ExportedFile File, string Path)> textures = [];
         foreach (var file in manifest.Files) {
             var name = NamingTemplate.Resolve(
@@ -219,12 +234,16 @@ public static class ExportRun {
             Copy(Path.Combine(folder, file.File), path);
             delivered.Add(path);
             textures.Add((file, path));
+            sets[Path.GetRelativePath(target, path)] = file.Set;
         }
 
         var materials = preset is { Materials.Count: > 0 }
             ? Materials(preset, textures, target, values, several)
-            : new([], []);
+            : new([], [], new Dictionary<string, string>());
         delivered.AddRange(materials.Files);
+        foreach (var (file, set) in materials.Sets) {
+            sets[Path.GetRelativePath(target, file)] = set;
+        }
 
         foreach (var (from, name) in beside ?? []) {
             var path = Path.Combine(target, name);
@@ -233,7 +252,19 @@ public static class ExportRun {
         }
 
         var relative = delivered.Select(path => Path.GetRelativePath(target, path)).ToList();
-        foreach (var old in before?.Files.Except(relative, StringComparer.Ordinal) ?? []) {
+        var placed = before?.Sets ?? new Dictionary<string, string>();
+        foreach (var old in before?.Files.Except(relative, StringComparer.Ordinal).ToList() ?? []) {
+            var set = placed.GetValueOrDefault(old);
+            if (part is not null && !part.Sets.Contains(set ?? Unplaced, StringComparer.Ordinal)) {
+                // Another set's file, which this export does not make and does not speak for.
+                relative.Add(old);
+                if (set is not null) {
+                    sets[old] = set;
+                }
+
+                continue;
+            }
+
             // What was delivered is read from a file in the export folder, so it is not trusted to stay inside it.
             File.Delete(LibraryLayout.Beside(target, old));
         }
@@ -241,7 +272,7 @@ public static class ExportRun {
         LibraryFiles.Replace(
             Path.Combine(target, BuildObjects.DeliveredFile),
             JsonSerializer.SerializeToUtf8Bytes(
-                new(key, relative),
+                new(key, relative) { Sets = sets },
                 ContractsJsonContext.Default.ExportDelivery
             )
         );
@@ -249,9 +280,15 @@ public static class ExportRun {
     }
 
     /// <summary>
+    ///     What a file with no set is taken to belong to, which no set is called: a part of a project keeps every file
+    ///     it cannot place, and only a whole project's export removes it.
+    /// </summary>
+    const string Unplaced = "\0";
+
+    /// <summary>
     ///     Each set's material files, named like <c>{project}</c>, with the set's name when there are several.
     /// </summary>
-    static MaterialFiles.Written Materials(
+    static SetMaterials Materials(
         ExportPreset preset,
         List<(ExportedFile File, string Path)> textures,
         string target,
@@ -260,19 +297,31 @@ public static class ExportRun {
     ) {
         List<string> files = [];
         List<string> warnings = [];
+        Dictionary<string, string> sets = new(StringComparer.Ordinal);
         foreach (var set in textures.GroupBy(static t => t.File.Set, StringComparer.Ordinal)) {
             var template = several ? NamingTemplate.PerSet("{project}") : "{project}";
             var stem = NamingTemplate.Resolve(template, values.Of(set.Key), string.Empty);
             var written = MaterialFiles.Write(preset, [..set], target, stem, values.Of(set.Key).Material);
             files.AddRange(written.Files);
+            foreach (var file in written.Files) {
+                sets[file] = set.Key;
+            }
+
             var named = several ? $"{set.Key}: " : string.Empty;
             foreach (var warning in written.Warnings) {
                 warnings.Add(named + warning);
             }
         }
 
-        return new(files, warnings);
+        return new(files, warnings, sets);
     }
+
+    /// <summary>The material files of every set, what a person should know, and each file's set.</summary>
+    sealed record SetMaterials(
+        IReadOnlyList<string> Files,
+        IReadOnlyList<string> Warnings,
+        IReadOnlyDictionary<string, string> Sets
+    );
 
     static void Copy(string from, string to) {
         Directory.CreateDirectory(Path.GetDirectoryName(to)!);

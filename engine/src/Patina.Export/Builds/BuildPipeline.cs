@@ -73,10 +73,14 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         ToolCatalog tools,
         CancellationToken cancellationToken
     ) {
+        if (request.Documents is { Count: > 0 } && request.Projects is not { Count: 1 }) {
+            throw new BuildRefusedException("Documents are exported from one project at a time; name the project.");
+        }
+
         var selection = new OutputSelection(
             request.Asset is { } asset ? AssetId.From(asset) : null,
             request.Projects?.Select(ProjectId.From).ToList()
-        );
+        ) { Documents = request.Documents };
         var scan = library.ScanOutputs(selection, tools, cancellationToken);
         presets.Refuse(scan.Projects.Select(static p => p.Path));
         return BuildPlan.Make(
@@ -165,7 +169,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                         project,
                         export,
                         preset,
-                        request.Options,
+                        request,
                         failed,
                         Within(before, what),
                         cancellationToken
@@ -266,11 +270,12 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         PlannedProject project,
         PlannedExport export,
         ExportPreset preset,
-        ExportOptions? options,
+        BuildRequest request,
         bool failed,
         Action<double, string> progress,
         CancellationToken cancellationToken
     ) {
+        var options = request.Options;
         var identity = new ProjectIdentity(project.Project.Id.Value, project.Project.Name, project.Project.Path);
         var step = $"export:{export.Preset.Id}:{export.Key.Hex}:{project.Project.Path}";
         if (failed) {
@@ -308,7 +313,8 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 export.Target,
                 ProjectNaming.Of(library, project.Project.Path, project.Project.Name, preset.Id),
                 Beside(project),
-                ExportOverrides.Apply(preset, options)
+                ExportOverrides.Apply(preset, options),
+                PartOf(project, request)
             );
             journal.Ended(
                 step,
@@ -326,6 +332,25 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         } catch (BuildStepFailedException e) {
             journal.Ended(step, identity, FailedExport(preset.Id, e.Message));
         }
+    }
+
+    /// <summary>
+    ///     The sets an export is of when it is not of the whole project, which leaves the other sets' files where they
+    ///     are: the documents named, or the sets chosen. Documents that are not what the project exports take their
+    ///     set's name, so that a graph exported alone never writes over the project's own files.
+    /// </summary>
+    ExportPart? PartOf(PlannedProject project, BuildRequest request) {
+        if (request.Documents is { Count: > 0 }) {
+            var sets = project.Project.Outputs
+                .Select(static o => o.Output.Settings.GetValueOrDefault(ProjectOutputs.SetSetting, string.Empty))
+                .ToHashSet(StringComparer.Ordinal);
+            var whole = library.Contents(project.Project.Path).ExportSets;
+            if (!sets.Where(static set => set.Length > 0).ToHashSet(StringComparer.Ordinal).SetEquals(whole)) {
+                return new ExportPart(sets, true);
+            }
+        }
+
+        return request.Options?.Sets is { } chosen ? new ExportPart([..chosen], false) : null;
     }
 
     static string PresetText(ExportPreset preset) => ExportPresetCatalog.TextOf(preset);

@@ -563,4 +563,12 @@ describe('requestFor', () => {
       }
     });
   });
+
+  it('names a document the project does not export as it is, and no sets, so it exports on its own (#153)', () => {
+    expect(requestFor(settings, unreal, { projects: ['p'], documents: ['rust.vxtexgraph'], sets: null })).toEqual({
+      presets: ['unreal'],
+      projects: ['p'],
+      documents: ['rust.vxtexgraph']
+    });
+  });
 });

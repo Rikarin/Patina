@@ -2695,6 +2695,12 @@ export interface components {
       /** @description Only these projects. Null or empty for all of them. */
       projects?: null | string[];
       /**
+       * @description Only these documents of the one project named, by their file below it, each a texture set of its own whatever
+       *     it is: a graph in a texturing project or one that is not a material exports too. Null or empty for what the
+       *     project exports.
+       */
+      documents?: null | string[];
+      /**
        * @description The presets to export through. Null means the library's `exportTargets`; empty, no
        *     export.
        */

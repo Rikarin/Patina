@@ -255,6 +255,13 @@ public sealed record BuildRequest {
     public IReadOnlyList<Guid>? Projects { get; init; }
 
     /// <summary>
+    ///     Only these documents of the one project named, by their file below it, each a texture set of its own whatever
+    ///     it is: a graph in a texturing project or one that is not a material exports too. Null or empty for what the
+    ///     project exports.
+    /// </summary>
+    public IReadOnlyList<string>? Documents { get; init; }
+
+    /// <summary>
     ///     The presets to export through. Null means the library's <c>exportTargets</c>; empty, no
     ///     export.
     /// </summary>
@@ -432,7 +439,13 @@ public sealed record ProjectReportPage(int Total, IReadOnlyList<ProjectReport> I
 /// </summary>
 /// <param name="Key">The export key they came from.</param>
 /// <param name="Files">The files, relative to that folder.</param>
-public sealed record ExportDelivery(string Key, IReadOnlyList<string> Files);
+public sealed record ExportDelivery(string Key, IReadOnlyList<string> Files) {
+    /// <summary>
+    ///     The texture set each file belongs to, by file, so that an export of some sets leaves the others' files
+    ///     alone. A file with no set, or one from a delivery before sets were kept, goes only when every set is exported.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Sets { get; init; }
+}
 
 /// <summary>One output for whatever builds it: everything by full path, so that it needs no library.</summary>
 /// <param name="Tool">What builds it.</param>
