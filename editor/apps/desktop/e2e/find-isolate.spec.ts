@@ -142,7 +142,9 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
   const isolate = window.getByTestId('texture-set-isolate-wood');
   await isolate.click();
   await expect(isolate).toHaveAttribute('aria-pressed', 'true');
-  await expect.poll(quads, { timeout: 30_000 }).toBeLessThan(whole * 0.7);
+  // Off the row, so the count is of the quad and not its mark.
+  await viewport.hover();
+  await expect.poll(() => quads(), { timeout: 30_000 }).toBeLessThan(whole * 0.7);
   expect(await quads()).toBeGreaterThan(whole * 0.3);
   await viewport.screenshot({ path: join(shots, 'isolate-2-wood-alone.png') });
 

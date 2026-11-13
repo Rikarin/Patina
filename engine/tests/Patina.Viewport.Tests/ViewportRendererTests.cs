@@ -162,6 +162,9 @@ public sealed class ViewportRendererTests : IDisposable {
         var camera = OrbitCamera.Default;
         var whole = Render(renderer, camera);
         var materials = ViewportGeometry.Materials(Fixture);
+        renderer.Isolate([], [materials[1]]);
+        var isolated = Render(renderer, camera);
+        renderer.Isolate([], []);
 
         renderer.Highlight([], [materials[0]]);
         var marked = Render(renderer, camera);
@@ -171,6 +174,7 @@ public sealed class ViewportRendererTests : IDisposable {
 
         renderer.Isolate([], [materials[1]]);
         var alone = Render(renderer, camera);
+        Assert.Equal(isolated, alone);
         renderer.Highlight([], []);
         Assert.Equal(alone, Render(renderer, camera));
 
