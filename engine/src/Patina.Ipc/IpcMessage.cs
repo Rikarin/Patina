@@ -310,6 +310,12 @@ public sealed class IpcMessage {
     /// </summary>
     public ViewportBakePreview? BakePreview { get; set; }
 
+    /// <summary>
+    ///     For <see cref="IpcTypes.ViewportBakePreview" />: what the viewport draws alone (#136), so the preview draws
+    ///     the low mesh's parts that show and nothing of the rest; null for the whole model.
+    /// </summary>
+    public ViewportIsolation? BakePreviewIsolation { get; set; }
+
     /// <summary>The key to what <see cref="IpcTypes.ViewportBakePreview" /> drew, in its answer.</summary>
     public BakePreviewState? BakePreviewShown { get; set; }
 

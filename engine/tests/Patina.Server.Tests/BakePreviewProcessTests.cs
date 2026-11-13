@@ -1,6 +1,7 @@
 using Patina.Contracts;
 using System.Buffers.Binary;
 using System.Net;
+using System.Net.WebSockets;
 using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
@@ -14,6 +15,24 @@ public sealed partial class BakeProcessTests {
             ContractsJsonContext.Default.ViewportBakePreview,
             cancellationToken
         );
+
+    async Task IsolateAsync(ViewportIsolation isolation, CancellationToken cancellationToken) {
+        using var response = await http.PutAsJsonAsync(
+            "/api/v1/viewport/isolation",
+            isolation,
+            ContractsJsonContext.Default.ViewportIsolation,
+            cancellationToken
+        );
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>The first frame that carries an input.</summary>
+    async Task FrameAfterAsync(ClientWebSocket socket, uint input, CancellationToken token) {
+        var frame = await FrameAsync(socket, token);
+        while (BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(16)) < input) {
+            frame = await FrameAsync(socket, token);
+        }
+    }
 
     /// <summary>
     ///     Where a picture of a frame goes, for a person to look at, when the environment names a
@@ -103,6 +122,18 @@ public sealed partial class BakeProcessTests {
         }
 
         Assert.True(SamePicture(laid, again), "A new Worker drew something else.");
+
+        // The preview keeps to what the viewport draws alone (#136): with no part of the mesh shown, nothing of it.
+        await IsolateAsync(new(["no such part"], []), deadline.Token);
+        await SendAsync(socket, new(Input: 10), deadline.Token);
+        await FrameAfterAsync(socket, 10, deadline.Token);
+        var alone = (await http.GetFromJsonAsync(
+            "/api/v1/viewport/bake-preview",
+            ContractsJsonContext.Default.BakePreviewState,
+            deadline.Token
+        ))!;
+        Assert.Contains(alone.Warnings, static warning => warning.Contains("shown alone", StringComparison.Ordinal));
+        await IsolateAsync(new([], []), deadline.Token);
 
         using var off = await PreviewAsync(new(), deadline.Token);
         off.EnsureSuccessStatusCode();

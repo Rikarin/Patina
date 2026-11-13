@@ -505,6 +505,7 @@ public sealed class ViewportSession(
         ArgumentNullException.ThrowIfNull(isolation);
         lock (changing) {
             display = display with { Isolation = isolation.Whole ? null : isolation };
+            bakePreview.Isolate(display.Isolation);
             revision++;
         }
 

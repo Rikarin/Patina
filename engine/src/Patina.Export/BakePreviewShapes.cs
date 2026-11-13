@@ -74,15 +74,25 @@ public static class BakePreviewShapes {
 
     /// <summary>Reads the meshes and makes the shapes.</summary>
     /// <param name="preview">What to show.</param>
+    /// <param name="shown">
+    ///     What the viewport draws alone (#136), or null for the whole model: the low mesh and the cage keep only the
+    ///     parts that show, so the reach and the seams are drawn where the model is.
+    /// </param>
     /// <returns>The shapes and the key.</returns>
     /// <exception cref="ModelFormatException">A mesh is not a readable model.</exception>
     /// <exception cref="InvalidDataException">The low mesh has no such texture set, or a map is not square.</exception>
-    public static BakePreviewDrawing Build(ViewportBakePreview preview) {
+    public static BakePreviewDrawing Build(ViewportBakePreview preview, ViewportIsolation? shown = null) {
         ArgumentNullException.ThrowIfNull(preview);
         var files = preview.High.Select(static file => MeshMapBakeRun.Model(file)).ToList();
         var high = ModelGeometry.Flatten(files);
-        var low = MeshMapBakeRun.Read(preview.Low, preview.Material);
-        var cage = preview.Cage is { Length: > 0 } path ? MeshMapBakeRun.Read(path, preview.Material).Mesh : null;
+        var low = MeshMapBakeRun.Read(preview.Low, preview.Material, 0, shown);
+        if (low.Mesh.FaceCount == 0) {
+            return new([], [], [], ["Nothing of this texture set is shown alone, so its bake's setup is not drawn."]);
+        }
+
+        var cage = preview.Cage is { Length: > 0 } path
+            ? MeshMapBakeRun.Read(path, preview.Material, 0, shown).Mesh
+            : null;
         return Build(preview, high, low, cage);
     }
 
