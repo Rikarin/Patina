@@ -18,7 +18,7 @@ import { ProjectStore } from './project-store';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex min-h-0 flex-col', role: 'group', 'aria-label': 'Snapshots', 'data-testid': 'snapshots' },
   template: `
-    <div class="chrome-bar flex h-8 shrink-0 items-center gap-2 px-2">
+    <div class="pane-bar gap-2 px-2" role="toolbar" aria-label="Snapshots">
       <span class="section-label flex-1">Snapshots</span>
     </div>
     @if (path(); as path) {

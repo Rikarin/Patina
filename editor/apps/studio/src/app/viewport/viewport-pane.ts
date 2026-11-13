@@ -131,7 +131,7 @@ const PickFile = '…';
       and the choices shrink; the buttons keep their size.
     -->
     <div
-      class="chrome-bar @container flex h-9 shrink-0 flex-nowrap items-center gap-2 overflow-hidden px-2"
+      class="pane-bar @container flex-nowrap gap-2 overflow-hidden px-2"
       role="toolbar"
       aria-label="Viewport"
       data-testid="viewport-bar"

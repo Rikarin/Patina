@@ -27,7 +27,7 @@ const OverShown = 50;
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex min-h-0 flex-1 flex-col', role: 'group', 'aria-label': 'Texture memory' },
   template: `
-    <div class="chrome-bar flex h-8 shrink-0 items-center gap-1 px-2" data-testid="costs-path">
+    <div class="pane-bar gap-1 px-2" role="toolbar" aria-label="Folder" data-testid="costs-path">
       <button type="button" xuiButton size="sm" variant="ghost" (click)="folder.set('')">Library</button>
       @for (step of steps(); track step.path) {
         <span class="text-foreground-muted">/</span>
@@ -66,7 +66,7 @@ const OverShown = 50;
         <li class="text-foreground-muted px-3 py-1 text-sm">No document here has maps to count yet.</li>
       }
     </ol>
-    <div class="chrome-bar border-hairline flex h-8 shrink-0 items-center gap-2 border-t px-2">
+    <div class="pane-bar border-hairline gap-2 border-t px-2" role="toolbar" aria-label="Budget">
       <span class="section-label flex-1">Over budget</span>
       <xui-select
         class="w-28"

@@ -35,6 +35,7 @@
     "@xui/numeric-input": "^3.2.0",
     "@xui/omnibar": "^3.2.0",
     "@xui/popover": "^3.2.0",
+    "@xui/progress-bar": "^3.2.0",
     "@xui/segmented-control": "^3.2.0",
     "@xui/select": "^3.2.0",
     "@xui/skeleton": "^3.2.0",

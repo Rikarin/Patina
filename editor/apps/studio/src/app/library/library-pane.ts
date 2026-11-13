@@ -144,7 +144,7 @@ function targetOf(row: LibraryRow): LibraryTarget {
       @case ('ready') {
         <!-- The switch has the bar to itself, and narrower than it needs it is a list: xUI's segmented control keeps its
              labels whole, and at the narrowest window ran under the layout toggle that was beside it (#243). -->
-        <div class="chrome-bar @container flex h-9 shrink-0 items-center gap-1.5 px-2">
+        <div class="pane-bar @container gap-1.5 px-2" role="toolbar" aria-label="Library">
           <xui-segmented-control
             class="hidden min-w-0 flex-1 @min-[9.5rem]:flex"
             size="sm"
@@ -369,7 +369,12 @@ function targetOf(row: LibraryRow): LibraryTarget {
         }
 
         <!-- Narrow, the count shrinks to its number and says the rest on hover, so the buttons keep their room (#234). -->
-        <footer class="chrome-bar @container flex h-8 shrink-0 items-center gap-1 px-2" data-testid="library-footer">
+        <footer
+          class="pane-bar @container gap-1 px-2"
+          role="toolbar"
+          aria-label="Library actions"
+          data-testid="library-footer"
+        >
           <span class="readout min-w-0 flex-1 truncate" data-testid="library-count" [title]="countText()"
             >{{ countNumber() }}<span class="hidden @min-[12rem]:inline">{{ countNoun() }}</span></span
           >
