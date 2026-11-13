@@ -2,7 +2,7 @@ using Patina.Export.Presets;
 
 namespace Patina.Export.Tests;
 
-/// <summary>A hand-written preset edited in the app keeps its comments above its fields and its textures (#155).</summary>
+/// <summary>A hand-written preset edited in the app keeps the comments above its fields and textures (#155).</summary>
 public sealed class PresetCommentsTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-preset-comments-");
 

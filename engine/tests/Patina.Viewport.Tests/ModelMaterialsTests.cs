@@ -49,10 +49,13 @@ public sealed class ModelMaterialsTests : IDisposable {
                              "alphaMode": "BLEND",
                              "extensions": { "KHR_materials_emissive_strength": { "emissiveStrength": 3 } }
                            },
-                           { "name": "Lamp", "emissiveFactor": [0.5, 0.5, 0.5], "alphaMode": "MASK", "alphaCutoff": 0.25 }
+                           {
+                             "name": "Lamp", "emissiveFactor": [0.5, 0.5, 0.5],
+                             "alphaMode": "MASK", "alphaCutoff": 0.25
+                           }
                            """;
 
-    /// <summary>Two triangles, each wearing one of two materials, with pictures beside the file and inside it.</summary>
+    /// <summary>Two triangles, each wearing one of two materials, its pictures beside the file and inside it.</summary>
     string Gltf(string materials = Painted) {
         var floats = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1 };
         var bytes = new byte[floats.Length * 4];
@@ -140,7 +143,7 @@ public sealed class ModelMaterialsTests : IDisposable {
         Assert.DoesNotContain(ExportNormal, plain.Keys);
     }
 
-    /// <summary>glTF's emission is black unless the file says otherwise, so a material that says nothing has none.</summary>
+    /// <summary>glTF's emission is black unless the file says otherwise, so a silent material has none.</summary>
     [Fact]
     public void A_gltf_material_with_no_emissive_factor_and_an_opaque_alpha_has_neither_map() {
         var materials = ModelMaterials.Read(Gltf(), Path.Combine(folder.FullName, "pictures"));

@@ -31,7 +31,8 @@ public sealed class PlacementNodeTests {
     static void AssertSameEverywhere(ImportedPlacement placement) {
         var node = PlacementNode.Of(placement);
         Assert.NotNull(node);
-        foreach (var (u, v) in (IEnumerable<(float, float)>) [(0f, 0f), (1f, 0f), (0f, 1f), (0.3f, 0.8f), (0.5f, 0.5f)]) {
+        foreach (var (u, v) in (IEnumerable<(float, float)>)
+                 [(0f, 0f), (1f, 0f), (0f, 1f), (0.3f, 0.8f), (0.5f, 0.5f)]) {
             var expected = GltfReads(placement, u, v);
             var read = NodeReads(node, u, v);
             Assert.Equal(expected.U, read.U, 3);

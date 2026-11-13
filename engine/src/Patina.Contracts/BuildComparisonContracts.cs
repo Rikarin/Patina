@@ -18,7 +18,9 @@ public static class BuildChanges {
     public const string Unknown = "unknown";
 }
 
-/// <summary>What differs between two builds (#217): their outputs' keys and their files' bytes, project by project.</summary>
+/// <summary>
+///     What differs between two builds (#217): their outputs' keys and their files' bytes, project by project.
+/// </summary>
 /// <param name="Before">The earlier build.</param>
 /// <param name="After">The later build.</param>
 /// <param name="Projects">Each project either build touched, by path, with what differs.</param>

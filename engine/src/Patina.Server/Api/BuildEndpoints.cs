@@ -208,7 +208,7 @@ static class BuildEndpoints {
 
         var later = BuildRunner.FolderOf(library.RootPath, Safe(id));
         var earlier = BuildRunner.FolderOf(library.RootPath, Safe(before));
-        foreach (var (folder, name) in (IEnumerable<(string, string)>) [(earlier, before), (later, id)]) {
+        foreach (var (folder, name) in (IEnumerable<(string, string)>)[(earlier, before), (later, id)]) {
             if (BuildJournal.ReadLibrary(folder) is null) {
                 return NoReport(name);
             }

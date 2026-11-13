@@ -65,7 +65,10 @@ public sealed class BuildComparisonsTests : IDisposable {
         var after = Build("b", Barrel, "k1", ("barrel.png", "oak"));
         var stale = Path.Combine(after, "projects");
         foreach (var file in Directory.EnumerateFiles(stale)) {
-            File.WriteAllText(file, File.ReadAllText(file).Replace("\"digests\"", "\"ignored\"", StringComparison.Ordinal));
+            File.WriteAllText(
+                file,
+                File.ReadAllText(file).Replace("\"digests\"", "\"ignored\"", StringComparison.Ordinal)
+            );
         }
 
         var again = Build("c", Barrel, "k1", ("barrel.png", "oak"));

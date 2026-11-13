@@ -165,7 +165,9 @@ static class MaterialImport {
         }
 
         if (PlacementNode.Of(placement) is not { } node) {
-            warnings.Add($"{slot.Usage}: its picture's texture transform scales it to nothing, so it is left as it is.");
+            warnings.Add(
+                $"{slot.Usage}: its picture's texture transform scales it to nothing, so it is left as it is."
+            );
             return picture;
         }
 

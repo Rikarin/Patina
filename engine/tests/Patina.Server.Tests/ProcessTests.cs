@@ -277,11 +277,12 @@ public sealed class ProcessTests : IDisposable {
         Assert.Equal(0, fine.ExitCode);
     }
 
-    /// <summary><c>patina build compare</c> prints what differs between two builds' report folders, as JSON (#217).</summary>
+    /// <summary><c>patina build compare</c> prints what differs between two builds' reports, as JSON (#217).</summary>
     [Fact]
     public async Task The_cli_compares_two_builds() {
         var project = new ProjectIdentity(Guid.NewGuid(), "Crate", "crate");
         var file = Path.Combine(folder.FullName, "albedo.png");
+
         string Build(string name, string text) {
             File.WriteAllText(file, text);
             var reports = Path.Combine(folder.FullName, name);
