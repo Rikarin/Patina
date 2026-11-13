@@ -415,6 +415,8 @@ export class Commands {
         return this.graph.document() !== null && this.project.graphInFront();
       case 'viewport':
         return this.focus().area === 'viewport';
+      case 'paintView':
+        return this.focus().area === 'viewport' || this.focus().area === 'atlas';
       default:
         return true;
     }

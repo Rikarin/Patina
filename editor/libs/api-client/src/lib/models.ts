@@ -118,6 +118,7 @@ export type StackView = components['schemas']['StackView'];
 export type StackBrush = components['schemas']['StackBrush'];
 export type StackSymmetry = components['schemas']['StackSymmetry'];
 export type StackPicture = components['schemas']['StackPicture'];
+export type StackFrame = components['schemas']['StackFrame'];
 export type StackSample = components['schemas']['StackSample'];
 export type StackSampledChannel = components['schemas']['StackSampledChannel'];
 export type StackDecal = components['schemas']['StackDecal'];

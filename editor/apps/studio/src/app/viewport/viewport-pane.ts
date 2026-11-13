@@ -28,7 +28,7 @@ import { DragType as LibraryDrag } from '../library/library-tree';
 import { ProjectStore } from '../library/project-store';
 import { MaterialUse } from '../paint/material-use';
 import { PaintStore, penOf } from '../paint/paint-store';
-import { ScreenPictureOverlay } from '../paint/screen-picture';
+import { ScreenPictureOverlay, handleStencilKeys } from '../paint/screen-picture';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { isPicture, pictureName } from '../paint/surface-frame';
 import { SurfaceGuide } from '../paint/surface-guide';
@@ -72,11 +72,6 @@ const Views: readonly string[] = [
 ];
 
 /** The viewport's own commands, for the keys a screen reader is told about. */
-/** How far a key moves the picture on the viewport, in pixels; how much it scales it; and how far it turns it. */
-const StencilStep = 10;
-const StencilScale = 1.1;
-const StencilTurn = Math.PI / 36;
-
 const ViewportCommands = [
   'frameModel',
   'nextView',
@@ -282,6 +277,7 @@ const PickFile = '…';
         (drop)="dropOnMesh($event)"
       ></canvas>
       @if (paint.worn() && project.active()?.kind === 'texturing') {
+        <ptn-screen-picture of="material" />
         <ptn-screen-picture />
         <ptn-surface-guide />
         <ptn-tool-strip class="absolute start-2 top-2" />
@@ -748,17 +744,8 @@ export class ViewportPane implements AfterViewInit {
 
     handle('zoomIn', move('+', false));
     handle('zoomOut', move('-', false));
-    // The picture on the viewport moves by keys too (#128), a step at a time, while a stencil or the projection reads it.
-    const shown = () => this.paint.screenPictureShown();
-    const picture = (step: Parameters<PaintStore['moveScreenPicture']>[0]) => () => this.paint.moveScreenPicture(step);
-    handle('moveStencilLeft', picture({ x: -StencilStep }), shown);
-    handle('moveStencilRight', picture({ x: StencilStep }), shown);
-    handle('moveStencilUp', picture({ y: -StencilStep }), shown);
-    handle('moveStencilDown', picture({ y: StencilStep }), shown);
-    handle('growStencil', picture({ scale: StencilScale }), shown);
-    handle('shrinkStencil', picture({ scale: 1 / StencilScale }), shown);
-    handle('turnStencilLeft', picture({ angle: -StencilTurn }), shown);
-    handle('turnStencilRight', picture({ angle: StencilTurn }), shown);
+    // What is fixed on the view moves by keys too (#128), a step at a time, while a stencil or the projection reads it.
+    handleStencilKeys(this.commands, this.paint, this.destroyRef);
     handle(
       'cancelStroke',
       () => {

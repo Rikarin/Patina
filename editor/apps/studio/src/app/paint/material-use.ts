@@ -74,7 +74,8 @@ export class MaterialUse {
     try {
       const graph = await this.publish(project.path, material);
       this.paint.material.set({ name: material.name, graph, source: material.source });
-      if (this.paint.tool() !== 'fill') {
+      // The fill and the projection tool lay a material too; any other tool gives way to the brush.
+      if (this.paint.tool() !== 'fill' && this.paint.tool() !== 'projection') {
         this.paint.tool.set('brush');
       }
     } catch (failure) {

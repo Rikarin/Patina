@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild
+} from '@angular/core';
 import { unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
@@ -11,6 +21,7 @@ import { amount } from '../core/numbers';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore, penOf, toTexels } from './paint-store';
+import { ScreenPictureOverlay, handleStencilKeys } from './screen-picture';
 import { StrokeGesture } from './stroke-gesture';
 
 /** What the channel list means by the one being painted, whichever that is. */
@@ -19,7 +30,7 @@ const Painting = 'painting:';
 /** The stack flat, in UV space. It paints like the mesh does, and it is the whole picture for a layered material. */
 @Component({
   selector: 'ptn-paint-atlas',
-  imports: [XuiButtonImports, XuiNonIdealStateImports, XuiSelectImports, XuiSpinnerImports],
+  imports: [XuiButtonImports, XuiNonIdealStateImports, XuiSelectImports, XuiSpinnerImports, ScreenPictureOverlay],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2 [container-type:size]',
@@ -91,7 +102,10 @@ const Painting = 'painting:';
         ></div>
       } @else {
         <div
+          #well
           class="well relative touch-none overflow-hidden"
+          tabindex="0"
+          aria-label="The map to paint on"
           data-testid="paint-canvas"
           [style.aspect-ratio]="aspect()"
           [style.width]="wellWidth()"
@@ -155,6 +169,8 @@ const Painting = 'painting:';
             </svg>
           }
         </div>
+        <ptn-screen-picture of="material" view="atlas" />
+        <ptn-screen-picture view="atlas" />
         @if (under(); as at) {
           <span
             class="readout chrome-bar absolute bottom-3 left-3 z-10 rounded px-1.5 py-0.5 text-xs"
@@ -217,6 +233,8 @@ export class PaintAtlas {
   constructor() {
     const destroyRef = inject(DestroyRef);
     destroyRef.onDestroy(() => this.drop());
+    // What is fixed on the view moves by keys here too, with the map focused (#128).
+    handleStencilKeys(this.commands, this.store, destroyRef);
     // The layout follows the stack and its mesh while it is drawn, and is let go of when it is not.
     effect(() => {
       const state = this.store.state();
@@ -249,6 +267,8 @@ export class PaintAtlas {
     );
   }
   private readonly project = inject(ProjectStore);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly well = viewChild<ElementRef<HTMLElement>>('well');
 
   /** A layered material has to meet itself at its edges, which only shows when it repeats. */
   protected readonly tiling = computed(() => this.project.active()?.kind === 'layered-material');
@@ -338,6 +358,8 @@ export class PaintAtlas {
   }
 
   protected down(event: PointerEvent): void {
+    // Focus marks the 2D view as where keys go, as the viewport's does for it.
+    this.well()?.nativeElement.focus({ preventScroll: true });
     if (this.commands.navigation().pans2d(event)) {
       (event.target as HTMLElement).setPointerCapture(event.pointerId);
       this.panning = true;
@@ -378,7 +400,9 @@ export class PaintAtlas {
     (event.target as HTMLElement).setPointerCapture(event.pointerId);
     this.painting = true;
     const box = (event.target as HTMLElement).getBoundingClientRect();
+    const view = this.host.nativeElement.getBoundingClientRect();
     this.store.atlasScale.set(this.side()[0] / Math.max(box.width, 1));
+    this.store.atlasOrigin.set([box.left - view.left, box.top - view.top]);
     this.gesture.press(this.stamp(event), { line: event.shiftKey, snap: event.ctrlKey || event.metaKey });
   }
 

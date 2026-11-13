@@ -10,6 +10,7 @@ import {
   type StackCommandBatch,
   type StackEvent,
   type StackFilterKind,
+  type StackFrame,
   type StackIdColour,
   type StackLayer,
   type StackMask,
@@ -136,6 +137,38 @@ export interface CloneSource {
 
 /** A picture on the viewport, fixed on the screen: what the projection tool paints and a stencil masks with. */
 export type ScreenPicture = StackPicture;
+
+/** Where something fixed on a view stands, in the view's pixels: a picture, or a material the projection tool paints. */
+export type ScreenFrame = StackFrame;
+
+/** A step that moves, scales and turns a frame about its centre, as the stencil's keys take it. */
+export interface FrameStep {
+  x?: number;
+  y?: number;
+  scale?: number;
+  angle?: number;
+}
+
+/**
+ * A frame on the 2D view, in the view's pixels, as a stroke there takes it: in texels of the map (#128). `origin` is
+ * where the map's top-left corner is drawn in the view's pixels, and `texels` how many texels one of those pixels covers
+ * as the map is drawn, so the frame stays where it is seen at any zoom or pan.
+ */
+export function frameOnMap<T extends ScreenFrame>(frame: T, origin: readonly [number, number], texels: number): T {
+  const [x, y] = frame.centre as [number, number];
+  return { ...frame, centre: [(x - origin[0]) * texels, (y - origin[1]) * texels], scale: frame.scale * texels };
+}
+
+/** A frame moved, scaled and turned by a step about its centre. */
+function stepped<T extends ScreenFrame>(frame: T, step: FrameStep): T {
+  const [x, y] = frame.centre as [number, number];
+  return {
+    ...frame,
+    centre: [x + (step.x ?? 0), y + (step.y ?? 0)],
+    scale: Math.max(frame.scale * (step.scale ?? 1), 1e-3),
+    angle: frame.angle + (step.angle ?? 0)
+  };
+}
 
 /** A material from the shelf that a brush paints every channel of, by the graph its maps come from. */
 export interface BrushMaterial {
@@ -326,16 +359,39 @@ export class PaintStore {
   readonly screenPicture = signal<ScreenPicture | null>(null);
   /** Whether the picture on the viewport masks every brush, by its brightness. */
   readonly stencil = signal(false);
+  /**
+   * Whether the projection tool paints the brush's material rather than the picture (#128): a material fixed on the
+   * screen where {@link materialFrame} stands, every channel from its own maps. A mask takes the picture.
+   */
+  readonly projectsMaterial = computed(
+    () => this.tool() === 'projection' && this.material() !== null && !this.masking()
+  );
+  /** Whether the picture on the view is read: by the projection tool, unless it paints a material, or as a stencil. */
+  readonly screenPictureRead = computed(
+    () => (this.tool() === 'projection' && !this.projectsMaterial()) || this.stencil()
+  );
   /** Whether the picture on the viewport is there to move: placed, and read by the tool in hand or as a stencil. */
   readonly screenPictureShown = computed(() => {
     const picture = this.screenPicture();
-    return picture !== null && picture.scale > 0 && (this.tool() === 'projection' || this.stencil());
+    return picture !== null && picture.scale > 0 && this.screenPictureRead();
   });
+  /**
+   * Where the material the projection tool paints stands on the view, its maps as large as the set's: unplaced (a
+   * scale of 0) until a view first draws it, and tiled, since a material repeats.
+   */
+  readonly materialFrame = signal<ScreenFrame>({ centre: [0, 0], scale: 0, angle: 0, tiled: true });
+  /** Whether the projected material is there to move: placed, and painted by the tool in hand. */
+  readonly materialFrameShown = computed(() => this.projectsMaterial() && this.materialFrame().scale > 0);
   /**
    * Texels of the map per pixel of the 2D view as it is drawn, so that a size in the screen's units is the same under
    * the pointer at any zoom. The 2D view sets it as a stroke starts.
    */
   readonly atlasScale = signal(1);
+  /**
+   * Where the map's top-left corner is drawn in the 2D view's pixels, which a picture or a material fixed on the view
+   * is placed in. The 2D view sets it as a stroke starts, with {@link atlasScale}.
+   */
+  readonly atlasOrigin = signal<readonly [number, number]>([0, 0]);
   /** Whether strokes go to the chosen layer's mask rather than its channels. */
   readonly masking = signal(false);
   /**
@@ -1506,19 +1562,13 @@ export class PaintStore {
    * Moves, scales or turns the picture on the viewport by a step, as its keys do (#128): a move in the viewport's
    * pixels, a scale as a factor and a turn in radians, all about its centre.
    */
-  moveScreenPicture(step: { x?: number; y?: number; scale?: number; angle?: number }): void {
+  moveScreenPicture(step: FrameStep): void {
     const picture = this.screenPicture();
-    if (!picture || !this.screenPictureShown()) {
-      return;
+    if (picture && this.screenPictureShown()) {
+      this.screenPicture.set(stepped(picture, step));
+    } else if (this.materialFrameShown()) {
+      this.materialFrame.set(stepped(this.materialFrame(), step));
     }
-
-    const [x, y] = picture.centre as [number, number];
-    this.screenPicture.set({
-      ...picture,
-      centre: [x + (step.x ?? 0), y + (step.y ?? 0)],
-      scale: Math.max(picture.scale * (step.scale ?? 1), 1e-3),
-      angle: picture.angle + (step.angle ?? 0)
-    });
   }
 
   /**
@@ -1719,8 +1769,7 @@ export class PaintStore {
   ): Promise<void> {
     const tool = this.tool();
     const picture = this.screenPicture();
-    // A picture on the screen is in the viewport's units, so the 2D view has none to project or mask with.
-    if (tool === 'projection' && (!view || !picture)) {
+    if (tool === 'projection' && !this.projectsMaterial() && !picture) {
       return;
     }
 
@@ -1773,7 +1822,10 @@ export class PaintStore {
         curve,
         symmetry,
         source,
-        stencil: view && this.stencil() && tool !== 'projection' ? picture : null,
+        stencil:
+          picture && this.stencil() && (tool !== 'projection' || this.projectsMaterial())
+            ? this.placed(picture, view)
+            : null,
         fill: curve === 'fill' ? this.fillMode() : null,
         outline,
         through: outline && view !== null && this.fillThrough(),
@@ -1798,25 +1850,44 @@ export class PaintStore {
         const step = this.stepOfClone();
         return step ? { kind: 'clone', offset: step } : null;
       }
-      case 'projection':
-        return view && this.screenPicture() ? { kind: 'picture', picture: this.screenPicture() } : null;
+      case 'projection': {
+        const material = this.material();
+        const picture = this.screenPicture();
+        if (material && this.projectsMaterial()) {
+          return { ...this.materialOf(material), frame: this.placed(this.materialFrame(), view) };
+        }
+
+        return picture ? { kind: 'picture', picture: this.placed(picture, view) } : null;
+      }
       case 'brush':
       case 'fill': {
         const material = this.material();
         const projection = this.materialProjection();
-        const scale = this.materialScale();
         return material && !this.masking() && (tool === 'brush' || curve === 'fill')
-          ? {
-              kind: 'material',
-              graph: material.graph,
-              projection: projection === 'Uv' ? null : projection,
-              placement: scale === 1 ? null : { scale, rotation: 0, offsetX: 0, offsetY: 0, sharpness: 4 }
-            }
+          ? { ...this.materialOf(material), projection: projection === 'Uv' ? null : projection }
           : null;
       }
       default:
         return null;
     }
+  }
+
+  /** A material as a stroke lays it, repeating as often as its scale says. */
+  private materialOf(material: BrushMaterial): StackStrokeSource {
+    const scale = this.materialScale();
+    return {
+      kind: 'material',
+      graph: material.graph,
+      placement: scale === 1 ? null : { scale, rotation: 0, offsetX: 0, offsetY: 0, sharpness: 4 }
+    };
+  }
+
+  /**
+   * A frame fixed on a view, as a stroke takes it: in the viewport's pixels through its camera, and in texels of the
+   * map in the 2D view.
+   */
+  private placed<T extends ScreenFrame>(frame: T, view: StackView | null): T {
+    return view ? frame : frameOnMap(frame, this.atlasOrigin(), this.atlasScale());
   }
 
   /**

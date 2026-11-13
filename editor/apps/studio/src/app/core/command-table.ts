@@ -2,10 +2,10 @@ import type { Chord } from './chords';
 
 /**
  * Where a command's keys work. `app` is anywhere; `stack` and `graph` are while that kind of document is in front;
- * `viewport` is while the viewport has focus. Two commands may share a key only where they can never both be live:
+ * `viewport` is while the viewport has focus, and `paintView` while the viewport or the 2D view has. Two commands may share a key only where they can never both be live:
  * `stack` and `graph` never are, and everything else can be (see {@link overlaps}).
  */
-export type CommandArea = 'app' | 'stack' | 'graph' | 'viewport';
+export type CommandArea = 'app' | 'stack' | 'graph' | 'viewport' | 'paintView';
 
 /** The sections of the Keyboard Shortcuts dialog, in its order. */
 export const Sections = ['File', 'Edit', 'Painting', 'Layers', 'Graph', 'Viewport', 'View', 'Window', 'Help'] as const;
@@ -128,22 +128,22 @@ export const CommandTable: readonly CommandSpec[] = [
     label: 'Move Stencil Left',
     section: 'Painting',
     keys: ['Alt+Left'],
-    area: 'viewport',
-    hint: 'Moves the picture on the viewport, which a stencil or the projection tool reads'
+    area: 'paintView',
+    hint: 'Moves the picture or material on the 3D or 2D view, which a stencil or the projection tool reads'
   },
-  { id: 'moveStencilRight', label: 'Move Stencil Right', section: 'Painting', keys: ['Alt+Right'], area: 'viewport' },
-  { id: 'moveStencilUp', label: 'Move Stencil Up', section: 'Painting', keys: ['Alt+Up'], area: 'viewport' },
-  { id: 'moveStencilDown', label: 'Move Stencil Down', section: 'Painting', keys: ['Alt+Down'], area: 'viewport' },
+  { id: 'moveStencilRight', label: 'Move Stencil Right', section: 'Painting', keys: ['Alt+Right'], area: 'paintView' },
+  { id: 'moveStencilUp', label: 'Move Stencil Up', section: 'Painting', keys: ['Alt+Up'], area: 'paintView' },
+  { id: 'moveStencilDown', label: 'Move Stencil Down', section: 'Painting', keys: ['Alt+Down'], area: 'paintView' },
   {
     id: 'growStencil',
     label: 'Enlarge Stencil',
     section: 'Painting',
     keys: ['Alt+Plus', 'Alt+='],
-    area: 'viewport'
+    area: 'paintView'
   },
-  { id: 'shrinkStencil', label: 'Shrink Stencil', section: 'Painting', keys: ['Alt+-'], area: 'viewport' },
-  { id: 'turnStencilLeft', label: 'Turn Stencil Left', section: 'Painting', keys: ['Alt+['], area: 'viewport' },
-  { id: 'turnStencilRight', label: 'Turn Stencil Right', section: 'Painting', keys: ['Alt+]'], area: 'viewport' },
+  { id: 'shrinkStencil', label: 'Shrink Stencil', section: 'Painting', keys: ['Alt+-'], area: 'paintView' },
+  { id: 'turnStencilLeft', label: 'Turn Stencil Left', section: 'Painting', keys: ['Alt+['], area: 'paintView' },
+  { id: 'turnStencilRight', label: 'Turn Stencil Right', section: 'Painting', keys: ['Alt+]'], area: 'paintView' },
   {
     id: 'pickerTool',
     label: 'Color Picker',
@@ -372,7 +372,8 @@ export const CommandTable: readonly CommandSpec[] = [
 
 /** Whether two areas can be live at once, which is when one key cannot mean both. */
 export function overlaps(a: CommandArea, b: CommandArea): boolean {
-  return a === b || a === 'app' || b === 'app' || a === 'viewport' || b === 'viewport';
+  const anywhere = (area: CommandArea) => area === 'app' || area === 'viewport' || area === 'paintView';
+  return a === b || anywhere(a) || anywhere(b);
 }
 
 /** A native menu item: a command's id, `-` for a line, a submenu, or something only the desktop app has. */

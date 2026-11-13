@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The projection tool projects a material (#128): with a material from the shelf in the brush panel, it paints every channel the layer writes from the material's maps, fixed on the view where its frame stands, moved, scaled and turned by the same handles and keys as a picture, and tiled or not. A stencil still masks it. Through the API a stroke's material source takes a `frame`.
+- The projection tool and stencils work in the 2D view (#128): the picture, or the projected material, is drawn over the 2D view at the same place on the screen as over the viewport, and a stroke there reads it where each texel is drawn, at any zoom or pan. The stencil's keys work with the 2D view focused too.
 - A picture dropped on the mesh becomes a decal there: from this machine or from the library tree, it is brought into the project and laid on a new fill on top, facing out of the face it landed on, at the picture's own shape, colouring only the base color. The layer and its decal undo as two steps.
 - Warp to Geometry, beside Warp in a decal's properties, measures the surface under the decal as the viewport sees it and moves the warp grid's middle row and column so each half of the picture covers as much of the surface: a decal across a bend is no longer stretched over the side that turns away. It is one edit, and Straighten undoes it.
 - Favourites on the shelf (#203): the star beside a material keeps it at the top of the shelf, and From Favourites lists the starred ones alone, from wherever they are. The stars are this machine's, kept in the app's preferences with the starred nodes.
