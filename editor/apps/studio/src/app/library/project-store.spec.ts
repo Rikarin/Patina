@@ -784,7 +784,11 @@ describe('ProjectStore', () => {
       const { store, client } = harness();
       await store.open('a');
       const seen: string[] = [];
-      const post = client.POST.getMockImplementation()!;
+      const post = client.POST.getMockImplementation();
+      if (!post) {
+        throw new Error('The harness answers every POST.');
+      }
+
       client.POST.mockImplementation((route, options) => {
         if (route === '/api/v1/library/snapshots/restore') {
           seen.push(store.workspace());
