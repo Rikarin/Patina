@@ -15253,7 +15253,8 @@
           "occlusion",
           "occlusionTolerance",
           "facing",
-          "resume"
+          "resume",
+          "tiltSize"
         ],
         "type": "object",
         "properties": {
@@ -15301,7 +15302,7 @@
           },
           "rotation": {
             "type": "string",
-            "description": "fixed, along or random.",
+            "description": "fixed, along, random, pen (the barrel\u0027s turn) or tilt (the way the pen leans).",
             "default": "fixed"
           },
           "positionJitter": {
@@ -15399,6 +15400,12 @@
             "type": "boolean",
             "description": "Whether a stroke that starts where the last one stopped carries it on. A client that sees one start there sends\nwhere the brush stood as IReadOnlyList\u0026lt;float\u0026gt;? StackStroke.Resume; the brush only says whether to.",
             "default": false
+          },
+          "tiltSize": {
+            "type": "number",
+            "description": "How much of the radius a pen held upright takes off, 0 to 1: a pen laid over paints the whole radius, as a\npencil\u0027s side paints wider. A mouse is upright, so a brush with any of this paints smaller under one.",
+            "format": "float",
+            "default": 0
           }
         },
         "description": "A brush. Everything but the radius has the value a new brush has."
@@ -18492,6 +18499,30 @@
             "description": "How hard, 0 to 1.",
             "format": "float",
             "default": 1
+          },
+          "tilt": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "How far a pen leans, 0 upright to 1 lying flat, or null for upright, as a mouse is.",
+            "format": "float"
+          },
+          "azimuth": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Which way a pen leans, in radians on the picture as a brush\u0027s angle is measured: 0 towards \u002Bx, a quarter turn\ntowards \u002By. Null is 0.",
+            "format": "float"
+          },
+          "twist": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "How far a pen\u0027s barrel is turned, in radians, measured as a brush\u0027s angle is. Null is 0.",
+            "format": "float"
           }
         },
         "description": "Where the brush goes: in texels of the image, or on the picture of a stroke with a view."

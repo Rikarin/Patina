@@ -131,6 +131,10 @@ static class StrokeShapes {
         }
     }
 
+    /// <summary>How the pen stood at a stamp, as Vixen reads it.</summary>
+    public static PaintPen Pen(StackStamp stamp) =>
+        new(stamp.Pressure, stamp.Tilt ?? 0f, stamp.Azimuth ?? 0f, stamp.Twist ?? 0f);
+
     /// <summary>A stroke's brush as Vixen stamps with it, the alpha already found.</summary>
     public static PaintBrush Brush(StackBrush brush, IBrushMask? alpha) =>
         PaintBrush.Default with {
@@ -144,6 +148,7 @@ static class StrokeShapes {
             Rotation = brush.Rotation switch {
                 "along" => BrushRotation.AlongStroke,
                 "random" => BrushRotation.Random,
+                // Fixed, and pen and tilt too: the pen turns the stamp from its fixed angle.
                 _ => BrushRotation.Fixed
             },
             PositionJitter = brush.PositionJitter,
@@ -151,6 +156,12 @@ static class StrokeShapes {
             SizeJitter = brush.SizeJitter,
             PressureSize = brush.PressureSize,
             PressureFlow = brush.PressureFlow,
+            TiltSize = brush.TiltSize,
+            PenAngle = brush.Rotation switch {
+                "pen" => PaintPenAngle.Twist,
+                "tilt" => PaintPenAngle.Tilt,
+                _ => PaintPenAngle.None
+            },
             Curve = brush.Curve switch {
                 "linear" => BrushFalloffKind.Linear,
                 "spherical" => BrushFalloffKind.Spherical,

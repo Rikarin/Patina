@@ -865,16 +865,16 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             } else if (stroke is { Fill: true, Outline: true }) {
                 // One stamp for the whole outline, which the placement holds: where it lands does not matter.
                 if (part.Stamps is [var first, ..]) {
-                    stroke.Stroke.Dab(new(first.X, first.Y), dirtied, first.Pressure);
+                    stroke.Stroke.Dab(new(first.X, first.Y), dirtied, StrokeShapes.Pen(first));
                 }
             } else if (stroke.Fill) {
                 // Each click is a place of its own, and the stroke between two would fill whatever it passed over.
                 foreach (var stamp in part.Stamps) {
-                    stroke.Stroke.Dab(new(stamp.X, stamp.Y), dirtied, stamp.Pressure);
+                    stroke.Stroke.Dab(new(stamp.X, stamp.Y), dirtied, StrokeShapes.Pen(stamp));
                 }
             } else {
                 foreach (var stamp in part.Stamps) {
-                    stroke.Stroke.MoveTo(new(stamp.X, stamp.Y), dirtied, stamp.Pressure);
+                    stroke.Stroke.MoveTo(new(stamp.X, stamp.Y), dirtied, StrokeShapes.Pen(stamp));
                 }
             }
 

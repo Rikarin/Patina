@@ -26,7 +26,7 @@ import { ViewOptions } from '../core/view-options';
 import { GraphViews } from '../graph/graph-views';
 import { ProjectStore } from '../library/project-store';
 import { MaterialUse } from '../paint/material-use';
-import { PaintStore, pressureOf } from '../paint/paint-store';
+import { PaintStore, penOf } from '../paint/paint-store';
 import { ScreenPictureOverlay } from '../paint/screen-picture';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { SurfaceGuide } from '../paint/surface-guide';
@@ -864,7 +864,7 @@ export class ViewportPane implements AfterViewInit {
 
   /** A stroke is measured in the canvas's layout pixels, so a brush is the same size whatever the render scale. */
   private stamp(event: PointerEvent) {
-    return { ...this.spot(event), pressure: pressureOf(event) };
+    return { ...this.spot(event), ...penOf(event) };
   }
 
   /** A material from the shelf can land on a region of the mesh (#110). */
