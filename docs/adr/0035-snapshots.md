@@ -1,4 +1,4 @@
-# ADR 0038: A snapshot is a list beside the document and bytes kept by revision, not a Git commit
+# ADR 0035: A snapshot is a list beside the document and bytes kept by revision, not a Git commit
 
 **Status:** accepted, 2026-11-13, for issue #209.
 
