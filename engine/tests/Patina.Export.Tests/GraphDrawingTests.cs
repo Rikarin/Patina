@@ -1,5 +1,7 @@
 using Patina.Graphs;
+using Vixen.Core.Imaging;
 using Vixen.Graphics.Vulkan;
+using Vixen.Interchange;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 
@@ -114,6 +116,47 @@ public sealed class GraphDrawingTests : IDisposable {
             var problem = Assert.Single(refused.Refusals);
             Assert.Equal(GraphPictures.Problem, problem.Id);
             Assert.Contains("fonts/Nowhere.ttf", problem.Message, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    ///     A TIFF is a picture a Bitmap reads (#251): an 8-bit one as bytes, and a 16-bit one at its own depth.
+    /// </summary>
+    [Theory]
+    [InlineData(8)]
+    [InlineData(16)]
+    public void A_bitmap_reads_a_tiff(int bits) {
+        var values = new float[Side * Side];
+        for (var at = 0; at < values.Length; at++) {
+            values[at] = at % Side < Side / 2 ? 0.25f : 0.75f;
+        }
+
+        var file = Path.Combine(folder, "picture.tif");
+        File.WriteAllBytes(
+            file,
+            bits == 8
+                ? TiffWriter.Encode8(Side, Side, 1, [..values.Select(static v => (byte)Math.Round(v * 255))])
+                : TiffWriter.Encode16(Side, Side, 1, [..values.Select(static v => (ushort)Math.Round(v * 65535))])
+        );
+        Assert.Equal(bits > 8, MapPictures.IsDeep(file));
+        var (plan, compiler) = Compile("Source/Bitmap", static node => node.SetText("Source", "picture.tif"));
+
+        if (!VulkanDevice.TryCreate(new(), out var device, out var refusal)) {
+            Assert.Skip($"No Vulkan device: {refusal}");
+            return;
+        }
+
+        using (device) {
+            using TextureUploads uploads = new(device);
+            var owed = TextureGraphExternals.Upload(uploads, plan, compiler.Externals);
+            var filled = new GraphPictures().Fill(uploads, plan, owed, [folder], null);
+
+            Assert.Empty(filled.Refusals);
+            using TexturePlanEvaluator evaluator = new(device);
+            using var bake = evaluator.Evaluate(plan, uploads.Externals);
+            var picture = bake.Read(compiler.Outputs.Single().Image);
+            Assert.InRange(picture.Pixels[(32 * Side + 8) * 4], 60, 68);
+            Assert.InRange(picture.Pixels[(32 * Side + 56) * 4], 187, 195);
         }
     }
 }

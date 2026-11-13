@@ -90,7 +90,9 @@ public static class MapPictures {
     /// <summary>Whether a file holds more than a byte can, which a graph then reads at its own depth.</summary>
     public static bool IsDeep(string path) {
         var kind = Path.GetExtension(path).ToLowerInvariant();
-        return kind is ".exr" or ".hdr" || (kind == ".png" && PngDepth(path) == 16);
+        return kind is ".exr" or ".hdr"
+            || (kind == ".png" && PngDepth(path) == 16)
+            || (kind is ".tif" or ".tiff" && TiffReader.BitsPerSampleOf(SharedFile.ReadAllBytes(path)) > 8);
     }
 
     static byte PngDepth(string path) {
@@ -105,7 +107,7 @@ public static class MapPictures {
         }
 
         using var stream = new MemoryStream(data);
-        var picture = new StbImageDecoder().Decode(stream, kind);
+        var picture = (ImageDecoders.For(ImageDecoders.BuiltIn, kind) ?? new StbImageDecoder()).Decode(stream, kind);
         var bytes = picture.PixelSpan();
         var values = new float[picture.Width * picture.Height * 4];
         if (picture.Format == PixelFormat.Rgba32Float) {
