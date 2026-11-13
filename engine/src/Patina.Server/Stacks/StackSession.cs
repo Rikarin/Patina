@@ -239,9 +239,12 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
 
     public StackState State {
         get {
+            StackState state;
+            (string? Folder, string? Model, int UvSet) bake;
             lock (Changing) {
                 var set = editor.Set;
-                return new(
+                bake = (MeshMaps, ModelFile, set.UvSet);
+                state = new(
                     Id,
                     Path,
                     editor.Document.Name,
@@ -264,9 +267,13 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                     set.UvSet,
                     set.BakedNormal.ToString(),
                     set.BakedOcclusion.ToString(),
-                    BakeFit.OfModel(MeshMaps, ModelFile, set.UvSet)
+                    null
                 );
             }
+
+            // ⚠ Outside the lock: after a mesh change this reads the mesh once for the set's faces (#151), and strokes
+            // and edits must not wait on that.
+            return state with { BakeStale = BakeFit.OfModel(bake.Folder, bake.Model, bake.UvSet) };
         }
     }
 

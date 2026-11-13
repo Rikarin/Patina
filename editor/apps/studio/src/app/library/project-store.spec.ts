@@ -920,6 +920,25 @@ describe('ProjectStore', () => {
 
       expect(store.bakeOutOfDate()).toBe(true);
     });
+
+    it('reads the bake of the document in front, not the last folder the project lists', async () => {
+      const { store, client } = harness();
+      const own = 'projects/a/bakes/maps/A';
+      const stale = {
+        ...contents,
+        documents: [{ ...contents.documents[0], bake: own }, contents.documents[1]],
+        bakes: [
+          { kind: 'bake', name: 'maps/A', path: own, stale: false },
+          { kind: 'bake', name: 'maps/B', path: 'projects/a/bakes/maps/B', stale: true }
+        ]
+      };
+      client.GET.mockImplementation((() => Promise.resolve({ data: stale, response: new Response() })) as never);
+
+      await store.open('a');
+
+      expect(store.document()?.path).toBe(paths.texturing);
+      expect(store.bakeOutOfDate()).toBe(false);
+    });
   });
 
   it('starts an action with nothing left over from the last one', async () => {

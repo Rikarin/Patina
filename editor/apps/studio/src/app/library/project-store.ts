@@ -162,8 +162,20 @@ export class ProjectStore {
   });
   /** The model's texture sets, one document per material. A model with one material has none to choose. */
   readonly textureSets = computed(() => (this.current()?.documents ?? []).filter(document => document.material));
-  /** The bake layers read was made on a mesh the project no longer has. */
-  readonly bakeOutOfDate = computed(() => this.current()?.bakes.at(-1)?.stale === true);
+  /**
+   * The bake the document in front reads was made on faces the project's mesh no longer has: its own word, then its
+   * bake folder's, and with no bake of its own, any of the project's.
+   */
+  readonly bakeOutOfDate = computed(() => {
+    const project = this.current();
+    const document = this.document();
+    if (document?.bakeStale) {
+      return document.bakeStale === 'mesh';
+    }
+
+    const own = document?.bake ? project?.bakes.find(bake => bake.path === document.bake) : undefined;
+    return own ? own.stale : (project?.bakes.some(bake => bake.stale) ?? false);
+  });
   /** The mesh's file name. */
   readonly meshName = computed(() => this.mesh()?.path.split('/').pop() ?? null);
   /** The tabs with edits that are not saved. */
