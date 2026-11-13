@@ -17,7 +17,9 @@ are still thin, and the open list is the [audit tracker](https://github.com/Rika
 
 ## Running it
 
-You need .NET SDK 11.0.100, Node 24, pnpm and a Vulkan device.
+You need .NET SDK 11.0.100, Node 24, pnpm and a Vulkan device. The app and its end-to-end tests run the engine on the
+.NET 11 named by `DOTNET_ROOT`, or else the one in `~/.dotnet` where `dotnet-install` puts it, or else the `dotnet` on
+PATH.
 
 ```bash
 cd engine && dotnet build Patina.slnx -c Release
