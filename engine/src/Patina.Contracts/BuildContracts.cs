@@ -186,7 +186,7 @@ public sealed record ExportOptions {
 /// <param name="Name">Its label.</param>
 /// <param name="Engine">What it is for.</param>
 /// <param name="Normal">The green its target reads: y-up or y-down.</param>
-/// <param name="Origin">Where it comes from: factory, library or project.</param>
+/// <param name="Origin">Where it comes from: factory (a Starter preset), library or project.</param>
 /// <param name="Revision">The hash of its file.</param>
 /// <param name="Files">What it makes.</param>
 public sealed record ExportPresetInfo(
@@ -220,7 +220,7 @@ public sealed record ExportPresetInfo(
 public sealed record ExportPresetList(IReadOnlyList<ExportPresetInfo> Presets, IReadOnlyList<string> Problems) {
     /// <summary>
     ///     The preset an export starts from when nothing is kept for it: the library's <c>defaultPreset</c> while it
-    ///     names one of these, else the factory's glTF starter, and null only when there are no presets at all.
+    ///     names one of these, else the Starter glTF preset, and null only when there are no presets at all.
     /// </summary>
     public string? Default { get; init; }
 

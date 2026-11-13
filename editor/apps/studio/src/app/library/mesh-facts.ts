@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { type MeshFacts, unwrap } from '@patina/api-client';
 import { messageOf } from '../core/messages';
-import { count, length } from '../core/numbers';
+import { count, figure, length } from '../core/numbers';
 import { LibraryStore } from './library-store';
 
 /** The three sides of the box round a mesh, in its units. */
@@ -11,7 +11,7 @@ function sides(facts: MeshFacts): number[] {
 
 /** One side, as a length where the file says what its unit is, and in its own units where it does not. */
 function side(value: number, metresPerUnit: number | null | undefined): string {
-  return metresPerUnit ? length(value * metresPerUnit) : value.toFixed(value >= 10 ? 0 : 2);
+  return metresPerUnit ? length(value * metresPerUnit) : figure(value);
 }
 
 /**

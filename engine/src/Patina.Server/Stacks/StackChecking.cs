@@ -348,10 +348,10 @@ public static class StackChecking {
 
     static CheckProblem Values(MapMeasure measure, string name) {
         var (sentence, view) = measure.Code switch {
-            CheckCodes.AlbedoDark => ("base colour on a surface that is not metal is darker than sRGB 30", "baseColor"),
-            CheckCodes.AlbedoBright => ("base colour on a surface that is not metal is brighter than sRGB 240",
+            CheckCodes.AlbedoDark => ("base color on a surface that is not metal is darker than sRGB 30", "baseColor"),
+            CheckCodes.AlbedoBright => ("base color on a surface that is not metal is brighter than sRGB 240",
                 "baseColor"),
-            CheckCodes.MetalDark => ("base colour on bare metal is darker than sRGB 180", "baseColor"),
+            CheckCodes.MetalDark => ("base color on bare metal is darker than sRGB 180", "baseColor"),
             _ => ("metalness is between 0.1 and 0.9", "metallic")
         };
         return Problem(

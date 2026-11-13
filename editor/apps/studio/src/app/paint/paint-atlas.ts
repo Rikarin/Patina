@@ -7,6 +7,7 @@ import { XuiSpinnerImports } from '@xui/spinner';
 import { Commands } from '../core/commands';
 import { channelName } from '../core/labels';
 import { messageOf } from '../core/messages';
+import { amount } from '../core/numbers';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf, toTexels } from './paint-store';
@@ -161,7 +162,7 @@ const Painting = 'painting:';
     } @else if (!store.state()) {
       <xui-non-ideal-state
         class="flex-1"
-        title="No stack open"
+        title="No document open"
         description="This shows a texturing document or a layered material flat, as its maps lie, to paint on. Open one from the Library, or make a project."
         data-testid="atlas-empty"
       >
@@ -374,8 +375,8 @@ export class PaintAtlas {
     const [width, height] = this.side();
     const [u, v] = [(event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height];
     this.under.set({
-      u: u.toFixed(3),
-      v: v.toFixed(3),
+      u: amount(u, 3),
+      v: amount(v, 3),
       x: Math.min(width - 1, Math.max(0, Math.floor(u * width))),
       y: Math.min(height - 1, Math.max(0, Math.floor(v * height)))
     });

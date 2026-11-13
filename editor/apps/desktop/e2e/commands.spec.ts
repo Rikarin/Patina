@@ -31,7 +31,7 @@ const command = (name: string) =>
   }, name);
 
 test('the menus follow what is open, and an item with nothing to act on is off', async () => {
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready', { timeout: 60_000 });
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('GPU ready', { timeout: 60_000 });
   await expect.poll(bar).toContain('Help');
   expect(await bar()).not.toContain('Layer');
   for (const id of ['saveAs', 'reloadMesh', 'projectSettings', 'cut', 'closeDocument']) {
@@ -112,7 +112,7 @@ test('the History pane lists the undo steps and goes back to one', async () => {
 });
 
 test('Help has the guide, the keys, a problem report, and About with the versions and whose work is whose', async () => {
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready', { timeout: 60_000 });
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('GPU ready', { timeout: 60_000 });
   const ids = () =>
     app.evaluate(({ Menu }) =>
       (Menu.getApplicationMenu()?.items ?? []).flatMap(menu => (menu.submenu?.items ?? []).map(item => item.id))

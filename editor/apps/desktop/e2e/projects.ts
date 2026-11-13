@@ -39,13 +39,13 @@ export const ProjectKinds = {
 export async function newLibrary(app: ElectronApplication, window: Page, path: string): Promise<void> {
   await answerSave(app, path);
   await window.getByTestId('library-new').click();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText(
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText(
     (path.split('/').pop() ?? path).replace(/\.ptlib$/u, ''),
     {
       timeout: 30_000
     }
   );
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('GPU ready');
 }
 
 /** Makes a project the way a person does, which also opens it. */

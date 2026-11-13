@@ -8,6 +8,7 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
+import { percent, times } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { MeshFactsView } from './mesh-facts';
 import { ProjectStore } from './project-store';
@@ -175,7 +176,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
                     <span class="min-w-0 flex-1 truncate">{{ set.material || 'Mesh' }}</span>
                     <span class="readout" title="Islands">{{ set.charts }} islands</span>
                     <span class="readout" title="Stretch, averaged and worst. 1 is none.">
-                      ×{{ set.stretch.toFixed(2) }} / {{ set.worstStretch.toFixed(2) }}
+                      {{ times(set.stretch, 2) }} / {{ times(set.worstStretch, 2) }}
                     </span>
                     <span class="readout" title="Share of the atlas the islands cover">{{ percent(set.packed) }}</span>
                   </div>
@@ -355,9 +356,8 @@ export class ProjectSettingsDialog {
     this.options.update(options => ({ ...options, ...change }));
   }
 
-  protected percent(share: number): string {
-    return `${Math.round(share * 100)}%`;
-  }
+  protected readonly percent = percent;
+  protected readonly times = times;
 
   protected text(event: Event): string {
     return (event.target as HTMLInputElement).value;

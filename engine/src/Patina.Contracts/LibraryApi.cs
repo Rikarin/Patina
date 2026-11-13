@@ -34,7 +34,7 @@ public sealed record LibraryInfo(
 ) {
     /// <summary>
     ///     The export preset a project's export starts from when it has kept none, from <c>library.yaml</c>, or null
-    ///     for the factory's starter. <c>GET /export/presets</c> says which preset that comes to.
+    ///     for the Starter glTF preset. <c>GET /export/presets</c> says which preset that comes to.
     /// </summary>
     public string? DefaultPreset { get; init; }
 }
@@ -301,7 +301,7 @@ public sealed record LibraryExportRequest(ProjectExportSettings Export);
 
 /// <summary>The body of <c>PUT /api/v1/library/export/preset</c>.</summary>
 /// <param name="Preset">
-///     The id of the preset a project's export starts from when it has kept none, or null for the factory's starter.
+///     The id of the preset a project's export starts from when it has kept none, or null for the Starter glTF preset.
 /// </param>
 public sealed record LibraryPresetRequest(string? Preset);
 

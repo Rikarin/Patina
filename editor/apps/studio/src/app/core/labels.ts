@@ -6,6 +6,8 @@ import type { StackTerm, StackVocabulary } from '@patina/api-client';
  * (#198), so the words a stack's fields take are learnt from it rather than listed here.
  */
 const learnt = signal<ReadonlyMap<string, string>>(new Map());
+/** The kinds of ports and parameters, kept apart because a kind's value, such as Image, may name other things too. */
+const learntKinds = signal<ReadonlyMap<string, string>>(new Map());
 
 /** Takes the labels a vocabulary carries, which every label below then reads. */
 export function learnTerms(vocabulary: StackVocabulary): void {
@@ -20,6 +22,7 @@ export function learnTerms(vocabulary: StackVocabulary): void {
     vocabulary.alphas
   ];
   learnt.set(new Map(lists.flat().map(term => [term.value, term.label] as const)));
+  learntKinds.set(new Map((vocabulary.kinds ?? []).map(term => [term.value, term.label] as const)));
 }
 
 /**
@@ -114,20 +117,9 @@ export function imageFormatName(format: string): string {
   return ImageFormats[format] ?? format;
 }
 
-const Kinds: Readonly<Record<string, string>> = {
-  Image: 'Image',
-  Float: 'Number',
-  Int: 'Whole Number',
-  Bool: 'On or Off',
-  Text: 'Text',
-  Float2: '2 Numbers',
-  Float3: '3 Numbers',
-  Float4: '4 Numbers'
-};
-
-/** What a person calls the kind of a port or a parameter, as the Server's labels for setting kinds do. */
+/** What a person calls the kind of a port or a parameter, from the Server's labels for them (#198). */
 export function kindName(kind: string): string {
-  return Kinds[kind] ?? wordsOf(kind);
+  return learntKinds().get(kind) ?? wordsOf(kind);
 }
 
 /** What each kind of document is called (ADR 0012). */

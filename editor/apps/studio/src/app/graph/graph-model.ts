@@ -15,6 +15,7 @@ import type {
   GraphSettingDefinition,
   GraphState
 } from '@patina/api-client';
+import { milliseconds } from '../core/numbers';
 
 /** A graph as this client holds it: the Server's state, kept current by nothing but its events. */
 export interface GraphDocument {
@@ -203,7 +204,5 @@ export function evaluationSummary(document: GraphDocument): string {
     return 'Not evaluated';
   }
 
-  return evaluation.ran === 0
-    ? 'Up to date'
-    : `${String(evaluation.ran)} ran, ${evaluation.milliseconds.toFixed(0)} ms`;
+  return evaluation.ran === 0 ? 'Up to date' : `Updated in ${milliseconds(evaluation.milliseconds)}`;
 }

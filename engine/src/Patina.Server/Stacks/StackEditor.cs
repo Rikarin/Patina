@@ -206,7 +206,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     public static uint Packed(IReadOnlyList<float> colour) =>
         colour.Count == 4
             ? PaintImage.Pack(colour[0], colour[1], colour[2], colour[3])
-            : throw new StackEditRefusedException("A colour is red, green, blue and alpha.");
+            : throw new StackEditRefusedException("A color is red, green, blue and alpha.");
 
     /// <summary>The next part of a drag, which adds to the step it started.</summary>
     IReadOnlyList<StackPainted>? Extend(StackCommandBatch batch) {

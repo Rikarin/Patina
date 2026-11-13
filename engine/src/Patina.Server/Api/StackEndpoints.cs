@@ -124,7 +124,7 @@ static class StackEndpoints {
             "/{id}/id-colours",
             GetIdColours,
             "GetStackIdColours",
-            "The colours of the id map the stack reads, the largest first, and the one at a place on it if asked.",
+            "The colors of the ID map the stack reads, the largest first, and the one at a place on it if asked.",
             Missing
         );
         Get(

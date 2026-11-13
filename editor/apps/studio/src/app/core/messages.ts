@@ -1,4 +1,5 @@
 import { ApiError } from '@patina/api-client';
+import { bytes, percent } from './numbers';
 
 /**
  * What the app says for a refusal the Server sends with a code (engine/src/Patina.Server/Api/Refusals.cs). The Server's
@@ -53,7 +54,11 @@ const Words: Readonly<Record<string, string>> = {
   'uv-layout-undrawn': 'The UV layout could not be drawn. Try again once the GPU engine is running.',
   'selection-refused': 'A Color Selection picks out up to {most} colors. Remove some before adding another.',
   'selection-needs-picture':
-    'Several colors are picked out of a mesh map or a picture, so this mask needs one as its source. Choose a mesh map or a picture first.'
+    'Several colors are picked out of a mesh map or a picture, so this mask needs one as its source. Choose a mesh map or a picture first.',
+  'library-conflict': 'Something in the library is in the way. {reason}',
+  'library-refused': 'The library can’t do that. {reason}',
+  'material-missing': 'That material isn’t in the library any more. It may have been deleted outside Patina.',
+  'compound-needs-graph': 'A compound is copied beside the graph that uses it. Open that graph first.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };
@@ -98,7 +103,7 @@ export function diagnosticOf(text: string): { summary: string; code: string | nu
 /**
  * What the app says for a problem a check before export finds (#159), by its code (`CheckCodes` in
  * engine/src/Patina.Contracts/CheckContracts.cs). Values the Server measured fill the braces, shares as percentages and
- * bytes as mebibytes.
+ * bytes in MB.
  */
 const CheckWords: Readonly<Record<string, string>> = {
   'texture-over-budget': 'Takes {bytes} of GPU memory as {preset} writes it, over the budget of {budget}.',
@@ -119,7 +124,7 @@ const CheckWords: Readonly<Record<string, string>> = {
   'pbr-metal-partial': 'In {share} of texels metalness is between 0.1 and 0.9, neither metal nor not.'
 };
 
-/** A check's measured number as a person reads it: shares as percentages, bytes as mebibytes, the rest as given. */
+/** A check's measured number as a person reads it: shares as percentages, bytes in MB, the rest as given. */
 function measured(name: string, value: string): string {
   const number = Number(value);
   if (!Number.isFinite(number)) {
@@ -128,10 +133,10 @@ function measured(name: string, value: string): string {
 
   switch (name) {
     case 'share':
-      return `${(number * 100).toFixed(number < 0.1 ? 1 : 0)}%`;
+      return percent(number, number < 0.1 ? 1 : 0);
     case 'bytes':
     case 'budget':
-      return `${(number / (1024 * 1024)).toFixed(1)} MiB`;
+      return bytes(number);
     default:
       return value;
   }

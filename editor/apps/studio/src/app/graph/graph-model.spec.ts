@@ -121,7 +121,7 @@ describe('evaluationSummary', () => {
   const summary = (overrides: Parameters<typeof state>[0]) => evaluationSummary(documentOf(state(overrides)));
 
   it('says what the last evaluation did', () => {
-    expect(summary({ revision: 3, settled: 3, evaluation })).toBe('4 ran, 12 ms');
+    expect(summary({ revision: 3, settled: 3, evaluation })).toBe('Updated in 12 ms');
   });
 
   it('never leaves an old count showing while an edit is on its way', () => {
@@ -152,6 +152,6 @@ describe('evaluationSummary', () => {
     });
     expect(evaluationSummary(moved)).toBe('Evaluating…');
     const settled = applyEvent(moved, { sequence: 7, kind: 'settled', revision: 4, history: clean });
-    expect(evaluationSummary(settled)).toBe('4 ran, 12 ms');
+    expect(evaluationSummary(settled)).toBe('Updated in 12 ms');
   });
 });

@@ -75,7 +75,7 @@ static class ViewportMapEndpoints {
         api.MapGet("/viewport/bake-preview", static (BakePreviewSession preview) => TypedResults.Ok(preview.State))
             .WithName("GetBakePreview")
             .WithTags(Tag)
-            .WithSummary("The bake setup the viewport shows, and the key to its colours.");
+            .WithSummary("The bake setup the viewport shows, and the key to its colors.");
         api.MapPut("/viewport/graph", ShowGraphAsync)
             .WithName("ShowGraphInViewport")
             .WithTags(Tag)
@@ -369,7 +369,12 @@ static class ViewportMapEndpoints {
         ViewportSession session
     ) {
         if (request.Graph is { } id && graphs.Find(id) is null) {
-            return TypedResults.Problem($"There is no graph session '{id}'.", statusCode: Missing);
+            return Refusals.Problem(
+                $"There is no graph session '{id}'.",
+                Missing,
+                Refusals.GraphNotOpen,
+                new Dictionary<string, string> { ["id"] = id }
+            );
         }
 
         session.Follow(request);

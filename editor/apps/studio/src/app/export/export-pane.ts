@@ -22,6 +22,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
 import { jobStateName, labelIn, termName } from '../core/labels';
 import { messageOf } from '../core/messages';
+import { percent, toPercent } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { ProjectStore } from '../library/project-store';
@@ -605,7 +606,7 @@ function lanesOf(hex: string): number[] {
                 <span class="text-foreground-muted min-w-0 flex-1 truncate" data-testid="export-current">
                   {{ running() ? (build.report?.current ?? '') : '' }}
                 </span>
-                <span class="readout" data-testid="export-percent">{{ percent() }}%</span>
+                <span class="readout" data-testid="export-percent">{{ percentText() }}</span>
               </div>
               <div
                 class="bg-surface-sunken h-1.5 overflow-hidden rounded-sm"
@@ -736,7 +737,8 @@ export class ExportPane implements OnInit {
   });
   protected readonly stateName = jobStateName;
   protected readonly running = computed(() => ['queued', 'running'].includes(this.store.build()?.state ?? ''));
-  protected readonly percent = computed(() => Math.round((this.store.build()?.progress ?? 0) * 100));
+  protected readonly percent = computed(() => toPercent(this.store.build()?.progress ?? 0));
+  protected readonly percentText = computed(() => percent(this.store.build()?.progress ?? 0));
   protected readonly distanced = computed(() => usesDistance(this.settings().padding));
   protected readonly paddingHex = computed(() => hexOf(this.settings().colour));
 

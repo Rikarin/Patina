@@ -74,8 +74,8 @@ public sealed record ExportPresetDocument {
 
 /// <summary>A preset to edit, and where it comes from.</summary>
 /// <param name="Document">What its file says.</param>
-/// <param name="Origin">factory, library or project.</param>
-/// <param name="File">The file on the Server's machine, or null for a factory preset, which lives in Patina.</param>
+/// <param name="Origin">factory (a Starter preset, shipped with Patina), library or project.</param>
+/// <param name="File">The file on the Server's machine, or null for a Starter preset, which ships with Patina.</param>
 /// <param name="Text">The file's text, as a person would read it.</param>
 public sealed record ExportPresetSource(ExportPresetDocument Document, string Origin, string? File, string Text);
 

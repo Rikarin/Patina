@@ -146,11 +146,9 @@ static class LibraryEndpoints {
             host.RequestRescan();
             return TypedResults.Created((string?)null, project);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status404NotFound);
-        } catch (ProjectExistsException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+            return Refusals.Of(e);
         } catch (ProjectRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status400BadRequest);
+            return Refusals.Of(e);
         }
     }
 
@@ -178,10 +176,8 @@ static class LibraryEndpoints {
                 Refusals.GraphTemplateUnknown,
                 new Dictionary<string, string> { ["template"] = request.Template ?? string.Empty }
             );
-        } catch (ProjectExistsException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
         } catch (ProjectRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status400BadRequest);
+            return Refusals.Of(e);
         }
     }
 
@@ -203,9 +199,10 @@ static class LibraryEndpoints {
 
             folder = session.Folder;
         } else {
-            return TypedResults.Problem(
+            return Refusals.Problem(
                 "A copy of a compound goes beside the graph that uses it, so it needs a graph.",
-                statusCode: StatusCodes.Status422UnprocessableEntity
+                StatusCodes.Status422UnprocessableEntity,
+                Refusals.CompoundNeedsGraph
             );
         }
 
@@ -218,11 +215,9 @@ static class LibraryEndpoints {
             host.RequestRescan();
             return TypedResults.Created((string?)null, copy);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status404NotFound);
-        } catch (ProjectExistsException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+            return Refusals.Of(e);
         } catch (ProjectRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status400BadRequest);
+            return Refusals.Of(e);
         } catch (GraphEditRefusedException e) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
@@ -277,7 +272,12 @@ static class LibraryEndpoints {
 
         return library.Impact(new(id), offset, limit) is { } impact
             ? TypedResults.Ok(impact)
-            : TypedResults.Problem($"No shared asset has the id {id}.", statusCode: StatusCodes.Status404NotFound);
+            : Refusals.Problem(
+                $"No material has the id {id}.",
+                StatusCodes.Status404NotFound,
+                Refusals.MaterialMissing,
+                new Dictionary<string, string> { ["id"] = id.ToString() }
+            );
     }
 
     static Results<Ok<T>, ProblemHttpResult> Listing<T>(

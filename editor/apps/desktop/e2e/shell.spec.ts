@@ -24,7 +24,7 @@ test.afterEach(async () => {
 });
 
 test('the app starts both sidecars and shows the shell', async () => {
-  const status = window.getByRole('status', { name: 'Server status' });
+  const status = window.getByRole('status', { name: 'Engine status' });
 
   await expect(status).toContainText('No library open');
   await expect(status).toContainText('GPU ready');
