@@ -75,6 +75,6 @@ static class SharedFolderMove {
 
     static void Move(string from, string to) {
         Directory.CreateDirectory(Path.GetDirectoryName(to)!);
-        File.Move(from, to, true);
+        SharedFile.MoveOver(from, to);
     }
 }

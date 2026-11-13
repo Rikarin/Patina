@@ -82,6 +82,6 @@ public sealed class BakeCache(string root) {
     static void CopyAtomically(string from, string to) {
         var part = $"{to}.{Guid.NewGuid():N}.part";
         File.Copy(from, part);
-        File.Move(part, to, true);
+        SharedFile.MoveOver(part, to);
     }
 }

@@ -39,7 +39,7 @@ public static class PreviewShape {
             // A name of its own, so two requests writing the same shape at once never share a half-written file.
             var part = $"{file}.{Guid.NewGuid():N}.part";
             System.IO.File.WriteAllBytes(part, Glb(shape));
-            System.IO.File.Move(part, file, true);
+            SharedFile.MoveOver(part, file);
         }
 
         return file;

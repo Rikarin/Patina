@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 
 namespace Patina.Contracts;
@@ -16,6 +17,12 @@ namespace Patina.Contracts;
 public static class SharedFile {
     /// <summary>What any other program may do to a file while one of these reads it.</summary>
     public const FileShare Share = FileShare.ReadWrite | FileShare.Delete;
+
+    /// <summary>The longest wait, in milliseconds, between two tries of a move over a file being read.</summary>
+    const int LongestPause = 50;
+
+    /// <summary>How long a move over a file waits for that file's readers, at most.</summary>
+    public static readonly TimeSpan Patience = TimeSpan.FromSeconds(2);
 
     /// <summary>The options every read opens with, made fresh so nobody can change them for the next caller.</summary>
     /// <param name="asynchronous">Whether the handle is for asynchronous reads.</param>
@@ -73,6 +80,61 @@ public static class SharedFile {
         );
         return await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    ///     Moves a finished file over another in one step, as <c>File.Move(from, to, true)</c> does, waiting
+    ///     briefly for whoever is reading the file it replaces.
+    /// </summary>
+    /// <remarks>
+    ///     ⚠ Every overwriting move goes through here (#256). Windows refuses to rename onto a file anybody has
+    ///     open, with "Access to the path is denied", and sharing delete does not help: a library scan that read a
+    ///     project's <c>project.yaml</c> just as a client tagged the project turned the save into a 409 (#257). A
+    ///     read is short, so the move is tried again until <see cref="Patience" /> has passed. On Linux and macOS
+    ///     the first try succeeds.
+    /// </remarks>
+    /// <param name="from">The finished file, which is gone afterwards.</param>
+    /// <param name="to">Where it goes, replacing what is there.</param>
+    public static void MoveOver(string from, string to) => Patiently(from, to, false);
+
+    /// <summary>
+    ///     Moves a folder to where nothing is, as <c>Directory.Move</c> does, waiting briefly for whoever is reading
+    ///     a file in it.
+    /// </summary>
+    /// <remarks>
+    ///     Windows refuses to rename a folder while any file below it is open, which the library scan reading a
+    ///     project's <c>project.yaml</c> was enough for: deleting the project to the bin came back as a 409 (#257).
+    ///     A place that is taken is refused at once, as before, since waiting cannot free it.
+    /// </remarks>
+    /// <param name="from">The folder.</param>
+    /// <param name="to">Where it goes, which must not exist.</param>
+    public static void MoveFolder(string from, string to) => Patiently(from, to, true);
+
+    /// <summary>A move, tried again while it fails as a held file makes it and it may still succeed.</summary>
+    static void Patiently(string from, string to, bool folder) {
+        var waited = Stopwatch.StartNew();
+        for (var pause = 1;; pause = Math.Min(pause * 2, LongestPause)) {
+            try {
+                if (folder) {
+                    Directory.Move(from, to);
+                } else {
+                    File.Move(from, to, true);
+                }
+
+                return;
+            } catch (Exception e) when (Held(e) && waited.Elapsed < Patience && Possible(from, to, folder)) {
+                Thread.Sleep(pause);
+            }
+        }
+    }
+
+    /// <summary>Whether a failed move can still succeed: what moves is there, and a folder's place free.</summary>
+    static bool Possible(string from, string to, bool folder) =>
+        folder ? Directory.Exists(from) && !Directory.Exists(to) && !File.Exists(to) : File.Exists(from);
+
+    /// <summary>Whether a move failed the way it does on Windows while the file it replaces is open.</summary>
+    static bool Held(Exception e) =>
+        e is UnauthorizedAccessException
+            or IOException and not FileNotFoundException and not DirectoryNotFoundException;
 
     /// <summary>A file's lines, opened now and read as they are enumerated, as <c>File.ReadLines</c>.</summary>
     public static IEnumerable<string> ReadLines(string path) => Lines(new(OpenRead(path), Encoding.UTF8, true));

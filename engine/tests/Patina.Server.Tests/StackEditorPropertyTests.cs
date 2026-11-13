@@ -375,6 +375,28 @@ public sealed class StackEditorPropertyTests {
         );
     }
 
+    /// <summary>
+    ///     A stroke aimed at a channel taken off the set is refused with the code a client has words for (#261), though
+    ///     the layer still holds a value for it, and paints nothing.
+    /// </summary>
+    [Fact]
+    public void A_stroke_on_a_channel_the_set_no_longer_has_is_refused_with_a_code() {
+        var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
+        editor.Apply(new([new StackAddChannel("roughness")]));
+        editor.Apply(new([Stroke("a", false, 2) with { Channel = "roughness" }]));
+        editor.Apply(new([new StackRemoveChannel("roughness")]));
+        var standing = editor.Standing.Count;
+
+        var refused = Assert.Throws<StackEditRefusedException>(() => editor.Apply(
+                new([Stroke("b", false, 2) with { Channel = "roughness" }])
+            )
+        );
+
+        Assert.Equal(Refusals.ChannelMissing, refused.Code);
+        Assert.Equal("Roughness", refused.Values["channel"]);
+        Assert.Equal(standing, editor.Standing.Count);
+    }
+
     [Fact]
     public void One_stroke_can_paint_several_channels_as_one_step() {
         var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());

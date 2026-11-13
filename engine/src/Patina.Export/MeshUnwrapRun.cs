@@ -128,7 +128,7 @@ public static class MeshUnwrapRun {
         );
         try {
             ModelWriter.Write(part, meshes, name, materials);
-            File.Move(part, output, true);
+            SharedFile.MoveOver(part, output);
         } finally {
             File.Delete(part);
         }

@@ -668,7 +668,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                     stream.Flush(true);
                 }
 
-                File.Move(temporary, target, true);
+                SharedFile.MoveOver(temporary, target);
                 if (to is null) {
                     canvases.Saved(Path.Combine(folder, file));
                 }

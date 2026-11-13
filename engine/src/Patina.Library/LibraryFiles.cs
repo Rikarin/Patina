@@ -200,7 +200,11 @@ public static class LibraryFiles {
                 stream.Flush(true); // on the disk before the name is: a crash must not leave an empty file in its place
             }
 
-            File.Move(temporary, path, overwrite);
+            if (overwrite) {
+                SharedFile.MoveOver(temporary, path);
+            } else {
+                File.Move(temporary, path);
+            }
         } finally {
             File.Delete(temporary); // already moved, unless the write failed
         }

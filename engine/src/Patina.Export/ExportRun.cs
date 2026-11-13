@@ -354,6 +354,6 @@ public static class ExportRun {
         Directory.CreateDirectory(Path.GetDirectoryName(to)!);
         var part = $"{to}.{Guid.NewGuid():N}.part";
         File.Copy(from, part);
-        File.Move(part, to, true);
+        SharedFile.MoveOver(part, to);
     }
 }
