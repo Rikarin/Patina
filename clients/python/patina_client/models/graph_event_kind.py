@@ -1,9 +1,12 @@
 from enum import StrEnum
 
 class GraphEventKind(StrEnum):
+    AUTOSAVED = "autosaved"
+    AUTOSAVEFAILED = "autosaveFailed"
     CLOSED = "closed"
     EDITED = "edited"
     EVALUATED = "evaluated"
+    PACED = "paced"
     REDONE = "redone"
     RESYNC = "resync"
     SAVED = "saved"

@@ -350,6 +350,8 @@ from .stack_mesh_mask import StackMeshMask
 from .stack_mesh_mask_request import StackMeshMaskRequest
 from .stack_mesh_parts import StackMeshParts
 from .stack_open_request import StackOpenRequest
+from .stack_pace import StackPace
+from .stack_pace_change import StackPaceChange
 from .stack_painted import StackPainted
 from .stack_path_point import StackPathPoint
 from .stack_picture import StackPicture
@@ -752,6 +754,8 @@ __all__ = (
     "StackMeshMaskRequest",
     "StackMeshParts",
     "StackOpenRequest",
+    "StackPace",
+    "StackPaceChange",
     "StackPainted",
     "StackPathPoint",
     "StackPicture",
