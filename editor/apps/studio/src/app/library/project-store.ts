@@ -1,6 +1,7 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import {
   ApiError,
+  type PatinaClient,
   type ProjectBakeSettings,
   type ProjectCheckSettings,
   type ProjectContents,
@@ -146,7 +147,14 @@ export class ProjectStore {
   readonly active = computed(() => this.mutableTabs().find(tab => tab.path === this.mutableActive()) ?? null);
   /** The document in front is a graph underneath, as an image material is. */
   readonly graphInFront = computed(() => isGraph(this.active()));
-  readonly workspace = computed<WorkspaceName>(() => (this.active()?.kind ?? 'start') as WorkspaceName);
+  /**
+   * The workspace kept while the document in front closes and opens again in place, for a restore, so the panes that
+   * were showing stay as they were (#270).
+   */
+  private readonly holding = signal<WorkspaceName | null>(null);
+  readonly workspace = computed<WorkspaceName>(
+    () => this.holding() ?? ((this.active()?.kind ?? 'start') as WorkspaceName)
+  );
   /** The project of the document in front. */
   readonly current = computed(() => {
     const project = this.active()?.project;
@@ -871,32 +879,11 @@ export class ProjectStore {
   async resolveRecovery(restore: boolean): Promise<void> {
     const offer = this.recoverable();
     this.recoverable.set(null);
-    if (!offer) {
-      return;
-    }
-
-    const project = this.mutableTabs().find(tab => tab.path === offer.path)?.project;
-    this.startAction();
-    let failed: string | null = null;
-    try {
-      // Not a discard: that is for edits, and it would take the autosave with them.
-      if (!(await this.remove(offer.path, false))) {
-        return;
-      }
-
-      const client = await this.library.api();
-      const body = { path: offer.path, restore };
-      unwrap(await client.POST('/api/v1/library/recovery', { body }));
-    } catch (failure) {
-      failed = messageOf(failure);
-    }
-
-    if (project) {
-      await this.openDocument(project, offer.path);
-    }
-
-    if (failed !== null) {
-      this.mutableFailure.set(failed);
+    if (offer) {
+      await this.reopenAround(offer.path, async client => {
+        const body = { path: offer.path, restore };
+        unwrap(await client.POST('/api/v1/library/recovery', { body }));
+      });
     }
   }
 
@@ -929,29 +916,60 @@ export class ProjectStore {
       return false;
     }
 
+    return this.reopenAround(path, async client => {
+      unwrap(await client.POST('/api/v1/library/snapshots/restore', { body: { path, id } }));
+    });
+  }
+
+  /**
+   * Forgets a snapshot (#209). The document is not changed.
+   * @returns False when it did not happen, and the failure says why (#270).
+   */
+  async deleteSnapshot(path: string, id: string): Promise<boolean> {
+    try {
+      const client = await this.library.api();
+      unwrap(await client.DELETE('/api/v1/library/snapshots', { params: { query: { path, id } } }));
+      return true;
+    } catch (failure) {
+      this.mutableFailure.set(messageOf(failure));
+      return false;
+    }
+  }
+
+  /**
+   * Closes a document for the engine, does what wants it closed, and opens it again, failed or not. The document in
+   * front keeps its workspace throughout, so the panes that were showing still show after (#270).
+   * @returns False when it did not happen, and the failure says why.
+   */
+  private async reopenAround(path: string, work: (client: PatinaClient) => Promise<void>): Promise<boolean> {
     const project = this.mutableTabs().find(tab => tab.path === path)?.project ?? null;
     this.startAction();
-    let failed: string | null = null;
+    this.holding.set(this.active()?.path === path ? this.workspace() : null);
     try {
-      if (!(await this.remove(path, false))) {
-        return false;
+      let failed: string | null = null;
+      try {
+        // Not a discard: that is for edits, and it would take the autosave with them.
+        if (!(await this.remove(path, false))) {
+          return false;
+        }
+
+        await work(await this.library.api());
+      } catch (failure) {
+        failed = messageOf(failure);
       }
 
-      const client = await this.library.api();
-      unwrap(await client.POST('/api/v1/library/snapshots/restore', { body: { path, id } }));
-    } catch (failure) {
-      failed = messageOf(failure);
-    }
+      if (project) {
+        await this.openDocument(project, path);
+      }
 
-    if (project) {
-      await this.openDocument(project, path);
-    }
+      if (failed !== null) {
+        this.mutableFailure.set(failed);
+      }
 
-    if (failed !== null) {
-      this.mutableFailure.set(failed);
+      return failed === null;
+    } finally {
+      this.holding.set(null);
     }
-
-    return failed === null;
   }
 
   /** Saves a document with unsaved edits, brought to the front to do it. False if that could not be done. */
