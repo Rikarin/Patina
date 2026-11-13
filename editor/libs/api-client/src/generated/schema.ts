@@ -788,7 +788,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** A picture the library holds, as its file: what a client shows of a projection or a stencil it frames. */
+    /** A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). */
     get: operations['GetLibraryPicture'];
     put?: never;
     post?: never;

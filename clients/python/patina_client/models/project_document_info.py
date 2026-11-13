@@ -37,7 +37,8 @@ class ProjectDocumentInfo:
             bake (None | str | Unset): The folder of the bake it reads, below the library, or null.
             bake_stale (None | str | Unset): Why that bake no longer fits it, so its maps need baking again, or null:
                 `mesh`, made on a mesh it no
-                longer stands on, or `uvSet`, laid out in another UV set than the one it chose (#238).
+                longer stands on, `uvSet`, laid out in another UV set than the one it chose (#238), or `shape`,
+                of another shape than its Width by Height (#262).
      """
 
     kind: str
