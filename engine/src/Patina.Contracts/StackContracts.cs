@@ -466,6 +466,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackSetLayer), "setLayer")]
 [JsonDerivedType(typeof(StackStroke), "stroke"), JsonDerivedType(typeof(StackSetModel), "setModel")]
 [JsonDerivedType(typeof(StackAddChannel), "addChannel"), JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
+[JsonDerivedType(typeof(StackRemoveChannel), "removeChannel")]
 [JsonDerivedType(typeof(StackSetSeed), "setSeed"), JsonDerivedType(typeof(StackDuplicateLayers), "duplicateLayers")]
 [JsonDerivedType(typeof(StackPasteLayers), "pasteLayers")]
 [JsonDerivedType(typeof(StackFlattenLayer), "flattenLayer"),
@@ -606,6 +607,13 @@ public sealed record StackSetModel(string Model) : StackCommand;
 /// <summary>Adds a channel to the stack, so that layers can write it and a preset can export it.</summary>
 /// <param name="Usage">Which, one of the vocabulary's usages.</param>
 public sealed record StackAddChannel(string Usage) : StackCommand;
+
+/// <summary>
+///     Takes a channel off the texture set (#141): no layer writes it and no export finds it. What the layers held for
+///     it, their values and paint, stays in them, so adding the channel again brings it back.
+/// </summary>
+/// <param name="Usage">Which, one the set has. A set keeps at least one channel.</param>
+public sealed record StackRemoveChannel(string Usage) : StackCommand;
 
 /// <summary>
 ///     Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:

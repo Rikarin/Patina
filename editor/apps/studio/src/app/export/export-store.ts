@@ -218,11 +218,13 @@ export function requestFor(
   if (scope.sets) {
     options.sets = [...scope.sets];
   }
-  if (settings.merge && !scope.documents?.length) {
+  const merging = settings.merge && !scope.documents?.length;
+  if (merging) {
     options.merge = true;
   }
+  // Merged sets are one set of files at the export's size; a set's own size is kept for when they are not merged.
   const perSet = Object.entries(settings.perSet)
-    .filter(([set, choice]) => choice.size !== null && (!scope.sets || scope.sets.includes(set)))
+    .filter(([set, choice]) => !merging && choice.size !== null && (!scope.sets || scope.sets.includes(set)))
     .map(([set, choice]) => ({ set, size: choice.size }));
   if (perSet.length > 0) {
     options.perSet = perSet;

@@ -294,6 +294,9 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             case StackAddChannel add:
                 Do(AddChannel(add.Usage));
                 break;
+            case StackRemoveChannel remove:
+                Do(RemoveChannel(remove.Usage));
+                break;
             case StackSetSeed seed:
                 Do(new SetDocumentCommand(this, Document with { Seed = seed.Seed }, "Change seed"));
                 break;
@@ -507,6 +510,37 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             this,
             Document with { Sets = [..Document.Sets.Select(held => held == chosen ? added : held)] },
             $"Add {StackDocuments.ChannelName(usage)}"
+        );
+    }
+
+    /// <summary>
+    ///     The set without one of its channels. Only the set's list changes: a layer's values and paint for it stay, so
+    ///     the channel comes back as it was when it is added again.
+    /// </summary>
+    SetDocumentCommand RemoveChannel(string usage) {
+        var chosen = Set;
+        var named = new Dictionary<string, string> { ["channel"] = StackDocuments.ChannelName(usage) };
+        if (!chosen.Channels.Exists(channel => channel.Usage == usage)) {
+            throw new StackEditRefusedException(
+                $"This document has no channel '{usage}'.",
+                Api.Refusals.ChannelMissing,
+                named
+            );
+        }
+
+        if (chosen.Channels.Count == 1) {
+            throw new StackEditRefusedException(
+                $"'{usage}' is the texture set's only channel, and a set with none has nothing to write.",
+                Api.Refusals.ChannelLast,
+                named
+            );
+        }
+
+        var removed = chosen with { Channels = [..chosen.Channels.Where(channel => channel.Usage != usage)] };
+        return new(
+            this,
+            Document with { Sets = [..Document.Sets.Select(held => held == chosen ? removed : held)] },
+            $"Remove {StackDocuments.ChannelName(usage)}"
         );
     }
 

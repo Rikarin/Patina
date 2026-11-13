@@ -39,7 +39,6 @@ public sealed class GraphPictures {
     static readonly byte[] NoBake = [128, 128, 128, 255];
 
     readonly Dictionary<PictureStamp, Decoded> decoded = [];
-    readonly StbImageDecoder decoder = new();
     long held;
 
     /// <summary>Whether a file is no longer what was read.</summary>
@@ -205,7 +204,10 @@ public sealed class GraphPictures {
         }
 
         using var stream = SharedFile.OpenRead(stamp.Path);
-        var data = decoder.Decode(stream, Path.GetExtension(stamp.Path));
+        var extension = Path.GetExtension(stamp.Path).ToLowerInvariant();
+        var data = (ImageDecoders.For(ImageDecoders.BuiltIn, extension)
+                ?? throw new InvalidDataException($"'{extension}' is not a picture this reads"))
+            .Decode(stream, extension);
         if (data.Format != PixelFormat.Rgba8UNorm) {
             throw new InvalidDataException($"a bitmap is 8-bit RGBA, and this file decodes to {data.Format}");
         }

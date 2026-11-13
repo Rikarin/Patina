@@ -344,6 +344,12 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   class="w-full"
                   aria-label="Height"
                   data-testid="bake-rows"
+                  [title]="
+                    options.followSetShape === false
+                      ? 'The height of every texture set’s maps.'
+                      : 'Each texture set bakes at its own shape. Turn off Follow each set’s shape to choose a height.'
+                  "
+                  [disabled]="options.followSetShape !== false"
                   [itemText]="rowsName"
                   [items]="rowChoices()"
                   [value]="String(options.rows ?? '')"
@@ -387,6 +393,18 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 />
               </div>
             </div>
+            <label
+              class="flex items-center justify-between gap-2 text-sm"
+              title="A texture set wider than it is tall bakes at its own shape at this width, so a wide set and a square one bake together without stretching."
+            >
+              Follow each set’s shape
+              <xui-switch
+                aria-label="Follow each set’s shape"
+                data-testid="bake-follow-shape"
+                [checked]="options.followSetShape !== false"
+                (checkedChange)="set({ followSetShape: $event })"
+              />
+            </label>
 
             <p class="section-label mt-1">Rays</p>
             <div class="flex items-center justify-between gap-2 text-sm">
@@ -1116,7 +1134,9 @@ export class BakePane {
   protected readonly angle = angle;
   protected readonly falloffName = (value: string) => FalloffNames[value] ?? value;
   protected readonly idSourceName = (value: string) => IdSourceNames[value] ?? value;
-  protected readonly sideName = (value: string) => `${value} × ${this.options()?.rows ?? value}`;
+  /** A width, and the height it bakes at: a set's own shape when the bake follows it, which each set says. */
+  protected readonly sideName = (value: string) =>
+    this.options()?.followSetShape === false ? `${value} × ${this.options()?.rows ?? value}` : `${value} wide`;
   protected readonly rowsName = (value: string) => (value ? `${value} texels` : 'Same as width');
   protected readonly canPick = desktop() !== undefined;
   protected readonly roundedEdges = RoundedEdges;
