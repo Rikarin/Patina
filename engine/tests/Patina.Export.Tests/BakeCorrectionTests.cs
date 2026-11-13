@@ -436,10 +436,16 @@ public sealed class BakeCorrectionTests : IDisposable {
         Assert.Equal([0f, 0f, 0.5f, 1f, 1f, 1.5f], cube.PositionBox);
 
         // Read back as a delivered bake is, and only from a bake that has a position map.
-        File.Copy(Path.Combine(Into("cube"), BakeCache.ManifestFile), Path.Combine(Into("cube"), $"set.{BakeCache.ManifestFile}"));
+        File.Copy(
+            Path.Combine(Into("cube"), BakeCache.ManifestFile),
+            Path.Combine(Into("cube"), $"set.{BakeCache.ManifestFile}")
+        );
         Assert.Equal(cube.PositionBox, BakedMapPicture.PositionBox(Into("cube")));
         var normal = Bake(Request(high, low, static options => options with { Maps = ["normal"] }), "normal");
-        File.Copy(Path.Combine(Into("normal"), BakeCache.ManifestFile), Path.Combine(Into("normal"), $"set.{BakeCache.ManifestFile}"));
+        File.Copy(
+            Path.Combine(Into("normal"), BakeCache.ManifestFile),
+            Path.Combine(Into("normal"), $"set.{BakeCache.ManifestFile}")
+        );
         Assert.NotNull(normal.PositionBox);
         Assert.Null(BakedMapPicture.PositionBox(Into("normal")));
         Assert.Null(BakedMapPicture.PositionBox(null));

@@ -6125,8 +6125,8 @@ export interface components {
       height: number;
     };
     /**
-     * @description stack as numbers, so it can be moved, scaled and turned again. Every length is in the model's own units, the
-     *     ones `POST /viewport/pick` answers in.
+     * @description A decal (#133): a picture projected through a box placed on the model, kept in the stack as numbers, so it can
+     *     be moved, scaled and turned again. Every length is in the model's own units, the ones
      *     `POST /viewport/pick` answers in.
      */
     StackDecal: {
@@ -6175,7 +6175,9 @@ export interface components {
       sampling: string;
       /**
        * @description The box the mesh's `position` bake is normalised in: the least corner's three numbers, then the greatest's.
-       *     It is the model's bounds as `POST /viewport/pick` gives them. Null or empty is the unit cube.
+       *     It is the model's bounds as `POST /viewport/pick` gives them. Null or empty is the unit cube. A bake that
+       *     says the box its position map spans is read through that box instead, so this one only matters for a bake that
+       *     does not.
        */
       box?: null | number[];
       /**

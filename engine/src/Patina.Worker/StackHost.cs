@@ -342,6 +342,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
         /// <summary>The box the bake's position map spans, which every decal and path is read through (#133).</summary>
         readonly IReadOnlyList<float>? positionBox;
+
         readonly List<Applied> applied = [];
         readonly Dictionary<long, Applied> known = [];
 

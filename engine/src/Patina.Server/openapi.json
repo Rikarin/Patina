@@ -16977,7 +16977,7 @@
               "type": "number",
               "format": "float"
             },
-            "description": "The box the mesh\u0027s \u0060position\u0060 bake is normalised in: the least corner\u0027s three numbers, then the greatest\u0027s.\nIt is the model\u0027s bounds as \u0060POST /viewport/pick\u0060 gives them. Null or empty is the unit cube."
+            "description": "The box the mesh\u0027s \u0060position\u0060 bake is normalised in: the least corner\u0027s three numbers, then the greatest\u0027s.\nIt is the model\u0027s bounds as \u0060POST /viewport/pick\u0060 gives them. Null or empty is the unit cube. A bake that\nsays the box its position map spans is read through that box instead, so this one only matters for a bake that\ndoes not."
           },
           "warp": {
             "type": [
@@ -16991,7 +16991,7 @@
             "description": "A warp (#134): where each point of a 3 by 3 grid over the picture lands on the decal\u0027s square, row by row from\nthe top left, as eighteen numbers 0 to 1 across and down. Null or empty bends nothing."
           }
         },
-        "description": "stack as numbers, so it can be moved, scaled and turned again. Every length is in the model\u0027s own units, the\nones \u0060POST /viewport/pick\u0060 answers in.\n\u0060POST /viewport/pick\u0060 answers in."
+        "description": "A decal (#133): a picture projected through a box placed on the model, kept in the stack as numbers, so it can\nbe moved, scaled and turned again. Every length is in the model\u0027s own units, the ones\n\u0060POST /viewport/pick\u0060 answers in."
       },
       "StackDelta": {
         "required": [
