@@ -805,7 +805,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** A picture the library holds, as its file: what a client shows of a projection or a stencil it frames. */
+    /** A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). */
     get: operations['GetLibraryPicture'];
     put?: never;
     post?: never;
@@ -4620,6 +4620,12 @@ export interface components {
       error?: null | string;
       /** @description Whether a client has asked for it to stop. */
       cancelRequested: boolean;
+      /**
+       * Format: int64
+       * @description How many times it has changed, rising with each change: an answer and an event can arrive in either order,
+       *     and a client keeps whichever says more.
+       */
+      version: number;
     };
     /**
      * @description What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A
@@ -5209,7 +5215,8 @@ export interface components {
       bake?: null | string;
       /**
        * @description Why that bake no longer fits it, so its maps need baking again, or null: `mesh`, made on a mesh it no
-       *     longer stands on, or `uvSet`, laid out in another UV set than the one it chose (#238).
+       *     longer stands on, `uvSet`, laid out in another UV set than the one it chose (#238), or `shape`,
+       *     of another shape than its Width by Height (#262).
        */
       bakeStale?: null | string;
       /** @description What it can be searched by, sorted. */
@@ -7335,8 +7342,8 @@ export interface components {
       bakedOcclusion: string;
       /**
        * @description Why the bake the set reads no longer fits it, or null when it does or there is none: `mesh`, made on a mesh
-       *     the set no longer stands on, or `uvSet`, laid out in another of the mesh's UV sets (#238). Either way its
-       *     maps need baking again.
+       *     the set no longer stands on, or `uvSet`, laid out in another of the mesh's UV sets (#238), or `shape`,
+       *     of another shape than the set's Width by Height (#262). Either way its maps need baking again.
        */
       bakeStale?: null | string;
     };

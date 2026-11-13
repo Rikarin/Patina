@@ -778,7 +778,7 @@ static class ProjectFiles {
             Bake = BakeOf(full, path, item), BakeStale = BakeStaleOf(full, item, meshes), Tags = item.Tags
         };
 
-    /// <summary>Why a texturing document's bake no longer fits it: by the mesh it is on and its UV set.</summary>
+    /// <summary>Why a texturing document's bake no longer fits it: by its mesh, its UV set and its shape.</summary>
     static string? BakeStaleOf(string full, ProjectItem item, IReadOnlyList<ProjectMesh> meshes) {
         if (item.Kind != DocumentKinds.Texturing || DocumentBakes.FolderOf(full, item) is not { } bake) {
             return null;
@@ -790,7 +790,7 @@ static class ProjectFiles {
         return BakeFit.Stale(
             bake,
             mesh?.Hash,
-            StackInputs.UvSetOf(text, item.Material),
+            StackInputs.LayoutOf(text, item.Material),
             mesh is null ? null : Path.Combine(full, mesh.File)
         );
     }

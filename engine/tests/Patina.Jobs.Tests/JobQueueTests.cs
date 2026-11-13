@@ -168,6 +168,25 @@ public sealed class JobQueueTests : IDisposable {
     }
 
     /// <summary>
+    ///     Each change to a job raises its version, so a client that hears an answer after an event, as a cancel's can
+    ///     be, keeps the newer: the cancel of a queued job ends it, and the Worker's word that it stopped says more.
+    /// </summary>
+    [Fact]
+    public void Each_change_to_a_job_raises_its_version() {
+        var queue = Open();
+        var job = queue.Enqueue("a", Bake);
+        var taken = queue.TakeNext()!;
+        var asked = queue.Cancel(job.Id)!;
+        queue.Report(job.Id, 1, 0.5);
+        var reported = queue.Find(job.Id)!;
+        queue.Stopped(job.Id, 1);
+        var stopped = queue.Find(job.Id)!;
+
+        Assert.Equal([1L, 2, 3, 4, 5], [job.Version, taken.Version, asked.Version, reported.Version, stopped.Version]);
+        Assert.Equal(stopped.Version, Open().Find(job.Id)!.Version);
+    }
+
+    /// <summary>
     ///     Whatever order things happen in, across restarts: a job only ever moves forward, its attempts never go past
     ///     the limit, and nothing finished comes back.
     /// </summary>

@@ -12,6 +12,7 @@ const bake = (overrides: Partial<JobState> = {}): JobState => ({
   attempts: 1,
   created: new Date().toISOString(),
   cancelRequested: false,
+  version: 1,
   bake: { high: ['/m/high.glb'], low: '/m/crate_low.glb', output: '/out', material: 'Body', options: {} as never },
   ...overrides
 });

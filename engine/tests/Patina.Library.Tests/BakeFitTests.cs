@@ -23,8 +23,8 @@ public sealed class BakeFitTests : IDisposable {
         var (bake, mesh) = Bake(Baked);
         BakeFit.Geometry = static (_, material, uvSet) => material == "Body" && uvSet == 0 ? Baked : "other";
 
-        Assert.Null(BakeFit.Stale(bake, "now", 0, mesh));
-        Assert.Equal(BakeFit.UvSet, BakeFit.Stale(bake, "now", 1, mesh));
+        Assert.Null(BakeFit.Stale(bake, "now", new(0), mesh));
+        Assert.Equal(BakeFit.UvSet, BakeFit.Stale(bake, "now", new(1), mesh));
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public sealed class BakeFitTests : IDisposable {
         var (bake, mesh) = Bake(Baked);
         BakeFit.Geometry = static (_, _, _) => "moved";
 
-        Assert.Equal(BakeFit.Mesh, BakeFit.Stale(bake, "now", 0, mesh));
+        Assert.Equal(BakeFit.Mesh, BakeFit.Stale(bake, "now", new(0), mesh));
     }
 
     [Fact]
@@ -40,8 +40,8 @@ public sealed class BakeFitTests : IDisposable {
         var (bake, mesh) = Bake(null);
         BakeFit.Geometry = static (_, _, _) => Baked;
 
-        Assert.Equal(BakeFit.Mesh, BakeFit.Stale(bake, "now", 0, mesh));
-        Assert.Null(BakeFit.Stale(bake, "then", 0, mesh));
+        Assert.Equal(BakeFit.Mesh, BakeFit.Stale(bake, "now", new(0), mesh));
+        Assert.Null(BakeFit.Stale(bake, "then", new(0), mesh));
     }
 
     [Fact]
@@ -49,7 +49,45 @@ public sealed class BakeFitTests : IDisposable {
         var (bake, _) = Bake(Baked);
         BakeFit.Geometry = static (_, _, _) => Baked;
 
-        Assert.Equal(BakeFit.Mesh, BakeFit.Stale(bake, "now", 0));
+        Assert.Equal(BakeFit.Mesh, BakeFit.Stale(bake, "now", new(0)));
+    }
+
+    [Fact]
+    public void A_set_whose_shape_changed_reads_its_bake_stale() {
+        var wide = Shaped("wide", 2048, 1024);
+        Assert.Null(BakeFit.Stale(wide, null, new(0, 2048, 1024)));
+        Assert.Null(BakeFit.Stale(wide, null, new(0, 4096, 2048)));
+        Assert.Null(BakeFit.Stale(wide, null, new(0)));
+        Assert.Equal(BakeFit.Shape, BakeFit.Stale(wide, null, new(0, 1024, 1024)));
+        Assert.Equal(BakeFit.UvSet, BakeFit.Stale(wide, null, new(1, 1024, 1024)));
+
+        var square = Shaped("square", 1024, null);
+        Assert.Null(BakeFit.Stale(square, null, new(0, 512, 512)));
+        Assert.Equal(BakeFit.Shape, BakeFit.Stale(square, null, new(0, 1024, 512)));
+    }
+
+    [Theory]
+    [InlineData(2048, 1024, 1024, null)]
+    [InlineData(2048, 2048, 1024, 1024)]
+    [InlineData(2048, 1024, 2048, 4096)]
+    [InlineData(1024, 4096, 16, 16)]
+    [InlineData(1024, 0, 512, null)]
+    public void A_bake_keeps_a_sets_shape_at_its_width(int resolution, int width, int height, int? rows) =>
+        Assert.Equal(rows, BakeFit.RowsAt(resolution, width, height));
+
+    string Shaped(string name, int resolution, int? rows) {
+        var bake = Path.Combine(folder.FullName, name);
+        Directory.CreateDirectory(bake);
+        BakeManifest manifest = new(
+            "Body",
+            "png16",
+            new([new("position", "position.png", resolution, 0, rows)], 0, 0, [], false)
+        );
+        File.WriteAllBytes(
+            Path.Combine(bake, $"Body.{LibraryLayout.BakeManifestFile}"),
+            JsonSerializer.SerializeToUtf8Bytes(manifest, ContractsJsonContext.Default.BakeManifest)
+        );
+        return bake;
     }
 
     (string Bake, string Mesh) Bake(string? geometry) {

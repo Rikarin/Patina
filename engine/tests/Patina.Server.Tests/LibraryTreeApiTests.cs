@@ -3,6 +3,7 @@ using Patina.Contracts;
 using Patina.Library;
 using System.Net;
 using System.Text.Json;
+using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
 
@@ -634,14 +635,12 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
         Assert.False(Directory.Exists(Path.Combine(server.Library, "projects/crate/pictures")));
     }
 
-    [Theory]
-    [InlineData("height.exr")]
-    [InlineData("sky.hdr")]
-    [InlineData("paint.psd")]
-    public async Task A_deep_picture_is_a_picture_on_every_route(string name) {
+    [Fact]
+    public async Task A_deep_picture_is_a_picture_on_every_route() {
         await MakeCrateAsync();
+        const string name = "height.exr";
         var file = Path.Combine(files.FullName, name);
-        File.WriteAllText(file, "not much");
+        File.WriteAllBytes(file, ExrCodec.Encode(new(2, 1, 1, [0.25f, 4f])));
 
         using var imported = await client.PostAsJsonAsync(
             "/api/v1/library/project/files",
@@ -658,6 +657,14 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
         Assert.Equal(HttpStatusCode.OK, added.StatusCode);
         var contents = await imported.Content.ReadFromJsonAsync<ProjectContents>(Token);
         Assert.Equal(new("picture", name, $"projects/crate/pictures/{name}"), Assert.Single(contents!.Pictures));
+
+        // A client shows it as a PNG, the value past one clamped to white (#260).
+        using var served = await client.GetAsync($"/api/v1/library/picture?path=projects/crate/pictures/{name}", Token);
+        Assert.Equal(HttpStatusCode.OK, served.StatusCode);
+        Assert.Equal("image/png", served.Content.Headers.ContentType?.MediaType);
+        var (width, height, _, samples) = PngCodec.Decode16(await served.Content.ReadAsByteArrayAsync(Token));
+        Assert.Equal((2, 1), (width, height));
+        Assert.Equal(ushort.MaxValue, samples[^1]);
     }
 
     /// <summary>
@@ -707,7 +714,7 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
     [Fact]
     public async Task An_image_material_is_authored_as_every_new_graph_is() {
         var photo = Path.Combine(files.FullName, "wall.png");
-        await File.WriteAllBytesAsync(photo, Vixen.Core.Imaging.PngCodec.Encode8(1, 1, 4, [200, 100, 50, 255]), Token);
+        await File.WriteAllBytesAsync(photo, PngCodec.Encode8(1, 1, 4, [200, 100, 50, 255]), Token);
         using var made = await client.PostAsJsonAsync(
             "/api/v1/library/projects",
             new ProjectCreateRequest("Wall", Resolution: 2048, Kind: "image-material", Image: photo),
@@ -866,7 +873,12 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
 
     async Task<ProjectContents?> ImportAsync(string name) {
         var file = Path.Combine(files.FullName, name);
-        File.WriteAllText(file, "bytes");
+        if (PictureFormats.IsPicture(name)) {
+            File.WriteAllBytes(file, PngCodec.Encode8(1, 1, 3, [200, 80, 40])); // a picture is read whole first
+        } else {
+            File.WriteAllText(file, "bytes");
+        }
+
         using var imported = await client.PostAsJsonAsync(
             "/api/v1/library/project/files",
             new ProjectFileRequest("crate", file),

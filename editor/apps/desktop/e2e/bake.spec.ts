@@ -201,6 +201,46 @@ test('a bake shows its setup in the viewport before it runs, and the maps that n
   await window.screenshot({ path: join(shots, 'bake-colour.png') });
 });
 
+/** A PNG's width and height, from its header. */
+function pngSize(path: string): [number, number] {
+  const header = readFileSync(path);
+  return [header.readUInt32BE(16), header.readUInt32BE(20)];
+}
+
+test('a Quick Bake of a set twice as wide as it is tall bakes at its shape, and a new shape says to bake again', async () => {
+  test.setTimeout(300_000);
+  await expect(window.getByTestId('texture-set-settings')).toBeVisible({ timeout: 60_000 });
+  const size = window.getByTestId('texture-set-size');
+  const width = Number(/(\d+)×/u.exec((await size.textContent()) ?? '')?.[1]);
+  expect(width).toBeGreaterThan(0);
+  await window.getByTestId('texture-set-height').click();
+  await window.getByRole('option', { name: String(width / 2), exact: true }).click();
+  await expect(size).toContainText(`×${width / 2}`, { timeout: 30_000 });
+
+  // No dialog: the project's settings, which follow each set's shape unless told not to (#253).
+  await window.getByTestId('quick-bake').click();
+  const library = join(scratch, 'Game.ptlib');
+  const find = () =>
+    readdirSync(library, { recursive: true, encoding: 'utf8' }).find(file => file.endsWith('.bake.json'));
+  await expect.poll(find, { timeout: 240_000 }).toBeDefined();
+  await expect(window.getByTestId('quick-bake')).toHaveText('Quick Bake', { timeout: 30_000 });
+  const manifest = find();
+  const baked = JSON.parse(readFileSync(join(library, manifest ?? ''), 'utf8')) as {
+    result: { maps: { map: string; path: string; resolution: number; rows?: number | null }[] };
+  };
+  const normal = baked.result.maps.find(map => map.map === 'normal');
+  expect(normal).toBeDefined();
+  expect(normal?.rows).toBe((normal?.resolution ?? 0) / 2);
+  const [columns, rows] = pngSize(join(library, manifest ?? '', '..', normal?.path ?? ''));
+  expect(rows * 2).toBe(columns);
+  await expect(window.getByTestId('layers-stale-bake')).toHaveCount(0);
+
+  // Square again, the set's maps are stretched under it, and Layers says to bake again (#262).
+  await window.getByTestId('texture-set-height').click();
+  await window.getByRole('option', { name: String(width), exact: true }).click();
+  await expect(window.getByTestId('layers-stale-bake')).toContainText('Width or Height', { timeout: 30_000 });
+});
+
 test('the panel says why the Server refused a high poly mesh', async () => {
   await window.getByTestId('open-bake').click();
   await choose('high', '/nowhere/high.glb');

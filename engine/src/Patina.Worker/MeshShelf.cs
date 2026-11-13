@@ -76,6 +76,31 @@ sealed class MeshShelf {
 
     (string Key, DateTime Written, PaintProjection Projection, int[] Triangles)? shown;
 
+    /// <summary>
+    ///     The whole model with each worn material laid out in the coordinate set it chose (#210), which a pick reads
+    ///     its place on the map from. Held for the last layouts asked about, since a pick asks again for every click.
+    /// </summary>
+    /// <exception cref="IpcException">The file cannot be read as a mesh with those layouts.</exception>
+    public ViewportGeometry Laid(string path, IReadOnlyDictionary<string, int> uvSets) {
+        var named = uvSets.OrderBy(static pair => pair.Key, StringComparer.Ordinal)
+            .Select(static pair => $"{pair.Key}={pair.Value}");
+        var key = string.Join('\n', [path, ..named]);
+        try {
+            var written = File.GetLastWriteTimeUtc(path);
+            if (laid is { } known && known.Key == key && known.Written == written) {
+                return known.Geometry;
+            }
+
+            var geometry = ViewportGeometry.Read(path, uvSets);
+            laid = (key, written, geometry);
+            return geometry;
+        } catch (Exception e) when (e is ModelFormatException or IOException or UnauthorizedAccessException) {
+            throw new IpcException($"'{path}' would not read: {e.Message}");
+        }
+    }
+
+    (string Key, DateTime Written, ViewportGeometry Geometry)? laid;
+
     /// <summary>One model.</summary>
     /// <param name="Geometry">Its triangles.</param>
     /// <param name="Projection">What a ray or a brush reaches them through.</param>

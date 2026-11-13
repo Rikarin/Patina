@@ -2913,7 +2913,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "A picture the library holds, as its file: what a client shows of a projection or a stencil it frames.",
+        "summary": "A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260).",
         "operationId": "GetLibraryPicture",
         "parameters": [
           {
@@ -13654,7 +13654,8 @@
           "created",
           "progress",
           "attempts",
-          "cancelRequested"
+          "cancelRequested",
+          "version"
         ],
         "type": "object",
         "properties": {
@@ -13739,6 +13740,11 @@
           "cancelRequested": {
             "type": "boolean",
             "description": "Whether a client has asked for it to stop."
+          },
+          "version": {
+            "type": "integer",
+            "description": "How many times it has changed, rising with each change: an answer and an event can arrive in either order,\nand a client keeps whichever says more.",
+            "format": "int64"
           }
         },
         "description": "A piece of work the Server owns, which outlives the Worker running it and the Server itself."
@@ -15099,7 +15105,7 @@
               "null",
               "string"
             ],
-            "description": "Why that bake no longer fits it, so its maps need baking again, or null: \u0060mesh\u0060, made on a mesh it no\nlonger stands on, or \u0060uvSet\u0060, laid out in another UV set than the one it chose (#238)."
+            "description": "Why that bake no longer fits it, so its maps need baking again, or null: \u0060mesh\u0060, made on a mesh it no\nlonger stands on, \u0060uvSet\u0060, laid out in another UV set than the one it chose (#238), or \u0060shape\u0060,\nof another shape than its Width by Height (#262)."
           },
           "tags": {
             "type": "array",
@@ -19621,7 +19627,7 @@
               "null",
               "string"
             ],
-            "description": "Why the bake the set reads no longer fits it, or null when it does or there is none: \u0060mesh\u0060, made on a mesh\nthe set no longer stands on, or \u0060uvSet\u0060, laid out in another of the mesh\u0027s UV sets (#238). Either way its\nmaps need baking again."
+            "description": "Why the bake the set reads no longer fits it, or null when it does or there is none: \u0060mesh\u0060, made on a mesh\nthe set no longer stands on, or \u0060uvSet\u0060, laid out in another of the mesh\u0027s UV sets (#238), or \u0060shape\u0060,\nof another shape than the set\u0027s Width by Height (#262). Either way its maps need baking again."
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."

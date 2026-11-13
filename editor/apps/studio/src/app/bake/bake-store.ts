@@ -215,8 +215,15 @@ export class BakeStore {
     return this.client;
   }
 
+  /**
+   * A job as an answer or an event gave it, unless what is held is newer: an answer to a start or a cancel can arrive
+   * after the events that followed it, and is then older than what is held. Each change raises the job's version.
+   */
   private put(job: JobState): void {
-    this.byId.update(jobs => new Map(jobs).set(job.id, job));
+    this.byId.update(jobs => {
+      const held = jobs.get(job.id);
+      return held && held.version > job.version ? jobs : new Map(jobs).set(job.id, job);
+    });
   }
 
   /**

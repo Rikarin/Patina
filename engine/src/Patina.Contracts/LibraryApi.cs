@@ -126,7 +126,8 @@ public sealed record ProjectDocumentInfo(
 
     /// <summary>
     ///     Why that bake no longer fits it, so its maps need baking again, or null: <c>mesh</c>, made on a mesh it no
-    ///     longer stands on, or <c>uvSet</c>, laid out in another UV set than the one it chose (#238).
+    ///     longer stands on, <c>uvSet</c>, laid out in another UV set than the one it chose (#238), or <c>shape</c>,
+    ///     of another shape than its Width by Height (#262).
     /// </summary>
     public string? BakeStale { get; init; }
 

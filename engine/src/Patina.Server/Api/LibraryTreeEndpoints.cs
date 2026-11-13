@@ -271,15 +271,18 @@ static class LibraryTreeEndpoints {
             }
         );
 
+    /// <summary>Brings a file into a project once a picture reads whole: a broken one is refused, not copied.</summary>
     static Results<Ok<ProjectContents>, ProblemHttpResult> ImportFile(LibraryHost host, ProjectFileRequest request) =>
-        Guarded(
-            host,
-            library => {
-                library.Import(request.Project, request.File);
-                host.RequestRescan();
-                return TypedResults.Ok(library.Contents(request.Project));
-            }
-        );
+        LibraryPictures.Unreadable(request.File) is { } refused
+            ? refused
+            : Guarded(
+                host,
+                library => {
+                    library.Import(request.Project, request.File);
+                    host.RequestRescan();
+                    return TypedResults.Ok(library.Contents(request.Project));
+                }
+            );
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> AddDocument(
         LibraryHost host,

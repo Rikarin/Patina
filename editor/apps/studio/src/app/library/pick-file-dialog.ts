@@ -39,82 +39,87 @@ const DrawnAtOnce = 4;
       [title]="request()?.title ?? ''"
       (openChange)="$event || cancel()"
     >
-      <xui-dialog-body class="flex min-h-80 flex-col gap-2" data-testid="pick-file">
-        <input
-          class="w-full"
-          xuiInput
-          type="search"
-          cdkFocusInitial
-          autocomplete="off"
-          aria-label="Find by name"
-          placeholder="Find by name or project"
-          data-testid="pick-file-search"
-          [value]="search()"
-          (input)="search.set(text($event))"
-        />
-        @if (failure(); as reason) {
-          <xui-callout color="error" compact>{{ reason }}</xui-callout>
-        }
-        <div class="flex max-h-96 min-h-0 flex-1 flex-col overflow-auto" role="listbox" aria-label="Files">
-          @for (group of groups(); track group.project) {
-            <span class="section-label mt-2 first:mt-0">{{ group.label }}</span>
-            @for (file of group.files; track file.path) {
-              <button
-                type="button"
-                role="option"
-                class="hover:bg-selection flex items-center gap-2 rounded px-2 py-1 text-start text-sm"
-                data-testid="pick-file-item"
-                [attr.aria-selected]="chosen() === file.path"
-                [class.bg-selection]="chosen() === file.path"
-                [title]="file.path"
-                (click)="chosen.set(file.path)"
-                (dblclick)="choose(file.path)"
-              >
-                @if (request()?.kind === 'picture') {
-                  <span class="well grid size-10 shrink-0 place-items-center overflow-hidden rounded-sm">
-                    @if (pictures().get(file.path); as url) {
-                      <img class="size-full object-cover" alt="" [src]="url" />
-                    }
-                  </span>
-                }
-                <span class="min-w-0 flex-1 truncate">{{ file.name }}</span>
-              </button>
-            }
-          } @empty {
-            @if (!loading()) {
-              <xui-non-ideal-state
-                class="flex-1"
-                [title]="search() ? 'Nothing by that name' : 'The library has none yet'"
-                [description]="
-                  canPick ? 'From a File… brings one in from this computer.' : 'Import one into a project first.'
-                "
-              />
-            }
+      <!-- One test id over the body and the footer, so its buttons are inside what a test finds as the dialog. -->
+      <div class="contents" data-testid="pick-file">
+        <xui-dialog-body class="flex min-h-80 flex-col gap-2">
+          <input
+            class="w-full"
+            xuiInput
+            type="search"
+            cdkFocusInitial
+            autocomplete="off"
+            aria-label="Find by name"
+            placeholder="Find by name or project"
+            data-testid="pick-file-search"
+            [value]="search()"
+            (input)="search.set(text($event))"
+          />
+          @if (failure(); as reason) {
+            <xui-callout color="error" compact>{{ reason }}</xui-callout>
           }
-          @if (more()) {
-            <p class="text-foreground-muted mt-2 text-xs">More are in the library than are listed: find one by name.</p>
+          <div class="flex max-h-96 min-h-0 flex-1 flex-col overflow-auto" role="listbox" aria-label="Files">
+            @for (group of groups(); track group.project) {
+              <span class="section-label mt-2 first:mt-0">{{ group.label }}</span>
+              @for (file of group.files; track file.path) {
+                <button
+                  type="button"
+                  role="option"
+                  class="hover:bg-selection flex items-center gap-2 rounded px-2 py-1 text-start text-sm"
+                  data-testid="pick-file-item"
+                  [attr.aria-selected]="chosen() === file.path"
+                  [class.bg-selection]="chosen() === file.path"
+                  [title]="file.path"
+                  (click)="chosen.set(file.path)"
+                  (dblclick)="choose(file.path)"
+                >
+                  @if (request()?.kind === 'picture') {
+                    <span class="well grid size-10 shrink-0 place-items-center overflow-hidden rounded-sm">
+                      @if (pictures().get(file.path); as url) {
+                        <img class="size-full object-cover" alt="" [src]="url" />
+                      }
+                    </span>
+                  }
+                  <span class="min-w-0 flex-1 truncate">{{ file.name }}</span>
+                </button>
+              }
+            } @empty {
+              @if (!loading()) {
+                <xui-non-ideal-state
+                  class="flex-1"
+                  [title]="search() ? 'Nothing by that name' : 'The library has none yet'"
+                  [description]="
+                    canPick ? 'From a File… brings one in from this computer.' : 'Import one into a project first.'
+                  "
+                />
+              }
+            }
+            @if (more()) {
+              <p class="text-foreground-muted mt-2 text-xs">
+                More are in the library than are listed: find one by name.
+              </p>
+            }
+          </div>
+        </xui-dialog-body>
+        <xui-dialog-footer>
+          @if (canPick) {
+            <button type="button" xuiButton variant="ghost" data-testid="pick-file-machine" (click)="fromMachine()">
+              From a File…
+            </button>
           }
-        </div>
-      </xui-dialog-body>
-      <xui-dialog-footer>
-        @if (canPick) {
-          <button type="button" xuiButton variant="ghost" data-testid="pick-file-machine" (click)="fromMachine()">
-            From a File…
+          <span class="flex-1"></span>
+          <button type="button" xuiButton variant="ghost" (click)="cancel()">Cancel</button>
+          <button
+            type="button"
+            xuiButton
+            color="primary"
+            data-testid="pick-file-choose"
+            [disabled]="!chosen()"
+            (click)="choose(chosen())"
+          >
+            Choose
           </button>
-        }
-        <span class="flex-1"></span>
-        <button type="button" xuiButton variant="ghost" (click)="cancel()">Cancel</button>
-        <button
-          type="button"
-          xuiButton
-          color="primary"
-          data-testid="pick-file-choose"
-          [disabled]="!chosen()"
-          (click)="choose(chosen())"
-        >
-          Choose
-        </button>
-      </xui-dialog-footer>
+        </xui-dialog-footer>
+      </div>
     </xui-dialog>
   `
 })

@@ -511,7 +511,20 @@ public sealed record ViewportRender(int Width, int Height, string SharedMemory, 
 /// <param name="Width">The picture's width in the units the reply's view is in.</param>
 /// <param name="Height">Its height.</param>
 /// <param name="Mesh">The mesh. Only its file is read, so this answers where there is no Vulkan.</param>
-public sealed record ViewportPickAsk(double X, double Y, ViewportCamera Camera, int Width, int Height, string Mesh);
+/// <param name="UvSets">
+///     The coordinate set each worn material is laid out in, by name, where it is not the first (#210): the place on
+///     the map a pick says is in its texture set's own layout, which Find Layer, the color picker and the clone source
+///     read. Null reads every material in the first.
+/// </param>
+public sealed record ViewportPickAsk(
+    double X,
+    double Y,
+    ViewportCamera Camera,
+    int Width,
+    int Height,
+    string Mesh,
+    IReadOnlyDictionary<string, int>? UvSets = null
+);
 
 /// <summary>A frame that is now in shared memory.</summary>
 public sealed record ViewportFrame(int Width, int Height, double RenderMilliseconds);

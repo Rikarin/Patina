@@ -1,5 +1,7 @@
 using Patina.Contracts;
 using System.Net;
+using System.Text.Json;
+using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
 
@@ -58,9 +60,11 @@ public sealed partial class LibraryTreeApiTests {
     public async Task A_picture_the_library_holds_comes_into_a_project_by_its_path() {
         await MakeCrateAsync();
         var other = Directory.CreateDirectory(Path.Combine(server.Library, "projects/barrel/pictures"));
-        await File.WriteAllTextAsync(Path.Combine(other.FullName, "wood.png"), "wood", Token);
+        var wood = PngCodec.Encode8(1, 1, 3, [120, 80, 40]);
+        await File.WriteAllBytesAsync(Path.Combine(other.FullName, "wood.png"), wood, Token);
         var own = Directory.CreateDirectory(Path.Combine(server.Library, "projects/crate/pictures"));
-        await File.WriteAllTextAsync(Path.Combine(own.FullName, "rust.png"), "rust", Token);
+        var rust = PngCodec.Encode8(1, 1, 3, [150, 60, 20]);
+        await File.WriteAllBytesAsync(Path.Combine(own.FullName, "rust.png"), rust, Token);
         await File.WriteAllTextAsync(Path.Combine(files.FullName, "outside.png"), "outside", Token);
         var outside = Path.GetRelativePath(server.Library, Path.Combine(files.FullName, "outside.png"));
 
@@ -84,12 +88,63 @@ public sealed partial class LibraryTreeApiTests {
             "projects/crate/pictures/wood.png",
             (await copied.Content.ReadFromJsonAsync<ProjectPicture>(Token))!.Path
         );
-        Assert.Equal("wood", await File.ReadAllTextAsync(Path.Combine(own.FullName, "wood.png"), Token));
+        Assert.Equal(wood, await File.ReadAllBytesAsync(Path.Combine(own.FullName, "wood.png"), Token));
         Assert.Equal(
             "projects/crate/pictures/rust.png",
             (await kept.Content.ReadFromJsonAsync<ProjectPicture>(Token))!.Path
         );
         Assert.Equal(HttpStatusCode.BadRequest, climbed.StatusCode);
         Assert.False(File.Exists(Path.Combine(own.FullName, "outside.png")));
+    }
+
+    /// <summary>
+    ///     A file named as a picture that does not read as one is refused on every route that brings one in, and
+    ///     nothing is copied (#260): before, only its extension was looked at, and the layer that read it failed.
+    /// </summary>
+    [Theory]
+    [InlineData("sky.hdr")]
+    [InlineData("paint.psd")]
+    [InlineData("scan.tif")]
+    [InlineData("rust.png")]
+    public async Task A_broken_picture_is_refused_on_every_route_and_copies_nothing(string name) {
+        await MakeCrateAsync();
+        var file = Path.Combine(files.FullName, name);
+        File.WriteAllText(file, "not much");
+
+        using var imported = await client.PostAsJsonAsync(
+            "/api/v1/library/project/files",
+            new ProjectFileRequest("crate", file),
+            Token
+        );
+        using var added = await client.PostAsJsonAsync(
+            "/api/v1/library/project/pictures",
+            new ProjectPictureRequest("crate", file),
+            Token
+        );
+
+        foreach (var refused in new[] { imported, added }) {
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+            using var problem = JsonDocument.Parse(await refused.Content.ReadAsStringAsync(Token));
+            Assert.Equal("picture-unreadable", problem.RootElement.GetProperty("code").GetString());
+            Assert.Equal(name, problem.RootElement.GetProperty("values").GetProperty("file").GetString());
+        }
+
+        Assert.False(Directory.Exists(Path.Combine(server.Library, "projects/crate/pictures")));
+    }
+
+    /// <summary>A broken picture already in the library is refused by name when a client asks to see it.</summary>
+    [Fact]
+    public async Task A_broken_picture_in_the_library_is_refused_when_shown() {
+        await MakeCrateAsync();
+        var pictures = Directory.CreateDirectory(Path.Combine(server.Library, "projects/crate/pictures"));
+        await File.WriteAllTextAsync(Path.Combine(pictures.FullName, "scan.tga"), "not much", Token);
+
+        using var served = await client.GetAsync(
+            "/api/v1/library/picture?path=projects/crate/pictures/scan.tga",
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, served.StatusCode);
+        Assert.Contains("picture-unreadable", await served.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
     }
 }

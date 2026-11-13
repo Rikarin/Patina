@@ -74,6 +74,12 @@ public sealed record JobState {
 
     /// <summary>Whether a client has asked for it to stop.</summary>
     public bool CancelRequested { get; init; }
+
+    /// <summary>
+    ///     How many times it has changed, rising with each change: an answer and an event can arrive in either order,
+    ///     and a client keeps whichever says more.
+    /// </summary>
+    public long Version { get; init; }
 }
 
 /// <summary>A job changing. Numbered, so a client that dropped its socket can ask what it missed.</summary>
