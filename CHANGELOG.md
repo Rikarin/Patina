@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Wires move and copy by hand in the graph. Shift-drag from an output onto another node moves every wire it had to that node's output of the same kind; Shift-drag from a wired input to another input moves its wire there, and Ctrl-drag (Cmd on a Mac) copies it, so both inputs read the same picture. Swap Inputs, in a node's right-click menu and the Graph menu, trades the wires into a node's first two inputs of one kind, such as a blend's two pictures. Each is one undo step.
+
 - The 2D view draws the texture set's UV layout over the map (UV, at its top right), each edge once, a light line over a dark one so it reads on any map; Fit shows the whole map again after zooming and panning; the corners say which way U and V run and that the map is UDIM tile 1001; and the pointer's UV and texel are read out at the bottom. Through the API `GET /api/v1/stacks/{id}/uv-wire` gives the layout as an SVG over the unit square, drawn by the engine from the mesh.
 - A texture set's menu, on a right-click in Texture Sets or the Menu key: Paint it, Show Alone or Show the Whole Model, and Bake…, Export… and Project Settings….
 - Depth of field in the viewport: Depth of field and Focus in the Display panel's Finish section. The lens focuses on the point the camera turns round, or nearer or further, and blurs what is in front and behind as a lens opened wide on something small, whatever the model's size; the blur is Vixen's, before the bloom and the curve. A view of a stored channel is never blurred. Through the API the display takes `depthOfField` and `focus`, and the project keeps them.
