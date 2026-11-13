@@ -25,6 +25,18 @@ that lacks it. A device is not required, because a build machine may have no GPU
 
 Not shown: a signed and notarised `.dmg`, which needs the owner's Apple Developer certificate, and a real clean Mac.
 
+**Why no loader.** The Khronos loader with an ICD manifest would bring validation layers and a second library, but its manifest
+holds a path the app would have to rewrite at launch to point at its own folder, and nothing in a package wants layers. MoltenVK
+alone has one file, one hash and one licence. If Patina ever needs layers in a package, add the loader then, beside MoltenVK.
+
+**Licence.** MoltenVK is Apache-2.0, which GPLv3 may include. Its text ships beside the dylib as `MoltenVK-LICENSE.txt`, the
+release archive has no `NOTICE`, and the dylib ships unchanged. What MoltenVK builds in from its `External` dependencies is in
+`THIRD-PARTY-NOTICES.md`, with the one check still owed on a Mac: whether cereal's BSD-3-Clause notice has to be added.
+
+**The release gate.** `release.yml` runs `pnpm dist` on a macOS runner, and `package.mjs` ends by running the packaged Worker's
+`--check-natives --packaged` from inside `Patina.app`, after electron-builder has signed it. A tag therefore cannot publish a
+`.dmg` whose Worker would not find MoltenVK in its own folder. It does not prove a device: a runner may have no GPU.
+
 ## Assimp: the application carries it, and one search finds it
 
 GitHub's `ubuntu-latest` moved to 26.04, which has no `libassimp5`. `Silk.NET.Assimp` brings its native through

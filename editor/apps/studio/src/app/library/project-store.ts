@@ -14,6 +14,7 @@ import { BakeStore } from '../bake/bake-store';
 import { desktop } from '../core/desktop';
 import { type FileChoice, FilePicker } from '../core/file-picker';
 import { messageOf } from '../core/messages';
+import { Preferences, type RecentDocument } from '../core/preferences';
 import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice } from '../core/session-return';
 import { SystemStatus } from '../core/system-status';
@@ -89,6 +90,7 @@ export class ProjectStore {
   private readonly status = inject(SystemStatus);
   private readonly recoveryOffers = inject(RecoveryOffers);
   private readonly restarts = inject(EngineRestarts);
+  private readonly preferences = inject(Preferences);
   /**
    * Tabs behind whose unsaved edits went with a Server that restarted: each is clean now, and says so and offers what
    * autosave kept when it comes to the front, as the tab in front did when it came back.
@@ -249,6 +251,10 @@ export class ProjectStore {
         untracked(() => void this.reopen(key));
       } else if (tab) {
         remember(key, JSON.stringify({ project: tab.project, path: tab.path }));
+        const { project, path, name } = tab;
+        if (project !== null) {
+          untracked(() => this.preferences.usedDocument({ library: state.info.id, project, path, name }));
+        }
       } else {
         remember(key, null);
       }
@@ -281,6 +287,29 @@ export class ProjectStore {
   /** Opens a project at the document most likely wanted. */
   async open(path: string): Promise<void> {
     await this.openDocument(path, null);
+  }
+
+  /**
+   * Opens a document Start offered as recent. One whose project or file has gone since is forgotten and said so, rather
+   * than opening something else of its project; an engine that cannot answer forgets nothing.
+   */
+  async openRecent(recent: RecentDocument): Promise<void> {
+    this.startAction();
+    try {
+      const contents = await this.read(recent.project);
+      if (contents.documents.some(document => document.path === recent.path)) {
+        await this.openDocument(recent.project, recent.path);
+        return;
+      }
+    } catch (failure) {
+      if (!(failure instanceof ApiError && failure.status === 404)) {
+        this.mutableFailure.set(messageOf(failure));
+        return;
+      }
+    }
+
+    this.preferences.forgetDocument(recent.library, recent.path);
+    this.mutableFailure.set(`${recent.name} is no longer in ${recent.project}, so Start no longer offers it.`);
   }
 
   /** Opens one document of a project, by its path below the library, or goes to it if it is open. */

@@ -252,6 +252,8 @@ export class PaintStore {
 
   readonly state = signal<StackState | null>(null);
   readonly failure = signal<string | null>(null);
+  /** Whether the stack's events reach it, or its socket dropped and it is finding its way back (#192). */
+  readonly link = signal<'live' | 'reconnecting'>('live');
   /** Something the person should know that went right enough, such as edits lost when the engine restarted. */
   readonly notice = signal<string | null>(null);
 
@@ -770,6 +772,7 @@ export class PaintStore {
   detach(): void {
     this.opens++;
     this.comeback.cancel();
+    this.link.set('live');
     this.notice.set(null);
     this.state.set(null);
     this.worn.set(false);
@@ -1902,6 +1905,7 @@ export class PaintStore {
     socket.onopen = () => {
       if (this.socket === socket) {
         this.comeback.opened();
+        this.link.set('live');
       }
     };
     socket.onmessage = message => {
@@ -1910,6 +1914,7 @@ export class PaintStore {
     socket.onclose = () => {
       if (!this.stopped && this.socket === socket) {
         this.socket = null;
+        this.link.set('reconnecting');
         this.comeback.dropped(id);
       }
     };

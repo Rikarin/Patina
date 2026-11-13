@@ -40,7 +40,7 @@ export async function newLibrary(app: ElectronApplication, window: Page, path: s
   await answerSave(app, path);
   await window.getByTestId('library-new').click();
   await expect(window.getByRole('status', { name: 'Engine status' })).toContainText(
-    (path.split('/').pop() ?? path).replace(/\.ptlib$/u, ''),
+    basename(path).replace(/\.ptlib$/u, ''), // a Windows path is split at its backslashes too
     {
       timeout: 30_000
     }
@@ -62,7 +62,7 @@ export async function newProject(
   if (mesh) {
     await answerOpen(app, mesh);
     await window.getByTestId('new-project-mesh').click();
-    await expect(window.getByTestId('new-project-mesh-name')).toHaveText(mesh.split('/').pop() ?? mesh);
+    await expect(window.getByTestId('new-project-mesh-name')).toHaveText(basename(mesh));
   }
 
   await window.getByRole('button', { name: 'Create' }).click();
@@ -91,6 +91,32 @@ export function newestGeneration(library: string): string {
         .sort()
         .at(-1) ?? '')
     : '';
+}
+
+/**
+ * The app's end, from a quit about to begin. Past the wait it fails with every step the quit took, as the app wrote
+ * them, so a quit that stalls says where it stopped (#236).
+ */
+export function ending(app: ElectronApplication, waitMs = 30_000): Promise<void> {
+  const steps: string[] = [];
+  const heard = (chunk: Buffer | string) => {
+    steps.push(
+      ...String(chunk)
+        .split(/\r?\n/u)
+        .filter(line => line.includes('Patina quit:'))
+    );
+  };
+  app.process().stdout?.on('data', heard);
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const went = steps.join('\n') || '(no step)';
+      reject(new Error(`The app did not end within ${waitMs} ms. Its quit went:\n${went}`));
+    }, waitMs);
+    void app.waitForEvent('close', { timeout: 0 }).then(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
 }
 
 /** Ends the app with no one to answer its question about unsaved paint. */

@@ -1,8 +1,12 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { desktop } from './desktop';
+import { Preferences, type RecentDocument } from './preferences';
+
+/** How many recent documents Start offers. */
+const RecentShown = 8;
 
 const Kinds = [
   { kind: 'texturing', title: 'Texturing', text: 'Paint and layer materials on a mesh.' },
@@ -33,6 +37,23 @@ const Kinds = [
           </button>
         }
       </div>
+      @if (recentDocuments().length > 0) {
+        <section class="flex w-full max-w-3xl flex-col gap-1" aria-labelledby="start-recent-documents-title">
+          <h2 id="start-recent-documents-title" class="text-foreground-muted text-sm font-semibold">Recent</h2>
+          @for (recent of recentDocuments(); track recent.path) {
+            <button
+              type="button"
+              class="hover:bg-selection flex items-baseline gap-2 rounded px-3 py-1 text-start text-sm"
+              data-testid="start-recent-document"
+              [title]="recent.path"
+              (click)="project.openRecent(recent)"
+            >
+              <span class="font-semibold">{{ recent.name }}</span>
+              <span class="text-foreground-muted truncate">{{ recent.project }}</span>
+            </button>
+          }
+        </section>
+      }
       <p class="text-foreground-muted text-sm">Or open a project from the Library.</p>
     } @else {
       <h1 class="text-lg font-semibold">Welcome to Patina</h1>
@@ -69,6 +90,17 @@ export class StartPane {
   protected readonly kinds = Kinds;
   protected readonly canPick = desktop() !== undefined;
   protected readonly recent = signal<readonly string[]>([]);
+  private readonly preferences = inject(Preferences);
+  /** This library's documents worked on last, newest first. */
+  protected readonly recentDocuments = computed<readonly RecentDocument[]>(() => {
+    const state = this.library.state();
+    return state.kind === 'ready'
+      ? this.preferences
+          .recentDocuments()
+          .filter(recent => recent.library === state.info.id)
+          .slice(0, RecentShown)
+      : [];
+  });
 
   constructor() {
     void desktop()

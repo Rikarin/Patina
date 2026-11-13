@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen, leave, newLibrary, newProject, pick } from './projects';
+import { answerOpen, ending, leave, newLibrary, newProject, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -446,7 +446,7 @@ test('Save All on the quit dialog saves a painted stack and quits', async () => 
   await drag(0.3, 0.45, 0.72, 0.55);
   await expect(window.getByTestId('app-undo')).toBeEnabled();
 
-  const closed = app.waitForEvent('close');
+  const closed = ending(app);
   void app.evaluate(({ app: electronApp }) => {
     electronApp.quit();
   });

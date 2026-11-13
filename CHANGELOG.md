@@ -187,6 +187,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A material dragged from the shelf onto the model in the viewport fills the part it is dropped on: a new layer of the material, masked to the color of the ID map there. The project needs a bake with the ID map on, and says so when it has none.
 - Choose a Picture. Every picture a layer, a mask, a filter's input or the viewport's stencil reads is picked from the pictures the library's projects hold, this project's first, found by name and shown as pictures, with From a File… beside them on the desktop; when the library has none yet, the file dialog opens at once. A picture of another project comes into this one as a copy, so the project travels with what it reads. The Server lists the files, so a client of a Server on another computer can pick too: through the API `GET /api/v1/library/files?kind=picture|mesh` lists them, and `POST /api/v1/library/project/pictures` takes a picture by its path below the library.
 - Help > Documentation opens a guide to Patina (`docs/03-guide.md`), from a library to an export. Help > About Patina says which Patina this is and what runs it, the licences it and its parts come under, and that libraries, projects and exported textures belong to their authors; on a Mac it is the first item of the Patina menu.
+- Start lists the documents worked on last in the open library, newest first, and opens one in a click. One that has moved or gone since is forgotten, and Start says so rather than opening something else of its project. The list is kept in the editor's `preferences.json`, by library, so a library keeps its list when its folder moves.
+- Preferences has a Viewport camera section: how fast a drag orbits and the wheel or a zoom drag zooms (Slow, Normal or Fast), and Invert the wheel, which zooms out when the wheel is rolled away.
 
 ### Fixed
 
@@ -303,6 +305,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A minimum occluder distance at or past the occluder distance no longer bakes white ambient occlusion and a flat bent normal without
   a word. The Bake dialog says so under the field and will not bake, and the Server, `patina bake-maps` and the engine refuse it,
   with the code `bake-occluder-minimum` for clients. Thickness reads only the occluder distance, so it still bakes.
+- Paint says when it has lost Patina's engine, as Graph does: Layers shows that the stack comes back when the engine reconnects, and warns when the GPU engine is not running.
 
 ### Changed
 

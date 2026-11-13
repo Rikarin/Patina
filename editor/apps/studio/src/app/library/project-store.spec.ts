@@ -4,6 +4,7 @@ import { ApiError } from '@patina/api-client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BakeStore } from '../bake/bake-store';
 import { Commands } from '../core/commands';
+import { Preferences } from '../core/preferences';
 import { EngineRestarts, RestartedNotice } from '../core/session-return';
 import { SystemStatus } from '../core/system-status';
 import { GraphStore } from '../graph/graph-store';
@@ -35,6 +36,17 @@ function memoryStorage(): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
     getItem: key => held.get(key) ?? null,
     setItem: (key, value) => held.set(key, value),
     removeItem: key => held.delete(key)
+  };
+}
+
+/** The desktop app's bridge as far as quitting needs it, with preferences that keep nothing. */
+function quitting(quit: () => void) {
+  return {
+    quit,
+    onQuitRequested: vi.fn(),
+    setUnsaved: vi.fn(),
+    readPreferences: () => Promise.resolve(null),
+    writePreferences: () => Promise.resolve()
   };
 }
 
@@ -266,7 +278,7 @@ describe('ProjectStore', () => {
 
   it('stays open when Save All cannot save', async () => {
     const quit = vi.fn();
-    vi.stubGlobal('patina', { quit, onQuitRequested: vi.fn(), setUnsaved: vi.fn() });
+    vi.stubGlobal('patina', quitting(quit));
     const { store, graph, graphDirty } = harness();
     await store.openDocument('a', paths.graph);
     TestBed.tick();
@@ -282,7 +294,7 @@ describe('ProjectStore', () => {
 
   it('stays open when a save only says it did not happen', async () => {
     const quit = vi.fn();
-    vi.stubGlobal('patina', { quit, onQuitRequested: vi.fn(), setUnsaved: vi.fn() });
+    vi.stubGlobal('patina', quitting(quit));
     const { store, paint, paintState } = harness();
     await store.open('a');
     paintState.set({ id: 's', history: { dirty: true } });
@@ -297,7 +309,7 @@ describe('ProjectStore', () => {
 
   it('quits once everything is saved, whether or not the tabs have heard yet', async () => {
     const quit = vi.fn();
-    vi.stubGlobal('patina', { quit, onQuitRequested: vi.fn(), setUnsaved: vi.fn() });
+    vi.stubGlobal('patina', quitting(quit));
     const { store, paintState } = harness();
     await store.open('a');
     paintState.set({ id: 's', history: { dirty: true } });
@@ -355,6 +367,61 @@ describe('ProjectStore', () => {
     await store.closeTab(paths.texturing);
     TestBed.tick();
     expect(globalThis.localStorage.getItem('patina.library.last.lib')).toBeNull();
+  });
+
+  it('keeps each document brought to the front as recent, in its library', async () => {
+    const { store } = harness();
+    const preferences = TestBed.inject(Preferences);
+    TestBed.tick();
+
+    await store.open('a');
+    TestBed.tick();
+    await store.openDocument('a', paths.graph);
+    TestBed.tick();
+
+    expect(preferences.recentDocuments()).toEqual([
+      { library: 'lib', project: 'a', path: paths.graph, name: 'Rust' },
+      { library: 'lib', project: 'a', path: paths.texturing, name: 'A' }
+    ]);
+  });
+
+  describe('a recent document', () => {
+    it('opens where it is', async () => {
+      const { store } = harness();
+      await store.openRecent({ library: 'lib', project: 'a', path: paths.graph, name: 'Rust' });
+
+      expect(store.active()?.path).toBe(paths.graph);
+    });
+
+    it('is forgotten and said so when its project no longer has it, and nothing else opens', async () => {
+      const { store } = harness();
+      const preferences = TestBed.inject(Preferences);
+      const gone = { library: 'lib', project: 'a', path: 'projects/a/gone.vxtexgraph', name: 'Gone' };
+      preferences.usedDocument(gone);
+
+      await store.openRecent(gone);
+
+      expect(store.active()).toBeNull();
+      expect(preferences.recentDocuments()).toEqual([]);
+      expect(store.failure()).toBe('Gone is no longer in a, so Start no longer offers it.');
+    });
+
+    it('is forgotten when its project has gone, and kept when the engine cannot answer', async () => {
+      const { store, client } = harness();
+      const preferences = TestBed.inject(Preferences);
+      const rust = { library: 'lib', project: 'a', path: paths.graph, name: 'Rust' };
+      preferences.usedDocument(rust);
+
+      client.GET.mockRejectedValueOnce(new Error('The engine is not running.'));
+      await store.openRecent(rust);
+      expect(preferences.recentDocuments()).toEqual([rust]);
+      expect(store.failure()).toBe('The engine is not running.');
+
+      client.GET.mockRejectedValueOnce(new ApiError(404, 'No such project.'));
+      await store.openRecent(rust);
+      expect(preferences.recentDocuments()).toEqual([]);
+      expect(store.active()).toBeNull();
+    });
   });
 
   it('opens a project at its texturing, in that workspace', async () => {

@@ -98,6 +98,8 @@ jobs:
           cache-dependency-path: editor/pnpm-lock.yaml
       - id: install
         uses: ./.github/actions/editor-install
+      # pnpm dist ends with the packaged Worker's --check-natives --packaged, run from inside the finished package, so no
+      # installer is made whose engine cannot find its own natives: MoltenVK on macOS, Assimp everywhere (ADR 0010).
       - name: Build and package
         shell: bash
         env:

@@ -20,10 +20,14 @@ import { contentSecurityPolicy } from './csp';
 import { KeyFile } from './keys';
 import { LibraryPlace, type LibraryChoice } from './libraries';
 import { installMenu, readMenuModel, type MenuModel } from './menu';
+import { QuitTrace } from './quit-trace';
 import { Sidecars } from './sidecars';
 
 // Patina desktop: the studio in a sandboxed window, and the backend (patina-server + patina-worker) as supervised
 // sidecars on loopback. The app is one client of the Server's API: nothing in that API knows about Electron (plan §8).
+
+/** Each step of a quit on standard output, so a quit that stalls says where (#236). */
+const trace = new QuitTrace();
 
 // ⚠ A debugger attached to this process, as Playwright attaches one to every app it drives, held a quitting app open:
 // after the last 'exit' listener Node says "Waiting for the debugger to disconnect..." and waits, and the debugger is
@@ -31,6 +35,7 @@ import { Sidecars } from './sidecars';
 // happened to let go, 8 s and more on a loaded machine, past a test's wait for it to end (#236).
 process.on('exit', () => {
   if (inspector.url() !== undefined) {
+    trace.step('exiting, and letting go of the debugger');
     inspector.close();
   }
 });
@@ -373,6 +378,7 @@ function handleIpc(): void {
     }
   });
   listen('patina:quit', () => {
+    trace.step('the studio answered: quit');
     quitConfirmed = true;
     app.quit();
   });
@@ -563,6 +569,7 @@ function holdForUnsaved(): boolean {
   }
 
   window.webContents.send('patina:quit-requested');
+  trace.step('asked the studio about unsaved edits');
   return true;
 }
 
@@ -573,15 +580,26 @@ app.on('before-quit', event => {
   }
 
   if (quitting || !sidecars) {
+    trace.step(quitting ? 'the sidecars are stopped: quitting' : 'no sidecars: quitting');
     return;
   }
 
   // Stop the backend cleanly (the Server leaves the discovery file and deletes its socket) and really quit.
   event.preventDefault();
   quitting = true;
+  trace.step('stopping the sidecars');
   // A process that will not die must not keep the app on screen: each is killed at 3 s, so this is already wrong.
   setTimeout(() => {
+    trace.step(`the sidecars took over ${QuitDeadlineMs} ms: exiting`);
     app.exit(0);
   }, QuitDeadlineMs).unref();
-  void sidecars.stop().finally(() => app.quit());
+  void sidecars
+    .stop()
+    .then(
+      () => trace.step('the sidecars stopped'),
+      (error: unknown) => trace.step(`the sidecars failed to stop: ${String(error)}`)
+    )
+    .finally(() => app.quit());
 });
+
+app.on('will-quit', () => trace.step('the windows are closed'));

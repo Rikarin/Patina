@@ -524,6 +524,27 @@ describe('PaintStore', () => {
     expect(stackSummary({ revision: 2, settled: 2, evaluation: stopped })).toBe('Not evaluated');
   });
 
+  it('says it lost the engine while its socket is down, and is live again once it reopens (#192)', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { store, sockets } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    expect(store.link()).toBe('live');
+
+    drop(sockets[0]);
+    expect(store.link()).toBe('reconnecting');
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    const again = sockets.at(-1);
+    expect(again).not.toBe(sockets[0]);
+    (again?.onopen as unknown as (() => void) | null)?.();
+    expect(store.link()).toBe('live');
+
+    drop(again);
+    store.detach();
+    expect(store.link()).toBe('live');
+    vi.useRealTimers();
+  });
+
   it('opens the stack again from its file after the Server restarts, keeping the layer chosen (#226)', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const { store, sockets, server, posts } = setup();

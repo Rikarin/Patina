@@ -20,6 +20,7 @@ import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
 import { termName } from '../core/labels';
 import { milliseconds } from '../core/numbers';
+import { Preferences } from '../core/preferences';
 import { SystemStatus } from '../core/system-status';
 import { ViewOptions } from '../core/view-options';
 import { GraphViews } from '../graph/graph-views';
@@ -333,6 +334,7 @@ export class ViewportPane implements AfterViewInit {
   protected readonly paint = inject(PaintStore);
   private readonly using = inject(MaterialUse);
   private readonly activity = inject(Activity);
+  private readonly preferences = inject(Preferences);
   protected readonly project = inject(ProjectStore);
   private readonly destroyRef = inject(DestroyRef);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
@@ -793,8 +795,14 @@ export class ViewportPane implements AfterViewInit {
       const camera = this.viewport.camera();
       this.viewport.camera.set(
         this.zooming
-          ? zoom(camera, event.movementY * DragZoom)
-          : (this.panning ? pan : orbit)(camera, event.movementX, event.movementY)
+          ? zoom(camera, event.movementY * DragZoom * this.preferences.zoomScale())
+          : this.panning
+            ? pan(camera, event.movementX, event.movementY)
+            : orbit(
+                camera,
+                event.movementX * this.preferences.orbitScale(),
+                event.movementY * this.preferences.orbitScale()
+              )
       );
       this.scheduleCamera();
     }
@@ -818,7 +826,7 @@ export class ViewportPane implements AfterViewInit {
 
   protected wheel(event: WheelEvent): void {
     event.preventDefault();
-    this.viewport.moveCamera(zoom(this.viewport.camera(), event.deltaY), false);
+    this.viewport.moveCamera(zoom(this.viewport.camera(), event.deltaY * this.preferences.zoomScale()), false);
   }
 
   private spot(event: MouseEvent): { x: number; y: number } {
