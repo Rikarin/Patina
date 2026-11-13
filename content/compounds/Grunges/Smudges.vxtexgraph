@@ -1,0 +1,26 @@
+version: 1
+name: Smudges
+nodes:
+  - { id: 1, type: Source/Shape, x: 0, y: 0, values: { Falloff: [0.6], Scale: [0.9] }, texts: { Kind: Gaussian } }
+  - id: 2
+    type: Placement/Splatter
+    x: 300
+    y: 0
+    values: { Scale Jitter: [0.8], Rotation Jitter: [6.2831855], Colour Jitter: [0.6] }
+    texts: { Accumulation: Max, '=Count': '20f + amount * 80f', '=Scale': '0.28f - scale * 0.16f' }
+  - { id: 3, type: Source/Noise, x: 0, y: 300, values: { Octaves: [3], Gain: [0.5] }, texts: { Basis: Gradient, '=Scale': '6f' } }
+  - { id: 4, type: Filters/Warp, x: 600, y: 0, values: { Intensity: [8] } }
+  - { id: 99, type: Sub-graph/Output, x: 900, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Pattern }
+  - { fromNode: 2, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Warp }
+  - { fromNode: 4, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'Soft, uneven smears, as fingers and cloths leave on glass, plastic or a polished face. White is the smudge.' }
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - { name: scale, label: Scale, default: '0.5', summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: amount, label: Amount, default: '0.5', summary: 'How much of the surface the grunge covers.', kind: Float, minimum: 0, maximum: 1, group: Grunge }

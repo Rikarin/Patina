@@ -1,0 +1,28 @@
+version: 1
+name: Concrete Pores
+nodes:
+  - { id: 1, type: Source/Noise, x: 0, y: 0, values: { Octaves: [1] }, texts: { Basis: Worley, '=Scale': '16f + scale * 48f' } }
+  - { id: 2, type: Source/Noise, x: 0, y: 300, values: { Octaves: [4], Gain: [0.55] }, texts: { Basis: Gradient, '=Scale': '3f' } }
+  - id: 3
+    type: Filters/Pixel Processor
+    x: 300
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(saturate((1f - smoothstep(x * (1f - 0.7f * y), x, a.x)) * (0.3f + b.x)), 0f, 0f, 1f)'
+      '=X': '0.08f + amount * 0.17f'
+      '=Y': contrast
+  - { id: 99, type: Sub-graph/Output, x: 600, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 3, toPort: A }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: B }
+  - { fromNode: 3, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'Small round air holes in cast concrete, denser in some patches than others. White is a pore.' }
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - { name: scale, label: Scale, default: '0.5', summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: amount, label: Amount, default: '0.5', summary: 'How much of the surface the grunge covers.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: contrast, label: Contrast, default: '0.5', summary: 'How hard its edges are: low is soft and faint, high is crisp.', kind: Float, minimum: 0, maximum: 1, group: Grunge }

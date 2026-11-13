@@ -1,0 +1,44 @@
+version: 1
+name: Environment Lighting
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -960, y: -200 }
+  - { id: 2, type: Source/Mesh Map, x: -960, y: 0, texts: { Map: world } }
+  - { id: 3, type: Surface/Environment Light, x: -640, y: 0, texts: { Space: World, '=Rotation': 'turn * 0.0174532924f' } }
+  - { id: 4, type: Source/Mesh Map, x: -960, y: 220, texts: { Map: ao } }
+  - { id: 5, type: Colour/Levels, x: -640, y: 220, texts: { '=Output Black': '1f - occlusion' } }
+  - { id: 6, type: Colour/Blend, x: -320, y: 0, texts: { Mode: Multiply } }
+  - id: 7
+    type: Filters/Pixel Processor
+    x: 0
+    y: -200
+    texts:
+      Expression: 'float4(saturate(a.xyz * lerp(b.xyz, floor(b.xyz * 3f + 0.5f) / 3f, w) * x), a.w)'
+      '=X': brightness
+      '=W': toon
+  - { id: 99, type: Sub-graph/Output, x: 320, y: -200 }
+edges:
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Normal }
+  - { fromNode: 1, fromPort: Environment, toNode: 3, toPort: Environment }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 6, toPort: Background }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Foreground }
+  - { fromNode: 1, fromPort: Input, toNode: 7, toPort: A }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: B }
+  - { fromNode: 7, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Input, direction: Input, kind: Image, default: [], summary: 'The colour to light, usually the base colour beneath.' }
+  - { name: Environment, direction: Input, kind: Image, default: [], summary: 'The surroundings as an equirectangular picture: once round the horizon, the sky at the top.' }
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'The colour with the light of the surroundings painted into it, by the way each face turns, and dark in the hollows.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Light from a picture of the surroundings painted into the colour, for an unlit or hand-painted look that matches a scene: each face gets the light it would see, banded if asked.'
+  doesNotTile: 'Reads mesh maps, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: turn, label: Turn, default: '0', summary: 'How far the surroundings are turned about the vertical, in degrees.', kind: Float, minimum: -180, maximum: 180, group: Light }
+  - { name: brightness, label: Brightness, default: '1', summary: 'What the light is multiplied by.', kind: Float, minimum: 0, maximum: 4, group: Light }
+  - { name: occlusion, label: Occlusion, default: '0.7', summary: 'How much the hollows are darkened.', kind: Float, minimum: 0, maximum: 1, group: Look }
+  - { name: toon, label: Toon, default: '0', summary: 'How much the light is cut into three flat bands, as a cartoon is lit.', kind: Float, minimum: 0, maximum: 1, group: Look }

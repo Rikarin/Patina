@@ -1,0 +1,24 @@
+version: 1
+name: Oil Stains
+nodes:
+  - { id: 1, type: Source/Noise, x: 0, y: 0, values: { Octaves: [5], Gain: [0.5] }, texts: { Basis: Gradient, '=Scale': '2f + scale * 6f' } }
+  - id: 2
+    type: Filters/Pixel Processor
+    x: 300
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(saturate(smoothstep(x, x + 0.1f, a.x) * 0.55f + (smoothstep(x - 0.015f, x + 0.015f, a.x) - smoothstep(x + 0.02f, x + 0.07f, a.x)) * 0.9f), 0f, 0f, 1f)'
+      '=X': '0.72f - amount * 0.3f'
+  - { id: 99, type: Sub-graph/Output, x: 600, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: A }
+  - { fromNode: 2, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'Spreading pools of oil soaked into a floor or a bench, darkest at the rim where it dried. White is the stain.' }
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - { name: scale, label: Scale, default: '0.5', summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: amount, label: Amount, default: '0.5', summary: 'How much of the surface the grunge covers.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
