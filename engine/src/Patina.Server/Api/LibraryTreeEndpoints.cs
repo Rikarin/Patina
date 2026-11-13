@@ -48,6 +48,7 @@ static class LibraryTreeEndpoints {
         library.MapPackageRoutes();
         library.MapSnapshotRoutes();
         library.MapSampleRoutes();
+        library.MapCostRoutes();
     }
 
     static void MapProjectRoutes(RouteGroupBuilder library) {

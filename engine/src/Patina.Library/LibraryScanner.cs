@@ -94,7 +94,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
                         removed++;
                         break;
                     case Effect.Same:
-                        writer.Stamp(outcome.File, scanned, outcome.Hash);
+                        writer.Stamp(outcome, scanned);
                         break;
                     default:
                         writer.Replace(outcome, scanned);
@@ -201,8 +201,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
     static Outcome Read(ScannedFile file, string? knownHash) {
         try {
             if (file.Kind == TrackedKind.Content) {
-                var revision = Revision.OfFile(file.FullPath).Text;
-                return new(file, revision == knownHash ? Effect.Same : Effect.Changed, revision);
+                return Content(file, knownHash);
             }
 
             var bytes = SharedFile.ReadAllBytes(file.FullPath);
@@ -213,6 +212,23 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
             return new(file, Effect.Changed, null) { Problem = (ProblemCode.Unreadable, e.Message) };
         }
+    }
+
+    /// <summary>
+    ///     A document beside a project: its revision, and for a stack what it exports at, which the costs read (#207).
+    ///     A stack is small text, its paint being apart, so it is read once for both.
+    /// </summary>
+    static Outcome Content(ScannedFile file, string? knownHash) {
+        if (!file.Path.EndsWith(StackInputs.Extension, StringComparison.Ordinal)) {
+            var revision = Revision.OfFile(file.FullPath).Text;
+            return new(file, revision == knownHash ? Effect.Same : Effect.Changed, revision);
+        }
+
+        var bytes = SharedFile.ReadAllBytes(file.FullPath);
+        var hash = Revision.Of(bytes).Text;
+        return new(file, hash == knownHash ? Effect.Same : Effect.Changed, hash) {
+            Texture = StackInputs.SizeOf(Encoding.UTF8.GetString(bytes))
+        };
     }
 
     /// <summary>
@@ -267,6 +283,9 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
     sealed record Outcome(ScannedFile File, Effect Effect, string? Hash) {
         public ProjectDocument? Project { get; init; }
 
+        /// <summary>What a stack exports at, or null for any other file.</summary>
+        public TextureSize? Texture { get; init; }
+
         public (ProblemCode Code, string Detail)? Problem { get; init; }
     }
 
@@ -311,17 +330,21 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
             stampFile = Prepare(
                 """
-                INSERT INTO file(path, kind, size, mtime, scanned, hash)
-                VALUES (@path, @kind, @size, @mtime, @scanned, @hash)
+                INSERT INTO file(path, kind, size, mtime, scanned, hash, width, height, maps)
+                VALUES (@path, @kind, @size, @mtime, @scanned, @hash, @width, @height, @maps)
                 ON CONFLICT(path) DO UPDATE
-                SET kind = @kind, size = @size, mtime = @mtime, scanned = @scanned, hash = @hash
+                SET kind = @kind, size = @size, mtime = @mtime, scanned = @scanned, hash = @hash,
+                    width = @width, height = @height, maps = @maps
                 """,
                 PathParameter,
                 "@kind",
                 "@size",
                 "@mtime",
                 "@scanned",
-                "@hash"
+                "@hash",
+                "@width",
+                "@height",
+                "@maps"
             );
             deleteFile = Prepare("DELETE FROM file WHERE path = @path", PathParameter);
             deleteProblem = Prepare("DELETE FROM problem WHERE path = @path", PathParameter);
@@ -403,13 +426,17 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
             }
         }
 
-        public void Stamp(ScannedFile file, long scanned, string? hash) {
+        public void Stamp(Outcome outcome, long scanned) {
+            var file = outcome.File;
             Set(stampFile, PathParameter, file.Path);
             Set(stampFile, "@kind", (int)file.Kind);
             Set(stampFile, "@size", file.Size);
             Set(stampFile, "@mtime", file.Time);
             Set(stampFile, "@scanned", scanned);
-            Set(stampFile, "@hash", hash);
+            Set(stampFile, "@hash", outcome.Hash);
+            Set(stampFile, "@width", outcome.Texture?.Width);
+            Set(stampFile, "@height", outcome.Texture?.Height);
+            Set(stampFile, "@maps", outcome.Texture?.Maps);
             stampFile.ExecuteNonQuery();
         }
 
@@ -421,7 +448,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
         public void Replace(Outcome outcome, long scanned) {
             var path = outcome.File.Path;
-            Stamp(outcome.File, scanned, outcome.Hash);
+            Stamp(outcome, scanned);
             ClearDocument(path, outcome.File.Kind);
 
             if (outcome.Problem is { } problem) {

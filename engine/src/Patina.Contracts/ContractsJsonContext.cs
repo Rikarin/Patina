@@ -15,6 +15,8 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(ProjectPage))]
 [JsonSerializable(typeof(AssetPage))]
 [JsonSerializable(typeof(AssetImpact))]
+[JsonSerializable(typeof(LibraryCosts))]
+[JsonSerializable(typeof(DocumentCostPage))]
 [JsonSerializable(typeof(ProjectCreateRequest))]
 [JsonSerializable(typeof(ProjectSummary))]
 [JsonSerializable(typeof(TagPage))]

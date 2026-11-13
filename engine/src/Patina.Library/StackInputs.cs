@@ -56,6 +56,40 @@ public static class StackInputs {
     }
 
     /// <summary>
+    ///     What a stack exports at, for what it costs (#207): its size, and how many maps its texture sets make, one per
+    ///     channel of each. Null when the file cannot be read as a stack.
+    /// </summary>
+    public static TextureSize? SizeOf(string text) {
+        YamlStream yaml = [];
+        try {
+            using StringReader reader = new(text);
+            yaml.Load(reader);
+        } catch (YamlException) {
+            return null;
+        }
+
+        if (yaml.Documents.FirstOrDefault()?.RootNode is not YamlMappingNode root
+            || !int.TryParse(Scalar(root, "baseWidth"), out var width)
+            || !int.TryParse(Scalar(root, "baseHeight"), out var height)
+            || width <= 0
+            || height <= 0) {
+            return null;
+        }
+
+        var maps = 0;
+        if (root.Children.TryGetValue(new YamlScalarNode("sets"), out var sets) && sets is YamlSequenceNode list) {
+            foreach (var set in list.Children.OfType<YamlMappingNode>()) {
+                if (set.Children.TryGetValue(new YamlScalarNode("channels"), out var channels)
+                    && channels is YamlSequenceNode held) {
+                    maps += held.Children.Count;
+                }
+            }
+        }
+
+        return new(width, height, maps);
+    }
+
+    /// <summary>
     ///     The UV set a stack's texture set is laid out in: the set named <paramref name="set" />, or its first. Zero,
     ///     the first, when the file does not say or cannot be read.
     /// </summary>
@@ -106,4 +140,16 @@ public static class StackInputs {
                 break;
         }
     }
+}
+
+/// <summary>What a stack exports at: its size, and how many maps its texture sets make together (#207).</summary>
+/// <param name="Width">Its width in texels.</param>
+/// <param name="Height">Its height in texels.</param>
+/// <param name="Maps">One per channel of each texture set.</param>
+public readonly record struct TextureSize(int Width, int Height, int Maps) {
+    /// <summary>Bytes per texel of one map as an export writes it uncompressed: four eight-bit lanes.</summary>
+    public const int BytesPerTexel = 4;
+
+    /// <summary>What its maps hold together, uncompressed and without mip levels.</summary>
+    public long Bytes => (long)Width * Height * Maps * BytesPerTexel;
 }

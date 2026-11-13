@@ -4294,6 +4294,153 @@
         }
       }
     },
+    "/api/v1/library/costs": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What a folder\u0027s documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document\u0027s size. No folder is the whole library.",
+        "operationId": "GetLibraryCosts",
+        "parameters": [
+          {
+            "name": "folder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryCosts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/costs/documents": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first.",
+        "operationId": "GetDocumentsOverBudget",
+        "parameters": [
+          {
+            "name": "over",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "folder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentCostPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/thumbnails": {
       "post": {
         "tags": [
@@ -9648,6 +9795,77 @@
         },
         "description": "The body of \u0060POST /api/v1/export/compression\u0060 (#217): one file of an export, to see a region of it as the\nfile holds it beside what it was made from."
       },
+      "DocumentCost": {
+        "required": [
+          "path",
+          "width",
+          "height",
+          "maps",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its file, below the library."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Its width in texels.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height in texels.",
+            "format": "int32"
+          },
+          "maps": {
+            "type": "integer",
+            "description": "How many maps its texture sets export.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "What they hold together, uncompressed.",
+            "format": "int64"
+          }
+        },
+        "description": "One document and what it costs."
+      },
+      "DocumentCostPage": {
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentCost"
+            },
+            "description": "The documents on this page."
+          },
+          "total": {
+            "type": "integer",
+            "description": "How many cost more than the budget, on all pages.",
+            "format": "int32"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "The offset the page starts at.",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "The most items a page holds.",
+            "format": "int32"
+          }
+        },
+        "description": "One page of the documents that cost more than a budget, costliest first."
+      },
       "DocumentRecovery": {
         "type": "object",
         "properties": {
@@ -10642,6 +10860,31 @@
           }
         },
         "description": "What a client may offer, with the dot."
+      },
+      "FolderCost": {
+        "required": [
+          "name",
+          "documents",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The folder or project, by its name in the folder asked about."
+          },
+          "documents": {
+            "type": "integer",
+            "description": "How many stacks are below it, at any depth.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "What their maps hold together, uncompressed at each document\u0027s size.",
+            "format": "int64"
+          }
+        },
+        "description": "What the documents below one folder or project cost (#207)."
       },
       "FolderCreateRequest": {
         "required": [
@@ -13427,6 +13670,39 @@
           }
         },
         "description": "A piece of work the Server owns, which outlives the Worker running it and the Server itself."
+      },
+      "LibraryCosts": {
+        "required": [
+          "folder",
+          "documents",
+          "bytes",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "folder": {
+            "type": "string",
+            "description": "The folder below \u0060projects/\u0060, empty for the whole library."
+          },
+          "documents": {
+            "type": "integer",
+            "description": "How many stacks are below it.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "What they cost together.",
+            "format": "int64"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FolderCost"
+            },
+            "description": "Each folder or project directly in it."
+          }
+        },
+        "description": "What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A\ndocument\u0027s cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for\neach channel of each texture set. Compression and mip levels are a preset\u0027s, and are not counted."
       },
       "LibraryExportRequest": {
         "required": [

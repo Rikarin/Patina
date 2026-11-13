@@ -1060,6 +1060,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/costs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What a folder's documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document's size. No folder is the whole library. */
+    get: operations['GetLibraryCosts'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/costs/documents': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first. */
+    get: operations['GetDocumentsOverBudget'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/thumbnails': {
     parameters: {
       query?: never;
@@ -2946,6 +2980,51 @@ export interface components {
        */
       side: number;
     };
+    /** @description One document and what it costs. */
+    DocumentCost: {
+      /** @description Its file, below the library. */
+      path: string;
+      /**
+       * Format: int32
+       * @description Its width in texels.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height in texels.
+       */
+      height: number;
+      /**
+       * Format: int32
+       * @description How many maps its texture sets export.
+       */
+      maps: number;
+      /**
+       * Format: int64
+       * @description What they hold together, uncompressed.
+       */
+      bytes: number;
+    };
+    /** @description One page of the documents that cost more than a budget, costliest first. */
+    DocumentCostPage: {
+      /** @description The documents on this page. */
+      items: components['schemas']['DocumentCost'][];
+      /**
+       * Format: int32
+       * @description How many cost more than the budget, on all pages.
+       */
+      total: number;
+      /**
+       * Format: int32
+       * @description The offset the page starts at.
+       */
+      offset: number;
+      /**
+       * Format: int32
+       * @description The most items a page holds.
+       */
+      limit: number;
+    };
     /** @description Whether a document has work autosaved after its last save. */
     DocumentRecovery: {
       /**
@@ -3331,6 +3410,21 @@ export interface components {
       meshes: string[];
       /** @description What a project brings materials in from, as graphs (#157). */
       materials: string[];
+    };
+    /** @description What the documents below one folder or project cost (#207). */
+    FolderCost: {
+      /** @description The folder or project, by its name in the folder asked about. */
+      name: string;
+      /**
+       * Format: int32
+       * @description How many stacks are below it, at any depth.
+       */
+      documents: number;
+      /**
+       * Format: int64
+       * @description What their maps hold together, uncompressed at each document's size.
+       */
+      bytes: number;
     };
     /** @description The body of `POST /api/v1/library/folders`. */
     FolderCreateRequest: {
@@ -4492,6 +4586,27 @@ export interface components {
       error?: null | string;
       /** @description Whether a client has asked for it to stop. */
       cancelRequested: boolean;
+    };
+    /**
+     * @description What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A
+     *     document's cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for
+     *     each channel of each texture set. Compression and mip levels are a preset's, and are not counted.
+     */
+    LibraryCosts: {
+      /** @description The folder below `projects/`, empty for the whole library. */
+      folder: string;
+      /**
+       * Format: int32
+       * @description How many stacks are below it.
+       */
+      documents: number;
+      /**
+       * Format: int64
+       * @description What they cost together.
+       */
+      bytes: number;
+      /** @description Each folder or project directly in it. */
+      items: components['schemas']['FolderCost'][];
     };
     /** @description The body of `PUT /api/v1/library/export`. */
     LibraryExportRequest: {
@@ -11475,6 +11590,107 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectSummary'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetLibraryCosts: {
+    parameters: {
+      query?: {
+        folder?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryCosts'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetDocumentsOverBudget: {
+    parameters: {
+      query: {
+        over: number;
+        folder?: string;
+        offset?: number;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DocumentCostPage'];
         };
       };
       /** @description Bad Request */
