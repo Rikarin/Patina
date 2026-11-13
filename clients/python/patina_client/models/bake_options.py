@@ -13,6 +13,8 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.bake_colour_options import BakeColourOptions
+  from ..models.bake_curvature_options import BakeCurvatureOptions
+  from ..models.bake_edge_options import BakeEdgeOptions
   from ..models.bake_height_options import BakeHeightOptions
   from ..models.bake_id_options import BakeIdOptions
   from ..models.bake_occlusion_options import BakeOcclusionOptions
@@ -40,8 +42,9 @@ class BakeOptions:
             supersampling (int): How many samples along each side of a texel.
             gutter (int): How many texels of dilation surround each chart.
             maps (list[str]): Which maps to write: `normal`, `height`, `ao`, `bent`, `curvature`,
-                `thickness`, `position`, `world`, `id`, `colour`. The default is what a project's
-                masks read.
+                `thickness`, `position`, `world`, `id`, `colour`, `opacity` (where a ray
+                found the high mesh), `edges` (a band along its sharp or hard edges) and `islands` (a color per UV
+                island of the low mesh). The default is what a project's masks read.
             space (str): The frame of the normal and bent normal maps: `tangent` or `object`.
             rays (BakeRayOptions): How far a bake's rays look from the low mesh, and what they may strike.
             height (BakeHeightOptions): The height map's stored range.
@@ -49,6 +52,8 @@ class BakeOptions:
             occlusion (BakeOcclusionOptions): The occlusion rays, which ambient occlusion, the bent normal and thickness
                 share.
             thickness (BakeThicknessOptions): The thickness map's own settings.
+            curvature (BakeCurvatureOptions): The curvature map's stored range (#148).
+            edges (BakeEdgeOptions): Which edges the edges map marks, and the band it draws along them (#148).
             id (BakeIdOptions): What an ID map labels, and how it colours the labels.
             rounding (BakeRoundingOptions): Edges baked round into the normal map, the bevel a hard-surface model was not
                 modelled with.
@@ -75,6 +80,8 @@ class BakeOptions:
     position: BakePositionOptions
     occlusion: BakeOcclusionOptions
     thickness: BakeThicknessOptions
+    curvature: BakeCurvatureOptions
+    edges: BakeEdgeOptions
     id: BakeIdOptions
     rounding: BakeRoundingOptions
     colour: BakeColourOptions
@@ -88,6 +95,8 @@ class BakeOptions:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.bake_colour_options import BakeColourOptions # noqa: PLC0415
+        from ..models.bake_curvature_options import BakeCurvatureOptions # noqa: PLC0415
+        from ..models.bake_edge_options import BakeEdgeOptions # noqa: PLC0415
         from ..models.bake_height_options import BakeHeightOptions # noqa: PLC0415
         from ..models.bake_id_options import BakeIdOptions # noqa: PLC0415
         from ..models.bake_occlusion_options import BakeOcclusionOptions # noqa: PLC0415
@@ -118,6 +127,10 @@ class BakeOptions:
         occlusion = self.occlusion.to_dict()
 
         thickness = self.thickness.to_dict()
+
+        curvature = self.curvature.to_dict()
+
+        edges = self.edges.to_dict()
 
         id = self.id.to_dict()
 
@@ -152,6 +165,8 @@ class BakeOptions:
             "position": position,
             "occlusion": occlusion,
             "thickness": thickness,
+            "curvature": curvature,
+            "edges": edges,
             "id": id,
             "rounding": rounding,
             "colour": colour,
@@ -168,6 +183,8 @@ class BakeOptions:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.bake_colour_options import BakeColourOptions # noqa: PLC0415
+        from ..models.bake_curvature_options import BakeCurvatureOptions # noqa: PLC0415
+        from ..models.bake_edge_options import BakeEdgeOptions # noqa: PLC0415
         from ..models.bake_height_options import BakeHeightOptions # noqa: PLC0415
         from ..models.bake_id_options import BakeIdOptions # noqa: PLC0415
         from ..models.bake_occlusion_options import BakeOcclusionOptions # noqa: PLC0415
@@ -210,6 +227,16 @@ class BakeOptions:
 
 
         thickness = BakeThicknessOptions.from_dict(d.pop("thickness"))
+
+
+
+
+        curvature = BakeCurvatureOptions.from_dict(d.pop("curvature"))
+
+
+
+
+        edges = BakeEdgeOptions.from_dict(d.pop("edges"))
 
 
 
@@ -261,6 +288,8 @@ class BakeOptions:
             position=position,
             occlusion=occlusion,
             thickness=thickness,
+            curvature=curvature,
+            edges=edges,
             id=id,
             rounding=rounding,
             colour=colour,

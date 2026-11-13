@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import type {
   BakeColourOptions,
+  BakeCurvatureOptions,
+  BakeEdgeOptions,
   BakeOcclusionOptions,
   BakeOptions,
   BakePreviewPart,
@@ -44,11 +46,23 @@ const Maps: readonly { name: string; about: string }[] = [
   {
     name: 'colour',
     about: 'The high mesh’s color carried onto the low mesh, or any picture moved from its UV layout to the low mesh’s.'
-  }
+  },
+  { name: 'opacity', about: 'White where a ray found the high mesh and black where it found none, for cards and cut-outs.' },
+  { name: 'edges', about: 'A band along the sharp or hard edges, white on the edge, for wear that follows them.' },
+  { name: 'islands', about: 'A flat color per UV island of the low mesh, for a variation per island.' }
 ];
 const RoundedEdges = [
   { value: 'angle', label: 'By angle' },
   { value: 'hard', label: 'Hard edges' }
+];
+const Profiles = [
+  { value: 'even', label: 'Round' },
+  { value: 'smooth', label: 'Smooth' },
+  { value: 'chamfer', label: 'Chamfer' }
+];
+const CurvatureRanges = [
+  { value: 'auto', label: 'Automatic' },
+  { value: 'custom', label: 'Custom' }
 ];
 const ColourSources = ['auto', 'vertex-colour', 'material', 'texture'];
 const ColourSourceNames: Readonly<Record<string, string>> = {
@@ -660,10 +674,22 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                       (valueChange)="setRounding({ edges: $event ?? options.rounding.edges })"
                     />
                   </div>
+                  <div class="flex items-center justify-between gap-2 text-sm">
+                    Profile
+                    <xui-segmented-control
+                      size="sm"
+                      aria-label="Rounded edge profile"
+                      data-testid="bake-round-profile"
+                      [options]="profiles"
+                      [value]="options.rounding.profile"
+                      (valueChange)="setRounding({ profile: $event ?? options.rounding.profile })"
+                    />
+                  </div>
                   <p class="text-foreground-muted text-xs">
                     By angle rounds every edge sharper than the angle. Hard edges rounds the edges the mesh’s own
                     normals split, which is where its author made it hard. With no high poly mesh, the low mesh bakes
-                    onto itself.
+                    onto itself. Round turns evenly across the bevel, Smooth softens its sides and Chamfer makes it one
+                    flat face.
                   </p>
                 }
               }
@@ -851,6 +877,94 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   Box stretches each axis across the high mesh’s bounding box. Cube keeps its proportions, so a distance
                   reads alike on every axis. Sphere is centred on the middle of the mesh. None keeps model units, which
                   only an EXR format holds.
+                </p>
+              }
+              @case ('curvature') {
+                <div class="flex items-center justify-between gap-2 text-sm">
+                  Range
+                  <xui-segmented-control
+                    size="sm"
+                    aria-label="Curvature range"
+                    data-testid="bake-curvature-range"
+                    [options]="curvatureRanges"
+                    [value]="options.curvature.range"
+                    (valueChange)="setCurvature({ range: $event ?? options.curvature.range })"
+                  />
+                </div>
+                <p class="text-foreground-muted text-xs">
+                  Automatic spreads each mesh’s own bends over the whole range. Custom makes a bend as tight as the
+                  radius white, or black for a crease, so maps of different meshes agree.
+                </p>
+                @if (options.curvature.range === 'custom') {
+                  <div class="flex min-w-0 flex-col gap-1">
+                    <span class="text-foreground-muted text-xs">Tightest radius, {{ unit() }}</span>
+                    <xui-numeric-input
+                      size="sm"
+                      aria-label="Curvature radius"
+                      data-testid="bake-curvature-radius"
+                      [min]="0"
+                      [stepSize]="step()"
+                      [value]="shown(options.curvature.radius)"
+                      (valueChange)="setCurvature({ radius: stored($event) })"
+                    />
+                  </div>
+                }
+              }
+              @case ('edges') {
+                <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                  <div class="flex min-w-0 flex-col gap-1">
+                    <span class="text-foreground-muted text-xs">Width, {{ unit() }}</span>
+                    <xui-numeric-input
+                      size="sm"
+                      aria-label="Edge band width"
+                      data-testid="bake-edges-width"
+                      [min]="0"
+                      [stepSize]="step()"
+                      [value]="shown(options.edges.width)"
+                      (valueChange)="setEdges({ width: stored($event) })"
+                    />
+                  </div>
+                  @if (options.edges.edges === 'angle') {
+                    <div class="flex min-w-0 flex-col gap-1">
+                      <span class="text-foreground-muted text-xs">Sharper than, degrees</span>
+                      <xui-numeric-input
+                        size="sm"
+                        aria-label="Edge angle"
+                        data-testid="bake-edges-angle"
+                        [max]="180"
+                        [min]="0"
+                        [stepSize]="5"
+                        [value]="options.edges.angle"
+                        (valueChange)="setEdges({ angle: $event ?? 30 })"
+                      />
+                    </div>
+                  }
+                </div>
+                <div class="flex items-center justify-between gap-2 text-sm">
+                  Edges
+                  <xui-segmented-control
+                    size="sm"
+                    aria-label="Which edges are marked"
+                    data-testid="bake-edges-edges"
+                    [options]="roundedEdges"
+                    [value]="options.edges.edges"
+                    (valueChange)="setEdges({ edges: $event ?? options.edges.edges })"
+                  />
+                </div>
+                <div class="flex items-center justify-between gap-2 text-sm">
+                  Profile
+                  <xui-segmented-control
+                    size="sm"
+                    aria-label="Edge band profile"
+                    data-testid="bake-edges-profile"
+                    [options]="profiles"
+                    [value]="options.edges.profile"
+                    (valueChange)="setEdges({ profile: $event ?? options.edges.profile })"
+                  />
+                </div>
+                <p class="text-foreground-muted text-xs">
+                  The high mesh’s edges, or the low mesh’s when it bakes onto itself. Round fades evenly away from the
+                  edge, Smooth softly, and Chamfer is white across the whole band.
                 </p>
               }
               @case ('thickness') {
@@ -1140,6 +1254,8 @@ export class BakePane {
   protected readonly rowsName = (value: string) => (value ? `${value} texels` : 'Same as width');
   protected readonly canPick = desktop() !== undefined;
   protected readonly roundedEdges = RoundedEdges;
+  protected readonly profiles = Profiles;
+  protected readonly curvatureRanges = CurvatureRanges;
   protected readonly colourSources = ColourSources;
   protected readonly colourSourceName = (value: string) => ColourSourceNames[value] ?? value;
   protected readonly previewParts = PreviewParts;
@@ -1292,6 +1408,14 @@ export class BakePane {
 
   protected setRounding(change: Partial<BakeRoundingOptions>): void {
     this.settings.set(options => ({ ...options, rounding: { ...options.rounding, ...change } }));
+  }
+
+  protected setCurvature(change: Partial<BakeCurvatureOptions>): void {
+    this.settings.set(options => ({ ...options, curvature: { ...options.curvature, ...change } }));
+  }
+
+  protected setEdges(change: Partial<BakeEdgeOptions>): void {
+    this.settings.set(options => ({ ...options, edges: { ...options.edges, ...change } }));
   }
 
   protected setColour(change: Partial<BakeColourOptions>): void {

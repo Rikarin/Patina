@@ -55,7 +55,10 @@ public sealed record BakeOptions {
 
     /// <summary>Every map a bake can write, in the order they are reported.</summary>
     public static IReadOnlyList<string> AllMaps { get; } =
-        ["normal", "height", "ao", "bent", "curvature", "thickness", "position", "world", "id", "colour"];
+        [
+            "normal", "height", "ao", "bent", "curvature", "thickness", "position", "world", "id", "colour", "opacity",
+            "edges", "islands"
+        ];
 
     /// <summary>The atlas's width, in texels, and its height too unless <see cref="Rows" /> says otherwise.</summary>
     public int Resolution { get; set; } = 2048;
@@ -86,8 +89,9 @@ public sealed record BakeOptions {
 
     /// <summary>
     ///     Which maps to write: <c>normal</c>, <c>height</c>, <c>ao</c>, <c>bent</c>, <c>curvature</c>,
-    ///     <c>thickness</c>, <c>position</c>, <c>world</c>, <c>id</c>, <c>colour</c>. The default is what a project's
-    ///     masks read.
+    ///     <c>thickness</c>, <c>position</c>, <c>world</c>, <c>id</c>, <c>colour</c>, <c>opacity</c> (where a ray
+    ///     found the high mesh), <c>edges</c> (a band along its sharp or hard edges) and <c>islands</c> (a color per UV
+    ///     island of the low mesh). The default is what a project's masks read.
     /// </summary>
     public IReadOnlyList<string> Maps { get; set; } =
         ["normal", "height", "ao", "curvature", "thickness", "position", "world", "id"];
@@ -109,6 +113,12 @@ public sealed record BakeOptions {
 
     /// <summary>The thickness map's own settings.</summary>
     public BakeThicknessOptions Thickness { get; set; } = new();
+
+    /// <summary>The curvature map's stored range.</summary>
+    public BakeCurvatureOptions Curvature { get; set; } = new();
+
+    /// <summary>Which edges the edges map marks, how wide and in what profile.</summary>
+    public BakeEdgeOptions Edges { get; set; } = new();
 
     /// <summary>What the ID map labels and how it colours them.</summary>
     public BakeIdOptions Id { get; set; } = new();
@@ -166,6 +176,8 @@ public sealed record BakeOptions {
             ?? Occlusion.Problem()
             ?? Id.Problem()
             ?? Rounding.Problem()
+            ?? Curvature.Problem()
+            ?? Edges.Problem()
             ?? Colour.Problem(Maps.Contains("colour", StringComparer.Ordinal));
     }
 }
@@ -373,9 +385,16 @@ public sealed record BakeRoundingOptions {
     /// <summary>For <c>angle</c>: the least angle between two faces that is an edge, in degrees.</summary>
     public double Angle { get; set; } = 30;
 
+    /// <summary>
+    ///     How the normal turns across the bevel: <c>even</c>, a round fillet; <c>smooth</c>, flat at the bevel's side
+    ///     and turning fastest near the edge; or <c>chamfer</c>, one flat face at the halfway angle.
+    /// </summary>
+    public string Profile { get; set; } = "even";
+
     /// <summary>What is wrong, or null.</summary>
     public string? Problem() =>
-        !EdgeWords.Contains(Edges, StringComparer.Ordinal) ? $"'{Edges}' is not angle or hard."
+        !BakeEdgeOptions.Profiles.Contains(Profile, StringComparer.Ordinal) ? $"'{Profile}' is not a profile."
+        : !EdgeWords.Contains(Edges, StringComparer.Ordinal) ? $"'{Edges}' is not angle or hard."
         : !(Width >= 0 && double.IsFinite(Width)) ? "A rounded edge's width cannot be negative."
         : Enabled && Width <= 0 ? "A rounded edge needs a width."
         : Angle is < 0 or > 180 ? "The rounding angle is 0 to 180 degrees."

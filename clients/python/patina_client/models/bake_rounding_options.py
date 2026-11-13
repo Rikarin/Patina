@@ -29,12 +29,15 @@ class BakeRoundingOptions:
                 `hard`, the
                 edges the mesh's own normals split, which is the nearest a mesh file has to an edge weight.
             angle (float): For `angle`: the least angle between two faces that is an edge, in degrees.
+            profile (str): How the normal turns across the bevel: `even`, a round fillet; `smooth`, flat at the bevel's side
+                and turning fastest near the edge; or `chamfer`, one flat face at the halfway angle.
      """
 
     enabled: bool
     width: float
     edges: str
     angle: float
+    profile: str
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -50,6 +53,8 @@ class BakeRoundingOptions:
 
         angle = self.angle
 
+        profile = self.profile
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -58,6 +63,7 @@ class BakeRoundingOptions:
             "width": width,
             "edges": edges,
             "angle": angle,
+            "profile": profile,
         })
 
         return field_dict
@@ -75,11 +81,14 @@ class BakeRoundingOptions:
 
         angle = d.pop("angle")
 
+        profile = d.pop("profile")
+
         bake_rounding_options = cls(
             enabled=enabled,
             width=width,
             edges=edges,
             angle=angle,
+            profile=profile,
         )
 
 

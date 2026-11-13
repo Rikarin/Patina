@@ -2356,6 +2356,20 @@ export interface components {
       /** @description For `texture`: the picture to carry across, as a path on the Server's machine. */
       texture: string;
     };
+    /** @description The curvature map's stored range (#148). */
+    BakeCurvatureOptions: {
+      /**
+       * @description `auto`, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or
+       *                 `custom`, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a crease, so every
+       *                 bake made with it agrees.
+       */
+      range: string;
+      /**
+       * Format: double
+       * @description For `custom`: the radius of the tightest bend the map tells apart, in the rays' units.
+       */
+      radius: number;
+    };
     /** @description One baked map, as a file. */
     BakedMapFile: {
       /** @description What it measures. */
@@ -2378,6 +2392,29 @@ export interface components {
        * @description Its height in pixels, or null when it is as tall as it is wide.
        */
       rows?: null | number;
+    };
+    /** @description Which edges the edges map marks, and the band it draws along them (#148). */
+    BakeEdgeOptions: {
+      /**
+       * @description `hard`, the edges the high mesh's own normals split, or `angle`, every edge whose faces meet at
+       *                 double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges.
+       */
+      edges: string;
+      /**
+       * Format: double
+       * @description How far either side of an edge the band reaches, in the rays' units.
+       */
+      width: number;
+      /**
+       * Format: double
+       * @description For `angle`: the least angle between two faces that is an edge, in degrees.
+       */
+      angle: number;
+      /**
+       * @description How the band falls from white on the edge to black at its side: `even`, a straight ramp; `smooth`,
+       *     a smoothstep; or `chamfer`, white all the way across.
+       */
+      profile: string;
     };
     /** @description The height map's stored range. */
     BakeHeightOptions: {
@@ -2479,8 +2516,9 @@ export interface components {
       gutter: number;
       /**
        * @description Which maps to write: `normal`, `height`, `ao`, `bent`, `curvature`,
-       *     `thickness`, `position`, `world`, `id`, `colour`. The default is what a project's
-       *     masks read.
+       *     `thickness`, `position`, `world`, `id`, `colour`, `opacity` (where a ray
+       *     found the high mesh), `edges` (a band along its sharp or hard edges) and `islands` (a color per UV
+       *     island of the low mesh). The default is what a project's masks read.
        */
       maps: string[];
       /** @description The frame of the normal and bent normal maps: `tangent` or `object`. */
@@ -2495,6 +2533,10 @@ export interface components {
       occlusion: components['schemas']['BakeOcclusionOptions'];
       /** @description The thickness map's own settings. */
       thickness: components['schemas']['BakeThicknessOptions'];
+      /** @description The curvature map's stored range. */
+      curvature: components['schemas']['BakeCurvatureOptions'];
+      /** @description Which edges the edges map marks, how wide and in what profile. */
+      edges: components['schemas']['BakeEdgeOptions'];
       /** @description What the ID map labels and how it colours them. */
       id: components['schemas']['BakeIdOptions'];
       /** @description Edges baked round into the normal, with no high poly to give them a bevel. */
@@ -2648,6 +2690,11 @@ export interface components {
        * @description For `angle`: the least angle between two faces that is an edge, in degrees.
        */
       angle: number;
+      /**
+       * @description How the normal turns across the bevel: `even`, a round fillet; `smooth`, flat at the bevel's side
+       *     and turning fastest near the edge; or `chamfer`, one flat face at the halfway angle.
+       */
+      profile: string;
     };
     /** @description The thickness map's own settings. */
     BakeThicknessOptions: {

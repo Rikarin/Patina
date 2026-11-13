@@ -46,9 +46,11 @@ const defaults: ProjectBakeSettings = {
       groundOffset: 0
     },
     thickness: { normalised: true },
+    curvature: { range: 'auto', radius: 0.01 },
+    edges: { edges: 'hard', width: 0.01, angle: 30, profile: 'even' },
     position: { range: 'box' },
     id: { source: 'auto', palette: 'random' },
-    rounding: { enabled: false, width: 0.01, edges: 'angle', angle: 30 },
+    rounding: { enabled: false, width: 0.01, edges: 'angle', angle: 30, profile: 'even' },
     colour: { source: 'auto', texture: '' }
   },
   sets: [],
