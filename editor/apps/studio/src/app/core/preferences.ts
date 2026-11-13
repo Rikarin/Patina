@@ -32,6 +32,45 @@ export interface PreferenceValues {
   favouriteNodes: readonly string[];
   /** Node types added last, by path, newest first, which the palette offers after the favourites. */
   recentNodes: readonly string[];
+  /** Documents brought to the front last, newest first, in every library, which Start offers again. */
+  recentDocuments: readonly RecentDocument[];
+}
+
+/** A document someone worked on, by where it is in its library. */
+export interface RecentDocument {
+  /** The library's identity, from `library.yaml`, which stays when its folder moves. */
+  library: string;
+  /** The project's path below the library. */
+  project: string;
+  /** The document's path below the library. */
+  path: string;
+  /** Its name as its tab showed it. */
+  name: string;
+}
+
+/** How many recent documents the file keeps, over every library. */
+export const RecentDocumentLimit = 40;
+
+/** Recent documents as a file holds them: each whole, each once, newest first, as many as it may keep. */
+function recentDocumentsOf(value: unknown): readonly RecentDocument[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const read: RecentDocument[] = [];
+  for (const item of value as unknown[]) {
+    if (typeof item !== 'object' || item === null) {
+      continue;
+    }
+
+    const { library, project, path, name } = item as Record<string, unknown>;
+    const whole = [library, project, path, name].every(field => typeof field === 'string' && field.length > 0);
+    if (whole && !read.some(held => held.library === library && held.path === path)) {
+      read.push({ library, project, path, name } as RecentDocument);
+    }
+  }
+
+  return read.slice(0, RecentDocumentLimit);
 }
 
 export const DefaultPreferences: PreferenceValues = {
@@ -43,7 +82,8 @@ export const DefaultPreferences: PreferenceValues = {
   graphSnap: false,
   graphWires: 'bezier',
   favouriteNodes: [],
-  recentNodes: []
+  recentNodes: [],
+  recentDocuments: []
 };
 
 /** How many node types each list keeps, so a hand-edited file cannot grow the palette without end. */
@@ -53,7 +93,9 @@ type ListPreference = keyof typeof ListLimits;
 const StorageKey = 'patina.preferences';
 const DarkQuery = '(prefers-color-scheme: dark)';
 
-const Choices: { [K in Exclude<keyof PreferenceValues, ListPreference>]: readonly PreferenceValues[K][] } = {
+const Choices: {
+  [K in Exclude<keyof PreferenceValues, ListPreference | 'recentDocuments'>]: readonly PreferenceValues[K][];
+} = {
   theme: ['dark', 'light', 'system'],
   libraryView: ['list', 'grid'],
   libraryTab: ['projects', 'assets'],
@@ -86,6 +128,8 @@ export function readPreferences(value: unknown): PreferenceValues {
     read[key] = listOf(held[key], ListLimits[key]);
   }
 
+  read.recentDocuments = recentDocumentsOf(held['recentDocuments']);
+
   return read;
 }
 
@@ -107,6 +151,7 @@ export class Preferences {
   readonly graphWires = computed(() => this.values().graphWires);
   readonly favouriteNodes = computed(() => this.values().favouriteNodes);
   readonly recentNodes = computed(() => this.values().recentNodes);
+  readonly recentDocuments = computed(() => this.values().recentDocuments);
   /** Whether the app is dark now: the theme chosen, or the system's for `system`. */
   readonly dark = computed(() => {
     const theme = this.theme();
@@ -150,6 +195,30 @@ export class Preferences {
   /** Puts a node type at the front of the recent ones, as adding it does. */
   usedNode(path: string): void {
     this.set({ recentNodes: [path, ...this.recentNodes().filter(item => item !== path)] });
+  }
+
+  /** Puts a document at the front of the recent ones, unless it is there already. */
+  usedDocument(document: RecentDocument): void {
+    const [first] = this.recentDocuments();
+    if (first?.library === document.library && first.path === document.path && first.name === document.name) {
+      return; // no write for a tab that only came back to the front
+    }
+
+    this.set({
+      recentDocuments: [
+        document,
+        ...this.recentDocuments().filter(held => held.library !== document.library || held.path !== document.path)
+      ]
+    });
+  }
+
+  /** Forgets a recent document that has moved or gone. */
+  forgetDocument(library: string, path: string): void {
+    const held = this.recentDocuments();
+    const kept = held.filter(item => item.library !== library || item.path !== path);
+    if (kept.length !== held.length) {
+      this.set({ recentDocuments: kept });
+    }
   }
 
   /** Changes some preferences and keeps them. */
