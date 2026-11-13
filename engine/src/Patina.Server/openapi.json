@@ -8967,7 +8967,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Only these documents of the one project named, by their file below it, each a texture set of its own whatever\nit is: a graph in a texturing project or one that is not a material exports too. Null or empty for what the\nproject exports."
+            "description": "Only these documents of the one project named, by their file below it, each a texture set of its own\nwhatever it is: a graph in a texturing project or one that is not a material exports too. Null or empty for\nwhat the project exports."
           },
           "presets": {
             "type": [
