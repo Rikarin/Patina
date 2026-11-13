@@ -218,7 +218,7 @@ const PreviewQuiet = 200;
         <div class="flex items-center gap-2 ps-[4.5rem]" data-testid="paint-material-placement">
           @if (store.projectsMaterial()) {
             <span
-              class="flex min-w-0 flex-1 items-center gap-1 text-xs"
+              class="flex flex-1 shrink-0 items-center gap-1 text-xs"
               title="Repeats the material past its edges on the view"
             >
               <xui-switch
