@@ -1,5 +1,5 @@
 import type { StackView } from '@patina/api-client';
-import { project, symmetryGuide } from './symmetry-guide';
+import { project, symmetryCopies, symmetryGuide } from './symmetry-guide';
 
 /** Straight down the z axis at the origin from four units, the picture 200 square and two units across at the origin. */
 const Down: StackView = {
@@ -42,5 +42,42 @@ describe('symmetryGuide', () => {
     // An axis seen end on is two points over the middle of the picture, nearer and further.
     expect(columns(radial)).toHaveLength(2);
     expect(columns(radial).every(column => Math.abs(column - 100) < 0.5)).toBe(true);
+  });
+});
+
+describe('symmetryCopies', () => {
+  const box = [0, 0, 0, 2, 2, 2];
+  const close = (actual: readonly number[] | undefined, expected: readonly number[]) =>
+    expected.forEach((value, at) => expect(actual?.[at]).toBeCloseTo(value, 5));
+
+  it('mirrors a point across the plane through the model centre, moved by its offset', () => {
+    const [mirrored] = symmetryCopies(
+      { kind: 'mirror', axis: 'x', centre: 'model', offset: 0, count: 2 },
+      box,
+      [0.25, 0.5, 1.5]
+    );
+    close(mirrored, [1.75, 0.5, 1.5]);
+
+    // A share of the bounding radius, which is √3 for this box.
+    const moved = symmetryCopies(
+      { kind: 'mirror', axis: 'y', centre: 'origin', offset: 0.5, count: 2 },
+      box,
+      [1, 0, 1]
+    );
+    close(moved[0], [1, Math.sqrt(3), 1]);
+  });
+
+  it('turns a point round the axis into every other copy, as many as the count less the stroke', () => {
+    const copies = symmetryCopies(
+      { kind: 'radial', axis: 'z', centre: 'model', offset: 0.9, count: 4 },
+      box,
+      [2, 1, 0.5]
+    );
+    expect(copies).toHaveLength(3);
+    // About z through (1, 1): a quarter, a half and three quarters of a turn, the height along the axis kept.
+    const sorted = [...copies].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    close(sorted[0], [0, 1, 0.5]);
+    close(sorted[1], [1, 0, 0.5]);
+    close(sorted[2], [1, 2, 0.5]);
   });
 });
