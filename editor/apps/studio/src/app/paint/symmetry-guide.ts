@@ -27,6 +27,50 @@ export function project(view: StackView, point: Point): [number, number] | null 
 }
 
 /**
+ * Where a symmetry copies a point of the mesh, the point itself left out: a mirror's one reflection, or a radial
+ * symmetry's turns about its axis, as Vixen's `PaintSymmetryGroup` makes them and the Worker paints them.
+ *
+ * @param bounds The model's box, its least corner then its greatest: six numbers in the mesh's own space.
+ */
+export function symmetryCopies(symmetry: StackSymmetry, bounds: readonly number[], point: Point): Point[] {
+  const axis = Axes[symmetry.axis] ?? 0;
+  const through = symmetryCentre(symmetry, bounds, axis);
+  const offset: Point = [point[0] - (through[0] ?? 0), point[1] - (through[1] ?? 0), point[2] - (through[2] ?? 0)];
+  const placed = (made: readonly number[]): Point => [
+    (made[0] ?? 0) + (through[0] ?? 0),
+    (made[1] ?? 0) + (through[1] ?? 0),
+    (made[2] ?? 0) + (through[2] ?? 0)
+  ];
+  if (symmetry.kind !== 'radial') {
+    const mirrored = [...offset];
+    mirrored[axis] = -(mirrored[axis] ?? 0);
+    return [placed(mirrored)];
+  }
+
+  const count = Math.max(2, Math.min(64, Math.round(symmetry.count)));
+  const [first, second] = [(axis + 1) % 3, (axis + 2) % 3];
+  return Array.from({ length: count - 1 }, (_, at) => {
+    const angle = (2 * Math.PI * (at + 1)) / count;
+    const [cos, sin] = [Math.cos(angle), Math.sin(angle)];
+    const [across, along] = [offset[first] ?? 0, offset[second] ?? 0];
+    const turned = [...offset];
+    turned[first] = cos * across - sin * along;
+    turned[second] = sin * across + cos * along;
+    return placed(turned);
+  });
+}
+
+/** The point a symmetry's plane or axis passes through: the box's middle or the origin, a mirror moved along its axis. */
+function symmetryCentre(symmetry: StackSymmetry, bounds: readonly number[], axis: number): number[] {
+  const least = [bounds[0] ?? 0, bounds[1] ?? 0, bounds[2] ?? 0];
+  const most = [bounds[3] ?? 0, bounds[4] ?? 0, bounds[5] ?? 0];
+  const middle = least.map((low, at) => (low + (most[at] ?? 0)) / 2);
+  const radius = Math.hypot(...most.map((high, at) => high - (least[at] ?? 0))) / 2;
+  const centre = symmetry.centre === 'origin' ? [0, 0, 0] : middle;
+  return centre.map((value, at) => value + (at === axis && symmetry.kind !== 'radial' ? symmetry.offset * radius : 0));
+}
+
+/**
  * What to draw of a symmetry over the viewport: a mirror's plane as the rectangle where it cuts the model's box, or a
  * radial symmetry's axis as a line through the box, as SVG points on the picture the view was picked for. The plane or
  * the axis goes where the Worker puts it: through the box's centre or the origin, a mirror moved along its axis by a
@@ -38,12 +82,7 @@ export function symmetryGuide(symmetry: StackSymmetry, view: StackView, bounds: 
   const axis = Axes[symmetry.axis] ?? 0;
   const least = [bounds[0] ?? 0, bounds[1] ?? 0, bounds[2] ?? 0];
   const most = [bounds[3] ?? 0, bounds[4] ?? 0, bounds[5] ?? 0];
-  const middle = least.map((low, at) => (low + (most[at] ?? 0)) / 2);
-  const radius = Math.hypot(...most.map((high, at) => high - (least[at] ?? 0))) / 2;
-  const centre = symmetry.centre === 'origin' ? [0, 0, 0] : middle;
-  const through = centre.map(
-    (value, at) => value + (at === axis && symmetry.kind !== 'radial' ? symmetry.offset * radius : 0)
-  );
+  const through = symmetryCentre(symmetry, bounds, axis);
   const grow = (low: number, high: number) => [low - (high - low) * Margin, high + (high - low) * Margin] as const;
   const point = (along: number, first: number, second: number): Point => {
     const made = [0, 0, 0];

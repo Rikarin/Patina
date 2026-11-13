@@ -1560,6 +1560,11 @@ export class PaintStore {
     return unwrap(await client.POST('/api/v1/viewport/pick', { body: { x: 0.5, y: 0.5, camera, width, height } }));
   }
 
+  /** What is under a point of the viewport, in its layout pixels, for a guide: where on the mesh, and the camera. */
+  lookAt(point: { x: number; y: number }, aim: Aim): Promise<ViewportPick> {
+    return this.picked({ ...point, pressure: 1 }, aim);
+  }
+
   private async pick(stamp: StackStamp, aim: Aim): Promise<StackView> {
     return (await this.picked(stamp, aim)).view;
   }

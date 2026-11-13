@@ -72,3 +72,60 @@ test('a mesh says what it is, and a texture set changes its size in Properties',
   await expect(window.getByTestId('mesh-facts-units')).toContainText('does not say');
   await window.getByTestId('project-settings').screenshot({ path: join(shots, 'sets-3-mesh-facts.png') });
 });
+
+test('the 2D view of a set that is not square is the set’s shape, and reads and fits as one', async () => {
+  test.setTimeout(180_000);
+  await newProject(app, window, 'Wide', twoColouredQuads());
+  await expect(window.getByTestId('texture-set-settings')).toBeVisible({ timeout: 60_000 });
+  await window.getByTestId('texture-set-height').click();
+  await window.getByRole('option', { name: '512', exact: true }).click();
+  const size = window.getByTestId('texture-set-size');
+  await expect(size).toContainText('×512', { timeout: 30_000 });
+  const [width, height] =
+    /(\d+)×(\d+)/
+      .exec((await size.textContent()) ?? '')
+      ?.slice(1)
+      .map(Number) ?? [];
+  if (!width || !height || width === height) {
+    throw new Error(`The set is ${width}×${height}, which is no test of a set that is not square.`);
+  }
+
+  // The well, the picture in it and the UV layout over it are all the set's shape, not a square (#246).
+  const canvas = window.getByTestId('paint-canvas');
+  const picture = window.getByTestId('paint-picture');
+  await expect(picture).toBeVisible({ timeout: 60_000 });
+  await expect.poll(async () => ratio(await canvas.boundingBox()), { timeout: 30_000 }).toBeCloseTo(width / height, 1);
+  await window.getByTestId('paint-uv-wire').click();
+  const layout = window.getByTestId('paint-uv-layout');
+  await expect(layout).toBeVisible({ timeout: 30_000 });
+  expect(ratio(await layout.boundingBox())).toBeCloseTo(width / height, 1);
+  await window.screenshot({ path: join(shots, 'sets-4-not-square-atlas.png') });
+
+  const box = await picture.boundingBox();
+  if (!box) {
+    throw new Error('The picture has no box.');
+  }
+
+  await window.mouse.move(box.x + box.width * 0.75, box.y + box.height * 0.5);
+  const under = window.getByTestId('paint-under');
+  await expect(under).toContainText('u 0.75');
+  await expect(under).toContainText('v 0.50');
+  const [x, y] =
+    /(\d+), (\d+)/
+      .exec((await under.textContent()) ?? '')
+      ?.slice(1)
+      .map(Number) ?? [];
+  expect(Math.abs((x ?? Number.NaN) - width * 0.75)).toBeLessThanOrEqual(2);
+  expect(Math.abs((y ?? Number.NaN) - height * 0.5)).toBeLessThanOrEqual(2);
+
+  const fit = window.getByTestId('paint-fit');
+  await window.mouse.wheel(0, -400);
+  await expect(fit).toBeEnabled();
+  await fit.click();
+  await expect(fit).toBeDisabled();
+  expect(ratio(await canvas.boundingBox())).toBeCloseTo(width / height, 1);
+});
+
+function ratio(box: { width: number; height: number } | null): number {
+  return box ? box.width / box.height : Number.NaN;
+}
