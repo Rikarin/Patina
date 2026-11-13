@@ -145,7 +145,7 @@ public sealed class ExportPreviewBuildTests : IDisposable {
             exported.Warnings,
             static warning => warning.Contains("enlarged", StringComparison.Ordinal)
         );
-        Assert.All(exported.Files, file => Assert.Equal((64, 64), (file.Width, file.Height)));
+        Assert.All(exported.Files, static file => Assert.Equal((64, 64), (file.Width, file.Height)));
         Assert.NotEmpty(exported.Files);
         Assert.NotEqual(plain.Projects[0].Project.Outputs[0].Key, sized.Projects[0].Project.Outputs[0].Key);
 
