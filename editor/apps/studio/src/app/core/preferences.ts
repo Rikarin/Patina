@@ -26,6 +26,8 @@ export interface PreferenceValues {
   stats: boolean;
   /** Whether a node dragged on the graph lands on the grid. */
   graphSnap: boolean;
+  /** Whether a node's card lists what was changed on it, under its title. */
+  graphParameters: boolean;
   /** How the graph draws its wires. */
   graphWires: WireStyle;
   /** Node types starred in the Nodes list, by path, which the palette offers first. */
@@ -41,6 +43,7 @@ export const DefaultPreferences: PreferenceValues = {
   shelfView: 'list',
   stats: false,
   graphSnap: false,
+  graphParameters: false,
   graphWires: 'bezier',
   favouriteNodes: [],
   recentNodes: []
@@ -60,6 +63,7 @@ const Choices: { [K in Exclude<keyof PreferenceValues, ListPreference>]: readonl
   shelfView: ['list', 'small', 'large'],
   stats: [false, true],
   graphSnap: [false, true],
+  graphParameters: [false, true],
   graphWires: ['bezier', 'smoothstep', 'straight']
 };
 
@@ -104,6 +108,7 @@ export class Preferences {
   readonly shelfView = computed(() => this.values().shelfView);
   readonly stats = computed(() => this.values().stats);
   readonly graphSnap = computed(() => this.values().graphSnap);
+  readonly graphParameters = computed(() => this.values().graphParameters);
   readonly graphWires = computed(() => this.values().graphWires);
   readonly favouriteNodes = computed(() => this.values().favouriteNodes);
   readonly recentNodes = computed(() => this.values().recentNodes);

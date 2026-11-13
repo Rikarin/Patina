@@ -8,6 +8,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Wires move and copy by hand in the graph. Shift-drag from an output onto another node moves every wire it had to that node's output of the same kind; Shift-drag from a wired input to another input moves its wire there, and Ctrl-drag (Cmd on a Mac) copies it, so both inputs read the same picture. Swap Inputs, in a node's right-click menu and the Graph menu, trades the wires into a node's first two inputs of one kind, such as a blend's two pictures. Each is one undo step.
+- Parameters on Cards, in the graph's Arrange menu and the Graph menu: each node lists what was changed on it from its type's defaults, up to four lines, an expression shown as it is written. The choice is kept in the app's preferences.
 
 - The 2D view draws the texture set's UV layout over the map (UV, at its top right), each edge once, a light line over a dark one so it reads on any map; Fit shows the whole map again after zooming and panning; the corners say which way U and V run and that the map is UDIM tile 1001; and the pointer's UV and texel are read out at the bottom. Through the API `GET /api/v1/stacks/{id}/uv-wire` gives the layout as an SVG over the unit square, drawn by the engine from the mesh.
 - A texture set's menu, on a right-click in Texture Sets or the Menu key: Paint it, Show Alone or Show the Whole Model, and Bake…, Export… and Project Settings….

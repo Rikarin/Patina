@@ -160,6 +160,24 @@ test('moves the wires of an output by Shift-drag, and copies an input’s wire b
   await expect(thumbnail(4)).toHaveAttribute('data-hash', original);
 });
 
+test('lists what was changed on a node on its card, when asked to', async () => {
+  await openGraph();
+  const listed = node(2).getByTestId('graph-node-parameters');
+
+  // A number nudged from the Inspector: nothing on the card until the graph shows parameters on cards.
+  await node(2).locator('xui-graph-node-preview').click();
+  const slider = window.locator('[data-testid^=field-]').getByRole('slider').first();
+  await slider.focus();
+  await window.keyboard.press('ArrowRight');
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
+  await expect(listed).toHaveCount(0);
+
+  await window.getByTestId('graph-arrange').click();
+  await window.getByTestId('arrange-parameters').click();
+  await expect(listed).toBeVisible();
+  await window.screenshot({ path: join(shots, 'authoring-parameters-on-cards.png') });
+});
+
 test('arranges, badges a problem and colours a frame', async () => {
   await openGraph();
   const before = await node(2).boundingBox();

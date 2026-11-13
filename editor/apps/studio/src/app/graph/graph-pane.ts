@@ -66,7 +66,7 @@ import {
   swapPairOf,
   swappedWires
 } from './graph-authoring';
-import { isWireable, wireFamily } from './graph-fields';
+import { type CardLine, cardLinesOf, isWireable, wireFamily } from './graph-fields';
 import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
 import { GraphStore, type NodeLink, type NodeWire, RerouteIn, RerouteOut, RerouteType } from './graph-store';
 import { GraphViews } from './graph-views';
@@ -526,6 +526,18 @@ export class GraphThumbnail {
           @if (view.preview && store.thumbnail(view.id)()) {
             <xui-graph-node-preview><ptn-graph-thumbnail [node]="view.id" /></xui-graph-node-preview>
           }
+          @let lines = cardLines().get(view.id);
+          @if (lines && lines.length > 0) {
+            <dl
+              class="readout m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 px-2 py-1 text-[10px] leading-4"
+              data-testid="graph-node-parameters"
+            >
+              @for (line of lines; track line.title) {
+                <dt class="text-foreground-muted truncate">{{ line.title }}</dt>
+                <dd class="m-0 truncate text-end" [title]="line.value">{{ line.value }}</dd>
+              }
+            </dl>
+          }
           @for (port of view.ports; track port.name) {
             <xui-graph-port
               [dataType]="port.dataType"
@@ -635,6 +647,17 @@ export class GraphThumbnail {
           (triggered)="commands.run('toggleGraphSnap')"
         >
           Snap to Grid
+        </button>
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="arrange-parameters"
+          role="menuitemcheckbox"
+          [attr.aria-checked]="preferences.graphParameters()"
+          [selected]="preferences.graphParameters()"
+          (triggered)="commands.run('toggleGraphParameters')"
+        >
+          Parameters on Cards
         </button>
         @for (style of wireStyles; track style.command) {
           <button
@@ -963,6 +986,24 @@ export class GraphCanvas {
     const nodes = this.document()?.nodes;
     const chosen = this.selectedNodes();
     return chosen.length > 0 && chosen.every(id => nodes?.get(id)?.bypassed);
+  });
+
+  /** What each card lists under its title when the graph shows parameters on cards: what was changed on it. */
+  protected readonly cardLines = computed(() => {
+    const lines = new Map<number, CardLine[]>();
+    if (!this.preferences.graphParameters()) {
+      return lines;
+    }
+
+    const types = this.store.types();
+    for (const node of this.document()?.nodes.values() ?? []) {
+      const type = types.get(node.type);
+      if (type && node.type !== RerouteType) {
+        lines.set(node.id, cardLinesOf(type, node));
+      }
+    }
+
+    return lines;
   });
 
   /** The one selected node's two inputs Swap Inputs would trade, or null when there is no such pair. */
@@ -1437,6 +1478,14 @@ export class GraphCanvas {
       {
         checked: () => this.preferences.graphSnap(),
         run: () => this.preferences.set({ graphSnap: !this.preferences.graphSnap() })
+      },
+      this.destroyed
+    );
+    this.commands.handle(
+      'toggleGraphParameters',
+      {
+        checked: () => this.preferences.graphParameters(),
+        run: () => this.preferences.set({ graphParameters: !this.preferences.graphParameters() })
       },
       this.destroyed
     );
