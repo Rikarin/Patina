@@ -25,6 +25,7 @@ import { Preferences } from '../core/preferences';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { LibraryThumbnails } from '../library/thumbnails';
+import { BrushStore } from './brush-store';
 import { MaterialUse } from './material-use';
 
 const SearchQuiet = 200;
@@ -39,6 +40,8 @@ const Views: readonly XuiSegmentedOption<ShelfView>[] = [
 const Everything = 'all';
 /** The origin that is no place: the materials starred on this machine, from wherever they are. */
 const Favourites = 'favourites';
+/** The type of a brush or tool preset, which a click takes up rather than adds (#124). */
+const Preset = 'preset';
 
 /**
  * What a layer can be filled with, from anywhere in the Library, each with its picture. Click to add it, or drag it
@@ -130,7 +133,7 @@ const Favourites = 'favourites';
             type="button"
             data-testid="shelf-material"
             [attr.data-source]="material.source"
-            [attr.draggable]="material.role !== 'empty'"
+            [attr.draggable]="material.role !== 'empty' && material.role !== 'preset'"
             [class]="
               view() === 'list'
                 ? 'hover:bg-selection flex w-full min-w-0 items-center gap-2 px-2 py-1 text-start text-sm'
@@ -143,7 +146,9 @@ const Favourites = 'favourites';
                 : material.name +
                   ' · ' +
                   describe(material) +
-                  '\\nClick to add, drag into the stack, or Alt-click to paint with it'
+                  (material.role === 'preset'
+                    ? '\\nClick to paint with this preset'
+                    : '\\nClick to add, drag into the stack, or Alt-click to paint with it')
             "
             (click)="use(material, $event)"
             (dragstart)="carry($event, material)"
@@ -234,6 +239,7 @@ export class MaterialShelf {
   protected readonly preferences = inject(Preferences);
   protected readonly commands = inject(Commands);
   protected readonly using = inject(MaterialUse);
+  private readonly brushes = inject(BrushStore);
   private readonly materials = signal<readonly MaterialInfo[]>([]);
   /** The pictures, from the one thumbnail service the Library's grid uses too. */
   protected readonly pictures = inject(LibraryThumbnails);
@@ -322,10 +328,20 @@ export class MaterialShelf {
 
   /** A click adds a material; with Alt held, a material the brush can lay becomes the brush's (#125). */
   protected use(material: MaterialInfo, event?: MouseEvent): void {
+    if (material.role === Preset) {
+      void this.brushes.useSource(material.source);
+      return;
+    }
+
     void (event?.altKey ? this.using.paintWith(material) : this.using.use(material));
   }
 
   protected carry(event: DragEvent, material: MaterialInfo): void {
+    if (material.role === Preset) {
+      event.preventDefault();
+      return;
+    }
+
     this.using.carried.set(material);
     event.dataTransfer?.setData('text/plain', material.name);
     if (event.dataTransfer) {
@@ -345,7 +361,10 @@ export class MaterialShelf {
       this.originTerms.set(list.origins);
       this.failure.set(null);
       // In the list's order, a few at a time, so the first rows fill while the rest are drawn.
-      this.pictures.want(materials.filter(material => material.role !== 'empty').map(material => material.source));
+      // A preset is a brush and not a picture, so it has none to draw.
+      this.pictures.want(
+        materials.filter(material => material.role !== 'empty' && material.role !== Preset).map(m => m.source)
+      );
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }

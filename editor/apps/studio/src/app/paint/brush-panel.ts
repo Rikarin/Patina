@@ -48,6 +48,7 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: 
   { key: 'flowJitter', label: 'Flow jitter', max: 1, shown: 'share' },
   { key: 'pressureSize', label: 'Pressure to size', max: 1, shown: 'share' },
   { key: 'pressureFlow', label: 'Pressure to flow', max: 1, shown: 'share' },
+  { key: 'tiltSize', label: 'Tilt to size', max: 1, shown: 'share' },
   { key: 'lazy', label: 'Lazy mouse', max: 100, shown: 'size' },
   // How far a face may turn from the camera and still take paint: 90° paints all it looks at.
   { key: 'facing', label: 'Face angle', max: 90, shown: 'angle' }
@@ -728,7 +729,7 @@ export class BrushPanel {
     const brush = this.store.vocabulary()?.brush;
     const plain = (values: readonly string[]): StackTerm[] => values.map(value => ({ value, label: termName(value) }));
     return {
-      rotations: brush?.rotations ?? plain(['fixed', 'along', 'random']),
+      rotations: brush?.rotations ?? plain(['fixed', 'along', 'random', 'pen', 'tilt']),
       falloffs: brush?.falloffs ?? plain(['smooth', 'linear', 'spherical', 'tip']),
       scatterAxes: brush?.scatterAxes ?? plain(['both', 'across']),
       sizeSpaces: brush?.sizeSpaces ?? plain(['screen', 'texture', 'model']),

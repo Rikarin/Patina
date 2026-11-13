@@ -410,8 +410,8 @@ public sealed record ProjectDuplicateRequest(string Path, string Name);
 /// <param name="Kind"><c>graph</c>, which a fill reads, or <c>layered-material</c>, which unfolds into layers.</param>
 /// <param name="Source">What names it to the routes that use it.</param>
 /// <param name="Role">
-///     <c>material</c>, <c>mask</c>, <c>brush</c>, <c>filter</c>, or <c>empty</c> for a graph with no
-///     output yet.
+///     <c>material</c>, <c>mask</c>, <c>brush</c>, <c>filter</c>, <c>preset</c> for a brush or tool preset, which a
+///     client takes up rather than adds, or <c>empty</c> for a graph with no output yet.
 /// </param>
 /// <param name="Origin">
 ///     <c>shipped</c>, <c>project</c>, <c>library</c> for another project, or <c>package</c> for one of the library's

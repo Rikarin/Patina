@@ -92,6 +92,42 @@ public sealed class BrushApiTests : IAsyncLifetime {
     }
 
     /// <summary>
+    ///     The material shelf has a type for presets (#124): the shipped ones and the project's, each named by the source
+    ///     the brush routes take, tagged with its tool so a search for the tool finds it, and the type is offered by name.
+    /// </summary>
+    [Fact]
+    public async Task The_material_shelf_lists_the_presets_as_a_type_of_their_own() {
+        using var created = await client.PostAsJsonAsync(
+            "/api/v1/library/brushes",
+            new BrushPresetCreateRequest("crate", "Scuff", new("smudge", StackBrushes.Default)),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+
+        var shelf = (await client.GetFromJsonAsync<MaterialList>("/api/v1/library/materials?project=crate", Token))!;
+        var presets = shelf.Items.Where(static item => item.Role == "preset").ToList();
+        var searched = (await client.GetFromJsonAsync<MaterialList>(
+            "/api/v1/library/materials?project=crate&search=smudge",
+            Token
+        ))!.Items;
+
+        Assert.Contains(shelf.Roles, static term => term is { Value: "preset", Label: "Brush Presets" });
+        Assert.Contains(
+            presets,
+            static item => item is { Name: "Soft Round", Origin: "shipped", Kind: "brush-preset" }
+        );
+        var scuff = presets.Single(static item => item.Name == "Scuff");
+        Assert.Equal("project", scuff.Origin);
+        Assert.Equal(["smudge"], scuff.Tags!);
+        Assert.Equal(
+            (await ShelfAsync()).Single(static preset => preset.Name == "Scuff").Source,
+            scuff.Source
+        );
+        Assert.Contains(searched, static item => item.Name == "Scuff");
+        Assert.DoesNotContain(searched, static item => item.Name == "Soft Round");
+    }
+
+    /// <summary>
     ///     A saved preset is a document of the project and its file is the truth: an edit to the file is what the shelf
     ///     offers, and updating from the brush rewrites the file.
     /// </summary>

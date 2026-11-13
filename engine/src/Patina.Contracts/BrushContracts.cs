@@ -220,8 +220,11 @@ public static class StackBrushes {
     /// <summary>The falloff curves.</summary>
     public static IReadOnlyList<string> Falloffs { get; } = ["smooth", "linear", "spherical", "tip"];
 
-    /// <summary>How stamps turn: at a fixed angle, along the stroke, or at random.</summary>
-    public static IReadOnlyList<string> Rotations { get; } = ["fixed", "along", "random"];
+    /// <summary>
+    ///     How stamps turn: at a fixed angle, along the stroke, at random, with the pen's barrel, or the way the pen
+    ///     leans. The pen's two turn the whole stamp from the fixed angle, its stretch with it.
+    /// </summary>
+    public static IReadOnlyList<string> Rotations { get; } = ["fixed", "along", "random", "pen", "tilt"];
 
     /// <summary>What a radius is measured in.</summary>
     public static IReadOnlyList<string> SizeSpaces { get; } = ["screen", "texture", "model"];
@@ -406,7 +409,8 @@ public static class StackBrushes {
 
         float[] numbers = [
             brush.Flow, brush.Opacity, brush.Falloff, brush.Angle, brush.PositionJitter, brush.AngleJitter,
-            brush.SizeJitter, brush.PressureSize, brush.PressureFlow, brush.AspectAngle, brush.FlowJitter
+            brush.SizeJitter, brush.PressureSize, brush.PressureFlow, brush.AspectAngle, brush.FlowJitter,
+            brush.TiltSize
         ];
         return numbers.All(float.IsFinite) ? null : "A brush's settings are numbers.";
     }

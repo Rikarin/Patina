@@ -70,6 +70,8 @@ public static class Terms {
     /// </summary>
     static readonly Dictionary<string, string> InBrushes = new(StringComparer.Ordinal) {
         ["along"] = "Follow Stroke",
+        ["pen"] = "Pen Rotation",
+        ["tilt"] = "Pen Tilt",
         ["both"] = "Both Axes",
         ["across"] = "Across the Stroke",
         ["texture"] = "Texture Texels",
@@ -87,6 +89,7 @@ public static class Terms {
         ["mask"] = "Masks",
         ["filter"] = "Filters",
         ["brush"] = "Brushes",
+        ["preset"] = "Brush Presets",
         ["empty"] = "Empty Graphs",
         ["shipped"] = "Starter",
         ["package"] = "Packages",

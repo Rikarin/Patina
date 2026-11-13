@@ -10,7 +10,7 @@ import { messageOf } from '../core/messages';
 import { amount } from '../core/numbers';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
-import { PaintStore, pressureOf, toTexels } from './paint-store';
+import { PaintStore, penOf, toTexels } from './paint-store';
 import { StrokeGesture } from './stroke-gesture';
 
 /** What the channel list means by the one being painted, whichever that is. */
@@ -411,7 +411,7 @@ export class PaintAtlas {
     const box = (event.target as HTMLElement).getBoundingClientRect();
     return {
       ...toTexels(event.clientX - box.left, event.clientY - box.top, box.width, box.height, this.side()),
-      pressure: pressureOf(event)
+      ...penOf(event)
     };
   }
 }

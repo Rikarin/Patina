@@ -5,6 +5,7 @@ import { Preferences } from '../core/preferences';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { LibraryThumbnails } from '../library/thumbnails';
+import { BrushStore } from './brush-store';
 import { MaterialShelf } from './material-shelf';
 import { MaterialUse } from './material-use';
 
@@ -36,9 +37,10 @@ const origins = [
   { value: 'library', label: 'Other projects' }
 ];
 
-function setup() {
+function setup(listed: readonly MaterialInfo[] = [plastic, rust]) {
   const searches: string[] = [];
   const using = { failure: signal(null), carried: signal(null), use: vi.fn(), paintWith: vi.fn() };
+  const brushes = { useSource: vi.fn() };
   const wanted: string[] = [];
   const pictures = {
     want: (sources: readonly string[]) => wanted.push(...sources),
@@ -50,7 +52,7 @@ function setup() {
       const search = url.searchParams.get('search') ?? '';
       searches.push(search);
       // The Server decides what a search finds; here a search for another project's words finds Rust alone.
-      return Promise.resolve(Response.json({ items: search ? [rust] : [plastic, rust], roles, origins }));
+      return Promise.resolve(Response.json({ items: search ? [rust] : listed, roles, origins }));
     }
 
     return Promise.resolve(Response.json({ items: [] }));
@@ -62,13 +64,14 @@ function setup() {
       { provide: LibraryStore, useValue: { api: () => Promise.resolve(client), changes: signal(0) } },
       { provide: ProjectStore, useValue: { current: signal({ path: 'alpha' }), active: signal(null) } },
       { provide: MaterialUse, useValue: using },
-      { provide: LibraryThumbnails, useValue: pictures }
+      { provide: LibraryThumbnails, useValue: pictures },
+      { provide: BrushStore, useValue: brushes }
     ]
   });
   const fixture = TestBed.createComponent(MaterialShelf);
   const page = fixture.nativeElement as HTMLElement;
   const names = () => [...page.querySelectorAll('[data-testid="shelf-material"]')].map(row => row.textContent.trim());
-  return { fixture, page, names, searches, using, wanted };
+  return { fixture, page, names, searches, using, wanted, brushes };
 }
 
 afterEach(() => {
@@ -161,5 +164,31 @@ describe('MaterialShelf', () => {
     document.querySelectorAll<HTMLElement>('[role="option"]')[1]?.click();
     await settled(fixture);
     expect(names()).toEqual(['RustProps']);
+  });
+
+  it('takes a preset up on a click, never adds or drags it, and asks no picture of it (#124)', async () => {
+    const chisel: MaterialInfo = {
+      name: 'Chisel Marker',
+      kind: 'brush-preset',
+      source: 'starter:Chisel Marker',
+      role: 'preset',
+      origin: 'shipped',
+      channels: [],
+      tags: ['brush']
+    };
+    const { fixture, page, names, using, wanted, brushes } = setup([plastic, chisel]);
+    await vi.waitFor(async () => {
+      await settled(fixture);
+      expect(names()).toEqual(['PlasticStarter', 'Chisel MarkerStarter']);
+    });
+
+    expect(wanted).toEqual([plastic.source]);
+    const preset = page.querySelectorAll<HTMLElement>('[data-testid="shelf-material"]')[1];
+    expect(preset?.getAttribute('draggable')).toBe('false');
+
+    preset?.dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }));
+    expect(brushes.useSource).toHaveBeenCalledWith(chisel.source);
+    expect(using.use).not.toHaveBeenCalled();
+    expect(using.paintWith).not.toHaveBeenCalled();
   });
 });

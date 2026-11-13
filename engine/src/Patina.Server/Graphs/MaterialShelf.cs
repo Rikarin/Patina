@@ -36,7 +36,11 @@ public static class MaterialShelf {
         new(StringComparer.Ordinal);
 
     /// <summary>The types a shelf narrows to, and where a material can be from.</summary>
-    static readonly string[] Roles = [GraphRoles.Material, GraphRoles.Mask, GraphRoles.Filter, GraphRoles.Brush];
+    static readonly string[] Roles =
+        [GraphRoles.Material, GraphRoles.Mask, GraphRoles.Filter, GraphRoles.Brush, PresetRole];
+
+    /// <summary>The type of a brush or tool preset on the shelf, which a client takes up rather than adds (#124).</summary>
+    public const string PresetRole = "preset";
 
     static readonly string[] Origins = ["shipped", PackageOrigin, "project", ElsewhereOrigin];
 
@@ -73,10 +77,29 @@ public static class MaterialShelf {
             );
         }
 
+        found.AddRange(Presets(library, project, search));
         found.RemoveAll(material => !Matches(material, words));
         found.AddRange(Elsewhere(library, project, words).Take(ElsewhereLimit));
         return found;
     }
+
+    /// <summary>
+    ///     The brush and tool presets the project's brush panel lists, as the shelf shows them (#124): tagged with their
+    ///     tool, so a search for one finds them, and never added to a stack, since taking one up is the client's.
+    /// </summary>
+    static IEnumerable<MaterialInfo> Presets(OpenLibrary library, string? project, string? search) =>
+        BrushShelf.List(library, project, search)
+            .Select(static preset => new MaterialInfo(
+                    preset.Name,
+                    DocumentKinds.BrushPreset,
+                    preset.Source,
+                    PresetRole,
+                    preset.Origin,
+                    [],
+                    Project: preset.Project,
+                    Tags: [preset.Preset.Tool]
+                )
+            );
 
     /// <summary>
     ///     Whether a material has every word of a search, ignoring case, in one of what the shelf shows of it: its

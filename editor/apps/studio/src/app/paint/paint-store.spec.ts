@@ -13,6 +13,7 @@ import {
   colourOf,
   hexOf,
   paintsOverMask,
+  penOf,
   pressureOf,
   rowsOf,
   stackSocketUrl,
@@ -748,6 +749,30 @@ describe('PaintStore', () => {
   it('takes pressure from a pen and not from a mouse', () => {
     expect(pressureOf({ pointerType: 'mouse', pressure: 0.5 } as PointerEvent)).toBe(1);
     expect(pressureOf({ pointerType: 'pen', pressure: 0.3 } as PointerEvent)).toBe(0.3);
+  });
+
+  it('takes a pen’s lean and turn, and sends nothing more for a mouse (#123)', () => {
+    const still = { tiltX: 0, tiltY: 0, twist: 0 };
+    expect(penOf({ pointerType: 'mouse', pressure: 0.5, ...still })).toEqual({ pressure: 1 });
+
+    const angles = penOf({
+      ...still,
+      pointerType: 'pen',
+      pressure: 0.4,
+      twist: 90,
+      altitudeAngle: Math.PI / 4,
+      azimuthAngle: 1
+    });
+    expect(angles.pressure).toBe(0.4);
+    expect(angles.tilt).toBeCloseTo(0.5);
+    expect(angles.azimuth).toBe(1);
+    expect(angles.twist).toBeCloseTo(Math.PI / 2);
+
+    // Leaning 45° down the screen, read from the tilts when the browser gives no angles.
+    const leaned = penOf({ pointerType: 'pen', pressure: 1, tiltX: 0, tiltY: 45, twist: 0 });
+    expect(leaned.tilt).toBeCloseTo(0.5);
+    expect(leaned.azimuth).toBeCloseTo(Math.PI / 2);
+    expect(penOf({ pointerType: 'pen', pressure: 1, ...still })).toMatchObject({ tilt: 0, azimuth: 0, twist: 0 });
   });
 
   it('asks the Worker where a stroke on the mesh is, and every part carries the camera it was given', async () => {

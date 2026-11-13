@@ -31,7 +31,7 @@ import {
 } from '@patina/api-client';
 import { learnTerms } from '../core/labels';
 import { messageOf } from '../core/messages';
-import { milliseconds } from '../core/numbers';
+import { milliseconds, toRadians } from '../core/numbers';
 import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
@@ -91,7 +91,8 @@ export const NewBrush: StackBrush = {
   occlusion: true,
   occlusionTolerance: 2,
   facing: Math.PI / 2,
-  resume: false
+  resume: false,
+  tiltSize: 0
 };
 
 const ThumbnailQuiet = 400;
@@ -2100,6 +2101,44 @@ export class PaintStore {
 /** How hard a pointer is pressing: a mouse says 0.5 for a button held, and means nothing by it. */
 export function pressureOf(event: PointerEvent): number {
   return event.pointerType === 'pen' ? event.pressure : 1;
+}
+
+/** How a pen stands on the screen, as a stamp carries it: its lean, 0 to 1, which way, and its barrel's turn. */
+export interface PenStance {
+  pressure: number;
+  tilt?: number;
+  azimuth?: number;
+  twist?: number;
+}
+
+const QuarterTurn = Math.PI / 2;
+
+/**
+ * How a pointer stands (#123). A mouse is a pen held straight and pressed all the way, and sends nothing more. The
+ * angles are measured as a brush's are, on the screen with y down: 0 towards the right and a quarter turn down.
+ */
+export function penOf(
+  event: Pick<PointerEvent, 'pointerType' | 'pressure' | 'tiltX' | 'tiltY' | 'twist'> & {
+    altitudeAngle?: number;
+    azimuthAngle?: number;
+  }
+): PenStance {
+  if (event.pointerType !== 'pen') {
+    return { pressure: 1 };
+  }
+
+  const twist = toRadians(event.twist || 0);
+  let { altitudeAngle: altitude, azimuthAngle: azimuth } = event;
+  if (altitude === undefined || azimuth === undefined) {
+    const x = Math.tan(toRadians(event.tiltX || 0));
+    const y = Math.tan(toRadians(event.tiltY || 0));
+    const lean = Math.hypot(x, y);
+    altitude = lean === 0 ? QuarterTurn : Math.atan(1 / lean);
+    azimuth = lean === 0 ? 0 : Math.atan2(y, x);
+  }
+
+  const tilt = Math.min(1, Math.max(0, 1 - altitude / QuarterTurn));
+  return { pressure: event.pressure, tilt, azimuth, twist };
 }
 
 /** Whether a layer composites a channel. No list at all means every one of them. */

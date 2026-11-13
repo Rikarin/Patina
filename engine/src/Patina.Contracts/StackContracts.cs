@@ -751,7 +751,20 @@ public sealed record StackSetSeed(uint Seed) : StackCommand;
 /// <param name="X">Its column.</param>
 /// <param name="Y">Its row.</param>
 /// <param name="Pressure">How hard, 0 to 1.</param>
-public sealed record StackStamp(float X, float Y, float Pressure = 1f);
+/// <param name="Tilt">How far a pen leans, 0 upright to 1 lying flat, or null for upright, as a mouse is.</param>
+/// <param name="Azimuth">
+///     Which way a pen leans, in radians on the picture as a brush's angle is measured: 0 towards +x, a quarter turn
+///     towards +y. Null is 0.
+/// </param>
+/// <param name="Twist">How far a pen's barrel is turned, in radians, measured as a brush's angle is. Null is 0.</param>
+public sealed record StackStamp(
+    float X,
+    float Y,
+    float Pressure = 1f,
+    float? Tilt = null,
+    float? Azimuth = null,
+    float? Twist = null
+);
 
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
@@ -769,7 +782,7 @@ public sealed record StackStamp(float X, float Y, float Pressure = 1f);
 /// <param name="Falloff">How soft its edge is, 0 to 1.</param>
 /// <param name="Alpha">A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or null.</param>
 /// <param name="Angle">Its fixed rotation, in radians.</param>
-/// <param name="Rotation">fixed, along or random.</param>
+/// <param name="Rotation">fixed, along, random, pen (the barrel's turn) or tilt (the way the pen leans).</param>
 /// <param name="PositionJitter">How far a stamp strays, as a share of the radius, 0 to 1.</param>
 /// <param name="AngleJitter">How far a stamp turns either way, in radians.</param>
 /// <param name="SizeJitter">How much of its radius a stamp can lose, 0 to 1.</param>
@@ -817,6 +830,10 @@ public sealed record StackStamp(float X, float Y, float Pressure = 1f);
 ///     Whether a stroke that starts where the last one stopped carries it on. A client that sees one start there sends
 ///     where the brush stood as <see cref="StackStroke.Resume" />; the brush only says whether to.
 /// </param>
+/// <param name="TiltSize">
+///     How much of the radius a pen held upright takes off, 0 to 1: a pen laid over paints the whole radius, as a
+///     pencil's side paints wider. A mouse is upright, so a brush with any of this paints smaller under one.
+/// </param>
 public sealed record StackBrush(
     float Radius,
     float Flow = 1f,
@@ -842,7 +859,8 @@ public sealed record StackBrush(
     bool Occlusion = true,
     float OcclusionTolerance = 2f,
     float Facing = StackBrushes.AnyFacing,
-    bool Resume = false
+    bool Resume = false,
+    float TiltSize = 0f
 );
 #pragma warning restore SK7005
 

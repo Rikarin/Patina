@@ -4582,8 +4582,8 @@ export interface components {
       /** @description What names it to the routes that use it. */
       source: string;
       /**
-       * @description `material`, `mask`, `brush`, `filter`, or `empty` for a graph with no
-       *                 output yet.
+       * @description `material`, `mask`, `brush`, `filter`, `preset` for a brush or tool preset, which a
+       *                 client takes up rather than adds, or `empty` for a graph with no output yet.
        */
       role: string;
       /**
@@ -5419,7 +5419,7 @@ export interface components {
        */
       angle: number;
       /**
-       * @description fixed, along or random.
+       * @description fixed, along, random, pen (the barrel's turn) or tilt (the way the pen leans).
        * @default fixed
        */
       rotation: string;
@@ -5529,6 +5529,13 @@ export interface components {
        * @default false
        */
       resume: boolean;
+      /**
+       * Format: float
+       * @description How much of the radius a pen held upright takes off, 0 to 1: a pen laid over paints the whole radius, as a
+       *     pencil's side paints wider. A mouse is upright, so a brush with any of this paints smaller under one.
+       * @default 0
+       */
+      tiltSize: number;
     };
     /** @description A picture of a brush: a stroke of it drawn small, under `/previews/{hash}`. */
     StackBrushPreview: {
@@ -6942,6 +6949,22 @@ export interface components {
        * @default 1
        */
       pressure: number;
+      /**
+       * Format: float
+       * @description How far a pen leans, 0 upright to 1 lying flat, or null for upright, as a mouse is.
+       */
+      tilt?: null | number;
+      /**
+       * Format: float
+       * @description Which way a pen leans, in radians on the picture as a brush's angle is measured: 0 towards +x, a quarter turn
+       *     towards +y. Null is 0.
+       */
+      azimuth?: null | number;
+      /**
+       * Format: float
+       * @description How far a pen's barrel is turned, in radians, measured as a brush's angle is. Null is 0.
+       */
+      twist?: null | number;
     };
     /** @description A whole stack: everything a client needs to draw it, and no pixels. */
     StackState: {
