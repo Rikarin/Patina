@@ -71,10 +71,6 @@ public sealed record ProjectPage(IReadOnlyList<ProjectSummary> Items, int Total,
 /// </param>
 /// <param name="Image">The picture an <c>image-material</c> starts from, on the Server\'s machine.</param>
 /// <param name="High">The detailed mesh it bakes from, on the Server's machine.</param>
-/// <param name="Rows">
-///     The height of a stack it starts with, when it is not as tall as <paramref name="Resolution" /> is wide (#144):
-///     a model laid out on a 2:1 sheet paints at 2048 × 1024. Null is square. A graph is always square.
-/// </param>
 public sealed record ProjectCreateRequest(
     string Name,
     string? Folder = null,
@@ -83,9 +79,14 @@ public sealed record ProjectCreateRequest(
     int? Resolution = null,
     string? Kind = null,
     string? Image = null,
-    string? High = null,
-    int? Rows = null
-);
+    string? High = null
+) {
+    /// <summary>
+    ///     The height of a stack it starts with, when it is not as tall as Resolution is wide (#144):
+    ///     a model laid out on a 2:1 sheet paints at 2048 × 1024. Null is square. A graph is always square.
+    /// </summary>
+    public int? Rows { get; init; }
+}
 
 /// <summary>A result of a bake in a project's folder.</summary>
 /// <param name="Kind">What it is.</param>

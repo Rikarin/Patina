@@ -66,7 +66,7 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
     public async Task A_project_starts_wider_than_it_is_tall_when_asked() {
         var created = await client.PostAsJsonAsync(
             "/api/v1/library/projects",
-            new ProjectCreateRequest("Strip", Resolution: 1024, Kind: "layered-material", Rows: 512),
+            new ProjectCreateRequest("Strip", Resolution: 1024, Kind: "layered-material") { Rows = 512 },
             Token
         );
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
@@ -79,7 +79,7 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
 
         var tall = await client.PostAsJsonAsync(
             "/api/v1/library/projects",
-            new ProjectCreateRequest("Tower", Kind: "layered-material", Rows: 9),
+            new ProjectCreateRequest("Tower", Kind: "layered-material") { Rows = 9 },
             Token
         );
         Assert.Equal(HttpStatusCode.BadRequest, tall.StatusCode);
