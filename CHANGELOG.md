@@ -191,6 +191,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A brush on a Color Selection mask adds to and takes from the whole selection, over every color, and Keep to Meshes keeps a layer off the other meshes for every color it selects. The brush and the limit used to lie under the selection: a stroke was read as a color by the first and never seen by the rest, and a second color showed the layer on meshes it was kept away from. A mask's limit to some meshes now also holds over its other effects, so a blur no longer carries a layer past it.
+- A brush keeps up better on a dense mesh: a stamp in the viewport looks only at the triangles its square on the screen can see, and weighs them on every core, so on two million triangles a 24 px stamp takes about a third of the time it did and a 48 px one a third to a half. Strokes paint the same pixels as before.
 - The 2D view of a texture set that is not square is the set's shape: the map, its UV layout and the pointer's readout no longer sit in a square well, stretched.
 - Bake settings changed one after another in quick succession are all kept in the project. A change made while the one before it was still being written could be undone by it, so the project kept an earlier setting.
 - The first stroke on a dense mesh starts sooner: the engine lays out the mesh for the brush in about half the time, 0.7 to 1.3 s instead of 2.1 to 3.6 s for two million triangles.
