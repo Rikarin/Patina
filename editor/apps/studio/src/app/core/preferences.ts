@@ -5,6 +5,10 @@ export type Theme = 'dark' | 'light' | 'system';
 export type LibraryViewChoice = 'list' | 'grid';
 export type LibraryTabChoice = 'projects' | 'assets';
 export type ShelfViewChoice = 'list' | 'small' | 'large';
+/** How fast the viewport's camera answers the mouse. */
+export type CameraSpeed = 'slow' | 'normal' | 'fast';
+/** What each camera speed multiplies the mouse's movement by. */
+export const CameraSpeeds: Readonly<Record<CameraSpeed, number>> = { slow: 0.5, normal: 1, fast: 2 };
 /** How the graph draws a wire: xUI's routings. */
 export type WireStyle = 'bezier' | 'smoothstep' | 'straight';
 
@@ -24,6 +28,12 @@ export interface PreferenceValues {
   shelfView: ShelfViewChoice;
   /** Whether the viewport shows render statistics. */
   stats: boolean;
+  /** How fast a drag turns the viewport's camera. */
+  orbitSpeed: CameraSpeed;
+  /** How fast the wheel and a zoom drag move the viewport's camera in and out. */
+  zoomSpeed: CameraSpeed;
+  /** Whether the wheel zooms the other way: rolled away from you, out. */
+  invertZoom: boolean;
   /** Whether a node dragged on the graph lands on the grid. */
   graphSnap: boolean;
   /** How the graph draws its wires. */
@@ -79,6 +89,9 @@ export const DefaultPreferences: PreferenceValues = {
   libraryTab: 'projects',
   shelfView: 'list',
   stats: false,
+  orbitSpeed: 'normal',
+  zoomSpeed: 'normal',
+  invertZoom: false,
   graphSnap: false,
   graphWires: 'bezier',
   favouriteNodes: [],
@@ -101,6 +114,9 @@ const Choices: {
   libraryTab: ['projects', 'assets'],
   shelfView: ['list', 'small', 'large'],
   stats: [false, true],
+  orbitSpeed: ['normal', 'slow', 'fast'],
+  zoomSpeed: ['normal', 'slow', 'fast'],
+  invertZoom: [false, true],
   graphSnap: [false, true],
   graphWires: ['bezier', 'smoothstep', 'straight']
 };
@@ -147,6 +163,10 @@ export class Preferences {
   readonly libraryTab = computed(() => this.values().libraryTab);
   readonly shelfView = computed(() => this.values().shelfView);
   readonly stats = computed(() => this.values().stats);
+  /** What a drag's pixels are multiplied by before they turn the camera. */
+  readonly orbitScale = computed(() => CameraSpeeds[this.values().orbitSpeed]);
+  /** What the wheel's and a zoom drag's pixels are multiplied by, negative when the wheel is inverted. */
+  readonly zoomScale = computed(() => CameraSpeeds[this.values().zoomSpeed] * (this.values().invertZoom ? -1 : 1));
   readonly graphSnap = computed(() => this.values().graphSnap);
   readonly graphWires = computed(() => this.values().graphWires);
   readonly favouriteNodes = computed(() => this.values().favouriteNodes);

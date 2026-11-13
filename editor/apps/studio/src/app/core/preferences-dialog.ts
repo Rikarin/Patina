@@ -11,7 +11,7 @@ import { Commands } from './commands';
 import { desktop } from './desktop';
 import { messageOf } from './messages';
 import { bytes } from './numbers';
-import type { LibraryTabChoice, LibraryViewChoice, ShelfViewChoice, Theme } from './preferences';
+import type { CameraSpeed, LibraryTabChoice, LibraryViewChoice, ShelfViewChoice, Theme } from './preferences';
 import { Preferences } from './preferences';
 
 type AutosavePreferences = components['schemas']['AutosavePreferences'];
@@ -29,6 +29,11 @@ const LibraryViews: readonly XuiSegmentedOption<LibraryViewChoice>[] = [
 const LibraryTabs: readonly XuiSegmentedOption<LibraryTabChoice>[] = [
   { value: 'projects', label: 'Projects' },
   { value: 'assets', label: 'Materials' }
+];
+const CameraSpeedOptions: readonly XuiSegmentedOption<CameraSpeed>[] = [
+  { value: 'slow', label: 'Slow' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'fast', label: 'Fast' }
 ];
 const ShelfViews: readonly XuiSegmentedOption<ShelfViewChoice>[] = [
   { value: 'list', label: 'List' },
@@ -126,6 +131,46 @@ const MostKept = 20;
                 [checked]="preferences.stats()"
                 (checkedChange)="preferences.set({ stats: $event })"
               />
+            </label>
+          </section>
+
+          <section class="flex flex-col gap-2" data-testid="preferences-camera">
+            <h3 class="section-label">Viewport camera</h3>
+            <div class="flex items-center gap-3">
+              <span class="w-36 shrink-0">Orbit speed</span>
+              <xui-segmented-control
+                class="min-w-0 flex-1"
+                size="sm"
+                fill
+                aria-label="Orbit speed"
+                data-testid="preferences-orbit-speed"
+                [options]="cameraSpeeds"
+                [value]="preferences.all().orbitSpeed"
+                (valueChange)="$event && preferences.set({ orbitSpeed: $event })"
+              />
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="w-36 shrink-0">Zoom speed</span>
+              <xui-segmented-control
+                class="min-w-0 flex-1"
+                size="sm"
+                fill
+                aria-label="Zoom speed"
+                data-testid="preferences-zoom-speed"
+                [options]="cameraSpeeds"
+                [value]="preferences.all().zoomSpeed"
+                (valueChange)="$event && preferences.set({ zoomSpeed: $event })"
+              />
+            </div>
+            <label class="flex items-center gap-3">
+              <span class="w-36 shrink-0">Invert the wheel</span>
+              <xui-switch
+                aria-label="Invert the wheel"
+                data-testid="preferences-invert-zoom"
+                [checked]="preferences.all().invertZoom"
+                (checkedChange)="preferences.set({ invertZoom: $event })"
+              />
+              <span class="text-foreground-muted text-xs">rolled away from you, the camera moves out</span>
             </label>
           </section>
 
@@ -252,6 +297,7 @@ export class PreferencesDialog {
   protected readonly libraryViews = LibraryViews;
   protected readonly libraryTabs = LibraryTabs;
   protected readonly shelfViews = ShelfViews;
+  protected readonly cameraSpeeds = CameraSpeedOptions;
   protected readonly mostMinutes = MostMinutes;
   protected readonly mostSeconds = MostSeconds;
   protected readonly mostKept = MostKept;

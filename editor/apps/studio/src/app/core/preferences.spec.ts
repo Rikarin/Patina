@@ -113,6 +113,17 @@ describe('Preferences', () => {
     expect(written).toHaveLength(5);
   });
 
+  it('scales the camera by the speeds chosen, and turns the wheel round when it is inverted', () => {
+    vi.stubGlobal('patina', undefined);
+    const preferences = TestBed.inject(Preferences);
+    expect([preferences.orbitScale(), preferences.zoomScale()]).toEqual([1, 1]);
+
+    preferences.set({ orbitSpeed: 'slow', zoomSpeed: 'fast', invertZoom: true });
+
+    expect([preferences.orbitScale(), preferences.zoomScale()]).toEqual([0.5, -2]);
+    expect(readPreferences({ orbitSpeed: 'warp', zoomSpeed: 2, invertZoom: 'yes' })).toEqual(DefaultPreferences);
+  });
+
   it('starts with the defaults and keeps a change in the desktop app’s file', () => {
     const written: unknown[] = [];
     vi.stubGlobal('patina', {
