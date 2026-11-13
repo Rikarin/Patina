@@ -151,7 +151,8 @@ public static partial class ExportPresetWriter {
         // The comments of the file this one takes the place of: the one renamed, or the one of its id.
         var before = new[] { old, file }.FirstOrDefault(File.Exists);
         var text = Text(document);
-        LibraryFiles.Replace(file, before is null ? text : PresetComments.Of(File.ReadAllText(before)).Into(text));
+        var kept = before is null ? text : PresetComments.Of(SharedFile.ReadAllText(before)).Into(text);
+        LibraryFiles.Replace(file, kept);
         if (old is not null) {
             File.Delete(old);
         }
