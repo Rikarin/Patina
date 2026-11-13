@@ -461,7 +461,7 @@ static class ProjectFiles {
             var path = FreeFolder(root, below);
             var target = LibraryLayout.Full(root, $"{LibraryLayout.ProjectsFolder}/{path}");
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            Directory.Move(files, target);
+            SharedFile.MoveFolder(files, target);
             LibraryBin.Forget(entry);
             return $"{LibraryLayout.ProjectsFolder}/{path}";
         }

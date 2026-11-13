@@ -274,7 +274,7 @@ static class ProjectSettingsEndpoint {
             Claim(library, project, document, chosen);
             var (from, to) = (Path.Combine(bakes, old), Path.Combine(bakes, chosen));
             if (Directory.Exists(from) && !Directory.Exists(to)) {
-                Directory.Move(from, to);
+                SharedFile.MoveFolder(from, to);
             }
         }
 

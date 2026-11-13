@@ -94,17 +94,42 @@ public static class SharedFile {
     /// </remarks>
     /// <param name="from">The finished file, which is gone afterwards.</param>
     /// <param name="to">Where it goes, replacing what is there.</param>
-    public static void MoveOver(string from, string to) {
+    public static void MoveOver(string from, string to) => Patiently(from, to, false);
+
+    /// <summary>
+    ///     Moves a folder to where nothing is, as <c>Directory.Move</c> does, waiting briefly for whoever is reading
+    ///     a file in it.
+    /// </summary>
+    /// <remarks>
+    ///     Windows refuses to rename a folder while any file below it is open, which the library scan reading a
+    ///     project's <c>project.yaml</c> was enough for: deleting the project to the bin came back as a 409 (#257).
+    ///     A place that is taken is refused at once, as before, since waiting cannot free it.
+    /// </remarks>
+    /// <param name="from">The folder.</param>
+    /// <param name="to">Where it goes, which must not exist.</param>
+    public static void MoveFolder(string from, string to) => Patiently(from, to, true);
+
+    /// <summary>A move, tried again while it fails as a held file makes it and it may still succeed.</summary>
+    static void Patiently(string from, string to, bool folder) {
         var waited = Stopwatch.StartNew();
         for (var pause = 1;; pause = Math.Min(pause * 2, LongestPause)) {
             try {
-                File.Move(from, to, true);
+                if (folder) {
+                    Directory.Move(from, to);
+                } else {
+                    File.Move(from, to, true);
+                }
+
                 return;
-            } catch (Exception e) when (Held(e) && waited.Elapsed < Patience && File.Exists(from)) {
+            } catch (Exception e) when (Held(e) && waited.Elapsed < Patience && Possible(from, to, folder)) {
                 Thread.Sleep(pause);
             }
         }
     }
+
+    /// <summary>Whether a failed move can still succeed: what moves is there, and a folder's place free.</summary>
+    static bool Possible(string from, string to, bool folder) =>
+        folder ? Directory.Exists(from) && !Directory.Exists(to) && !File.Exists(to) : File.Exists(from);
 
     /// <summary>Whether a move failed the way it does on Windows while the file it replaces is open.</summary>
     static bool Held(Exception e) =>

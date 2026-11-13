@@ -45,22 +45,38 @@ public sealed partial class SharedFileTests : IDisposable {
     ///     enough for that on Windows, which refuses the rename while the read is under way, so the move waits it out.
     /// </summary>
     [Fact]
-    public async Task A_file_being_read_can_be_moved_over() {
+    public void A_file_being_read_can_be_moved_over() {
         var file = Path.Combine(folder.FullName, "slope.vxtexgraph");
         var part = $"{file}.part";
         File.WriteAllText(file, "name: Slope");
         File.WriteAllText(part, "name: Ramp");
+        var held = HeldFile.Open(file);
 
-        Task moving;
-        await using (var reading = SharedFile.OpenRead(file)) {
-            Assert.Equal('n', reading.ReadByte());
-            moving = Task.Run(() => SharedFile.MoveOver(part, file), TestContext.Current.CancellationToken);
-            await Task.Delay(150, TestContext.Current.CancellationToken); // the move meets the read
-        }
+        SharedFile.MoveOver(part, file);
 
-        await moving;
+        held.Join();
         Assert.Equal("name: Ramp", File.ReadAllText(file));
         Assert.False(File.Exists(part));
+    }
+
+    /// <summary>
+    ///     A folder with a file in it that somebody reads can be moved (#257). Windows refuses to rename a folder
+    ///     while anything below it is open, so the move waits for the read; a place that is taken is refused at once.
+    /// </summary>
+    [Fact]
+    public void A_folder_with_a_file_being_read_can_be_moved() {
+        var from = Directory.CreateDirectory(Path.Combine(folder.FullName, "crate")).FullName;
+        var to = Path.Combine(folder.FullName, "bin");
+        var taken = Directory.CreateDirectory(Path.Combine(folder.FullName, "taken")).FullName;
+        File.WriteAllText(Path.Combine(from, "project.yaml"), "name: Crate");
+        var held = HeldFile.Open(Path.Combine(from, "project.yaml"));
+
+        SharedFile.MoveFolder(from, to);
+
+        held.Join();
+        Assert.Equal("name: Crate", File.ReadAllText(Path.Combine(to, "project.yaml")));
+        Assert.False(Directory.Exists(from));
+        Assert.Throws<IOException>(() => SharedFile.MoveFolder(to, taken));
     }
 
     /// <summary>A move over a file held for longer than the wait fails, rather than never returning.</summary>

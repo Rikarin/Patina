@@ -117,7 +117,7 @@ public static class MeshMapBakeRun {
 
         Directory.CreateDirectory(Path.GetDirectoryName(folder)!);
         try {
-            Directory.Move(part, folder);
+            SharedFile.MoveFolder(part, folder);
         } catch (IOException) when (Directory.Exists(folder)) {
             // Another attempt got here first, with the same bytes: that is what the key says.
             Directory.Delete(part, true);

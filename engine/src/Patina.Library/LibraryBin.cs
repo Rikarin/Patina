@@ -53,7 +53,7 @@ public static class LibraryBin {
     /// <param name="name">Its display name.</param>
     public static BinItem PutProject(string root, string path, string full, string name) {
         var (entry, item) = Open(root, ProjectKind, name, $"{LibraryLayout.ProjectsFolder}/{path}");
-        Directory.Move(full, Path.Combine(entry, FilesFolder));
+        SharedFile.MoveFolder(full, Path.Combine(entry, FilesFolder));
         Write(entry, item);
         return item;
     }
