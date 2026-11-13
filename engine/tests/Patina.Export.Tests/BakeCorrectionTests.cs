@@ -380,4 +380,35 @@ public sealed class BakeCorrectionTests : IDisposable {
         var written = BakeCache.ReadManifestFile(Path.Combine(request.Output, $"before.{BakeCache.ManifestFile}"));
         Assert.Equal(LibraryFiles.Digest(before), written!.Mesh);
     }
+
+    /// <summary>
+    ///     A bake records the faces it was made on, so after a change to one texture set's faces only that set says its
+    ///     bake no longer fits: the other's maps are as current as a new bake's (#151). Before, both said so.
+    /// </summary>
+    [Fact]
+    public void A_mesh_change_makes_only_the_touched_sets_bake_stale() {
+        var high = Quad("high.obj", 0f, Straight);
+        var low = TwoSets("low.obj", 0f);
+        BakeRequest Set(string set) =>
+            Request(high, low, static options => options with { Maps = ["normal"] }) with { Material = set };
+
+        var body = Bake(Set("Body"), "body");
+        Assert.Equal("Body", body.Material);
+        Assert.Equal(BakeKeyReads.GeometryOf(low, "Body", 0), body.Geometry);
+        _ = Bake(Set("Strap"), "strap");
+
+        _ = TwoSets("low.obj", 0.25f);
+        var now = LibraryFiles.Digest(low);
+        var before = BakeFit.Geometry;
+        try {
+            BakeFit.Geometry = null;
+            Assert.Equal(BakeFit.Mesh, BakeFit.Stale(Into("body"), now, 0, low));
+
+            BakeFit.Geometry = BakeKeyReads.GeometryOf;
+            Assert.Null(BakeFit.Stale(Into("body"), now, 0, low));
+            Assert.Equal(BakeFit.Mesh, BakeFit.Stale(Into("strap"), now, 0, low));
+        } finally {
+            BakeFit.Geometry = before;
+        }
+    }
 }

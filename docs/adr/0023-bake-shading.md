@@ -50,8 +50,13 @@ paths and mesh-map masks that read the bake per texel (ADR 0021). `BakeFit` says
 A set's bake was already keyed by its UV set, since the low mesh is read in it (#151), so baking again after a change
 of UV set is a new bake, and changing it back finds the old one in the cache.
 
+A set whose mesh changed elsewhere keeps a fitting bake. The manifest also records the material baked onto and the
+revision of its faces in the bake's UV set, read as the bake key reads them (`BakeKeyReads.Geometry`), and a bake of
+another mesh digest still fits while the mesh file has those faces (`BakeFit.SameFaces`). Library cannot read a mesh,
+so the Server hands it the reader (`BakeFit.Geometry`); unset, and for a bake made before the faces were recorded, any
+change to the mesh is a change to every set, as before. The project's own word on a bake folder narrows the same way,
+and Layers takes the open set's word over the project's.
+
 ## What is not done
 
-- A per-set mesh change that left a set untouched still marks that set stale until it is baked again, which is quick:
-  its maps come from the cache. Recording each set's geometry digest in its manifest would narrow it.
 - The bake still has one side, `BakeOptions.Resolution` (#147).

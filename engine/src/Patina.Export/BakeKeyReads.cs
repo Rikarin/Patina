@@ -61,6 +61,22 @@ public static class BakeKeyReads {
         return reads;
     }
 
+    /// <summary>
+    ///     The revision of one texture set's faces in a mesh file, as a bake of it records them, or null when the file
+    ///     cannot be read so. This is what <see cref="BakeFit.Geometry" /> asks.
+    /// </summary>
+    /// <param name="file">The mesh file.</param>
+    /// <param name="material">The set's material, or null for the whole mesh.</param>
+    /// <param name="uvSet">The UV set the faces are laid out in.</param>
+    /// <returns>The revision's text, or null.</returns>
+    public static string? GeometryOf(string file, string? material, int uvSet) {
+        try {
+            return Geometry(MeshMapBakeRun.Read(file, material, uvSet)).Text;
+        } catch (Exception e) when (e is ModelFormatException or InvalidDataException or IOException) {
+            return null; // a set that cannot be read in it any more does not fit its bake
+        }
+    }
+
     /// <summary>A revision of everything a bake reads of a mesh it bakes onto, and nothing it does not.</summary>
     /// <param name="model">The mesh, flattened, with only the set's faces.</param>
     /// <returns>The revision.</returns>

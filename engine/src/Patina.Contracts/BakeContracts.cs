@@ -97,13 +97,20 @@ public sealed record JobPage(IReadOnlyList<JobState> Jobs, long Sequence);
 /// <param name="Space">
 ///     Whether the normal is in <c>tangent</c> or <c>object</c> space; only a tangent one shades a set.
 /// </param>
+/// <param name="Material">The material whose faces were baked onto, or null for the whole mesh.</param>
+/// <param name="Geometry">
+///     The revision of those faces as the bake read them, in its UV set: a mesh that changed elsewhere leaves these
+///     maps fitting the set (#151). Null for a bake made before it was recorded.
+/// </param>
 public sealed record BakeManifest(
     string Name,
     string Format,
     BakeResult Result,
     string? Mesh = null,
     int UvSet = 0,
-    string Space = "tangent"
+    string Space = "tangent",
+    string? Material = null,
+    string? Geometry = null
 );
 
 /// <summary>Says which folder of baked maps a graph's Mesh Map nodes read.</summary>

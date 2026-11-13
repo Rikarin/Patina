@@ -190,6 +190,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A mesh change that touched one texture set's faces no longer says every set's mesh maps need baking again. Layers, the Bake dialog, Checks and Project Settings say so only for the sets whose own faces changed, in their UV set; the others' bakes still fit. A bake made before this release says so for every set once, until it is baked again.
 - Bake settings changed one after another in quick succession are all kept in the project. A change made while the one before it was still being written could be undone by it, so the project kept an earlier setting.
 - The first stroke on a dense mesh starts sooner: the engine lays out the mesh for the brush in about half the time, 0.7 to 1.3 s instead of 2.1 to 3.6 s for two million triangles.
 - A new image material is authored at 1024, as every new graph is, so a radius in it means what it does in any other graph.

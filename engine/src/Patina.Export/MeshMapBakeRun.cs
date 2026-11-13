@@ -105,7 +105,15 @@ public static class MeshMapBakeRun {
 
         var part = $"{folder}.{Guid.NewGuid():N}.part";
         var name = request.Name ?? Path.GetFileNameWithoutExtension(request.Low);
-        var manifest = Write(maps, request, part, name, [..warnings, ..maps.Warnings], log);
+        var manifest = Write(
+            maps,
+            request,
+            part,
+            name,
+            [..warnings, ..maps.Warnings],
+            log,
+            BakeKeyReads.Geometry(low).Text
+        );
 
         Directory.CreateDirectory(Path.GetDirectoryName(folder)!);
         try {
@@ -447,7 +455,8 @@ public static class MeshMapBakeRun {
         string folder,
         string name,
         IReadOnlyList<string> warnings,
-        IReadOnlyList<string> log
+        IReadOnlyList<string> log,
+        string geometry
     ) {
         Directory.CreateDirectory(folder);
 
@@ -475,7 +484,9 @@ public static class MeshMapBakeRun {
             new(files, maps.Covered, maps.Missed, warnings, false) { Log = log },
             LibraryFiles.Digest(request.Low),
             request.UvSet ?? 0,
-            request.Options.Space
+            request.Options.Space,
+            request.Material,
+            geometry
         );
         File.WriteAllBytes(
             Path.Combine(folder, BakeCache.ManifestFile),
