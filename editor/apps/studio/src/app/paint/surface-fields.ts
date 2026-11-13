@@ -6,6 +6,7 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { labelsOf, valuesOf } from '../core/labels';
+import { toDegrees, toRadians } from '../core/numbers';
 import { PaintStore } from './paint-store';
 import { Unwarped } from './surface-frame';
 
@@ -306,10 +307,10 @@ export class SurfaceFields {
   }
 
   protected degrees(radians: number): number {
-    return Math.round((radians * 180) / Math.PI);
+    return Math.round(toDegrees(radians));
   }
 
   protected radians(degrees: number | null): number {
-    return ((degrees ?? 0) * Math.PI) / 180;
+    return toRadians(degrees ?? 0);
   }
 }

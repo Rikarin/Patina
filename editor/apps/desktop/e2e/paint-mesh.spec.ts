@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen, leave, newLibrary, newProject, pick } from './projects';
+import { answerOpen, ending, leave, newLibrary, newProject, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -26,7 +26,7 @@ test.beforeEach(async () => {
     env: { ...process.env, PATINA_USER_DATA: join(scratch, 'user-data') }
   });
   window = await app.firstWindow();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('GPU ready');
 });
 
 test.afterEach(async () => {
@@ -180,17 +180,17 @@ test('a brush on the mesh shows on it in the viewport, across its flats, and und
   await window.getByRole('textbox', { name: 'Hex color' }).fill('#e01810');
   await window.keyboard.press('Enter');
   await window.keyboard.press('Escape');
-  const before = await shot();
+  const before = await inner();
 
   await drag(0.3, 0.45, 0.72, 0.55);
-  await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(1500);
+  await expect.poll(async () => changed(before, await inner()), { timeout: 30_000 }).toBeGreaterThan(1500);
   await expect(window.getByTestId('viewport-stamp')).toBeAttached();
   await window.screenshot({ path: join(shots, 'paint-mesh.png') });
 
   await window.getByTestId('app-undo').click();
-  await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeLessThan(40);
+  await expect.poll(async () => changed(before, await inner()), { timeout: 30_000 }).toBeLessThan(40);
   await window.getByTestId('app-redo').click();
-  await expect.poll(async () => changed(before, await shot()), { timeout: 30_000 }).toBeGreaterThan(1500);
+  await expect.poll(async () => changed(before, await inner()), { timeout: 30_000 }).toBeGreaterThan(1500);
 });
 
 test('a fill takes a painted mask, stroked on the mesh', async () => {
@@ -446,7 +446,7 @@ test('Save All on the quit dialog saves a painted stack and quits', async () => 
   await drag(0.3, 0.45, 0.72, 0.55);
   await expect(window.getByTestId('app-undo')).toBeEnabled();
 
-  const closed = app.waitForEvent('close');
+  const closed = ending(app);
   void app.evaluate(({ app: electronApp }) => {
     electronApp.quit();
   });
@@ -506,6 +506,14 @@ test('a preset takes up its brush, a radial symmetry paints its copies, and the 
   await pick(window, 'paint-symmetry', /^mirror$/iu);
   await pick(window, 'paint-symmetry-axis', /^x$/iu);
   await expect(window.getByTestId('viewport-symmetry').locator('polygon')).toBeVisible();
+  // The brush's ring has a copy across the plane, well to the other side of it on the picture (#132).
+  const area = await box();
+  await window.mouse.move(area.x + area.width * 0.42, area.y + area.height * 0.45);
+  const copy = window.getByTestId('viewport-brush-copy');
+  await expect(copy).toHaveCount(1, { timeout: 10_000 });
+  const ring = await window.getByTestId('viewport-brush').boundingBox();
+  const mirrored = await copy.boundingBox();
+  expect(ring && mirrored && Math.abs(mirrored.x + mirrored.width / 2 - (ring.x + ring.width / 2)) > 40).toBe(true);
   await window.screenshot({ path: join(shots, 'paint-mirror-plane.png') });
 
   await window.getByTestId('paint-keep-colour').click();

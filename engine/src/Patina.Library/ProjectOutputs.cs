@@ -128,8 +128,27 @@ public static class ProjectOutputs {
     /// <summary>What <paramref name="project" /> builds.</summary>
     /// <param name="project">The project.</param>
     /// <param name="folder">Its folder.</param>
-    public static IReadOnlyList<OutputDeclaration> Of(ProjectDocument project, string folder) {
+    /// <param name="documents">
+    ///     Only these documents, by file, each a set of its own whatever it is: a graph in a texturing project, or one
+    ///     that is not a material, is exported when it is named. Outputs written by hand are kept when they read one of
+    ///     them. Null or empty for what the project exports.
+    /// </param>
+    public static IReadOnlyList<OutputDeclaration> Of(
+        ProjectDocument project,
+        string folder,
+        IReadOnlyList<string>? documents = null
+    ) {
         ArgumentNullException.ThrowIfNull(project);
+        if (documents is { Count: > 0 }) {
+            var named = documents.ToHashSet(StringComparer.Ordinal);
+            return project.Outputs.Count > 0
+                ? [..project.Outputs.Where(output => output.Files.Any(named.Contains))]
+                : [
+                    ..project.Documents.Where(item => named.Contains(item.File) && Exportable(item))
+                        .SelectMany(item => OfDocument(project, item, folder))
+                ];
+        }
+
         if (project.Outputs.Count > 0) {
             return project.Outputs;
         }
@@ -138,6 +157,13 @@ public static class ProjectOutputs {
         var exported = texturing.Count > 0 ? texturing : [..project.Documents.Where(IsMaterial)];
         return [..exported.SelectMany(item => OfDocument(project, item, folder))];
     }
+
+    /// <summary>Whether a document makes maps an export can take: a texturing document, a graph or a material.</summary>
+    static bool Exportable(ProjectItem item) =>
+        item.Kind is DocumentKinds.Texturing
+            or DocumentKinds.Graph
+            or DocumentKinds.LayeredMaterial
+            or DocumentKinds.ImageMaterial;
 
     static bool IsMaterial(ProjectItem item) =>
         item.Kind is DocumentKinds.LayeredMaterial or DocumentKinds.ImageMaterial

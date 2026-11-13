@@ -67,6 +67,63 @@ describe('Preferences', () => {
     expect(preferences.recentNodes()).toEqual(['A', 'C', 'B']);
   });
 
+  it('keeps recent documents whole, each once, from a file a person may have edited', () => {
+    const rust = { library: 'lib', project: 'projects/a', path: 'projects/a/rust.vxtexgraph', name: 'Rust' };
+    const read = readPreferences({
+      recentDocuments: [
+        rust,
+        { ...rust, name: 'Rust again' },
+        { ...rust, path: 7 },
+        'projects/b',
+        null,
+        { library: 'x' }
+      ]
+    });
+    expect(read.recentDocuments).toEqual([rust]);
+    expect(readPreferences({ recentDocuments: 'rust' }).recentDocuments).toEqual([]);
+  });
+
+  it('puts the document worked on last first, writes nothing when it is first already, and forgets one that went', () => {
+    const written: unknown[] = [];
+    vi.stubGlobal('patina', {
+      readPreferences: () => Promise.resolve(null),
+      writePreferences: (settings: unknown) => {
+        written.push(settings);
+        return Promise.resolve();
+      }
+    });
+    const preferences = TestBed.inject(Preferences);
+    const document = (library: string, path: string) => ({ library, project: 'projects/a', path, name: path });
+
+    preferences.usedDocument(document('lib', 'a'));
+    preferences.usedDocument(document('lib', 'b'));
+    preferences.usedDocument(document('other', 'a'));
+    preferences.usedDocument(document('lib', 'a'));
+    preferences.usedDocument(document('lib', 'a'));
+    expect(preferences.recentDocuments().map(held => `${held.library}:${held.path}`)).toEqual([
+      'lib:a',
+      'other:a',
+      'lib:b'
+    ]);
+    expect(written).toHaveLength(4);
+
+    preferences.forgetDocument('lib', 'b');
+    preferences.forgetDocument('lib', 'gone');
+    expect(preferences.recentDocuments().map(held => `${held.library}:${held.path}`)).toEqual(['lib:a', 'other:a']);
+    expect(written).toHaveLength(5);
+  });
+
+  it('scales the camera by the speeds chosen, and turns the wheel round when it is inverted', () => {
+    vi.stubGlobal('patina', undefined);
+    const preferences = TestBed.inject(Preferences);
+    expect([preferences.orbitScale(), preferences.zoomScale()]).toEqual([1, 1]);
+
+    preferences.set({ orbitSpeed: 'slow', zoomSpeed: 'fast', invertZoom: true });
+
+    expect([preferences.orbitScale(), preferences.zoomScale()]).toEqual([0.5, -2]);
+    expect(readPreferences({ orbitSpeed: 'warp', zoomSpeed: 2, invertZoom: 'yes' })).toEqual(DefaultPreferences);
+  });
+
   it('starts with the defaults and keeps a change in the desktop app’s file', () => {
     const written: unknown[] = [];
     vi.stubGlobal('patina', {

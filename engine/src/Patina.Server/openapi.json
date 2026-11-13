@@ -594,7 +594,7 @@
         "tags": [
           "Viewport"
         ],
-        "summary": "The bake setup the viewport shows, and the key to its colours.",
+        "summary": "The bake setup the viewport shows, and the key to its colors.",
         "operationId": "GetBakePreview",
         "responses": {
           "200": {
@@ -769,7 +769,7 @@
         "tags": [
           "Builds"
         ],
-        "summary": "Every preset this library can use: the factory ones and those in shared/export-presets.",
+        "summary": "Every preset this library can use: the Starter ones and those in shared/export-presets.",
         "operationId": "GetExportPresets",
         "parameters": [
           {
@@ -1537,7 +1537,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Renames a folder or changes its colour. Nothing in it may be open to rename it.",
+        "summary": "Renames a folder or changes its color. Nothing in it may be open to rename it.",
         "operationId": "UpdateFolder",
         "requestBody": {
           "content": {
@@ -2143,7 +2143,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Keeps in library.yaml the export preset a project\u0027s export starts from when it has kept none, and that checks measure against. Null forgets it, which leaves the factory\u0027s glTF starter. GET /export/presets says which preset that comes to.",
+        "summary": "Keeps in library.yaml the export preset a project\u0027s export starts from when it has kept none, and that checks measure against. Null forgets it, which leaves the Starter glTF preset. GET /export/presets says which preset that comes to.",
         "operationId": "SetLibraryDefaultPreset",
         "requestBody": {
           "content": {
@@ -2448,7 +2448,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Keeps how a project\u0027s painting was left, in its project.yaml: the colours strokes last used, its palette, the brush and the symmetry, so they survive a restart and any client starts from them.",
+        "summary": "Keeps how a project\u0027s painting was left, in its project.yaml: the colors strokes last used, its palette, the brush and the symmetry, so they survive a restart and any client starts from them.",
         "operationId": "SetProjectPaint",
         "requestBody": {
           "content": {
@@ -6804,7 +6804,7 @@
         "tags": [
           "Stacks"
         ],
-        "summary": "The colours of the id map the stack reads, the largest first, and the one at a place on it if asked.",
+        "summary": "The colors of the ID map the stack reads, the largest first, and the one at a place on it if asked.",
         "operationId": "GetStackIdColours",
         "parameters": [
           {
@@ -7650,7 +7650,7 @@
         "tags": [
           "Builds"
         ],
-        "summary": "Removes a library\u0027s or a project\u0027s preset file. A factory preset cannot be removed.",
+        "summary": "Deletes a library\u0027s or a project\u0027s preset file. A Starter preset cannot be deleted.",
         "operationId": "DeleteExportPreset",
         "parameters": [
           {
@@ -8092,13 +8092,21 @@
           },
           "resolution": {
             "type": "integer",
-            "description": "Its edge in pixels.",
+            "description": "Its width in pixels.",
             "format": "int32"
           },
           "scale": {
             "type": "number",
             "description": "What a stored unit value is multiplied by to get the measurement back, for a signed map in an integer format;\nzero when there is nothing to undo.",
             "format": "double"
+          },
+          "rows": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Its height in pixels, or null when it is as tall as it is wide.",
+            "format": "int32"
           }
         },
         "description": "One baked map, as a file."
@@ -8213,6 +8221,7 @@
           "space",
           "rays",
           "height",
+          "position",
           "occlusion",
           "thickness",
           "id",
@@ -8223,7 +8232,15 @@
         "properties": {
           "resolution": {
             "type": "integer",
-            "description": "The atlas\u0027s edge, in texels.",
+            "description": "The atlas\u0027s width, in texels, and its height too unless int? BakeOptions.Rows says otherwise.",
+            "format": "int32"
+          },
+          "rows": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The atlas\u0027s height in texels, or null for as many as int BakeOptions.Resolution: a square bake. A texture set\nauthored wider than it is tall bakes at its own shape, so its maps sit under its layers unresampled (#147).",
             "format": "int32"
           },
           "format": {
@@ -8259,6 +8276,10 @@
             "description": "The height map\u0027s range.",
             "$ref": "#/components/schemas/BakeHeightOptions"
           },
+          "position": {
+            "description": "The position map\u0027s range.",
+            "$ref": "#/components/schemas/BakePositionOptions"
+          },
           "occlusion": {
             "description": "The occlusion rays, which ambient occlusion, the bent normal and thickness share.",
             "$ref": "#/components/schemas/BakeOcclusionOptions"
@@ -8281,6 +8302,19 @@
           }
         },
         "description": "How a bake runs, with no meshes in it: what a project keeps between bakes and every client sends. Each map\u0027s\nown settings are a part of their own."
+      },
+      "BakePositionOptions": {
+        "required": [
+          "range"
+        ],
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "string",
+            "description": "\u0060box\u0060, each axis across the mesh\u0027s bounding box, so each channel is used whole and shapes stretch;\n            \u0060cube\u0060, every axis across the box\u0027s longest side, so distances agree; \u0060sphere\u0060, across the sphere\n            round the box, centred on its middle; or \u0060none\u0060, the point in model units, which only EXR keeps."
+          }
+        },
+        "description": "How the position map turns a point on the high poly mesh into a value (#148)."
       },
       "BakePreviewPart": {
         "required": [
@@ -8925,6 +8959,16 @@
             },
             "description": "Only these projects. Null or empty for all of them."
           },
+          "documents": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Only these documents of the one project named, by their file below it, each a texture set of its own whatever\nit is: a graph in a texturing project or one that is not a material exports too. Null or empty for what the\nproject exports."
+          },
           "presets": {
             "type": [
               "null",
@@ -9473,6 +9517,13 @@
               "$ref": "#/components/schemas/ExportSetOptions"
             },
             "description": "Changes for one texture set at a time, over these, or null for none."
+          },
+          "merge": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether the texture sets written go into one set of files, each set where its own layout puts it, as an\natlas of sets that share one UV square. A set\u0027s own changes do not apply to it."
           }
         },
         "description": "A preset\u0027s settings changed for one export, as an export dialog changes them. Null fields keep the preset\u0027s.\nChanging one gives the export another key, so it never reuses files made under other settings."
@@ -9757,7 +9808,7 @@
           },
           "origin": {
             "type": "string",
-            "description": "Where it comes from: factory, library or project."
+            "description": "Where it comes from: factory (a Starter preset), library or project."
           },
           "revision": {
             "type": "string",
@@ -9833,7 +9884,7 @@
               "null",
               "string"
             ],
-            "description": "The preset an export starts from when nothing is kept for it: the library\u0027s \u0060defaultPreset\u0060 while it\nnames one of these, else the factory\u0027s glTF starter, and null only when there are no presets at all."
+            "description": "The preset an export starts from when nothing is kept for it: the library\u0027s \u0060defaultPreset\u0060 while it\nnames one of these, else the Starter glTF preset, and null only when there are no presets at all."
           },
           "formats": {
             "type": "array",
@@ -9901,14 +9952,14 @@
           },
           "origin": {
             "type": "string",
-            "description": "factory, library or project."
+            "description": "factory (a Starter preset, shipped with Patina), library or project."
           },
           "file": {
             "type": [
               "null",
               "string"
             ],
-            "description": "The file on the Server\u0027s machine, or null for a factory preset, which lives in Patina."
+            "description": "The file on the Server\u0027s machine, or null for a Starter preset, which ships with Patina."
           },
           "text": {
             "type": "string",
@@ -13097,7 +13148,7 @@
               "null",
               "string"
             ],
-            "description": "The export preset a project\u0027s export starts from when it has kept none, from \u0060library.yaml\u0060, or null\nfor the factory\u0027s starter. \u0060GET /export/presets\u0060 says which preset that comes to."
+            "description": "The export preset a project\u0027s export starts from when it has kept none, from \u0060library.yaml\u0060, or null\nfor the Starter glTF preset. \u0060GET /export/presets\u0060 says which preset that comes to."
           }
         },
         "description": "The reply to \u0060GET /api/v1/library\u0060: what opening a library reads, and nothing more."
@@ -13149,7 +13200,7 @@
               "null",
               "string"
             ],
-            "description": "The id of the preset a project\u0027s export starts from when it has kept none, or null for the factory\u0027s starter."
+            "description": "The id of the preset a project\u0027s export starts from when it has kept none, or null for the Starter glTF preset."
           }
         },
         "description": "The body of \u0060PUT /api/v1/library/export/preset\u0060."
@@ -14537,6 +14588,13 @@
               "$ref": "#/components/schemas/ExportSetOptions"
             },
             "description": "Changes for one texture set at a time, over the rest, as IReadOnlyList\u0026lt;ExportSetOptions\u0026gt;? ExportOptions.PerSet."
+          },
+          "merge": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether the texture sets go into one set of files, each where its own layout puts it."
           }
         },
         "description": "A project\u0027s export settings, kept in its \u0060project.yaml\u0060 so they travel with the library: what a client\u0027s\nexport starts from next time. Any client reads and writes them; a build reads only what a request sends, so\nkeeping them changes no key."
@@ -19047,7 +19105,17 @@
             "items": {
               "$ref": "#/components/schemas/StackTerm"
             },
-            "description": "The colours a layer can be marked with, None first."
+            "description": "The colors a layer can be marked with, None first."
+          },
+          "kinds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "The kinds a graph\u0027s ports and parameters take: Number for Float, and the rest."
           }
         },
         "description": "The words a stack\u0027s fields take, each with its label, so that a client holds no list of its own."

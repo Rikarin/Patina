@@ -31,6 +31,7 @@ import {
 } from '@patina/api-client';
 import { learnTerms } from '../core/labels';
 import { messageOf } from '../core/messages';
+import { milliseconds } from '../core/numbers';
 import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
@@ -251,6 +252,8 @@ export class PaintStore {
 
   readonly state = signal<StackState | null>(null);
   readonly failure = signal<string | null>(null);
+  /** Whether the stack's events reach it, or its socket dropped and it is finding its way back (#192). */
+  readonly link = signal<'live' | 'reconnecting'>('live');
   /** Something the person should know that went right enough, such as edits lost when the engine restarted. */
   readonly notice = signal<string | null>(null);
 
@@ -769,6 +772,7 @@ export class PaintStore {
   detach(): void {
     this.opens++;
     this.comeback.cancel();
+    this.link.set('live');
     this.notice.set(null);
     this.state.set(null);
     this.worn.set(false);
@@ -1556,6 +1560,11 @@ export class PaintStore {
     return unwrap(await client.POST('/api/v1/viewport/pick', { body: { x: 0.5, y: 0.5, camera, width, height } }));
   }
 
+  /** What is under a point of the viewport, in its layout pixels, for a guide: where on the mesh, and the camera. */
+  lookAt(point: { x: number; y: number }, aim: Aim): Promise<ViewportPick> {
+    return this.picked({ ...point, pressure: 1 }, aim);
+  }
+
   private async pick(stamp: StackStamp, aim: Aim): Promise<StackView> {
     return (await this.picked(stamp, aim)).view;
   }
@@ -1901,6 +1910,7 @@ export class PaintStore {
     socket.onopen = () => {
       if (this.socket === socket) {
         this.comeback.opened();
+        this.link.set('live');
       }
     };
     socket.onmessage = message => {
@@ -1909,6 +1919,7 @@ export class PaintStore {
     socket.onclose = () => {
       if (!this.stopped && this.socket === socket) {
         this.socket = null;
+        this.link.set('reconnecting');
         this.comeback.dropped(id);
       }
     };
@@ -2018,7 +2029,7 @@ export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'e
     return 'Not evaluated';
   }
 
-  return evaluation.ran === 0 ? 'Up to date' : `Updated in ${evaluation.milliseconds.toFixed(0)} ms`;
+  return evaluation.ran === 0 ? 'Up to date' : `Updated in ${milliseconds(evaluation.milliseconds)}`;
 }
 
 /** A mask's effects with one more of a node, or none of it if it had one: what a toggle such as Invert sends. */

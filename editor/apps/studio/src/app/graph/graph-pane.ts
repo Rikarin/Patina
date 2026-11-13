@@ -55,13 +55,18 @@ import {
   type Alignment,
   type NodeBox,
   type PaletteLine,
+  type WireEnd,
   aligned,
+  copiedWire,
   distributed,
   findMatches,
   flowOf,
-  paletteOf
+  movedWires,
+  paletteOf,
+  swapPairOf,
+  swappedWires
 } from './graph-authoring';
-import { isWireable, wireFamily } from './graph-fields';
+import { type CardLine, cardLinesOf, isWireable, wireFamily } from './graph-fields';
 import { diagnosticsOf, edgeKey, evaluationSummary } from './graph-model';
 import { GraphStore, type NodeLink, type NodeWire, RerouteIn, RerouteOut, RerouteType } from './graph-store';
 import { GraphViews } from './graph-views';
@@ -124,6 +129,14 @@ interface NodeProblem {
   severity: 'Error' | 'Warning';
   count: number;
   summary: string;
+}
+
+/** A press on a port with Shift or Mod held, which may move or copy wires when it is let go. */
+interface WirePress {
+  node: number;
+  port: string;
+  direction: 'Input' | 'Output';
+  shift: boolean;
 }
 
 /** A line of the palette. A favourite is under its category as well. */
@@ -513,6 +526,18 @@ export class GraphThumbnail {
           @if (view.preview && store.thumbnail(view.id)()) {
             <xui-graph-node-preview><ptn-graph-thumbnail [node]="view.id" /></xui-graph-node-preview>
           }
+          @let lines = cardLines().get(view.id);
+          @if (lines && lines.length > 0) {
+            <dl
+              class="readout m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 px-2 py-1 text-[10px] leading-4"
+              data-testid="graph-node-parameters"
+            >
+              @for (line of lines; track line.title) {
+                <dt class="text-foreground-muted truncate">{{ line.title }}</dt>
+                <dd class="m-0 truncate text-end" [title]="line.value">{{ line.value }}</dd>
+              }
+            </dl>
+          }
           @for (port of view.ports; track port.name) {
             <xui-graph-port
               [dataType]="port.dataType"
@@ -623,6 +648,17 @@ export class GraphThumbnail {
         >
           Snap to Grid
         </button>
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="arrange-parameters"
+          role="menuitemcheckbox"
+          [attr.aria-checked]="preferences.graphParameters()"
+          [selected]="preferences.graphParameters()"
+          (triggered)="commands.run('toggleGraphParameters')"
+        >
+          Parameters on Cards
+        </button>
         @for (style of wireStyles; track style.command) {
           <button
             type="button"
@@ -659,6 +695,15 @@ export class GraphThumbnail {
           (triggered)="store.removeRelinking(selectedNodes())"
         >
           Delete and Relink <span menuItemLabel>{{ commands.keyText('deleteRelink') }}</span>
+        </button>
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="node-swap-inputs"
+          [disabled]="!store.editable() || swapPair() === null"
+          (triggered)="swapInputs()"
+        >
+          Swap Inputs
         </button>
         <button
           type="button"
@@ -746,6 +791,10 @@ export class GraphCanvas {
   ];
   /** Where the last press on the canvas was, and whether Alt was held, for a click on a wire. */
   private lastPress: { x: number; y: number; alt: boolean } | null = null;
+  /** A press on a port with Shift or Mod held, until it is let go. */
+  private wirePress: WirePress | null = null;
+  /** Whether the last wire let go was moved or copied by hand, so that it opens no palette. */
+  private droppedByHand = false;
   protected readonly groupPrefix = GroupPrefix;
   protected readonly frameShown = frameShown;
   protected readonly paletteOpen = signal(false);
@@ -939,6 +988,43 @@ export class GraphCanvas {
     return chosen.length > 0 && chosen.every(id => nodes?.get(id)?.bypassed);
   });
 
+  /** What each card lists under its title when the graph shows parameters on cards: what was changed on it. */
+  protected readonly cardLines = computed(() => {
+    const lines = new Map<number, CardLine[]>();
+    if (!this.preferences.graphParameters()) {
+      return lines;
+    }
+
+    const types = this.store.types();
+    for (const node of this.document()?.nodes.values() ?? []) {
+      const type = types.get(node.type);
+      if (type && node.type !== RerouteType) {
+        lines.set(node.id, cardLinesOf(type, node));
+      }
+    }
+
+    return lines;
+  });
+
+  /** The one selected node's two inputs Swap Inputs would trade, or null when there is no such pair. */
+  protected readonly swapPair = computed((): { node: number; ports: [string, string] } | null => {
+    const chosen = this.selectedNodes();
+    const node = chosen.length === 1 ? this.document()?.nodes.get(chosen[0] ?? -1) : undefined;
+    const type = node ? this.store.types().get(node.type) : undefined;
+    if (!node || !type) {
+      return null;
+    }
+
+    const wired = new Set(
+      [...(this.document()?.edges.values() ?? [])].filter(edge => edge.toNode === node.id).map(edge => edge.toPort)
+    );
+    const inputs = type.ports
+      .filter(port => port.direction === 'Input')
+      .map(port => ({ name: port.name, family: wireFamily(port.kind) }));
+    const ports = swapPairOf(inputs, wired);
+    return ports ? { node: node.id, ports } : null;
+  });
+
   protected readonly workerMissing = computed(() => {
     const state = this.status.state();
     return state.kind === 'online' && !state.system.worker.connected;
@@ -962,6 +1048,18 @@ export class GraphCanvas {
         event => {
           element.focus({ preventScroll: true });
           this.lastPress = { x: event.clientX, y: event.clientY, alt: event.altKey };
+          this.wirePress = this.wirePressOf(event);
+          this.droppedByHand = false;
+        },
+        { capture: true }
+      );
+      // Ahead of the connector's own let-go, which would open the palette for a drop on a node.
+      element.addEventListener(
+        'pointerup',
+        event => {
+          const press = this.wirePress;
+          this.wirePress = null;
+          this.droppedByHand = press !== null && this.rewireByDrag(press, event.clientX, event.clientY);
         },
         { capture: true }
       );
@@ -1039,7 +1137,8 @@ export class GraphCanvas {
   }
 
   protected openDropPalette(drop: XuiGraphConnectionDrop): void {
-    if (!this.store.editable()) {
+    if (!this.store.editable() || this.droppedByHand) {
+      this.droppedByHand = false;
       return;
     }
 
@@ -1114,6 +1213,76 @@ export class GraphCanvas {
     if (!this.store.selection().has(node)) {
       this.store.select([node]);
     }
+  }
+
+  /** Trades the wires into the selected node's first two inputs of one kind, such as a blend's two pictures. */
+  protected swapInputs(): void {
+    const pair = this.swapPair();
+    if (pair) {
+      this.store.rewire(swappedWires(this.wires(), pair.node, ...pair.ports), 'Swap Inputs');
+    }
+  }
+
+  /** The port a press began on, when Shift or Mod was held: the start of moving or copying wires by hand. */
+  private wirePressOf(event: PointerEvent): WirePress | null {
+    const mod = event.ctrlKey || event.metaKey;
+    const port = (event.target as Element | null)?.closest('[data-xui-graph-port]');
+    const name = port?.getAttribute('data-xui-graph-port');
+    const node = Number(port?.getAttribute('data-xui-graph-port-node') ?? NaN);
+    if ((!event.shiftKey && !mod) || !name || !Number.isInteger(node)) {
+      return null;
+    }
+
+    const direction = this.kindOf(node, name, 'Output') === undefined ? 'Input' : 'Output';
+    return { node, port: name, direction, shift: event.shiftKey };
+  }
+
+  private wires(): GraphEdgeState[] {
+    return [...(this.document()?.edges.values() ?? [])];
+  }
+
+  /**
+   * A wire dragged with Shift or Mod held, from a port to somewhere xUI makes nothing of. From an output with Shift, to
+   * another node: every wire it had leaves that node's output of the same kind instead. From a wired input to another
+   * input: what fed it feeds that one too with Mod, or only that one with Shift. Returns whether it was one of these, so
+   * that the palette a drop on a node would open stays shut.
+   */
+  private rewireByDrag(press: WirePress, x: number, y: number): boolean {
+    const found = document.elementFromPoint(x, y);
+    const port = found?.closest('[data-xui-graph-port]');
+    const card = found?.closest('[data-node]');
+    const node = Number(port?.getAttribute('data-xui-graph-port-node') ?? card?.getAttribute('data-node') ?? NaN);
+    if (!Number.isInteger(node) || !this.store.editable()) {
+      return false;
+    }
+
+    const from: WireEnd = { node: press.node, port: press.port };
+    if (press.direction === 'Output') {
+      const family = wireFamily(this.kindOf(press.node, press.port, 'Output') ?? '');
+      const outputs = (this.store.types().get(this.document()?.nodes.get(node)?.type ?? '')?.ports ?? []).filter(
+        candidate => candidate.direction === 'Output' && wireFamily(candidate.kind) === family
+      );
+      const named = port?.getAttribute('data-xui-graph-port');
+      const target = named ? outputs.find(candidate => candidate.name === named) : outputs[0];
+      if (named && !target) {
+        // Dropped on an input: an ordinary wire, which xUI makes.
+        return false;
+      }
+
+      if (press.shift && target && node !== press.node) {
+        this.store.rewire(movedWires(this.wires(), from, { node, port: target.name }), 'Move Wires');
+      }
+
+      return press.shift;
+    }
+
+    const named = port?.getAttribute('data-xui-graph-port');
+    if (named && this.kindOf(node, named, 'Input') !== undefined) {
+      const move = press.shift;
+      this.store.rewire(copiedWire(this.wires(), from, { node, port: named }, move), move ? 'Move Wire' : 'Copy Wire');
+    }
+
+    return true;
   }
 
   protected align(alignment: Alignment, label: string): void {
@@ -1255,6 +1424,11 @@ export class GraphCanvas {
       () => this.store.toggleBypass()
     );
     handle(
+      'swapInputs',
+      () => editable() && this.swapPair() !== null,
+      () => this.swapInputs()
+    );
+    handle(
       'deleteRelink',
       () => here() && editable() && this.store.selection().size > 0,
       () => this.store.removeRelinking(this.selectedNodes())
@@ -1304,6 +1478,14 @@ export class GraphCanvas {
       {
         checked: () => this.preferences.graphSnap(),
         run: () => this.preferences.set({ graphSnap: !this.preferences.graphSnap() })
+      },
+      this.destroyed
+    );
+    this.commands.handle(
+      'toggleGraphParameters',
+      {
+        checked: () => this.preferences.graphParameters(),
+        run: () => this.preferences.set({ graphParameters: !this.preferences.graphParameters() })
       },
       this.destroyed
     );

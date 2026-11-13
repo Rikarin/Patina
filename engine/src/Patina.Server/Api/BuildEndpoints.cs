@@ -24,7 +24,7 @@ static class BuildEndpoints {
         api.MapGet("/export/presets", GetPresets)
             .WithTags(Tag)
             .WithName("GetExportPresets")
-            .WithSummary("Every preset this library can use: the factory ones and those in shared/export-presets.")
+            .WithSummary("Every preset this library can use: the Starter ones and those in shared/export-presets.")
             .ProducesProblem(Missing);
         builds.MapPost("/preview", PreviewAsync)
             .WithName("PreviewBuild")

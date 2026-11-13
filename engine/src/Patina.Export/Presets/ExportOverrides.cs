@@ -26,7 +26,8 @@ public static class ExportOverrides {
             where
         ) with {
             Revision = Revision(preset.Revision, options),
-            Sets = options.Sets is { } sets ? [..sets.Distinct(StringComparer.Ordinal)] : preset.Sets
+            Sets = options.Sets is { } sets ? [..sets.Distinct(StringComparer.Ordinal)] : preset.Sets,
+            Merge = options.Merge ?? preset.Merge
         };
 
         Dictionary<string, ExportPreset> perSet = new(StringComparer.Ordinal);
@@ -67,7 +68,8 @@ public static class ExportOverrides {
                         }
                     )
             ],
-            PerSet = same && export.PerSet.Count > 0 ? export.PerSet : null
+            PerSet = same && export.PerSet.Count > 0 ? export.PerSet : null,
+            Merge = export.Merge
         };
     }
 

@@ -120,6 +120,64 @@ test('bypasses a node, which the compiler honours, and bends and relinks wires',
   await expect(window.getByTestId('app-undo')).toHaveAttribute('title', /^Undo Delete and Relink\b/);
 });
 
+/** Drags from one point to another with a key held, in steps, as a hand would. */
+async function dragHolding(key: string, from: { x: number; y: number }, to: { x: number; y: number }): Promise<void> {
+  await window.keyboard.down(key);
+  await window.mouse.move(from.x, from.y);
+  await window.mouse.down();
+  await window.mouse.move(to.x, to.y, { steps: 8 });
+  await window.mouse.up();
+  await window.keyboard.up(key);
+}
+
+test('moves the wires of an output by Shift-drag, and copies an input’s wire by Mod-drag', async () => {
+  await openGraph();
+  const original = await hashOf(thumbnail(4));
+
+  // Shift-drag the invert's output onto the blur's card: the HSL now reads the blur, and no palette opens.
+  const card = await node(2).locator('[data-xui-graph-node-header]').boundingBox();
+  await dragHolding('Shift', await centre(connector(3, 'Out')), {
+    x: (card?.x ?? 0) + (card?.width ?? 0) / 2,
+    y: (card?.y ?? 0) + (card?.height ?? 0) / 2
+  });
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('title', /^Undo Move Wires\b/);
+  await expect(thumbnail(4)).not.toHaveAttribute('data-hash', original);
+  await expect(window.locator('input[role=combobox]')).toHaveCount(0);
+
+  // Mod-drag from the HSL's input to the last blur's: that blur reads what the HSL reads, and the HSL keeps it.
+  await dragHolding(
+    process.platform === 'darwin' ? 'Meta' : 'Control',
+    await centre(connector(4, 'Input')),
+    await centre(connector(5, 'Input'))
+  );
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('title', /^Undo Copy Wire\b/);
+  await expect(connector(4, 'Input')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'authoring-wires-moved.png') });
+
+  // One undo each, and the first picture is back.
+  await window.getByTestId('app-undo').click();
+  await window.getByTestId('app-undo').click();
+  await expect(thumbnail(4)).toHaveAttribute('data-hash', original);
+});
+
+test('lists what was changed on a node on its card, when asked to', async () => {
+  await openGraph();
+  const listed = node(2).getByTestId('graph-node-parameters');
+
+  // A number nudged from the Inspector: nothing on the card until the graph shows parameters on cards.
+  await node(2).locator('xui-graph-node-preview').click();
+  const slider = window.locator('[data-testid^=field-]').getByRole('slider').first();
+  await slider.focus();
+  await window.keyboard.press('ArrowRight');
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
+  await expect(listed).toHaveCount(0);
+
+  await window.getByTestId('graph-arrange').click();
+  await window.getByTestId('arrange-parameters').click();
+  await expect(listed).toBeVisible();
+  await window.screenshot({ path: join(shots, 'authoring-parameters-on-cards.png') });
+});
+
 test('arranges, badges a problem and colours a frame', async () => {
   await openGraph();
   const before = await node(2).boundingBox();

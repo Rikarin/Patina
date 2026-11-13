@@ -26,7 +26,7 @@ static class ProjectBlockEndpoints {
             .Described(
                 "SetLibraryDefaultPreset",
                 "Keeps in library.yaml the export preset a project's export starts from when it has kept none, and "
-                + "that checks measure against. Null forgets it, which leaves the factory's glTF starter. "
+                + "that checks measure against. Null forgets it, which leaves the Starter glTF preset. "
                 + "GET /export/presets says which preset that comes to."
             );
         library.MapPut("/project/export", SetExport)
@@ -56,7 +56,7 @@ static class ProjectBlockEndpoints {
         library.MapPut("/project/paint", SetPaint)
             .Described(
                 "SetProjectPaint",
-                "Keeps how a project's painting was left, in its project.yaml: the colours strokes last used, its "
+                "Keeps how a project's painting was left, in its project.yaml: the colors strokes last used, its "
                 + "palette, the brush and the symmetry, so they survive a restart and any client starts from them."
             );
     }

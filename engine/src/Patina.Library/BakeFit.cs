@@ -20,11 +20,25 @@ public static class BakeFit {
     static readonly ConcurrentDictionary<string, (long Length, DateTime Written, string Digest)> Digests =
         new(StringComparer.Ordinal);
 
+    static readonly ConcurrentDictionary<FacesKey, FacesRead> Faces = new();
+
+    /// <summary>
+    ///     Reads the revision of one texture set's faces in a mesh file, as a bake records them in
+    ///     <see cref="BakeManifest.Geometry" />, or null when it cannot: the file, the set's material or null for the
+    ///     whole mesh, and the UV set. The Server sets it, since reading a mesh is not this library's. Unset, any
+    ///     change to the mesh's file is a change to every set on it.
+    /// </summary>
+    public static Func<string, string?, int, string?>? Geometry { get; set; }
+
     /// <summary>Why a set's bake no longer fits it, or null when it does or there is none.</summary>
     /// <param name="folder">The folder of the bake the set reads, or null.</param>
     /// <param name="mesh">The digest of the mesh the set stands on, or null when that is not known.</param>
     /// <param name="uvSet">The UV set the set is laid out in.</param>
-    public static string? Stale(string? folder, string? mesh, int uvSet) {
+    /// <param name="meshFile">
+    ///     The mesh's file, or null. With it, a bake of another digest still fits when the set's own faces are those
+    ///     it was made on, so a change to one set's faces leaves the others' bakes fitting (#151).
+    /// </param>
+    public static string? Stale(string? folder, string? mesh, int uvSet, string? meshFile = null) {
         if (folder is null || !Directory.Exists(folder)) {
             return null;
         }
@@ -34,7 +48,8 @@ public static class BakeFit {
             .Select(Read)
             .OfType<BakeManifest>()
             .ToList();
-        if (mesh is not null && manifests.Exists(m => m.Mesh is not null && m.Mesh != mesh)) {
+        if (mesh is not null
+            && manifests.Exists(m => m.Mesh is not null && m.Mesh != mesh && !SameFaces(m, meshFile))) {
             return Mesh;
         }
 
@@ -46,7 +61,43 @@ public static class BakeFit {
     /// <param name="model">The mesh the set stands on, or null for none.</param>
     /// <param name="uvSet">The UV set the set is laid out in.</param>
     public static string? OfModel(string? folder, string? model, int uvSet) =>
-        folder is null ? null : Stale(folder, DigestOf(model), uvSet);
+        folder is null ? null : Stale(folder, DigestOf(model), uvSet, model);
+
+    /// <summary>
+    ///     Whether a mesh file still has the faces a bake was made on, in the bake's UV set: the bake's material's
+    ///     faces, or the whole mesh's. False when the bake did not record them, or nothing can read them.
+    /// </summary>
+    /// <param name="manifest">The bake.</param>
+    /// <param name="meshFile">The mesh file, or null.</param>
+    public static bool SameFaces(BakeManifest manifest, string? meshFile) {
+        ArgumentNullException.ThrowIfNull(manifest);
+        return manifest.Geometry is { } geometry
+            && meshFile is not null
+            && FacesOf(meshFile, manifest.Material, manifest.UvSet) == geometry;
+    }
+
+    /// <summary>The revision of a set's faces, read again only when the file's length or time changes.</summary>
+    static string? FacesOf(string file, string? material, int uvSet) {
+        if (Geometry is not { } read) {
+            return null;
+        }
+
+        FileInfo info = new(file);
+        if (!info.Exists) {
+            return null;
+        }
+
+        FacesKey key = new(file, material, uvSet);
+        if (Faces.TryGetValue(key, out var known)
+            && known.Length == info.Length
+            && known.Written == info.LastWriteTimeUtc) {
+            return known.Geometry;
+        }
+
+        var geometry = read(file, material, uvSet);
+        Faces[key] = new(info.Length, info.LastWriteTimeUtc, geometry);
+        return geometry;
+    }
 
     /// <summary>A file's digest, read again only when its length or time changes. Null when it is not there.</summary>
     static string? DigestOf(string? file) {
@@ -74,11 +125,16 @@ public static class BakeFit {
         }
     }
 
-    static BakeManifest? Read(string file) {
+    /// <summary>A bake's manifest, or null when the file is not a whole one.</summary>
+    internal static BakeManifest? Read(string file) {
         try {
             return JsonSerializer.Deserialize(SharedFile.ReadAllBytes(file), ContractsJsonContext.Default.BakeManifest);
         } catch (Exception e) when (e is JsonException or IOException) {
             return null; // something half written says nothing about the mesh
         }
     }
+
+    readonly record struct FacesKey(string File, string? Material, int UvSet);
+
+    readonly record struct FacesRead(long Length, DateTime Written, string? Geometry);
 }

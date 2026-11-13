@@ -10,7 +10,7 @@ import { hexColourName } from '../core/colour-names';
 import { Commands } from '../core/commands';
 import { IconImports } from '../core/icons';
 import { channelName, labelIn, labelsOf, termName, valuesOf } from '../core/labels';
-import { degrees, percent, toDegrees, toRadians } from '../core/numbers';
+import { degrees, percent, times, toDegrees, toRadians } from '../core/numbers';
 import { ProjectStore } from '../library/project-store';
 import { LibraryThumbnails } from '../library/thumbnails';
 import { BrushPresets } from './brush-presets';
@@ -557,9 +557,9 @@ const PreviewQuiet = 200;
           [value]="store.brush().occlusionTolerance"
           (valueChange)="set('occlusionTolerance', $event)"
         />
-        <span class="readout w-12 shrink-0 text-end text-xs"
-          >{{ (store.brush().occlusionTolerance / 10).toFixed(1) }}%</span
-        >
+        <span class="readout w-12 shrink-0 text-end text-xs">{{
+          percent(store.brush().occlusionTolerance / 1000, 1)
+        }}</span>
       </div>
     }
     <div class="flex flex-col gap-1" data-testid="paint-channels" [hidden]="store.masking()">
@@ -776,7 +776,7 @@ export class BrushPanel {
       case 'angle':
         return degrees(value);
       case 'stretch':
-        return `${value.toFixed(1)}×`;
+        return times(value);
       case 'size':
         return this.sizeShown(value);
       default:
@@ -790,7 +790,7 @@ export class BrushPanel {
       case 'texture':
         return `${Math.round(value)} tx`;
       case 'model':
-        return `${(value / 10).toFixed(1)}%`;
+        return percent(value / 1000, 1);
       default:
         return `${Math.round(value)} px`;
     }

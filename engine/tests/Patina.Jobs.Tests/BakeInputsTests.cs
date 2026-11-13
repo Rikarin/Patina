@@ -291,6 +291,25 @@ public sealed class BakeInputsTests : IDisposable {
         Assert.Contains("ao", refusal.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>A height outside what a bake makes, or a position range that is not one, is refused by name.</summary>
+    [Fact]
+    public void A_height_or_a_position_range_that_cannot_be_baked_is_refused() {
+        Assert.Contains(
+            "height",
+            With(Request(), static options => options with { Rows = 8 }).Options.Problem(),
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "position range",
+            With(Request(), static options => options with { Position = new() { Range = "ball" } }).Options.Problem(),
+            StringComparison.Ordinal
+        );
+        Assert.Null(
+            With(Request(), static options => options with { Rows = 512, Position = new() { Range = "sphere" } })
+                .Options.Problem()
+        );
+    }
+
     /// <summary>A client that leaves the options out, or a part of them, bakes with the defaults.</summary>
     [Fact]
     public void A_request_that_leaves_options_out_takes_the_defaults() {

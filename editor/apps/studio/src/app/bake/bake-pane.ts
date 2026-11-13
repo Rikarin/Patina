@@ -19,7 +19,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
 import { imageFormatName, jobStateName, termName } from '../core/labels';
 import { messageOf } from '../core/messages';
-import { percent } from '../core/numbers';
+import { angle, fromPercent, percent, toPercent } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
@@ -36,7 +36,7 @@ const Maps: readonly { name: string; about: string }[] = [
   { name: 'bent', about: 'The average open direction from each point, from the ambient occlusion rays.' },
   { name: 'curvature', about: 'Convex edges light and concave creases dark, for wear and dirt.' },
   { name: 'thickness', about: 'How deep the surface goes behind each point, for light through thin parts.' },
-  { name: 'position', about: 'Where each point is within the high mesh’s bounding box, for gradients.' },
+  { name: 'position', about: 'Where each point is on the high mesh, for gradients.' },
   { name: 'world', about: 'The high mesh’s normal in object space, for masks by direction.' },
   { name: 'id', about: 'A flat color per material, part or shell, for masks.' },
   {
@@ -87,6 +87,12 @@ const HeightRanges = [
   { value: 'measured', label: 'Measured' },
   { value: 'rays', label: 'Ray distance' },
   { value: 'custom', label: 'Custom' }
+];
+const PositionRanges = [
+  { value: 'box', label: 'Box' },
+  { value: 'cube', label: 'Cube' },
+  { value: 'sphere', label: 'Sphere' },
+  { value: 'none', label: 'None' }
 ];
 const Distributions = [
   { value: 'cosine', label: 'Cosine' },
@@ -336,6 +342,18 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 />
               </div>
               <div class="flex min-w-0 flex-col gap-1">
+                <span class="text-foreground-muted text-xs">Height</span>
+                <xui-select
+                  class="w-full"
+                  aria-label="Height"
+                  data-testid="bake-rows"
+                  [itemText]="rowsName"
+                  [items]="rowChoices()"
+                  [value]="String(options.rows ?? '')"
+                  (valueChange)="set({ rows: $event ? Number($event) : null })"
+                />
+              </div>
+              <div class="flex min-w-0 flex-col gap-1">
                 <span class="text-foreground-muted text-xs">Format</span>
                 <xui-select
                   class="w-full"
@@ -437,8 +455,8 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 [max]="100"
                 [min]="0"
                 [stepSize]="1"
-                [value]="Math.round(options.rays.skew * 100)"
-                (valueChange)="setRays({ skew: $event / 100 })"
+                [value]="toPercent(options.rays.skew)"
+                (valueChange)="setRays({ skew: fromPercent($event) })"
               />
               <span class="readout w-12 shrink-0 text-end text-xs">{{ share(options.rays.skew) }}</span>
             </div>
@@ -738,7 +756,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     [value]="options.occlusion.spread"
                     (valueChange)="setOcclusion({ spread: $event })"
                   />
-                  <span class="readout w-12 shrink-0 text-end text-xs">{{ options.occlusion.spread }}°</span>
+                  <span class="readout w-12 shrink-0 text-end text-xs">{{ angle(options.occlusion.spread) }}</span>
                 </div>
                 <div class="flex items-center justify-between gap-2 text-sm">
                   Distribution
@@ -801,6 +819,24 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               }
               @case ('bent') {
                 <p class="text-foreground-muted text-xs">Uses the ambient occlusion rays and the normal map's space.</p>
+              }
+              @case ('position') {
+                <div class="flex items-center justify-between gap-2 text-sm">
+                  Range
+                  <xui-segmented-control
+                    size="sm"
+                    aria-label="Position range"
+                    data-testid="bake-position-range"
+                    [options]="positionRanges"
+                    [value]="options.position.range"
+                    (valueChange)="set({ position: { range: $event ?? options.position.range } })"
+                  />
+                </div>
+                <p class="text-foreground-muted text-xs">
+                  Box stretches each axis across the high mesh’s bounding box. Cube keeps its proportions, so a distance
+                  reads alike on every axis. Sphere is centred on the middle of the mesh. None keeps model units, which
+                  only an EXR format holds.
+                </p>
               }
               @case ('thickness') {
                 <label class="flex items-center justify-between gap-2 text-sm">
@@ -919,17 +955,17 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               >{{ finished() }} of {{ store.batch().length }} texture sets</span
             >
           }
-          <span class="readout ms-auto" data-testid="bake-percent">{{ percent() }}%</span>
+          <span class="readout ms-auto" data-testid="bake-percent">{{ share(progress()) }}</span>
         </div>
         <div
           class="bg-surface-sunken h-1.5 shrink-0 overflow-hidden rounded-sm"
           role="progressbar"
           aria-label="Bake progress"
-          [attr.aria-valuenow]="percent()"
+          [attr.aria-valuenow]="toPercent(progress())"
           aria-valuemin="0"
           aria-valuemax="100"
         >
-          <div class="bg-primary h-full" [style.width.%]="percent()"></div>
+          <div class="bg-primary h-full" [style.width.%]="toPercent(progress())"></div>
         </div>
         @for (each of store.batch(); track each.id) {
           @if (store.batch().length > 1) {
@@ -1070,6 +1106,7 @@ export class BakePane {
   protected readonly spaces = Spaces;
   protected readonly units = Units;
   protected readonly heightRanges = HeightRanges;
+  protected readonly positionRanges = PositionRanges;
   protected readonly distributions = Distributions;
   protected readonly palettes = Palettes;
   protected readonly falloffs = Falloffs;
@@ -1079,9 +1116,13 @@ export class BakePane {
   /** A map by the label the stack vocabulary gives it, as a bake mask names it. */
   protected readonly label = termName;
   protected readonly share = percent;
+  protected readonly toPercent = toPercent;
+  protected readonly fromPercent = fromPercent;
+  protected readonly angle = angle;
   protected readonly falloffName = (value: string) => FalloffNames[value] ?? value;
   protected readonly idSourceName = (value: string) => IdSourceNames[value] ?? value;
-  protected readonly sideName = (value: string) => `${value} × ${value}`;
+  protected readonly sideName = (value: string) => `${value} × ${this.options()?.rows ?? value}`;
+  protected readonly rowsName = (value: string) => (value ? `${value} texels` : 'Same as width');
   protected readonly canPick = desktop() !== undefined;
   protected readonly roundedEdges = RoundedEdges;
   protected readonly colourSources = ColourSources;
@@ -1107,6 +1148,8 @@ export class BakePane {
   protected readonly refused = signal<string | null>(null);
   protected readonly options = this.settings.options;
   protected readonly sides = computed(() => this.status.textureSides().map(String));
+  /** A bake as tall as it is wide, or any of the sizes: a texture set wider than it is tall bakes at its shape. */
+  protected readonly rowChoices = computed(() => ['', ...this.sides()]);
 
   protected readonly chosen = computed(() => new Set(this.settings.chosen().map(set => set.material)));
 
@@ -1139,9 +1182,10 @@ export class BakePane {
   protected readonly finished = computed(
     () => this.store.batch().filter(job => job.state !== 'queued' && job.state !== 'running').length
   );
-  protected readonly percent = computed(() => {
+  /** How far the jobs of the bake are, together, as a share. */
+  protected readonly progress = computed(() => {
     const jobs = this.store.batch();
-    return jobs.length === 0 ? 0 : Math.round((jobs.reduce((sum, job) => sum + job.progress, 0) / jobs.length) * 100);
+    return jobs.length === 0 ? 0 : jobs.reduce((sum, job) => sum + job.progress, 0) / jobs.length;
   });
 
   protected readonly bakeLabel = computed(() => {
@@ -1151,13 +1195,13 @@ export class BakePane {
 
   /** A distance as the field shows it: a percentage of the size, or model units. */
   protected shown(value: number): number {
-    return this.absolute() ? value : Math.round(value * 100 * 1000) / 1000;
+    return this.absolute() ? value : toPercent(value, 3);
   }
 
   /** A distance from the field, as the settings keep it. */
   protected stored(value: number | null): number {
     const number = value ?? 0;
-    return this.absolute() ? number : number / 100;
+    return this.absolute() ? number : fromPercent(number);
   }
 
   protected about(name: string): string {

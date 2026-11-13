@@ -22,7 +22,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { colourName } from '../core/colour-names';
 import { IconImports } from '../core/icons';
 import { blendName, channelName, choiceName, labelsOf, termName, valuesOf } from '../core/labels';
-import { amount, percent } from '../core/numbers';
+import { amount, knobRange, knobShown, percent, toDegrees, toRadians } from '../core/numbers';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { AnchorInputs, type AnchorSources } from './anchor-inputs';
@@ -103,7 +103,7 @@ function stemOf(source: string): string | undefined {
         <div class="flex items-center gap-2">
           <span
             class="text-foreground-muted w-16 shrink-0 text-xs"
-            title="A name other layers read the stack by, as it stands just above this layer"
+            title="A name other layers read the picture by, as it stands just above this layer"
             >Anchor</span
           >
           <input
@@ -492,6 +492,21 @@ function stemOf(source: string): string | undefined {
                   [value]="knob(layer, parameter)"
                   (valueChange)="$event && setKnob(layer, parameter.name, $event)"
                 />
+              } @else if (bounded(parameter); as range) {
+                <xui-slider
+                  class="min-w-0 flex-1"
+                  labelStepSize="0"
+                  [aria-label]="knobName(parameter)"
+                  [attr.data-testid]="'paint-knob-' + parameter.name"
+                  [max]="range.maximum"
+                  [min]="range.minimum"
+                  [stepSize]="range.step"
+                  [value]="+knob(layer, parameter)"
+                  (valueChange)="setKnob(layer, parameter.name, $event.toString())"
+                />
+                <span class="readout w-12 shrink-0 text-end text-xs">{{
+                  knobShown(parameter, +knob(layer, parameter))
+                }}</span>
               } @else if (parameter.kind === 'Float' || parameter.kind === 'Int') {
                 <xui-numeric-input
                   class="min-w-0 flex-1"
@@ -731,6 +746,21 @@ function stemOf(source: string): string | undefined {
                       [value]="generatorKnob(layer, parameter)"
                       (valueChange)="$event && setGeneratorKnob(layer, parameter.name, $event)"
                     />
+                  } @else if (bounded(parameter); as range) {
+                    <xui-slider
+                      class="min-w-0 flex-1"
+                      labelStepSize="0"
+                      [aria-label]="knobName(parameter)"
+                      [attr.data-testid]="'paint-mask-knob-' + parameter.name"
+                      [max]="range.maximum"
+                      [min]="range.minimum"
+                      [stepSize]="range.step"
+                      [value]="+generatorKnob(layer, parameter)"
+                      (valueChange)="setGeneratorKnob(layer, parameter.name, $event.toString())"
+                    />
+                    <span class="readout w-12 shrink-0 text-end text-xs">{{
+                      knobShown(parameter, +generatorKnob(layer, parameter))
+                    }}</span>
                   } @else {
                     <xui-numeric-input
                       class="min-w-0 flex-1"
@@ -990,7 +1020,9 @@ function stemOf(source: string): string | undefined {
       }
 
       <div class="flex items-center gap-2">
-        <span class="text-foreground-muted w-16 shrink-0 text-xs" title="What the stack's generators and graphs vary by"
+        <span
+          class="text-foreground-muted w-16 shrink-0 text-xs"
+          title="What the document’s generators and graphs vary by"
           >Seed</span
         >
         <xui-numeric-input
@@ -1068,6 +1100,9 @@ export class LayerPanel {
   protected knobName(parameter: { name: string; label?: string | null }): string {
     return parameter.label ?? termName(parameter.name);
   }
+
+  protected readonly bounded = knobRange;
+  protected readonly knobShown = knobShown;
   protected readonly choiceName = choiceName;
   /** A layer by its name, which is what the anchor list offers rather than its id. */
   protected readonly layerName = (id: string): string =>
@@ -1209,11 +1244,11 @@ export class LayerPanel {
   }
 
   protected degrees(radians: number | undefined): number {
-    return Math.round(((radians ?? 0) * 180) / Math.PI);
+    return Math.round(toDegrees(radians ?? 0));
   }
 
   protected radians(degrees: number | null): number {
-    return ((degrees ?? 0) * Math.PI) / 180;
+    return toRadians(degrees ?? 0);
   }
 
   protected setSetting(layer: StackLayer, setting: string, value: readonly number[]): void {

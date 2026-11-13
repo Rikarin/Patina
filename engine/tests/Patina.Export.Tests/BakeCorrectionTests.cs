@@ -380,4 +380,67 @@ public sealed class BakeCorrectionTests : IDisposable {
         var written = BakeCache.ReadManifestFile(Path.Combine(request.Output, $"before.{BakeCache.ManifestFile}"));
         Assert.Equal(LibraryFiles.Digest(before), written!.Mesh);
     }
+
+    /// <summary>
+    ///     A bake asked for fewer rows than columns writes every map at that shape and says so (#147): a texture set
+    ///     authored wider than it is tall bakes at its own shape.
+    /// </summary>
+    [Theory]
+    [InlineData(BakeInputs.Png8)]
+    [InlineData(BakeInputs.Png16)]
+    [InlineData(BakeInputs.Exr32)]
+    public void A_bake_wider_than_it_is_tall_writes_its_maps_at_that_shape(string format) {
+        var high = Quad("high.obj", 0.02f, Straight);
+        var low = Quad("low.obj", 0f, Straight);
+        var manifest = Bake(
+            Request(
+                high,
+                low,
+                options => options with {
+                    Rows = 32, Format = format, Maps = ["normal", "position"], Position = new() { Range = "cube" }
+                }
+            ),
+            format
+        );
+
+        Assert.Equal(2, manifest.Result.Maps.Count);
+        foreach (var map in manifest.Result.Maps) {
+            Assert.Equal(64, map.Resolution);
+            Assert.Equal(32, map.Rows);
+            var picture = MapPictures.ReadFile(Path.Combine(Into(format), map.Path));
+            Assert.Equal((64, 32), (picture.Width, picture.Height));
+        }
+    }
+
+    /// <summary>
+    ///     A bake records the faces it was made on, so after a change to one texture set's faces only that set says its
+    ///     bake no longer fits: the other's maps are as current as a new bake's (#151). Before, both said so.
+    /// </summary>
+    [Fact]
+    public void A_mesh_change_makes_only_the_touched_sets_bake_stale() {
+        var high = Quad("high.obj", 0f, Straight);
+        var low = TwoSets("low.obj", 0f);
+
+        BakeRequest Set(string set) =>
+            Request(high, low, static options => options with { Maps = ["normal"] }) with { Material = set };
+
+        var body = Bake(Set("Body"), "body");
+        Assert.Equal("Body", body.Material);
+        Assert.Equal(BakeKeyReads.GeometryOf(low, "Body", 0), body.Geometry);
+        _ = Bake(Set("Strap"), "strap");
+
+        _ = TwoSets("low.obj", 0.25f);
+        var now = LibraryFiles.Digest(low);
+        var before = BakeFit.Geometry;
+        try {
+            BakeFit.Geometry = null;
+            Assert.Equal(BakeFit.Mesh, BakeFit.Stale(Into("body"), now, 0, low));
+
+            BakeFit.Geometry = BakeKeyReads.GeometryOf;
+            Assert.Null(BakeFit.Stale(Into("body"), now, 0, low));
+            Assert.Equal(BakeFit.Mesh, BakeFit.Stale(Into("strap"), now, 0, low));
+        } finally {
+            BakeFit.Geometry = before;
+        }
+    }
 }

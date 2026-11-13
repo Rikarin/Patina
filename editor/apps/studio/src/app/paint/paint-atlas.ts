@@ -7,6 +7,7 @@ import { XuiSpinnerImports } from '@xui/spinner';
 import { Commands } from '../core/commands';
 import { channelName } from '../core/labels';
 import { messageOf } from '../core/messages';
+import { amount } from '../core/numbers';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore, pressureOf, toTexels } from './paint-store';
@@ -21,7 +22,7 @@ const Painting = 'painting:';
   imports: [XuiButtonImports, XuiNonIdealStateImports, XuiSelectImports, XuiSpinnerImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2',
+    class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2 [container-type:size]',
     'data-commands': 'atlas'
   },
   template: `
@@ -81,15 +82,19 @@ const Painting = 'painting:';
     @if (store.picture(); as picture) {
       @if (tiling() && tiled()) {
         <div
-          class="well aspect-square h-full max-h-full max-w-full"
+          class="well"
           data-testid="paint-tiled"
+          [style.aspect-ratio]="aspect()"
+          [style.width]="wellWidth()"
           [style.background-image]="'url(' + picture + ')'"
           [style.background-size]="'33.3333% 33.3333%'"
         ></div>
       } @else {
         <div
-          class="well relative aspect-square max-h-full max-w-full touch-none overflow-hidden"
+          class="well relative touch-none overflow-hidden"
           data-testid="paint-canvas"
+          [style.aspect-ratio]="aspect()"
+          [style.width]="wellWidth()"
           [style.transform]="transform()"
           (wheel)="wheel($event)"
         >
@@ -161,7 +166,7 @@ const Painting = 'painting:';
     } @else if (!store.state()) {
       <xui-non-ideal-state
         class="flex-1"
-        title="No stack open"
+        title="No document open"
         description="This shows a texturing document or a layered material flat, as its maps lie, to paint on. Open one from the Library, or make a project."
         data-testid="atlas-empty"
       >
@@ -252,6 +257,14 @@ export class PaintAtlas {
   private readonly side = computed<readonly [number, number]>(() => {
     const state = this.store.state();
     return [state?.width ?? 1, state?.height ?? 1];
+  });
+
+  /** The well's shape is the set's, which need not be square (#246). */
+  protected readonly aspect = computed(() => `${this.side()[0]} / ${this.side()[1]}`);
+  /** As wide as the pane allows while the whole of the set's height still fits in it. */
+  protected readonly wellWidth = computed(() => {
+    const [width, height] = this.side();
+    return `min(100cqw, ${(100 * width) / height}cqh)`;
   });
 
   private painting = false;
@@ -374,8 +387,8 @@ export class PaintAtlas {
     const [width, height] = this.side();
     const [u, v] = [(event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height];
     this.under.set({
-      u: u.toFixed(3),
-      v: v.toFixed(3),
+      u: amount(u, 3),
+      v: amount(v, 3),
       x: Math.min(width - 1, Math.max(0, Math.floor(u * width))),
       y: Math.min(height - 1, Math.max(0, Math.floor(v * height)))
     });

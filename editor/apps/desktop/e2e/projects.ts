@@ -39,13 +39,13 @@ export const ProjectKinds = {
 export async function newLibrary(app: ElectronApplication, window: Page, path: string): Promise<void> {
   await answerSave(app, path);
   await window.getByTestId('library-new').click();
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText(
-    (path.split('/').pop() ?? path).replace(/\.ptlib$/u, ''),
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText(
+    basename(path).replace(/\.ptlib$/u, ''), // a Windows path is split at its backslashes too
     {
       timeout: 30_000
     }
   );
-  await expect(window.getByRole('status', { name: 'Server status' })).toContainText('GPU ready');
+  await expect(window.getByRole('status', { name: 'Engine status' })).toContainText('GPU ready');
 }
 
 /** Makes a project the way a person does, which also opens it. */
@@ -62,7 +62,7 @@ export async function newProject(
   if (mesh) {
     await answerOpen(app, mesh);
     await window.getByTestId('new-project-mesh').click();
-    await expect(window.getByTestId('new-project-mesh-name')).toHaveText(mesh.split('/').pop() ?? mesh);
+    await expect(window.getByTestId('new-project-mesh-name')).toHaveText(basename(mesh));
   }
 
   await window.getByRole('button', { name: 'Create' }).click();
@@ -93,13 +93,79 @@ export function newestGeneration(library: string): string {
     : '';
 }
 
+/**
+ * The app's end, from a quit about to begin. Past the wait it fails with every step the quit took, as the app wrote
+ * them, so a quit that stalls says where it stopped (#236).
+ */
+export function ending(app: ElectronApplication, waitMs = 30_000): Promise<void> {
+  const steps: string[] = [];
+  const heard = (chunk: Buffer | string) => {
+    steps.push(
+      ...String(chunk)
+        .split(/\r?\n/u)
+        .filter(line => line.includes('Patina quit:'))
+    );
+  };
+  app.process().stdout?.on('data', heard);
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const went = steps.join('\n') || '(no step)';
+      reject(new Error(`The app did not end within ${waitMs} ms. Its quit went:\n${went}`));
+    }, waitMs);
+    void app.waitForEvent('close', { timeout: 0 }).then(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
 /** Ends the app with no one to answer its question about unsaved paint. */
 export async function leave(app: ElectronApplication): Promise<void> {
+  // The engine's processes outlive Electron's exit for a moment, and on Windows a file they still hold cannot be
+  // deleted, so the scratch folder would fail to go. Wait for every process to end before the test cleans up.
+  const pids = [electronPid(app), ...(await sidecarPids(app))].filter((pid): pid is number => pid !== undefined);
   await app
     .evaluate(({ app: electron }) => {
       electron.exit(0);
     })
     .catch(() => undefined); // the app can be gone before the answer is
+  const deadline = Date.now() + 10_000;
+  while (pids.some(running) && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  for (const pid of pids.filter(running)) {
+    process.kill(pid);
+  }
+}
+
+function electronPid(app: ElectronApplication): number | undefined {
+  try {
+    return app.process().pid;
+  } catch {
+    return undefined; // the app has already quit
+  }
+}
+
+async function sidecarPids(app: ElectronApplication): Promise<number[]> {
+  const window = app.windows()[0];
+  if (window === undefined) {
+    return [];
+  }
+  const statuses = await window
+    .evaluate(() =>
+      (globalThis as unknown as { patina: { sidecars(): Promise<{ pid: number | null }[]> } }).patina.sidecars()
+    )
+    .catch(() => []);
+  return statuses.flatMap(status => (status.pid === null ? [] : [status.pid]));
+}
+
+function running(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

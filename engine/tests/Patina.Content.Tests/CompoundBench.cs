@@ -13,6 +13,9 @@ static class CompoundBench {
     /// <summary>How wide and tall a bench graph is.</summary>
     public const int Side = 128;
 
+    /// <summary><see cref="Side" /> as a graph setting spells it.</summary>
+    const string SideText = "128";
+
     /// <summary>
     ///     Columns of <see cref="Curvature" /> that are a soft convex edge, as a real bake's rounded edge reads.
     /// </summary>
@@ -42,6 +45,15 @@ static class CompoundBench {
         var library = TextureCompoundLibrary.Publish(registry, null, out var problems);
 
         Assert.Empty(problems.Where(static problem => FactoryCompounds.Paths.Contains(problem.Path)));
+
+        // A compound counts its radii in the base it was authored at, 1024 for every one that ships, and the bench
+        // measures it in its own texels: so on the bench, every compound is authored at the bench's size.
+        foreach (var shipped in TextureCompoundLibrary.Shipped) {
+            if (library.TryGet(shipped, out var compound)) {
+                compound.Settings[TextureGraphSettings.BaseWidth] = SideText;
+                compound.Settings[TextureGraphSettings.BaseHeight] = SideText;
+            }
+        }
 
         var type = registry.Get(path);
         NodeGraphModel graph = new();

@@ -25,6 +25,9 @@ var builder = WebApplication.CreateSlimBuilder(
     }
 );
 
+// A texture set's bake fits it while its own faces are the ones baked on, whatever else in the mesh changed (#151).
+BakeFit.Geometry = Patina.Export.BakeKeyReads.GeometryOf;
+
 string? library = null;
 if (builder.Configuration["library"] is { Length: > 0 } path) {
     library = InstanceRegistry.NormaliseLibrary(path);

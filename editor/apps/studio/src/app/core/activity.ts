@@ -2,6 +2,7 @@ import { Injectable, Injector, type Signal, computed, effect, inject, signal, un
 import type { JobState } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { messageOf } from './messages';
+import { percent } from './numbers';
 
 /** How a notice reads: something went wrong, something to know, or something finished. */
 export type NoticeTone = 'error' | 'warning' | 'info' | 'done';
@@ -142,7 +143,7 @@ export class Activity {
       return null;
     }
 
-    const at = `${first.title} ${Math.round(first.progress * 100)}%`;
+    const at = `${first.title} ${percent(first.progress)}`;
     const doing = first.state === 'queued' ? `${first.title}, waiting` : first.current ? `${at}, ${first.current}` : at;
     return going.length > 1 ? `${doing}, and ${going.length - 1} more` : doing;
   });

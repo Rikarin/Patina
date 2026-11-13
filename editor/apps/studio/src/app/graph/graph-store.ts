@@ -28,6 +28,7 @@ import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { DraftLayer } from './draft-layer';
 import { EditQueue } from './edit-queue';
+import type { WireCommand } from './graph-authoring';
 import { type GraphDocument, applyEvent, classify, documentOf, edgeKey } from './graph-model';
 import { PreviewLoader } from './preview-loader';
 
@@ -1024,6 +1025,13 @@ export class GraphStore {
 
   disconnect(toNode: number, toPort: string): void {
     void this.apply([{ op: 'disconnect', toNode, toPort }], null);
+  }
+
+  /** Several wires changed at once, such as moved or swapped, as one undo step under a name. */
+  rewire(commands: readonly WireCommand[], label: string): void {
+    if (commands.length > 0) {
+      void this.apply([...commands], label);
+    }
   }
 
   /**

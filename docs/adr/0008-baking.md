@@ -105,3 +105,14 @@ The plan expected a native library. **A managed writer was compared first, and w
 A bake writes flat images, so that subset is all it needs. A reader refuses the rest. `THIRD-PARTY-NOTICES.md` and
 `build/native-dependencies.json` do not change, and nothing new installs on any platform in CI or the app. Choosing PIZ or a tiled
 file later would reopen this.
+
+## Shape (#147)
+
+A bake is as wide as `BakeOptions.Resolution` and as tall as `BakeOptions.Rows`, which is null for a square. The atlas still
+spans the unit square of UV, stretched to that many rows, so the layout needs no change and a mask is still read by UV. The
+height is a bake option rather than read from each texture set's size, because the bake settings are the project's and apply to
+every set (#147's wave 3); a project whose sets are all 2:1 sets it once. A manifest's map says its `rows` only when it is not
+square, and the key reads `rows` only when it is set, so every square bake keeps the key it had.
+
+The position map's range (#148) is `BakeOptions.Position.Range`: `box`, as before, `cube`, `sphere` or `none`. It is part of the
+options, so it joins every bake's key, and a bake made before it is baked once more rather than taken from the cache.

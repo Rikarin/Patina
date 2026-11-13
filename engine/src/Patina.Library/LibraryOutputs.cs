@@ -10,8 +10,14 @@ namespace Patina.Library;
 public sealed record OutputSelection(AssetId? Asset = null, IReadOnlyList<ProjectId>? Projects = null) {
     public static OutputSelection All { get; } = new();
 
+    /// <summary>
+    ///     Only these documents of each project, by file below it, whatever they are (<see cref="ProjectOutputs.Of" />),
+    ///     or null for what each project exports.
+    /// </summary>
+    public IReadOnlyList<string>? Documents { get; init; }
+
     /// <summary>Whether this is the whole library.</summary>
-    public bool IsEverything => Asset is null && Projects is not { Count: > 0 };
+    public bool IsEverything => Asset is null && Projects is not { Count: > 0 } && Documents is not { Count: > 0 };
 }
 
 /// <summary>An output as a build sees it.</summary>
@@ -62,7 +68,7 @@ sealed class LibraryOutputs(string root, IndexDatabase database, LibraryQueries 
                 batch,
                 new() { CancellationToken = cancellationToken },
                 path => {
-                    if (Read(path, selection.Asset, graph, paths, hashes) is { Outputs.Count: > 0 } project) {
+                    if (Read(path, selection, graph, paths, hashes) is { Outputs.Count: > 0 } project) {
                         found.Add(project);
                     }
                 }
@@ -101,7 +107,7 @@ sealed class LibraryOutputs(string root, IndexDatabase database, LibraryQueries 
 
     ScannedProject? Read(
         string path,
-        AssetId? asset,
+        OutputSelection selection,
         AssetGraph graph,
         Dictionary<AssetId, string> paths,
         LibraryCheck.InputHashes hashes
@@ -120,8 +126,8 @@ sealed class LibraryOutputs(string root, IndexDatabase database, LibraryQueries 
             project.Name,
             path,
             [
-                ..ProjectOutputs.Of(project, LibraryLayout.Full(root, location))
-                    .Select(output => Scan(output, project, location, asset, graph, paths, hashes))
+                ..ProjectOutputs.Of(project, LibraryLayout.Full(root, location), selection.Documents)
+                    .Select(output => Scan(output, project, location, selection.Asset, graph, paths, hashes))
             ]
         );
     }

@@ -14,6 +14,7 @@ import { BakeStore } from '../bake/bake-store';
 import { desktop } from '../core/desktop';
 import { type FileChoice, FilePicker } from '../core/file-picker';
 import { messageOf } from '../core/messages';
+import { Preferences, type RecentDocument } from '../core/preferences';
 import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice } from '../core/session-return';
 import { SystemStatus } from '../core/system-status';
@@ -89,6 +90,7 @@ export class ProjectStore {
   private readonly status = inject(SystemStatus);
   private readonly recoveryOffers = inject(RecoveryOffers);
   private readonly restarts = inject(EngineRestarts);
+  private readonly preferences = inject(Preferences);
   /**
    * Tabs behind whose unsaved edits went with a Server that restarted: each is clean now, and says so and offers what
    * autosave kept when it comes to the front, as the tab in front did when it came back.
@@ -162,8 +164,20 @@ export class ProjectStore {
   });
   /** The model's texture sets, one document per material. A model with one material has none to choose. */
   readonly textureSets = computed(() => (this.current()?.documents ?? []).filter(document => document.material));
-  /** The bake layers read was made on a mesh the project no longer has. */
-  readonly bakeOutOfDate = computed(() => this.current()?.bakes.at(-1)?.stale === true);
+  /**
+   * The bake the document in front reads was made on faces the project's mesh no longer has: its own word, then its
+   * bake folder's, and with no bake of its own, any of the project's.
+   */
+  readonly bakeOutOfDate = computed(() => {
+    const project = this.current();
+    const document = this.document();
+    if (document?.bakeStale) {
+      return document.bakeStale === 'mesh';
+    }
+
+    const own = document?.bake ? project?.bakes.find(bake => bake.path === document.bake) : undefined;
+    return own ? own.stale : (project?.bakes.some(bake => bake.stale) ?? false);
+  });
   /** The mesh's file name. */
   readonly meshName = computed(() => this.mesh()?.path.split('/').pop() ?? null);
   /** The tabs with edits that are not saved. */
@@ -187,7 +201,7 @@ export class ProjectStore {
       const asked = this.recoveryOffers.asked();
       if (asked) {
         untracked(() => {
-          const tab = this.mutableTabs().find(held => held.path === asked.path || asked.path.endsWith(`/${held.path}`));
+          const tab = this.mutableTabs().find(held => sameDocument(held.path, asked.path));
           if (tab && this.recoverable() === null) {
             void this.offerRecovery(tab.path).catch(() => undefined); // nothing kept is nothing to offer
           }
@@ -249,6 +263,10 @@ export class ProjectStore {
         untracked(() => void this.reopen(key));
       } else if (tab) {
         remember(key, JSON.stringify({ project: tab.project, path: tab.path }));
+        const { project, path, name } = tab;
+        if (project !== null) {
+          untracked(() => this.preferences.usedDocument({ library: state.info.id, project, path, name }));
+        }
       } else {
         remember(key, null);
       }
@@ -281,6 +299,29 @@ export class ProjectStore {
   /** Opens a project at the document most likely wanted. */
   async open(path: string): Promise<void> {
     await this.openDocument(path, null);
+  }
+
+  /**
+   * Opens a document Start offered as recent. One whose project or file has gone since is forgotten and said so, rather
+   * than opening something else of its project; an engine that cannot answer forgets nothing.
+   */
+  async openRecent(recent: RecentDocument): Promise<void> {
+    this.startAction();
+    try {
+      const contents = await this.read(recent.project);
+      if (contents.documents.some(document => document.path === recent.path)) {
+        await this.openDocument(recent.project, recent.path);
+        return;
+      }
+    } catch (failure) {
+      if (!(failure instanceof ApiError && failure.status === 404)) {
+        this.mutableFailure.set(messageOf(failure));
+        return;
+      }
+    }
+
+    this.preferences.forgetDocument(recent.library, recent.path);
+    this.mutableFailure.set(`${recent.name} is no longer in ${recent.project}, so Start no longer offers it.`);
   }
 
   /** Opens one document of a project, by its path below the library, or goes to it if it is open. */
@@ -1050,7 +1091,7 @@ export class ProjectStore {
   }
 
   private adoptGraph(path: string, name: string, session: string): void {
-    const relative = path.includes('/projects/') ? path.slice(path.indexOf('/projects/') + 1) : path;
+    const relative = inLibrary(path);
     const known = this.mutableTabs().find(tab => tab.path === path || tab.path === relative);
     if (known) {
       this.mutableActive.set(known.path);
@@ -1214,4 +1255,19 @@ export class ProjectStore {
 
 function tabOf(document: ProjectDocumentInfo, project: string): DocumentTab {
   return { path: document.path, name: document.name, kind: document.kind, project, dirty: false, session: null };
+}
+
+/**
+ * A path the Server gives, as the project files name it: from `projects/` down, with `/` between its parts. The Server
+ * gives a full path in the system's own form, which on Windows is split by backslashes.
+ */
+export function inLibrary(path: string): string {
+  const forward = path.replaceAll('\\', '/');
+  const at = forward.indexOf('/projects/');
+  return at < 0 ? path : forward.slice(at + 1);
+}
+
+/** Whether a tab's path and a path the Server gives name one document. */
+export function sameDocument(tab: string, server: string): boolean {
+  return tab === server || server.replaceAll('\\', '/').endsWith(`/${tab}`);
 }

@@ -148,7 +148,7 @@ const ProjectKinds = [
               <xui-switch aria-label="Auto Unwrap" data-testid="new-project-unwrap" [(checked)]="autoUnwrap" />
             </label>
           }
-          <xui-form-field label="Resolution">
+          <xui-form-field label="Size">
             <xui-select
               class="w-full"
               data-testid="new-project-resolution"

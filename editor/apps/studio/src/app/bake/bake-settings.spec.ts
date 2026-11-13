@@ -46,6 +46,7 @@ const defaults: ProjectBakeSettings = {
       groundOffset: 0
     },
     thickness: { normalised: true },
+    position: { range: 'box' },
     id: { source: 'auto', palette: 'random' },
     rounding: { enabled: false, width: 0.01, edges: 'angle', angle: 30 },
     colour: { source: 'auto', texture: '' }

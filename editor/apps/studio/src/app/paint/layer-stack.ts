@@ -40,6 +40,7 @@ import { blendName as blendLabelOf, channelName, termName } from '../core/labels
 import { MenuKeys } from '../core/menu-keys';
 import { diagnosticOf, messageOf } from '../core/messages';
 import { percent } from '../core/numbers';
+import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { IsolationStore } from '../viewport/isolation-store';
 import { type DropZone, dropManyCommands, nudgeCommands } from './layer-drag';
@@ -272,6 +273,16 @@ const MaskMarks: Readonly<Record<string, string>> = {
         <ng-icon xui size="sm" name="matDeleteOutline" />
       </button>
     </div>
+
+    @if (store.link() === 'reconnecting') {
+      <xui-callout class="shrink-0 text-xs" color="error" compact data-testid="layers-offline">
+        Lost touch with Patina’s engine. Layers come back when it reconnects; an edit made before then is refused.
+      </xui-callout>
+    } @else if (workerMissing()) {
+      <xui-callout class="shrink-0 text-xs" color="warning" compact data-testid="layers-no-worker">
+        The GPU engine is not running. Edits are kept, and the paint shows again when it starts.
+      </xui-callout>
+    }
 
     @if (staleBake(); as stale) {
       <xui-callout class="shrink-0 text-xs" color="warning" compact data-testid="layers-stale-bake">
@@ -955,7 +966,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
           @if (store.state()) {
             <xui-non-ideal-state
               title="No layers yet"
-              description="Layers stack paint, fills and filters into the maps this document makes. Add one, or drag a material from the shelf."
+              description="Layers lay paint, fills and filters one over another into the maps this document makes. Add one, or drag a material from the shelf."
               data-testid="layers-empty"
             >
               <button
@@ -971,7 +982,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
             </xui-non-ideal-state>
           } @else {
             <xui-non-ideal-state
-              title="No stack open"
+              title="No document open"
               description="Open a texturing document or a layered material to see its layers here."
               data-testid="layers-empty"
             />
@@ -1455,7 +1466,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
             [disabled]="(store.state()?.layers?.length ?? 0) === 0"
             (triggered)="store.flatten()"
           >
-            Flatten Stack
+            Flatten All Layers
           </button>
           @if (menuLayer(); as layer) {
             <xui-menu-divider />
@@ -1470,17 +1481,28 @@ const MaskMarks: Readonly<Record<string, string>> = {
 })
 export class LayerStack {
   protected readonly store = inject(PaintStore);
+  private readonly status = inject(SystemStatus);
+  /** The Server answers but its GPU engine does not, so nothing new can be drawn. */
+  protected readonly workerMissing = computed(() => {
+    const state = this.status.state();
+    return state.kind === 'online' && !state.system.worker.connected;
+  });
   protected readonly project = inject(ProjectStore);
   private readonly isolation = inject(IsolationStore);
 
-  /** Why this texture set's mesh maps need baking again, or null: its own bake's word first, then the project's. */
+  /**
+   * Why this texture set's mesh maps need baking again, or null: its own bake's word while it is open, since a mesh
+   * change to another set's faces leaves this one's bake fitting (#151), and the project's otherwise.
+   */
   protected readonly staleBake = computed(() => {
-    const own = this.store.state()?.bakeStale;
+    const state = this.store.state();
+    const own = state?.bakeStale;
     if (own === 'uvSet') {
       return 'This texture set’s UV set changed after its last bake.';
     }
 
-    return own === 'mesh' || this.project.bakeOutOfDate() ? 'The mesh changed after the last bake.' : null;
+    const mesh = state ? own === 'mesh' : this.project.bakeOutOfDate();
+    return mesh ? 'The mesh changed after the last bake.' : null;
   });
 
   protected readonly percent = percent;

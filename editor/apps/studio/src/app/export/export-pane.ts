@@ -22,6 +22,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
 import { jobStateName, labelIn, termName } from '../core/labels';
 import { messageOf } from '../core/messages';
+import { percent, toPercent } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { ProjectStore } from '../library/project-store';
@@ -42,6 +43,8 @@ import {
 import { PresetEditor } from './preset-editor';
 
 const SaveDelay = 400;
+/** The documents whose maps an export can take, each as a texture set of its own. */
+const exportedKinds: ReadonlySet<string> = new Set(['texturing', 'graph', 'layered-material', 'image-material']);
 const StatusNames: Readonly<Record<string, string>> = {
   built: 'written',
   reused: 'copied from an earlier export',
@@ -345,6 +348,20 @@ function lanesOf(hex: string): number[] {
                   />
                 </div>
               }
+              <div class="flex items-center justify-between gap-2 pt-1">
+                <span
+                  class="text-xs"
+                  title="Sets that share one UV square go into one set of files, each where its layout puts it. A set's own size does not apply."
+                >
+                  Merge into one set of files
+                </span>
+                <xui-switch
+                  aria-label="Merge texture sets into one set of files"
+                  data-testid="export-merge"
+                  [checked]="settings().merge"
+                  (checkedChange)="change({ merge: $event })"
+                />
+              </div>
             </section>
           }
 
@@ -605,7 +622,7 @@ function lanesOf(hex: string): number[] {
                 <span class="text-foreground-muted min-w-0 flex-1 truncate" data-testid="export-current">
                   {{ running() ? (build.report?.current ?? '') : '' }}
                 </span>
-                <span class="readout" data-testid="export-percent">{{ percent() }}%</span>
+                <span class="readout" data-testid="export-percent">{{ percentText() }}</span>
               </div>
               <div
                 class="bg-surface-sunken h-1.5 overflow-hidden rounded-sm"
@@ -736,7 +753,8 @@ export class ExportPane implements OnInit {
   });
   protected readonly stateName = jobStateName;
   protected readonly running = computed(() => ['queued', 'running'].includes(this.store.build()?.state ?? ''));
-  protected readonly percent = computed(() => Math.round((this.store.build()?.progress ?? 0) * 100));
+  protected readonly percent = computed(() => toPercent(this.store.build()?.progress ?? 0));
+  protected readonly percentText = computed(() => percent(this.store.build()?.progress ?? 0));
   protected readonly distanced = computed(() => usesDistance(this.settings().padding));
   protected readonly paddingHex = computed(() => hexOf(this.settings().colour));
 
@@ -766,13 +784,28 @@ export class ExportPane implements OnInit {
     return item?.kind === 'project' ? { id: item.project.id, name: item.project.name, path: item.project.path } : null;
   });
 
-  /** The texture set of the document in front, when it is one an export writes. */
-  private readonly documentSet = computed(() => {
+  /**
+   * The document in front as an export takes it: its texture set, and its file below the project when the project does
+   * not export it as it is, such as a graph in a texturing project, which then exports on its own.
+   */
+  private readonly documentExport = computed<{ set: string; file: string | null } | null>(() => {
     const document = this.project.document();
-    const sets = this.project.current()?.exportSets ?? [];
-    const set = document ? (document.material ?? document.name) : null;
-    return set && sets.includes(set) ? set : null;
+    const open = this.project.current();
+    if (!document || !open) {
+      return null;
+    }
+    const set = document.material ?? document.name;
+    if (open.exportSets.includes(set)) {
+      return { set, file: null };
+    }
+    const below = `projects/${open.path}/`;
+    return document.id && exportedKinds.has(document.kind) && document.path.startsWith(below)
+      ? { set, file: document.path.slice(below.length) }
+      : null;
   });
+
+  /** The texture set of the document in front, when an export can write it. */
+  private readonly documentSet = computed(() => this.documentExport()?.set ?? null);
 
   /** A material selected in the Library narrows a library export to what reads it, which is the impact of editing it. */
   private readonly asset = computed(() => {
@@ -798,7 +831,9 @@ export class ExportPane implements OnInit {
   protected readonly scopeText = computed(() => {
     switch (this.scope()) {
       case 'document':
-        return `The texture set ${this.documentSet() ?? ''} of ${this.target()?.name ?? ''}`;
+        return this.documentExport()?.file
+          ? `${this.documentSet() ?? ''} on its own, as a texture set of ${this.target()?.name ?? ''}`
+          : `The texture set ${this.documentSet() ?? ''} of ${this.target()?.name ?? ''}`;
       case 'project':
         return `Every texture set of ${this.target()?.name ?? ''}`;
       default: {
@@ -1142,11 +1177,14 @@ export class ExportPane implements OnInit {
     }
     const target = this.target();
     switch (this.scope()) {
-      case 'document':
+      case 'document': {
+        const document = this.documentExport();
         return requestFor(this.settings(), preset, {
           projects: target ? [target.id] : [],
-          sets: this.documentSet() ? [this.documentSet() as string] : null
+          sets: document?.file === null ? [document.set] : null,
+          documents: document?.file ? [document.file] : null
         });
+      }
       case 'project': {
         const sets = this.setNames();
         const skipped = this.settings().skipped.filter(set => sets.includes(set));

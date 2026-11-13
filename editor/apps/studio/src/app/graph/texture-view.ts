@@ -16,6 +16,7 @@ import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmen
 import { BakeStore } from '../bake/bake-store';
 import { Commands } from '../core/commands';
 import { termName } from '../core/labels';
+import { amount, percent } from '../core/numbers';
 import { ProjectStore } from '../library/project-store';
 import { GraphStore } from './graph-store';
 
@@ -65,7 +66,7 @@ async function pixelsOf(url: string): Promise<ImageData | null> {
 /** A texel's four lanes as the decoded picture holds them, 0 to 1. */
 export function texelText(pixels: ImageData, x: number, y: number): string {
   const at = (y * pixels.width + x) * 4;
-  const lanes = [...pixels.data.slice(at, at + 4)].map(value => (value / 255).toFixed(3));
+  const lanes = [...pixels.data.slice(at, at + 4)].map(value => amount(value / 255, 3));
   return `${String(x)}, ${String(y)}  ${lanes.join(' ')}`;
 }
 
@@ -112,7 +113,7 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
         <span class="readout min-w-0 truncate" data-testid="texture-size">
           {{ mapName(map.map) }}, {{ map.width }} × {{ map.height }}, shown at 8 bits
         </span>
-        <span class="readout ms-auto shrink-0" data-testid="texture-zoom">{{ percent() }}%</span>
+        <span class="readout ms-auto shrink-0" data-testid="texture-zoom">{{ percent() }}</span>
       </div>
     } @else if (!project.graphInFront() || store.document() === null) {
       <xui-non-ideal-state
@@ -206,7 +207,7 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
             >{{ at }}</span
           >
         }
-        <span class="readout ms-auto shrink-0" data-testid="texture-zoom">{{ percent() }}%</span>
+        <span class="readout ms-auto shrink-0" data-testid="texture-zoom">{{ percent() }}</span>
       </div>
       <div class="chrome-bar flex h-8 shrink-0 items-center gap-1 px-2">
         <button
@@ -316,11 +317,10 @@ export class TextureView {
     const scale = fit * this.zoom();
     return { width: picture.width * scale, height: picture.height * scale };
   });
+  /** How large the picture is shown, as a share of its own size. */
   protected readonly percent = computed(() => {
     const picture = this.shown();
-    return picture && picture.width > 0
-      ? Math.round((this.displayed().width / picture.width) * 100)
-      : Math.round(this.zoom() * 100);
+    return percent(picture && picture.width > 0 ? this.displayed().width / picture.width : this.zoom());
   });
   protected readonly pixels = computed(() => (this.full() ? this.fullPixels() : this.reductionPixels()));
   protected readonly histogram = computed(() => {

@@ -19,6 +19,8 @@ import { Activity } from '../core/activity';
 import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
 import { termName } from '../core/labels';
+import { milliseconds } from '../core/numbers';
+import { Preferences } from '../core/preferences';
 import { SystemStatus } from '../core/system-status';
 import { ViewOptions } from '../core/view-options';
 import { GraphViews } from '../graph/graph-views';
@@ -28,7 +30,7 @@ import { PaintStore, pressureOf } from '../paint/paint-store';
 import { ScreenPictureOverlay } from '../paint/screen-picture';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { SurfaceGuide } from '../paint/surface-guide';
-import { symmetryGuide } from '../paint/symmetry-guide';
+import { project as onPicture, symmetryCopies, symmetryGuide } from '../paint/symmetry-guide';
 import { ToolStrip } from '../paint/tool-strip';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
@@ -225,12 +227,12 @@ const PickFile = '…';
           data-testid="viewport-stamp"
           [attr.data-stamp-ms]="stampTimes()"
         >
-          stamp {{ stampMs() }} ms
+          Stamp {{ milliseconds(stampMs() ?? 0) }}
         </span>
       }
       @if (viewport.stats(); as stats) {
         <span class="readout" data-testid="viewport-stats" [class.hidden]="!options.stats()">
-          {{ stats.width }}×{{ stats.height }} · {{ stats.fps }} fps · {{ stats.latencyMs.toFixed(0) }} ms
+          {{ stats.width }}×{{ stats.height }} · {{ stats.fps }} fps · {{ milliseconds(stats.latencyMs) }}
         </span>
       }
     </div>
@@ -274,6 +276,16 @@ const PickFile = '…';
             [style.top.px]="at.y - cursor()"
             [style.width.px]="cursor() * 2"
           ></div>
+          @for (copy of mirrored(); track $index) {
+            <div
+              class="pointer-events-none absolute rounded-full border border-dashed border-sky-300/80"
+              data-testid="viewport-brush-copy"
+              [style.height.px]="copy.radius * 2"
+              [style.left.px]="copy.x - copy.radius"
+              [style.top.px]="copy.y - copy.radius"
+              [style.width.px]="copy.radius * 2"
+            ></div>
+          }
         }
         @if (guide(); as points) {
           <svg
@@ -332,6 +344,7 @@ export class ViewportPane implements AfterViewInit {
   protected readonly paint = inject(PaintStore);
   private readonly using = inject(MaterialUse);
   private readonly activity = inject(Activity);
+  private readonly preferences = inject(Preferences);
   protected readonly project = inject(ProjectStore);
   private readonly destroyRef = inject(DestroyRef);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
@@ -387,6 +400,13 @@ export class ViewportPane implements AfterViewInit {
   private zooming = false;
   /** Where the brush is over the canvas, in the units of a stroke. */
   protected readonly brushAt = signal<{ x: number; y: number } | null>(null);
+  /**
+   * Where the symmetry copies the point under the brush, each a ring on the picture sized by its depth (#132), from the
+   * newest pick of that point. A pick is a round trip to the Worker, so one is in flight at a time.
+   */
+  protected readonly mirrored = signal<readonly { x: number; y: number; radius: number }[]>([]);
+  private mirroring = false;
+  private mirrorWanted = false;
   protected readonly options = inject(ViewOptions);
   protected readonly gesture = new StrokeGesture(this.paint, () => this.aim());
   protected readonly curve = computed(() =>
@@ -396,6 +416,7 @@ export class ViewportPane implements AfterViewInit {
       .join(' ')
   );
 
+  protected readonly milliseconds = milliseconds;
   protected readonly stampTimes = computed(() => this.paint.stampTimes().join(','));
   protected readonly stampMs = computed(() => {
     const times = [...this.paint.stampTimes().slice(-60)].sort((a, b) => a - b);
@@ -457,6 +478,17 @@ export class ViewportPane implements AfterViewInit {
           // A guide is a help: without one the strokes still copy where they would.
           .catch(() => undefined);
       }, 150);
+    });
+    // The brush's copies follow the pointer, as soon as the last pick of it is back.
+    effect(() => {
+      const at = this.brushAt();
+      const symmetry = this.paint.symmetry();
+      if (!at || !symmetry || !this.paints()) {
+        untracked(() => this.mirrored.set([]));
+        return;
+      }
+
+      untracked(() => this.mirror());
     });
     // What the viewport shows changed from elsewhere, and the label needs telling.
     effect(() => {
@@ -791,8 +823,14 @@ export class ViewportPane implements AfterViewInit {
       const camera = this.viewport.camera();
       this.viewport.camera.set(
         this.zooming
-          ? zoom(camera, event.movementY * DragZoom)
-          : (this.panning ? pan : orbit)(camera, event.movementX, event.movementY)
+          ? zoom(camera, event.movementY * DragZoom * this.preferences.zoomScale())
+          : this.panning
+            ? pan(camera, event.movementX, event.movementY)
+            : orbit(
+                camera,
+                event.movementX * this.preferences.orbitScale(),
+                event.movementY * this.preferences.orbitScale()
+              )
       );
       this.scheduleCamera();
     }
@@ -816,7 +854,7 @@ export class ViewportPane implements AfterViewInit {
 
   protected wheel(event: WheelEvent): void {
     event.preventDefault();
-    this.viewport.moveCamera(zoom(this.viewport.camera(), event.deltaY), false);
+    this.viewport.moveCamera(zoom(this.viewport.camera(), event.deltaY * this.preferences.zoomScale()), false);
   }
 
   private spot(event: MouseEvent): { x: number; y: number } {
@@ -853,6 +891,56 @@ export class ViewportPane implements AfterViewInit {
     if (this.using.failure()) {
       this.activity.report({ tone: 'warning', source: 'Viewport', text: this.using.failure() ?? '' });
     }
+  }
+
+  /** Picks the point under the brush and rings where the symmetry copies it, then the newest point if it moved. */
+  private mirror(): void {
+    if (this.mirroring) {
+      this.mirrorWanted = true;
+      return;
+    }
+
+    const at = this.brushAt();
+    const symmetry = this.paint.symmetry();
+    if (!at || !symmetry) {
+      return;
+    }
+
+    this.mirroring = true;
+    this.mirrorWanted = false;
+    const radius = this.cursor();
+    void this.paint
+      .lookAt(at, this.aim())
+      .then(pick => {
+        const position = pick.position;
+        const bounds = pick.bounds;
+        if (!pick.found || position?.length !== 3 || bounds?.length !== 6 || !this.brushAt()) {
+          this.mirrored.set([]);
+          return;
+        }
+
+        const point = [position[0] ?? 0, position[1] ?? 0, position[2] ?? 0] as const;
+        const depth = (of: readonly number[]) =>
+          [0, 1, 2].reduce(
+            (sum, axis) => sum + ((of[axis] ?? 0) - (pick.view.eye[axis] ?? 0)) * (pick.view.forward[axis] ?? 0),
+            0
+          );
+        const near = depth(point);
+        this.mirrored.set(
+          symmetryCopies(symmetry, bounds, point).flatMap(copy => {
+            const shown = onPicture(pick.view, copy);
+            return shown ? [{ x: shown[0], y: shown[1], radius: (radius * near) / depth(copy) }] : [];
+          })
+        );
+      })
+      // A guide is a help: without one the strokes still copy where they would.
+      .catch(() => this.mirrored.set([]))
+      .finally(() => {
+        this.mirroring = false;
+        if (this.mirrorWanted) {
+          this.mirror();
+        }
+      });
   }
 
   private aim() {

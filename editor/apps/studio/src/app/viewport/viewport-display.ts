@@ -9,7 +9,7 @@ import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { Commands } from '../core/commands';
 import { labelsOf, valuesOf } from '../core/labels';
-import { degrees, percent } from '../core/numbers';
+import { degrees, percent, stops, toRadians } from '../core/numbers';
 import type { AxisView } from './orbit';
 import { DefaultDisplay, Shapes, ViewportClient } from './viewport-client';
 
@@ -36,7 +36,7 @@ const Lighting: readonly Slider[] = [
     title: 'Turns the environment around the model, and not the light',
     min: -Math.PI,
     max: Math.PI,
-    step: Math.PI / 180,
+    step: toRadians(1),
     unit: 'degrees'
   },
   {
@@ -45,7 +45,7 @@ const Lighting: readonly Slider[] = [
     title: 'Turns the light around the model, and not the environment',
     min: -Math.PI,
     max: Math.PI,
-    step: Math.PI / 180,
+    step: toRadians(1),
     unit: 'degrees'
   },
   {
@@ -432,7 +432,7 @@ export class ViewportDisplayPanel {
       case 'degrees':
         return degrees(value);
       case 'stops':
-        return `${value > 0 ? '+' : ''}${value.toFixed(1)} stops`;
+        return stops(value);
       case 'signed':
         return `${value > 0 ? '+' : ''}${percent(value)}`;
       default:

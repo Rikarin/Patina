@@ -1,10 +1,12 @@
 import type {
+  GraphNodeState,
   GraphNodeType,
   GraphPortDefinition,
   GraphSettingCondition,
   GraphSettingDefinition
 } from '@patina/api-client';
 import { choiceName } from '../core/labels';
+import { amount } from '../core/numbers';
 import { titleOf } from './graph-authoring';
 
 /** What every row has besides its control: what it is called, and when it shows. */
@@ -201,4 +203,84 @@ export function lanesOfHex(hex: string): readonly number[] | null {
   }
 
   return [match[1], match[2], match[3], match[4] ?? 'ff'].map(pair => parseInt(pair ?? '0', 16) / 255);
+}
+
+/** A line a card shows under its title: something the author changed on the node, and what it is now. */
+export interface CardLine {
+  title: string;
+  value: string;
+}
+
+/** How many lines a card shows at most, so that a node with everything changed stays a card. */
+export const CardLineLimit = 4;
+
+function numberText(value: number, whole: boolean): string {
+  return whole ? String(Math.round(value)) : String(Number(amount(value, 3)));
+}
+
+function sameLanes(set: readonly number[], fallback: readonly number[]): boolean {
+  return set.length === fallback.length && set.every((lane, index) => lane === fallback[index]);
+}
+
+/** What a field holds on one node, as a card shows it, or null when it is as the type left it. */
+function cardValueOf(field: GraphField, node: Pick<GraphNodeState, 'values' | 'texts'>): string | null {
+  if (field.source === 'value') {
+    const expression = node.texts[expressionKey(field.name)]?.trim();
+    if (expression) {
+      return `= ${expression}`;
+    }
+
+    const set = node.values[field.name];
+    if (!set || sameLanes(set, field.fallback)) {
+      return null;
+    }
+
+    switch (field.control) {
+      case 'number':
+        return numberText(set[0] ?? 0, field.whole);
+      case 'switch':
+        return (set[0] ?? 0) !== 0 ? 'On' : 'Off';
+      case 'colour':
+        return hexOfLanes(set);
+    }
+  }
+
+  const text = node.texts[field.name];
+  if (text === undefined || text === field.fallback) {
+    return null;
+  }
+
+  switch (field.control) {
+    case 'choice':
+      return field.label(text);
+    case 'switch':
+      return text === 'true' ? 'On' : 'Off';
+    case 'curve':
+    case 'ramp':
+      return 'Edited';
+    default:
+      return text;
+  }
+}
+
+/**
+ * What a card shows under its title when the graph shows parameters on cards: what was changed from the type's
+ * defaults, in the Inspector's order, as many as fit.
+ */
+export function cardLinesOf(
+  type: Pick<GraphNodeType, 'ports' | 'settings'>,
+  node: Pick<GraphNodeState, 'values' | 'texts'>,
+  limit = CardLineLimit
+): CardLine[] {
+  const lines: CardLine[] = [];
+  for (const group of fieldsOf(type)) {
+    for (const field of group.fields) {
+      const value = cardValueOf(field, node);
+      if (value !== null) {
+        lines.push({ title: field.title, value });
+      }
+    }
+  }
+
+  return lines.slice(0, limit);
 }

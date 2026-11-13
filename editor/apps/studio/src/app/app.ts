@@ -30,6 +30,7 @@ import { FileConflictDialog } from './core/file-conflict-dialog';
 import { FilePicker } from './core/file-picker';
 import { Links } from './core/help-links';
 import { HistoryPane } from './core/history-pane';
+import { percent } from './core/numbers';
 import { PreferencesDialog } from './core/preferences-dialog';
 import { ShortcutsDialog } from './core/shortcuts-dialog';
 import { StartPane } from './core/start-pane';
@@ -262,7 +263,7 @@ import { ViewportPane } from './viewport/viewport-pane';
           [title]="bakeSettings.blocked() ?? commands.tooltip('quickBake')"
           (click)="commands.run('quickBake')"
         >
-          {{ bakes.busy() ? 'Baking ' + bakePercent() + '%' : 'Quick Bake' }}
+          {{ bakes.busy() ? 'Baking ' + bakePercent() : 'Quick Bake' }}
         </button>
         <button
           type="button"
@@ -426,7 +427,7 @@ import { ViewportPane } from './viewport/viewport-pane';
       </xui-callout>
     }
 
-    <footer class="chrome-bar flex h-7 shrink-0 items-center gap-4 px-3" role="status" aria-label="Server status">
+    <footer class="chrome-bar flex h-7 shrink-0 items-center gap-4 px-3" role="status" aria-label="Engine status">
       @let current = status.state();
       @switch (current.kind) {
         @case ('connecting') {
@@ -656,7 +657,7 @@ export class App {
   /** How far the jobs of the last bake are, together. */
   protected readonly bakePercent = computed(() => {
     const jobs = this.bakes.batch();
-    return jobs.length === 0 ? 0 : Math.round((jobs.reduce((sum, job) => sum + job.progress, 0) / jobs.length) * 100);
+    return percent(jobs.length === 0 ? 0 : jobs.reduce((sum, job) => sum + job.progress, 0) / jobs.length);
   });
   private readonly edit = inject(EditCommands);
   private readonly options = inject(ViewOptions);
