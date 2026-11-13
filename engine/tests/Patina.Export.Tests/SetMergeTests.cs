@@ -65,6 +65,36 @@ public sealed class SetMergeTests : IDisposable {
         );
     }
 
+    /// <summary>
+    ///     Each set is read moved home onto tile 1001 (#20), so sets on two UDIM tiles would have been laid on one
+    ///     another as though they shared a square.
+    /// </summary>
+    [Fact]
+    public void Sets_on_two_udim_tiles_are_not_merged_and_say_why() {
+        List<string> warnings = [];
+
+        var merged = SetMerge.Merge(
+            [Set("Body", true, 0.25f), Set("Strap", false, 0.75f) with { Udim = 1002 }],
+            warnings
+        );
+
+        Assert.Null(merged);
+        Assert.Contains("1001, 1002", Assert.Single(warnings), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Sets_on_one_tile_past_the_first_merge_and_keep_its_number() {
+        List<string> warnings = [];
+
+        var merged = SetMerge.Merge(
+            [Set("Body", true, 0.25f) with { Udim = 1011 }, Set("Strap", false, 0.75f) with { Udim = 1011 }],
+            warnings
+        )!;
+
+        Assert.Empty(warnings);
+        Assert.Equal(1011, merged.Udim);
+    }
+
     [Fact]
     public void Each_set_is_written_where_its_layout_is_and_nothing_overlaps() {
         List<string> warnings = [];

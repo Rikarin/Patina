@@ -22,6 +22,12 @@ public sealed record NamingValues(string Project, string Preset, string Set = ""
     /// <summary>The file's longest side in texels, or zero when it is not known.</summary>
     public int Size { get; init; }
 
+    /// <summary>
+    ///     The UDIM tile the set's layout sits on (#20), which <c>{udim}</c> and <c>{tile}</c> name: 1001 until a
+    ///     layout says otherwise.
+    /// </summary>
+    public int Udim { get; init; } = OneTile.First;
+
     /// <summary>Each texture set's mesh and material, by the set's name, for a project that knows them.</summary>
     public IReadOnlyDictionary<string, SetNaming> Sets { get; init; } =
         new Dictionary<string, SetNaming>(StringComparer.Ordinal);
@@ -45,12 +51,6 @@ public sealed record SetNaming(string Mesh, string Material);
 public static class NamingTemplate {
     const string ProjectHole = "{project}";
     const string SetHole = "{set}";
-
-    /// <summary>The UDIM tile every file is of, while Patina paints one tile (<see cref="OneTile" />).</summary>
-    public const string Udim = "1001";
-
-    /// <summary>The same tile as Mari and some importers name it.</summary>
-    public const string Tile = "u1_v1";
 
     /// <summary>Every name a template can hold, in the order the ADR lists them.</summary>
     public static IReadOnlyList<string> Names { get; } =
@@ -112,8 +112,8 @@ public static class NamingTemplate {
             "set" => set,
             "mesh" => values.Mesh.Length > 0 ? values.Mesh : values.Project,
             "material" => values.Material.Length > 0 ? values.Material : set,
-            "udim" => Udim,
-            "tile" => Tile,
+            "udim" => values.Udim.ToString(CultureInfo.InvariantCulture),
+            "tile" => OneTile.MariName(values.Udim),
             "space" => values.Space,
             "size" => values.Size > 0 ? values.Size.ToString(CultureInfo.InvariantCulture) : string.Empty,
             _ => values.Preset

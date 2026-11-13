@@ -104,6 +104,6 @@ sealed class MeshShelf {
     /// <summary>One model.</summary>
     /// <param name="Geometry">Its triangles.</param>
     /// <param name="Projection">What a ray or a brush reaches them through.</param>
-    /// <param name="Tiles">Why its layout reaches past UDIM tile 1001, which Patina cannot paint, or null.</param>
+    /// <param name="Tiles">Why its layout reaches several UDIM tiles, which one set cannot paint, or null.</param>
     internal sealed record Mesh(ViewportGeometry Geometry, PaintProjection Projection, string? Tiles);
 }

@@ -29,6 +29,18 @@ public sealed partial class StackProcessTests {
         return "housing";
     }
 
+    /// <summary>
+    ///     What New Project sends after it makes a project, which gives each material of its mesh a texture set.
+    /// </summary>
+    async Task SplitIntoSetsAsync(string project, CancellationToken token) {
+        using var settled = await http.PatchAsJsonAsync(
+            "/api/v1/library/project/settings",
+            new { project, autoUnwrap = false },
+            token
+        );
+        Assert.True(settled.IsSuccessStatusCode, await settled.Content.ReadAsStringAsync(token));
+    }
+
     async Task<BuildPreview> PreviewAsync(string preset, CancellationToken token) {
         using var response = await http.PostAsJsonAsync(
             "/api/v1/builds/preview",
@@ -656,8 +668,111 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
-    ///     A set laid out past UDIM tile 1001 says so in its problems as soon as it is open, because a stroke there
-    ///     paints nothing and the viewport shows 1001's maps on it. It once said nothing until the export.
+    ///     A model whose materials each sit on a UDIM tile of their own (#20): Strap, on tile 1002, opens with nothing
+    ///     to say about tiles, and exports its own colour under its own tile's number, beside Body's on 1001. Strap
+    ///     was once said to be past the only tile Patina paints, and every file was named 1001.
+    /// </summary>
+    [Fact]
+    public async Task Each_set_on_a_udim_tile_of_its_own_paints_and_exports_as_that_tile() {
+        using var deadline = Deadline(240);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var mesh = Path.Combine(folder.FullName, "tiles.obj");
+        File.WriteAllText(Path.Combine(folder.FullName, "tiles.mtl"), "newmtl Body\nnewmtl Strap\n");
+        File.WriteAllText(
+            mesh,
+            """
+            mtllib tiles.mtl
+            v 0 0 0
+            v 1 0 0
+            v 1 1 0
+            v 0 1 0
+            v 2 0 0
+            v 3 0 0
+            v 3 1 0
+            v 2 1 0
+            vt 0 0
+            vt 1 0
+            vt 1 1
+            vt 0 1
+            vt 1 0
+            vt 2 0
+            vt 2 1
+            vt 1 1
+            vn 0 0 1
+            usemtl Body
+            f 1/1/1 2/2/1 3/3/1 4/4/1
+            usemtl Strap
+            f 5/5/1 6/6/1 7/7/1 8/8/1
+
+            """
+        );
+        Directory.CreateDirectory(Path.Combine(Library, "export-presets"));
+        File.WriteAllText(
+            Path.Combine(Library, "export-presets", "tiles.yaml"),
+            """
+            version: 1
+            id: tiles
+            name: Tiles
+            normal: y-up
+            textures:
+              - file: "{set}.{udim}_{tile}"
+                format: png8
+                space: srgb
+                channels: [baseColor.r, baseColor.g, baseColor.b]
+            """
+        );
+        var (instance, _) = await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(mesh, deadline.Token);
+        await SplitIntoSetsAsync(project, deadline.Token);
+        using var contents = JsonDocument.Parse(
+            await http.GetStringAsync($"/api/v1/library/project?path={project}", deadline.Token)
+        );
+        (string Path, string Material)[] documents = [
+            ..contents.RootElement.GetProperty("documents")
+                .EnumerateArray()
+                .Select(static d => (d.GetProperty("path").GetString()!, d.GetProperty("material").GetString()!))
+        ];
+        Assert.Equal(["Body", "Strap"], documents.Select(static d => d.Material).Order());
+
+        static IReadOnlyList<float> Colour(string material) => material == "Body" ? Rust : [0.1f, 0.3f, 0.9f, 1f];
+
+        foreach (var (path, material) in documents) {
+            var state = await OpenAsync(path, deadline.Token);
+            using var socket = await FollowAsync(instance, state, deadline.Token);
+            var evaluation = await EvaluatedAsync(socket, state.Revision, deadline.Token);
+            Assert.DoesNotContain(
+                evaluation.Problems,
+                static p => p.Message.Contains("UDIM", StringComparison.Ordinal)
+            );
+            await EditAsync(
+                state.Id,
+                deadline.Token,
+                new StackSetLayer(
+                    "base",
+                    Values: new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = Colour(material) }
+                )
+            );
+            await SaveAsync(state.Id, deadline.Token);
+        }
+
+        var job = await BuildAsync("tiles", deadline.Token);
+        var report = await ReportedAsync(job.Id, deadline.Token);
+        SkipWithoutDevice(report);
+        Assert.Equal(0, job.Report!.Failed);
+
+        var exported = Path.Combine(Library, "exports", "tiles", project);
+        Assert.Equal(
+            ["Body.1001_u1_v1.png", "Strap.1002_u2_v1.png"],
+            Directory.GetFiles(exported, "*.png").Select(Path.GetFileName).Order()
+        );
+        var strap = Texel(Path.Combine(exported, "Strap.1002_u2_v1.png"), 0.5f, 0.5f);
+        Assert.Equal(Colour("Strap")[2], strap[2], 0.01f);
+    }
+
+    /// <summary>
+    ///     A set laid out across UDIM tiles 1001 and 1002 says so in its problems as soon as it is open, because a
+    ///     stroke on the second paints nothing and the viewport shows the first's maps on it. It once said nothing
+    ///     until the export.
     /// </summary>
     [Fact]
     public async Task A_set_on_a_second_udim_tile_says_so_when_it_opens() {

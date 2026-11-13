@@ -236,14 +236,28 @@ sealed class ViewportMesh {
         var bounds = BoundingBox.Empty;
         var hasCoordinates = false;
 
+        List<(string Material, int[] Indices, Vector2[] Coordinates)> laid = [];
         foreach (var part in read.Model.Parts) {
             var (mesh, at) = meshes[part.Mesh];
-            var first = indices.Count;
-            var offset = (uint)(vertices.Count / FloatsPerVertex);
             var name = part.Material >= 0 && part.Material < materials.Length
                 ? materials[part.Material].Name
                 : string.Empty;
             var coordinates = Layout(read, mesh, at, uvSets?.GetValueOrDefault(name) ?? 0, name);
+            laid.Add((name, mesh.Indices, coordinates.Length == mesh.Positions.Length ? coordinates : []));
+        }
+
+        // A texture set on one UDIM tile past the first is drawn, painted and picked as its own maps read it (#20).
+        var away = SetTiles.Of(laid);
+        for (var at = 0; at < laid.Count; at++) {
+            var part = read.Model.Parts[at];
+            var mesh = meshes[part.Mesh].mesh;
+            var first = indices.Count;
+            var offset = (uint)(vertices.Count / FloatsPerVertex);
+            var (name, _, coordinates) = laid[at];
+            if (away.TryGetValue(name, out var tile)) {
+                coordinates = [..coordinates.Select(tile.Home)];
+            }
+
             bounds = Append(mesh, coordinates, world[part.Node], vertices, bounds);
             hasCoordinates |= coordinates.Length == mesh.Positions.Length;
             foreach (var index in mesh.Indices) {

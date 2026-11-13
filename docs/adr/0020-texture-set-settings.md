@@ -36,8 +36,11 @@ and draw it again at the new size, or to keep the pixels and never lose any of t
 - **A canvas grows, exactly, when it is next painted.** `PaintCanvas.Enlarged` repeats each texel over the texels it
   covers, so at a whole factor (every change between the offered sides) each block averages back to the texel it came
   from, and no value appears that was not painted.
-- **A canvas never shrinks.** Painting into one larger than its set is refused with a sentence that says to set the
-  resolution back: painting it at the smaller size would throw its detail away.
+- **A canvas never shrinks.** A stroke on the model paints one larger than its set, of the set's shape, at the canvas's
+  own size (#19): it is placed by the picture, not by texels, so its stroke entry carries the canvas's size and a
+  brush sized in texels is scaled to keep its size. A stroke in the 2D View, whose stamps are the set's texels, is
+  refused with a sentence that says to paint it on the model or set the resolution back: painting it at the smaller
+  size would throw its detail away.
 - **A stroke's undo holds the pixels it painted over**, so a canvas a stroke of the open session began on is not
   enlarged under it; that stroke is refused, saying to save and open the document again. Each stroke carries the set's
   size it was made at (`StackPaintPart.Width`, `Height`), so a Worker replaying a session after a crash paints an old
@@ -85,3 +88,21 @@ set-to-set projection are not done.
 - **Facts.** `GET /library/mesh?path=` asks the Worker (Assimp may crash) for a mesh's parts, materials with the UV sets
   all their parts share, triangles, vertices, box, and metres per unit where the format or file says: glTF by its
   specification, FBX by its `UnitScaleFactor`. OBJ, PLY and STL never say. Shown in Project Settings and New Project.
+
+## UDIM: a texture set paints one tile (#20)
+
+A texture set paints the one UDIM tile all its triangles sit in, which need not be 1001. Its layout is moved home onto
+1001 by whole squares (`UvTile.Home`, in Vixen) wherever Patina reads it: the viewport's mesh and so every stroke, pick,
+part mask and 2D view (`ViewportMesh.Read`, per material across all its parts), and every bake, coverage and check
+(`MeshMapBakeRun.Placed`). A set's maps are therefore always one square, and nothing below the readers knows a tile.
+The tile travels with a stack's build object (`BuildManifest.Udim`) to its export set and files, where `{udim}` and
+`{tile}` name it.
+
+- **Why one tile per set, and not a set of maps per tile.** A set with several tiles needs a canvas, a coverage, an
+  evaluation and an export per tile, through paint, the evaluator, the viewport's live maps and every check. One tile
+  per set reuses all of that unchanged, and the common UDIM layout of a game or film asset already gives each tile a
+  material. A material that reaches several tiles stays as it was: said out loud when its set opens, its bake refused,
+  and its strokes past the first tile landing nowhere, with "give each tile a material of its own" as the way out.
+- **Merging** (#211) is of sets sharing one square, so sets on different tiles are not merged; the export says so.
+- **Not done:** a set across several tiles; the preset editor's file list, which reads no mesh, still names every set
+  1001; and the Texture Sets pane does not show a set's tile.
