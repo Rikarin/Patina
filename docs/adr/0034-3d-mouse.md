@@ -13,8 +13,8 @@ navigation model the application describes to it, which would put a second way o
 
 1. **The studio reads the device's HID reports itself, through WebHID.** A 3D mouse is a USB or Bluetooth HID multi-axis
    controller: report 1 is the cap's push (and, on devices since about 2011, its turn after it), report 2 the turn on older ones,
-   report 3 the buttons, each axis a little-endian 16-bit count of about ±350. That is the device's own protocol, read the same way by Linux's
-   open spacenavd driver, and no vendor code is linked or shipped.
+   report 3 the buttons, each axis a little-endian 16-bit count of about ±350. That is the device's own protocol, read the same
+   way by Linux's open spacenavd driver, and no vendor code is linked or shipped.
 2. **The desktop app grants 3Dconnexion's devices and nothing else.** `setDevicePermissionHandler` lets the studio's own origin
    read a HID device whose vendor is 3Dconnexion (`0x256f`), or Logitech (`0x046d`) with one of the older 3D mice's product IDs.
    The studio never asks for a device, so no picker shows and no other device can be read.
