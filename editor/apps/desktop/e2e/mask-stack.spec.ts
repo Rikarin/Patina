@@ -123,7 +123,7 @@ test('a mask opens as a stack of its own, takes paint over its base, and goes ba
   await window.getByTestId('mask-stack-add').click();
   await window.getByTestId('mask-stack-add-Generator').click();
   await window.getByTestId('paint-mask-layer-generator').click();
-  await window.getByRole('option', { name: 'Dirt' }).click();
+  await window.getByRole('option', { name: 'Dirt', exact: true }).click();
   await expect(window.getByTestId('paint-mask-layer-knob-amount')).toBeVisible({ timeout: 30_000 });
 
   // Back to the layers, with the layer still chosen and its mask in front.
