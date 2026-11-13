@@ -9489,7 +9489,7 @@
               "null",
               "boolean"
             ],
-            "description": "Whether the texture sets written go into one set of files, each set where its own layout puts it, as an\natlas of sets that share one UV square. A set's own changes do not apply to it."
+            "description": "Whether the texture sets written go into one set of files, each set where its own layout puts it, as an\natlas of sets that share one UV square. A set\u0027s own changes do not apply to it."
           }
         },
         "description": "A preset\u0027s settings changed for one export, as an export dialog changes them. Null fields keep the preset\u0027s.\nChanging one gives the export another key, so it never reuses files made under other settings."
