@@ -121,29 +121,42 @@ const PickFile = '…';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
-    <div class="chrome-bar flex min-h-9 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1">
+    <!--
+      The bar keeps to one line, as every pane's does (#200). As it narrows, the readouts go first, then names truncate
+      and the choices shrink; the buttons keep their size.
+    -->
+    <div
+      class="chrome-bar @container flex h-9 shrink-0 flex-nowrap items-center gap-2 overflow-hidden px-2"
+      role="toolbar"
+      aria-label="Viewport"
+      data-testid="viewport-bar"
+    >
       @if (!paint.worn()) {
-        <button type="button" xuiButton size="sm" [disabled]="!canOpen" (click)="open()">Open mesh…</button>
+        <button type="button" xuiButton size="sm" class="shrink-0" [disabled]="!canOpen" (click)="open()">
+          Open mesh…
+        </button>
       }
-      <span class="readout truncate" data-testid="viewport-mesh">{{ meshName() }}</span>
+      <span class="readout min-w-0 truncate" data-testid="viewport-mesh" [title]="meshName()">{{ meshName() }}</span>
       @if (graphs.front().document(); as document) {
         <button
           type="button"
           xuiButton
           size="sm"
           variant="ghost"
+          class="max-w-48 min-w-0"
           data-testid="viewport-show-graph"
           [active]="followed() === document.id"
           [title]="'Lays the outputs of ' + document.name + ' over the mesh, or a sphere, and keeps up with edits'"
           (click)="follow(document.id)"
         >
-          Show {{ document.name }}
+          <span class="min-w-0 truncate">Show {{ document.name }}</span>
         </button>
         <button
           type="button"
           xuiButton
           size="sm"
           variant="ghost"
+          class="shrink-0"
           data-testid="viewport-show-node"
           title="Shows the selected node's picture alone, as stored and unlit, in place of the material, and follows the selection"
           [active]="followsNode() && followed() === document.id"
@@ -158,6 +171,7 @@ const PickFile = '…';
           type="button"
           xuiButton
           size="sm"
+          class="shrink-0"
           data-testid="viewport-paint"
           [variant]="painting() ? 'default' : 'ghost'"
           [title]="'Paints the mesh. Orbit: ' + commands.navigation().orbit + '.'"
@@ -166,9 +180,9 @@ const PickFile = '…';
           Paint
         </button>
       }
-      <span class="flex-1"></span>
+      <span class="min-w-0 flex-1"></span>
       <xui-select
-        class="w-28 min-w-0 [&_button]:text-xs"
+        class="w-28 min-w-16 [&_button]:text-xs"
         style="--control-height-md: 1.5rem; --control-padding-md: 0.375rem"
         aria-label="View"
         [title]="
@@ -185,7 +199,7 @@ const PickFile = '…';
         (valueChange)="$event && chooseView($event)"
       />
       <xui-select
-        class="w-28 min-w-0 [&_button]:text-xs"
+        class="w-28 min-w-16 [&_button]:text-xs"
         style="--control-height-md: 1.5rem; --control-padding-md: 0.375rem"
         aria-label="Environment"
         title="What lights the model"
@@ -198,7 +212,7 @@ const PickFile = '…';
         (valueChange)="chooseEnvironment($event)"
       />
       <xui-select
-        class="w-28 min-w-0 [&_button]:text-xs"
+        class="w-28 min-w-16 [&_button]:text-xs"
         style="--control-height-md: 1.5rem; --control-padding-md: 0.375rem"
         aria-label="Look"
         title="A .cube table the picture is viewed through. Nothing that is exported sees it."
@@ -214,6 +228,7 @@ const PickFile = '…';
         type="button"
         xuiButton
         size="sm"
+        class="shrink-0"
         data-testid="viewport-display-toggle"
         title="The camera, light and finish of the view"
         [variant]="showDisplay() ? 'default' : 'ghost'"
@@ -224,7 +239,7 @@ const PickFile = '…';
       </button>
       @if (stampMs() !== null) {
         <span
-          class="readout"
+          class="readout shrink-0 @max-[48rem]:sr-only"
           [class.hidden]="!options.stats()"
           data-testid="viewport-stamp"
           [attr.data-stamp-ms]="stampTimes()"
@@ -233,7 +248,11 @@ const PickFile = '…';
         </span>
       }
       @if (viewport.stats(); as stats) {
-        <span class="readout" data-testid="viewport-stats" [class.hidden]="!options.stats()">
+        <span
+          class="readout shrink-0 @max-[48rem]:sr-only"
+          data-testid="viewport-stats"
+          [class.hidden]="!options.stats()"
+        >
           {{ stats.width }}×{{ stats.height }} · {{ stats.fps }} fps · {{ milliseconds(stats.latencyMs) }}
         </span>
       }

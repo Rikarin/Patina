@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import {
   answerSave as answerAgain,
   answerOpen as answerFile,
+  chooseFromComputer,
   leave,
   newLibrary,
   newProject,
@@ -88,7 +89,7 @@ test('a new user makes a library, groups projects in folders, and comes back to 
   await answerOpen(mesh);
   await window.getByTestId('library-new-project').click();
   await window.getByTestId('new-project-name').fill('Housing');
-  await window.getByTestId('new-project-mesh').click();
+  await chooseFromComputer(app, window, 'new-project-mesh');
   await expect(window.getByTestId('new-project-mesh-name')).toHaveText('housing_low.glb');
   await window.getByRole('button', { name: 'Create' }).click();
   await expect(window.getByTestId('paint-project')).toHaveText('Housing', { timeout: 30_000 });
@@ -264,7 +265,7 @@ test('a layered material is seen on a shape, and a photo becomes a material', as
   await window.getByTestId('library-new-project').click();
   await window.getByTestId('new-project-name').fill('Wall');
   await pick(window, 'new-project-kind', ProjectKinds['image-material']);
-  await window.getByTestId('new-project-image').click();
+  await chooseFromComputer(app, window, 'new-project-image');
   await expect(window.getByTestId('new-project-image-name')).toHaveText('wall.png');
   await window.getByRole('button', { name: 'Create' }).click();
 

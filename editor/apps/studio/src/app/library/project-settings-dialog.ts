@@ -3,13 +3,12 @@ import type { UnwrapOptions } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
-import { XuiInputImports } from '@xui/input';
 import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSwitchImports } from '@xui/switch';
-import { desktop } from '../core/desktop';
 import { percent, times } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
+import { FileChooser } from './file-chooser';
 import { MeshFactsView } from './mesh-facts';
 import { ProjectStore } from './project-store';
 
@@ -40,7 +39,6 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
     XuiButtonImports,
     XuiCalloutImports,
     XuiDialogImports,
-    XuiInputImports,
     XuiNumericInputImports,
     XuiSelectImports,
     XuiSwitchImports,
@@ -59,25 +57,12 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
           <div class="flex flex-col gap-1">
             <span class="section-label">Mesh</span>
             <div class="flex items-center gap-2">
-              @if (canPick) {
-                <span class="min-w-0 flex-1 truncate" data-testid="project-settings-mesh-name">
-                  {{ meshName() || 'None yet' }}
-                </span>
-                <button type="button" xuiButton size="sm" data-testid="project-settings-mesh" (click)="pickMesh()">
-                  Choose…
-                </button>
-              } @else {
-                <input
-                  class="w-full"
-                  xuiInput
-                  autocomplete="off"
-                  aria-label="Mesh file"
-                  data-testid="project-settings-mesh-path"
-                  [placeholder]="meshName()"
-                  [value]="mesh()"
-                  (input)="mesh.set(text($event))"
-                />
-              }
+              <span class="min-w-0 flex-1 truncate" data-testid="project-settings-mesh-name" [title]="mesh()">
+                {{ meshName() || 'None yet' }}
+              </span>
+              <button type="button" xuiButton size="sm" data-testid="project-settings-mesh" (click)="pickMesh()">
+                Choose…
+              </button>
             </div>
             <ptn-mesh-facts [path]="factsOf()" />
           </div>
@@ -252,7 +237,7 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
 })
 export class ProjectSettingsDialog {
   protected readonly project = inject(ProjectStore);
-  protected readonly canPick = desktop() !== undefined;
+  private readonly chooser = inject(FileChooser);
   protected readonly mesh = signal('');
   protected readonly autoUnwrap = signal(true);
   protected readonly preservePaint = signal(true);
@@ -359,12 +344,10 @@ export class ProjectSettingsDialog {
   protected readonly percent = percent;
   protected readonly times = times;
 
-  protected text(event: Event): string {
-    return (event.target as HTMLInputElement).value;
-  }
-
+  /** A mesh from the library, this project's first, or from this computer (#4). */
   protected async pickMesh(): Promise<void> {
-    this.mesh.set((await desktop()?.openMesh(this.status.meshes())) ?? this.mesh());
+    const project = this.project.current()?.path ?? null;
+    this.mesh.set((await this.chooser.path({ kind: 'mesh', title: 'Choose a Mesh', project })) ?? this.mesh());
   }
 
   protected async apply(event: Event): Promise<void> {

@@ -44,6 +44,11 @@ export interface PreferenceValues {
   favouriteNodes: readonly string[];
   /** Node types added last, by path, newest first, which the palette offers after the favourites. */
   recentNodes: readonly string[];
+  /**
+   * Materials starred on the shelf, by their source: a path below the library, or a starter's name. The shelf lists
+   * them first, and From Favourites lists them alone.
+   */
+  favouriteMaterials: readonly string[];
   /** Documents brought to the front last, newest first, in every library, which Start offers again. */
   recentDocuments: readonly RecentDocument[];
 }
@@ -99,11 +104,12 @@ export const DefaultPreferences: PreferenceValues = {
   graphWires: 'bezier',
   favouriteNodes: [],
   recentNodes: [],
+  favouriteMaterials: [],
   recentDocuments: []
 };
 
 /** How many node types each list keeps, so a hand-edited file cannot grow the palette without end. */
-export const ListLimits = { favouriteNodes: 64, recentNodes: 8 } as const;
+export const ListLimits = { favouriteNodes: 64, recentNodes: 8, favouriteMaterials: 256 } as const;
 type ListPreference = keyof typeof ListLimits;
 
 const StorageKey = 'patina.preferences';
@@ -176,6 +182,7 @@ export class Preferences {
   readonly graphWires = computed(() => this.values().graphWires);
   readonly favouriteNodes = computed(() => this.values().favouriteNodes);
   readonly recentNodes = computed(() => this.values().recentNodes);
+  readonly favouriteMaterials = computed(() => this.values().favouriteMaterials);
   readonly recentDocuments = computed(() => this.values().recentDocuments);
   /** Whether the app is dark now: the theme chosen, or the system's for `system`. */
   readonly dark = computed(() => {
@@ -215,6 +222,12 @@ export class Preferences {
   toggleFavouriteNode(path: string): void {
     const held = this.favouriteNodes();
     this.set({ favouriteNodes: held.includes(path) ? held.filter(item => item !== path) : [...held, path] });
+  }
+
+  /** Stars a material on the shelf, or takes its star away. */
+  toggleFavouriteMaterial(source: string): void {
+    const held = this.favouriteMaterials();
+    this.set({ favouriteMaterials: held.includes(source) ? held.filter(item => item !== source) : [...held, source] });
   }
 
   /** Puts a node type at the front of the recent ones, as adding it does. */
