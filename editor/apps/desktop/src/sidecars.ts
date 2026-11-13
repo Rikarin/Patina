@@ -230,7 +230,7 @@ export class Sidecars {
 
   private workerCommand(): Command {
     const worker = engine.worker();
-    return { command: worker.command, args: [...worker.args, '--socket', this.socket, '--watch-stdin'] };
+    return { ...worker, args: [...worker.args, '--socket', this.socket, '--watch-stdin'] };
   }
 
   /**
@@ -249,7 +249,7 @@ export class Sidecars {
         ...(this.library ? ['--library', this.library] : []),
         ...(this.createLibrary ? ['--create-library', 'true'] : [])
       ],
-      env: { Patina__Token: this.token }
+      env: { ...server.env, Patina__Token: this.token }
     };
   }
 }
