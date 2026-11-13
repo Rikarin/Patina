@@ -151,8 +151,33 @@ static class MaterialImport {
         }
 
         return Bring(slot.Texture, pictures.Folder, pictures.Warnings, material) is { } relative
-            ? Picture(graph, slot, relative)
+            ? Picture(graph, slot, relative, pictures.Warnings)
             : null;
+    }
+
+    /// <summary>
+    ///     A picture moved, turned and scaled where its material places it, as a <c>Space/Transform 2D</c> after it,
+    ///     or the picture as it is. A placement no transform can draw is left out and said.
+    /// </summary>
+    static int Placed(GraphText graph, ImportedSlot slot, int picture, List<string> warnings) {
+        if (slot.Placement is not { } placement) {
+            return picture;
+        }
+
+        if (PlacementNode.Of(placement) is not { } node) {
+            warnings.Add($"{slot.Usage}: its picture's texture transform scales it to nothing, so it is left as it is.");
+            return picture;
+        }
+
+        return graph.Chain(
+            picture,
+            "Space/Transform 2D",
+            [
+                ("Rotation", [node.Rotation]), ("Scale X", [node.ScaleX]), ("Scale Y", [node.ScaleY]),
+                ("Offset X", [node.OffsetX]), ("Offset Y", [node.OffsetY]), ("Shear X", [node.ShearX]),
+                ("Shear Y", [node.ShearY])
+            ]
+        );
     }
 
     /// <summary>
@@ -161,8 +186,9 @@ static class MaterialImport {
     ///     taken to linear numbers for it and back; an emissive picture holds sRGB numbers and a graph's emissive is
     ///     linear, so it is taken to linear.
     /// </summary>
-    static int Picture(GraphText graph, ImportedSlot slot, string relative) {
-        var node = Lane(graph, graph.Node("Source/Bitmap", [("Source", relative)]), slot.Lane);
+    static int Picture(GraphText graph, ImportedSlot slot, string relative, List<string> warnings) {
+        var bitmap = graph.Node("Source/Bitmap", [("Source", relative)]);
+        var node = Lane(graph, Placed(graph, slot, bitmap, warnings), slot.Lane);
         var colour = slot.Usage == "baseColor";
         float[] factor = [..slot.Value.Take(3)];
         var scaled = slot.Inverted || factor.Any(static f => Math.Abs(f - 1f) > 1e-4f);
@@ -242,7 +268,9 @@ static class MaterialImport {
             IReadOnlyList<(string Name, float[] Value)>? values = null
         ) {
             var id = ++count;
-            column = type == "Output/Output" ? 6 : type is "Source/Bitmap" or "Source/Uniform" ? 0 : column + 1;
+            column = type == "Output/Output" ? Math.Max(6, column + 1)
+                : type is "Source/Bitmap" or "Source/Uniform" ? 0
+                : column + 1;
             if (type is "Source/Bitmap" or "Source/Uniform") {
                 row++;
             }

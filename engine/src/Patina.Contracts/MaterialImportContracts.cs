@@ -41,4 +41,18 @@ public sealed record ImportedSlot(
 ) {
     /// <summary>For a normal, whether its green runs up the picture, as glTF's, MaterialX's and USD's do.</summary>
     public bool GreenUp { get; init; } = true;
+
+    /// <summary>Where the picture lands on the mesh's coordinates, or null when it lands as it is.</summary>
+    public ImportedPlacement? Placement { get; init; }
 }
+
+/// <summary>
+///     Where a material's picture lands on the mesh's coordinates, in glTF's <c>KHR_texture_transform</c> terms: the
+///     picture is read at the coordinate scaled, then turned, then moved.
+/// </summary>
+/// <param name="OffsetX">How far the coordinate moves along U, in fractions of the picture.</param>
+/// <param name="OffsetY">The same along V, which runs down the picture.</param>
+/// <param name="Rotation">The turn, in radians, counter-clockwise in UV.</param>
+/// <param name="ScaleX">What U is multiplied by.</param>
+/// <param name="ScaleY">What V is multiplied by.</param>
+public sealed record ImportedPlacement(float OffsetX, float OffsetY, float Rotation, float ScaleX, float ScaleY);
