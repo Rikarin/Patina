@@ -4575,8 +4575,8 @@ export interface components {
       /** @description What names it to the routes that use it. */
       source: string;
       /**
-       * @description `material`, `mask`, `brush`, `filter`, or `empty` for a graph with no
-       *                 output yet.
+       * @description `material`, `mask`, `brush`, `filter`, `preset` for a brush or tool preset, which a
+       *                 client takes up rather than adds, or `empty` for a graph with no output yet.
        */
       role: string;
       /**

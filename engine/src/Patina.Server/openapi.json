@@ -13379,7 +13379,7 @@
           },
           "role": {
             "type": "string",
-            "description": "\u0060material\u0060, \u0060mask\u0060, \u0060brush\u0060, \u0060filter\u0060, or \u0060empty\u0060 for a graph with no\n            output yet."
+            "description": "\u0060material\u0060, \u0060mask\u0060, \u0060brush\u0060, \u0060filter\u0060, \u0060preset\u0060 for a brush or tool preset, which a\n            client takes up rather than adds, or \u0060empty\u0060 for a graph with no output yet."
           },
           "origin": {
             "type": "string",

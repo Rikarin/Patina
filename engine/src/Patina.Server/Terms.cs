@@ -89,6 +89,7 @@ public static class Terms {
         ["mask"] = "Masks",
         ["filter"] = "Filters",
         ["brush"] = "Brushes",
+        ["preset"] = "Brush Presets",
         ["empty"] = "Empty Graphs",
         ["shipped"] = "Starter",
         ["package"] = "Packages",
