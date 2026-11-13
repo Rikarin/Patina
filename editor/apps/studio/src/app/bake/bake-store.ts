@@ -190,9 +190,11 @@ export class BakeStore {
       await client.GET('/api/v1/jobs/{id}/previews/{map}', { params: { path: { id: job.id, map } }, parseAs: 'blob' })
     );
     const url = URL.createObjectURL(blob);
-    const side = job.result?.maps.find(file => file.map === map)?.resolution ?? job.bake?.options.resolution ?? 0;
+    const file = job.result?.maps.find(baked => baked.map === map);
+    const width = file?.resolution ?? job.bake?.options.resolution ?? 0;
+    const height = file ? (file.rows ?? width) : (job.bake?.options.rows ?? width);
     this.revoke();
-    this.shown.set({ job: job.id, map, url, width: side, height: side });
+    this.shown.set({ job: job.id, map, url, width, height });
   }
 
   /** Stops showing a map: something else now has the Texture pane. */

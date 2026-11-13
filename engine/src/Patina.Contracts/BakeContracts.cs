@@ -3,12 +3,13 @@ namespace Patina.Contracts;
 /// <summary>One baked map, as a file.</summary>
 /// <param name="Map">What it measures.</param>
 /// <param name="Path">The file.</param>
-/// <param name="Resolution">Its edge in pixels.</param>
+/// <param name="Resolution">Its width in pixels.</param>
 /// <param name="Scale">
 ///     What a stored unit value is multiplied by to get the measurement back, for a signed map in an integer format;
 ///     zero when there is nothing to undo.
 /// </param>
-public sealed record BakedMapFile(string Map, string Path, int Resolution, double Scale);
+/// <param name="Rows">Its height in pixels, or null when it is as tall as it is wide.</param>
+public sealed record BakedMapFile(string Map, string Path, int Resolution, double Scale, int? Rows = null);
 
 /// <summary>What a finished bake made.</summary>
 /// <param name="Maps">The files.</param>

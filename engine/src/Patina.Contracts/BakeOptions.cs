@@ -57,8 +57,14 @@ public sealed record BakeOptions {
     public static IReadOnlyList<string> AllMaps { get; } =
         ["normal", "height", "ao", "bent", "curvature", "thickness", "position", "world", "id", "colour"];
 
-    /// <summary>The atlas's edge, in texels.</summary>
+    /// <summary>The atlas's width, in texels, and its height too unless <see cref="Rows" /> says otherwise.</summary>
     public int Resolution { get; set; } = 2048;
+
+    /// <summary>
+    ///     The atlas's height in texels, or null for as many as <see cref="Resolution" />: a square bake. A texture set
+    ///     authored wider than it is tall bakes at its own shape, so its maps sit under its layers unresampled (#147).
+    /// </summary>
+    public int? Rows { get; set; }
 
     /// <summary><c>png8</c>, <c>png16</c>, <c>exr16</c> or <c>exr32</c>.</summary>
     public string Format { get; set; } = "png16";
@@ -85,6 +91,9 @@ public sealed record BakeOptions {
 
     /// <summary>The height map's range.</summary>
     public BakeHeightOptions Height { get; set; } = new();
+
+    /// <summary>The position map's range.</summary>
+    public BakePositionOptions Position { get; set; } = new();
 
     /// <summary>The occlusion rays, which ambient occlusion, the bent normal and thickness share.</summary>
     public BakeOcclusionOptions Occlusion { get; set; } = new();
@@ -133,6 +142,7 @@ public sealed record BakeOptions {
         var unknown = Maps.FirstOrDefault(static map => !AllMaps.Contains(map, StringComparer.Ordinal));
         (bool Wrong, string Why)[] checks = [
             (Resolution is < 16 or > 16384, $"The resolution must be 16 to 16384, not {Resolution}."),
+            (Rows is < 16 or > 16384, $"The height must be 16 to 16384 texels, not {Rows}."),
             (Supersampling is < 1 or > 8, $"Supersampling must be 1 to 8, not {Supersampling}."),
             (Gutter is < 0 or > 64, $"The gutter must be 0 to 64 texels, not {Gutter}."),
             (!Formats.Contains(Format, StringComparer.Ordinal), $"'{Format}' is not a format."),
@@ -143,6 +153,7 @@ public sealed record BakeOptions {
         return checks.FirstOrDefault(static check => check.Wrong).Why
             ?? Rays.Problem()
             ?? Height.Problem()
+            ?? Position.Problem()
             ?? Occlusion.Problem()
             ?? Id.Problem()
             ?? Rounding.Problem()
@@ -229,6 +240,23 @@ public sealed record BakeHeightOptions {
         !Ranges.Contains(Range, StringComparer.Ordinal) ? $"'{Range}' is not a height range."
         : Range == "custom" && !(Scale > 0 && double.IsFinite(Scale)) ? "A custom height range is more than nothing."
         : null;
+}
+
+/// <summary>How the position map turns a point on the high poly mesh into a value (#148).</summary>
+public sealed record BakePositionOptions {
+    /// <summary>The words <see cref="Range" /> takes.</summary>
+    public static IReadOnlyList<string> Ranges { get; } = ["box", "cube", "sphere", "none"];
+
+    /// <summary>
+    ///     <c>box</c>, each axis across the mesh's bounding box, so each channel is used whole and shapes stretch;
+    ///     <c>cube</c>, every axis across the box's longest side, so distances agree; <c>sphere</c>, across the sphere
+    ///     round the box, centred on its middle; or <c>none</c>, the point in model units, which only EXR keeps.
+    /// </summary>
+    public string Range { get; set; } = "box";
+
+    /// <summary>What is wrong, or null.</summary>
+    public string? Problem() =>
+        !Ranges.Contains(Range, StringComparer.Ordinal) ? $"'{Range}' is not a position range." : null;
 }
 
 /// <summary>The occlusion rays, which ambient occlusion, the bent normal and thickness share.</summary>
