@@ -37,7 +37,7 @@ static class BrushPreviews {
         var image = Draw(StrokeShapes.Brush(ask.Brush, alpha));
         var png = PngCodec.Encode(new(image.Width, image.Height, image.ToTexels()));
         var hash = Convert.ToHexStringLower(SHA256.HashData(png));
-        GraphPreviews.Store(ask.PreviewFolder, hash, png);
+        GraphPreviewFiles.Store(ask.PreviewFolder, hash, png);
         return GraphHost.Drawn(hash);
     }
 

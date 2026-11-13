@@ -143,7 +143,7 @@ static class LibraryTreeEndpoints {
     static void MakeStack(OpenLibrary library, ProjectDocumentRequest request, int side, ProjectMeshInfo? mesh) {
         var file = library.NewDocumentFile(request.Project, request.Name, StackDocuments.Extension);
         var model = mesh is null ? null : Relative(request.Project, mesh.Path);
-        StackDocuments.Create(library.ProjectFile(request.Project, file), side, side, model);
+        StackDocuments.Create(library.ProjectFile(request.Project, file), side, request.Rows ?? side, model);
         var on = mesh?.Id is { } id ? new AssetId(id) : (AssetId?)null;
         library.AddDocument(request.Project, request.Kind, file, request.Name, on);
     }
@@ -282,7 +282,7 @@ static class LibraryTreeEndpoints {
         LibraryHost host,
         ProjectDocumentRequest request
     ) {
-        if (BadResolution(request.Resolution) is { } bad) {
+        if ((BadResolution(request.Resolution) ?? BadResolution(request.Rows)) is { } bad) {
             return bad;
         }
 

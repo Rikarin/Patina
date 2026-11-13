@@ -13,6 +13,7 @@ import {
   colourOf,
   hexOf,
   paintsOverMask,
+  penOf,
   pressureOf,
   rowsOf,
   stackSocketUrl,
@@ -750,6 +751,30 @@ describe('PaintStore', () => {
     expect(pressureOf({ pointerType: 'pen', pressure: 0.3 } as PointerEvent)).toBe(0.3);
   });
 
+  it('takes a pen’s lean and turn, and sends nothing more for a mouse (#123)', () => {
+    const still = { tiltX: 0, tiltY: 0, twist: 0 };
+    expect(penOf({ pointerType: 'mouse', pressure: 0.5, ...still })).toEqual({ pressure: 1 });
+
+    const angles = penOf({
+      ...still,
+      pointerType: 'pen',
+      pressure: 0.4,
+      twist: 90,
+      altitudeAngle: Math.PI / 4,
+      azimuthAngle: 1
+    });
+    expect(angles.pressure).toBe(0.4);
+    expect(angles.tilt).toBeCloseTo(0.5);
+    expect(angles.azimuth).toBe(1);
+    expect(angles.twist).toBeCloseTo(Math.PI / 2);
+
+    // Leaning 45° down the screen, read from the tilts when the browser gives no angles.
+    const leaned = penOf({ pointerType: 'pen', pressure: 1, tiltX: 0, tiltY: 45, twist: 0 });
+    expect(leaned.tilt).toBeCloseTo(0.5);
+    expect(leaned.azimuth).toBeCloseTo(Math.PI / 2);
+    expect(penOf({ pointerType: 'pen', pressure: 1, ...still })).toMatchObject({ tilt: 0, azimuth: 0, twist: 0 });
+  });
+
   it('asks the Worker where a stroke on the mesh is, and every part carries the camera it was given', async () => {
     const { store, bodies, picks } = setup();
     await store.open('/a/Crate.vxlayers', false);
@@ -1444,5 +1469,60 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     store.tool.set('projection');
     store.moveScreenPicture({ scale: 0 });
     expect(store.screenPicture()?.scale).toBeGreaterThan(0);
+  });
+
+  it('lays a picture dropped on the mesh as a decal on a new fill, at its shape, colouring the base color (#133)', async () => {
+    const { store, bodies, server } = await onMesh();
+    const hit = { found: true, view: PickedView, u: 0.5, v: 0.5, position: [1, 2, 3], normal: [0, 0, 1] };
+    server.reply = (method, path) => {
+      if (path.endsWith('/viewport/pick')) {
+        return Response.json({ ...hit, bounds: [0, 0, 0, 2, 2, 2] });
+      }
+
+      // Once the fill is added, the Server's stack has it.
+      return method === 'GET' && /^\/api\/v1\/stacks\/s1$/u.test(path) && bodies.length > 0
+        ? Response.json(stack({ layers: [layer('base', 'fill'), layer('paint', 'paint'), layer('logo', 'fill')] }))
+        : null;
+    };
+
+    expect(await store.addDecalOnMesh('pictures/logo.png', 'logo', { x: 50, y: 50, pressure: 1 }, aim, 0.5)).toBe(true);
+
+    const commands = bodies.flatMap(body => (body as { commands: Record<string, unknown>[] }).commands);
+    expect(commands[0]).toMatchObject({ op: 'addLayer', kind: 'fill', name: 'logo' });
+    const placed = commands[1] as { decal: { width: number; height: number; centre: number[]; box: number[] } };
+    expect(placed).toMatchObject({
+      op: 'setLayer',
+      layer: 'logo',
+      fill: 'Texture',
+      textures: { baseColor: 'pictures/logo.png' },
+      channels: ['baseColor'],
+      projection: 'Decal'
+    });
+    expect(placed.decal.centre).toEqual([1, 2, 3]);
+    expect(placed.decal.box).toEqual([0, 0, 0, 2, 2, 2]);
+    expect(placed.decal.height).toBeCloseTo(placed.decal.width * 0.5);
+  });
+
+  it('makes no layer for a picture dropped beside the mesh, and says why (#133)', async () => {
+    const { store, bodies, server } = await onMesh();
+    server.reply = (_method, path) =>
+      path.endsWith('/viewport/pick') ? Response.json({ found: false, view: PickedView, u: 0, v: 0 }) : null;
+
+    expect(await store.addDecalOnMesh('pictures/logo.png', 'logo', { x: 1, y: 1, pressure: 1 }, aim)).toBe(false);
+    expect(bodies).toHaveLength(0);
+    expect(store.failure()).toContain('on the mesh');
+  });
+
+  it('sets no decal when no new layer came back, rather than moving the chosen one (#133)', async () => {
+    const { store, bodies, server } = await onMesh();
+    server.reply = (_method, path) =>
+      path.endsWith('/viewport/pick')
+        ? Response.json({ found: true, view: PickedView, u: 0.5, v: 0.5, position: [0, 0, 0], normal: [0, 0, 1] })
+        : null;
+    store.layer.set('base');
+
+    expect(await store.addDecalOnMesh('pictures/logo.png', 'logo', { x: 50, y: 50, pressure: 1 }, aim)).toBe(false);
+    const commands = bodies.flatMap(body => (body as { commands: Record<string, unknown>[] }).commands);
+    expect(commands.map(command => command['op'])).toEqual(['addLayer']);
   });
 });

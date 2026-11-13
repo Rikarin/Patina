@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen, leave, newLibrary, newProject } from './projects';
+import { answerOpen, chooseFromComputer, chooseInLibrary, leave, newLibrary, newProject } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -37,7 +37,7 @@ test.afterEach(async () => {
 /** Answers the system's file dialog for a field of the Bake dialog. */
 async function choose(field: string, path: string): Promise<void> {
   await answerOpen(app, path);
-  await window.getByTestId(`bake-choose-${field}`).click();
+  await chooseFromComputer(app, window, `bake-choose-${field}`);
 }
 
 test('a bake runs from the panel and its maps show in the Texture pane', async () => {
@@ -78,7 +78,6 @@ test('a bake can be judged on its low mesh in the viewport, with a cage and a sk
   // software Vulkan runner it ran out of 120 s twice while the one above, given minutes, did not.
   test.setTimeout(300_000);
   const output = join(scratch, 'maps');
-  const low = join(scratch, 'meshes', 'housing_low.glb');
   const skew = join(scratch, 'skew.png');
 
   // A grey picture: one white pixel is an image, and the bake only asks that it be square.
@@ -92,7 +91,9 @@ test('a bake can be judged on its low mesh in the viewport, with a cage and a sk
 
   await window.getByTestId('open-bake').click();
   await choose('high', join(scratch, 'meshes', 'housing_high.glb'));
-  await choose('cage', low);
+  // The cage is the project's own mesh, picked from the library rather than from the disk (#4).
+  await chooseInLibrary(window, 'bake-choose-cage', 'housing_low.glb');
+  await expect(window.getByTestId('bake-cage')).toHaveValue('housing_low.glb');
   await choose('skewMap', skew);
   await choose('output', output);
   await window.getByTestId('bake-start').click();

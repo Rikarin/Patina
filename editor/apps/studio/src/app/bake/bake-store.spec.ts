@@ -109,6 +109,26 @@ describe('BakeStore', () => {
     expect(store.busy()).toBe(false);
   });
 
+  it('keeps what the events said of a job that ended before the answer that started it came back', async () => {
+    let sockets: GraphSocket[] = [];
+    const routes = {
+      ...empty,
+      'POST jobs/bakes': () => {
+        speak(sockets[0], { sequence: 8, job: job({ state: 'done', progress: 1 }) });
+        return Response.json(job({ state: 'queued' }), { status: 202 });
+      }
+    };
+    const made = setup(routes);
+    sockets = made.sockets;
+    await settled();
+
+    await made.store.start(bake as never);
+    expect(made.store.current()?.state).toBe('done');
+
+    made.store.track(job({ state: 'queued' }));
+    expect(made.store.find('j1')?.state).toBe('done');
+  });
+
   it('keeps following a job another client started without taking the panel over', async () => {
     const { store, sockets } = setup(empty);
     await settled();

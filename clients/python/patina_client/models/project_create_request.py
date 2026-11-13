@@ -37,6 +37,9 @@ class ProjectCreateRequest:
                 Null is `texturing` with a mesh and nothing without one.
             image (None | str | Unset): The picture an `image-material` starts from, on the Server\\'s machine.
             high (None | str | Unset): The detailed mesh it bakes from, on the Server's machine.
+            rows (int | None | Unset): The height of a stack it starts with, when it is not as tall as Resolution is wide
+                (#144):
+                a model laid out on a 2:1 sheet paints at 2048 × 1024. Null is square. A graph is always square.
      """
 
     name: str
@@ -47,6 +50,7 @@ class ProjectCreateRequest:
     kind: None | str | Unset = UNSET
     image: None | str | Unset = UNSET
     high: None | str | Unset = UNSET
+    rows: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -102,6 +106,12 @@ class ProjectCreateRequest:
         else:
             high = self.high
 
+        rows: int | None | Unset
+        if isinstance(self.rows, Unset):
+            rows = UNSET
+        else:
+            rows = self.rows
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -122,6 +132,8 @@ class ProjectCreateRequest:
             field_dict["image"] = image
         if high is not UNSET:
             field_dict["high"] = high
+        if rows is not UNSET:
+            field_dict["rows"] = rows
 
         return field_dict
 
@@ -210,6 +222,16 @@ class ProjectCreateRequest:
         high = _parse_high(d.pop("high", UNSET))
 
 
+        def _parse_rows(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        rows = _parse_rows(d.pop("rows", UNSET))
+
+
         project_create_request = cls(
             name=name,
             folder=folder,
@@ -219,6 +241,7 @@ class ProjectCreateRequest:
             kind=kind,
             image=image,
             high=high,
+            rows=rows,
         )
 
 

@@ -41,7 +41,7 @@ Four findings came out of measuring it:
   depend on the same texel, and anything else above the stroke runs whole, and so does everything above that. That is the blur
   row, where the blur sat near the top. Under the bottom of a stack of five channels it would be several hundred milliseconds.
 - **The cache must hold a stack's outputs and its pool.** At Vixen's default 2 GiB with five outputs the idle pool is trimmed after
-  each stamp and recreated: 174 ms against 26 ms. The Worker therefore sets 6 GiB.
+  each stamp and recreated: 174 ms against 26 ms. The Worker therefore sets 6 GiB, or half the device's own memory where that is less (#247): the budget binds only between evaluations, and an 8 GiB card with 6 GiB of results had no room left for the run that replaces them.
 - **The first version of this spike measured a brush that painted nothing.** `new PaintBrush { Radius = r }` has a flow of zero. A
   test that a stroke changes pixels caught it, and every number here is from `PaintBrush.Default`.
 

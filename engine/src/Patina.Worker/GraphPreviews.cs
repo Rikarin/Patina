@@ -1,4 +1,3 @@
-using Patina.Ipc;
 using System.Collections.Immutable;
 using Vixen.TextureGraph;
 
@@ -24,21 +23,6 @@ static class GraphPreviews {
 
     /// <summary>The filter a reduction uses: the box, the only correct choice going down (Resample.rvn).</summary>
     const float Box = 2f;
-
-    /// <summary>Writes a file under its hash: whoever reads it sees all of it or no file.</summary>
-    public static void Store(string folder, string hash, byte[] png, string extension = GraphPreviewFiles.Extension) {
-        var path = GraphPreviewFiles.PathOf(folder, hash, extension);
-        if (File.Exists(path)) {
-            return;
-        }
-
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-
-        // A name of its own: two nodes with one picture reach here at once, under one hash.
-        var temporary = $"{path}.{Guid.NewGuid():N}.tmp";
-        File.WriteAllBytes(temporary, png);
-        File.Move(temporary, path, true);
-    }
 
     /// <summary>
     ///     What a compilation has to show: the last image of each output port, since a compound's inner nodes all

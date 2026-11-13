@@ -91,7 +91,7 @@ def sync_detailed(
     body: ProjectPaintRequest,
 
 ) -> Response[ProblemDetails | ProjectContents]:
-    """ Keeps how a project's painting was left, in its project.yaml: the colours strokes last used, its
+    """ Keeps how a project's painting was left, in its project.yaml: the colors strokes last used, its
     palette, the brush and the symmetry, so they survive a restart and any client starts from them.
 
     Args:
@@ -123,7 +123,7 @@ def sync(
     body: ProjectPaintRequest,
 
 ) -> ProblemDetails | ProjectContents | None:
-    """ Keeps how a project's painting was left, in its project.yaml: the colours strokes last used, its
+    """ Keeps how a project's painting was left, in its project.yaml: the colors strokes last used, its
     palette, the brush and the symmetry, so they survive a restart and any client starts from them.
 
     Args:
@@ -150,7 +150,7 @@ async def asyncio_detailed(
     body: ProjectPaintRequest,
 
 ) -> Response[ProblemDetails | ProjectContents]:
-    """ Keeps how a project's painting was left, in its project.yaml: the colours strokes last used, its
+    """ Keeps how a project's painting was left, in its project.yaml: the colors strokes last used, its
     palette, the brush and the symmetry, so they survive a restart and any client starts from them.
 
     Args:
@@ -182,7 +182,7 @@ async def asyncio(
     body: ProjectPaintRequest,
 
 ) -> ProblemDetails | ProjectContents | None:
-    """ Keeps how a project's painting was left, in its project.yaml: the colours strokes last used, its
+    """ Keeps how a project's painting was left, in its project.yaml: the colors strokes last used, its
     palette, the brush and the symmetry, so they survive a restart and any client starts from them.
 
     Args:

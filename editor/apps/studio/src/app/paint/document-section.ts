@@ -4,7 +4,6 @@ import { XuiButtonImports } from '@xui/button';
 import { XuiMenuImports } from '@xui/menu';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
-import { desktop } from '../core/desktop';
 import { labelIn } from '../core/labels';
 import { count } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
@@ -57,7 +56,7 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
               {{ project.meshName() ?? project.document()?.name }}
             </span>
           </span>
-          @if (canPick && project.document()?.kind === 'texturing') {
+          @if (project.document()?.kind === 'texturing') {
             <button
               type="button"
               xuiButton
@@ -200,6 +199,19 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
             Add Channel…
           </button>
         }
+        @if (state.channels.length > 1) {
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            title="Take a channel off this document. The layers keep what they hold for it, so adding it again brings it back."
+            data-testid="paint-remove-channel"
+            [xuiMenuTriggerFor]="removeMenu"
+          >
+            Remove Channel…
+          </button>
+        }
       </div>
     }
 
@@ -217,6 +229,21 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
         }
       </xui-menu>
     </ng-template>
+
+    <ng-template #removeMenu>
+      <xui-menu aria-label="Remove a channel from this document" data-testid="paint-remove-channel-menu">
+        @for (channel of store.state()?.channels ?? []; track channel.usage) {
+          <button
+            type="button"
+            xuiMenuItem
+            [attr.data-testid]="'paint-remove-channel-' + channel.usage"
+            (triggered)="removeChannel(channel.usage)"
+          >
+            {{ nameOf(channel.usage) }}
+          </button>
+        }
+      </xui-menu>
+    </ng-template>
   `
 })
 export class DocumentSection {
@@ -224,7 +251,6 @@ export class DocumentSection {
   protected readonly project = inject(ProjectStore);
   private readonly status = inject(SystemStatus);
   private readonly library = inject(LibraryStore);
-  protected readonly canPick = desktop() !== undefined;
   protected readonly heightNormals = HeightNormals;
   protected readonly bakedNormals = BakedNormals;
   protected readonly bakedOcclusions = BakedOcclusions;
@@ -257,6 +283,18 @@ export class DocumentSection {
     const held = this.store.state()?.channels.map(channel => channel.usage) ?? [];
     return (this.store.vocabulary()?.usages ?? []).map(term => term.value).filter(usage => !held.includes(usage));
   });
+
+  /**
+   * Takes a channel off the set. Painting moves to the first channel left when it was the one painted, so a brush never
+   * aims at a channel the set no longer has.
+   */
+  protected async removeChannel(usage: string): Promise<void> {
+    await this.store.edit({ op: 'removeChannel', usage });
+    const left = this.store.state()?.channels.map(channel => channel.usage) ?? [];
+    if (!left.includes(this.store.channel()) && left[0]) {
+      this.store.showChannel(left[0]);
+    }
+  }
 
   /** The sides a set can have, from the engine, and the ones it has even if the list has not. */
   protected readonly sides = computed(() => {

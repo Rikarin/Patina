@@ -7,10 +7,9 @@ import { XuiFormFieldImports } from '@xui/form-field';
 import { XuiInputImports } from '@xui/input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiTagInputImports } from '@xui/tag-input';
-import { desktop } from '../core/desktop';
 import { labelsOf, valuesOf } from '../core/labels';
 import { messageOf } from '../core/messages';
-import { SystemStatus } from '../core/system-status';
+import { FileChooser } from './file-chooser';
 import { LibraryActions } from './library-actions';
 import { LibraryStore } from './library-store';
 
@@ -153,7 +152,7 @@ const DocumentKinds = [
           @if (kind() === 'image-material') {
             <div class="flex items-center gap-2">
               <span class="min-w-0 flex-1 truncate">{{ fileName(image()) || 'No picture yet' }}</span>
-              <button type="button" xuiButton size="sm" [disabled]="!canPick" (click)="pickImage()">Choose…</button>
+              <button type="button" xuiButton size="sm" (click)="pickImage()">Choose…</button>
             </div>
           }
           @if (actions.failure(); as reason) {
@@ -173,7 +172,7 @@ const DocumentKinds = [
 export class LibraryDialogs {
   protected readonly actions = inject(LibraryActions);
   private readonly library = inject(LibraryStore);
-  private readonly status = inject(SystemStatus);
+  private readonly chooser = inject(FileChooser);
 
   protected readonly kinds = valuesOf(DocumentKinds);
   protected readonly kindName = labelsOf(DocumentKinds);
@@ -182,7 +181,6 @@ export class LibraryDialogs {
     const meshless = this.meshes().length === 0;
     return (kind: string) => meshless && kind === 'texturing';
   });
-  protected readonly canPick = desktop() !== undefined;
   protected readonly name = linkedSignal(() => this.actions.renaming()?.name ?? '');
   protected readonly tags = linkedSignal<string[]>(() => [...(this.actions.tagging()?.tags ?? [])]);
   protected readonly newName = signal('');
@@ -279,7 +277,8 @@ export class LibraryDialogs {
   }
 
   protected async pickImage(): Promise<void> {
-    const image = await desktop()?.openImage(this.status.pictures());
+    const project = this.actions.adding();
+    const image = await this.chooser.path({ kind: 'picture', title: 'Choose a Picture', project });
     if (image) {
       this.image.set(image);
     }

@@ -14,7 +14,8 @@ namespace Patina.Cli;
 static class BuildCommand {
     public const string Usage = """
                                   patina build --library <path> [--changed] [--asset <guid>] [--project <guid>]...
-                                               [--document <file>]... [--preset <id>]... [--no-export] [--folder <path>] [--dry-run]
+                                               [--document <file>]... [--preset <id>]... [--no-export] [--folder <path>]
+                                               [--dry-run]
                                 """
         + "\n"
         + BuildFlags.Usage;

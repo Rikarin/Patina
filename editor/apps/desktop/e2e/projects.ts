@@ -8,11 +8,43 @@ export const answerSave = (app: ElectronApplication, path: string) =>
     Object.assign(dialog, { showSaveDialog: () => Promise.resolve({ canceled: false, filePath }) });
   }, path);
 
-/** Answers the system's next open dialog. */
+/** Answers the system's next open dialog, and notes when it has. */
 export const answerOpen = (app: ElectronApplication, path: string) =>
   app.evaluate(({ dialog }, filePath) => {
-    Object.assign(dialog, { showOpenDialog: () => Promise.resolve({ canceled: false, filePaths: [filePath] }) });
+    Object.assign(globalThis, { patinaOpened: false });
+    Object.assign(dialog, {
+      showOpenDialog: () => {
+        Object.assign(globalThis, { patinaOpened: true });
+        return Promise.resolve({ canceled: false, filePaths: [filePath] });
+      }
+    });
   }, path);
+
+/**
+ * Clicks a Choose… and takes the file `answerOpen` gave the system's dialog. A field that offers the library's files
+ * opens Choose a Mesh or Choose a Picture first when the library has some, and From a File… is then the way to the
+ * system's dialog; with none, the system's dialog opens at once.
+ */
+export async function chooseFromComputer(app: ElectronApplication, window: Page, testId: string): Promise<void> {
+  await window.getByTestId(testId).click();
+  const machine = window.getByTestId('pick-file-machine');
+  const opened = () => app.evaluate(() => (globalThis as { patinaOpened?: boolean }).patinaOpened === true);
+  await expect.poll(async () => (await machine.isVisible()) || (await opened()), { timeout: 30_000 }).toBe(true);
+  if (await machine.isVisible()) {
+    await machine.click();
+  }
+
+  await expect.poll(opened).toBe(true);
+}
+
+/** Clicks a Choose… and picks a file the library holds, by its name, in Choose a Mesh or Choose a Picture. */
+export async function chooseInLibrary(window: Page, testId: string, name: string): Promise<void> {
+  await window.getByTestId(testId).click();
+  const dialog = window.getByTestId('pick-file');
+  await dialog.getByTestId('pick-file-item').filter({ hasText: name }).first().click();
+  await window.getByTestId('pick-file-choose').click(); // in the footer, below the dialog's body
+  await expect(dialog).toHaveCount(0);
+}
 
 /**
  * Chooses in one of xUI's selects the way a person does: opens it, then clicks the choice by its name. A name is
@@ -61,7 +93,7 @@ export async function newProject(
   await pick(window, 'new-project-kind', ProjectKinds[kind]);
   if (mesh) {
     await answerOpen(app, mesh);
-    await window.getByTestId('new-project-mesh').click();
+    await chooseFromComputer(app, window, 'new-project-mesh');
     await expect(window.getByTestId('new-project-mesh-name')).toHaveText(basename(mesh));
   }
 

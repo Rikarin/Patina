@@ -338,8 +338,13 @@ function lanesOf(hex: string): number[] {
                   <xui-select
                     class="w-32 shrink-0"
                     data-testid="export-set-size"
-                    title="The longest side this texture set's files are written at. The set keeps its own size."
+                    [title]="
+                      settings().merge
+                        ? 'Merged sets are written as one set of files, at the export’s size.'
+                        : 'The longest side this texture set’s files are written at. The set keeps its own size.'
+                    "
                     [aria-label]="'Export size of ' + set"
+                    [disabled]="settings().merge"
                     [filterable]="false"
                     [itemText]="setSizeName"
                     [items]="setSizes()"
@@ -351,7 +356,7 @@ function lanesOf(hex: string): number[] {
               <div class="flex items-center justify-between gap-2 pt-1">
                 <span
                   class="text-xs"
-                  title="Sets that share one UV square go into one set of files, each where its layout puts it. A set's own size does not apply."
+                  title="Sets that share one UV square go into one set of files, each where its layout puts it, at the export’s size."
                 >
                   Merge into one set of files
                 </span>
@@ -362,6 +367,11 @@ function lanesOf(hex: string): number[] {
                   (checkedChange)="change({ merge: $event })"
                 />
               </div>
+              @if (settings().merge) {
+                <p class="text-foreground-muted text-xs" data-testid="export-merge-size">
+                  Merged sets are written at the export’s size, so a set’s own size is not used.
+                </p>
+              }
             </section>
           }
 

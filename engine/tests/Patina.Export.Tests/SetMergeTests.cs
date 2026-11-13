@@ -29,7 +29,9 @@ public sealed class SetMergeTests : IDisposable {
 
     public void Dispose() => folder.Delete(true);
 
-    /// <summary>A one-lane map whose texels left of <paramref name="split" /> are one value and the rest another.</summary>
+    /// <summary>
+    ///     A one-lane map whose texels left of <paramref name="split" /> are one value and the rest another.
+    /// </summary>
     static FloatImage Split(int side, int split, float left, float right) {
         var values = new float[side * side];
         for (var at = 0; at < values.Length; at++) {
@@ -152,5 +154,28 @@ public sealed class SetMergeTests : IDisposable {
 
         Assert.False(manifest.PerSet);
         Assert.Equal(["T_Crate_R.png", "T_Crate_N.png"], delivered);
+    }
+
+    /// <summary>
+    ///     One set of files has one size, the export's: a size chosen for one set is not used, and the report says so
+    ///     (#252).
+    /// </summary>
+    [Fact]
+    public void A_merged_export_writes_at_the_exports_size_and_names_a_sets_own_size_it_did_not_use() {
+        var preset = ExportOverrides.Apply(
+            ExportPresetReader.Read(Preset, "p"),
+            new() { Merge = true, Size = 4, PerSet = [new("Strap") { Size = 2 }] }
+        );
+
+        var manifest = ExportRun.Run(
+            preset,
+            [Set("Body", true, 0.25f), Set("Strap", false, 0.75f)],
+            Path.Combine(folder.FullName, "made"),
+            null,
+            Token
+        );
+
+        Assert.All(manifest.Files, static file => Assert.Equal((4, 4), (file.Width, file.Height)));
+        Assert.Contains(manifest.Warnings, static w => w.Contains("Strap (2 px)", StringComparison.Ordinal));
     }
 }

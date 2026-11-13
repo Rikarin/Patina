@@ -8,6 +8,7 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
   from ..models.bake_height_options import BakeHeightOptions
   from ..models.bake_id_options import BakeIdOptions
   from ..models.bake_occlusion_options import BakeOcclusionOptions
+  from ..models.bake_position_options import BakePositionOptions
   from ..models.bake_ray_options import BakeRayOptions
   from ..models.bake_rounding_options import BakeRoundingOptions
   from ..models.bake_thickness_options import BakeThicknessOptions
@@ -33,7 +35,7 @@ class BakeOptions:
     own settings are a part of their own.
 
         Attributes:
-            resolution (int): The atlas's edge, in texels.
+            resolution (int): The atlas's width, in texels, and its height too unless int? BakeOptions.Rows says otherwise.
             format_ (str): `png8`, `png16`, `exr16` or `exr32`.
             supersampling (int): How many samples along each side of a texel.
             gutter (int): How many texels of dilation surround each chart.
@@ -43,6 +45,7 @@ class BakeOptions:
             space (str): The frame of the normal and bent normal maps: `tangent` or `object`.
             rays (BakeRayOptions): How far a bake's rays look from the low mesh, and what they may strike.
             height (BakeHeightOptions): The height map's stored range.
+            position (BakePositionOptions): How the position map turns a point on the high poly mesh into a value (#148).
             occlusion (BakeOcclusionOptions): The occlusion rays, which ambient occlusion, the bent normal and thickness
                 share.
             thickness (BakeThicknessOptions): The thickness map's own settings.
@@ -50,6 +53,15 @@ class BakeOptions:
             rounding (BakeRoundingOptions): Edges baked round into the normal map, the bevel a hard-surface model was not
                 modelled with.
             colour (BakeColourOptions): Where a colour map's colour comes from.
+            rows (int | None | Unset): The atlas's height in texels, or null for as many as int BakeOptions.Resolution: a
+                square bake. A texture set
+                authored wider than it is tall bakes at its own shape, so its maps sit under its layers unresampled (#147).
+            follow_set_shape (bool | None | Unset): Whether a bake of a project's texture set takes its height from the
+                set's own shape at
+                int BakeOptions.Resolution, in place of int? BakeOptions.Rows, so that a wide set and a square one baked
+                together each bake at their own (#253). Null follows too; only false keeps int? BakeOptions.Rows. A bake of no
+                texture set keeps int? BakeOptions.Rows, and a finished bake's options say the height it was made at and leave
+                this out.
      """
 
     resolution: int
@@ -60,11 +72,14 @@ class BakeOptions:
     space: str
     rays: BakeRayOptions
     height: BakeHeightOptions
+    position: BakePositionOptions
     occlusion: BakeOcclusionOptions
     thickness: BakeThicknessOptions
     id: BakeIdOptions
     rounding: BakeRoundingOptions
     colour: BakeColourOptions
+    rows: int | None | Unset = UNSET
+    follow_set_shape: bool | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -76,6 +91,7 @@ class BakeOptions:
         from ..models.bake_height_options import BakeHeightOptions # noqa: PLC0415
         from ..models.bake_id_options import BakeIdOptions # noqa: PLC0415
         from ..models.bake_occlusion_options import BakeOcclusionOptions # noqa: PLC0415
+        from ..models.bake_position_options import BakePositionOptions # noqa: PLC0415
         from ..models.bake_ray_options import BakeRayOptions # noqa: PLC0415
         from ..models.bake_rounding_options import BakeRoundingOptions # noqa: PLC0415
         from ..models.bake_thickness_options import BakeThicknessOptions # noqa: PLC0415
@@ -97,6 +113,8 @@ class BakeOptions:
 
         height = self.height.to_dict()
 
+        position = self.position.to_dict()
+
         occlusion = self.occlusion.to_dict()
 
         thickness = self.thickness.to_dict()
@@ -106,6 +124,18 @@ class BakeOptions:
         rounding = self.rounding.to_dict()
 
         colour = self.colour.to_dict()
+
+        rows: int | None | Unset
+        if isinstance(self.rows, Unset):
+            rows = UNSET
+        else:
+            rows = self.rows
+
+        follow_set_shape: bool | None | Unset
+        if isinstance(self.follow_set_shape, Unset):
+            follow_set_shape = UNSET
+        else:
+            follow_set_shape = self.follow_set_shape
 
 
         field_dict: dict[str, Any] = {}
@@ -119,12 +149,17 @@ class BakeOptions:
             "space": space,
             "rays": rays,
             "height": height,
+            "position": position,
             "occlusion": occlusion,
             "thickness": thickness,
             "id": id,
             "rounding": rounding,
             "colour": colour,
         })
+        if rows is not UNSET:
+            field_dict["rows"] = rows
+        if follow_set_shape is not UNSET:
+            field_dict["followSetShape"] = follow_set_shape
 
         return field_dict
 
@@ -136,6 +171,7 @@ class BakeOptions:
         from ..models.bake_height_options import BakeHeightOptions # noqa: PLC0415
         from ..models.bake_id_options import BakeIdOptions # noqa: PLC0415
         from ..models.bake_occlusion_options import BakeOcclusionOptions # noqa: PLC0415
+        from ..models.bake_position_options import BakePositionOptions # noqa: PLC0415
         from ..models.bake_ray_options import BakeRayOptions # noqa: PLC0415
         from ..models.bake_rounding_options import BakeRoundingOptions # noqa: PLC0415
         from ..models.bake_thickness_options import BakeThicknessOptions # noqa: PLC0415
@@ -159,6 +195,11 @@ class BakeOptions:
 
 
         height = BakeHeightOptions.from_dict(d.pop("height"))
+
+
+
+
+        position = BakePositionOptions.from_dict(d.pop("position"))
 
 
 
@@ -188,6 +229,26 @@ class BakeOptions:
 
 
 
+        def _parse_rows(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        rows = _parse_rows(d.pop("rows", UNSET))
+
+
+        def _parse_follow_set_shape(data: object) -> bool | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(bool | None | Unset, data)
+
+        follow_set_shape = _parse_follow_set_shape(d.pop("followSetShape", UNSET))
+
+
         bake_options = cls(
             resolution=resolution,
             format_=format_,
@@ -197,11 +258,14 @@ class BakeOptions:
             space=space,
             rays=rays,
             height=height,
+            position=position,
             occlusion=occlusion,
             thickness=thickness,
             id=id,
             rounding=rounding,
             colour=colour,
+            rows=rows,
+            follow_set_shape=follow_set_shape,
         )
 
 

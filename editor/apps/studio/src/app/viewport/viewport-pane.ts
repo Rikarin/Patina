@@ -24,11 +24,13 @@ import { Preferences } from '../core/preferences';
 import { SystemStatus } from '../core/system-status';
 import { ViewOptions } from '../core/view-options';
 import { GraphViews } from '../graph/graph-views';
+import { DragType as LibraryDrag } from '../library/library-tree';
 import { ProjectStore } from '../library/project-store';
 import { MaterialUse } from '../paint/material-use';
-import { PaintStore, pressureOf } from '../paint/paint-store';
+import { PaintStore, penOf } from '../paint/paint-store';
 import { ScreenPictureOverlay } from '../paint/screen-picture';
 import { StrokeGesture } from '../paint/stroke-gesture';
+import { isPicture, pictureName } from '../paint/surface-frame';
 import { SurfaceGuide } from '../paint/surface-guide';
 import { project as onPicture, symmetryCopies, symmetryGuide } from '../paint/symmetry-guide';
 import { ToolStrip } from '../paint/tool-strip';
@@ -119,29 +121,42 @@ const PickFile = '…';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
-    <div class="chrome-bar flex min-h-9 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1">
+    <!--
+      The bar keeps to one line, as every pane's does (#200). As it narrows, the readouts go first, then names truncate
+      and the choices shrink; the buttons keep their size.
+    -->
+    <div
+      class="chrome-bar @container flex h-9 shrink-0 flex-nowrap items-center gap-2 overflow-hidden px-2"
+      role="toolbar"
+      aria-label="Viewport"
+      data-testid="viewport-bar"
+    >
       @if (!paint.worn()) {
-        <button type="button" xuiButton size="sm" [disabled]="!canOpen" (click)="open()">Open mesh…</button>
+        <button type="button" xuiButton size="sm" class="shrink-0" [disabled]="!canOpen" (click)="open()">
+          Open mesh…
+        </button>
       }
-      <span class="readout truncate" data-testid="viewport-mesh">{{ meshName() }}</span>
+      <span class="readout min-w-0 truncate" data-testid="viewport-mesh" [title]="meshName()">{{ meshName() }}</span>
       @if (graphs.front().document(); as document) {
         <button
           type="button"
           xuiButton
           size="sm"
           variant="ghost"
+          class="max-w-48 min-w-0"
           data-testid="viewport-show-graph"
           [active]="followed() === document.id"
           [title]="'Lays the outputs of ' + document.name + ' over the mesh, or a sphere, and keeps up with edits'"
           (click)="follow(document.id)"
         >
-          Show {{ document.name }}
+          <span class="min-w-0 truncate">Show {{ document.name }}</span>
         </button>
         <button
           type="button"
           xuiButton
           size="sm"
           variant="ghost"
+          class="shrink-0"
           data-testid="viewport-show-node"
           title="Shows the selected node's picture alone, as stored and unlit, in place of the material, and follows the selection"
           [active]="followsNode() && followed() === document.id"
@@ -156,6 +171,7 @@ const PickFile = '…';
           type="button"
           xuiButton
           size="sm"
+          class="shrink-0"
           data-testid="viewport-paint"
           [variant]="painting() ? 'default' : 'ghost'"
           [title]="'Paints the mesh. Orbit: ' + commands.navigation().orbit + '.'"
@@ -164,9 +180,9 @@ const PickFile = '…';
           Paint
         </button>
       }
-      <span class="flex-1"></span>
+      <span class="min-w-0 flex-1"></span>
       <xui-select
-        class="w-28 min-w-0 [&_button]:text-xs"
+        class="w-28 min-w-16 [&_button]:text-xs"
         style="--control-height-md: 1.5rem; --control-padding-md: 0.375rem"
         aria-label="View"
         [title]="
@@ -183,7 +199,7 @@ const PickFile = '…';
         (valueChange)="$event && chooseView($event)"
       />
       <xui-select
-        class="w-28 min-w-0 [&_button]:text-xs"
+        class="w-28 min-w-16 [&_button]:text-xs"
         style="--control-height-md: 1.5rem; --control-padding-md: 0.375rem"
         aria-label="Environment"
         title="What lights the model"
@@ -196,7 +212,7 @@ const PickFile = '…';
         (valueChange)="chooseEnvironment($event)"
       />
       <xui-select
-        class="w-28 min-w-0 [&_button]:text-xs"
+        class="w-28 min-w-16 [&_button]:text-xs"
         style="--control-height-md: 1.5rem; --control-padding-md: 0.375rem"
         aria-label="Look"
         title="A .cube table the picture is viewed through. Nothing that is exported sees it."
@@ -212,6 +228,7 @@ const PickFile = '…';
         type="button"
         xuiButton
         size="sm"
+        class="shrink-0"
         data-testid="viewport-display-toggle"
         title="The camera, light and finish of the view"
         [variant]="showDisplay() ? 'default' : 'ghost'"
@@ -222,7 +239,7 @@ const PickFile = '…';
       </button>
       @if (stampMs() !== null) {
         <span
-          class="readout"
+          class="readout shrink-0 @max-[48rem]:sr-only"
           [class.hidden]="!options.stats()"
           data-testid="viewport-stamp"
           [attr.data-stamp-ms]="stampTimes()"
@@ -231,7 +248,11 @@ const PickFile = '…';
         </span>
       }
       @if (viewport.stats(); as stats) {
-        <span class="readout" data-testid="viewport-stats" [class.hidden]="!options.stats()">
+        <span
+          class="readout shrink-0 @max-[48rem]:sr-only"
+          data-testid="viewport-stats"
+          [class.hidden]="!options.stats()"
+        >
           {{ stats.width }}×{{ stats.height }} · {{ stats.fps }} fps · {{ milliseconds(stats.latencyMs) }}
         </span>
       }
@@ -458,6 +479,9 @@ export class ViewportPane implements AfterViewInit {
 
   constructor() {
     this.installCommands();
+    // Properties is outside this pane and cannot reach its client, so the camera it measures through is kept on the store.
+    effect(() => this.paint.viewCamera.set(this.viewport.camera()));
+    this.destroyRef.onDestroy(() => this.paint.viewCamera.set(null));
     // A path's points are places on this picture, so one the view has left is painted as it was placed.
     effect(() => {
       this.view();
@@ -864,11 +888,22 @@ export class ViewportPane implements AfterViewInit {
 
   /** A stroke is measured in the canvas's layout pixels, so a brush is the same size whatever the render scale. */
   private stamp(event: PointerEvent) {
-    return { ...this.spot(event), pressure: pressureOf(event) };
+    return { ...this.spot(event), ...penOf(event) };
   }
 
-  /** A material from the shelf can land on a region of the mesh (#110). */
+  /** A material from the shelf can land on a region of the mesh (#110), and a picture becomes a decal there (#133). */
   protected overMesh(event: DragEvent): void {
+    const carries = this.carriedPicture(event);
+    if (carries) {
+      // Not the window's: a file dropped here is a decal, not a file brought into the project.
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = carries === 'file' ? 'copy' : 'move';
+      }
+      return;
+    }
+
     if (this.using.takesRegion(this.using.carried())) {
       event.preventDefault();
       if (event.dataTransfer) {
@@ -879,6 +914,11 @@ export class ViewportPane implements AfterViewInit {
 
   /** Fills the region of the id map under the drop with the material, as a new layer kept to that region. */
   protected async dropOnMesh(event: DragEvent): Promise<void> {
+    if (this.carriedPicture(event)) {
+      await this.dropDecal(event);
+      return;
+    }
+
     const material = this.using.carried();
     if (!material || !this.using.takesRegion(material)) {
       return;
@@ -890,6 +930,56 @@ export class ViewportPane implements AfterViewInit {
     await this.using.useOnRegion(material, colour);
     if (this.using.failure()) {
       this.activity.report({ tone: 'warning', source: 'Viewport', text: this.using.failure() ?? '' });
+    }
+  }
+
+  /**
+   * What a drag over the mesh carries that could become a decal: a file from this machine, or something from the library
+   * tree, while a texture set is on the mesh. Which file it is is known only on the drop.
+   */
+  private carriedPicture(event: DragEvent): 'file' | 'library' | null {
+    const types = event.dataTransfer?.types ?? [];
+    if (!this.paint.worn() || this.project.active()?.kind !== 'texturing') {
+      return null;
+    }
+
+    return types.includes('Files') ? 'file' : types.includes(LibraryDrag) ? 'library' : null;
+  }
+
+  /**
+   * A picture dropped on the mesh, from this machine or the library, is brought into the project and laid where it
+   * landed as a decal on a new fill, at the picture's own shape (#133).
+   */
+  private async dropDecal(event: DragEvent): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    // What the drop carried is read now: it is gone once this handler awaits.
+    const file = event.dataTransfer?.files[0] ?? null;
+    const listed = event.dataTransfer?.getData(LibraryDrag) ?? '';
+    const at = { ...this.spot(event), pressure: 1 };
+    const aim = this.aim();
+    const bridge = desktop();
+    let source: string | null = null;
+    if (file) {
+      source = bridge ? bridge.pathOf(file) : null;
+    } else if (listed) {
+      try {
+        const paths: unknown = JSON.parse(listed);
+        source = Array.isArray(paths) && typeof paths[0] === 'string' ? paths[0] : null;
+      } catch {
+        source = null;
+      }
+    }
+
+    if (!source || !isPicture(source, this.status.pictures())) {
+      this.activity.report({ tone: 'warning', source: 'Viewport', text: 'Only a picture can be placed as a decal.' });
+      return;
+    }
+
+    const aspect = file ? await aspectOf(file) : 1;
+    const picture = await this.project.bringPicture(source);
+    if (picture) {
+      await this.paint.addDecalOnMesh(picture, pictureName(source), at, aim, aspect);
     }
   }
 
@@ -1000,3 +1090,15 @@ function fileName(path: string): string {
 }
 
 /** A bake's map as the view list names it: <code>ao</code> as Ao would read badly. */
+
+/** A picture's height over its width, or one when the browser cannot read it (an EXR, say): the decal starts square. */
+async function aspectOf(file: Blob): Promise<number> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const aspect = bitmap.width > 0 ? bitmap.height / bitmap.width : 1;
+    bitmap.close();
+    return aspect;
+  } catch {
+    return 1;
+  }
+}

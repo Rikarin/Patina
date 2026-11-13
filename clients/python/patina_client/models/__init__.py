@@ -9,6 +9,7 @@ from .bake_height_options import BakeHeightOptions
 from .bake_id_options import BakeIdOptions
 from .bake_occlusion_options import BakeOcclusionOptions
 from .bake_options import BakeOptions
+from .bake_position_options import BakePositionOptions
 from .bake_preview_part import BakePreviewPart
 from .bake_preview_state import BakePreviewState
 from .bake_ray_options import BakeRayOptions
@@ -266,6 +267,8 @@ from .stack_command_stack_nest_layer import StackCommandStackNestLayer
 from .stack_command_stack_nest_layer_op import StackCommandStackNestLayerOp
 from .stack_command_stack_paste_layers import StackCommandStackPasteLayers
 from .stack_command_stack_paste_layers_op import StackCommandStackPasteLayersOp
+from .stack_command_stack_remove_channel import StackCommandStackRemoveChannel
+from .stack_command_stack_remove_channel_op import StackCommandStackRemoveChannelOp
 from .stack_command_stack_remove_layer import StackCommandStackRemoveLayer
 from .stack_command_stack_remove_layer_op import StackCommandStackRemoveLayerOp
 from .stack_command_stack_remove_mask_layer import StackCommandStackRemoveMaskLayer
@@ -395,6 +398,7 @@ __all__ = (
     "BakeIdOptions",
     "BakeOcclusionOptions",
     "BakeOptions",
+    "BakePositionOptions",
     "BakePreviewPart",
     "BakePreviewState",
     "BakeRayOptions",
@@ -651,6 +655,8 @@ __all__ = (
     "StackCommandStackNestLayerOp",
     "StackCommandStackPasteLayers",
     "StackCommandStackPasteLayersOp",
+    "StackCommandStackRemoveChannel",
+    "StackCommandStackRemoveChannelOp",
     "StackCommandStackRemoveLayer",
     "StackCommandStackRemoveLayerOp",
     "StackCommandStackRemoveMaskLayer",

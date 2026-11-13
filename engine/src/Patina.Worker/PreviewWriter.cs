@@ -63,7 +63,7 @@ sealed class PreviewWriter {
     static WrittenPicture Encode(Bitmap bitmap, string folder) {
         var png = PngCodec.Encode(bitmap);
         var hash = Convert.ToHexStringLower(SHA256.HashData(png));
-        GraphPreviews.Store(folder, hash, png);
+        Ipc.GraphPreviewFiles.Store(folder, hash, png);
         return new(hash, bitmap.Width, bitmap.Height);
     }
 }

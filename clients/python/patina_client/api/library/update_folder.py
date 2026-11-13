@@ -91,7 +91,7 @@ def sync_detailed(
     body: FolderUpdateRequest,
 
 ) -> Response[LibraryMoved | ProblemDetails]:
-    """ Renames a folder or changes its colour. Nothing in it may be open to rename it.
+    """ Renames a folder or changes its color. Nothing in it may be open to rename it.
 
     Args:
         body (FolderUpdateRequest): The body of `PATCH /api/v1/library/folders`. What is left out
@@ -123,7 +123,7 @@ def sync(
     body: FolderUpdateRequest,
 
 ) -> LibraryMoved | ProblemDetails | None:
-    """ Renames a folder or changes its colour. Nothing in it may be open to rename it.
+    """ Renames a folder or changes its color. Nothing in it may be open to rename it.
 
     Args:
         body (FolderUpdateRequest): The body of `PATCH /api/v1/library/folders`. What is left out
@@ -150,7 +150,7 @@ async def asyncio_detailed(
     body: FolderUpdateRequest,
 
 ) -> Response[LibraryMoved | ProblemDetails]:
-    """ Renames a folder or changes its colour. Nothing in it may be open to rename it.
+    """ Renames a folder or changes its color. Nothing in it may be open to rename it.
 
     Args:
         body (FolderUpdateRequest): The body of `PATCH /api/v1/library/folders`. What is left out
@@ -182,7 +182,7 @@ async def asyncio(
     body: FolderUpdateRequest,
 
 ) -> LibraryMoved | ProblemDetails | None:
-    """ Renames a folder or changes its colour. Nothing in it may be open to rename it.
+    """ Renames a folder or changes its color. Nothing in it may be open to rename it.
 
     Args:
         body (FolderUpdateRequest): The body of `PATCH /api/v1/library/folders`. What is left out

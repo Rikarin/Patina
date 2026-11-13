@@ -8243,6 +8243,13 @@
             "description": "The atlas\u0027s height in texels, or null for as many as int BakeOptions.Resolution: a square bake. A texture set\nauthored wider than it is tall bakes at its own shape, so its maps sit under its layers unresampled (#147).",
             "format": "int32"
           },
+          "followSetShape": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether a bake of a project\u0027s texture set takes its height from the set\u0027s own shape at\nint BakeOptions.Resolution, in place of int? BakeOptions.Rows, so that a wide set and a square one baked\ntogether each bake at their own (#253). Null follows too; only false keeps int? BakeOptions.Rows. A bake of no\ntexture set keeps int? BakeOptions.Rows, and a finished bake\u0027s options say the height it was made at and leave\nthis out."
+          },
           "format": {
             "type": "string",
             "description": "\u0060png8\u0060, \u0060png16\u0060, \u0060exr16\u0060 or \u0060exr32\u0060."
@@ -8967,7 +8974,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Only these documents of the one project named, by their file below it, each a texture set of its own whatever\nit is: a graph in a texturing project or one that is not a material exports too. Null or empty for what the\nproject exports."
+            "description": "Only these documents of the one project named, by their file below it, each a texture set of its own\nwhatever it is: a graph in a texturing project or one that is not a material exports too. Null or empty for\nwhat the project exports."
           },
           "presets": {
             "type": [
@@ -13379,7 +13386,7 @@
           },
           "role": {
             "type": "string",
-            "description": "\u0060material\u0060, \u0060mask\u0060, \u0060brush\u0060, \u0060filter\u0060, or \u0060empty\u0060 for a graph with no\n            output yet."
+            "description": "\u0060material\u0060, \u0060mask\u0060, \u0060brush\u0060, \u0060filter\u0060, \u0060preset\u0060 for a brush or tool preset, which a\n            client takes up rather than adds, or \u0060empty\u0060 for a graph with no output yet."
           },
           "origin": {
             "type": "string",
@@ -14228,6 +14235,14 @@
               "string"
             ],
             "description": "The detailed mesh it bakes from, on the Server\u0027s machine."
+          },
+          "rows": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The height of a stack it starts with, when it is not as tall as Resolution is wide (#144):\na model laid out on a 2:1 sheet paints at 2048 \u00D7 1024. Null is square. A graph is always square.",
+            "format": "int32"
           }
         },
         "description": "The body of \u0060POST /api/v1/library/projects\u0060."
@@ -14422,6 +14437,14 @@
               "string"
             ],
             "description": "The picture an \u0060image-material\u0060 starts from, on the Server\u0027s machine."
+          },
+          "rows": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The height of a stack, when it is not square. Null is as tall as it is wide.",
+            "format": "int32"
           }
         },
         "description": "The body of \u0060POST /api/v1/library/project/documents\u0060."
@@ -15253,7 +15276,8 @@
           "occlusion",
           "occlusionTolerance",
           "facing",
-          "resume"
+          "resume",
+          "tiltSize"
         ],
         "type": "object",
         "properties": {
@@ -15301,7 +15325,7 @@
           },
           "rotation": {
             "type": "string",
-            "description": "fixed, along or random.",
+            "description": "fixed, along, random, pen (the barrel\u0027s turn) or tilt (the way the pen leans).",
             "default": "fixed"
           },
           "positionJitter": {
@@ -15399,6 +15423,12 @@
             "type": "boolean",
             "description": "Whether a stroke that starts where the last one stopped carries it on. A client that sees one start there sends\nwhere the brush stood as IReadOnlyList\u0026lt;float\u0026gt;? StackStroke.Resume; the brush only says whether to.",
             "default": false
+          },
+          "tiltSize": {
+            "type": "number",
+            "description": "How much of the radius a pen held upright takes off, 0 to 1: a pen laid over paints the whole radius, as a\npencil\u0027s side paints wider. A mouse is upright, so a brush with any of this paints smaller under one.",
+            "format": "float",
+            "default": 0
           }
         },
         "description": "A brush. Everything but the radius has the value a new brush has."
@@ -15687,6 +15717,9 @@
             "$ref": "#/components/schemas/StackCommandStackNestLayer"
           },
           {
+            "$ref": "#/components/schemas/StackCommandStackRemoveChannel"
+          },
+          {
             "$ref": "#/components/schemas/StackCommandStackSetSeed"
           },
           {
@@ -15741,6 +15774,7 @@
             "setModel": "#/components/schemas/StackCommandStackSetModel",
             "addChannel": "#/components/schemas/StackCommandStackAddChannel",
             "nestLayer": "#/components/schemas/StackCommandStackNestLayer",
+            "removeChannel": "#/components/schemas/StackCommandStackRemoveChannel",
             "setSeed": "#/components/schemas/StackCommandStackSetSeed",
             "duplicateLayers": "#/components/schemas/StackCommandStackDuplicateLayers",
             "pasteLayers": "#/components/schemas/StackCommandStackPasteLayers",
@@ -16141,6 +16175,26 @@
           }
         },
         "description": "Pastes what a copy holds, as new layers with canvases of their own, in this stack or another. Limits to named\nmeshes stay only in the stack they were made for."
+      },
+      "StackCommandStackRemoveChannel": {
+        "required": [
+          "usage",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "removeChannel"
+            ],
+            "type": "string"
+          },
+          "usage": {
+            "type": "string",
+            "description": "Which, one the set has. A set keeps at least one channel."
+          }
+        },
+        "description": "Takes a channel off the texture set (#141): no layer writes it and no export finds it. What the layers held for\nit, their values and paint, stays in them, so adding the channel again brings it back."
       },
       "StackCommandStackRemoveLayer": {
         "required": [
@@ -16977,7 +17031,7 @@
               "type": "number",
               "format": "float"
             },
-            "description": "The box the mesh\u0027s \u0060position\u0060 bake is normalised in: the least corner\u0027s three numbers, then the greatest\u0027s.\nIt is the model\u0027s bounds as \u0060POST /viewport/pick\u0060 gives them. Null or empty is the unit cube."
+            "description": "The box the mesh\u0027s \u0060position\u0060 bake is normalised in: the least corner\u0027s three numbers, then the greatest\u0027s.\nIt is the model\u0027s bounds as \u0060POST /viewport/pick\u0060 gives them. Null or empty is the unit cube. A bake that\nsays the box its position map spans is read through that box instead, so this one only matters for a bake that\ndoes not."
           },
           "warp": {
             "type": [
@@ -16991,7 +17045,7 @@
             "description": "A warp (#134): where each point of a 3 by 3 grid over the picture lands on the decal\u0027s square, row by row from\nthe top left, as eighteen numbers 0 to 1 across and down. Null or empty bends nothing."
           }
         },
-        "description": "stack as numbers, so it can be moved, scaled and turned again. Every length is in the model\u0027s own units, the\nones \u0060POST /viewport/pick\u0060 answers in.\n\u0060POST /viewport/pick\u0060 answers in."
+        "description": "A decal (#133): a picture projected through a box placed on the model, kept in the stack as numbers, so it can\nbe moved, scaled and turned again. Every length is in the model\u0027s own units, the ones\n\u0060POST /viewport/pick\u0060 answers in."
       },
       "StackDelta": {
         "required": [
@@ -18492,6 +18546,30 @@
             "description": "How hard, 0 to 1.",
             "format": "float",
             "default": 1
+          },
+          "tilt": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "How far a pen leans, 0 upright to 1 lying flat, or null for upright, as a mouse is.",
+            "format": "float"
+          },
+          "azimuth": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Which way a pen leans, in radians on the picture as a brush\u0027s angle is measured: 0 towards \u002Bx, a quarter turn\ntowards \u002By. Null is 0.",
+            "format": "float"
+          },
+          "twist": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "How far a pen\u0027s barrel is turned, in radians, measured as a brush\u0027s angle is. Null is 0.",
+            "format": "float"
           }
         },
         "description": "Where the brush goes: in texels of the image, or on the picture of a stroke with a view."

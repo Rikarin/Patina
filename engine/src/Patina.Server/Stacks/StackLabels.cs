@@ -15,6 +15,7 @@ static class StackLabels {
             StackSetLayer set => Changed(set, layer(set.Layer)),
             StackSetModel => "Bind mesh",
             StackAddChannel add => $"Add {Terms.Label(add.Usage)}",
+            StackRemoveChannel remove => $"Remove {Terms.Label(remove.Usage)}",
             StackSetSeed => "Change seed",
             StackSetHeightNormal => "Height to normal",
             StackSetSettings => "Texture set settings",

@@ -22,8 +22,8 @@ T = TypeVar("T", bound="StackDecal")
 
 @_attrs_define
 class StackDecal:
-    """ stack as numbers, so it can be moved, scaled and turned again. Every length is in the model's own units, the
-    ones `POST /viewport/pick` answers in.
+    """ A decal (#133): a picture projected through a box placed on the model, kept in the stack as numbers, so it can
+    be moved, scaled and turned again. Every length is in the model's own units, the ones
     `POST /viewport/pick` answers in.
 
         Attributes:
@@ -41,7 +41,9 @@ class StackDecal:
             sampling (str): How the picture is read between its pixels: `Bilinear` or `Point`. Default: 'Bilinear'.
             box (list[float] | None | Unset): The box the mesh's `position` bake is normalised in: the least corner's three
                 numbers, then the greatest's.
-                It is the model's bounds as `POST /viewport/pick` gives them. Null or empty is the unit cube.
+                It is the model's bounds as `POST /viewport/pick` gives them. Null or empty is the unit cube. A bake that
+                says the box its position map spans is read through that box instead, so this one only matters for a bake that
+                does not.
             warp (list[float] | None | Unset): A warp (#134): where each point of a 3 by 3 grid over the picture lands on
                 the decal's square, row by row from
                 the top left, as eighteen numbers 0 to 1 across and down. Null or empty bends nothing.

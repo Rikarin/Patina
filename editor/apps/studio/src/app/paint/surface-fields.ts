@@ -53,6 +53,18 @@ const Samplings: readonly { value: string; label: string }[] = [
           >
             Warp
           </button>
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            data-testid="surface-warp-geometry"
+            [disabled]="!onMesh() || paint.viewCamera() === null"
+            title="Spreads the picture evenly along the surface under the decal, measured as the viewport sees it"
+            (click)="warpToGeometry()"
+          >
+            Warp to Geometry
+          </button>
           @if (warped()) {
             <button
               type="button"
@@ -258,6 +270,13 @@ export class SurfaceFields {
   protected readonly decal = computed(() => this.layer().decal ?? null);
   protected readonly path = computed(() => this.layer().path ?? null);
   protected readonly count = computed(() => this.path()?.points.length ?? 0);
+  protected warpToGeometry(): void {
+    const camera = this.paint.viewCamera();
+    if (camera) {
+      void this.paint.warpToGeometry(camera);
+    }
+  }
+
   protected readonly warped = computed(() => {
     const warp = this.decal()?.warp ?? [];
     return warp.length === Unwarped.length && warp.some((value, at) => Math.abs(value - (Unwarped[at] ?? 0)) > 1e-6);

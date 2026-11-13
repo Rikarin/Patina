@@ -38,6 +38,9 @@ class ExportOptions:
             files (list[ExportFileChoice] | None | Unset): Files turned off or written in another format.
             per_set (list[ExportSetOptions] | None | Unset): Changes for one texture set at a time, over these, or null for
                 none.
+            merge (bool | None | Unset): Whether the texture sets written go into one set of files, each set where its own
+                layout puts it, as an
+                atlas of sets that share one UV square. A set's own changes do not apply to it.
      """
 
     size: int | None | Unset = UNSET
@@ -47,6 +50,7 @@ class ExportOptions:
     sets: list[str] | None | Unset = UNSET
     files: list[ExportFileChoice] | None | Unset = UNSET
     per_set: list[ExportSetOptions] | None | Unset = UNSET
+    merge: bool | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -119,6 +123,12 @@ class ExportOptions:
         else:
             per_set = self.per_set
 
+        merge: bool | None | Unset
+        if isinstance(self.merge, Unset):
+            merge = UNSET
+        else:
+            merge = self.merge
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -138,6 +148,8 @@ class ExportOptions:
             field_dict["files"] = files
         if per_set is not UNSET:
             field_dict["perSet"] = per_set
+        if merge is not UNSET:
+            field_dict["merge"] = merge
 
         return field_dict
 
@@ -267,6 +279,16 @@ class ExportOptions:
         per_set = _parse_per_set(d.pop("perSet", UNSET))
 
 
+        def _parse_merge(data: object) -> bool | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(bool | None | Unset, data)
+
+        merge = _parse_merge(d.pop("merge", UNSET))
+
+
         export_options = cls(
             size=size,
             filter_=filter_,
@@ -275,6 +297,7 @@ class ExportOptions:
             sets=sets,
             files=files,
             per_set=per_set,
+            merge=merge,
         )
 
 

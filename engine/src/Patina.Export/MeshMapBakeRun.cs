@@ -494,7 +494,12 @@ public static class MeshMapBakeRun {
             request.Options.Space,
             request.Material,
             geometry
-        );
+        ) {
+            PositionBox = [
+                maps.PositionBox.Minimum.X, maps.PositionBox.Minimum.Y, maps.PositionBox.Minimum.Z,
+                maps.PositionBox.Maximum.X, maps.PositionBox.Maximum.Y, maps.PositionBox.Maximum.Z
+            ]
+        };
         File.WriteAllBytes(
             Path.Combine(folder, BakeCache.ManifestFile),
             JsonSerializer.SerializeToUtf8Bytes(manifest, ContractsJsonContext.Default.BakeManifest)

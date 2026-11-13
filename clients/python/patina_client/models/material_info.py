@@ -30,8 +30,8 @@ class MaterialInfo:
             name (str): What it is called.
             kind (str): `graph`, which a fill reads, or `layered-material`, which unfolds into layers.
             source (str): What names it to the routes that use it.
-            role (str): `material`, `mask`, `brush`, `filter`, or `empty` for a graph with no
-                            output yet.
+            role (str): `material`, `mask`, `brush`, `filter`, `preset` for a brush or tool preset, which a
+                            client takes up rather than adds, or `empty` for a graph with no output yet.
             origin (str): `shipped`, `project`, `library` for another project, or `package` for one of the library's
                             packages (ADR 0027).
             channels (list[str]): The maps a graph makes, by usage.

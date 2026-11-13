@@ -80,7 +80,13 @@ public sealed record ProjectCreateRequest(
     string? Kind = null,
     string? Image = null,
     string? High = null
-);
+) {
+    /// <summary>
+    ///     The height of a stack it starts with, when it is not as tall as Resolution is wide (#144):
+    ///     a model laid out on a 2:1 sheet paints at 2048 × 1024. Null is square. A graph is always square.
+    /// </summary>
+    public int? Rows { get; init; }
+}
 
 /// <summary>A result of a bake in a project's folder.</summary>
 /// <param name="Kind">What it is.</param>
@@ -323,13 +329,15 @@ public sealed record ProjectViewportRequest(string Project, ViewportDisplay View
 /// <param name="Mesh">The mesh a <c>texturing</c> document is on.</param>
 /// <param name="Resolution">The width and height of a stack, or the side a graph evaluates at. Null is 2048.</param>
 /// <param name="Image">The picture an <c>image-material</c> starts from, on the Server's machine.</param>
+/// <param name="Rows">The height of a stack, when it is not square. Null is as tall as it is wide.</param>
 public sealed record ProjectDocumentRequest(
     string Project,
     string Kind,
     string Name,
     Guid? Mesh = null,
     int? Resolution = null,
-    string? Image = null
+    string? Image = null,
+    int? Rows = null
 );
 
 /// <summary>The body of <c>PATCH /api/v1/library/project/document/role</c>.</summary>
@@ -403,8 +411,8 @@ public sealed record ProjectDuplicateRequest(string Path, string Name);
 /// <param name="Kind"><c>graph</c>, which a fill reads, or <c>layered-material</c>, which unfolds into layers.</param>
 /// <param name="Source">What names it to the routes that use it.</param>
 /// <param name="Role">
-///     <c>material</c>, <c>mask</c>, <c>brush</c>, <c>filter</c>, or <c>empty</c> for a graph with no
-///     output yet.
+///     <c>material</c>, <c>mask</c>, <c>brush</c>, <c>filter</c>, <c>preset</c> for a brush or tool preset, which a
+///     client takes up rather than adds, or <c>empty</c> for a graph with no output yet.
 /// </param>
 /// <param name="Origin">
 ///     <c>shipped</c>, <c>project</c>, <c>library</c> for another project, or <c>package</c> for one of the library's

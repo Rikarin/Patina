@@ -62,6 +62,29 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
         Assert.Contains("Low Poly.glb", await opened.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task A_project_starts_wider_than_it_is_tall_when_asked() {
+        var created = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Strip", Resolution: 1024, Kind: "layered-material") { Rows = 512 },
+            Token
+        );
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        var contents = await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=strip", Token);
+        var opened = await client.PostAsJsonAsync("/api/v1/stacks", new { path = contents!.Documents[0].Path }, Token);
+        Assert.Equal(HttpStatusCode.OK, opened.StatusCode);
+        var state = await opened.Content.ReadFromJsonAsync<StackState>(Token);
+        Assert.Equal((1024, 512), (state!.Width, state.Height));
+
+        var tall = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Tower", Kind: "layered-material") { Rows = 9 },
+            Token
+        );
+        Assert.Equal(HttpStatusCode.BadRequest, tall.StatusCode);
+    }
+
     [Theory]
     [InlineData("layered-material", ".vxlayers")]
     [InlineData("graph", ".vxtexgraph")]
@@ -587,7 +610,7 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
     [InlineData("model.blend")]
     [InlineData("scene.usd")]
     [InlineData("notes.txt")]
-    [InlineData("height.tif")]
+    [InlineData("height.webp")]
     public async Task An_import_nothing_can_read_is_refused_and_copies_nothing(string name) {
         await MakeCrateAsync();
         var file = Path.Combine(files.FullName, name);

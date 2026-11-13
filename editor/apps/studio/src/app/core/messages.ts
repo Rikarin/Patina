@@ -16,6 +16,8 @@ const Words: Readonly<Record<string, string>> = {
     '{layer} is a {kind} layer, with nothing of its own to paint. Choose a paint layer, or paint its mask.',
   'stack-no-mesh': 'There is no mesh to paint on. Choose one in Project Settings.',
   'stroke-repeated-channel': 'That stroke could not be painted. Try it again.',
+  'channel-missing': 'This texture set has no {channel} channel. It may have been removed by another client.',
+  'channel-last': '{channel} is this texture set’s only channel, so it can’t be removed. Add another channel first.',
   'stroke-brush-refused': 'That brush can’t be used. {reason}',
   'stroke-canvas-larger':
     '{layer} holds {held} texels and the texture set is {size}. Painting it smaller would lose detail: set the size back to {held} to paint this layer.',

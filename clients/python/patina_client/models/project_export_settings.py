@@ -41,6 +41,8 @@ class ProjectExportSettings:
             filter_ (None | str | Unset): How a file changes size: box, bilinear or nearest.
             padding (ExportPaddingInfo | None | Unset):
             dither (bool | None | Unset): Whether 8-bit files are dithered.
+            merge (bool | None | Unset): Whether the texture sets go into one set of files, each where its own layout puts
+                it.
      """
 
     skipped: list[str]
@@ -52,6 +54,7 @@ class ProjectExportSettings:
     filter_: None | str | Unset = UNSET
     padding: ExportPaddingInfo | None | Unset = UNSET
     dither: bool | None | Unset = UNSET
+    merge: bool | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -118,6 +121,12 @@ class ProjectExportSettings:
         else:
             dither = self.dither
 
+        merge: bool | None | Unset
+        if isinstance(self.merge, Unset):
+            merge = UNSET
+        else:
+            merge = self.merge
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -138,6 +147,8 @@ class ProjectExportSettings:
             field_dict["padding"] = padding
         if dither is not UNSET:
             field_dict["dither"] = dither
+        if merge is not UNSET:
+            field_dict["merge"] = merge
 
         return field_dict
 
@@ -242,6 +253,16 @@ class ProjectExportSettings:
         dither = _parse_dither(d.pop("dither", UNSET))
 
 
+        def _parse_merge(data: object) -> bool | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(bool | None | Unset, data)
+
+        merge = _parse_merge(d.pop("merge", UNSET))
+
+
         project_export_settings = cls(
             skipped=skipped,
             files=files,
@@ -252,6 +273,7 @@ class ProjectExportSettings:
             filter_=filter_,
             padding=padding,
             dither=dither,
+            merge=merge,
         )
 
 

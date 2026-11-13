@@ -67,7 +67,9 @@ public sealed class ExportPartTests : IDisposable {
         Assert.False(File.Exists(Path.Combine(Target, "T_Crate_Strap_R.png")));
     }
 
-    /// <summary>A graph exported on its own takes its set's name, and never the name of the project's own file.</summary>
+    /// <summary>
+    ///     A graph exported on its own takes its set's name, and never the name of the project's own file.
+    /// </summary>
     [Fact]
     public void A_document_on_its_own_is_named_by_its_set_even_alone() {
         var stack = Source("stack", "Body");
@@ -79,7 +81,9 @@ public sealed class ExportPartTests : IDisposable {
         Assert.True(File.Exists(Path.Combine(Target, "T_Crate_R.png")));
     }
 
-    /// <summary>A delivery from before sets were kept is not known to be another set's, so a part keeps all of it.</summary>
+    /// <summary>
+    ///     A delivery from before sets were kept is not known to be another set's, so a part keeps all of it.
+    /// </summary>
     [Fact]
     public void A_part_keeps_what_an_older_delivery_did_not_place() {
         Directory.CreateDirectory(Target);

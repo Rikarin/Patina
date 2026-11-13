@@ -2335,6 +2335,14 @@ export interface components {
        *     authored wider than it is tall bakes at its own shape, so its maps sit under its layers unresampled (#147).
        */
       rows?: null | number;
+      /**
+       * @description Whether a bake of a project's texture set takes its height from the set's own shape at
+       *     int BakeOptions.Resolution, in place of int? BakeOptions.Rows, so that a wide set and a square one baked
+       *     together each bake at their own (#253). Null follows too; only false keeps int? BakeOptions.Rows. A bake of no
+       *     texture set keeps int? BakeOptions.Rows, and a finished bake's options say the height it was made at and leave
+       *     this out.
+       */
+      followSetShape?: null | boolean;
       /** @description `png8`, `png16`, `exr16` or `exr32`. */
       format: string;
       /**
@@ -2717,9 +2725,9 @@ export interface components {
       /** @description Only these projects. Null or empty for all of them. */
       projects?: null | string[];
       /**
-       * @description Only these documents of the one project named, by their file below it, each a texture set of its own whatever
-       *     it is: a graph in a texturing project or one that is not a material exports too. Null or empty for what the
-       *     project exports.
+       * @description Only these documents of the one project named, by their file below it, each a texture set of its own
+       *     whatever it is: a graph in a texturing project or one that is not a material exports too. Null or empty for
+       *     what the project exports.
        */
       documents?: null | string[];
       /**
@@ -4575,8 +4583,8 @@ export interface components {
       /** @description What names it to the routes that use it. */
       source: string;
       /**
-       * @description `material`, `mask`, `brush`, `filter`, or `empty` for a graph with no
-       *                 output yet.
+       * @description `material`, `mask`, `brush`, `filter`, `preset` for a brush or tool preset, which a
+       *                 client takes up rather than adds, or `empty` for a graph with no output yet.
        */
       role: string;
       /**
@@ -4921,6 +4929,12 @@ export interface components {
       image?: null | string;
       /** @description The detailed mesh it bakes from, on the Server's machine. */
       high?: null | string;
+      /**
+       * Format: int32
+       * @description The height of a stack it starts with, when it is not as tall as Resolution is wide (#144):
+       *     a model laid out on a 2:1 sheet paints at 2048 × 1024. Null is square. A graph is always square.
+       */
+      rows?: null | number;
     };
     /** @description The body of `POST /api/v1/library/project/document/copy`. */
     ProjectDocumentCopyRequest: {
@@ -5013,6 +5027,11 @@ export interface components {
       resolution?: null | number;
       /** @description The picture an `image-material` starts from, on the Server's machine. */
       image?: null | string;
+      /**
+       * Format: int32
+       * @description The height of a stack, when it is not square. Null is as tall as it is wide.
+       */
+      rows?: null | number;
     };
     /** @description The body of `PATCH /api/v1/library/project/document/role`. */
     ProjectDocumentRoleRequest: {
@@ -5401,7 +5420,7 @@ export interface components {
        */
       angle: number;
       /**
-       * @description fixed, along or random.
+       * @description fixed, along, random, pen (the barrel's turn) or tilt (the way the pen leans).
        * @default fixed
        */
       rotation: string;
@@ -5511,6 +5530,13 @@ export interface components {
        * @default false
        */
       resume: boolean;
+      /**
+       * Format: float
+       * @description How much of the radius a pen held upright takes off, 0 to 1: a pen laid over paints the whole radius, as a
+       *     pencil's side paints wider. A mouse is upright, so a brush with any of this paints smaller under one.
+       * @default 0
+       */
+      tiltSize: number;
     };
     /** @description A picture of a brush: a stroke of it drawn small, under `/previews/{hash}`. */
     StackBrushPreview: {
@@ -5635,6 +5661,7 @@ export interface components {
       | components['schemas']['StackCommandStackSetModel']
       | components['schemas']['StackCommandStackAddChannel']
       | components['schemas']['StackCommandStackNestLayer']
+      | components['schemas']['StackCommandStackRemoveChannel']
       | components['schemas']['StackCommandStackSetSeed']
       | components['schemas']['StackCommandStackDuplicateLayers']
       | components['schemas']['StackCommandStackPasteLayers']
@@ -5823,6 +5850,16 @@ export interface components {
        * @default Mask
        */
       part: string;
+    };
+    /**
+     * @description Takes a channel off the texture set (#141): no layer writes it and no export finds it. What the layers held for
+     *     it, their values and paint, stays in them, so adding the channel again brings it back.
+     */
+    StackCommandStackRemoveChannel: {
+      /** @enum {string} */
+      op: 'removeChannel';
+      /** @description Which, one the set has. A set keeps at least one channel. */
+      usage: string;
     };
     /** @description Removes a layer. */
     StackCommandStackRemoveLayer: {
@@ -6125,8 +6162,8 @@ export interface components {
       height: number;
     };
     /**
-     * @description stack as numbers, so it can be moved, scaled and turned again. Every length is in the model's own units, the
-     *     ones `POST /viewport/pick` answers in.
+     * @description A decal (#133): a picture projected through a box placed on the model, kept in the stack as numbers, so it can
+     *     be moved, scaled and turned again. Every length is in the model's own units, the ones
      *     `POST /viewport/pick` answers in.
      */
     StackDecal: {
@@ -6175,7 +6212,9 @@ export interface components {
       sampling: string;
       /**
        * @description The box the mesh's `position` bake is normalised in: the least corner's three numbers, then the greatest's.
-       *     It is the model's bounds as `POST /viewport/pick` gives them. Null or empty is the unit cube.
+       *     It is the model's bounds as `POST /viewport/pick` gives them. Null or empty is the unit cube. A bake that
+       *     says the box its position map spans is read through that box instead, so this one only matters for a bake that
+       *     does not.
        */
       box?: null | number[];
       /**
@@ -6911,6 +6950,22 @@ export interface components {
        * @default 1
        */
       pressure: number;
+      /**
+       * Format: float
+       * @description How far a pen leans, 0 upright to 1 lying flat, or null for upright, as a mouse is.
+       */
+      tilt?: null | number;
+      /**
+       * Format: float
+       * @description Which way a pen leans, in radians on the picture as a brush's angle is measured: 0 towards +x, a quarter turn
+       *     towards +y. Null is 0.
+       */
+      azimuth?: null | number;
+      /**
+       * Format: float
+       * @description How far a pen's barrel is turned, in radians, measured as a brush's angle is. Null is 0.
+       */
+      twist?: null | number;
     };
     /** @description A whole stack: everything a client needs to draw it, and no pixels. */
     StackState: {

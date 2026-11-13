@@ -291,9 +291,6 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             case StackSetModel model:
                 Do(new SetModelCommand(this, model.Model, "Bind mesh"));
                 break;
-            case StackAddChannel add:
-                Do(AddChannel(add.Usage));
-                break;
             case StackSetSeed seed:
                 Do(new SetDocumentCommand(this, Document with { Seed = seed.Seed }, "Change seed"));
                 break;
@@ -483,32 +480,9 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
 
     /// <summary>What a channel holds before anything paints it, which is what leaves its material alone.</summary>
     /// <exception cref="StackEditRefusedException">It is not a channel a stack can have.</exception>
+    /// <remarks>Vixen's own answer, which a filter reading a channel the set lacks reads too (#254).</remarks>
     public static float[] DefaultOf(string usage) =>
-        usage switch {
-            "normal" => [0.5f, 0.5f, 1f, 1f],
-            "baseColor" or "roughness" or "height" => [0.5f, 0.5f, 0.5f, 1f],
-            "opacity" or "occlusion" or "mask" => [1f, 1f, 1f, 1f],
-            "metalness" or "emissive" => [0f, 0f, 0f, 1f],
-            _ => throw new StackEditRefusedException($"'{usage}' is not a channel.")
-        };
-
-    SetDocumentCommand AddChannel(string usage) {
-        if (!StackDocuments.Vocabulary.Usages.Any(term => term.Value == usage)) {
-            throw new StackEditRefusedException($"'{usage}' is not a channel.");
-        }
-
-        var chosen = Set;
-        if (chosen.Channels.Exists(channel => channel.Usage == usage)) {
-            throw new StackEditRefusedException($"This document has {StackDocuments.ChannelName(usage)} already.");
-        }
-
-        var added = chosen with { Channels = [..chosen.Channels, new() { Usage = usage, Default = DefaultOf(usage) }] };
-        return new(
-            this,
-            Document with { Sets = [..Document.Sets.Select(held => held == chosen ? added : held)] },
-            $"Add {StackDocuments.ChannelName(usage)}"
-        );
-    }
+        ChannelAsset.Untouched(usage) ?? throw new StackEditRefusedException($"'{usage}' is not a channel.");
 
     /// <summary>A whole-document change as one undoable step, which is how a set's own settings change.</summary>
     internal IAuthoringCommand Replaced(LayerStackAsset after, string name) =>

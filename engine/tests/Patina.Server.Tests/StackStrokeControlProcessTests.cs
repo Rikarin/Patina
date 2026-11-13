@@ -61,6 +61,50 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
+    ///     A pen turns and widens a brush that asks it to (#123): a stretched stamp under a barrel turned a quarter
+    ///     stands up instead of lying down, and a pen laid flat paints wider than one held straight.
+    /// </summary>
+    [Fact]
+    public async Task A_pen_turns_and_widens_the_brush_that_follows_it() {
+        using var deadline = Deadline(240);
+        var (_, state) = await StartAsync("Pen.vxlayers", deadline.Token);
+        StackBrush chisel = new(24f, Falloff: 0f, Rotation: "pen", Aspect: 8f);
+        StackBrush pencil = new(24f, Falloff: 0f, TiltSize: 0.75f);
+        const float Quarter = MathF.PI / 2f;
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackStroke("lying", "paint", "baseColor", chisel, Red, [new(400f, 300f)]),
+            new StackStroke("standing", "paint", "roughness", chisel, Red, [new(400f, 300f, Twist: Quarter)])
+        );
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackStroke("flat", "paint", "baseColor", pencil, Red, [new(400f, 700f, Tilt: 1f)]),
+            new StackStroke("upright", "paint", "roughness", pencil, Red, [new(400f, 700f)])
+        );
+        var maps = await ExportAsync(state.Id, Path.Combine(folder.FullName, "pen"), deadline.Token);
+        var (lying, standing) = (Extent(maps, "baseColor", 300), Extent(maps, "roughness", 300));
+        var (flat, upright) = (Extent(maps, "baseColor", 700), Extent(maps, "roughness", 700));
+
+        Assert.True(lying.Wide > lying.High * 4, $"Unturned, the chisel is {lying.Wide}×{lying.High}.");
+        Assert.True(standing.High > standing.Wide * 4, $"Turned a quarter, it is {standing.Wide}×{standing.High}.");
+        Assert.True(flat.Wide > upright.Wide * 3, $"Laid flat it is {flat.Wide} wide, and upright {upright.Wide}.");
+
+        // How wide and tall the paint is through a place, along its row and its column.
+        static (int Wide, int High) Extent(IReadOnlyList<StackPixels> maps, string usage, int at) {
+            var map = PngCodec.Decode(File.ReadAllBytes(maps.Single(map => map.Usage == usage).File!));
+            var blank = map.Pixels.AsSpan(0, 4).ToArray();
+            return (
+                Enumerable.Range(0, map.Width).Count(x => Painted(x, at)),
+                Enumerable.Range(at - 200, 400).Count(y => Painted(400, y))
+            );
+
+            bool Painted(int x, int y) => !map.Pixels.AsSpan((y * map.Width + x) * 4, 4).SequenceEqual(blank);
+        }
+    }
+
+    /// <summary>
     ///     A brush's picture is a stroke of it drawn small (#123): the same brush draws the same picture, another shape
     ///     another one, its size does not change it, and a brush no stroke could take is refused with its reason.
     /// </summary>

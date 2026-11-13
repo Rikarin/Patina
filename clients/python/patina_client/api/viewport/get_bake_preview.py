@@ -60,7 +60,7 @@ def sync_detailed(
     client: AuthenticatedClient | Client,
 
 ) -> Response[BakePreviewState]:
-    """ The bake setup the viewport shows, and the key to its colours.
+    """ The bake setup the viewport shows, and the key to its colors.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -86,7 +86,7 @@ def sync(
     client: AuthenticatedClient | Client,
 
 ) -> BakePreviewState | None:
-    """ The bake setup the viewport shows, and the key to its colours.
+    """ The bake setup the viewport shows, and the key to its colors.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -107,7 +107,7 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
 
 ) -> Response[BakePreviewState]:
-    """ The bake setup the viewport shows, and the key to its colours.
+    """ The bake setup the viewport shows, and the key to its colors.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -133,7 +133,7 @@ async def asyncio(
     client: AuthenticatedClient | Client,
 
 ) -> BakePreviewState | None:
-    """ The bake setup the viewport shows, and the key to its colours.
+    """ The bake setup the viewport shows, and the key to its colors.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

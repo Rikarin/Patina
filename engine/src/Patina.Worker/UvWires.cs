@@ -36,7 +36,7 @@ static class UvWires {
 
         var svg = Encoding.UTF8.GetBytes(Draw(geometry.Coordinates, geometry.Indices));
         var hash = Convert.ToHexStringLower(SHA256.HashData(svg));
-        GraphPreviews.Store(ask.PreviewFolder, hash, svg, GraphPreviewFiles.Drawing);
+        GraphPreviewFiles.Store(ask.PreviewFolder, hash, svg, GraphPreviewFiles.Drawing);
         return GraphHost.Drawn(hash);
     }
 

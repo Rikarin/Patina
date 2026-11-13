@@ -17,11 +17,13 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
+import type { PickKind } from '../core/file-picker';
 import { imageFormatName, jobStateName, termName } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { angle, fromPercent, percent, toPercent } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { GraphStore } from '../graph/graph-store';
+import { FileChooser } from '../library/file-chooser';
 import { ProjectStore } from '../library/project-store';
 import { BakeSettings } from './bake-settings';
 import { BakeStore } from './bake-store';
@@ -229,25 +231,22 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   aria-label="High poly mesh"
                   data-testid="bake-high"
                   placeholder="None: bakes from the low poly mesh"
-                  [readOnly]="canPick"
+                  readOnly
                   [title]="ownHigh()"
-                  [value]="canPick ? nameOf(ownHigh()) : ownHigh()"
-                  (change)="typedHigh(text($event))"
+                  [value]="nameOf(ownHigh())"
                 />
-                @if (canPick) {
-                  <button
-                    type="button"
-                    xuiButton
-                    size="sm"
-                    variant="ghost"
-                    aria-label="Choose High poly mesh"
-                    title="Choose High poly mesh"
-                    data-testid="bake-choose-high"
-                    (click)="pickHigh()"
-                  >
-                    Choose…
-                  </button>
-                }
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  aria-label="Choose High poly mesh"
+                  title="Choose High poly mesh"
+                  data-testid="bake-choose-high"
+                  (click)="pickHigh()"
+                >
+                  Choose…
+                </button>
               </div>
               @for (path of settings.settings()?.high ?? []; track $index) {
                 <div class="flex items-center gap-1">
@@ -266,19 +265,17 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   </button>
                 </div>
               }
-              @if (canPick) {
-                <button
-                  type="button"
-                  xuiButton
-                  class="self-start"
-                  size="sm"
-                  variant="ghost"
-                  data-testid="bake-add-high"
-                  (click)="addHigh()"
-                >
-                  Add high poly mesh…
-                </button>
-              }
+              <button
+                type="button"
+                xuiButton
+                class="self-start"
+                size="sm"
+                variant="ghost"
+                data-testid="bake-add-high"
+                (click)="addHigh()"
+              >
+                Add high poly mesh…
+              </button>
             </div>
 
             @for (field of pathFields; track field.key) {
@@ -292,12 +289,12 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     [attr.aria-label]="field.label"
                     [attr.data-testid]="'bake-' + field.key"
                     [placeholder]="field.placeholder"
-                    [readOnly]="canPick"
+                    [readOnly]="picked(field.key)"
                     [title]="path(field.key)"
-                    [value]="canPick ? nameOf(path(field.key)) : path(field.key)"
+                    [value]="picked(field.key) ? nameOf(path(field.key)) : path(field.key)"
                     (change)="setPath(field.key, text($event))"
                   />
-                  @if (canPick) {
+                  @if (picked(field.key)) {
                     <button
                       type="button"
                       xuiButton
@@ -347,6 +344,12 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   class="w-full"
                   aria-label="Height"
                   data-testid="bake-rows"
+                  [title]="
+                    options.followSetShape === false
+                      ? 'The height of every texture set’s maps.'
+                      : 'Each texture set bakes at its own shape. Turn off Follow each set’s shape to choose a height.'
+                  "
+                  [disabled]="options.followSetShape !== false"
                   [itemText]="rowsName"
                   [items]="rowChoices()"
                   [value]="String(options.rows ?? '')"
@@ -390,6 +393,18 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 />
               </div>
             </div>
+            <label
+              class="flex items-center justify-between gap-2 text-sm"
+              title="A texture set wider than it is tall bakes at its own shape at this width, so a wide set and a square one bake together without stretching."
+            >
+              Follow each set’s shape
+              <xui-switch
+                aria-label="Follow each set’s shape"
+                data-testid="bake-follow-shape"
+                [checked]="options.followSetShape !== false"
+                (checkedChange)="set({ followSetShape: $event })"
+              />
+            </label>
 
             <p class="section-label mt-1">Rays</p>
             <div class="flex items-center justify-between gap-2 text-sm">
@@ -907,24 +922,21 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                       aria-label="Picture to carry"
                       data-testid="bake-colour-texture"
                       placeholder="The picture made for the high mesh’s UVs"
-                      [readOnly]="canPick"
+                      readOnly
                       [title]="options.colour.texture"
-                      [value]="canPick ? nameOf(options.colour.texture) : options.colour.texture"
-                      (change)="setColour({ texture: text($event).trim() })"
+                      [value]="nameOf(options.colour.texture)"
                     />
-                    @if (canPick) {
-                      <button
-                        type="button"
-                        xuiButton
-                        size="sm"
-                        variant="ghost"
-                        aria-label="Choose Picture to carry"
-                        title="Choose Picture to carry"
-                        (click)="pickColourTexture()"
-                      >
-                        Choose…
-                      </button>
-                    }
+                    <button
+                      type="button"
+                      xuiButton
+                      size="sm"
+                      variant="ghost"
+                      aria-label="Choose Picture to carry"
+                      title="Choose Picture to carry"
+                      (click)="pickColourTexture()"
+                    >
+                      Choose…
+                    </button>
                   </div>
                 }
               }
@@ -1096,6 +1108,7 @@ export class BakePane {
   protected readonly store = inject(BakeStore);
   protected readonly settings = inject(BakeSettings);
   private readonly project = inject(ProjectStore);
+  private readonly chooser = inject(FileChooser);
   private readonly status = inject(SystemStatus);
   protected readonly graph = inject(GraphStore);
   protected readonly Math = Math;
@@ -1121,7 +1134,9 @@ export class BakePane {
   protected readonly angle = angle;
   protected readonly falloffName = (value: string) => FalloffNames[value] ?? value;
   protected readonly idSourceName = (value: string) => IdSourceNames[value] ?? value;
-  protected readonly sideName = (value: string) => `${value} × ${this.options()?.rows ?? value}`;
+  /** A width, and the height it bakes at: a set's own shape when the bake follows it, which each set says. */
+  protected readonly sideName = (value: string) =>
+    this.options()?.followSetShape === false ? `${value} × ${this.options()?.rows ?? value}` : `${value} wide`;
   protected readonly rowsName = (value: string) => (value ? `${value} texels` : 'Same as width');
   protected readonly canPick = desktop() !== undefined;
   protected readonly roundedEdges = RoundedEdges;
@@ -1282,7 +1297,7 @@ export class BakePane {
   }
 
   protected async pickColourTexture(): Promise<void> {
-    const path = await desktop()?.openImage(this.status.pictures());
+    const path = await this.choose('picture', 'Choose the Picture to Carry');
     if (path) {
       this.setColour({ texture: path });
     }
@@ -1334,13 +1349,22 @@ export class BakePane {
     }
   }
 
+  /**
+   * Whether a field is chosen rather than typed: a file from the library or this machine (#4), and a folder from this
+   * machine's dialog, where there is one.
+   */
+  protected picked(field: PathField): boolean {
+    return field !== 'output' || this.canPick;
+  }
+
   protected async pick(field: PathField): Promise<void> {
-    const bridge = desktop();
-    const path = await (field === 'output'
-      ? bridge?.openFolder()
-      : field === 'skewMap' || field === 'distanceMap'
-        ? bridge?.openImage(this.status.pictures())
-        : bridge?.openMesh(this.status.meshes()));
+    const path =
+      field === 'output'
+        ? await desktop()?.openFolder()
+        : await this.choose(
+            field === 'cage' ? 'mesh' : 'picture',
+            field === 'cage' ? 'Choose a Cage' : field === 'skewMap' ? 'Choose a Skew Map' : 'Choose a Distance Map'
+          );
     if (path) {
       this.setPath(field, path);
     }
@@ -1348,23 +1372,22 @@ export class BakePane {
 
   /** The mesh's own detailed mesh is brought into the project, as its mesh is. */
   protected async pickHigh(): Promise<void> {
-    const path = await desktop()?.openMesh(this.status.meshes());
+    const path = await this.choose('mesh', 'Choose a High Poly Mesh');
     if (path) {
       await this.project.applySettings({ high: path });
     }
   }
 
-  protected async typedHigh(path: string): Promise<void> {
-    if (path.trim()) {
-      await this.project.applySettings({ high: path.trim() });
-    }
-  }
-
   protected async addHigh(): Promise<void> {
-    const path = await desktop()?.openMesh(this.status.meshes());
+    const path = await this.choose('mesh', 'Add a High Poly Mesh');
     if (path) {
       this.settings.update(settings => ({ ...settings, high: [...settings.high, path] }));
     }
+  }
+
+  /** A file from the library, this project's first, or from this machine: as a path on the Server's machine. */
+  private choose(kind: PickKind, title: string): Promise<string | null> {
+    return this.chooser.path({ kind, title, project: this.project.current()?.path ?? null });
   }
 
   protected removeHigh(index: number): void {

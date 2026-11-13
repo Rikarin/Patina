@@ -80,7 +80,9 @@ sealed partial class StackHost {
         }
 
         string? Draw(LayerStackAsset small, TextureSetAsset alone, PreviewWriter writer, string folder) {
-            using LayerStackEvaluator run = new(evaluator, canvases, path, fill) { Draft = true };
+            using LayerStackEvaluator run = new(evaluator, canvases, path, fill) {
+                Draft = true, PositionBox = positionBox
+            };
             if (run.Prepare(small, alone, compounds.Registry, compounds.Source).Count > 0) {
                 return null;
             }

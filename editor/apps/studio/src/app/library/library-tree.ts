@@ -29,7 +29,8 @@ import { ViewportFit } from './viewport-fit';
 
 const RowHeight = 28;
 const Indent = 14;
-const DragType = 'application/x-patina-library';
+/** What a drag out of the tree carries: the chosen paths, as JSON. */
+export const DragType = 'application/x-patina-library';
 
 /** What a graph can be used as, which decides where the shelf puts it. */
 const GraphRoles: readonly { role: string; label: string }[] = [

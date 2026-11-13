@@ -117,6 +117,21 @@ export class BrushStore {
     }
   }
 
+  /**
+   * Takes up a preset by the source the shelf names it with (#124), reading the list again first if it is not on it
+   * yet, as one just saved or found by a search may not be.
+   */
+  async useSource(source: string): Promise<void> {
+    if (!this.presets().some(preset => preset.source === source)) {
+      await this.refresh();
+    }
+
+    const found = this.presets().find(preset => preset.source === source);
+    if (found) {
+      this.use(found);
+    }
+  }
+
   /** Saves the brush as it stands as a new preset of the project, with the colour if asked. */
   async saveAs(name: string, withColour: boolean): Promise<void> {
     const project = this.project();

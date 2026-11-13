@@ -4,8 +4,8 @@ namespace Patina.Contracts;
 #pragma warning disable SK7005
 
 /// <summary>
-///     stack as numbers, so it can be moved, scaled and turned again. Every length is in the model's own units, the
-///     ones <c>POST /viewport/pick</c> answers in.
+///     A decal (#133): a picture projected through a box placed on the model, kept in the stack as numbers, so it can
+///     be moved, scaled and turned again. Every length is in the model's own units, the ones
 ///     <c>POST /viewport/pick</c> answers in.
 /// </summary>
 /// <param name="Centre">The box's middle: three numbers.</param>
@@ -22,7 +22,9 @@ namespace Patina.Contracts;
 /// <param name="Sampling">How the picture is read between its pixels: <c>Bilinear</c> or <c>Point</c>.</param>
 /// <param name="Box">
 ///     The box the mesh's <c>position</c> bake is normalised in: the least corner's three numbers, then the greatest's.
-///     It is the model's bounds as <c>POST /viewport/pick</c> gives them. Null or empty is the unit cube.
+///     It is the model's bounds as <c>POST /viewport/pick</c> gives them. Null or empty is the unit cube. A bake that
+///     says the box its position map spans is read through that box instead, so this one only matters for a bake that
+///     does not.
 /// </param>
 /// <param name="Warp">
 ///     A warp (#134): where each point of a 3 by 3 grid over the picture lands on the decal's square, row by row from

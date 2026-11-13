@@ -31,12 +31,24 @@ import {
 } from '@patina/api-client';
 import { learnTerms } from '../core/labels';
 import { messageOf } from '../core/messages';
-import { milliseconds } from '../core/numbers';
+import { milliseconds, toRadians } from '../core/numbers';
 import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
-import { extendedPath, placedDecal } from './surface-frame';
+import {
+  type Vector,
+  decalChannel,
+  decalFrame,
+  extendedPath,
+  geometryLines,
+  geometryWarp,
+  onDecal,
+  placedDecal,
+  underDecal,
+  vector
+} from './surface-frame';
+import { project } from './symmetry-guide';
 
 /** The most recent colours a project keeps, which is the Server's limit. */
 const RecentColours = 16;
@@ -79,7 +91,8 @@ export const NewBrush: StackBrush = {
   occlusion: true,
   occlusionTolerance: 2,
   facing: Math.PI / 2,
-  resume: false
+  resume: false,
+  tiltSize: 0
 };
 
 const ThumbnailQuiet = 400;
@@ -354,6 +367,11 @@ export class PaintStore {
    * its path, until it is set back to null.
    */
   readonly placing = signal<'decal' | 'path' | null>(null);
+  /**
+   * The camera the viewport looks through, which the viewport keeps here for the panes outside it, such as
+   * Properties' Warp to Geometry: null while no viewport is open.
+   */
+  readonly viewCamera = signal<ViewportCameraState | null>(null);
   /** Whether the viewport shows the chosen decal's warp grid, whose points drag the picture (#134). */
   readonly warping = signal(false);
   /** The mesh maps layers want and no bake has given, which read as grey until one does. */
@@ -693,6 +711,87 @@ export class PaintStore {
       } else {
         await this.edit({ op: 'setLayer', layer: layer.id, projection: 'Path', path: extendedPath(hit, layer.path) });
       }
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
+  /**
+   * A picture dropped on the mesh (#133): a new fill on top that shows it as a decal where it landed, facing out of the
+   * face it met, as wide as Place on Mesh makes one and as tall as the picture's shape says. It colours only the base
+   * color, so the surface beneath keeps its own finish. The layer and its decal are two steps, as any new fill's
+   * content is. False, with the reason in the failure, when the drop missed the mesh.
+   */
+  async addDecalOnMesh(picture: string, name: string, stamp: StackStamp, aim: Aim, aspect = 1): Promise<boolean> {
+    try {
+      const hit = await this.picked(stamp, aim);
+      if (!hit.found) {
+        this.failure.set('Drop the picture on the mesh to place it there as a decal.');
+        return false;
+      }
+
+      const before = new Set(this.layers().map(row => row.layer.id));
+      await this.addLayer('fill', name);
+      // Only the layer just made: a decal set on the one chosen before would move someone's work.
+      const layer = this.layer();
+      if (!layer || before.has(layer)) {
+        return false;
+      }
+
+      const usage = decalChannel(this.state()?.channels.map(channel => channel.usage) ?? []);
+      const decal = placedDecal(hit, null);
+      await this.edit({
+        op: 'setLayer',
+        layer,
+        fill: 'Texture',
+        textures: { [usage]: picture },
+        channels: [usage],
+        projection: 'Decal',
+        decal: { ...decal, height: decal.width * (Number.isFinite(aspect) && aspect > 0 ? aspect : 1) }
+      });
+      return true;
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+      return false;
+    }
+  }
+
+  /**
+   * Warp to Geometry (#134): measures the surface under the chosen decal and warps its picture to spread evenly along it,
+   * as one edit. The surface is found as the camera sees it, so it is measured best looking at the decal; where a
+   * line runs off the mesh it counts as flat.
+   */
+  async warpToGeometry(camera: ViewportCameraState): Promise<void> {
+    const layer = this.chosen();
+    const decal = layer?.projection === 'Decal' ? layer.decal : null;
+    if (!layer || !decal) {
+      return;
+    }
+
+    try {
+      // A square picture of the camera: places are put on it and asked back, so its size only has to agree with itself.
+      const aim = { width: 1024, height: 1024, camera };
+      const view = (await this.look(aim)).view;
+      const frame = decalFrame(decal);
+      const lines = await Promise.all(
+        geometryLines().map(line =>
+          Promise.all(
+            line.map(async ({ s, t }): Promise<Vector | null> => {
+              const shown = project(view, onDecal(decal, frame, s, t));
+              if (!shown) {
+                return null;
+              }
+
+              const hit = await this.picked({ x: shown[0], y: shown[1], pressure: 1 }, aim);
+              const at = vector(hit.position);
+              return hit.found && hit.position && underDecal(decal, at, hit.normal ? vector(hit.normal) : null)
+                ? at
+                : null;
+            })
+          )
+        )
+      );
+      await this.edit({ op: 'setLayer', layer: layer.id, decal: { ...decal, warp: geometryWarp(decal, lines) } });
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }
@@ -2007,6 +2106,44 @@ export class PaintStore {
 /** How hard a pointer is pressing: a mouse says 0.5 for a button held, and means nothing by it. */
 export function pressureOf(event: PointerEvent): number {
   return event.pointerType === 'pen' ? event.pressure : 1;
+}
+
+/** How a pen stands on the screen, as a stamp carries it: its lean, 0 to 1, which way, and its barrel's turn. */
+export interface PenStance {
+  pressure: number;
+  tilt?: number;
+  azimuth?: number;
+  twist?: number;
+}
+
+const QuarterTurn = Math.PI / 2;
+
+/**
+ * How a pointer stands (#123). A mouse is a pen held straight and pressed all the way, and sends nothing more. The
+ * angles are measured as a brush's are, on the screen with y down: 0 towards the right and a quarter turn down.
+ */
+export function penOf(
+  event: Pick<PointerEvent, 'pointerType' | 'pressure' | 'tiltX' | 'tiltY' | 'twist'> & {
+    altitudeAngle?: number;
+    azimuthAngle?: number;
+  }
+): PenStance {
+  if (event.pointerType !== 'pen') {
+    return { pressure: 1 };
+  }
+
+  const twist = toRadians(event.twist || 0);
+  let { altitudeAngle: altitude, azimuthAngle: azimuth } = event;
+  if (altitude === undefined || azimuth === undefined) {
+    const x = Math.tan(toRadians(event.tiltX || 0));
+    const y = Math.tan(toRadians(event.tiltY || 0));
+    const lean = Math.hypot(x, y);
+    altitude = lean === 0 ? QuarterTurn : Math.atan(1 / lean);
+    azimuth = lean === 0 ? 0 : Math.atan2(y, x);
+  }
+
+  const tilt = Math.min(1, Math.max(0, 1 - altitude / QuarterTurn));
+  return { pressure: event.pressure, tilt, azimuth, twist };
 }
 
 /** Whether a layer composites a channel. No list at all means every one of them. */

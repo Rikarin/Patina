@@ -112,7 +112,15 @@ public sealed record BakeManifest(
     string Space = "tangent",
     string? Material = null,
     string? Geometry = null
-);
+) {
+    /// <summary>
+    ///     The box the position map spans in the model's units, the least corner's three numbers then the greatest's: a
+    ///     position value of zero on an axis is the first, one the second, whichever range wrote it. Decals and paths
+    ///     read the map through it rather than the box they were placed with (#133). Null for a bake made before it was
+    ///     recorded.
+    /// </summary>
+    public IReadOnlyList<float>? PositionBox { get; init; }
+}
 
 /// <summary>Says which folder of baked maps a graph's Mesh Map nodes read.</summary>
 /// <param name="Folder">A folder holding a bake's files, or null to read none.</param>
