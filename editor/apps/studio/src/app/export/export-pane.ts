@@ -347,6 +347,20 @@ function lanesOf(hex: string): number[] {
                   />
                 </div>
               }
+              <div class="flex items-center justify-between gap-2 pt-1">
+                <span
+                  class="text-xs"
+                  title="Sets that share one UV square go into one set of files, each where its layout puts it. A set's own size does not apply."
+                >
+                  Merge into one set of files
+                </span>
+                <xui-switch
+                  aria-label="Merge texture sets into one set of files"
+                  data-testid="export-merge"
+                  [checked]="settings().merge"
+                  (checkedChange)="change({ merge: $event })"
+                />
+              </div>
             </section>
           }
 
@@ -1165,7 +1179,7 @@ export class ExportPane implements OnInit {
         const document = this.documentExport();
         return requestFor(this.settings(), preset, {
           projects: target ? [target.id] : [],
-          sets: document && document.file === null ? [document.set] : null,
+          sets: document?.file === null ? [document.set] : null,
           documents: document?.file ? [document.file] : null
         });
       }

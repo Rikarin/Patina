@@ -160,7 +160,9 @@ public static class ProjectOutputs {
 
     /// <summary>Whether a document makes maps an export can take: a texturing document, a graph or a material.</summary>
     static bool Exportable(ProjectItem item) =>
-        item.Kind is DocumentKinds.Texturing or DocumentKinds.Graph or DocumentKinds.LayeredMaterial
+        item.Kind is DocumentKinds.Texturing
+            or DocumentKinds.Graph
+            or DocumentKinds.LayeredMaterial
             or DocumentKinds.ImageMaterial;
 
     static bool IsMaterial(ProjectItem item) =>

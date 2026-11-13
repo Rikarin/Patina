@@ -14,7 +14,7 @@ static class BuildFlags {
     public const string Usage = """
                                                [--size <side>] [--filter box|bilinear|nearest] [--padding <mode>]
                                                [--distance <texels>] [--dither | --no-dither] [--set <name>]...
-                                               [--file <template>=off|<format>[:<compression>]]... [--kept]
+                                               [--file <template>=off|<format>[:<compression>]]... [--merge] [--kept]
                                 """;
 
     /// <summary>Takes one flag of export settings, and says whether it was one.</summary>
@@ -25,7 +25,7 @@ static class BuildFlags {
     /// <returns>Whether it was a flag of these, read well.</returns>
     public static bool Take(string flag, string? value, Read flags, out bool used) {
         ArgumentNullException.ThrowIfNull(flags);
-        used = value is not null && flag is not ("--dither" or "--no-dither" or "--kept");
+        used = value is not null && flag is not ("--dither" or "--no-dither" or "--merge" or "--kept");
         switch (flag) {
             case "--size" when int.TryParse(value, CultureInfo.InvariantCulture, out var size):
                 flags.Size = size;
@@ -41,6 +41,9 @@ static class BuildFlags {
                 return true;
             case "--dither" or "--no-dither":
                 flags.Dither = flag == "--dither";
+                return true;
+            case "--merge":
+                flags.Merge = true;
                 return true;
             case "--kept":
                 flags.Kept = true;
@@ -92,9 +95,10 @@ static class BuildFlags {
                 : start.Padding,
             Dither = flags.Dither ?? start.Dither,
             Sets = flags.Sets.Count > 0 ? flags.Sets : Unskipped(library, request, kept) ?? start.Sets,
-            Files = flags.Files.Count > 0 ? [..start.Files ?? [], ..flags.Files] : start.Files
+            Files = flags.Files.Count > 0 ? [..start.Files ?? [], ..flags.Files] : start.Files,
+            Merge = flags.Merge ?? start.Merge
         };
-        var empty = options is { Size: null, Filter: null, Padding: null, Dither: null, Sets: null }
+        var empty = options is { Size: null, Filter: null, Padding: null, Dither: null, Sets: null, Merge: null }
             && options.Files is null or []
             && options.PerSet is null or [];
         return request with {
@@ -145,6 +149,7 @@ static class BuildFlags {
         public string? Padding { get; set; }
         public int? Distance { get; set; }
         public bool? Dither { get; set; }
+        public bool? Merge { get; set; }
         public bool Kept { get; set; }
         public List<string> Sets { get; } = [];
         public List<ExportFileChoice> Files { get; } = [];

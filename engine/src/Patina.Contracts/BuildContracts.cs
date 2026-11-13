@@ -179,6 +179,12 @@ public sealed record ExportOptions {
 
     /// <summary>Changes for one texture set at a time, over these, or null for none.</summary>
     public IReadOnlyList<ExportSetOptions>? PerSet { get; init; }
+
+    /// <summary>
+    ///     Whether the texture sets written go into one set of files, each set where its own layout puts it, as an
+    ///     atlas of sets that share one UV square. A set's own changes do not apply to it.
+    /// </summary>
+    public bool? Merge { get; init; }
 }
 
 /// <summary>An export preset.</summary>

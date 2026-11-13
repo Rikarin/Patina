@@ -288,6 +288,9 @@ public sealed record ProjectExportSettings {
 
     /// <summary>Changes for one texture set at a time, over the rest, as <see cref="ExportOptions.PerSet" />.</summary>
     public IReadOnlyList<ExportSetOptions> PerSet { get; init; } = [];
+
+    /// <summary>Whether the texture sets go into one set of files, each where its own layout puts it.</summary>
+    public bool? Merge { get; init; }
 }
 
 /// <summary>The body of <c>PUT /api/v1/library/project/export</c>.</summary>

@@ -91,6 +91,11 @@ public static class ExportRun {
             sets = [..sets.Where(set => chosen.Contains(set.Name, StringComparer.Ordinal))];
         }
 
+        if (preset.Merge && SetMerge.Merge(sets, warnings) is { } merged) {
+            sets = [merged];
+            several = false;
+        }
+
         var steps = Math.Max(1, sets.Sum(set => preset.For(set.Name).Textures.Count));
         var done = 0;
         for (var at = 0; at < sets.Count; at++) {

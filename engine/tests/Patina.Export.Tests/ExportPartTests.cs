@@ -38,12 +38,11 @@ public sealed class ExportPartTests : IDisposable {
     ExportManifest Run(string name, params ExportSource[] sources) =>
         ExportSteps.Run(new(Preset, sources, Path.Combine(folder.FullName, name)), null, Token);
 
-    IReadOnlyList<string> Deliver(string made, ExportManifest manifest, ExportPart? part) =>
-        [
-            ..ExportRun.Deliver(made, Path.Combine(folder.FullName, made), manifest, Target, new("Crate", "p"), part: part)
-                .Files.Select(Path.GetFileName)
-                .OfType<string>()
-        ];
+    IReadOnlyList<string> Deliver(string made, ExportManifest manifest, ExportPart? part) => [
+        ..ExportRun.Deliver(made, Path.Combine(folder.FullName, made), manifest, Target, new("Crate", "p"), part: part)
+            .Files.Select(Path.GetFileName)
+            .OfType<string>()
+    ];
 
     /// <summary>
     ///     Each export once removed every file the last one made and it did not, so exporting one set threw away the

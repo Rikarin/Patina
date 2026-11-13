@@ -67,6 +67,8 @@ export interface ExportSettings {
   distance: number;
   colour: readonly number[];
   dither: boolean;
+  /** Whether the texture sets go into one set of files, each where its layout puts it. */
+  merge: boolean;
   /** The texture sets left out, by name; every other set is written. */
   skipped: readonly string[];
   /** Per preset, per file template. */
@@ -86,6 +88,7 @@ export function settingsFor(preset: ExportPresetInfo | null, previous?: ExportSe
     distance: preset && preset.padding.distance > 0 ? preset.padding.distance : 16,
     colour: preset?.padding.colour.length ? preset.padding.colour : [0, 0, 0, 1],
     dither: preset?.dither ?? false,
+    merge: previous?.merge ?? false,
     skipped: previous?.skipped ?? [],
     files: previous?.files ?? {},
     perSet: {}
@@ -101,6 +104,7 @@ export function storedOf(settings: ExportSettings): ProjectExportSettings {
     filter: settings.filter,
     padding: { mode: settings.padding, distance: settings.distance, colour: [...settings.colour] },
     dither: settings.dither,
+    ...(settings.merge ? { merge: true } : {}),
     skipped: [...settings.skipped],
     files: Object.entries(settings.files).flatMap(([preset, files]) =>
       Object.entries(files).map(([template, choice]) => ({
@@ -147,6 +151,7 @@ export function settingsOf(stored: ProjectExportSettings, preset: ExportPresetIn
   return {
     ...start,
     folder: stored.folder ?? null,
+    merge: stored.merge ?? false,
     skipped: stored.skipped,
     files,
     perSet: same ? perSet : {},
@@ -212,6 +217,9 @@ export function requestFor(
   }
   if (scope.sets) {
     options.sets = [...scope.sets];
+  }
+  if (settings.merge && !scope.documents?.length) {
+    options.merge = true;
   }
   const perSet = Object.entries(settings.perSet)
     .filter(([set, choice]) => choice.size !== null && (!scope.sets || scope.sets.includes(set)))

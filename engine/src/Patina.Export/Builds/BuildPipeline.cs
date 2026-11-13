@@ -346,7 +346,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 .ToHashSet(StringComparer.Ordinal);
             var whole = library.Contents(project.Project.Path).ExportSets;
             if (!sets.Where(static set => set.Length > 0).ToHashSet(StringComparer.Ordinal).SetEquals(whole)) {
-                return new ExportPart(sets, true);
+                return new(sets, true);
             }
         }
 
