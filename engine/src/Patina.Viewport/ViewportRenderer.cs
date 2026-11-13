@@ -41,6 +41,10 @@ public sealed class ViewportRenderer : IDisposable {
     ViewportMapFile? picture;
     string[] isolatedParts = [];
     string[] isolatedMaterials = [];
+    (string[] Parts, string[] Materials) marked = ([], []);
+
+    /// <summary>The mesh the marks were last made for, so a new one, or a new isolation, makes them again.</summary>
+    ViewportMesh? markedOn;
     readonly ViewportShadows shadows;
     readonly ViewportPost post;
     readonly ViewportShaders shaders;
@@ -347,8 +351,40 @@ public sealed class ViewportRenderer : IDisposable {
     ///     model; a name the model does not have draws nothing of its own.
     /// </summary>
     public void Isolate(IReadOnlyList<string> parts, IReadOnlyList<string> materials) {
+        if (isolatedParts.SequenceEqual(parts) && isolatedMaterials.SequenceEqual(materials)) {
+            return;
+        }
+
         isolatedParts = [..parts];
         isolatedMaterials = [..materials];
+        Remark(true);
+    }
+
+    /// <summary>
+    ///     Marks these named meshes and materials on the model (#136), of what is drawn; both empty marks nothing.
+    /// </summary>
+    public void Highlight(IReadOnlyList<string> parts, IReadOnlyList<string> materials) {
+        if (marked.Parts.SequenceEqual(parts) && marked.Materials.SequenceEqual(materials)) {
+            return;
+        }
+
+        marked = ([..parts], [..materials]);
+        Remark(true);
+    }
+
+    /// <summary>Makes the marks again for the mesh drawn, when it or what they mark has changed.</summary>
+    void Remark(bool changed) {
+        var mesh = geometry?.Mesh;
+        if (!changed && ReferenceEquals(mesh, markedOn)) {
+            return;
+        }
+
+        markedOn = mesh;
+        wire.SetHighlight(
+            mesh is null
+                ? ViewportShapes.None
+                : ViewportMarks.Shapes(mesh, marked, (isolatedParts, isolatedMaterials))
+        );
     }
 
     /// <summary>The parts a frame draws: all of them, or those the isolation keeps.</summary>
@@ -428,6 +464,7 @@ public sealed class ViewportRenderer : IDisposable {
         }
 
         textures.EndUse();
+        Remark(false);
     }
 
     /// <summary>A material with the pictures laid over it, each slot read as what it means.</summary>

@@ -479,6 +479,37 @@
         }
       }
     },
+    "/api/v1/viewport/highlight": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Marks some named meshes and materials (texture sets) on the model in one colour with their outline, for every client. Empty lists mark nothing.",
+        "operationId": "SetViewportHighlight",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportHighlight"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/bake": {
       "put": {
         "tags": [
@@ -19875,6 +19906,30 @@
         },
         "description": "Asks the viewport to show a graph on the mesh it is showing, or on the display\u0027s shape with none, as it stands\nnow: its Output nodes as a material, or one node\u0027s picture alone."
       },
+      "ViewportHighlight": {
+        "required": [
+          "parts",
+          "materials"
+        ],
+        "type": "object",
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Named meshes marked, as the model names them."
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Materials marked, as the model names them: a texture set is one."
+          }
+        },
+        "description": "What the viewport marks on the model (#136): named meshes and materials, a texture set being one, washed in one\ncolour and outlined over the model as it is shaded, such as the row a client points at in its list of texture\nsets. A part an isolation hides is not marked. Both empty marks nothing."
+      },
       "ViewportIsolation": {
         "required": [
           "parts",
@@ -20279,6 +20334,17 @@
               {
                 "description": "The graph the viewport keeps up with, or null.",
                 "$ref": "#/components/schemas/ViewportFollow"
+              }
+            ]
+          },
+          "highlight": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What is marked on the model, or null for nothing.",
+                "$ref": "#/components/schemas/ViewportHighlight"
               }
             ]
           }

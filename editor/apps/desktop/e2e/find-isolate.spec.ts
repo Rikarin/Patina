@@ -93,15 +93,15 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
     .poll(async () => Number(await viewport.getAttribute('data-frames')), { timeout: 30_000 })
     .toBeGreaterThan(0);
 
-  /** How many pixels of the composited canvas are a quad's pale grey, which the sky never is. */
-  const quads = async (): Promise<number> => {
+  /** How many pixels of the composited canvas are a quad's pale grey, which the sky never is; or marked orange. */
+  const quads = async (marked = false): Promise<number> => {
     const box = await viewport.boundingBox();
     if (!box) {
       throw new Error('The viewport has no box.');
     }
 
     const png = (await window.screenshot({ clip: box })).toString('base64');
-    return window.evaluate(async data => {
+    return window.evaluate(async ({ data, orange }) => {
       const image = new Image();
       image.src = `data:image/png;base64,${data}`;
       await image.decode();
@@ -115,16 +115,25 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
       const pixels = context.getImageData(0, 0, image.width, image.height).data;
       let pale = 0;
       for (let i = 0; i < pixels.length; i += 4) {
-        pale += (pixels[i] ?? 0) > 140 && (pixels[i + 1] ?? 0) > 140 && (pixels[i + 2] ?? 0) > 140 ? 1 : 0;
+        const [r, g, b] = [pixels[i] ?? 0, pixels[i + 1] ?? 0, pixels[i + 2] ?? 0];
+        pale += (orange ? r > 140 && r > b + 50 : r > 140 && g > 140 && b > 140) ? 1 : 0;
       }
 
       return pale;
-    }, png);
+    }, { data: png, orange: marked });
   };
 
   await expect.poll(quads, { timeout: 30_000 }).toBeGreaterThan(1_000);
   const whole = await quads();
   await viewport.screenshot({ path: join(shots, 'isolate-1-whole.png') });
+
+  // Pointing at a set marks it on the model, and the mark goes with the pointer (#136).
+  const unmarked = await quads(true);
+  await window.getByTestId('texture-set-wood').hover();
+  await expect.poll(() => quads(true), { timeout: 30_000 }).toBeGreaterThan(unmarked + 1_000);
+  await viewport.screenshot({ path: join(shots, 'isolate-0-wood-marked.png') });
+  await viewport.hover();
+  await expect.poll(() => quads(true), { timeout: 30_000 }).toBeLessThan(unmarked + 200);
 
   // One of two equal quads alone is about half of what both were.
   const isolate = window.getByTestId('texture-set-isolate-wood');

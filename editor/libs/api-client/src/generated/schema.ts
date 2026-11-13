@@ -193,6 +193,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/highlight': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Marks some named meshes and materials (texture sets) on the model in one colour with their outline, for every client. Empty lists mark nothing. */
+    put: operations['SetViewportHighlight'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/bake': {
     parameters: {
       query?: never;
@@ -7703,6 +7720,17 @@ export interface components {
       port?: null | string;
     };
     /**
+     * @description What the viewport marks on the model (#136): named meshes and materials, a texture set being one, washed in one
+     *     colour and outlined over the model as it is shaded, such as the row a client points at in its list of texture
+     *     sets. A part an isolation hides is not marked. Both empty marks nothing.
+     */
+    ViewportHighlight: {
+      /** @description Named meshes marked, as the model names them. */
+      parts: string[];
+      /** @description Materials marked, as the model names them: a texture set is one. */
+      materials: string[];
+    };
+    /**
      * @description What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The
      *     rest of the model is not drawn and casts no shadow. Both empty is the whole model.
      */
@@ -7892,6 +7920,7 @@ export interface components {
       isolation?: null | components['schemas']['ViewportIsolation'];
       node?: null | components['schemas']['ViewportNodeShown'];
       following?: null | components['schemas']['ViewportFollow'];
+      highlight?: null | components['schemas']['ViewportHighlight'];
     };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {
@@ -8310,6 +8339,30 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['ViewportIsolation'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+    };
+  };
+  SetViewportHighlight: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportHighlight'];
       };
     };
     responses: {

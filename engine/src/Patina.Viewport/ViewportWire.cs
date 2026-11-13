@@ -33,6 +33,10 @@ sealed class ViewportWire(
     readonly ViewportOverlay overlay =
         new(device, shapes.Effect, shapes.Vertex, shapes.Fragment, colourFormat, depthFormat, samples);
 
+    /// <summary>What a client points at on the model (<see cref="ViewportMarks" />), under the overlay.</summary>
+    readonly ViewportOverlay highlight =
+        new(device, shapes.Effect, shapes.Vertex, shapes.Fragment, colourFormat, depthFormat, samples);
+
     /// <summary>The frame's camera, and how far a line stands off its surface for a model of this size.</summary>
     public void Write(Matrix4x4 viewProjection, Vector3 eye, float radius) {
         lines.Block.Set("viewProjection", viewProjection)
@@ -41,6 +45,7 @@ sealed class ViewportWire(
             .Set("wireColor", new Vector4(0f, 0f, 0f, 0.55f));
         lines.Commit();
         overlay.Write(viewProjection, eye, radius);
+        highlight.Write(viewProjection, eye, radius);
     }
 
     /// <summary>Draws the edges inside the forward pass, after the model.</summary>
@@ -60,10 +65,20 @@ sealed class ViewportWire(
     /// <summary>Takes these shapes in place of the last, or none for empty arrays.</summary>
     public void SetOverlay(float[] triangles, float[] lines) => overlay.Set(new(triangles, lines));
 
-    /// <summary>Draws the overlay's shapes inside the forward pass, after the model, its edges and the grid.</summary>
-    public void RecordOverlay(ICommandList commands) => overlay.Record(commands);
+    /// <summary>Takes these marks in place of the last, or none.</summary>
+    public void SetHighlight(ViewportShapes shapes) => highlight.Set(shapes);
+
+    /// <summary>
+    ///     Draws the marks and then the overlay's shapes inside the forward pass, after the model, its edges and the
+    ///     grid.
+    /// </summary>
+    public void RecordOverlay(ICommandList commands) {
+        highlight.Record(commands);
+        overlay.Record(commands);
+    }
 
     public void Dispose() {
+        highlight.Dispose();
         overlay.Dispose();
         grid.Dispose();
         lines.Dispose();

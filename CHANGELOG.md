@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Pointing at a texture set in Texture Sets, or at a part in its Isolate parts list, marks it on the model (#136): its faces washed orange with their outline drawn round them, over the material as it is shaded, until the pointer leaves the row. A part shown alone elsewhere is not marked where it is hidden. Through the API `PUT /api/v1/viewport/highlight` marks named meshes and materials for every client, and the viewport's state says what is marked.
 - A picture dropped on the mesh becomes a decal there: from this machine or from the library tree, it is brought into the project and laid on a new fill on top, facing out of the face it landed on, at the picture's own shape, colouring only the base color. The layer and its decal undo as two steps.
 - Warp to Geometry, beside Warp in a decal's properties, measures the surface under the decal as the viewport sees it and moves the warp grid's middle row and column so each half of the picture covers as much of the surface: a decal across a bend is no longer stretched over the side that turns away. It is one edit, and Straighten undoes it.
 - Favourites on the shelf (#203): the star beside a material keeps it at the top of the shelf, and From Favourites lists the starred ones alone, from wherever they are. The stars are this machine's, kept in the app's preferences with the starred nodes.

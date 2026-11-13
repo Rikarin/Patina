@@ -120,7 +120,8 @@ public sealed class ViewportSession(
                     stack,
                     display.Isolation,
                     node?.Shown,
-                    following
+                    following,
+                    display.Highlight
                 );
             }
         }
@@ -468,7 +469,10 @@ public sealed class ViewportSession(
         ArgumentNullException.ThrowIfNull(settings);
         lock (changing) {
             display = settings with {
-                Isolation = display.Isolation, TexelDensity = display.TexelDensity, Resolution = display.Resolution
+                Isolation = display.Isolation,
+                TexelDensity = display.TexelDensity,
+                Resolution = display.Resolution,
+                Highlight = display.Highlight
             };
             mapsError = null;
             revision++;
@@ -501,6 +505,17 @@ public sealed class ViewportSession(
         ArgumentNullException.ThrowIfNull(isolation);
         lock (changing) {
             display = display with { Isolation = isolation.Whole ? null : isolation };
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>Marks some of the model, for every client and for a new Worker. None takes the mark off.</summary>
+    public void Highlight(ViewportHighlight highlight) {
+        ArgumentNullException.ThrowIfNull(highlight);
+        lock (changing) {
+            display = display with { Highlight = highlight.None ? null : highlight };
             revision++;
         }
 
