@@ -27,7 +27,7 @@ static class LibraryTreeEndpoints {
         library.MapPatch("/folders", UpdateFolder)
             .Described(
                 "UpdateFolder",
-                "Renames a folder or changes its colour. Nothing in it may be open to rename it."
+                "Renames a folder or changes its color. Nothing in it may be open to rename it."
             );
 
         library.MapDelete("/folders", DeleteFolder)
@@ -446,9 +446,10 @@ static class LibraryTreeEndpoints {
 
     internal static ProblemHttpResult? Refusal(Exception e) =>
         e switch {
-            FileNotFoundException => Problem(e, StatusCodes.Status404NotFound),
-            ProjectExistsException or LibraryItemOpenException => Problem(e, StatusCodes.Status409Conflict),
-            ProjectRefusedException or StackEditRefusedException => Problem(e, StatusCodes.Status400BadRequest),
+            FileNotFoundException missing => Refusals.Of(missing),
+            ProjectRefusedException refused => Refusals.Of(refused),
+            StackEditRefusedException refused => Refusals.Of(refused, StatusCodes.Status400BadRequest),
+            LibraryItemOpenException => Problem(e, StatusCodes.Status409Conflict),
             IOException or UnauthorizedAccessException => Problem(e, StatusCodes.Status409Conflict),
             _ => null
         };

@@ -217,7 +217,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The bake setup the viewport shows, and the key to its colours. */
+    /** The bake setup the viewport shows, and the key to its colors. */
     get: operations['GetBakePreview'];
     /** Lays a bake's setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. An empty low mesh takes it off. */
     put: operations['PreviewBakeInViewport'];
@@ -286,7 +286,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Every preset this library can use: the factory ones and those in shared/export-presets. */
+    /** Every preset this library can use: the Starter ones and those in shared/export-presets. */
     get: operations['GetExportPresets'];
     put?: never;
     post?: never;
@@ -466,7 +466,7 @@ export interface paths {
     delete: operations['DeleteFolder'];
     options?: never;
     head?: never;
-    /** Renames a folder or changes its colour. Nothing in it may be open to rename it. */
+    /** Renames a folder or changes its color. Nothing in it may be open to rename it. */
     patch: operations['UpdateFolder'];
     trace?: never;
   };
@@ -585,7 +585,7 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** Keeps in library.yaml the export preset a project's export starts from when it has kept none, and that checks measure against. Null forgets it, which leaves the factory's glTF starter. GET /export/presets says which preset that comes to. */
+    /** Keeps in library.yaml the export preset a project's export starts from when it has kept none, and that checks measure against. Null forgets it, which leaves the Starter glTF preset. GET /export/presets says which preset that comes to. */
     put: operations['SetLibraryDefaultPreset'];
     post?: never;
     delete?: never;
@@ -670,7 +670,7 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** Keeps how a project's painting was left, in its project.yaml: the colours strokes last used, its palette, the brush and the symmetry, so they survive a restart and any client starts from them. */
+    /** Keeps how a project's painting was left, in its project.yaml: the colors strokes last used, its palette, the brush and the symmetry, so they survive a restart and any client starts from them. */
     put: operations['SetProjectPaint'];
     post?: never;
     delete?: never;
@@ -1786,7 +1786,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The colours of the id map the stack reads, the largest first, and the one at a place on it if asked. */
+    /** The colors of the ID map the stack reads, the largest first, and the one at a place on it if asked. */
     get: operations['GetStackIdColours'];
     put?: never;
     post?: never;
@@ -2046,7 +2046,7 @@ export interface paths {
     /** Keeps a preset as a file in the library's or a project's export-presets, renaming one if asked. */
     put: operations['PutExportPreset'];
     post?: never;
-    /** Removes a library's or a project's preset file. A factory preset cannot be removed. */
+    /** Deletes a library's or a project's preset file. A Starter preset cannot be deleted. */
     delete: operations['DeleteExportPreset'];
     options?: never;
     head?: never;
@@ -3057,7 +3057,7 @@ export interface components {
       engine: string;
       /** @description The green its target reads: y-up or y-down. */
       normal: string;
-      /** @description Where it comes from: factory, library or project. */
+      /** @description Where it comes from: factory (a Starter preset), library or project. */
       origin: string;
       /** @description The hash of its file. */
       revision: string;
@@ -3085,7 +3085,7 @@ export interface components {
       problems: string[];
       /**
        * @description The preset an export starts from when nothing is kept for it: the library's `defaultPreset` while it
-       *     names one of these, else the factory's glTF starter, and null only when there are no presets at all.
+       *     names one of these, else the Starter glTF preset, and null only when there are no presets at all.
        */
       default?: null | string;
       /** @description The file formats there are, for a client that offers another one. */
@@ -3107,9 +3107,9 @@ export interface components {
     ExportPresetSource: {
       /** @description What its file says. */
       document: components['schemas']['ExportPresetDocument'];
-      /** @description factory, library or project. */
+      /** @description factory (a Starter preset, shipped with Patina), library or project. */
       origin: string;
-      /** @description The file on the Server's machine, or null for a factory preset, which lives in Patina. */
+      /** @description The file on the Server's machine, or null for a Starter preset, which ships with Patina. */
       file?: null | string;
       /** @description The file's text, as a person would read it. */
       text: string;
@@ -4429,7 +4429,7 @@ export interface components {
       export?: null | components['schemas']['ProjectExportSettings'];
       /**
        * @description The export preset a project's export starts from when it has kept none, from `library.yaml`, or null
-       *     for the factory's starter. `GET /export/presets` says which preset that comes to.
+       *     for the Starter glTF preset. `GET /export/presets` says which preset that comes to.
        */
       defaultPreset?: null | string;
     };
@@ -4447,7 +4447,7 @@ export interface components {
     };
     /** @description The body of `PUT /api/v1/library/export/preset`. */
     LibraryPresetRequest: {
-      /** @description The id of the preset a project's export starts from when it has kept none, or null for the factory's starter. */
+      /** @description The id of the preset a project's export starts from when it has kept none, or null for the Starter glTF preset. */
       preset?: null | string;
     };
     /** @description What a whole build did. */
@@ -7163,8 +7163,10 @@ export interface components {
       sources: components['schemas']['StackFilterKind'][];
       /** @description The lanes of a picture a mask can read. */
       lanes?: null | components['schemas']['StackTerm'][];
-      /** @description The colours a layer can be marked with, None first. */
+      /** @description The colors a layer can be marked with, None first. */
       tags?: null | components['schemas']['StackTerm'][];
+      /** @description The kinds a graph's ports and parameters take: Number for Float, and the rest. */
+      kinds?: null | components['schemas']['StackTerm'][];
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {

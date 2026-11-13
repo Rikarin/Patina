@@ -305,7 +305,8 @@ public sealed record StackTerm(string Value, string Label);
 /// </param>
 /// <param name="Sources">The generators an image input can read: noises, patterns, grunges and the rest.</param>
 /// <param name="Lanes">The lanes of a picture a mask can read.</param>
-/// <param name="Tags">The colours a layer can be marked with, None first.</param>
+/// <param name="Tags">The colors a layer can be marked with, None first.</param>
+/// <param name="Kinds">The kinds a graph's ports and parameters take: Number for Float, and the rest.</param>
 public sealed record StackVocabulary(
     IReadOnlyList<StackTerm> Blends,
     IReadOnlyList<StackFilterKind> Filters,
@@ -322,7 +323,8 @@ public sealed record StackVocabulary(
     IReadOnlyList<StackTerm> Inputs,
     IReadOnlyList<StackFilterKind> Sources,
     IReadOnlyList<StackTerm>? Lanes = null,
-    IReadOnlyList<StackTerm>? Tags = null
+    IReadOnlyList<StackTerm>? Tags = null,
+    IReadOnlyList<StackTerm>? Kinds = null
 );
 
 /// <summary>What a layer looks like alone.</summary>

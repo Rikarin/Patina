@@ -594,7 +594,7 @@
         "tags": [
           "Viewport"
         ],
-        "summary": "The bake setup the viewport shows, and the key to its colours.",
+        "summary": "The bake setup the viewport shows, and the key to its colors.",
         "operationId": "GetBakePreview",
         "responses": {
           "200": {
@@ -769,7 +769,7 @@
         "tags": [
           "Builds"
         ],
-        "summary": "Every preset this library can use: the factory ones and those in shared/export-presets.",
+        "summary": "Every preset this library can use: the Starter ones and those in shared/export-presets.",
         "operationId": "GetExportPresets",
         "parameters": [
           {
@@ -1537,7 +1537,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Renames a folder or changes its colour. Nothing in it may be open to rename it.",
+        "summary": "Renames a folder or changes its color. Nothing in it may be open to rename it.",
         "operationId": "UpdateFolder",
         "requestBody": {
           "content": {
@@ -2143,7 +2143,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Keeps in library.yaml the export preset a project\u0027s export starts from when it has kept none, and that checks measure against. Null forgets it, which leaves the factory\u0027s glTF starter. GET /export/presets says which preset that comes to.",
+        "summary": "Keeps in library.yaml the export preset a project\u0027s export starts from when it has kept none, and that checks measure against. Null forgets it, which leaves the Starter glTF preset. GET /export/presets says which preset that comes to.",
         "operationId": "SetLibraryDefaultPreset",
         "requestBody": {
           "content": {
@@ -2448,7 +2448,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Keeps how a project\u0027s painting was left, in its project.yaml: the colours strokes last used, its palette, the brush and the symmetry, so they survive a restart and any client starts from them.",
+        "summary": "Keeps how a project\u0027s painting was left, in its project.yaml: the colors strokes last used, its palette, the brush and the symmetry, so they survive a restart and any client starts from them.",
         "operationId": "SetProjectPaint",
         "requestBody": {
           "content": {
@@ -6804,7 +6804,7 @@
         "tags": [
           "Stacks"
         ],
-        "summary": "The colours of the id map the stack reads, the largest first, and the one at a place on it if asked.",
+        "summary": "The colors of the ID map the stack reads, the largest first, and the one at a place on it if asked.",
         "operationId": "GetStackIdColours",
         "parameters": [
           {
@@ -7650,7 +7650,7 @@
         "tags": [
           "Builds"
         ],
-        "summary": "Removes a library\u0027s or a project\u0027s preset file. A factory preset cannot be removed.",
+        "summary": "Deletes a library\u0027s or a project\u0027s preset file. A Starter preset cannot be deleted.",
         "operationId": "DeleteExportPreset",
         "parameters": [
           {
@@ -9757,7 +9757,7 @@
           },
           "origin": {
             "type": "string",
-            "description": "Where it comes from: factory, library or project."
+            "description": "Where it comes from: factory (a Starter preset), library or project."
           },
           "revision": {
             "type": "string",
@@ -9833,7 +9833,7 @@
               "null",
               "string"
             ],
-            "description": "The preset an export starts from when nothing is kept for it: the library\u0027s \u0060defaultPreset\u0060 while it\nnames one of these, else the factory\u0027s glTF starter, and null only when there are no presets at all."
+            "description": "The preset an export starts from when nothing is kept for it: the library\u0027s \u0060defaultPreset\u0060 while it\nnames one of these, else the Starter glTF preset, and null only when there are no presets at all."
           },
           "formats": {
             "type": "array",
@@ -9901,14 +9901,14 @@
           },
           "origin": {
             "type": "string",
-            "description": "factory, library or project."
+            "description": "factory (a Starter preset, shipped with Patina), library or project."
           },
           "file": {
             "type": [
               "null",
               "string"
             ],
-            "description": "The file on the Server\u0027s machine, or null for a factory preset, which lives in Patina."
+            "description": "The file on the Server\u0027s machine, or null for a Starter preset, which ships with Patina."
           },
           "text": {
             "type": "string",
@@ -13097,7 +13097,7 @@
               "null",
               "string"
             ],
-            "description": "The export preset a project\u0027s export starts from when it has kept none, from \u0060library.yaml\u0060, or null\nfor the factory\u0027s starter. \u0060GET /export/presets\u0060 says which preset that comes to."
+            "description": "The export preset a project\u0027s export starts from when it has kept none, from \u0060library.yaml\u0060, or null\nfor the Starter glTF preset. \u0060GET /export/presets\u0060 says which preset that comes to."
           }
         },
         "description": "The reply to \u0060GET /api/v1/library\u0060: what opening a library reads, and nothing more."
@@ -13149,7 +13149,7 @@
               "null",
               "string"
             ],
-            "description": "The id of the preset a project\u0027s export starts from when it has kept none, or null for the factory\u0027s starter."
+            "description": "The id of the preset a project\u0027s export starts from when it has kept none, or null for the Starter glTF preset."
           }
         },
         "description": "The body of \u0060PUT /api/v1/library/export/preset\u0060."
@@ -19047,7 +19047,17 @@
             "items": {
               "$ref": "#/components/schemas/StackTerm"
             },
-            "description": "The colours a layer can be marked with, None first."
+            "description": "The colors a layer can be marked with, None first."
+          },
+          "kinds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "The kinds a graph\u0027s ports and parameters take: Number for Float, and the rest."
           }
         },
         "description": "The words a stack\u0027s fields take, each with its label, so that a client holds no list of its own."

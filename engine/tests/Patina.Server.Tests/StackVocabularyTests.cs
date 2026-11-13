@@ -101,6 +101,18 @@ public sealed class StackVocabularyTests {
         );
     }
 
+    /// <summary>Port and parameter kinds have their words here, the one table every client reads them from (#198).</summary>
+    [Fact]
+    public void A_port_or_parameter_kind_reads_as_what_it_holds() {
+        var kinds = StackDocuments.Vocabulary.Kinds!.ToDictionary(static term => term.Value, static term => term.Label);
+        Assert.Equal("Number", kinds["Float"]);
+        Assert.Equal("Whole Number", kinds["Int"]);
+        Assert.Equal("On or Off", kinds["Bool"]);
+        Assert.Equal("2 Numbers", kinds["Float2"]);
+        Assert.Equal("Image", kinds["Image"]);
+        Assert.Equal("Text", kinds["Text"]);
+    }
+
     [Fact]
     public void Every_list_holds_every_word_of_its_enumeration_once() {
         var vocabulary = StackDocuments.Vocabulary;

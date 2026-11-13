@@ -51,7 +51,7 @@ public sealed class RefusalWordsTests {
     ///     How many refusals still go out with no code, and so show the Server's own sentence. Each that gains a code
     ///     takes one off; none may be added, since a client can only say a refusal in its words by its code (#198).
     /// </summary>
-    const int Uncoded = 91;
+    const int Uncoded = 80;
 
     /// <summary>
     ///     A new refusal goes out through <see cref="Refusals.Problem" />, with a code the app has words for.

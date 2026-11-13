@@ -30,7 +30,7 @@ static class PresetEndpoints {
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
         presets.MapDelete("/{id}", Delete)
             .WithName("DeleteExportPreset")
-            .WithSummary("Removes a library's or a project's preset file. A factory preset cannot be removed.")
+            .WithSummary("Deletes a library's or a project's preset file. A Starter preset cannot be deleted.")
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
         presets.MapPost("/check", Check)

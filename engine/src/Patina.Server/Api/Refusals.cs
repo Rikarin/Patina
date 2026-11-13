@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
 using System.Globalization;
@@ -195,6 +196,24 @@ public static class Refusals {
     /// </summary>
     public const string SelectionNeedsPicture = "selection-needs-picture";
 
+    /// <summary>
+    ///     A change to the library that something already there is in the way of: a name taken, a folder not empty, a
+    ///     project inside a project. Values: <c>reason</c>, which is the library's own sentence.
+    /// </summary>
+    public const string LibraryConflict = "library-conflict";
+
+    /// <summary>
+    ///     A change the library cannot make as asked: a name with no letter in it, a project that is not there, a
+    ///     document open that the change would move. Values: <c>reason</c>, which is the library's own sentence.
+    /// </summary>
+    public const string LibraryRefused = "library-refused";
+
+    /// <summary>No material in the library has the id. Values: <c>id</c>.</summary>
+    public const string MaterialMissing = "material-missing";
+
+    /// <summary>A compound copied with no graph to copy it beside.</summary>
+    public const string CompoundNeedsGraph = "compound-needs-graph";
+
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(
         string detail,
@@ -219,6 +238,25 @@ public static class Refusals {
         timeout is RendererMissingException
             ? Problem(timeout.Message, status, RendererMissing)
             : TypedResults.Problem(timeout.Message, statusCode: status);
+
+    /// <summary>
+    ///     The library's refusal of a change: a conflict when something is in its way, else a request it cannot make.
+    /// </summary>
+    public static ProblemHttpResult Of(ProjectRefusedException refusal) =>
+        refusal is ProjectExistsException
+            ? Problem(refusal.Message, StatusCodes.Status409Conflict, LibraryConflict, Reason(refusal.Message))
+            : Problem(refusal.Message, StatusCodes.Status400BadRequest, LibraryRefused, Reason(refusal.Message));
+
+    /// <summary>A file a request needs that is not there, named by its file name alone.</summary>
+    public static ProblemHttpResult Of(FileNotFoundException missing) =>
+        Problem(
+            missing.Message,
+            StatusCodes.Status404NotFound,
+            FileMissing,
+            new Dictionary<string, string> {
+                ["file"] = missing.FileName is { Length: > 0 } name ? Path.GetFileName(name) : "That file"
+            }
+        );
 
     public static ProblemHttpResult NoLibraryOpen() =>
         Problem("The Server was started with no library.", StatusCodes.Status404NotFound, NoLibrary);

@@ -245,7 +245,7 @@ static partial class LibraryFolders {
 
         return HexColour().IsMatch(text)
             ? text.ToLowerInvariant()
-            : throw new ProjectRefusedException($"'{color}' is not a colour like #d05a3c.");
+            : throw new ProjectRefusedException($"'{color}' is not a color like #d05a3c.");
     }
 
     static bool IsProject(string full) => File.Exists(Path.Combine(full, LibraryLayout.ProjectFile));

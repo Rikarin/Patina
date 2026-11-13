@@ -413,7 +413,7 @@ public sealed class GraphEditor {
             set = set with {
                 Color = GraphDocuments.FrameColour(color)
                     ?? throw new GraphEditRefusedException(
-                        $"A frame's colour is #rrggbb, or empty for the client's own choice, and '{color}' is neither."
+                        $"A frame's color is #rrggbb, or empty for the client's own choice, and '{color}' is neither."
                     )
             };
         }
