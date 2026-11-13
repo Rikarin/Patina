@@ -535,12 +535,22 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
 
         // A Worker refuses to begin one its canvas cannot take at this size, and the stack would fail until it is
         // undone.
-        canvasSides.Check(layer.Name, paint, Document.BaseWidth, Document.BaseHeight);
+        var (width, height) = canvasSides.Check(
+            layer.Name,
+            paint,
+            Document.BaseWidth,
+            Document.BaseHeight,
+            stroke.View is not null
+        );
+        // A brush sized in texels keeps its size on the model when it paints a larger canvas at its own (#19).
+        var painted = width == Document.BaseWidth || stroke.Brush.SizeSpace != "texture"
+            ? stroke
+            : stroke with { Brush = stroke.Brush with { Radius = stroke.Brush.Radius * width / Document.BaseWidth } };
         step.Strokes.Add(
-            new(nextEntry++, stroke, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start) {
+            new(nextEntry++, painted, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start) {
                 SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set),
-                Width = Document.BaseWidth,
-                Height = Document.BaseHeight,
+                Width = width,
+                Height = height,
                 // Only a stroke on the mesh has faces to keep to; one in the 2D view reaches the whole layout.
                 Isolation = stroke.View is null ? null : Isolation
             }

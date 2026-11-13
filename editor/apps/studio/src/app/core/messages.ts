@@ -20,7 +20,7 @@ const Words: Readonly<Record<string, string>> = {
   'channel-last': '{channel} is this texture set’s only channel, so it can’t be removed. Add another channel first.',
   'stroke-brush-refused': 'That brush can’t be used. {reason}',
   'stroke-canvas-larger':
-    '{layer} holds {held} texels and the texture set is {size}. Painting it smaller would lose detail: set the size back to {held} to paint this layer.',
+    '{layer} holds {held} texels and the texture set is {size}. Painting it smaller would lose detail: paint it on the model, which paints it at {held}, or set the size back to {held} to paint it here.',
   'stroke-canvas-painted-at-size':
     '{layer} was painted at {held} earlier in this session. Save, close and open the document again to paint it at {size}.',
   'history-step-gone': 'That step is no longer in the history: an edit made since replaced it.',
@@ -119,7 +119,7 @@ const CheckWords: Readonly<Record<string, string>> = {
   'bake-stale':
     'Its mesh maps were baked on another mesh, in another UV set than its UV {uvSet} or at another shape than its ' +
     'Width and Height, so what reads them lands in the wrong place. Bake it again.',
-  'uv-outside': '{count} triangles reach past the first UV tile, which is the only one painted.',
+  'uv-outside': '{count} triangles reach past the UV tile the rest are on, and a texture set paints one tile.',
   'uv-overlap': '{share} of the laid-out texels are under more than one triangle, so a stroke lands twice.',
   'uv-degenerate': '{count} triangles have no area in the UV layout, so no texel lands on them.',
   'uv-flipped': '{count} triangles are turned over in the UV layout, so a normal map reads them backwards.',

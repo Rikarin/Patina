@@ -168,6 +168,35 @@ public sealed partial class StackProcessTests {
         await PixelsAsync(small.Id, false, deadline.Token);
     }
 
+    /// <summary>
+    ///     A canvas larger than its set is painted on the model at its own size (#19): the stroke stands, shows in the
+    ///     set's maps as an evaluation from nothing shows it, and the canvas keeps the texels it had. A stroke in the 2D
+    ///     view, whose stamps are the set's texels, is still refused. Every stroke on such a canvas was refused before.
+    /// </summary>
+    [Fact]
+    public async Task A_canvas_larger_than_its_set_is_painted_on_the_model_at_its_own_size() {
+        using var deadline = Deadline(300);
+        var (instance, state) = await StartAsync("Detailed.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await BindMeshAsync(state.Id, deadline.Token);
+        using var frames = await WearAsync(instance, state.Id, deadline.Token);
+        var line = new StackStroke("first", "paint", "baseColor", new(30f, 0.3f), Red, Line(100, 100, 10));
+        await EditAsync(state.Id, deadline.Token, line);
+        await EditAsync(state.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 2));
+        await RefusedAsync(state.Id, "stroke-canvas-larger", line with { Stroke = "flat" }, deadline.Token);
+
+        var before = await PixelsAsync(state.Id, false, deadline.Token);
+        var view = await AimAsync(0.5, 0.5, deadline.Token);
+        await EditAsync(state.Id, deadline.Token, Across("on-model", view, 300, 360, 330, false));
+
+        var shown = await PixelsAsync(state.Id, false, deadline.Token);
+        Assert.NotEqual(Digest(before, "baseColor"), Digest(shown, "baseColor"));
+        var clean = await PixelsAsync(state.Id, true, deadline.Token);
+        Assert.Equal(Digest(clean, "baseColor"), Digest(shown, "baseColor"));
+        await SaveAsync(state.Id, deadline.Token);
+        Assert.Equal(Side, CanvasBeside(state.Path).Width);
+    }
+
     async Task RefusedAsync(string id, string code, StackCommand command, CancellationToken token) {
         using var response = await http.PostAsJsonAsync(
             $"/api/v1/stacks/{id}/commands",
