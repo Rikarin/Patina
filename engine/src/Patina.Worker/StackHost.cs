@@ -91,10 +91,11 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         var ask = request.StackEvaluate ?? throw new IpcException("stack.evaluate says nothing to evaluate.");
         var start = Stopwatch.GetTimestamp();
         var stack = Find(ask.Session);
+        stack.Proxy = ask.Proxy;
         var problems = stack.Prepare();
         if (problems.Count > 0 || stack.Run.Plan is not { } plan) {
             return Reply(
-                new(stack.Run.Compiled, false, 0, 0, 0, Milliseconds(start), [], problems, stack.Found(problems))
+                new(stack.Compiled, false, 0, 0, 0, Milliseconds(start), [], problems, stack.Found(problems))
             );
         }
 
@@ -111,7 +112,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         if (ask.PreviewSide <= 0) {
             return Reply(
                 new(
-                    stack.Run.Compiled,
+                    stack.Compiled,
                     true,
                     ran,
                     repaired,
@@ -149,7 +150,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         ];
         return Reply(
             new(
-                stack.Run.Compiled,
+                stack.Compiled,
                 true,
                 ran + thumbnails.Ran.Length,
                 repaired + thumbnails.Repaired,
@@ -248,7 +249,9 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
     public IpcMessage Pixels(IpcMessage request) {
         var ask = request.StackPixels ?? throw new IpcException("stack.pixels says nothing.");
         var stack = Find(ask.Session);
-        var problems = stack.Prepare();
+
+        // What the viewport holds is at the proxy; anything else is what a file would hold, at full size (#208).
+        var problems = stack.Prepare(!ask.Viewport);
         if (problems.Count > 0 || stack.Run.Plan is null) {
             throw new IpcException(string.Join(' ', problems));
         }
@@ -358,6 +361,10 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         bool unknown = true;
         LayerStackAsset document;
         bool stale = true;
+        int proxy = 1;
+
+        /// <summary>What the plan was last prepared at, as the proxy's divisor.</summary>
+        int prepared = 1;
 
         public Session(
             StackLoad load,
@@ -453,7 +460,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         /// </summary>
         /// <exception cref="IpcException">The stack does not evaluate.</exception>
         public IReadOnlyList<StackSampledChannel> SampleAt(float u, float v) {
-            var problems = Prepare();
+            var problems = Prepare(true);
             if (problems.Count > 0 || Run.Plan is null) {
                 throw new IpcException(string.Join(' ', problems));
             }
@@ -613,7 +620,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         /// </summary>
         public IEnumerable<TextureRect> Narrowed(IEnumerable<TextureRect> rects) {
             foreach (var rect in rects) {
-                if (unknown) {
+                // At a proxy a repair's rectangles are not the canvas's, which is all the strokes say anything about.
+                if (unknown || prepared > 1) {
                     yield return rect;
                     continue;
                 }
@@ -640,9 +648,20 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             unknown = false;
         }
 
-        /// <summary>Brings the plan up to the document, which only a change of structure compiles.</summary>
-        public IReadOnlyList<string> Prepare() {
-            if (!stale && Run.Plan is not null) {
+        /// <summary>What the stack's sides are divided by while it is edited (#208).</summary>
+        public int Proxy {
+            set => proxy = Math.Max(1, value);
+        }
+
+        /// <summary>
+        ///     Brings the plan up to the document, which only a change of structure compiles, or a change of size: at
+        ///     the proxy, or at full size for what a file would hold. Canvases stay at full size, and the plan samples
+        ///     them down.
+        /// </summary>
+        public IReadOnlyList<string> Prepare(bool full = false) {
+            var divided = full ? 1 : proxy;
+            if (!stale && Run.Plan is not null && divided == prepared) {
+                Compiled = false;
                 return [];
             }
 
@@ -651,8 +670,23 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             }
 
             stale = false;
-            return Run.Prepare(document, chosen, compounds.Registry, compounds.Source);
+            prepared = divided;
+            var sized = divided == 1
+                ? document
+                : document with {
+                    BaseWidth = Math.Max(1, document.BaseWidth / divided),
+                    BaseHeight = Math.Max(1, document.BaseHeight / divided)
+                };
+            var problems = Run.Prepare(sized, chosen, compounds.Registry, compounds.Source);
+            Compiled = Run.Compiled;
+            return problems;
         }
+
+        /// <summary>
+        ///     Whether the last <see cref="Prepare" /> compiled. Not the plan's own flag, which keeps saying so through
+        ///     every evaluation that did not prepare it again.
+        /// </summary>
+        public bool Compiled { get; private set; }
 
         public void Save(string? to) {
             foreach (var file in touched) {

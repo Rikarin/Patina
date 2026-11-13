@@ -16,6 +16,8 @@ import {
   type StackLayer,
   type StackMask,
   type StackMaskEffect,
+  type StackPace,
+  type StackPaceChange,
   type StackPicture,
   type StackPixels,
   type StackPreview,
@@ -1272,6 +1274,28 @@ export class PaintStore {
     return unwrap(await client.GET('/api/v1/viewport')).mesh ?? null;
   }
 
+  /** How the stack evaluates while it is edited: paused or not, and the proxy its picture is composited at (#208). */
+  readonly pace = computed<StackPace>(() => this.state()?.pace ?? { paused: false, proxy: 1 });
+
+  /**
+   * Pauses or resumes evaluation, or composites the picture at another proxy. Every client hears it, and a save or an
+   * export is never paused or smaller.
+   */
+  async setPace(change: StackPaceChange): Promise<void> {
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    try {
+      const client = await this.api();
+      const pace = unwrap(await client.PUT('/api/v1/stacks/{id}/pace', { params: { path: { id } }, body: change }));
+      this.state.update(state => (state?.id === id ? { ...state, pace } : state));
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
   /** Chooses the bake generators read. */
   async useMeshMaps(folder: string | null): Promise<void> {
     const id = this.state()?.id;
@@ -2087,6 +2111,22 @@ export class PaintStore {
     }
   }
 
+  /** Reads how the stack is paced again, after another client changed it. */
+  private async repace(): Promise<void> {
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    try {
+      const client = await this.api();
+      const { pace } = unwrap(await client.GET('/api/v1/stacks/{id}', { params: { path: { id } } }));
+      this.state.update(state => (state?.id === id ? { ...state, pace: pace ?? null } : state));
+    } catch {
+      // The next state read brings it, and a lost session is reported where the socket closes.
+    }
+  }
+
   private async refresh(): Promise<void> {
     const id = this.state()?.id;
     if (id) {
@@ -2166,6 +2206,10 @@ export class PaintStore {
     );
     if (event.evaluation) {
       this.heardNotes(event.evaluation.diagnostics);
+    }
+
+    if (event.kind === 'paced') {
+      void this.repace(); // another client paused, resumed or chose a proxy
     }
 
     const previews = event.evaluation?.previews ?? [];
@@ -2250,9 +2294,13 @@ export function writesChannel(layer: StackLayer, usage: string): boolean {
 }
 
 /** What a stack's toolbar says about its last evaluation: how long it took, not how many nodes ran. */
-export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'evaluation'>): string {
+export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'evaluation' | 'pace'>): string {
   if (state.settled < state.revision) {
-    return 'Evaluating…';
+    return state.pace?.paused ? 'Paused, with edits waiting' : 'Evaluating…';
+  }
+
+  if (state.pace?.paused) {
+    return 'Paused';
   }
 
   const evaluation = state.evaluation;
@@ -2266,6 +2314,18 @@ export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'e
 
   return evaluation.ran === 0 ? 'Up to date' : `Updated in ${milliseconds(evaluation.milliseconds)}`;
 }
+
+/** What a proxy is called: the share of the stack's width and height its picture is composited at (#208). */
+export function proxyName(proxy: number): string {
+  return ProxyNames.get(proxy) ?? 'Full size';
+}
+
+const ProxyNames = new Map([
+  [1, 'Full size'],
+  [2, 'Half size'],
+  [4, 'Quarter size'],
+  [8, 'Eighth size']
+]);
 
 /** A mask's effects with one more of a node, or none of it if it had one: what a toggle such as Invert sends. */
 export function toggledEffect(effects: readonly StackMaskEffect[], node: string): StackMaskEffect[] {

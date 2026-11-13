@@ -192,7 +192,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 17;
+    public const int ProtocolVersion = 18;
 
     public string Type { get; set; } = string.Empty;
 
@@ -751,7 +751,11 @@ public sealed record StackSync(
 /// <param name="Session">The session.</param>
 /// <param name="PreviewSide">The longest side of a preview, or 0 for none: a drag the viewport is showing.</param>
 /// <param name="PreviewFolder">The content-addressed folder previews go in.</param>
-public sealed record StackEvaluate(string Session, int PreviewSide, string PreviewFolder);
+/// <param name="Proxy">
+///     What the stack's sides are divided by while it is edited (#208): 1 for full size. Its pixels, its checks and
+///     its samples are read at full size whatever this is.
+/// </param>
+public sealed record StackEvaluate(string Session, int PreviewSide, string PreviewFolder, int Proxy = 1);
 
 // SK7005: a message record's constructor is its wire shape, one parameter per field.
 #pragma warning disable SK7005

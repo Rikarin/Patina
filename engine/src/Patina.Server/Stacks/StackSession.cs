@@ -15,12 +15,14 @@ namespace Patina.Server.Stacks;
 /// <param name="Standing">The strokes that stand, in order.</param>
 /// <param name="Forget">Strokes that can never stand again.</param>
 /// <param name="Forced">Whether to evaluate even if the Worker already has this.</param>
+/// <param name="Proxy">What the stack's sides are divided by for this evaluation (#208).</param>
 public sealed record StackWork(
     long Revision,
     string Document,
     IReadOnlyList<StackJournalEntry> Standing,
     IReadOnlyList<long> Forget,
-    bool Forced
+    bool Forced,
+    int Proxy = 1
 );
 
 /// <summary>
@@ -37,6 +39,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     long settled;
     bool forced;
     bool closed;
+    StackPace pace = new();
+    int readers;
     StackEvaluation? evaluation;
     volatile LayerStackAsset published;
 
@@ -281,7 +285,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                     set.UvSet,
                     set.BakedNormal.ToString(),
                     set.BakedOcclusion.ToString(),
-                    null
+                    null,
+                    pace
                 );
             }
 
@@ -390,6 +395,65 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         wake();
     }
 
+    /// <summary>How the stack is evaluated while it is edited (#208).</summary>
+    public StackPace Pace {
+        get {
+            lock (Changing) {
+                return pace;
+            }
+        }
+    }
+
+    /// <summary>The proxy sizes a stack can be evaluated at, as what its sides are divided by.</summary>
+    public static IReadOnlyList<int> Proxies { get; } = [1, 2, 4, 8];
+
+    /// <summary>
+    ///     Pauses or resumes evaluation, or evaluates at another size, and tells every client. Neither is an edit: the
+    ///     file and the undo history do not change.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The proxy is not one of <see cref="Proxies" />.</exception>
+    public StackPace Paced(bool? paused, int? proxy) {
+        if (proxy is { } asked && !Proxies.Contains(asked)) {
+            throw new ArgumentOutOfRangeException(nameof(proxy), asked, "A proxy divides the size by 1, 2, 4 or 8.");
+        }
+
+        StackPace next;
+        lock (Changing) {
+            next = new(paused ?? pace.Paused, proxy ?? pace.Proxy);
+            if (next == pace) {
+                return pace;
+            }
+
+            pace = next;
+            forced = true;
+            Log.Append(new(Log.Sequence + 1, GraphEventKind.Paced, revision, editor.History));
+        }
+
+        wake();
+        return next;
+    }
+
+    /// <summary>
+    ///     Holds the stack evaluating while something waits for the Worker to have every edit: a save, a check, a read
+    ///     of its pixels or an autosave, which a pause must not keep waiting. The Worker reads pixels for those at full
+    ///     size whatever the proxy is.
+    /// </summary>
+    public IDisposable Reading() {
+        lock (Changing) {
+            readers++;
+            forced = true;
+        }
+
+        wake();
+        return new Release(this);
+    }
+
+    void Released() {
+        lock (Changing) {
+            readers--;
+        }
+    }
+
     /// <summary>Ends the session: followers get a last event.</summary>
     public void Close() {
         lock (Changing) {
@@ -415,11 +479,11 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         StackWork work;
         Func<string, TextureSetAsset?> siblings;
         lock (Changing) {
-            if (closed || (settled == revision && !forced)) {
+            if (closed || (settled == revision && !forced) || (pace.Paused && readers == 0)) {
                 return null;
             }
 
-            work = new(revision, string.Empty, editor.Standing, [..editor.Forgotten], forced);
+            work = new(revision, string.Empty, editor.Standing, [..editor.Forgotten], forced, pace.Proxy);
             siblings = editor.Sibling;
             var document = editor.Document;
             work = work with { Document = StackDocuments.Text(Composed(document, siblings)) };
@@ -572,6 +636,17 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     protected override StackEvent Resync() => new(Log.Sequence, GraphEventKind.Resync, revision, editor.History);
 
     static string Hash(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
+
+    /// <summary>Lets go of a <see cref="Reading" /> once, however often it is disposed.</summary>
+    sealed class Release(StackSession session) : IDisposable {
+        int done;
+
+        public void Dispose() {
+            if (Interlocked.Exchange(ref done, 1) == 0) {
+                session.Released();
+            }
+        }
+    }
 
     static IEnumerable<string> Named(IEnumerable<LayerAsset> layers) {
         foreach (var layer in layers) {

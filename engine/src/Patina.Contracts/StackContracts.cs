@@ -442,6 +442,7 @@ public sealed record StackEvaluation(
 ///     the set no longer stands on, or <c>uvSet</c>, laid out in another of the mesh's UV sets (#238), or <c>shape</c>,
 ///     of another shape than the set's Width by Height (#262). Either way its maps need baking again.
 /// </param>
+/// <param name="Pace">How the stack is evaluated while it is edited: paused or not, and at what preview size (#208).</param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -465,9 +466,29 @@ public sealed record StackState(
     int UvSet = 0,
     string BakedNormal = "Combine",
     string BakedOcclusion = "Combine",
-    string? BakeStale = null
+    string? BakeStale = null,
+    StackPace? Pace = null
 );
 #pragma warning restore SK7005
+
+/// <summary>
+///     How a stack is evaluated while it is edited, which is the session's and never the file's (#208). Saving,
+///     exporting, checking and reading pixels always evaluate it whole, at full size, paused or not.
+/// </summary>
+/// <param name="Paused">
+///     Whether edits wait to be evaluated, so that a big stack can be set up without paying for each step. Resuming
+///     evaluates everything at once.
+/// </param>
+/// <param name="Proxy">
+///     What the stack's width and height are divided by for the viewport and previews while it is edited: 1, 2, 4
+///     or 8. Painted pixels stay at full size; only what they are composited into is smaller.
+/// </param>
+public sealed record StackPace(bool Paused = false, int Proxy = 1);
+
+/// <summary>A change to how a stack is evaluated while it is edited (#208). What is left out stays as it is.</summary>
+/// <param name="Paused">Whether edits wait to be evaluated.</param>
+/// <param name="Proxy">What the stack's sides are divided by: 1, 2, 4 or 8.</param>
+public sealed record StackPaceChange(bool? Paused = null, int? Proxy = null);
 
 /// <summary>An open stack, for a list.</summary>
 /// <param name="Id">The session.</param>

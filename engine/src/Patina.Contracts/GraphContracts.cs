@@ -633,6 +633,10 @@ public enum GraphEventKind {
     [JsonStringEnumMemberName("selected")]
     Selected,
 
+    /// <summary>A stack was paused, resumed or given another preview size: read its state again (#208).</summary>
+    [JsonStringEnumMemberName("paced")]
+    Paced,
+
     /// <summary>The events after the asked number are gone: read the state again.</summary>
     [JsonStringEnumMemberName("resync")]
     Resync

@@ -277,6 +277,9 @@ public static class Refusals {
     public static ProblemHttpResult NoLibraryOpen() =>
         Problem("The Server was started with no library.", StatusCodes.Status404NotFound, NoLibrary);
 
+    /// <summary>A stack proxy that is not 1, 2, 4 or 8 (#208). Values: <c>proxy</c>.</summary>
+    public const string ProxyRefused = "stack-proxy-refused";
+
     /// <summary>A snapshot of a document with unsaved edits, which its file does not hold yet (#209).</summary>
     public const string SnapshotUnsaved = "snapshot-unsaved";
 

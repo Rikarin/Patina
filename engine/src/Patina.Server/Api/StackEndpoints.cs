@@ -27,6 +27,7 @@ static class StackEndpoints {
         stacks.MapStackBrushes();
         stacks.MapStackMesh();
         stacks.MapStackPixels();
+        stacks.MapStackPace();
 
         void Post(string route, Delegate handler, string name, string summary, params int[] problems) =>
             stacks.MapPost(route, handler).Describe(name, summary, problems);
