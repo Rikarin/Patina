@@ -12,7 +12,7 @@ import { BrushStore } from '../paint/brush-store';
 import { PaintStore } from '../paint/paint-store';
 import { LibraryStore } from './library-store';
 import { ProjectCommands } from './project-commands';
-import { ProjectStore } from './project-store';
+import { inLibrary, ProjectStore, sameDocument } from './project-store';
 
 const paths = { texturing: 'projects/a/a.vxlayers', graph: 'projects/a/rust.vxtexgraph' };
 
@@ -1026,5 +1026,16 @@ describe('ProjectStore', () => {
 
     expect(await store.release(['ab'])).toBe(true);
     expect(store.tabs()).toHaveLength(1);
+  });
+});
+
+describe('a path the Server gives', () => {
+  it('names the same document on Windows as on Linux', () => {
+    const tab = 'projects/moss/moss.vxlayers';
+    const windows = String.raw`C:\Libraries\Ember.ptlib\projects\moss`;
+    expect(inLibrary(String.raw`${windows}\moss.vxlayers`)).toBe(tab);
+    expect(inLibrary('/home/a/Ember.ptlib/projects/moss/moss.vxlayers')).toBe(tab);
+    expect(sameDocument(tab, String.raw`${windows}\moss.vxlayers`)).toBe(true);
+    expect(sameDocument(tab, String.raw`${windows}\other.vxlayers`)).toBe(false);
   });
 });

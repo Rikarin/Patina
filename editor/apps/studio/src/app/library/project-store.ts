@@ -201,7 +201,7 @@ export class ProjectStore {
       const asked = this.recoveryOffers.asked();
       if (asked) {
         untracked(() => {
-          const tab = this.mutableTabs().find(held => held.path === asked.path || asked.path.endsWith(`/${held.path}`));
+          const tab = this.mutableTabs().find(held => sameDocument(held.path, asked.path));
           if (tab && this.recoverable() === null) {
             void this.offerRecovery(tab.path).catch(() => undefined); // nothing kept is nothing to offer
           }
@@ -1091,7 +1091,7 @@ export class ProjectStore {
   }
 
   private adoptGraph(path: string, name: string, session: string): void {
-    const relative = path.includes('/projects/') ? path.slice(path.indexOf('/projects/') + 1) : path;
+    const relative = inLibrary(path);
     const known = this.mutableTabs().find(tab => tab.path === path || tab.path === relative);
     if (known) {
       this.mutableActive.set(known.path);
@@ -1255,4 +1255,19 @@ export class ProjectStore {
 
 function tabOf(document: ProjectDocumentInfo, project: string): DocumentTab {
   return { path: document.path, name: document.name, kind: document.kind, project, dirty: false, session: null };
+}
+
+/**
+ * A path the Server gives, as the project files name it: from `projects/` down, with `/` between its parts. The Server
+ * gives a full path in the system's own form, which on Windows is split by backslashes.
+ */
+export function inLibrary(path: string): string {
+  const forward = path.replaceAll('\\', '/');
+  const at = forward.indexOf('/projects/');
+  return at < 0 ? path : forward.slice(at + 1);
+}
+
+/** Whether a tab's path and a path the Server gives name one document. */
+export function sameDocument(tab: string, server: string): boolean {
+  return tab === server || server.replaceAll('\\', '/').endsWith(`/${tab}`);
 }
