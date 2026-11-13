@@ -36,7 +36,7 @@ const Maps: readonly { name: string; about: string }[] = [
   { name: 'bent', about: 'The average open direction from each point, from the ambient occlusion rays.' },
   { name: 'curvature', about: 'Convex edges light and concave creases dark, for wear and dirt.' },
   { name: 'thickness', about: 'How deep the surface goes behind each point, for light through thin parts.' },
-  { name: 'position', about: 'Where each point is within the high mesh’s bounding box, for gradients.' },
+  { name: 'position', about: 'Where each point is on the high mesh, for gradients.' },
   { name: 'world', about: 'The high mesh’s normal in object space, for masks by direction.' },
   { name: 'id', about: 'A flat color per material, part or shell, for masks.' },
   {
@@ -87,6 +87,12 @@ const HeightRanges = [
   { value: 'measured', label: 'Measured' },
   { value: 'rays', label: 'Ray distance' },
   { value: 'custom', label: 'Custom' }
+];
+const PositionRanges = [
+  { value: 'box', label: 'Box' },
+  { value: 'cube', label: 'Cube' },
+  { value: 'sphere', label: 'Sphere' },
+  { value: 'none', label: 'None' }
 ];
 const Distributions = [
   { value: 'cosine', label: 'Cosine' },
@@ -333,6 +339,18 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   [items]="sides()"
                   [value]="String(options.resolution)"
                   (valueChange)="set({ resolution: Number($event ?? options.resolution) })"
+                />
+              </div>
+              <div class="flex min-w-0 flex-col gap-1">
+                <span class="text-foreground-muted text-xs">Height</span>
+                <xui-select
+                  class="w-full"
+                  aria-label="Height"
+                  data-testid="bake-rows"
+                  [itemText]="rowsName"
+                  [items]="rowChoices()"
+                  [value]="String(options.rows ?? '')"
+                  (valueChange)="set({ rows: $event ? Number($event) : null })"
                 />
               </div>
               <div class="flex min-w-0 flex-col gap-1">
@@ -802,6 +820,24 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               @case ('bent') {
                 <p class="text-foreground-muted text-xs">Uses the ambient occlusion rays and the normal map's space.</p>
               }
+              @case ('position') {
+                <div class="flex items-center justify-between gap-2 text-sm">
+                  Range
+                  <xui-segmented-control
+                    size="sm"
+                    aria-label="Position range"
+                    data-testid="bake-position-range"
+                    [options]="positionRanges"
+                    [value]="options.position.range"
+                    (valueChange)="set({ position: { range: $event ?? options.position.range } })"
+                  />
+                </div>
+                <p class="text-foreground-muted text-xs">
+                  Box stretches each axis across the high mesh’s bounding box. Cube keeps its proportions, so a distance
+                  reads alike on every axis. Sphere is centred on the middle of the mesh. None keeps model units, which
+                  only an EXR format holds.
+                </p>
+              }
               @case ('thickness') {
                 <label class="flex items-center justify-between gap-2 text-sm">
                   Normalise, so the thickest point is white
@@ -1070,6 +1106,7 @@ export class BakePane {
   protected readonly spaces = Spaces;
   protected readonly units = Units;
   protected readonly heightRanges = HeightRanges;
+  protected readonly positionRanges = PositionRanges;
   protected readonly distributions = Distributions;
   protected readonly palettes = Palettes;
   protected readonly falloffs = Falloffs;
@@ -1084,7 +1121,8 @@ export class BakePane {
   protected readonly angle = angle;
   protected readonly falloffName = (value: string) => FalloffNames[value] ?? value;
   protected readonly idSourceName = (value: string) => IdSourceNames[value] ?? value;
-  protected readonly sideName = (value: string) => `${value} × ${value}`;
+  protected readonly sideName = (value: string) => `${value} × ${this.options()?.rows ?? value}`;
+  protected readonly rowsName = (value: string) => (value ? `${value} texels` : 'Same as width');
   protected readonly canPick = desktop() !== undefined;
   protected readonly roundedEdges = RoundedEdges;
   protected readonly colourSources = ColourSources;
@@ -1110,6 +1148,8 @@ export class BakePane {
   protected readonly refused = signal<string | null>(null);
   protected readonly options = this.settings.options;
   protected readonly sides = computed(() => this.status.textureSides().map(String));
+  /** A bake as tall as it is wide, or any of the sizes: a texture set wider than it is tall bakes at its shape. */
+  protected readonly rowChoices = computed(() => ['', ...this.sides()]);
 
   protected readonly chosen = computed(() => new Set(this.settings.chosen().map(set => set.material)));
 

@@ -8092,13 +8092,21 @@
           },
           "resolution": {
             "type": "integer",
-            "description": "Its edge in pixels.",
+            "description": "Its width in pixels.",
             "format": "int32"
           },
           "scale": {
             "type": "number",
             "description": "What a stored unit value is multiplied by to get the measurement back, for a signed map in an integer format;\nzero when there is nothing to undo.",
             "format": "double"
+          },
+          "rows": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Its height in pixels, or null when it is as tall as it is wide.",
+            "format": "int32"
           }
         },
         "description": "One baked map, as a file."
@@ -8213,6 +8221,7 @@
           "space",
           "rays",
           "height",
+          "position",
           "occlusion",
           "thickness",
           "id",
@@ -8223,7 +8232,15 @@
         "properties": {
           "resolution": {
             "type": "integer",
-            "description": "The atlas\u0027s edge, in texels.",
+            "description": "The atlas\u0027s width, in texels, and its height too unless int? BakeOptions.Rows says otherwise.",
+            "format": "int32"
+          },
+          "rows": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The atlas\u0027s height in texels, or null for as many as int BakeOptions.Resolution: a square bake. A texture set\nauthored wider than it is tall bakes at its own shape, so its maps sit under its layers unresampled (#147).",
             "format": "int32"
           },
           "format": {
@@ -8259,6 +8276,10 @@
             "description": "The height map\u0027s range.",
             "$ref": "#/components/schemas/BakeHeightOptions"
           },
+          "position": {
+            "description": "The position map\u0027s range.",
+            "$ref": "#/components/schemas/BakePositionOptions"
+          },
           "occlusion": {
             "description": "The occlusion rays, which ambient occlusion, the bent normal and thickness share.",
             "$ref": "#/components/schemas/BakeOcclusionOptions"
@@ -8281,6 +8302,19 @@
           }
         },
         "description": "How a bake runs, with no meshes in it: what a project keeps between bakes and every client sends. Each map\u0027s\nown settings are a part of their own."
+      },
+      "BakePositionOptions": {
+        "required": [
+          "range"
+        ],
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "string",
+            "description": "\u0060box\u0060, each axis across the mesh\u0027s bounding box, so each channel is used whole and shapes stretch;\n            \u0060cube\u0060, every axis across the box\u0027s longest side, so distances agree; \u0060sphere\u0060, across the sphere\n            round the box, centred on its middle; or \u0060none\u0060, the point in model units, which only EXR keeps."
+          }
+        },
+        "description": "How the position map turns a point on the high poly mesh into a value (#148)."
       },
       "BakePreviewPart": {
         "required": [

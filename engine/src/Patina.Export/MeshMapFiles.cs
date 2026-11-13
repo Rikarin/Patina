@@ -36,10 +36,10 @@ public static class MeshMapFiles {
             BakeInputs.Png8 => PngCodec.Encode(Rgba8(plane)),
             BakeInputs.Png16 => Png16(plane),
             BakeInputs.Exr16 => ExrCodec.Encode(
-                new(plane.Resolution, plane.Resolution, plane.Channels, plane.Samples),
+                new(plane.Resolution, plane.Rows, plane.Channels, plane.Samples),
                 ExrPixels.Half
             ),
-            BakeInputs.Exr32 => ExrCodec.Encode(new(plane.Resolution, plane.Resolution, plane.Channels, plane.Samples)),
+            BakeInputs.Exr32 => ExrCodec.Encode(new(plane.Resolution, plane.Rows, plane.Channels, plane.Samples)),
             _ => throw new ArgumentException($"'{format}' is not a format.", nameof(format))
         };
     }
@@ -47,15 +47,15 @@ public static class MeshMapFiles {
     /// <summary>The plane as 8-bit RGBA, which is what a browser can show and a graph can read.</summary>
     public static Bitmap Rgba8(MeshMapPlane plane) {
         ArgumentNullException.ThrowIfNull(plane);
-        var side = plane.Resolution;
-        var pixels = new byte[side * side * 4];
+        var (width, height) = (plane.Resolution, plane.Rows);
+        var pixels = new byte[width * height * 4];
 
         Parallel.For(
             0,
-            side,
+            height,
             y => {
-                for (var x = 0; x < side; x++) {
-                    var at = y * side + x;
+                for (var x = 0; x < width; x++) {
+                    var at = y * width + x;
                     var into = at * 4;
                     for (var lane = 0; lane < 3; lane++) {
                         var sample = plane.Channels == 1 ? at : at * plane.Channels + lane;
@@ -67,7 +67,7 @@ public static class MeshMapFiles {
             }
         );
 
-        return new(side, side, pixels);
+        return new(width, height, pixels);
     }
 
     static byte[] Png16(MeshMapPlane plane) {
@@ -75,6 +75,6 @@ public static class MeshMapFiles {
 
         Parallel.For(0, samples.Length, at => samples[at] = (ushort)MathF.Round(plane.Unit(at) * ushort.MaxValue));
 
-        return PngCodec.Encode16(plane.Resolution, plane.Resolution, plane.Channels, samples);
+        return PngCodec.Encode16(plane.Resolution, plane.Rows, plane.Channels, samples);
     }
 }

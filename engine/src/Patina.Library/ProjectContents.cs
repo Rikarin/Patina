@@ -1,6 +1,5 @@
 using Patina.Contracts;
 using System.Globalization;
-using System.Text.Json;
 
 namespace Patina.Library;
 
@@ -737,31 +736,27 @@ static class ProjectFiles {
                         "bake",
                         Path.GetRelativePath(bakes, bake).Replace('\\', '/'),
                         Below(path, Path.GetRelativePath(full, bake).Replace('\\', '/')),
-                        OutOfDate(bake, meshes)
+                        OutOfDate(full, bake, meshes)
                     )
                 )
         ];
     }
 
     /// <summary>
-    ///     Whether a bake was made on a mesh the project no longer has. One that does not say is left alone.
+    ///     Whether a bake was made on a mesh the project no longer has, and on faces no mesh of it still has: a change
+    ///     to another set's faces leaves it current (#151). One that does not say is left alone.
     /// </summary>
-    static bool OutOfDate(string bake, IReadOnlyList<ProjectMesh> meshes) {
+    static bool OutOfDate(string full, string bake, IReadOnlyList<ProjectMesh> meshes) {
         HashSet<string?> current = [..meshes.Select(static mesh => mesh.Hash)];
         current.Remove(null);
         return current.Count > 0
             && Directory.EnumerateFiles(bake, $"*{LibraryLayout.BakeManifestFile}")
-                .Select(ManifestMesh)
-                .Any(mesh => mesh is not null && !current.Contains(mesh));
-    }
-
-    static string? ManifestMesh(string file) {
-        try {
-            return JsonSerializer.Deserialize(SharedFile.ReadAllBytes(file), ContractsJsonContext.Default.BakeManifest)
-                ?.Mesh;
-        } catch (JsonException) {
-            return null; // something half written says nothing about the mesh
-        }
+                .Select(BakeFit.Read)
+                .OfType<BakeManifest>()
+                .Any(manifest => manifest.Mesh is { } mesh
+                    && !current.Contains(mesh)
+                    && !meshes.Any(m => BakeFit.SameFaces(manifest, Path.Combine(full, m.File)))
+                );
     }
 
     /// <summary>A document's bake below the library, if it has one and it is there.</summary>
@@ -791,8 +786,13 @@ static class ProjectFiles {
 
         var file = Path.Combine(full, item.File);
         var text = File.Exists(file) ? SharedFile.ReadAllText(file) : string.Empty;
-        var mesh = meshes.FirstOrDefault(m => m.Id == item.Mesh)?.Hash;
-        return BakeFit.Stale(bake, mesh, StackInputs.UvSetOf(text, item.Material));
+        var mesh = meshes.FirstOrDefault(m => m.Id == item.Mesh);
+        return BakeFit.Stale(
+            bake,
+            mesh?.Hash,
+            StackInputs.UvSetOf(text, item.Material),
+            mesh is null ? null : Path.Combine(full, mesh.File)
+        );
     }
 
     static bool IsMesh(string file) => MeshFormats.IsMesh(file);

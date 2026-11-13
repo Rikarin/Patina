@@ -145,6 +145,22 @@ describe('BakeStore', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:map');
   });
 
+  it('shows a map wider than it is tall at its own shape', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:map');
+    URL.revokeObjectURL = vi.fn();
+    const { store } = setup({
+      ...empty,
+      'GET jobs/j1/previews/normal': () => new Response(new Blob(['png'], { type: 'image/png' }))
+    });
+    await settled();
+
+    const maps = [{ map: 'normal', path: '/out/normal.png', resolution: 2048, scale: 0, rows: 1024 }];
+    const result = { maps, covered: 1, missed: 0, warnings: [], cached: false, log: [] };
+    await store.show(job({ state: 'done', result }), 'normal');
+
+    expect(store.shown()).toMatchObject({ width: 2048, height: 1024 });
+  });
+
   it('builds a socket address that matches its server', () => {
     expect(jobSocketUrl({ baseUrl: 'https://host:1', token: null }, 3)).toBe('wss://host:1/ws/jobs?since=3');
   });

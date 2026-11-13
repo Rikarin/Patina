@@ -1490,14 +1490,19 @@ export class LayerStack {
   protected readonly project = inject(ProjectStore);
   private readonly isolation = inject(IsolationStore);
 
-  /** Why this texture set's mesh maps need baking again, or null: its own bake's word first, then the project's. */
+  /**
+   * Why this texture set's mesh maps need baking again, or null: its own bake's word while it is open, since a mesh
+   * change to another set's faces leaves this one's bake fitting (#151), and the project's otherwise.
+   */
   protected readonly staleBake = computed(() => {
-    const own = this.store.state()?.bakeStale;
+    const state = this.store.state();
+    const own = state?.bakeStale;
     if (own === 'uvSet') {
       return 'This texture set’s UV set changed after its last bake.';
     }
 
-    return own === 'mesh' || this.project.bakeOutOfDate() ? 'The mesh changed after the last bake.' : null;
+    const mesh = state ? own === 'mesh' : this.project.bakeOutOfDate();
+    return mesh ? 'The mesh changed after the last bake.' : null;
   });
 
   protected readonly percent = percent;

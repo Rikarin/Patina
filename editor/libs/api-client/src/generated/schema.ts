@@ -2242,7 +2242,7 @@ export interface components {
       path: string;
       /**
        * Format: int32
-       * @description Its edge in pixels.
+       * @description Its width in pixels.
        */
       resolution: number;
       /**
@@ -2251,6 +2251,11 @@ export interface components {
        *     zero when there is nothing to undo.
        */
       scale: number;
+      /**
+       * Format: int32
+       * @description Its height in pixels, or null when it is as tall as it is wide.
+       */
+      rows?: null | number;
     };
     /** @description The height map's stored range. */
     BakeHeightOptions: {
@@ -2321,9 +2326,15 @@ export interface components {
     BakeOptions: {
       /**
        * Format: int32
-       * @description The atlas's edge, in texels.
+       * @description The atlas's width, in texels, and its height too unless int? BakeOptions.Rows says otherwise.
        */
       resolution: number;
+      /**
+       * Format: int32
+       * @description The atlas's height in texels, or null for as many as int BakeOptions.Resolution: a square bake. A texture set
+       *     authored wider than it is tall bakes at its own shape, so its maps sit under its layers unresampled (#147).
+       */
+      rows?: null | number;
       /** @description `png8`, `png16`, `exr16` or `exr32`. */
       format: string;
       /**
@@ -2348,6 +2359,8 @@ export interface components {
       rays: components['schemas']['BakeRayOptions'];
       /** @description The height map's range. */
       height: components['schemas']['BakeHeightOptions'];
+      /** @description The position map's range. */
+      position: components['schemas']['BakePositionOptions'];
       /** @description The occlusion rays, which ambient occlusion, the bent normal and thickness share. */
       occlusion: components['schemas']['BakeOcclusionOptions'];
       /** @description The thickness map's own settings. */
@@ -2358,6 +2371,15 @@ export interface components {
       rounding: components['schemas']['BakeRoundingOptions'];
       /** @description Where the colour map's colour comes from. */
       colour: components['schemas']['BakeColourOptions'];
+    };
+    /** @description How the position map turns a point on the high poly mesh into a value (#148). */
+    BakePositionOptions: {
+      /**
+       * @description `box`, each axis across the mesh's bounding box, so each channel is used whole and shapes stretch;
+       *                 `cube`, every axis across the box's longest side, so distances agree; `sphere`, across the sphere
+       *                 round the box, centred on its middle; or `none`, the point in model units, which only EXR keeps.
+       */
+      range: string;
     };
     /**
      * @description One part name as matching by name sees it: how many faces each side has and the colour it is drawn
