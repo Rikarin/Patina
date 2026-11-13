@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A 3D mouse turns the viewport (#163): with a 3Dconnexion device plugged in, twisting or tipping the cap turns the model, sliding it slides the model, and pushing it away or pulling it back zooms, for as long as the cap is held; the first button frames the model. The desktop app reads the device's own reports, so no vendor driver or SDK is needed (ADR 0034).
 - The projection tool projects a material (#128): with a material from the shelf in the brush panel, it paints every channel the layer writes from the material's maps, fixed on the view where its frame stands, moved, scaled and turned by the same handles and keys as a picture, and tiled or not. A stencil still masks it. Through the API a stroke's material source takes a `frame`.
 - The projection tool and stencils work in the 2D view (#128): the picture, or the projected material, is drawn over the 2D view at the same place on the screen as over the viewport, and a stroke there reads it where each texel is drawn, at any zoom or pan. The stencil's keys work with the 2D view focused too.
 - A picture dropped on the mesh becomes a decal there: from this machine or from the library tree, it is brought into the project and laid on a new fill on top, facing out of the face it landed on, at the picture's own shape, colouring only the base color. The layer and its decal undo as two steps.

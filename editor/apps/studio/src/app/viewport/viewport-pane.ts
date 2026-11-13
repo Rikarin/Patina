@@ -37,6 +37,7 @@ import { ToolStrip } from '../paint/tool-strip';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
 import { type AxisView, framed, nudge, orbit, pan, snapped, zoom } from './orbit';
+import { SpaceMouse, spaceStep } from './space-mouse';
 import { ViewportClient } from './viewport-client';
 import { ViewportDisplayPanel } from './viewport-display';
 
@@ -362,6 +363,7 @@ export class ViewportPane implements AfterViewInit {
   private readonly using = inject(MaterialUse);
   private readonly activity = inject(Activity);
   private readonly preferences = inject(Preferences);
+  private readonly spaceMouse = inject(SpaceMouse);
   protected readonly project = inject(ProjectStore);
   private readonly destroyRef = inject(DestroyRef);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
@@ -475,6 +477,7 @@ export class ViewportPane implements AfterViewInit {
 
   constructor() {
     this.installCommands();
+    this.followSpaceMouse();
     // Properties is outside this pane and cannot reach its client, so the camera it measures through is kept on the store.
     effect(() => this.paint.viewCamera.set(this.viewport.camera()));
     this.destroyRef.onDestroy(() => this.paint.viewCamera.set(null));
@@ -1018,6 +1021,28 @@ export class ViewportPane implements AfterViewInit {
           this.mirror();
         }
       });
+  }
+
+  /** A 3D mouse turns the camera while its cap is held, as a drag does, and its first button frames the model (#163). */
+  private followSpaceMouse(): void {
+    this.spaceMouse.listen(
+      {
+        move: (motion, seconds) => {
+          if (!this.stroking && !this.dragging()) {
+            const camera = spaceStep(this.viewport.camera(), motion, seconds, this.preferences.orbitScale());
+            this.viewport.camera.set(camera);
+            this.scheduleCamera();
+          }
+        },
+        still: () => this.viewport.moveCamera(this.viewport.camera(), false),
+        press: button => {
+          if (button === 0) {
+            this.viewport.moveCamera(framed(this.viewport.camera()), false);
+          }
+        }
+      },
+      this.destroyRef
+    );
   }
 
   private aim() {
