@@ -1,6 +1,6 @@
 using Patina.Contracts;
+using Patina.Export;
 using Patina.Ipc;
-using Vixen.Core.Imaging;
 using Vixen.Core.Mathematics;
 using Vixen.Terrain;
 using Vixen.Texturing.Painting;
@@ -119,10 +119,10 @@ static class StrokeShapes {
         }
 
         try {
-            var picture = PngCodec.Decode(SharedFile.ReadAllBytes(file));
-            PaintImage image = new(picture.Width, picture.Height);
-            for (var at = 0; at < picture.Width * picture.Height; at++) {
-                image[at] = PaintImage.Pack(picture.Pixels[at * 4] / 255f, 0f, 0f, 1f);
+            var (width, height, coverage) = BrushAlphaPictures.Read(file);
+            PaintImage image = new(width, height);
+            for (var at = 0; at < coverage.Length; at++) {
+                image[at] = PaintImage.Pack(coverage[at], 0f, 0f, 1f);
             }
 
             return held[file] = new PaintImageMask(image, 0);

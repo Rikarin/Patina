@@ -488,6 +488,17 @@ const PreviewQuiet = 200;
         [value]="store.brush().alpha ?? null"
         (valueChange)="set('alpha', $event)"
       />
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="paint-alpha-picture"
+        title="Choose a picture as the brush's alpha: its opacity where it has any, else its brightness, is what each stamp lays down"
+        (click)="chooseAlpha()"
+      >
+        Choose Picture…
+      </button>
     </div>
     @for (choice of choices; track choice.key) {
       <div class="flex items-center gap-1">
@@ -678,6 +689,18 @@ export class BrushPanel {
   /** The picture on the viewport by its file's name. */
   protected readonly pictureName = computed(() => this.store.screenPicture()?.image.split(/[/\\]/u).pop() ?? 'None');
 
+  /**
+   * Asks for a picture, brings it into the project, and makes it the brush's alpha (#122). A brush names its alpha from
+   * the folder of the stack it paints, and the picture comes back named from the library's.
+   */
+  protected async chooseAlpha(): Promise<void> {
+    const image = await this.project.pickPicture();
+    const stack = this.project.document()?.path;
+    if (image && stack) {
+      this.set('alpha', alphaPath(image, stack));
+    }
+  }
+
   /** Asks for a picture, brings it into the project, and puts it on the viewport, unplaced until it is drawn. */
   protected async choosePicture(): Promise<void> {
     const image = await this.project.pickPicture();
@@ -855,4 +878,19 @@ export class BrushPanel {
   protected setSymmetry(change: Partial<StackSymmetry>): void {
     this.store.symmetry.update(held => (held ? { ...held, ...change } : held));
   }
+}
+
+/**
+ * A picture's path below the library as a brush names it: from the folder of the stack it paints, which is how the
+ * engine finds it. Both paths are below the library.
+ */
+export function alphaPath(picture: string, stack: string): string {
+  const from = stack.replaceAll('\\', '/').split('/').slice(0, -1);
+  const to = picture.replaceAll('\\', '/').split('/');
+  let shared = 0;
+  while (shared < from.length && shared < to.length - 1 && from[shared] === to[shared]) {
+    shared++;
+  }
+
+  return [...from.slice(shared).map(() => '..'), ...to.slice(shared)].join('/');
 }
