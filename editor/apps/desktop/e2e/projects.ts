@@ -121,11 +121,51 @@ export function ending(app: ElectronApplication, waitMs = 30_000): Promise<void>
 
 /** Ends the app with no one to answer its question about unsaved paint. */
 export async function leave(app: ElectronApplication): Promise<void> {
+  // The engine's processes outlive Electron's exit for a moment, and on Windows a file they still hold cannot be
+  // deleted, so the scratch folder would fail to go. Wait for every process to end before the test cleans up.
+  const pids = [electronPid(app), ...(await sidecarPids(app))].filter((pid): pid is number => pid !== undefined);
   await app
     .evaluate(({ app: electron }) => {
       electron.exit(0);
     })
     .catch(() => undefined); // the app can be gone before the answer is
+  const deadline = Date.now() + 10_000;
+  while (pids.some(running) && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  for (const pid of pids.filter(running)) {
+    process.kill(pid);
+  }
+}
+
+function electronPid(app: ElectronApplication): number | undefined {
+  try {
+    return app.process().pid;
+  } catch {
+    return undefined; // the app has already quit
+  }
+}
+
+async function sidecarPids(app: ElectronApplication): Promise<number[]> {
+  const window = app.windows()[0];
+  if (window === undefined) {
+    return [];
+  }
+  const statuses = await window
+    .evaluate(() =>
+      (globalThis as unknown as { patina: { sidecars(): Promise<{ pid: number | null }[]> } }).patina.sidecars()
+    )
+    .catch(() => []);
+  return statuses.flatMap(status => (status.pid === null ? [] : [status.pid]));
+}
+
+function running(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
