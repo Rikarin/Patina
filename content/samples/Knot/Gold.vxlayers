@@ -1,0 +1,49 @@
+version: 1
+name: Gold
+model: knot.glb
+baseWidth: 2048
+baseHeight: 2048
+sets:
+  - name: Gold
+    channels:
+      - usage: baseColor
+        default: [0.5, 0.5, 0.5, 1]
+      - usage: roughness
+        default: [0.5, 0.5, 0.5, 1]
+      - usage: metalness
+        default: [0, 0, 0, 1]
+    layers:
+      - id: gold
+        name: Gold
+        kind: Fill
+        values:
+          baseColor: [1, 0.72, 0.3, 1]
+          roughness: [0.28, 0.28, 0.28, 1]
+          metalness: [1, 1, 1, 1]
+      - id: tarnish
+        name: Tarnish
+        kind: Fill
+        blend: Copy
+        opacity: 0.65
+        values:
+          baseColor: [0.32, 0.22, 0.1, 1]
+          roughness: [0.62, 0.62, 0.62, 1]
+          metalness: [0.7, 0.7, 0.7, 1]
+        mask:
+          source: Generator
+          generator: Grunges/Dirt Patches
+      - id: scuffs
+        name: Scuffs
+        kind: Fill
+        blend: Copy
+        opacity: 0.8
+        values:
+          baseColor: [1, 0.8, 0.45, 1]
+          roughness: [0.12, 0.12, 0.12, 1]
+          metalness: [1, 1, 1, 1]
+        mask:
+          source: Generator
+          generator: Grunges/Scuffs
+      - id: paint
+        name: Paint
+        kind: Paint

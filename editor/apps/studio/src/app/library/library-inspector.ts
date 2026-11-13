@@ -19,6 +19,7 @@ import { XuiSpinnerImports } from '@xui/spinner';
 import { XuiTagImports } from '@xui/tag';
 import { documentKindName } from '../core/labels';
 import { LibraryActions, assetTarget, projectTarget } from './library-actions';
+import { LibraryCostsView } from './library-costs';
 import { LibrarySelection } from './library-selection';
 import { LibraryStore } from './library-store';
 import { counted } from './list-keys';
@@ -272,20 +273,20 @@ export class AssetImpactView {
   }
 }
 
-/** The Inspector pane while the Library has the selection. */
+/** The Inspector pane while the Library has the selection, and what the library costs while nothing is chosen (#207). */
 @Component({
   selector: 'ptn-library-inspector',
-  imports: [AssetImpactView, ProjectDetails, XuiNonIdealStateImports],
+  imports: [AssetImpactView, LibraryCostsView, ProjectDetails],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
     @let item = selection.item();
     @if (item === null) {
-      <xui-non-ideal-state
-        class="flex-1"
-        title="Nothing chosen"
-        description="Choose a project or a material in the Library to see its folder, its tags and what uses it."
-      />
+      <p class="text-foreground-muted shrink-0 px-3 py-2 text-xs" data-testid="inspector-nothing-chosen">
+        Choose a project or a material in the Library to see its folder, its tags and what uses it. Until then, here is
+        what the library's maps cost.
+      </p>
+      <ptn-library-costs />
     } @else if (item.kind === 'project') {
       <ptn-project-details [project]="item.project" />
     } @else {

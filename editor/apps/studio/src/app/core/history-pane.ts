@@ -3,6 +3,7 @@ import type { HistoryList, HistoryStep } from '@patina/api-client';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { GraphStore } from '../graph/graph-store';
 import { ProjectStore } from '../library/project-store';
+import { SnapshotList } from '../library/snapshot-list';
 import { PaintStore } from '../paint/paint-store';
 
 /** One row of the list: a step, or the document as it was opened. */
@@ -15,11 +16,12 @@ interface Row {
 /**
  * The undo history of the document in front, oldest at the top: the steps that stand, then the ones undone, greyed.
  * Clicking one takes the document back or forward to just after it, as one step on the Server, so another client sees
- * one jump. The list is read again whenever the newest standing step changes.
+ * one jump. The list is read again whenever the newest standing step changes. Below it are the document's snapshots,
+ * which outlive closing it (#209).
  */
 @Component({
   selector: 'ptn-history',
-  imports: [XuiNonIdealStateImports],
+  imports: [SnapshotList, XuiNonIdealStateImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
@@ -43,6 +45,7 @@ interface Row {
           </li>
         }
       </ol>
+      <ptn-snapshots class="border-hairline max-h-[50%] shrink-0 border-t" />
     } @else {
       <xui-non-ideal-state class="flex-1" title="No history" description="Open a document to see its undo steps." />
     }

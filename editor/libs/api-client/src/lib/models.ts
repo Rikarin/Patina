@@ -23,6 +23,7 @@ export type AssetSummary = components['schemas']['AssetSummary'];
 export type AssetPage = components['schemas']['AssetPage'];
 export type AssetImpact = components['schemas']['AssetImpact'];
 export type ImpactedProject = components['schemas']['ImpactedProject'];
+export type DocumentSnapshot = components['schemas']['DocumentSnapshot'];
 export type BinItem = components['schemas']['BinItem'];
 export type BinList = components['schemas']['BinList'];
 export type ServerPreferences = components['schemas']['ServerPreferences'];

@@ -1,0 +1,42 @@
+name: Concrete
+nodes:
+  - id: 1
+    type: Source/Noise
+    values: { Scale: [40] }
+  - id: 2
+    type: Source/Uniform
+    values: { Colour: [0.4, 0.4, 0.38, 1] }
+  - id: 3
+    type: Source/Uniform
+    values: { Colour: [0.55, 0.55, 0.52, 1] }
+  - id: 4
+    type: Colour/Mix
+  - id: 5
+    type: Source/Uniform
+    values: { Colour: [0.9, 0.9, 0.9, 1] }
+  - id: 6
+    type: Source/Uniform
+    values: { Colour: [0.0, 0.0, 0.0, 1] }
+  - id: 7
+    type: Surface/Height to Normal
+    values: { Intensity: [2.0] }
+  - { id: 8, type: Output/Output, texts: { Usage: baseColor } }
+  - { id: 9, type: Output/Output, texts: { Usage: roughness } }
+  - { id: 10, type: Output/Output, texts: { Usage: metalness } }
+  - { id: 11, type: Output/Output, texts: { Usage: normal } }
+  - { id: 12, type: Output/Output, texts: { Usage: height } }
+edges:
+  - { fromNode: 2, fromPort: Out, toNode: 4, toPort: Background }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Foreground }
+  - { fromNode: 1, fromPort: Out, toNode: 4, toPort: Mask }
+  - { fromNode: 4, fromPort: Out, toNode: 8, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 9, toPort: Input }
+  - { fromNode: 6, fromPort: Out, toNode: 10, toPort: Input }
+  - { fromNode: 1, fromPort: Out, toNode: 7, toPort: Height }
+  - { fromNode: 7, fromPort: Out, toNode: 11, toPort: Input }
+  - { fromNode: 1, fromPort: Out, toNode: 12, toPort: Input }
+groups: []
+comments: []
+interface: []
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters: []

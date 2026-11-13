@@ -45,6 +45,8 @@ switch (args) {
         );
     case ["mesh", var path]:
         return MeshFixture.Write(path);
+    case ["mesh", var path, "--uvs"]:
+        return MeshFixture.Write(path, true);
     case ["bake-pair", var folder, .. var rest]:
         return rest is [var cell]
             ? BakeFixture.Write(folder, float.Parse(cell, CultureInfo.InvariantCulture))
@@ -130,7 +132,7 @@ switch (args) {
             """
             Usage: patina-bench kernels <cache folder> [--parallel] [--pipelines] [--pipeline-threads]
                        [--pipeline-cache=<file>] [--format=<format>] [--salt=<n>]
-                   patina-bench mesh <file.glb>
+                   patina-bench mesh <file.glb> [--uvs]
                    patina-bench bake-pair <folder> [cell]
                    patina-bench s9 <folder> [resolution] [rays] [reach]
                    patina-bench graph <library> <nodes> <name>

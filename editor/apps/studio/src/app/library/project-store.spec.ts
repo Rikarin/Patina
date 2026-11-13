@@ -763,6 +763,48 @@ describe('ProjectStore', () => {
     });
   });
 
+  describe('snapshots (#209)', () => {
+    it('restores into a closed document, saving its edits first, then opens it again', async () => {
+      const { store, removed, paint, client } = harness();
+      await store.open('a');
+      store.noteDirty(paths.texturing, true);
+
+      expect(await store.restoreSnapshot(paths.texturing, 'snap')).toBe(true);
+
+      expect(paint.act).toHaveBeenCalledWith('save');
+      expect(removed).toContain(`session:${paths.texturing}`);
+      expect(client.POST).toHaveBeenCalledWith('/api/v1/library/snapshots/restore', {
+        body: { path: paths.texturing, id: 'snap' }
+      });
+      expect(store.active()?.path).toBe(paths.texturing);
+      expect(paint.open).toHaveBeenCalledTimes(2);
+    });
+
+    it('restores nothing when the edits could not be saved', async () => {
+      const { store, paint, client } = harness();
+      await store.open('a');
+      store.noteDirty(paths.texturing, true);
+      paint.act.mockResolvedValueOnce(false);
+
+      expect(await store.restoreSnapshot(paths.texturing, 'snap')).toBe(false);
+
+      expect(client.POST).not.toHaveBeenCalledWith('/api/v1/library/snapshots/restore', expect.anything());
+      expect(store.active()?.path).toBe(paths.texturing);
+    });
+
+    it('takes a snapshot of a clean document without saving it', async () => {
+      const { store, paint, client } = harness();
+      await store.open('a');
+
+      expect(await store.takeSnapshot(paths.texturing, 'Before rust')).toBe(true);
+
+      expect(paint.act).not.toHaveBeenCalledWith('save');
+      expect(client.POST).toHaveBeenCalledWith('/api/v1/library/snapshots', {
+        body: { path: paths.texturing, name: 'Before rust' }
+      });
+    });
+  });
+
   it('says why settings did not apply in the dialog, and nowhere it could be read twice', async () => {
     const { store, client } = harness();
     await store.open('a');

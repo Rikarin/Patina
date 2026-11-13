@@ -901,6 +901,71 @@ export class ProjectStore {
     }
   }
 
+  /**
+   * Keeps the document as it is saved under a name (#209). A snapshot is of the file, so unsaved edits are saved first.
+   * @returns False when it did not happen, and the failure says why.
+   */
+  async takeSnapshot(path: string, name: string): Promise<boolean> {
+    if (!(await this.saveFirst(path))) {
+      return false;
+    }
+
+    try {
+      const client = await this.library.api();
+      unwrap(await client.POST('/api/v1/library/snapshots', { body: { path, name } }));
+      return true;
+    } catch (failure) {
+      this.mutableFailure.set(messageOf(failure));
+      return false;
+    }
+  }
+
+  /**
+   * Puts a document back as a snapshot holds it (#209). The engine wants it closed, so unsaved edits are saved first,
+   * where the snapshot it keeps of how the document stood can bring them back, and it opens again after.
+   * @returns False when it did not happen, and the failure says why.
+   */
+  async restoreSnapshot(path: string, id: string): Promise<boolean> {
+    if (!(await this.saveFirst(path))) {
+      return false;
+    }
+
+    const project = this.mutableTabs().find(tab => tab.path === path)?.project ?? null;
+    this.startAction();
+    let failed: string | null = null;
+    try {
+      if (!(await this.remove(path, false))) {
+        return false;
+      }
+
+      const client = await this.library.api();
+      unwrap(await client.POST('/api/v1/library/snapshots/restore', { body: { path, id } }));
+    } catch (failure) {
+      failed = messageOf(failure);
+    }
+
+    if (project) {
+      await this.openDocument(project, path);
+    }
+
+    if (failed !== null) {
+      this.mutableFailure.set(failed);
+    }
+
+    return failed === null;
+  }
+
+  /** Saves a document with unsaved edits, brought to the front to do it. False if that could not be done. */
+  private async saveFirst(path: string): Promise<boolean> {
+    const tab = this.mutableTabs().find(held => held.path === path);
+    if (!tab?.dirty) {
+      return true;
+    }
+
+    await this.activate(path);
+    return this.saveActive();
+  }
+
   /** Puts the question off: nothing is decided, so the work stays and the next open asks again. */
   dismissRecovery(): void {
     this.recoverable.set(null);

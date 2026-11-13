@@ -3,6 +3,7 @@ using Patina.Contracts;
 using Patina.Library;
 using Patina.Server.Stacks;
 using Patina.Server.Viewport;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace Patina.Server.Api;
@@ -12,6 +13,22 @@ static class PatinaApi {
     const string ViewportTag = "Viewport";
 
     const int ApiVersion = 1;
+
+    /// <summary>How much of Vixen's commit its version keeps, as Git abbreviates one.</summary>
+    const int CommitShown = 9;
+
+    /// <summary>The Vixen the Server was built with: its version, then its commit after a plus.</summary>
+    static readonly string VixenVersion = Shortened(
+        typeof(Vixen.Texturing.Layers.LayerStackAsset).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion
+        ?? "unknown"
+    );
+
+    static string Shortened(string version) =>
+        version.IndexOf('+', StringComparison.Ordinal) is var plus and >= 0 && version.Length > plus + 1 + CommitShown
+            ? version[..(plus + 1 + CommitShown)]
+            : version;
 
     public static void MapPatinaApi(this IEndpointRouteBuilder app) {
         var api = app.MapGroup("/api/v1");
@@ -27,7 +44,7 @@ static class PatinaApi {
                             worker.Status,
                             TextureSizes.Sides,
                             TextureSizes.Default
-                        )
+                        ) { Vixen = VixenVersion }
                     )
             )
             .WithName("GetSystem")

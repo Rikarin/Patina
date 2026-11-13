@@ -214,7 +214,10 @@ public sealed class LibraryApiTests : IDisposable {
             Token
         );
         Assert.Equal(
-            ["empty", "outputs", "Brushed Steel", "Moss", "Rough Stone", "Terracotta"],
+            [
+                "empty", "outputs", "Brushed Steel", "Clay", "Concrete", "Copper", "Dark Iron", "Gold Leaf", "Moss",
+                "Plaster", "Rough Stone", "Rubber", "Sand", "Terracotta"
+            ],
             templates!.Select(static term => term.Value)
         );
         Assert.Equal("Material Outputs", templates![1].Label);

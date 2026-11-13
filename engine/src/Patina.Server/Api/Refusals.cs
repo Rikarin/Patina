@@ -270,4 +270,10 @@ public static class Refusals {
 
     public static ProblemHttpResult NoLibraryOpen() =>
         Problem("The Server was started with no library.", StatusCodes.Status404NotFound, NoLibrary);
+
+    /// <summary>A snapshot of a document with unsaved edits, which its file does not hold yet (#209).</summary>
+    public const string SnapshotUnsaved = "snapshot-unsaved";
+
+    /// <summary>A snapshot put back into a document that is open, whose session would write over it (#209).</summary>
+    public const string SnapshotDocumentOpen = "snapshot-document-open";
 }
