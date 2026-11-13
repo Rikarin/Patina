@@ -1006,6 +1006,42 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/snapshots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A document's snapshots, newest first. */
+    get: operations['GetDocumentSnapshots'];
+    put?: never;
+    /** Keeps the document's file and its paint as they are saved, under a name. Unsaved edits are refused. */
+    post: operations['TakeDocumentSnapshot'];
+    /** Forgets a snapshot. The document is not changed. */
+    delete: operations['DeleteDocumentSnapshot'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/snapshots/restore': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Puts a closed document back as a snapshot holds it, after keeping a snapshot of how it stood. */
+    post: operations['RestoreDocumentSnapshot'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/thumbnails': {
     parameters: {
       query?: never;
@@ -2906,6 +2942,38 @@ export interface components {
       path: string;
       /** @description True puts it in place of the file, and false forgets it. */
       restore: boolean;
+    };
+    /** @description A named checkpoint of a document: its file and the paint it names, as they were when it was taken (#209). */
+    DocumentSnapshot: {
+      /**
+       * Format: uuid
+       * @description Which snapshot, for a restore or a delete.
+       */
+      id: string;
+      /** @description What the person called it. */
+      name: string;
+      /**
+       * Format: date-time
+       * @description When it was taken.
+       */
+      taken: string;
+      /**
+       * Format: int32
+       * @description How many files it holds: the document and its paint.
+       */
+      files: number;
+      /**
+       * Format: int64
+       * @description How large those files are together, before any is shared with another snapshot.
+       */
+      bytes: number;
+    };
+    /** @description A document's snapshots, newest first. */
+    DocumentSnapshotList: {
+      /** @description The document, below the library. */
+      path: string;
+      /** @description Its snapshots, newest first. */
+      items: components['schemas']['DocumentSnapshot'][];
     };
     /** @description One file of a preset changed for one export. */
     ExportFileChoice: {
@@ -5350,6 +5418,23 @@ export interface components {
     ServerPreferences: {
       /** @description How unsaved work is kept. */
       autosave: components['schemas']['AutosavePreferences'];
+    };
+    /** @description Puts a document back as a snapshot holds it, or forgets a snapshot. */
+    SnapshotRequest: {
+      /** @description The document, below the library. */
+      path: string;
+      /**
+       * Format: uuid
+       * @description The snapshot.
+       */
+      id: string;
+    };
+    /** @description Takes a snapshot of a document as its file stands. */
+    SnapshotTakeRequest: {
+      /** @description The document, below the library. */
+      path: string;
+      /** @description What to call it. Empty gives it a name by number. */
+      name?: null | string;
     };
     /** @description An anchor point and every place that reads it. */
     StackAnchor: {
@@ -11059,6 +11144,207 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['PackagePublished'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetDocumentSnapshots: {
+    parameters: {
+      query: {
+        path: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DocumentSnapshotList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  TakeDocumentSnapshot: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SnapshotTakeRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DocumentSnapshot'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  DeleteDocumentSnapshot: {
+    parameters: {
+      query: {
+        path: string;
+        id: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DocumentSnapshotList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RestoreDocumentSnapshot: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SnapshotRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DocumentSnapshot'];
         };
       };
       /** @description Bad Request */

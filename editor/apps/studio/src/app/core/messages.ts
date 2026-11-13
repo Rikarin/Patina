@@ -59,6 +59,8 @@ const Words: Readonly<Record<string, string>> = {
     'Several colors are picked out of a mesh map or a picture, so this mask needs one as its source. Choose a mesh map or a picture first.',
   'library-conflict': 'Something in the library is in the way. {reason}',
   'library-refused': 'The library can’t do that. {reason}',
+  'snapshot-unsaved': 'Save the document first, so the snapshot holds what you see.',
+  'snapshot-document-open': 'Close the document first, so the snapshot isn’t written over.',
   'material-missing': 'That material isn’t in the library any more. It may have been deleted outside Patina.',
   'compound-needs-graph': 'A compound is copied beside the graph that uses it. Open that graph first.'
 };

@@ -3935,6 +3935,255 @@
         }
       }
     },
+    "/api/v1/library/snapshots": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "A document\u0027s snapshots, newest first.",
+        "operationId": "GetDocumentSnapshots",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSnapshotList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps the document\u0027s file and its paint as they are saved, under a name. Unsaved edits are refused.",
+        "operationId": "TakeDocumentSnapshot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnapshotTakeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Forgets a snapshot. The document is not changed.",
+        "operationId": "DeleteDocumentSnapshot",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSnapshotList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/snapshots/restore": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Puts a closed document back as a snapshot holds it, after keeping a snapshot of how it stood.",
+        "operationId": "RestoreDocumentSnapshot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnapshotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/thumbnails": {
       "post": {
         "tags": [
@@ -9320,6 +9569,64 @@
           }
         },
         "description": "What to do with autosaved work, with the document closed."
+      },
+      "DocumentSnapshot": {
+        "required": [
+          "id",
+          "name",
+          "taken",
+          "files",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Which snapshot, for a restore or a delete.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "What the person called it."
+          },
+          "taken": {
+            "type": "string",
+            "description": "When it was taken.",
+            "format": "date-time"
+          },
+          "files": {
+            "type": "integer",
+            "description": "How many files it holds: the document and its paint.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "How large those files are together, before any is shared with another snapshot.",
+            "format": "int64"
+          }
+        },
+        "description": "A named checkpoint of a document: its file and the paint it names, as they were when it was taken (#209)."
+      },
+      "DocumentSnapshotList": {
+        "required": [
+          "path",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The document, below the library."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentSnapshot"
+            },
+            "description": "Its snapshots, newest first."
+          }
+        },
+        "description": "A document\u0027s snapshots, newest first."
       },
       "ExportFileChoice": {
         "required": [
@@ -15182,6 +15489,45 @@
           }
         },
         "description": "The Server\u0027s settings that belong to the person and not to a library or project, kept in a plain file beside\nthe discovery file, which anyone can read and edit."
+      },
+      "SnapshotRequest": {
+        "required": [
+          "path",
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The document, below the library."
+          },
+          "id": {
+            "type": "string",
+            "description": "The snapshot.",
+            "format": "uuid"
+          }
+        },
+        "description": "Puts a document back as a snapshot holds it, or forgets a snapshot."
+      },
+      "SnapshotTakeRequest": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The document, below the library."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What to call it. Empty gives it a name by number."
+          }
+        },
+        "description": "Takes a snapshot of a document as its file stands."
       },
       "StackAnchor": {
         "required": [
