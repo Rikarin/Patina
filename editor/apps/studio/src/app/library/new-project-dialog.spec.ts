@@ -30,12 +30,12 @@ async function render() {
   return { fixture, createProject, choose };
 }
 
-const byId = <T extends HTMLElement>(id: string) => document.querySelector<T>(`[data-testid="${id}"]`);
+const byId = (id: string) => document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
 
 describe('NewProjectDialog', () => {
   it('starts a project wider than it is tall, from a mesh chosen as every file is (#144, #4)', async () => {
     const { fixture, createProject, choose } = await render();
-    const name = byId<HTMLInputElement>('new-project-name');
+    const name = document.querySelector<HTMLInputElement>('[data-testid="new-project-name"]');
     if (!name) {
       throw new Error('New Project shows no name.');
     }
