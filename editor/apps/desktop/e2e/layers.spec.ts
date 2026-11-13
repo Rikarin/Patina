@@ -150,7 +150,7 @@ test('a fill shows only the projection controls that apply', async () => {
   await window.getByTestId('paint-add-fill').click();
   // A constant is the same from every side: it lands over the UVs or on a decal or a path, and nothing projects it.
   // ⚠ Waits for the new fill to be in Properties: a count of none passed before it got there, whatever it offered.
-  await expect(window.getByTestId('paint-fill-source')).toContainText('Constant');
+  await expect(window.getByTestId('paint-fill-source')).toContainText('Uniform');
   await window.getByTestId('paint-fill-projection').click();
   await expect(window.getByRole('option', { name: 'UV', exact: true }).locator('visible=true')).toHaveCount(1);
   await expect(window.getByRole('option', { name: 'Tri-planar' }).locator('visible=true')).toHaveCount(0);
