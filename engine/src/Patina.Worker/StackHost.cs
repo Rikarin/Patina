@@ -339,6 +339,10 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
         readonly TexturePlanEvaluator evaluator;
         readonly LayerStackPictures fill;
+
+        /// <summary>The box the bake's position map spans, which every decal and path is read through (#133).</summary>
+        readonly IReadOnlyList<float>? positionBox;
+
         readonly List<Applied> applied = [];
         readonly Dictionary<long, Applied> known = [];
 
@@ -381,8 +385,9 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                 .Refusals.Select(static refusal => refusal.Message)
                 .ToArray();
             // The bake's normal and occlusion shade the set beneath its layers (#86).
+            positionBox = BakedMapPicture.PositionBox(load.MeshMaps);
             Run = new(evaluator, canvases, load.Path, fill) {
-                Draft = true, Baked = BakedMapPicture.Shading(load.MeshMaps)
+                Draft = true, Baked = BakedMapPicture.Shading(load.MeshMaps), PositionBox = positionBox
             };
             if (load.Checkpoint is { } checkpoint) {
                 Restore(checkpoint);
@@ -420,7 +425,10 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                 // A draft, as the picture the click landed on is one: a layer half set up is weighed as that picture
                 // draws it, rather than refusing the stack so that nothing above it is found.
                 using LayerStackEvaluator run = new(evaluator, canvases, path, fill) {
-                    Draft = true, Weighing = !inPicture, Asked = inPicture ? layer : string.Empty
+                    Draft = true,
+                    Weighing = !inPicture,
+                    Asked = inPicture ? layer : string.Empty,
+                    PositionBox = positionBox
                 };
                 var refused = inPicture
                     ? run.Prepare(document, chosen, compounds.Registry, compounds.Source)

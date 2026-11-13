@@ -7,6 +7,7 @@ import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { labelsOf, valuesOf } from '../core/labels';
 import { toDegrees, toRadians } from '../core/numbers';
+import { ViewportClient } from '../viewport/viewport-client';
 import { PaintStore } from './paint-store';
 import { Unwarped } from './surface-frame';
 
@@ -52,6 +53,18 @@ const Samplings: readonly { value: string; label: string }[] = [
             (click)="paint.warping.set(!paint.warping())"
           >
             Warp
+          </button>
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            data-testid="surface-warp-geometry"
+            [disabled]="!onMesh()"
+            title="Spreads the picture evenly along the surface under the decal, measured as the viewport sees it"
+            (click)="warpToGeometry()"
+          >
+            Warp to Geometry
           </button>
           @if (warped()) {
             <button
@@ -250,6 +263,7 @@ const Samplings: readonly { value: string; label: string }[] = [
 })
 export class SurfaceFields {
   protected readonly paint = inject(PaintStore);
+  private readonly viewport = inject(ViewportClient);
   readonly layer = input.required<StackLayer>();
   protected readonly samplings = valuesOf(Samplings);
   protected readonly samplingName = labelsOf(Samplings);
@@ -258,6 +272,10 @@ export class SurfaceFields {
   protected readonly decal = computed(() => this.layer().decal ?? null);
   protected readonly path = computed(() => this.layer().path ?? null);
   protected readonly count = computed(() => this.path()?.points.length ?? 0);
+  protected warpToGeometry(): void {
+    void this.paint.warpToGeometry(this.viewport.camera());
+  }
+
   protected readonly warped = computed(() => {
     const warp = this.decal()?.warp ?? [];
     return warp.length === Unwarped.length && warp.some((value, at) => Math.abs(value - (Unwarped[at] ?? 0)) > 1e-6);

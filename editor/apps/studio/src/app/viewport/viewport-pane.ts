@@ -24,11 +24,13 @@ import { Preferences } from '../core/preferences';
 import { SystemStatus } from '../core/system-status';
 import { ViewOptions } from '../core/view-options';
 import { GraphViews } from '../graph/graph-views';
+import { DragType as LibraryDrag } from '../library/library-tree';
 import { ProjectStore } from '../library/project-store';
 import { MaterialUse } from '../paint/material-use';
 import { PaintStore, pressureOf } from '../paint/paint-store';
 import { ScreenPictureOverlay } from '../paint/screen-picture';
 import { StrokeGesture } from '../paint/stroke-gesture';
+import { isPicture, pictureName } from '../paint/surface-frame';
 import { SurfaceGuide } from '../paint/surface-guide';
 import { project as onPicture, symmetryCopies, symmetryGuide } from '../paint/symmetry-guide';
 import { ToolStrip } from '../paint/tool-strip';
@@ -867,8 +869,19 @@ export class ViewportPane implements AfterViewInit {
     return { ...this.spot(event), pressure: pressureOf(event) };
   }
 
-  /** A material from the shelf can land on a region of the mesh (#110). */
+  /** A material from the shelf can land on a region of the mesh (#110), and a picture becomes a decal there (#133). */
   protected overMesh(event: DragEvent): void {
+    const carries = this.carriedPicture(event);
+    if (carries) {
+      // Not the window's: a file dropped here is a decal, not a file brought into the project.
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = carries === 'file' ? 'copy' : 'move';
+      }
+      return;
+    }
+
     if (this.using.takesRegion(this.using.carried())) {
       event.preventDefault();
       if (event.dataTransfer) {
@@ -879,6 +892,11 @@ export class ViewportPane implements AfterViewInit {
 
   /** Fills the region of the id map under the drop with the material, as a new layer kept to that region. */
   protected async dropOnMesh(event: DragEvent): Promise<void> {
+    if (this.carriedPicture(event)) {
+      await this.dropDecal(event);
+      return;
+    }
+
     const material = this.using.carried();
     if (!material || !this.using.takesRegion(material)) {
       return;
@@ -890,6 +908,56 @@ export class ViewportPane implements AfterViewInit {
     await this.using.useOnRegion(material, colour);
     if (this.using.failure()) {
       this.activity.report({ tone: 'warning', source: 'Viewport', text: this.using.failure() ?? '' });
+    }
+  }
+
+  /**
+   * What a drag over the mesh carries that could become a decal: a file from this machine, or something from the library
+   * tree, while a texture set is on the mesh. Which file it is is known only on the drop.
+   */
+  private carriedPicture(event: DragEvent): 'file' | 'library' | null {
+    const types = event.dataTransfer?.types ?? [];
+    if (!this.paint.worn() || this.project.active()?.kind !== 'texturing') {
+      return null;
+    }
+
+    return types.includes('Files') ? 'file' : types.includes(LibraryDrag) ? 'library' : null;
+  }
+
+  /**
+   * A picture dropped on the mesh, from this machine or the library, is brought into the project and laid where it
+   * landed as a decal on a new fill, at the picture's own shape (#133).
+   */
+  private async dropDecal(event: DragEvent): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    // What the drop carried is read now: it is gone once this handler awaits.
+    const file = event.dataTransfer?.files[0] ?? null;
+    const listed = event.dataTransfer?.getData(LibraryDrag) ?? '';
+    const at = { ...this.spot(event), pressure: 1 };
+    const aim = this.aim();
+    const bridge = desktop();
+    let source: string | null = null;
+    if (file) {
+      source = bridge ? bridge.pathOf(file) : null;
+    } else if (listed) {
+      try {
+        const paths: unknown = JSON.parse(listed);
+        source = Array.isArray(paths) && typeof paths[0] === 'string' ? paths[0] : null;
+      } catch {
+        source = null;
+      }
+    }
+
+    if (!source || !isPicture(source, this.status.pictures())) {
+      this.activity.report({ tone: 'warning', source: 'Viewport', text: 'Only a picture can be placed as a decal.' });
+      return;
+    }
+
+    const aspect = file ? await aspectOf(file) : 1;
+    const picture = await this.project.bringPicture(source);
+    if (picture) {
+      await this.paint.addDecalOnMesh(picture, pictureName(source), at, aim, aspect);
     }
   }
 
@@ -1000,3 +1068,15 @@ function fileName(path: string): string {
 }
 
 /** A bake's map as the view list names it: <code>ao</code> as Ao would read badly. */
+
+/** A picture's height over its width, or one when the browser cannot read it (an EXR, say): the decal starts square. */
+async function aspectOf(file: Blob): Promise<number> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const aspect = bitmap.width > 0 ? bitmap.height / bitmap.width : 1;
+    bitmap.close();
+    return aspect;
+  } catch {
+    return 1;
+  }
+}

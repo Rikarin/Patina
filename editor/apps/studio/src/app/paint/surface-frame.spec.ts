@@ -2,13 +2,20 @@ import type { StackDecal, StackView, ViewportPick } from '@patina/api-client';
 import { describe, expect, it } from 'vitest';
 import {
   Unwarped,
+  decalChannel,
   decalFrame,
   decalOutline,
   extendedPath,
+  geometryLines,
+  geometryWarp,
+  halfwayAlong,
+  isPicture,
   onDecal,
   onDecalPlane,
+  pictureName,
   placedDecal,
   turned,
+  underDecal,
   warpGrid
 } from './surface-frame';
 import { project } from './symmetry-guide';
@@ -123,5 +130,70 @@ describe('surface frame', () => {
     expect(twice.points).toHaveLength(2);
     expect(twice.radius).toBe(once.radius);
     close(must(twice.points[1]).position, [1, 1, 0.3]);
+  });
+});
+
+describe('a picture dropped on the mesh (#133)', () => {
+  it('colours the base color where the set has one', () => {
+    expect(decalChannel(['roughness', 'baseColor'])).toBe('baseColor');
+    expect(decalChannel(['roughness'])).toBe('roughness');
+    expect(decalChannel([])).toBe('baseColor');
+  });
+
+  it('is a picture by its extension against the formats the engine reads', () => {
+    expect(isPicture('C:\\Pictures\\Logo.PNG', ['.png', '.exr'])).toBe(true);
+    expect(isPicture('library/projects/a/logo.exr', ['png', 'exr'])).toBe(true);
+    expect(isPicture('crate.glb', ['.png'])).toBe(false);
+    expect(isPicture('folder.png/readme', ['.png'])).toBe(false);
+    expect(isPicture('anything.tga', null)).toBe(true);
+  });
+
+  it('names its layer after the file', () => {
+    expect(pictureName('C:\\Pictures\\Worn Logo.png')).toBe('Worn Logo');
+    expect(pictureName('projects/a/pictures/stripe.v2.exr')).toBe('stripe.v2');
+  });
+});
+
+describe('Warp to Geometry (#134)', () => {
+  /** The decal's square, laid flat: a place at (s, t) is where the decal says it is. */
+  const flat = (s: number, t: number): [number, number, number] => [(s - 0.5) * 1, (0.5 - t) * 0.5, 0];
+
+  it('leaves a flat surface unwarped', () => {
+    const lines = geometryLines().map(line => line.map(({ s, t }) => flat(s, t)));
+    const warp = geometryWarp(decal, lines);
+    warp.forEach((value, at) => expect(value).toBeCloseTo(Unwarped[at] ?? 0, 6));
+  });
+
+  it('moves the middle toward where the surface turns away, so each half of the picture covers as much of it', () => {
+    // The right half of each row bends back at 60°, so it is twice as long on the surface as across the square: of
+    // the 1.5 the row runs, half is reached a quarter into the right half, at 0.625 across, not at the middle.
+    const bent = (s: number, t: number): [number, number, number] =>
+      s <= 0.5 ? flat(s, t) : [s - 0.5, (0.5 - t) * 0.5, -(s - 0.5) * Math.sqrt(3)];
+    const lines = geometryLines().map(line => line.map(({ s, t }) => bent(s, t)));
+    const warp = geometryWarp(decal, lines);
+
+    for (const row of [0, 1, 2]) {
+      expect(warp[(row * 3 + 1) * 2]).toBeCloseTo(0.625, 6);
+      // The edges stay on the square's.
+      expect(warp[row * 3 * 2]).toBe(0);
+      expect(warp[(row * 3 + 2) * 2]).toBe(1);
+    }
+
+    // Down the columns nothing bends.
+    for (const column of [0, 1, 2]) {
+      expect(warp[(3 + column) * 2 + 1]).toBeCloseTo(0.5, 6);
+    }
+  });
+
+  it('counts a stretch it could not find as flat', () => {
+    expect(halfwayAlong([null, null, null], 1)).toBeCloseTo(0.5);
+    expect(halfwayAlong([[0, 0, 0], null, [3, 0, 0]], 1)).toBeCloseTo(0.5);
+    expect(halfwayAlong([], 1)).toBe(0.5);
+  });
+
+  it('takes only what a pick found under the decal, within its depth and facing it', () => {
+    expect(underDecal(decal, [0.2, 0, 0.05], [0, 0, 1])).toBe(true);
+    expect(underDecal(decal, [0.2, 0, 0.5], [0, 0, 1])).toBe(false);
+    expect(underDecal(decal, [0.2, 0, 0], [0, 0, -1])).toBe(false);
   });
 });

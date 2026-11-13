@@ -1445,4 +1445,59 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     store.moveScreenPicture({ scale: 0 });
     expect(store.screenPicture()?.scale).toBeGreaterThan(0);
   });
+
+  it('lays a picture dropped on the mesh as a decal on a new fill, at its shape, colouring the base color (#133)', async () => {
+    const { store, bodies, server } = await onMesh();
+    const hit = { found: true, view: PickedView, u: 0.5, v: 0.5, position: [1, 2, 3], normal: [0, 0, 1] };
+    server.reply = (method, path) => {
+      if (path.endsWith('/viewport/pick')) {
+        return Response.json({ ...hit, bounds: [0, 0, 0, 2, 2, 2] });
+      }
+
+      // Once the fill is added, the Server's stack has it.
+      return method === 'GET' && /^\/api\/v1\/stacks\/s1$/u.test(path) && bodies.length > 0
+        ? Response.json(stack({ layers: [layer('base', 'fill'), layer('paint', 'paint'), layer('logo', 'fill')] }))
+        : null;
+    };
+
+    expect(await store.addDecalOnMesh('pictures/logo.png', 'logo', { x: 50, y: 50, pressure: 1 }, aim, 0.5)).toBe(true);
+
+    const commands = bodies.flatMap(body => (body as { commands: Record<string, unknown>[] }).commands);
+    expect(commands[0]).toMatchObject({ op: 'addLayer', kind: 'fill', name: 'logo' });
+    const placed = commands[1] as { decal: { width: number; height: number; centre: number[]; box: number[] } };
+    expect(placed).toMatchObject({
+      op: 'setLayer',
+      layer: 'logo',
+      fill: 'Texture',
+      textures: { baseColor: 'pictures/logo.png' },
+      channels: ['baseColor'],
+      projection: 'Decal'
+    });
+    expect(placed.decal.centre).toEqual([1, 2, 3]);
+    expect(placed.decal.box).toEqual([0, 0, 0, 2, 2, 2]);
+    expect(placed.decal.height).toBeCloseTo(placed.decal.width * 0.5);
+  });
+
+  it('makes no layer for a picture dropped beside the mesh, and says why (#133)', async () => {
+    const { store, bodies, server } = await onMesh();
+    server.reply = (_method, path) =>
+      path.endsWith('/viewport/pick') ? Response.json({ found: false, view: PickedView, u: 0, v: 0 }) : null;
+
+    expect(await store.addDecalOnMesh('pictures/logo.png', 'logo', { x: 1, y: 1, pressure: 1 }, aim)).toBe(false);
+    expect(bodies).toHaveLength(0);
+    expect(store.failure()).toContain('on the mesh');
+  });
+
+  it('sets no decal when no new layer came back, rather than moving the chosen one (#133)', async () => {
+    const { store, bodies, server } = await onMesh();
+    server.reply = (_method, path) =>
+      path.endsWith('/viewport/pick')
+        ? Response.json({ found: true, view: PickedView, u: 0.5, v: 0.5, position: [0, 0, 0], normal: [0, 0, 1] })
+        : null;
+    store.layer.set('base');
+
+    expect(await store.addDecalOnMesh('pictures/logo.png', 'logo', { x: 50, y: 50, pressure: 1 }, aim)).toBe(false);
+    const commands = bodies.flatMap(body => (body as { commands: Record<string, unknown>[] }).commands);
+    expect(commands.map(command => command['op'])).toEqual(['addLayer']);
+  });
 });

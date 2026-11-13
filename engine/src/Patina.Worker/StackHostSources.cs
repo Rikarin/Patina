@@ -88,7 +88,9 @@ sealed partial class StackHost {
             }
 
             // A draft, as the picture the artist was looking at is one; a refusal reads as nothing to lay.
-            using LayerStackEvaluator run = new(evaluator, canvases, path, fill) { Draft = true };
+            using LayerStackEvaluator run = new(evaluator, canvases, path, fill) {
+                Draft = true, PositionBox = positionBox
+            };
             if (run.Prepare(written, chosen, compounds.Registry, compounds.Source).Count > 0) {
                 return maps;
             }
