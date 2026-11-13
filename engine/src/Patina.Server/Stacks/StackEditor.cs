@@ -483,14 +483,9 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
 
     /// <summary>What a channel holds before anything paints it, which is what leaves its material alone.</summary>
     /// <exception cref="StackEditRefusedException">It is not a channel a stack can have.</exception>
+    /// <remarks>Vixen's own answer, which a filter reading a channel the set lacks reads too (#254).</remarks>
     public static float[] DefaultOf(string usage) =>
-        usage switch {
-            "normal" => [0.5f, 0.5f, 1f, 1f],
-            "baseColor" or "roughness" or "height" => [0.5f, 0.5f, 0.5f, 1f],
-            "opacity" or "occlusion" or "mask" => [1f, 1f, 1f, 1f],
-            "metalness" or "emissive" => [0f, 0f, 0f, 1f],
-            _ => throw new StackEditRefusedException($"'{usage}' is not a channel.")
-        };
+        ChannelAsset.Untouched(usage) ?? throw new StackEditRefusedException($"'{usage}' is not a channel.");
 
     SetDocumentCommand AddChannel(string usage) {
         if (!StackDocuments.Vocabulary.Usages.Any(term => term.Value == usage)) {
