@@ -7,6 +7,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Hydraulic Erosion, under Surface (#218): rain runs down a height map, wearing its slopes and laying silt where the water slows, with Rain, Evaporation, Capacity, Erosion, Deposition and a step count; ground is moved and never made or lost. A second output, Water, says where water stands at the end, for wet or silted ground. It does not yet cut long branching channels.
+- Graphs that make environments (#180), under the new Environment group: Sky draws a clear daylight sky as a panorama from the sun's position and the haze, with a sun and a ground; Panorama Rotate turns a panorama about the vertical, tips or rolls it; Panorama Light adds a round light at a direction; and Horizon replaces the ground below a horizon with a color. Exposure, under Color, brightens or darkens a picture by stops without clipping.
+- Crystal, under Noise (#42): faceted shards, each a tone of its own falling away in flat planes, finer shards over coarser.
+- A Pixel Processor's expression can read its inputs' neighbours (#42): `ReadA(coord + int2(1, 0))` is the texel to the right, wrapping round the edges when the graph tiles.
+
 - Snapshots (#209), under the undo history: Take Snapshot keeps the document in front as it is saved, its paint with it, under a name, and Restore puts it back. A snapshot outlives closing the document and travels with the library: it is listed in `.snapshots/` beside the document and its bytes kept under `.revisions/`, where an unchanged paint file costs nothing more. Restoring first keeps how the document stood as a snapshot of its own, so it can be taken back. Through the API `GET`, `POST` and `DELETE /api/v1/library/snapshots` and `POST /api/v1/library/snapshots/restore`, refused with `snapshot-unsaved` or `snapshot-document-open`.
 - A sample to start from (#190, #34): Start's Samples copy **Knot**, a gold knot around a red sphere, into the library as a project of your own and open it. Its mesh is laid out already, and each of its two texture sets has a few layers whose masks are Patina's own grunges, so it draws with no bake. It is CC0, in `content/samples`. Through the API `GET` and `POST /api/v1/library/samples`.
 - What the library costs (#207), in the Inspector while nothing in the Library is chosen: each folder's and project's documents' maps, uncompressed at each document's size, costliest first, with a click going into a folder; and below it the documents there over a budget of 4 to 256 MB. The scan keeps each stack's size and map count in the index, which is rebuilt once for it, so neither opens a document. Through the API `GET /api/v1/library/costs` and `GET /api/v1/library/costs/documents`.
@@ -235,6 +240,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A graph with a node output nothing reads no longer races it for memory: the next picture written in the same place could come out as the unused one (#218's Water output found it).
 - A bake's preview keeps to what the viewport shows alone (#136): with some parts isolated, the reach, the cage and the seams are drawn over those parts and nothing of the rest, and with none of the texture set shown it draws nothing and says so.
 - Changing a texture set's Width or Height marks its mesh maps out of date when they were baked at another shape (#262): Layers, the Bake dialog and Checks say they need baking again, as they do after a mesh or UV set change. Through the API a set's and a document's `bakeStale` says `shape`.
 - A bake that follows a texture set's shape reads the set as it is open, so Quick Bake right after changing Height bakes at the new shape before the set is saved (#253).
