@@ -56,21 +56,21 @@ public static class PlacementNode {
         var a11 = inverseY * c;
         Transform2DValues? best = null;
         var margin = 0f;
-        foreach (var turn in (float[])[placement.Rotation, 0f, placement.Rotation + (MathF.PI / 4f)]) {
+        foreach (var turn in (float[])[placement.Rotation, 0f, placement.Rotation + MathF.PI / 4f]) {
             // U = R(−φ)·A is the node's shear times its scale: [[a, shearX·b], [shearY·a, b]].
             var (cos, sin) = (MathF.Cos(turn), MathF.Sin(turn));
-            var u00 = (cos * a00) + (sin * a10);
-            var u01 = (cos * a01) + (sin * a11);
-            var u10 = (-sin * a00) + (cos * a10);
-            var u11 = (-sin * a01) + (cos * a11);
+            var u00 = cos * a00 + sin * a10;
+            var u01 = cos * a01 + sin * a11;
+            var u10 = -sin * a00 + cos * a10;
+            var u11 = -sin * a01 + cos * a11;
             var least = Math.Min(Math.Abs(u00), Math.Abs(u11));
             if (least <= margin) {
                 continue;
             }
 
             margin = least;
-            var offsetX = (a00 * (0.5f - placement.OffsetX)) + (a01 * (0.5f - placement.OffsetY)) - 0.5f;
-            var offsetY = (a10 * (0.5f - placement.OffsetX)) + (a11 * (0.5f - placement.OffsetY)) - 0.5f;
+            var offsetX = a00 * (0.5f - placement.OffsetX) + a01 * (0.5f - placement.OffsetY) - 0.5f;
+            var offsetY = a10 * (0.5f - placement.OffsetX) + a11 * (0.5f - placement.OffsetY) - 0.5f;
             best = new(turn, u00, u11, offsetX, offsetY, u01 / u11, u10 / u00);
         }
 

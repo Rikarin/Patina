@@ -36,7 +36,7 @@ public sealed partial class StackProcessTests {
 
         byte[] Texel(string file, float across) {
             var picture = MapPictures.ReadFile(Path.Combine(exports, file));
-            var at = ((picture.Height / 2 * picture.Width) + (int)(picture.Width * across)) * picture.Channels;
+            var at = (picture.Height / 2 * picture.Width + (int)(picture.Width * across)) * picture.Channels;
             return [
                 ..Enumerable.Range(0, picture.Channels)
                     .Select(lane => (byte)MathF.Round(picture.Samples[at + lane] * 255))
@@ -65,7 +65,7 @@ public sealed partial class StackProcessTests {
         const int Side = 8;
         var pixels = new byte[Side * Side * 3];
         for (var texel = 0; texel < Side * Side; texel++) {
-            pixels[(texel * 3) + (texel % Side < Side / 2 ? 0 : 2)] = 255;
+            pixels[texel * 3 + (texel % Side < Side / 2 ? 0 : 2)] = 255;
         }
 
         File.WriteAllBytes(Path.Combine(folder, "halves.png"), PngCodec.Encode8(Side, Side, 3, pixels));

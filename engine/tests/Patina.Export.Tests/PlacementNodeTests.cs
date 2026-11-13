@@ -12,20 +12,20 @@ public sealed class PlacementNodeTests {
     /// <summary>Where <c>Transform2D.rvn</c> reads its source for an output point, on a square picture.</summary>
     static (float U, float V) NodeReads(Transform2DValues node, float u, float v) {
         var (c, s) = (MathF.Cos(node.Rotation), MathF.Sin(node.Rotation));
-        var a00 = (c * node.ScaleX) - (s * node.ShearY * node.ScaleX);
-        var a01 = (c * node.ShearX * node.ScaleY) - (s * node.ScaleY);
-        var a10 = (s * node.ScaleX) + (c * node.ShearY * node.ScaleX);
-        var a11 = (s * node.ShearX * node.ScaleY) + (c * node.ScaleY);
-        var det = (a00 * a11) - (a01 * a10);
+        var a00 = c * node.ScaleX - s * node.ShearY * node.ScaleX;
+        var a01 = c * node.ShearX * node.ScaleY - s * node.ScaleY;
+        var a10 = s * node.ScaleX + c * node.ShearY * node.ScaleX;
+        var a11 = s * node.ShearX * node.ScaleY + c * node.ScaleY;
+        var det = a00 * a11 - a01 * a10;
         var (dx, dy) = (u - 0.5f - node.OffsetX, v - 0.5f - node.OffsetY);
-        return (((a11 * dx) - (a01 * dy)) / det + 0.5f, ((-a10 * dx) + (a00 * dy)) / det + 0.5f);
+        return ((a11 * dx - a01 * dy) / det + 0.5f, (-a10 * dx + a00 * dy) / det + 0.5f);
     }
 
     /// <summary>Where glTF's <c>KHR_texture_transform</c> reads the picture: scaled, turned, moved.</summary>
     static (float U, float V) GltfReads(ImportedPlacement placement, float u, float v) {
         var (c, s) = (MathF.Cos(placement.Rotation), MathF.Sin(placement.Rotation));
         var (x, y) = (u * placement.ScaleX, v * placement.ScaleY);
-        return ((c * x) + (s * y) + placement.OffsetX, (-s * x) + (c * y) + placement.OffsetY);
+        return (c * x + s * y + placement.OffsetX, -s * x + c * y + placement.OffsetY);
     }
 
     static void AssertSameEverywhere(ImportedPlacement placement) {

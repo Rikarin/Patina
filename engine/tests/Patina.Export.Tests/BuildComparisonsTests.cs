@@ -55,7 +55,7 @@ public sealed class BuildComparisonsTests : IDisposable {
             ],
             project.Files.Select(static f => (f.File, f.Change))
         );
-        Assert.Equal(new OutputComparison("Main", "k1", "k2", BuildChanges.Changed), Assert.Single(project.Outputs));
+        Assert.Equal(new("Main", "k1", "k2", BuildChanges.Changed), Assert.Single(project.Outputs));
         Assert.Equal((3, 1), (comparison.ChangedFiles, comparison.SameFiles));
     }
 
