@@ -32,7 +32,9 @@ public sealed class EngineContractTests : IDisposable {
 
     public void Dispose() => folder.Delete(true);
 
-    /// <summary>A linear map's numbers as an sRGB file holds them. Emissive is linear in a project, as HDR light is.</summary>
+    /// <summary>
+    ///     A linear map's numbers as an sRGB file holds them. Emissive is linear in a project, as HDR light is.
+    /// </summary>
     static float[] Srgb(float[] linear) => [..linear.Select(MipChain.ToSrgb)];
 
     /// <summary>A normal made with green up as a file read with green down holds it.</summary>
@@ -44,10 +46,10 @@ public sealed class EngineContractTests : IDisposable {
 
     /// <summary>
     ///     What each engine reads, file by file: the ending of the file's name and its lanes in order. Sources:
-    ///     Unreal's texture import (sRGB colour, "Flip Green Channel" for OpenGL normals, which makes its own Y−) and the
-    ///     common ORM packing; Unity HDRP's Mask Map page (R metallic, G occlusion, B detail mask, A smoothness) and its
-    ///     emission in linear HDR; Unity URP's Lit page (metallic in R, smoothness in alpha by default); Godot 4's
-    ///     ORMMaterial3D (occlusion, roughness, metallic, in glTF's order) with OpenGL normals; glTF 2.0 §3.9
+    ///     Unreal's texture import (sRGB colour, "Flip Green Channel" for OpenGL normals, which makes its own Y−) and
+    ///     the common ORM packing; Unity HDRP's Mask Map page (R metallic, G occlusion, B detail mask, A smoothness)
+    ///     and its emission in linear HDR; Unity URP's Lit page (metallic in R, smoothness in alpha by default); Godot
+    ///     4's ORMMaterial3D (occlusion, roughness, metallic, in glTF's order) with OpenGL normals; glTF 2.0 §3.9
     ///     (occlusion R, roughness G, metallic B, +Y up).
     /// </summary>
     static IReadOnlyList<(string Engine, string Ending, float[] Lanes)> Table() => [
@@ -128,7 +130,9 @@ public sealed class EngineContractTests : IDisposable {
         }
     }
 
-    /// <summary>Every file of an engine's preset is in the table, so a file added to a preset needs its engine's word.</summary>
+    /// <summary>
+    ///     Every file of an engine's preset is in the table, so a file added to a preset needs its engine's word.
+    /// </summary>
     [Theory]
     [InlineData("unreal")]
     [InlineData("unity-hdrp")]
@@ -138,8 +142,11 @@ public sealed class EngineContractTests : IDisposable {
     public void Every_file_of_an_engines_preset_has_a_contract(string engine) {
         var endings = Table().Where(row => row.Engine == engine).Select(static row => row.Ending).ToList();
 
-        foreach (var texture in ExportPresetCatalog.Read(null).Find(engine)!.Textures) {
-            Assert.Contains(endings, ending => texture.File.EndsWith(ending, StringComparison.Ordinal));
-        }
+        var files = ExportPresetCatalog.Read(null).Find(engine)!.Textures.Select(static texture => texture.File);
+
+        Assert.DoesNotContain(
+            files,
+            file => !endings.Exists(ending => file.EndsWith(ending, StringComparison.Ordinal))
+        );
     }
 }

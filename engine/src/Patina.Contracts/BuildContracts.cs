@@ -261,9 +261,9 @@ public sealed record BuildRequest {
     public IReadOnlyList<Guid>? Projects { get; init; }
 
     /// <summary>
-    ///     Only these documents of the one project named, by their file below it, each a texture set of its own whatever
-    ///     it is: a graph in a texturing project or one that is not a material exports too. Null or empty for what the
-    ///     project exports.
+    ///     Only these documents of the one project named, by their file below it, each a texture set of its own
+    ///     whatever it is: a graph in a texturing project or one that is not a material exports too. Null or empty for
+    ///     what the project exports.
     /// </summary>
     public IReadOnlyList<string>? Documents { get; init; }
 
@@ -448,7 +448,8 @@ public sealed record ProjectReportPage(int Total, IReadOnlyList<ProjectReport> I
 public sealed record ExportDelivery(string Key, IReadOnlyList<string> Files) {
     /// <summary>
     ///     The texture set each file belongs to, by file, so that an export of some sets leaves the others' files
-    ///     alone. A file with no set, or one from a delivery before sets were kept, goes only when every set is exported.
+    ///     alone. A file with no set, or one from a delivery before sets were kept, goes only when every set is
+    ///     exported.
     /// </summary>
     public IReadOnlyDictionary<string, string>? Sets { get; init; }
 }

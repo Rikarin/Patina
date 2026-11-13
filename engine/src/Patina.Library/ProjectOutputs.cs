@@ -158,7 +158,9 @@ public static class ProjectOutputs {
         return [..exported.SelectMany(item => OfDocument(project, item, folder))];
     }
 
-    /// <summary>Whether a document makes maps an export can take: a texturing document, a graph or a material.</summary>
+    /// <summary>
+    ///     Whether a document makes maps an export can take: a texturing document, a graph or a material.
+    /// </summary>
     static bool Exportable(ProjectItem item) =>
         item.Kind is DocumentKinds.Texturing
             or DocumentKinds.Graph

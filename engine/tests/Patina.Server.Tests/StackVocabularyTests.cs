@@ -101,7 +101,9 @@ public sealed class StackVocabularyTests {
         );
     }
 
-    /// <summary>Port and parameter kinds have their words here, the one table every client reads them from (#198).</summary>
+    /// <summary>
+    ///     Port and parameter kinds have their words here, the one table every client reads them from (#198).
+    /// </summary>
     [Fact]
     public void A_port_or_parameter_kind_reads_as_what_it_holds() {
         var kinds = StackDocuments.Vocabulary.Kinds!.ToDictionary(static term => term.Value, static term => term.Label);
