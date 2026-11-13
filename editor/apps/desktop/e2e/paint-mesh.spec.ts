@@ -506,14 +506,14 @@ test('a preset takes up its brush, a radial symmetry paints its copies, and the 
   await pick(window, 'paint-symmetry', /^mirror$/iu);
   await pick(window, 'paint-symmetry-axis', /^x$/iu);
   await expect(window.getByTestId('viewport-symmetry').locator('polygon')).toBeVisible();
-  // The brush's ring has a copy across the plane, on the other side of the picture from it (#132).
+  // The brush's ring has a copy across the plane, well to the other side of it on the picture (#132).
   const area = await box();
   await window.mouse.move(area.x + area.width * 0.42, area.y + area.height * 0.45);
   const copy = window.getByTestId('viewport-brush-copy');
   await expect(copy).toHaveCount(1, { timeout: 10_000 });
   const ring = await window.getByTestId('viewport-brush').boundingBox();
   const mirrored = await copy.boundingBox();
-  expect(ring && mirrored && mirrored.x + mirrored.width / 2 > ring.x + ring.width / 2 + 20).toBe(true);
+  expect(ring && mirrored && Math.abs(mirrored.x + mirrored.width / 2 - (ring.x + ring.width / 2)) > 40).toBe(true);
   await window.screenshot({ path: join(shots, 'paint-mirror-plane.png') });
 
   await window.getByTestId('paint-keep-colour').click();
