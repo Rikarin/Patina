@@ -254,6 +254,13 @@ export const CommandTable: readonly CommandSpec[] = [
     area: 'graph',
     hint: 'Joins what fed the nodes to what they fed'
   },
+  {
+    id: 'swapInputs',
+    label: 'Swap Inputs',
+    section: 'Graph',
+    area: 'graph',
+    hint: 'Trades the wires into a node’s first two inputs of one kind'
+  },
   { id: 'arrangeGraph', label: 'Lay Out', section: 'Graph', area: 'graph' },
   { id: 'alignLeft', label: 'Align Left', section: 'Graph', area: 'graph' },
   { id: 'alignCentres', label: 'Align Centres', section: 'Graph', area: 'graph' },
@@ -269,6 +276,13 @@ export const CommandTable: readonly CommandSpec[] = [
     section: 'Graph',
     area: 'graph',
     hint: 'A node dragged on the graph lands on the grid'
+  },
+  {
+    id: 'toggleGraphParameters',
+    label: 'Parameters on Cards',
+    section: 'Graph',
+    area: 'graph',
+    hint: 'Each node lists what was changed on it, under its title'
   },
   { id: 'curvedWires', label: 'Curved Wires', section: 'Graph', area: 'graph' },
   { id: 'angledWires', label: 'Angled Wires', section: 'Graph', area: 'graph' },
@@ -476,6 +490,7 @@ export const MenuBar: readonly {
       '-',
       'bypassNodes',
       'deleteRelink',
+      'swapInputs',
       '-',
       {
         submenu: 'Arrange',
@@ -495,6 +510,7 @@ export const MenuBar: readonly {
       },
       { submenu: 'Wires', items: ['curvedWires', 'angledWires', 'straightWires'] },
       'toggleGraphSnap',
+      'toggleGraphParameters',
       '-',
       'publishPackage',
       '-',

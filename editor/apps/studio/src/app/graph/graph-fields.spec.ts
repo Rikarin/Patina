@@ -1,5 +1,14 @@
 import type { GraphNodeType } from '@patina/api-client';
-import { expressionKey, fieldsOf, hexOfLanes, isWireable, lanesOfHex, sliderRange, wireFamily } from './graph-fields';
+import {
+  cardLinesOf,
+  expressionKey,
+  fieldsOf,
+  hexOfLanes,
+  isWireable,
+  lanesOfHex,
+  sliderRange,
+  wireFamily
+} from './graph-fields';
 
 const type: GraphNodeType = {
   path: 'Test/Node',
@@ -121,5 +130,39 @@ describe('curve and ramp settings', () => {
 describe('expressionKey', () => {
   it('spells a port as Vixen stores it', () => {
     expect(expressionKey('Scale')).toBe('=Scale');
+  });
+});
+
+describe('cardLinesOf', () => {
+  it('shows nothing for a node left as its type made it, or set back to its defaults', () => {
+    expect(cardLinesOf(type, { values: {}, texts: {} })).toEqual([]);
+    expect(cardLinesOf(type, { values: { Amount: [0.5] }, texts: { Mode: 'A' } })).toEqual([]);
+  });
+
+  it('shows what was changed, in the Inspector’s order, each as its control reads', () => {
+    expect(
+      cardLinesOf(type, {
+        values: { Amount: [0.12345], Count: [7], Flip: [1], Tint: [1, 0, 0, 1] },
+        texts: { Mode: 'B', on: 'false' }
+      })
+    ).toEqual([
+      { title: 'Amount', value: '0.123' },
+      { title: 'Count', value: '7' },
+      { title: 'Flip', value: 'On' },
+      { title: 'Tint', value: '#FF0000FF' }
+    ]);
+  });
+
+  it('shows an expression for the number it drives, and stops at the limit', () => {
+    const lines = cardLinesOf(type, { values: {}, texts: { [expressionKey('Amount')]: 'wear * 2', Mode: 'B' } }, 1);
+    expect(lines).toEqual([{ title: 'Amount', value: '= wear * 2' }]);
+  });
+
+  it('reads a setting by its control', () => {
+    expect(cardLinesOf(type, { values: {}, texts: { Mode: 'B', on: 'false', Path: 'a.png' } })).toEqual([
+      { title: 'Mode', value: 'B' },
+      { title: 'Path', value: 'a.png' },
+      { title: 'on', value: 'Off' }
+    ]);
   });
 });

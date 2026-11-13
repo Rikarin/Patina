@@ -36,6 +36,8 @@ export interface PreferenceValues {
   invertZoom: boolean;
   /** Whether a node dragged on the graph lands on the grid. */
   graphSnap: boolean;
+  /** Whether a node's card lists what was changed on it, under its title. */
+  graphParameters: boolean;
   /** How the graph draws its wires. */
   graphWires: WireStyle;
   /** Node types starred in the Nodes list, by path, which the palette offers first. */
@@ -93,6 +95,7 @@ export const DefaultPreferences: PreferenceValues = {
   zoomSpeed: 'normal',
   invertZoom: false,
   graphSnap: false,
+  graphParameters: false,
   graphWires: 'bezier',
   favouriteNodes: [],
   recentNodes: [],
@@ -118,6 +121,7 @@ const Choices: {
   zoomSpeed: ['normal', 'slow', 'fast'],
   invertZoom: [false, true],
   graphSnap: [false, true],
+  graphParameters: [false, true],
   graphWires: ['bezier', 'smoothstep', 'straight']
 };
 
@@ -168,6 +172,7 @@ export class Preferences {
   /** What the wheel's and a zoom drag's pixels are multiplied by, negative when the wheel is inverted. */
   readonly zoomScale = computed(() => CameraSpeeds[this.values().zoomSpeed] * (this.values().invertZoom ? -1 : 1));
   readonly graphSnap = computed(() => this.values().graphSnap);
+  readonly graphParameters = computed(() => this.values().graphParameters);
   readonly graphWires = computed(() => this.values().graphWires);
   readonly favouriteNodes = computed(() => this.values().favouriteNodes);
   readonly recentNodes = computed(() => this.values().recentNodes);

@@ -277,3 +277,96 @@ export function findMatches<T extends { title: string }>(nodes: readonly T[], qu
     .filter(node => node.title.toLocaleLowerCase().includes(typed))
     .sort((a, b) => starts(a) - starts(b) || a.title.localeCompare(b.title));
 }
+
+/** A wire as the Server keeps it: from an output to an input. */
+export interface Wire {
+  fromNode: number;
+  fromPort: string;
+  toNode: number;
+  toPort: string;
+}
+
+/** One end of a wire: a port of a node. */
+export interface WireEnd {
+  node: number;
+  port: string;
+}
+
+/** What rewiring asks of the Server. A connect into a wired input replaces the wire there, as the canvas does. */
+export type WireCommand =
+  | { op: 'connect'; fromNode: number; fromPort: string; toNode: number; toPort: string }
+  | { op: 'disconnect'; toNode: number; toPort: string };
+
+const isEnd = (end: WireEnd, node: number, port: string) => end.node === node && end.port === port;
+
+/**
+ * Every wire leaving one output, moved to leave another instead. A wire into the node it would now come from is left
+ * where it is, since it would make a loop.
+ */
+export function movedWires(wires: readonly Wire[], from: WireEnd, to: WireEnd): WireCommand[] {
+  if (isEnd(from, to.node, to.port)) {
+    return [];
+  }
+
+  return wires
+    .filter(wire => isEnd(from, wire.fromNode, wire.fromPort) && wire.toNode !== to.node)
+    .map(wire => ({ op: 'connect', fromNode: to.node, fromPort: to.port, toNode: wire.toNode, toPort: wire.toPort }));
+}
+
+/** What feeds one input, wired into another input as well, or moved there when `move` is set. */
+export function copiedWire(wires: readonly Wire[], from: WireEnd, to: WireEnd, move: boolean): WireCommand[] {
+  const wire = wires.find(candidate => isEnd(from, candidate.toNode, candidate.toPort));
+  if (!wire || isEnd(from, to.node, to.port) || wire.fromNode === to.node) {
+    return [];
+  }
+
+  const connect: WireCommand = {
+    op: 'connect',
+    fromNode: wire.fromNode,
+    fromPort: wire.fromPort,
+    toNode: to.node,
+    toPort: to.port
+  };
+  return move ? [connect, { op: 'disconnect', toNode: from.node, toPort: from.port }] : [connect];
+}
+
+/**
+ * The wires into two inputs of one node, traded: what fed the first feeds the second and the other way round. An input
+ * with no wire trades its emptiness. Nothing to trade is nothing to do.
+ */
+export function swappedWires(wires: readonly Wire[], node: number, first: string, second: string): WireCommand[] {
+  const into = (port: string) => wires.find(wire => wire.toNode === node && wire.toPort === port);
+  const [a, b] = [into(first), into(second)];
+  if (!a && !b) {
+    return [];
+  }
+
+  // Both were found before anything changes, since the first is replaced before the second is given what it held.
+  const give = (wire: Wire | undefined, port: string): WireCommand =>
+    wire
+      ? { op: 'connect', fromNode: wire.fromNode, fromPort: wire.fromPort, toNode: node, toPort: port }
+      : { op: 'disconnect', toNode: node, toPort: port };
+  return [give(b, first), give(a, second)];
+}
+
+/**
+ * The two inputs Swap Inputs trades: the first two that carry one kind of wire, when either is wired. A blend's
+ * foreground and background are the case this is for, and its mask, the third picture, is never one of them.
+ */
+export function swapPairOf(
+  inputs: readonly { name: string; family: string }[],
+  wired: ReadonlySet<string>
+): [string, string] | null {
+  const families = new Map<string, string[]>();
+  for (const input of inputs) {
+    families.set(input.family, [...(families.get(input.family) ?? []), input.name]);
+  }
+
+  for (const [first, second] of families.values()) {
+    if (first !== undefined && second !== undefined && (wired.has(first) || wired.has(second))) {
+      return [first, second];
+    }
+  }
+
+  return null;
+}

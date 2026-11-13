@@ -3,13 +3,17 @@ import { describe, expect, it } from 'vitest';
 import {
   aligned,
   controlOf,
+  copiedWire,
   distributed,
   findMatches,
   flowOf,
   freePresetName,
   grouped,
   holds,
+  movedWires,
   paletteOf,
+  swapPairOf,
+  swappedWires,
   titleOf,
   widgetsFor
 } from './graph-authoring';
@@ -199,5 +203,71 @@ describe('findMatches', () => {
 
   it('offers every node with nothing typed', () => {
     expect(findMatches(nodes, '')).toHaveLength(4);
+  });
+});
+
+describe('rewiring', () => {
+  const wire = (fromNode: number, fromPort: string, toNode: number, toPort: string) => ({
+    fromNode,
+    fromPort,
+    toNode,
+    toPort
+  });
+  // A noise (1) feeds a blend (3) and a levels (4); a gradient (2) feeds the blend's background.
+  const wires = [wire(1, 'Out', 3, 'Foreground'), wire(1, 'Out', 4, 'Input'), wire(2, 'Out', 3, 'Background')];
+
+  it('moves every wire leaving one output to leave another', () => {
+    expect(movedWires(wires, { node: 1, port: 'Out' }, { node: 5, port: 'Out' })).toEqual([
+      { op: 'connect', fromNode: 5, fromPort: 'Out', toNode: 3, toPort: 'Foreground' },
+      { op: 'connect', fromNode: 5, fromPort: 'Out', toNode: 4, toPort: 'Input' }
+    ]);
+  });
+
+  it('leaves a wire into the node the wires move to, which would loop, and does nothing onto itself', () => {
+    expect(movedWires(wires, { node: 1, port: 'Out' }, { node: 4, port: 'Out' })).toEqual([
+      { op: 'connect', fromNode: 4, fromPort: 'Out', toNode: 3, toPort: 'Foreground' }
+    ]);
+    expect(movedWires(wires, { node: 1, port: 'Out' }, { node: 1, port: 'Out' })).toEqual([]);
+  });
+
+  it('copies what feeds an input into another, and moves it when asked', () => {
+    const from = { node: 3, port: 'Foreground' };
+    const to = { node: 4, port: 'Input' };
+    const connect = { op: 'connect', fromNode: 1, fromPort: 'Out', toNode: 4, toPort: 'Input' };
+    expect(copiedWire(wires, from, to, false)).toEqual([connect]);
+    expect(copiedWire(wires, from, to, true)).toEqual([connect, { op: 'disconnect', toNode: 3, toPort: 'Foreground' }]);
+  });
+
+  it('copies nothing from an input with no wire, onto itself, or back into what feeds it', () => {
+    expect(copiedWire(wires, { node: 4, port: 'Mask' }, { node: 3, port: 'Mask' }, false)).toEqual([]);
+    expect(copiedWire(wires, { node: 4, port: 'Input' }, { node: 4, port: 'Input' }, true)).toEqual([]);
+    expect(copiedWire(wires, { node: 3, port: 'Background' }, { node: 2, port: 'Input' }, false)).toEqual([]);
+  });
+
+  it('swaps the wires into two inputs, finding both before either changes', () => {
+    expect(swappedWires(wires, 3, 'Foreground', 'Background')).toEqual([
+      { op: 'connect', fromNode: 2, fromPort: 'Out', toNode: 3, toPort: 'Foreground' },
+      { op: 'connect', fromNode: 1, fromPort: 'Out', toNode: 3, toPort: 'Background' }
+    ]);
+  });
+
+  it('swaps a wire with an empty input, and nothing with nothing', () => {
+    expect(swappedWires(wires, 4, 'Input', 'Mask')).toEqual([
+      { op: 'disconnect', toNode: 4, toPort: 'Input' },
+      { op: 'connect', fromNode: 1, fromPort: 'Out', toNode: 4, toPort: 'Mask' }
+    ]);
+    expect(swappedWires(wires, 5, 'Input', 'Mask')).toEqual([]);
+  });
+
+  it('swaps the first two inputs of one kind, never a blend’s mask, and only when one is wired', () => {
+    const blend = [
+      { name: 'Foreground', family: 'Image' },
+      { name: 'Background', family: 'Image' },
+      { name: 'Mask', family: 'Image' },
+      { name: 'Opacity', family: 'Float' }
+    ];
+    expect(swapPairOf(blend, new Set(['Background']))).toEqual(['Foreground', 'Background']);
+    expect(swapPairOf(blend, new Set(['Mask']))).toBeNull();
+    expect(swapPairOf(blend.slice(2), new Set(['Mask']))).toBeNull();
   });
 });
