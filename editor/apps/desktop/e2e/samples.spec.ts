@@ -53,9 +53,11 @@ test('Start opens the Knot sample, and a snapshot of it is taken and put back', 
   await window.getByTestId('paint-add-fill').click();
   await expect(layers).toHaveCount(count + 1);
   await window.getByTestId('snapshot-restore').last().click();
+  await expect(layers).toHaveCount(count, { timeout: 60_000 });
+  // The document closed and opened again in its workspace, which shows its own panes.
+  await command('showHistory');
   await expect(window.getByTestId('snapshot-label')).toHaveText(['Before restoring As shipped', 'As shipped'], {
     timeout: 60_000
   });
-  await expect(layers).toHaveCount(count, { timeout: 60_000 });
   expect(existsSync(join(library, 'projects', 'knot', '.snapshots'))).toBe(true);
 });
