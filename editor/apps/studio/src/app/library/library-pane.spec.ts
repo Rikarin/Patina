@@ -35,6 +35,17 @@ const info: LibraryInfo = {
 
 const nothing = { items: [], total: 0, offset: 0, limit: 100 };
 
+/** What the library costs, as the engine answers it. */
+const costs = {
+  folder: '',
+  documents: 3,
+  bytes: 48 * 1024 * 1024,
+  items: [
+    { name: 'props', documents: 2, bytes: 32 * 1024 * 1024 },
+    { name: 'hero', documents: 1, bytes: 16 * 1024 * 1024 }
+  ]
+};
+
 function provide(library: () => Response, projects: () => Response = () => Response.json(nothing)): void {
   const answer = (input: RequestInfo | URL): Promise<Response> => {
     const path = new URL((input as Request).url).pathname;
@@ -44,6 +55,10 @@ function provide(library: () => Response, projects: () => Response = () => Respo
 
     if (path.endsWith('/system')) {
       return Promise.resolve(Response.json({ textureSides: [1024, 2048], defaultTextureSide: 2048 }));
+    }
+
+    if (path.endsWith('/library/costs')) {
+      return Promise.resolve(Response.json(costs));
     }
 
     return Promise.resolve(path.endsWith('/library/projects') ? projects() : Response.json(nothing));
@@ -126,12 +141,21 @@ describe('LibraryInspector', () => {
     return { element: fixture.nativeElement as HTMLElement, settle: () => fixture.whenStable() };
   };
 
-  it('starts empty', async () => {
+  it('shows what the library costs, by folder, while nothing is chosen (#207)', async () => {
     provide(() => Response.json(info));
 
-    const { element } = await inspect();
+    const { element, settle } = await inspect();
+    // The costs come over the engine's API, which the fixture does not wait for.
+    await vi.waitFor(async () => {
+      await settle();
+      expect(element.querySelectorAll('[data-testid=costs-item]')).toHaveLength(2);
+    });
 
-    expect(element.textContent).toContain('Nothing chosen');
+    expect(element.querySelector('[data-testid=inspector-nothing-chosen]')).not.toBeNull();
+    const rows = [...element.querySelectorAll('[data-testid=costs-item]')].map(row => row.textContent);
+    expect(rows[0]).toContain('props');
+    expect(rows[0]).toContain('2 documents');
+    expect(element.querySelector('[data-testid=costs-total]')?.textContent).toContain('48');
   });
 
   it('shows a project', async () => {

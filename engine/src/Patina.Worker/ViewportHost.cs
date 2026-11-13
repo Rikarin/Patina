@@ -94,6 +94,11 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
             : (shelf.Projection, null);
         var found = through.TryHit(ray, out var hit);
         var triangle = Original(triangles, found ? hit.Triangle : -1);
+        // ⚠ The projection lays every material out in the first UV set; a set in another reads its place there (#210).
+        // The corners of a triangle an isolation draws are the model's own, in its order, so the weights carry over.
+        var place = found && pick.UvSets is { Count: > 0 } sets
+            ? meshes.Laid(pick.Mesh, sets).CoordinateAt(triangle, hit.Barycentric)
+            : hit.Coordinate;
         // A model with no names gives its parts none, which says nothing a client can use.
         var part = shelf.Geometry.PartOf(triangle) is { Length: > 0 } named ? named : null;
         var box = shelf.Projection.Bounds;
@@ -105,8 +110,8 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
                     true,
                     wire,
                     triangle,
-                    hit.Coordinate.X,
-                    hit.Coordinate.Y,
+                    place.X,
+                    place.Y,
                     Numbers(hit.Point),
                     extent,
                     Numbers(Facing(through, hit.Triangle, ray.Direction)),
@@ -173,6 +178,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         isolatedParts = [..told.Isolation?.Parts ?? []];
         isolatedMaterials = [..told.Isolation?.Materials ?? []];
         renderer.Isolate(isolatedParts, isolatedMaterials);
+        renderer.Highlight(told.Highlight?.Parts ?? [], told.Highlight?.Materials ?? []);
         SetEnvironment(settings.Environment);
         try {
             SetLook(told.Look?.Path, told.Look?.Hash);

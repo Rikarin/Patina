@@ -305,6 +305,19 @@ public sealed record ViewportIsolation(IReadOnlyList<string> Parts, IReadOnlyLis
 }
 
 /// <summary>
+///     What the viewport marks on the model (#136): named meshes and materials, a texture set being one, washed in one
+///     colour and outlined over the model as it is shaded, such as the row a client points at in its list of texture
+///     sets. A part an isolation hides is not marked. Both empty marks nothing.
+/// </summary>
+/// <param name="Parts">Named meshes marked, as the model names them.</param>
+/// <param name="Materials">Materials marked, as the model names them: a texture set is one.</param>
+public sealed record ViewportHighlight(IReadOnlyList<string> Parts, IReadOnlyList<string> Materials) {
+    /// <summary>Whether it marks nothing. Not on the wire: it is what the lists say.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool None => Parts.Count == 0 && Materials.Count == 0;
+}
+
+/// <summary>
 ///     Asks for the viewport's picture as a PNG on the Server's machine: the camera, display settings and look it has
 ///     now, at a size of its own. Nothing about it reaches a client's stream.
 /// </summary>
@@ -409,6 +422,7 @@ public sealed record ViewportNodeShown(string Graph, int Node, string Port);
 ///     what the frames show, whatever <see cref="ViewportDisplay.View" /> says.
 /// </param>
 /// <param name="Following">The graph the viewport keeps up with, or null.</param>
+/// <param name="Highlight">What is marked on the model, or null for nothing.</param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 public sealed record ViewportState(
@@ -424,7 +438,8 @@ public sealed record ViewportState(
     string? Stack = null,
     ViewportIsolation? Isolation = null,
     ViewportNodeShown? Node = null,
-    ViewportFollow? Following = null
+    ViewportFollow? Following = null,
+    ViewportHighlight? Highlight = null
 );
 #pragma warning restore SK7005
 

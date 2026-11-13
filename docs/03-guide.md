@@ -11,12 +11,15 @@ open.
 
 A **project** is one object or one asset set. File > New Project… asks what it starts with:
 
-| Start with | For |
-|---|---|
-| **Texturing** | Painting and layering materials on a mesh. It asks for the mesh, and for a detailed mesh to bake from if you have one. |
-| **Layered Material** | Stacking materials into a new one, with no mesh. |
-| **Image Material** | A material made from one photo. |
-| **Graph** | A material, a mask or a brush built from nodes. |
+| Start with           | For                                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Texturing**        | Painting and layering materials on a mesh. It asks for the mesh, and for a detailed mesh to bake from if you have one. |
+| **Layered Material** | Stacking materials into a new one, with no mesh.                                                                       |
+| **Image Material**   | A material made from one photo.                                                                                        |
+| **Graph**            | A material, a mask or a brush built from nodes.                                                                        |
+
+To look around first, Start's **Samples** copy a finished project into the library: **Knot** is a gold knot around a
+red sphere, each a texture set with a few layers and masks to take apart. It is yours once copied, like any project.
 
 Everything is a file in the library's folder, so it can sit in version control, and nothing is lost if the cache is
 deleted but the time to rebuild it. **Your work is yours:** libraries, projects and the textures you export belong to
@@ -34,6 +37,8 @@ layer's are in **Properties**.
   map. A mask's own effects run in order and can be reordered.
 - Drag a material from the **Materials** shelf onto the stack to add it as a layer, or Alt-click one to paint with it.
 - Every edit can be undone, and the **History** pane lists what each step did.
+- **Snapshots**, under the history, keep the document as it is saved under a name you give, its paint with it, and
+  outlive closing it. Restore puts it back, after keeping how it stood as a snapshot of its own.
 
 ## Baking
 

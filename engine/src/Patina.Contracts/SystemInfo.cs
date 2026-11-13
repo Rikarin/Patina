@@ -17,6 +17,9 @@ public sealed record SystemInfo(
     IReadOnlyList<int> TextureSides,
     int DefaultTextureSide
 ) {
+    /// <summary>The version of Vixen, the engine library the graphs, layers and bakes run on (#190).</summary>
+    public string? Vixen { get; init; }
+
     /// <summary>What can be read, for a client's file dialogs.</summary>
     public FileFormats Formats { get; init; } =
         new(PictureFormats.Pictures, PictureFormats.Environments, MeshFormats.Meshes);

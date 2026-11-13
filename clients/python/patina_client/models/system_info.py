@@ -37,6 +37,7 @@ class SystemInfo:
             default_texture_side (int): The side a new document gets when nobody says.
             formats (FileFormats): What a client may offer, with the dot.
             library (None | str | Unset): The library this Server owns, or null when it was started without one.
+            vixen (None | str | Unset): The version of Vixen, the engine library the graphs, layers and bakes run on (#190).
      """
 
     version: str
@@ -47,6 +48,7 @@ class SystemInfo:
     default_texture_side: int
     formats: FileFormats
     library: None | str | Unset = UNSET
+    vixen: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -79,6 +81,12 @@ class SystemInfo:
         else:
             library = self.library
 
+        vixen: None | str | Unset
+        if isinstance(self.vixen, Unset):
+            vixen = UNSET
+        else:
+            vixen = self.vixen
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -93,6 +101,8 @@ class SystemInfo:
         })
         if library is not UNSET:
             field_dict["library"] = library
+        if vixen is not UNSET:
+            field_dict["vixen"] = vixen
 
         return field_dict
 
@@ -138,6 +148,16 @@ class SystemInfo:
         library = _parse_library(d.pop("library", UNSET))
 
 
+        def _parse_vixen(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        vixen = _parse_vixen(d.pop("vixen", UNSET))
+
+
         system_info = cls(
             version=version,
             api_version=api_version,
@@ -147,6 +167,7 @@ class SystemInfo:
             default_texture_side=default_texture_side,
             formats=formats,
             library=library,
+            vixen=vixen,
         )
 
 

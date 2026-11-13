@@ -1281,7 +1281,9 @@ export class BakePane {
   protected staleWhy(stale: string): string {
     return stale === 'uvSet'
       ? 'Its maps were baked in another UV set than the one it is laid out in.'
-      : 'Its maps were baked on the mesh as it was before it changed.';
+      : stale === 'shape'
+        ? 'Its maps were baked at another shape than its Width and Height.'
+        : 'Its maps were baked on the mesh as it was before it changed.';
   }
 
   protected allSets(): void {

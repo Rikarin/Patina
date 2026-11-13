@@ -41,6 +41,37 @@ public sealed class LibraryCareTests : IDisposable {
         Assert.Equal(made.Id, library.Contents("Props/crate").Id);
     }
 
+    /// <summary>
+    ///     A project tagged while the library scan reads its <c>project.yaml</c> (#257). On Windows the save renamed
+    ///     onto the file the scan held, which refused with "Access to the path is denied", and a client saw a 409.
+    /// </summary>
+    [Fact]
+    public void A_project_is_tagged_while_the_scan_reads_its_file() {
+        var made = library.CreateProject(new("Crate"));
+        var held = HeldFile.Open(LibraryFiles.ProjectFile(root, made.Path));
+
+        library.SetProjectTags(made.Path, ["prop"]);
+
+        held.Join();
+        Assert.Equal(["prop"], library.Contents(made.Path).Tags);
+    }
+
+    /// <summary>
+    ///     A project deleted while the library scan reads its <c>project.yaml</c> (#257). On Windows a folder with an
+    ///     open file in it cannot be renamed, so the move to the bin was denied and a client saw a 409.
+    /// </summary>
+    [Fact]
+    public void A_project_goes_to_the_bin_while_the_scan_reads_its_file() {
+        var made = library.CreateProject(new("Crate"));
+        var held = HeldFile.Open(LibraryFiles.ProjectFile(root, made.Path));
+
+        library.TrashProject(made.Path);
+
+        held.Join();
+        Assert.False(Directory.Exists(Path.Combine(root, "projects", "crate")));
+        Assert.Single(library.Bin().Items);
+    }
+
     [Fact]
     public void A_project_whose_place_was_taken_comes_back_beside_it() {
         var made = library.CreateProject(new("Crate"));

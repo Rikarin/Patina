@@ -6,6 +6,7 @@ import type {
   MaterialInfo,
   StackAnchorRef,
   StackFilterKind,
+  StackInstanceLinks,
   StackInstanceRef,
   StackLayer,
   StackMask,
@@ -187,10 +188,18 @@ function stemOf(source: string): string | undefined {
         } @else if (instancesOf(layer); as instances) {
           <p class="section-label mt-1">Instances</p>
           <ul class="flex flex-col gap-0.5" data-testid="paint-instances">
-            @for (instance of instances; track instance.id) {
-              <li class="flex items-center gap-2">
-                <span class="min-w-0 flex-1 truncate text-xs">{{ instance.name }}</span>
-                <button type="button" xuiButton size="sm" variant="ghost" (click)="store.layer.set(instance.id)">
+            @for (instance of instances; track instance.set + '/' + instance.id) {
+              <li class="flex items-center gap-2" [attr.data-testid]="'paint-instance-' + (instance.set || 'here')">
+                <span class="min-w-0 flex-1 truncate text-xs"
+                  >{{ instance.name }}{{ instance.set ? ' in ' + instance.set : '' }}</span
+                >
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  (click)="goToSource({ layer: instance.id, set: instance.set })"
+                >
                   Go
                 </button>
               </li>
@@ -1027,6 +1036,23 @@ export class LayerPanel {
       }
     });
 
+    // Instances in other sets live in their own documents, so they are asked for when a layer is chosen.
+    effect(() => {
+      const id = this.store.state()?.id;
+      this.store.layer();
+      untracked(() => {
+        if (!id) {
+          this.links.set({ instances: [], sources: [] });
+          return;
+        }
+
+        void this.store.instanceLinks().then(
+          links => this.links.set(links),
+          () => this.links.set({ instances: [], sources: [] })
+        );
+      });
+    });
+
     // Another layer has no draft of this one's.
     effect(() => {
       this.store.layer();
@@ -1396,19 +1422,32 @@ export class LayerPanel {
     void this.store.setMask(layer, { ...layer.mask, ...change });
   }
 
-  /** A source's name in this set, or its id when it is in another, which this client has not read. */
+  /** A source's name, here or in another set as the Server read it there, or its id when it cannot be read. */
   protected sourceName(source: StackInstanceRef): string {
-    return source.set ? source.layer : this.layerName(source.layer);
+    if (!source.set) {
+      return this.layerName(source.layer);
+    }
+
+    const found = this.links().sources.find(held => held.set === source.set && held.layer === source.layer);
+    return found?.name ?? source.layer;
   }
 
-  /** The instances of a layer in this set, or null when there are none. */
-  protected instancesOf(layer: StackLayer): readonly StackLayer[] | null {
-    const found = this.store
+  /** The instances of a layer, in this set and in the model's others (#108), or null when there are none. */
+  protected instancesOf(layer: StackLayer): readonly { id: string; name: string; set: string }[] | null {
+    const here = this.store
       .layers()
       .map(row => row.layer)
-      .filter(held => held.instance && !held.instance.set && held.instance.layer === layer.id);
+      .filter(held => held.instance && !held.instance.set && held.instance.layer === layer.id)
+      .map(held => ({ id: held.id, name: held.name, set: '' }));
+    const elsewhere = this.links()
+      .instances.filter(link => link.source === layer.id)
+      .map(link => ({ id: link.layer, name: link.name, set: link.set }));
+    const found = [...here, ...elsewhere];
     return found.length > 0 ? found : null;
   }
+
+  /** How this set's layers are tied to the model's other sets, read again as the set or the chosen layer changes. */
+  protected readonly links = signal<StackInstanceLinks>({ instances: [], sources: [] });
 
   /** Chooses the source: here, or in its texture set, which opens and then chooses it. */
   protected goToSource(source: StackInstanceRef): void {

@@ -19,40 +19,48 @@ public static class MeshFixture {
     const uint JsonChunk = 0x4E4F534A;
     const uint BinaryChunk = 0x004E4942;
 
-    public static int Write(string path) {
-        var parts = new[] {
-            Grid(180, 24, static (u, v) => TorusKnot(u, v)), Grid(48, 32, static (u, v) => Sphere(u, v) * 0.3f)
-        };
+    /// <summary>How many strips the knot's tube is cut into when it is laid out, so a texel is near square.</summary>
+    const int KnotStrips = 4;
+
+    /// <summary>Space around each strip, as a share of the square, so paint never bleeds into the next.</summary>
+    const float StripMargin = 0.01f;
+
+    /// <summary>Writes the scene, laid out in UVs when <paramref name="uvs" /> is set.</summary>
+    /// <remarks>
+    ///     Laid out, it is the starter sample's mesh (#190): the knot's tube is cut into four strips stacked up its
+    ///     square, each a quarter of its length, and the sphere is laid out by longitude and latitude, so each part is
+    ///     a texture set of its own and paints without a bake or an unwrap.
+    /// </remarks>
+    public static int Write(string path, bool uvs = false) {
+        var parts = uvs ? LaidOut() : Plain();
         var binary = new MemoryStream();
         var bufferViews = new JsonArray();
         var accessors = new JsonArray();
         var meshes = new JsonArray();
         var nodes = new JsonArray();
 
-        for (var i = 0; i < parts.Length; i++) {
-            var (positions, normals, indices) = parts[i];
+        foreach (var (surface, material) in parts) {
             var first = accessors.Count;
-            accessors.Add(Vectors(bufferViews, binary, positions, true));
-            accessors.Add(Vectors(bufferViews, binary, normals, false));
-            accessors.Add(Scalars(bufferViews, binary, indices));
-            meshes.Add(
-                new JsonObject {
-                    ["primitives"] = new JsonArray(
-                        new JsonObject {
-                            ["attributes"] = new JsonObject { ["POSITION"] = first, ["NORMAL"] = first + 1 },
-                            ["indices"] = first + 2,
-                            ["material"] = i
-                        }
-                    )
-                }
-            );
-            nodes.Add(new JsonObject { ["mesh"] = i });
+            accessors.Add(Vectors(bufferViews, binary, surface.Positions, true));
+            accessors.Add(Vectors(bufferViews, binary, surface.Normals, false));
+            accessors.Add(Scalars(bufferViews, binary, surface.Indices));
+            var attributes = new JsonObject { ["POSITION"] = first, ["NORMAL"] = first + 1 };
+            if (surface.Uvs is { } layout) {
+                accessors.Add(Pairs(bufferViews, binary, layout));
+                attributes["TEXCOORD_0"] = first + 3;
+            }
+
+            var primitive = new JsonObject {
+                ["attributes"] = attributes, ["indices"] = first + 2, ["material"] = material
+            };
+            meshes.Add(new JsonObject { ["primitives"] = new JsonArray(primitive) });
+            nodes.Add(new JsonObject { ["mesh"] = nodes.Count });
         }
 
         var document = new JsonObject {
             ["asset"] = new JsonObject { ["version"] = "2.0", ["generator"] = "patina-bench" },
             ["scene"] = 0,
-            ["scenes"] = new JsonArray(new JsonObject { ["nodes"] = new JsonArray(0, 1) }),
+            ["scenes"] = new JsonArray(new JsonObject { ["nodes"] = Indices(nodes.Count) }),
             ["nodes"] = nodes,
             ["meshes"] = meshes,
             ["materials"] = new JsonArray(
@@ -67,6 +75,45 @@ public static class MeshFixture {
         File.WriteAllBytes(path, Glb(document.ToJsonString(), binary.ToArray()));
         Console.WriteLine($"{path}: {new FileInfo(path).Length} bytes");
         return 0;
+    }
+
+    static JsonArray Indices(int count) {
+        var list = new JsonArray();
+        for (var i = 0; i < count; i++) {
+            list.Add(i);
+        }
+
+        return list;
+    }
+
+    /// <summary>The fixture as tests know it: the knot and the sphere, with no UVs.</summary>
+    static (Surface Surface, int Material)[] Plain() => [
+        (Grid(180, 24, static (u, v) => TorusKnot(u, v)), 0),
+        (Grid(48, 32, static (u, v) => Sphere(u, v) * 0.3f), 1)
+    ];
+
+    /// <summary>The knot in strips, each a band of the square, and the sphere by longitude and latitude.</summary>
+    static (Surface Surface, int Material)[] LaidOut() {
+        List<(Surface, int)> parts = [];
+        for (var strip = 0; strip < KnotStrips; strip++) {
+            parts.Add((Strip(strip), 0));
+        }
+
+        parts.Add((Grid(48, 32, static (u, v) => Sphere(u, v) * 0.3f, static (u, v) => new(u, 1 - v)), 1));
+        return [..parts];
+    }
+
+    /// <summary>One quarter of the knot's length, laid out across a quarter of the square's height.</summary>
+    static Surface Strip(int strip) {
+        const float Band = 1f / KnotStrips;
+        var start = strip * Band;
+        var bottom = start + StripMargin;
+        return Grid(
+            180 / KnotStrips,
+            24,
+            (u, v) => TorusKnot(start + u * Band, v),
+            (u, v) => new(StripMargin + u * (1 - 2 * StripMargin), bottom + v * (Band - 2 * StripMargin))
+        );
     }
 
     static JsonObject Material(string name, float r, float g, float b, float metallic, float roughness) =>
@@ -105,14 +152,23 @@ public static class MeshFixture {
         return centre + (side * MathF.Cos(angle) + lift * MathF.Sin(angle)) * tube;
     }
 
+    /// <summary>A grid's vertices and triangles, and where each vertex lies in the UV square if laid out.</summary>
+    sealed record Surface(Vector3[] Positions, Vector3[] Normals, uint[] Indices, Vector2[]? Uvs);
+
     /// <summary>A closed grid over a surface, with normals taken from its own differences.</summary>
-    static (Vector3[] Positions, Vector3[] Normals, uint[] Indices) Grid(
+    /// <param name="columns">Cells along u.</param>
+    /// <param name="rows">Cells along v.</param>
+    /// <param name="surface">The point at (u, v).</param>
+    /// <param name="layout">Where (u, v) lies in the UV square, or null for no UVs.</param>
+    static Surface Grid(
         int columns,
         int rows,
-        Func<float, float, Vector3> surface
+        Func<float, float, Vector3> surface,
+        Func<float, float, Vector2>? layout = null
     ) {
         var positions = new Vector3[(columns + 1) * (rows + 1)];
         var normals = new Vector3[positions.Length];
+        var uvs = layout is null ? null : new Vector2[positions.Length];
         var indices = new List<uint>(columns * rows * 6);
         const float Step = 1e-3f;
         for (var y = 0; y <= rows; y++) {
@@ -120,6 +176,10 @@ public static class MeshFixture {
                 var (u, v) = ((float)x / columns, (float)y / rows);
                 var at = y * (columns + 1) + x;
                 positions[at] = surface(u, v);
+                if (uvs is not null) {
+                    uvs[at] = layout!(u, v);
+                }
+
                 var across = surface(u + Step, v) - surface(u - Step, v);
                 var along = surface(u, Math.Min(v + Step, 1f)) - surface(u, Math.Max(v - Step, 0f));
                 var normal = Vector3.Cross(along, across);
@@ -133,7 +193,7 @@ public static class MeshFixture {
             }
         }
 
-        return (positions, normals, [..indices]);
+        return new(positions, normals, [..indices], uvs);
     }
 
     static JsonObject Vectors(JsonArray views, MemoryStream binary, Vector3[] values, bool bounds) {
@@ -166,6 +226,24 @@ public static class MeshFixture {
         }
 
         return accessor;
+    }
+
+    static JsonObject Pairs(JsonArray views, MemoryStream binary, Vector2[] values) {
+        var offset = binary.Length;
+        Span<byte> bytes = stackalloc byte[4];
+        foreach (var value in values) {
+            BinaryPrimitives.WriteSingleLittleEndian(bytes, value.X);
+            binary.Write(bytes);
+            BinaryPrimitives.WriteSingleLittleEndian(bytes, value.Y);
+            binary.Write(bytes);
+        }
+
+        return new() {
+            ["bufferView"] = View(views, offset, binary.Length - offset, 34962),
+            ["componentType"] = ComponentFloat,
+            ["count"] = values.Length,
+            ["type"] = "VEC2"
+        };
     }
 
     static JsonObject Scalars(JsonArray views, MemoryStream binary, uint[] values) {

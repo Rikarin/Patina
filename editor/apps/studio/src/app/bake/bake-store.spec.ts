@@ -16,6 +16,7 @@ function job(overrides: Partial<JobState> = {}): JobState {
     created: '2026-11-05T00:00:00Z',
     bake,
     cancelRequested: false,
+    version: 1,
     ...overrides
   } as JobState;
 }
@@ -127,6 +128,25 @@ describe('BakeStore', () => {
 
     made.store.track(job({ state: 'queued' }));
     expect(made.store.find('j1')?.state).toBe('done');
+  });
+
+  it('keeps what the events said of a job that stopped before the answer to its cancel came back', async () => {
+    let sockets: GraphSocket[] = [];
+    const routes = {
+      ...empty,
+      'POST jobs/bakes': () => Response.json(job({ version: 2 }), { status: 202 }),
+      'POST jobs/j1/cancel': () => {
+        speak(sockets[0], { sequence: 9, job: job({ state: 'cancelled', cancelRequested: true, version: 4 }) });
+        return Response.json(job({ cancelRequested: true, version: 3 }));
+      }
+    };
+    const made = setup(routes);
+    sockets = made.sockets;
+    await settled();
+
+    await made.store.start(bake as never);
+    await made.store.cancel('j1');
+    expect(made.store.find('j1')?.state).toBe('cancelled');
   });
 
   it('keeps following a job another client started without taking the panel over', async () => {

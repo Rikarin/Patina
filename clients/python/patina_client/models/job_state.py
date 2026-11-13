@@ -38,6 +38,9 @@ class JobState:
             attempts (int): How many Workers have started it.
             created (datetime.datetime): When it was asked for, in UTC.
             cancel_requested (bool): Whether a client has asked for it to stop.
+            version (int): How many times it has changed, rising with each change: an answer and an event can arrive in
+                either order,
+                and a client keeps whichever says more.
             bake (BakeRequest | None | Unset):
             build (BuildRequest | None | Unset):
             report (LibraryReport | None | Unset):
@@ -52,6 +55,7 @@ class JobState:
     attempts: int
     created: datetime.datetime
     cancel_requested: bool
+    version: int
     bake: BakeRequest | None | Unset = UNSET
     build: BuildRequest | None | Unset = UNSET
     report: LibraryReport | None | Unset = UNSET
@@ -81,6 +85,8 @@ class JobState:
         created = self.created.isoformat()
 
         cancel_requested = self.cancel_requested
+
+        version = self.version
 
         bake: dict[str, Any] | None | Unset
         if isinstance(self.bake, Unset):
@@ -131,6 +137,7 @@ class JobState:
             "attempts": attempts,
             "created": created,
             "cancelRequested": cancel_requested,
+            "version": version,
         })
         if bake is not UNSET:
             field_dict["bake"] = bake
@@ -170,6 +177,8 @@ class JobState:
 
 
         cancel_requested = d.pop("cancelRequested")
+
+        version = d.pop("version")
 
         def _parse_bake(data: object) -> BakeRequest | None | Unset:
             if data is None:
@@ -269,6 +278,7 @@ class JobState:
             attempts=attempts,
             created=created,
             cancel_requested=cancel_requested,
+            version=version,
             bake=bake,
             build=build,
             report=report,

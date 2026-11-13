@@ -41,6 +41,72 @@ public sealed partial class SharedFileTests : IDisposable {
     }
 
     /// <summary>
+    ///     A file held open by a read can be replaced by a finished one moved over it (#256). Sharing delete is not
+    ///     enough for that on Windows, which refuses the rename while the read is under way, so the move waits it out.
+    /// </summary>
+    [Fact]
+    public void A_file_being_read_can_be_moved_over() {
+        var file = Path.Combine(folder.FullName, "slope.vxtexgraph");
+        var part = $"{file}.part";
+        File.WriteAllText(file, "name: Slope");
+        File.WriteAllText(part, "name: Ramp");
+        var held = HeldFile.Open(file);
+
+        SharedFile.MoveOver(part, file);
+
+        held.Join();
+        Assert.Equal("name: Ramp", File.ReadAllText(file));
+        Assert.False(File.Exists(part));
+    }
+
+    /// <summary>
+    ///     A folder with a file in it that somebody reads can be moved (#257). Windows refuses to rename a folder
+    ///     while anything below it is open, so the move waits for the read; a place that is taken is refused at once.
+    /// </summary>
+    [Fact]
+    public void A_folder_with_a_file_being_read_can_be_moved() {
+        var from = Directory.CreateDirectory(Path.Combine(folder.FullName, "crate")).FullName;
+        var to = Path.Combine(folder.FullName, "bin");
+        var taken = Directory.CreateDirectory(Path.Combine(folder.FullName, "taken")).FullName;
+        File.WriteAllText(Path.Combine(from, "project.yaml"), "name: Crate");
+        var held = HeldFile.Open(Path.Combine(from, "project.yaml"));
+
+        SharedFile.MoveFolder(from, to);
+
+        held.Join();
+        Assert.Equal("name: Crate", File.ReadAllText(Path.Combine(to, "project.yaml")));
+        Assert.False(Directory.Exists(from));
+        Assert.Throws<IOException>(() => SharedFile.MoveFolder(to, taken));
+    }
+
+    /// <summary>A move over a file held for longer than the wait fails, rather than never returning.</summary>
+    [Fact]
+    public void A_move_over_a_file_held_too_long_gives_up() {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows refuses a rename onto an open file.");
+        var file = Path.Combine(folder.FullName, "slope.vxtexgraph");
+        var part = $"{file}.part";
+        File.WriteAllText(file, "name: Slope");
+        File.WriteAllText(part, "name: Ramp");
+
+        using (SharedFile.OpenRead(file)) {
+            Assert.Throws<UnauthorizedAccessException>(() => SharedFile.MoveOver(part, file));
+        }
+
+        Assert.Equal("name: Slope", File.ReadAllText(file));
+    }
+
+    /// <summary>
+    ///     Nothing in the engine moves a file over another but <see cref="SharedFile.MoveOver" />: the framework's
+    ///     move fails on Windows the moment anybody reads the file it replaces, and a save or an export failed (#256).
+    /// </summary>
+    [Fact]
+    public void No_engine_source_moves_over_a_file_without_waiting_for_its_readers() {
+        var found = Matches(OverwritingMove());
+
+        Assert.True(found.Count == 0, "Move through SharedFile.MoveOver instead:\n" + string.Join('\n', found));
+    }
+
+    /// <summary>
     ///     Every read asks Windows to let others write and delete. This holds on every platform, so a read that shares
     ///     less fails here on the machine that made it, not only on the Windows runner.
     /// </summary>
@@ -77,6 +143,13 @@ public sealed partial class SharedFileTests : IDisposable {
     /// </summary>
     [Fact]
     public void No_engine_source_reads_a_file_without_sharing_it() {
+        var found = Matches(UnsharedRead());
+
+        Assert.True(found.Count == 0, "Read through SharedFile instead:\n" + string.Join('\n', found));
+    }
+
+    /// <summary>The lines of the engine's sources, but <c>SharedFile.cs</c>, that a pattern matches.</summary>
+    static List<string> Matches(Regex pattern) {
         var source = Path.Combine(EngineRoot(), "src");
         var found = new List<string>();
         foreach (var file in Directory.EnumerateFiles(source, "*.cs", SearchOption.AllDirectories)
@@ -86,13 +159,13 @@ public sealed partial class SharedFileTests : IDisposable {
                      .Order(StringComparer.Ordinal)) {
             var lines = File.ReadAllLines(file);
             for (var line = 0; line < lines.Length; line++) {
-                if (UnsharedRead().IsMatch(lines[line])) {
+                if (pattern.IsMatch(lines[line])) {
                     found.Add($"{Path.GetRelativePath(source, file)}:{line + 1}: {lines[line].Trim()}");
                 }
             }
         }
 
-        Assert.True(found.Count == 0, "Read through SharedFile instead:\n" + string.Join('\n', found));
+        return found;
     }
 
     /// <summary>The framework's readers that share reading only, and any open that asks to read alone.</summary>
@@ -101,6 +174,10 @@ public sealed partial class SharedFileTests : IDisposable {
         + @"|FileAccess\.Read\b(?!Write)"
     )]
     private static partial Regex UnsharedRead();
+
+    /// <summary>The framework's move told to replace what is there: any third argument, the overwrite.</summary>
+    [GeneratedRegex(@"(?<![\w.])(System\.IO\.)?File\.Move\s*\([^,()]+(\([^()]*\))?[^,()]*,[^,]+,")]
+    private static partial Regex OverwritingMove();
 
     static string EngineRoot() {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent) {

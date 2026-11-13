@@ -38,8 +38,12 @@ from .check_target import CheckTarget
 from .compression_lane_error import CompressionLaneError
 from .compression_preview_info import CompressionPreviewInfo
 from .compression_preview_request import CompressionPreviewRequest
+from .document_cost import DocumentCost
+from .document_cost_page import DocumentCostPage
 from .document_recovery import DocumentRecovery
 from .document_recovery_request import DocumentRecoveryRequest
+from .document_snapshot import DocumentSnapshot
+from .document_snapshot_list import DocumentSnapshotList
 from .export_file_choice import ExportFileChoice
 from .export_file_setting import ExportFileSetting
 from .export_format_info import ExportFormatInfo
@@ -59,6 +63,7 @@ from .export_preset_write import ExportPresetWrite
 from .export_report import ExportReport
 from .export_set_options import ExportSetOptions
 from .file_formats import FileFormats
+from .folder_cost import FolderCost
 from .folder_create_request import FolderCreateRequest
 from .folder_list import FolderList
 from .folder_summary import FolderSummary
@@ -169,6 +174,7 @@ from .impacted_project import ImpactedProject
 from .job_event import JobEvent
 from .job_page import JobPage
 from .job_state import JobState
+from .library_costs import LibraryCosts
 from .library_export_request import LibraryExportRequest
 from .library_file import LibraryFile
 from .library_file_list import LibraryFileList
@@ -232,7 +238,11 @@ from .project_settings_request_reassign_type_1 import ProjectSettingsRequestReas
 from .project_summary import ProjectSummary
 from .project_tags_request import ProjectTagsRequest
 from .project_viewport_request import ProjectViewportRequest
+from .sample_list import SampleList
+from .sample_request import SampleRequest
 from .server_preferences import ServerPreferences
+from .snapshot_request import SnapshotRequest
+from .snapshot_take_request import SnapshotTakeRequest
 from .stack_anchor import StackAnchor
 from .stack_anchor_ref import StackAnchorRef
 from .stack_anchor_use import StackAnchorUse
@@ -310,11 +320,14 @@ from .stack_filter_input import StackFilterInput
 from .stack_filter_kind import StackFilterKind
 from .stack_find_request import StackFindRequest
 from .stack_found import StackFound
+from .stack_frame import StackFrame
 from .stack_id_colour import StackIdColour
 from .stack_id_colours import StackIdColours
 from .stack_input import StackInput
 from .stack_input_parameters_type_1 import StackInputParametersType1
 from .stack_input_values_type_1 import StackInputValuesType1
+from .stack_instance_link import StackInstanceLink
+from .stack_instance_links import StackInstanceLinks
 from .stack_instance_ref import StackInstanceRef
 from .stack_layer import StackLayer
 from .stack_layer_inputs_type_1 import StackLayerInputsType1
@@ -375,6 +388,7 @@ from .viewport_camera_state import ViewportCameraState
 from .viewport_display import ViewportDisplay
 from .viewport_follow import ViewportFollow
 from .viewport_graph_request import ViewportGraphRequest
+from .viewport_highlight import ViewportHighlight
 from .viewport_isolation import ViewportIsolation
 from .viewport_map_paths import ViewportMapPaths
 from .viewport_mesh_request import ViewportMeshRequest
@@ -426,8 +440,12 @@ __all__ = (
     "CompressionLaneError",
     "CompressionPreviewInfo",
     "CompressionPreviewRequest",
+    "DocumentCost",
+    "DocumentCostPage",
     "DocumentRecovery",
     "DocumentRecoveryRequest",
+    "DocumentSnapshot",
+    "DocumentSnapshotList",
     "ExportFileChoice",
     "ExportFileSetting",
     "ExportFormatInfo",
@@ -447,6 +465,7 @@ __all__ = (
     "ExportReport",
     "ExportSetOptions",
     "FileFormats",
+    "FolderCost",
     "FolderCreateRequest",
     "FolderList",
     "FolderSummary",
@@ -557,6 +576,7 @@ __all__ = (
     "JobEvent",
     "JobPage",
     "JobState",
+    "LibraryCosts",
     "LibraryExportRequest",
     "LibraryFile",
     "LibraryFileList",
@@ -620,7 +640,11 @@ __all__ = (
     "ProjectSummary",
     "ProjectTagsRequest",
     "ProjectViewportRequest",
+    "SampleList",
+    "SampleRequest",
     "ServerPreferences",
+    "SnapshotRequest",
+    "SnapshotTakeRequest",
     "StackAnchor",
     "StackAnchorRef",
     "StackAnchorUse",
@@ -698,11 +722,14 @@ __all__ = (
     "StackFilterKind",
     "StackFindRequest",
     "StackFound",
+    "StackFrame",
     "StackIdColour",
     "StackIdColours",
     "StackInput",
     "StackInputParametersType1",
     "StackInputValuesType1",
+    "StackInstanceLink",
+    "StackInstanceLinks",
     "StackInstanceRef",
     "StackLayer",
     "StackLayerInputsType1",
@@ -763,6 +790,7 @@ __all__ = (
     "ViewportDisplay",
     "ViewportFollow",
     "ViewportGraphRequest",
+    "ViewportHighlight",
     "ViewportIsolation",
     "ViewportMapPaths",
     "ViewportMeshRequest",

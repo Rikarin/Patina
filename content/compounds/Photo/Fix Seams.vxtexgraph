@@ -1,0 +1,34 @@
+version: 1
+name: Fix Seams
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -640, y: 0 }
+  - { id: 2, type: Space/Transform 2D, x: -320, y: 0, values: { Offset X: [0.5], Offset Y: [0.5] }, texts: { Tiling: Wrap } }
+  - id: 3
+    type: Filters/Pixel Processor
+    x: -320
+    y: 200
+    texts:
+      Format: Grey
+      Expression: 'float4(1f - smoothstep(x * 0.5f, x, min(abs(uv.x - 0.5f), abs(uv.y - 0.5f))), 0f, 0f, 1f)'
+      '=X': 'width * 0.5f'
+  - { id: 4, type: Photo/Fill Holes, x: 0, y: 0 }
+  - { id: 5, type: Space/Transform 2D, x: 320, y: 0, values: { Offset X: [0.5], Offset Y: [0.5] }, texts: { Tiling: Wrap } }
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Input, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Mask }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Input, direction: Input, kind: Image, default: [], summary: 'The photo whose edges do not meet.' }
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'The photo with a band along each edge painted out from either side, so that it tiles without a seam.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Seam removal: the bands along a photo''s edges filled in from both sides of the wrap, so the edges meet. The fill is smooth, so keep the band narrow on a busy photo.'
+parameters:
+  - { name: width, label: Band Width, default: '0.06', summary: 'How wide the band painted out along each edge is, as a fraction of the width.', kind: Float, minimum: 0.005, maximum: 0.3, group: Seams }

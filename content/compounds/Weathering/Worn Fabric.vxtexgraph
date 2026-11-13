@@ -1,0 +1,71 @@
+version: 1
+name: Worn Fabric
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -320, y: -400 }
+  - { id: 2, type: Source/Mesh Map, x: -1600, y: 0, texts: { Map: curvature } }
+  - { id: 3, type: Filters/Blur HQ, x: -1280, y: 0, values: { Sigma: [2] } }
+  - { id: 4, type: Colour/Histogram Equalise, x: -960, y: 0 }
+  - { id: 5, type: Source/Mesh Map, x: -1600, y: 200, texts: { Map: ao } }
+  - { id: 6, type: Source/Mesh Map, x: -1600, y: 400, texts: { Map: position } }
+  - { id: 7, type: Source/Volume Noise, x: -1280, y: 400, values: { Octaves: [4], Gain: [0.55] }, texts: { Basis: Gradient, '=Scale': scale, '=Seed': seed } }
+  - id: 8
+    type: Filters/Pixel Processor
+    x: -640
+    y: 0
+    texts:
+      Expression: 'float4(smoothstep(0.85f - x * 0.4f, 1f - x * 0.1f, a.x), saturate((1f - b.x) * 1.3f), 0f, 1f)'
+      '=X': wear
+  - id: 9
+    type: Filters/Pixel Processor
+    x: -320
+    y: 0
+    texts:
+      Expression: 'float4(saturate(a.x * (0.5f + b.x) + b.x * x * 0.35f), saturate(a.y * y * 1.4f), b.x, 1f)'
+      '=X': fading
+      '=Y': dirt
+  - id: 10
+    type: Filters/Pixel Processor
+    x: 320
+    y: -400
+    texts:
+      Expression: 'float4(lerp(lerp(a.xyz, saturate(lerp(a.xyz, float3(dot(a.xyz, float3(0.3f, 0.59f, 0.11f)), dot(a.xyz, float3(0.3f, 0.59f, 0.11f)), dot(a.xyz, float3(0.3f, 0.59f, 0.11f))), 0.6f) + 0.12f), b.x), a.xyz * 0.6f + float3(0.04f, 0.035f, 0.03f), b.y), 1f)'
+  - id: 11
+    type: Filters/Pixel Processor
+    x: 320
+    y: -240
+    texts:
+      Expression: 'float4(saturate(a.xyz + b.x * 0.15f + b.y * 0.05f), 1f)'
+  - { id: 99, type: Sub-graph/Output, x: 640, y: -320 }
+edges:
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: Position }
+  - { fromNode: 4, fromPort: Out, toNode: 8, toPort: A }
+  - { fromNode: 5, fromPort: Out, toNode: 8, toPort: B }
+  - { fromNode: 8, fromPort: Out, toNode: 9, toPort: A }
+  - { fromNode: 7, fromPort: Out, toNode: 9, toPort: B }
+  - { fromNode: 1, fromPort: baseColor, toNode: 10, toPort: A }
+  - { fromNode: 9, fromPort: Out, toNode: 10, toPort: B }
+  - { fromNode: 1, fromPort: roughness, toNode: 11, toPort: A }
+  - { fromNode: 9, fromPort: Out, toNode: 11, toPort: B }
+  - { fromNode: 10, fromPort: Out, toNode: 99, toPort: baseColor }
+  - { fromNode: 11, fromPort: Out, toNode: 99, toPort: roughness }
+groups: []
+comments: []
+interface:
+  - { name: baseColor, direction: Input, kind: Image, default: [], summary: 'The dyed cloth.' }
+  - { name: roughness, direction: Input, kind: Image, default: [], summary: 'The roughness beneath.' }
+  - { name: baseColor, direction: Output, kind: Image, default: [], summary: 'The cloth faded and pilled pale on its raised parts and seams, unevenly bleached, and dirty in its folds.' }
+  - { name: roughness, direction: Output, kind: Image, default: [], summary: 'The roughness, fuzzier where the cloth is worn and dirty.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Worn fabric: cloth faded and pilled where it rubs, bleached unevenly and dirty in the folds, in every channel at once.'
+  doesNotTile: 'Reads mesh maps, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: wear, label: Rub Wear, default: '0.5', summary: 'How far the raised parts and seams are rubbed pale.', kind: Float, minimum: 0, maximum: 1, group: Wear }
+  - { name: fading, label: Fading, default: '0.4', summary: 'How unevenly the whole cloth has bleached.', kind: Float, minimum: 0, maximum: 1, group: Wear }
+  - { name: dirt, label: Dirt, default: '0.4', summary: 'How dirty the folds and hollows are.', kind: Float, minimum: 0, maximum: 1, group: Wear }
+  - { name: scale, label: Breakup Scale, default: '5', summary: 'How many patches the wear breaks into across the model.', kind: Float, minimum: 1, maximum: 32, group: Breakup }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the breakup. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Breakup }

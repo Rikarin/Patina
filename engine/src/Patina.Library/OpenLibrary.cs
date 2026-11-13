@@ -10,6 +10,7 @@ namespace Patina.Library;
 public sealed class OpenLibrary : ILibrary, IDisposable {
     readonly IndexDatabase database;
     readonly LibraryQueries queries;
+    readonly LibraryCostQueries costs;
     readonly LibraryScanner scanner;
     readonly LibraryDocumentState state;
     readonly Lock rescanGate = new();
@@ -27,6 +28,7 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         state = LibraryDocumentState.Of(read);
         database = new(LibraryLayout.IndexPath(root));
         queries = new(database);
+        costs = new(database);
         scanner = new(root, database);
     }
 
@@ -486,6 +488,14 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     public TagPage AssetTags(int offset = 0, int limit = 50) => queries.AssetTags(offset, limit);
 
     public AssetImpact? Impact(AssetId asset, int offset = 0, int limit = 50) => queries.Impact(asset, offset, limit);
+
+    /// <summary>What a folder's documents cost, by each folder or project directly in it (#207).</summary>
+    /// <param name="folder">The folder below <c>projects/</c>, empty for the whole library.</param>
+    public LibraryCosts Costs(string folder) => costs.Costs(folder);
+
+    /// <summary>One page of the documents below a folder that cost more than a budget, in bytes (#207).</summary>
+    public DocumentCostPage CostlierThan(string folder, long budget, int offset = 0, int limit = 50) =>
+        costs.Over(folder, budget, offset, limit);
 
     /// <summary>
     ///     Keeps what an export of the whole library is set to, in <c>library.yaml</c>, where any client's next one

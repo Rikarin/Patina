@@ -13,5 +13,10 @@ ships is left out rather than replacing Vixen's. Environments will join them.
 built from bundled materials can contain that content, and game studios must be able to ship those textures without doubt
 (plan §11). Add nothing here that cannot be released under CC0.
 
+`samples/` holds the sample projects Start offers (#190), a folder each: one mesh, already laid out in UVs, and a texturing
+document for each of its materials, named for the material, whose masks are compounds from `compounds/`. Making one
+copies the folder into the library as a project of its own. `samples/Knot/knot.glb` is written by
+`patina-bench mesh <file> --uvs`, the same knot and sphere as `fixtures/viewport-test.glb` with a layout.
+
 `export-presets/` holds the factory export presets. Each is a text file; a library adds or overrides one by putting a file
 with the same shape in `export-presets/`.

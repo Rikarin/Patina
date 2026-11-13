@@ -22,6 +22,7 @@ import { LibraryPlace, type LibraryChoice } from './libraries';
 import { installMenu, readMenuModel, type MenuModel } from './menu';
 import { QuitTrace } from './quit-trace';
 import { Sidecars } from './sidecars';
+import { isSpaceMouse } from './space-mouse';
 
 // Patina desktop: the studio in a sandboxed window, and the backend (patina-server + patina-worker) as supervised
 // sidecars on loopback. The app is one client of the Server's API: nothing in that API knows about Electron (plan §8).
@@ -544,6 +545,11 @@ app
 
     // No camera, microphone, notifications or anything else: the studio needs none of it.
     session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
+    // A 3D mouse is the one device the studio reads (#163), through WebHID, without asking each time it is plugged in.
+    session.defaultSession.setDevicePermissionHandler(
+      details =>
+        details.deviceType === 'hid' && isStudio(details.origin) && isSpaceMouse(details.device as Electron.HIDDevice)
+    );
     serveStudio();
     handleIpc();
     createWindow();

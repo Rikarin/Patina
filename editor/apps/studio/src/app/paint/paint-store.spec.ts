@@ -1153,8 +1153,14 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     outline: boolean;
     through: boolean;
     symmetry: unknown;
-    source: { kind: string; graph?: string; offset?: number[]; picture?: { image: string } } | null;
-    stencil: { image: string } | null;
+    source: {
+      kind: string;
+      graph?: string;
+      offset?: number[];
+      picture?: { image: string; centre: number[]; scale: number };
+      frame?: { centre: number[]; scale: number; angle: number; tiled: boolean } | null;
+    } | null;
+    stencil: { image: string; centre: number[]; scale: number } | null;
     stamps: { x: number; y: number }[];
   }
   const sent = (bodies: unknown[]) => bodies.flatMap(body => (body as { commands: Sent[] }).commands);
@@ -1429,27 +1435,77 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     expect(sent(bodies.slice(count)).every(part => part.source === null && part.channel === 'baseColor')).toBe(true);
   });
 
-  it('projects the picture on the viewport only through a camera, and a stencil masks any other brush', async () => {
+  it('projects the picture on the view, in texels of the map in the 2D view, and a stencil masks any other brush (#128)', async () => {
     const { store, bodies } = await onMesh();
     const picture = { image: 'projects/crate/pictures/decal.png', centre: [50, 50], scale: 2, angle: 0, tiled: false };
     store.screenPicture.set(picture);
     store.tool.set('projection');
-    store.begin({ x: 10, y: 10, pressure: 1 });
-    store.end();
     store.begin({ x: 10, y: 10, pressure: 1 }, aim);
     store.end();
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(0));
-    expect(sent(bodies).every(part => part.source?.picture?.image === picture.image && part.stencil === null)).toBe(
-      true
-    );
+    expect(sent(bodies).every(part => part.stencil === null)).toBe(true);
+    expect(sent(bodies)[0]?.source?.picture).toEqual(picture);
 
-    const count = sent(bodies).length;
+    // The 2D view draws the map from 10 across and 20 down, a texel every quarter of a pixel.
+    await vi.waitFor(() => expect(sent(bodies).at(-1)?.stamps).toEqual([]));
+    store.atlasOrigin.set([10, 20]);
+    store.atlasScale.set(4);
+    let count = sent(bodies).length;
+    store.begin({ x: 10, y: 10, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
+    expect(sent(bodies)[count]?.source?.picture).toEqual({ ...picture, centre: [160, 120], scale: 8 });
+
+    await vi.waitFor(() => expect(sent(bodies).at(-1)?.stamps).toEqual([]));
+    count = sent(bodies).length;
     store.tool.set('brush');
     store.stencil.set(true);
     store.begin({ x: 10, y: 10, pressure: 1 }, aim);
     store.end();
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
-    expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { image: picture.image } });
+    expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { image: picture.image, centre: [50, 50] } });
+
+    count = sent(bodies).length;
+    store.begin({ x: 10, y: 10, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
+    expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { centre: [160, 120], scale: 8 } });
+  });
+
+  it('projects the brush’s material from where it stands on the view, in every channel, through a stencil (#128)', async () => {
+    const { store, bodies } = await onMesh();
+    const picture = { image: 'projects/crate/pictures/decal.png', centre: [50, 50], scale: 2, angle: 0, tiled: false };
+    store.screenPicture.set(picture);
+    store.material.set({ name: 'Rust', graph: 'projects/crate/rust.vxtexgraph' });
+    store.tool.set('projection');
+    expect(store.projectsMaterial()).toBe(true);
+    expect(store.screenPictureRead()).toBe(false);
+    store.materialFrame.set({ centre: [40, 30], scale: 0.5, angle: 0.1, tiled: true });
+    store.stencil.set(true);
+    store.begin({ x: 10, y: 10, pressure: 1 }, aim);
+    store.end();
+    await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+    const parts = sent(bodies.slice(0, 1));
+    expect(parts.map(part => part.channel)).toEqual(['baseColor', 'roughness']);
+    for (const part of parts) {
+      expect(part.source).toMatchObject({
+        kind: 'material',
+        graph: 'projects/crate/rust.vxtexgraph',
+        frame: { centre: [40, 30], scale: 0.5, angle: 0.1, tiled: true }
+      });
+      expect(part.stencil?.image).toBe(picture.image);
+    }
+
+    // The keys move the stencil while it is on, and the material when it is not.
+    store.moveScreenPicture({ x: 5 });
+    expect(store.screenPicture()?.centre).toEqual([55, 50]);
+    store.stencil.set(false);
+    store.moveScreenPicture({ x: 5 });
+    expect(store.materialFrame().centre).toEqual([45, 30]);
+
+    // A mask takes the picture, never a material.
+    store.masking.set(true);
+    expect(store.projectsMaterial()).toBe(false);
   });
 
   it('moves, scales and turns the picture on the viewport by a step, only while a tool reads it (#128)', async () => {

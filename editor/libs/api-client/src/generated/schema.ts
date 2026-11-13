@@ -193,6 +193,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/highlight': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Marks some named meshes and materials (texture sets) on the model in one colour with their outline, for every client. Empty lists mark nothing. */
+    put: operations['SetViewportHighlight'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/bake': {
     parameters: {
       query?: never;
@@ -788,7 +805,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** A picture the library holds, as its file: what a client shows of a projection or a stencil it frames. */
+    /** A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). */
     get: operations['GetLibraryPicture'];
     put?: never;
     post?: never;
@@ -1000,6 +1017,94 @@ export interface paths {
     put?: never;
     /** Publishes a saved graph as a package in the library's packages folder, replacing one of its name. Every project's shelf then offers it. */
     post: operations['PublishPackage'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/snapshots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A document's snapshots, newest first. */
+    get: operations['GetDocumentSnapshots'];
+    put?: never;
+    /** Keeps the document's file and its paint as they are saved, under a name. Unsaved edits are refused. */
+    post: operations['TakeDocumentSnapshot'];
+    /** Forgets a snapshot. The document is not changed. */
+    delete: operations['DeleteDocumentSnapshot'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/snapshots/restore': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Puts a closed document back as a snapshot holds it, after keeping a snapshot of how it stood. */
+    post: operations['RestoreDocumentSnapshot'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/samples': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The sample projects that can be made, by name. */
+    get: operations['GetSamples'];
+    put?: never;
+    /** Copies a sample into the library as a new project: its mesh, laid out, and a texturing document for each of its materials. A name already taken gets a number. */
+    post: operations['MakeSample'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/costs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What a folder's documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document's size. No folder is the whole library. */
+    get: operations['GetLibraryCosts'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/costs/documents': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first. */
+    get: operations['GetDocumentsOverBudget'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1453,6 +1558,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/instances': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Lists the layers of the model's other texture sets that stand for this set's layers, and the layers there that this set's instances stand for, each by set, id and name. */
+    get: operations['GetStackInstanceLinks'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/{id}/brush-preview': {
     parameters: {
       query?: never;
@@ -1462,7 +1584,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. A brush no stroke could take is refused with its reason. */
+    /** A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. With stamp, one stamp of it instead, as a cursor shows it: square, the stamp's long half-axis reaching the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke could take is refused with its reason. */
     post: operations['PreviewStackBrush'];
     delete?: never;
     options?: never;
@@ -2892,6 +3014,51 @@ export interface components {
        */
       side: number;
     };
+    /** @description One document and what it costs. */
+    DocumentCost: {
+      /** @description Its file, below the library. */
+      path: string;
+      /**
+       * Format: int32
+       * @description Its width in texels.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height in texels.
+       */
+      height: number;
+      /**
+       * Format: int32
+       * @description How many maps its texture sets export.
+       */
+      maps: number;
+      /**
+       * Format: int64
+       * @description What they hold together, uncompressed.
+       */
+      bytes: number;
+    };
+    /** @description One page of the documents that cost more than a budget, costliest first. */
+    DocumentCostPage: {
+      /** @description The documents on this page. */
+      items: components['schemas']['DocumentCost'][];
+      /**
+       * Format: int32
+       * @description How many cost more than the budget, on all pages.
+       */
+      total: number;
+      /**
+       * Format: int32
+       * @description The offset the page starts at.
+       */
+      offset: number;
+      /**
+       * Format: int32
+       * @description The most items a page holds.
+       */
+      limit: number;
+    };
     /** @description Whether a document has work autosaved after its last save. */
     DocumentRecovery: {
       /**
@@ -2906,6 +3073,38 @@ export interface components {
       path: string;
       /** @description True puts it in place of the file, and false forgets it. */
       restore: boolean;
+    };
+    /** @description A named checkpoint of a document: its file and the paint it names, as they were (#209). */
+    DocumentSnapshot: {
+      /**
+       * Format: uuid
+       * @description Which snapshot, for a restore or a delete.
+       */
+      id: string;
+      /** @description What the person called it. */
+      name: string;
+      /**
+       * Format: date-time
+       * @description When it was taken.
+       */
+      taken: string;
+      /**
+       * Format: int32
+       * @description How many files it holds: the document and its paint.
+       */
+      files: number;
+      /**
+       * Format: int64
+       * @description How large those files are together, before any is shared with another snapshot.
+       */
+      bytes: number;
+    };
+    /** @description A document's snapshots, newest first. */
+    DocumentSnapshotList: {
+      /** @description The document, below the library. */
+      path: string;
+      /** @description Its snapshots, newest first. */
+      items: components['schemas']['DocumentSnapshot'][];
     };
     /** @description One file of a preset changed for one export. */
     ExportFileChoice: {
@@ -3245,6 +3444,21 @@ export interface components {
       meshes: string[];
       /** @description What a project brings materials in from, as graphs (#157). */
       materials: string[];
+    };
+    /** @description What the documents below one folder or project cost (#207). */
+    FolderCost: {
+      /** @description The folder or project, by its name in the folder asked about. */
+      name: string;
+      /**
+       * Format: int32
+       * @description How many stacks are below it, at any depth.
+       */
+      documents: number;
+      /**
+       * Format: int64
+       * @description What their maps hold together, uncompressed at each document's size.
+       */
+      bytes: number;
     };
     /** @description The body of `POST /api/v1/library/folders`. */
     FolderCreateRequest: {
@@ -4210,7 +4424,7 @@ export interface components {
       default: string;
       /** @description One line about it. */
       summary: string;
-      /** @description Text, Bool, Int or Float. */
+      /** @description Text, Bool, Int, Float or Color, whose default is four numbers separated by commas. */
       kind: string;
       /**
        * Format: float
@@ -4406,6 +4620,33 @@ export interface components {
       error?: null | string;
       /** @description Whether a client has asked for it to stop. */
       cancelRequested: boolean;
+      /**
+       * Format: int64
+       * @description How many times it has changed, rising with each change: an answer and an event can arrive in either order,
+       *     and a client keeps whichever says more.
+       */
+      version: number;
+    };
+    /**
+     * @description What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A
+     *     document's cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for
+     *     each channel of each texture set. Compression and mip levels are a preset's, and are not counted.
+     */
+    LibraryCosts: {
+      /** @description The folder below `projects/`, empty for the whole library. */
+      folder: string;
+      /**
+       * Format: int32
+       * @description How many stacks are below it.
+       */
+      documents: number;
+      /**
+       * Format: int64
+       * @description What they cost together.
+       */
+      bytes: number;
+      /** @description Each folder or project directly in it. */
+      items: components['schemas']['FolderCost'][];
     };
     /** @description The body of `PUT /api/v1/library/export`. */
     LibraryExportRequest: {
@@ -4974,7 +5215,8 @@ export interface components {
       bake?: null | string;
       /**
        * @description Why that bake no longer fits it, so its maps need baking again, or null: `mesh`, made on a mesh it no
-       *     longer stands on, or `uvSet`, laid out in another UV set than the one it chose (#238).
+       *     longer stands on, `uvSet`, laid out in another UV set than the one it chose (#238), or `shape`,
+       *     of another shape than its Width by Height (#262).
        */
       bakeStale?: null | string;
       /** @description What it can be searched by, sorted. */
@@ -5343,6 +5585,18 @@ export interface components {
        */
       viewport: components['schemas']['ViewportDisplay'];
     };
+    /** @description The sample projects Patina ships, which a client offers to start from (#190). */
+    SampleList: {
+      /** @description Each sample's name, which is also the project it makes. */
+      names: string[];
+    };
+    /** @description Makes a project from a sample. */
+    SampleRequest: {
+      /** @description Which sample. */
+      name: string;
+      /** @description The folder below `projects/` to make it in, or null for the top. */
+      folder?: null | string;
+    };
     /**
      * @description The Server's settings that belong to the person and not to a library or project, kept in a plain file beside
      *     the discovery file, which anyone can read and edit.
@@ -5350,6 +5604,23 @@ export interface components {
     ServerPreferences: {
       /** @description How unsaved work is kept. */
       autosave: components['schemas']['AutosavePreferences'];
+    };
+    /** @description Puts a document back as a snapshot holds it, or forgets a snapshot. */
+    SnapshotRequest: {
+      /** @description The document, below the library. */
+      path: string;
+      /**
+       * Format: uuid
+       * @description The snapshot.
+       */
+      id: string;
+    };
+    /** @description Takes a snapshot of a document as its file stands. */
+    SnapshotTakeRequest: {
+      /** @description The document, below the library. */
+      path: string;
+      /** @description What to call it. Empty gives it a name by number. */
+      name?: null | string;
     };
     /** @description An anchor point and every place that reads it. */
     StackAnchor: {
@@ -6400,6 +6671,28 @@ export interface components {
        */
       layer?: null | string;
     };
+    /** @description Where something fixed on a stroke's picture stands: moved, scaled, turned and perhaps tiled. */
+    StackFrame: {
+      /** @description Where its middle is on the stroke's picture, in the units stamps are in: two numbers. */
+      centre: number[];
+      /**
+       * Format: float
+       * @description How many of those units one of its pixels covers, above zero.
+       * @default 1
+       */
+      scale: number;
+      /**
+       * Format: float
+       * @description How far it is turned, clockwise on the screen, in radians.
+       * @default 0
+       */
+      angle: number;
+      /**
+       * @description Whether it repeats past its edges, or is nothing there.
+       * @default false
+       */
+      tiled: boolean;
+    };
     /** @description One colour of a stack's id map. */
     StackIdColour: {
       /** @description Red, green and blue, 0 to 1, as the map stores them. */
@@ -6450,6 +6743,30 @@ export interface components {
        * @default
        */
       map: string;
+    };
+    /** @description An instance layer and the layer it stands for, across two texture sets of one model (#108). */
+    StackInstanceLink: {
+      /** @description The other texture set, by name. */
+      set: string;
+      /** @description The layer's id in that set. */
+      layer: string;
+      /** @description The layer's name there. */
+      name: string;
+      /**
+       * @description For an instance in the other set, the id of the layer of this set it stands for; empty for a source.
+       * @default
+       */
+      source: string;
+    };
+    /**
+     * @description How a texture set's layers are tied to the model's other sets (#108): the instances elsewhere of its layers, and
+     *     the layers elsewhere its own instances stand for, each with its name, which a client of one set cannot read.
+     */
+    StackInstanceLinks: {
+      /** @description Layers of other sets that stand for one of this set's. */
+      instances: components['schemas']['StackInstanceLink'][];
+      /** @description Layers of other sets that one of this set's instances stands for. */
+      sources: components['schemas']['StackInstanceLink'][];
     };
     /** @description The layer an instance stands for. */
     StackInstanceRef: {
@@ -7047,8 +7364,8 @@ export interface components {
       bakedOcclusion: string;
       /**
        * @description Why the bake the set reads no longer fits it, or null when it does or there is none: `mesh`, made on a mesh
-       *     the set no longer stands on, or `uvSet`, laid out in another of the mesh's UV sets (#238). Either way its
-       *     maps need baking again.
+       *     the set no longer stands on, or `uvSet`, laid out in another of the mesh's UV sets (#238), or `shape`,
+       *     of another shape than the set's Width by Height (#262). Either way its maps need baking again.
        */
       bakeStale?: null | string;
     };
@@ -7076,6 +7393,7 @@ export interface components {
       /** @description For a planar material, the axis it projects along: X, Y or Z. */
       planarAxis?: null | string;
       placement?: null | components['schemas']['StackPlacement'];
+      frame?: null | components['schemas']['StackFrame'];
     };
     /** @description An open stack, for a list. */
     StackSummary: {
@@ -7280,6 +7598,8 @@ export interface components {
        * @description The side a new document gets when nobody says.
        */
       defaultTextureSide: number;
+      /** @description The version of Vixen, the engine library the graphs, layers and bakes run on (#190). */
+      vixen?: null | string;
       /** @description What can be read, for a client's file dialogs. */
       formats: components['schemas']['FileFormats'];
     };
@@ -7703,6 +8023,17 @@ export interface components {
       port?: null | string;
     };
     /**
+     * @description What the viewport marks on the model (#136): named meshes and materials, a texture set being one, washed in one
+     *     colour and outlined over the model as it is shaded, such as the row a client points at in its list of texture
+     *     sets. A part an isolation hides is not marked. Both empty marks nothing.
+     */
+    ViewportHighlight: {
+      /** @description Named meshes marked, as the model names them. */
+      parts: string[];
+      /** @description Materials marked, as the model names them: a texture set is one. */
+      materials: string[];
+    };
+    /**
      * @description What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The
      *     rest of the model is not drawn and casts no shadow. Both empty is the whole model.
      */
@@ -7892,6 +8223,7 @@ export interface components {
       isolation?: null | components['schemas']['ViewportIsolation'];
       node?: null | components['schemas']['ViewportNodeShown'];
       following?: null | components['schemas']['ViewportFollow'];
+      highlight?: null | components['schemas']['ViewportHighlight'];
     };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {
@@ -8310,6 +8642,30 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['ViewportIsolation'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+    };
+  };
+  SetViewportHighlight: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportHighlight'];
       };
     };
     responses: {
@@ -11090,6 +11446,406 @@ export interface operations {
       };
     };
   };
+  GetDocumentSnapshots: {
+    parameters: {
+      query: {
+        path: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DocumentSnapshotList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  TakeDocumentSnapshot: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SnapshotTakeRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DocumentSnapshot'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  DeleteDocumentSnapshot: {
+    parameters: {
+      query: {
+        path: string;
+        id: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DocumentSnapshotList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RestoreDocumentSnapshot: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SnapshotRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DocumentSnapshot'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetSamples: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SampleList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  MakeSample: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SampleRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectSummary'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetLibraryCosts: {
+    parameters: {
+      query?: {
+        folder?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryCosts'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetDocumentsOverBudget: {
+    parameters: {
+      query: {
+        over: number;
+        folder?: string;
+        offset?: number;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DocumentCostPage'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetThumbnails: {
     parameters: {
       query?: never;
@@ -12402,9 +13158,42 @@ export interface operations {
       };
     };
   };
-  PreviewStackBrush: {
+  GetStackInstanceLinks: {
     parameters: {
       query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackInstanceLinks'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PreviewStackBrush: {
+    parameters: {
+      query?: {
+        stamp?: boolean;
+      };
       header?: never;
       path: {
         id: string;

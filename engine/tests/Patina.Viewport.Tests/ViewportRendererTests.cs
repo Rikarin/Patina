@@ -151,6 +151,37 @@ public sealed class ViewportRendererTests : IDisposable {
         Assert.Equal(whole, Render(renderer, camera));
     }
 
+    /// <summary>
+    ///     A mark washes what it names in a warm colour over the shaded model (#136), marks nothing of a part an
+    ///     isolation hides, and taken off leaves the picture as it was to the byte.
+    /// </summary>
+    [Fact]
+    public void A_marked_material_is_washed_and_the_mark_comes_off() {
+        using var renderer = Open();
+        renderer.OpenMesh(Fixture);
+        var camera = OrbitCamera.Default;
+        var whole = Render(renderer, camera);
+        var materials = ViewportGeometry.Materials(Fixture);
+        renderer.Isolate([], [materials[1]]);
+        var isolated = Render(renderer, camera);
+        renderer.Isolate([], []);
+
+        renderer.Highlight([], [materials[0]]);
+        var marked = Render(renderer, camera);
+        Assert.NotEqual(whole, marked);
+        var warmer = Enumerable.Range(0, Width * Height).Count(i => marked[i * 4] > whole[i * 4] + 8);
+        Assert.True(warmer > 50, $"Only {warmer} pixels are warmer with the mark on.");
+
+        renderer.Isolate([], [materials[1]]);
+        var alone = Render(renderer, camera);
+        Assert.Equal(isolated, alone);
+        renderer.Highlight([], []);
+        Assert.Equal(alone, Render(renderer, camera));
+
+        renderer.Isolate([], []);
+        Assert.Equal(whole, Render(renderer, camera));
+    }
+
     [Fact]
     public void The_fixture_comes_out_lit_over_the_sky() {
         using var renderer = Open();

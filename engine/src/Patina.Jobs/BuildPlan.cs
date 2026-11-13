@@ -174,7 +174,7 @@ public static class BuildObjects {
     public static void Publish(string part, string folder) {
         Directory.CreateDirectory(Path.GetDirectoryName(folder)!);
         try {
-            Directory.Move(part, folder);
+            SharedFile.MoveFolder(part, folder);
         } catch (IOException) when (Directory.Exists(folder)) {
             Directory.Delete(part, true);
         }

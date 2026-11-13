@@ -121,6 +121,49 @@ public sealed class StackInstanceTests {
         }
     }
 
+    /// <summary>
+    ///     A set's links name its instances in the model's other sets, open or only on disk, with the layer each stands
+    ///     for, and name the layers there that its own instances stand for, which a client of one set cannot read.
+    /// </summary>
+    [Fact]
+    public void A_set_lists_its_instances_in_other_sets_and_names_the_sources_of_its_own() {
+        var folder = Directory.CreateTempSubdirectory("patina-instance-links-");
+        try {
+            ServerIdentity identity = new(null, null);
+            using StackSessions sessions = new(identity, new(identity));
+            var bodyPath = Path.Combine(folder.FullName, "Body.vxlayers");
+            var lidPath = Path.Combine(folder.FullName, "Lid.vxlayers");
+            var doorPath = Path.Combine(folder.FullName, "Door.vxlayers");
+            StackDocuments.Create(bodyPath, 64, 64);
+            foreach (var (path, name) in new[] { (lidPath, "Lid"), (doorPath, "Door") }) {
+                StackDocuments.Create(path, 64, 64);
+                StackDocuments.SetSetName(path, name);
+            }
+
+            var body = sessions.Open(bodyPath);
+            var lid = sessions.Open(lidPath);
+            lid.Apply(new([new StackAddInstance(new("base", "Body"))]));
+            var door = sessions.Open(doorPath);
+            door.Apply(new([new StackAddInstance(new("base", "Body"))]));
+            File.WriteAllText(doorPath, door.Text);
+            sessions.Close(door);
+            body.Apply(new([new StackAddInstance(new("base", "Lid"))]));
+
+            var links = StackInstanceLinking.Of(body.Published!, sessions.Siblings(body));
+
+            Assert.Equal(
+                ["Door", "Lid"],
+                links.Instances.Select(static link => link.Set).Order(StringComparer.Ordinal)
+            );
+            Assert.All(links.Instances, static link => Assert.Equal("base", link.Source));
+            Assert.Equal("Base Instance", links.Instances[0].Name);
+            var source = Assert.Single(links.Sources);
+            Assert.Equal(("Lid", "base"), (source.Set, source.Layer));
+        } finally {
+            folder.Delete(true);
+        }
+    }
+
     [Fact]
     public void An_instance_is_not_a_kind_a_plain_add_makes() {
         var editor = new StackEditor("/tmp/Instances.vxlayers", Sample());

@@ -26,9 +26,10 @@ import { ViewOptions } from '../core/view-options';
 import { GraphViews } from '../graph/graph-views';
 import { DragType as LibraryDrag } from '../library/library-tree';
 import { ProjectStore } from '../library/project-store';
+import { BrushRing } from '../paint/brush-ring';
 import { MaterialUse } from '../paint/material-use';
 import { PaintStore, penOf } from '../paint/paint-store';
-import { ScreenPictureOverlay } from '../paint/screen-picture';
+import { ScreenPictureOverlay, handleStencilKeys } from '../paint/screen-picture';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { isPicture, pictureName } from '../paint/surface-frame';
 import { SurfaceGuide } from '../paint/surface-guide';
@@ -37,6 +38,7 @@ import { ToolStrip } from '../paint/tool-strip';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
 import { type AxisView, framed, nudge, orbit, pan, snapped, zoom } from './orbit';
+import { SpaceMouse, spaceStep } from './space-mouse';
 import { ViewportClient } from './viewport-client';
 import { ViewportDisplayPanel } from './viewport-display';
 
@@ -72,11 +74,6 @@ const Views: readonly string[] = [
 ];
 
 /** The viewport's own commands, for the keys a screen reader is told about. */
-/** How far a key moves the picture on the viewport, in pixels; how much it scales it; and how far it turns it. */
-const StencilStep = 10;
-const StencilScale = 1.1;
-const StencilTurn = Math.PI / 36;
-
 const ViewportCommands = [
   'frameModel',
   'nextView',
@@ -116,7 +113,15 @@ const PickFile = '…';
 /** The docked viewport: frames from the Worker on a canvas, and orbit input going the other way. */
 @Component({
   selector: 'ptn-viewport',
-  imports: [XuiButtonImports, XuiSelectImports, ViewportDisplayPanel, ToolStrip, ScreenPictureOverlay, SurfaceGuide],
+  imports: [
+    XuiButtonImports,
+    XuiSelectImports,
+    ViewportDisplayPanel,
+    ToolStrip,
+    ScreenPictureOverlay,
+    SurfaceGuide,
+    BrushRing
+  ],
   providers: [ViewportClient],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
@@ -282,21 +287,20 @@ const PickFile = '…';
         (drop)="dropOnMesh($event)"
       ></canvas>
       @if (paint.worn() && project.active()?.kind === 'texturing') {
+        <ptn-screen-picture of="material" />
         <ptn-screen-picture />
         <ptn-surface-guide />
         <ptn-tool-strip class="absolute start-2 top-2" />
       }
       @if (paints()) {
         @if (brushAt(); as at) {
-          <div
-            class="pointer-events-none absolute rounded-full border border-white/70 mix-blend-difference"
+          <ptn-brush-ring
             data-testid="viewport-brush"
             [attr.data-space]="paint.brush().sizeSpace"
-            [style.height.px]="cursor() * 2"
-            [style.left.px]="at.x - cursor()"
-            [style.top.px]="at.y - cursor()"
-            [style.width.px]="cursor() * 2"
-          ></div>
+            [radius]="cursor()"
+            [x]="at.x"
+            [y]="at.y"
+          />
           @for (copy of mirrored(); track $index) {
             <div
               class="pointer-events-none absolute rounded-full border border-dashed border-sky-300/80"
@@ -366,6 +370,7 @@ export class ViewportPane implements AfterViewInit {
   private readonly using = inject(MaterialUse);
   private readonly activity = inject(Activity);
   private readonly preferences = inject(Preferences);
+  private readonly spaceMouse = inject(SpaceMouse);
   protected readonly project = inject(ProjectStore);
   private readonly destroyRef = inject(DestroyRef);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
@@ -479,6 +484,7 @@ export class ViewportPane implements AfterViewInit {
 
   constructor() {
     this.installCommands();
+    this.followSpaceMouse();
     // Properties is outside this pane and cannot reach its client, so the camera it measures through is kept on the store.
     effect(() => this.paint.viewCamera.set(this.viewport.camera()));
     this.destroyRef.onDestroy(() => this.paint.viewCamera.set(null));
@@ -748,17 +754,8 @@ export class ViewportPane implements AfterViewInit {
 
     handle('zoomIn', move('+', false));
     handle('zoomOut', move('-', false));
-    // The picture on the viewport moves by keys too (#128), a step at a time, while a stencil or the projection reads it.
-    const shown = () => this.paint.screenPictureShown();
-    const picture = (step: Parameters<PaintStore['moveScreenPicture']>[0]) => () => this.paint.moveScreenPicture(step);
-    handle('moveStencilLeft', picture({ x: -StencilStep }), shown);
-    handle('moveStencilRight', picture({ x: StencilStep }), shown);
-    handle('moveStencilUp', picture({ y: -StencilStep }), shown);
-    handle('moveStencilDown', picture({ y: StencilStep }), shown);
-    handle('growStencil', picture({ scale: StencilScale }), shown);
-    handle('shrinkStencil', picture({ scale: 1 / StencilScale }), shown);
-    handle('turnStencilLeft', picture({ angle: -StencilTurn }), shown);
-    handle('turnStencilRight', picture({ angle: StencilTurn }), shown);
+    // What is fixed on the view moves by keys too (#128), a step at a time, while a stencil or the projection reads it.
+    handleStencilKeys(this.commands, this.paint, this.destroyRef);
     handle(
       'cancelStroke',
       () => {
@@ -899,7 +896,8 @@ export class ViewportPane implements AfterViewInit {
       event.preventDefault();
       event.stopPropagation();
       if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = carries === 'file' ? 'copy' : 'move';
+        // The picture is brought into the project or read where it is; either way it stays where it was.
+        event.dataTransfer.dropEffect = 'copy';
       }
       return;
     }
@@ -1031,6 +1029,28 @@ export class ViewportPane implements AfterViewInit {
           this.mirror();
         }
       });
+  }
+
+  /** A 3D mouse turns the camera while its cap is held, as a drag does, and its first button frames the model (#163). */
+  private followSpaceMouse(): void {
+    this.spaceMouse.listen(
+      {
+        move: (motion, seconds) => {
+          if (!this.stroking && !this.dragging()) {
+            const camera = spaceStep(this.viewport.camera(), motion, seconds, this.preferences.orbitScale());
+            this.viewport.camera.set(camera);
+            this.scheduleCamera();
+          }
+        },
+        still: () => this.viewport.moveCamera(this.viewport.camera(), false),
+        press: button => {
+          if (button === 0) {
+            this.viewport.moveCamera(framed(this.viewport.camera()), false);
+          }
+        }
+      },
+      this.destroyRef
+    );
   }
 
   private aim() {

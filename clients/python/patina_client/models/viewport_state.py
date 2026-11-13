@@ -15,6 +15,7 @@ if TYPE_CHECKING:
   from ..models.viewport_camera_state import ViewportCameraState
   from ..models.viewport_display import ViewportDisplay
   from ..models.viewport_follow import ViewportFollow
+  from ..models.viewport_highlight import ViewportHighlight
   from ..models.viewport_isolation import ViewportIsolation
   from ..models.viewport_map_paths import ViewportMapPaths
   from ..models.viewport_node_shown import ViewportNodeShown
@@ -52,6 +53,7 @@ class ViewportState:
             isolation (None | Unset | ViewportIsolation):
             node (None | Unset | ViewportNodeShown):
             following (None | Unset | ViewportFollow):
+            highlight (None | Unset | ViewportHighlight):
      """
 
     maps: ViewportMapPaths
@@ -67,6 +69,7 @@ class ViewportState:
     isolation: None | Unset | ViewportIsolation = UNSET
     node: None | Unset | ViewportNodeShown = UNSET
     following: None | Unset | ViewportFollow = UNSET
+    highlight: None | Unset | ViewportHighlight = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -77,6 +80,7 @@ class ViewportState:
         from ..models.viewport_camera_state import ViewportCameraState # noqa: PLC0415
         from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         from ..models.viewport_follow import ViewportFollow # noqa: PLC0415
+        from ..models.viewport_highlight import ViewportHighlight # noqa: PLC0415
         from ..models.viewport_isolation import ViewportIsolation # noqa: PLC0415
         from ..models.viewport_map_paths import ViewportMapPaths # noqa: PLC0415
         from ..models.viewport_node_shown import ViewportNodeShown # noqa: PLC0415
@@ -136,6 +140,14 @@ class ViewportState:
         else:
             following = self.following
 
+        highlight: dict[str, Any] | None | Unset
+        if isinstance(self.highlight, Unset):
+            highlight = UNSET
+        elif isinstance(self.highlight, ViewportHighlight):
+            highlight = self.highlight.to_dict()
+        else:
+            highlight = self.highlight
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -160,6 +172,8 @@ class ViewportState:
             field_dict["node"] = node
         if following is not UNSET:
             field_dict["following"] = following
+        if highlight is not UNSET:
+            field_dict["highlight"] = highlight
 
         return field_dict
 
@@ -170,6 +184,7 @@ class ViewportState:
         from ..models.viewport_camera_state import ViewportCameraState # noqa: PLC0415
         from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         from ..models.viewport_follow import ViewportFollow # noqa: PLC0415
+        from ..models.viewport_highlight import ViewportHighlight # noqa: PLC0415
         from ..models.viewport_isolation import ViewportIsolation # noqa: PLC0415
         from ..models.viewport_map_paths import ViewportMapPaths # noqa: PLC0415
         from ..models.viewport_node_shown import ViewportNodeShown # noqa: PLC0415
@@ -287,6 +302,26 @@ class ViewportState:
         following = _parse_following(d.pop("following", UNSET))
 
 
+        def _parse_highlight(data: object) -> None | Unset | ViewportHighlight:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                highlight_type_1 = ViewportHighlight.from_dict(data)
+
+
+
+                return highlight_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | Unset | ViewportHighlight, data)
+
+        highlight = _parse_highlight(d.pop("highlight", UNSET))
+
+
         viewport_state = cls(
             maps=maps,
             camera=camera,
@@ -301,6 +336,7 @@ class ViewportState:
             isolation=isolation,
             node=node,
             following=following,
+            highlight=highlight,
         )
 
 

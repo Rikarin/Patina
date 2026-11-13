@@ -59,8 +59,8 @@ class StackState:
             anchors (list[StackAnchor] | None | Unset): The anchor points its set publishes, by name, and who reads each.
             bake_stale (None | str | Unset): Why the bake the set reads no longer fits it, or null when it does or there is
                 none: `mesh`, made on a mesh
-                the set no longer stands on, or `uvSet`, laid out in another of the mesh's UV sets (#238). Either way its
-                maps need baking again.
+                the set no longer stands on, or `uvSet`, laid out in another of the mesh's UV sets (#238), or `shape`,
+                of another shape than the set's Width by Height (#262). Either way its maps need baking again.
      """
 
     id: str

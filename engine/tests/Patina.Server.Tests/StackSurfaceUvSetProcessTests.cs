@@ -146,4 +146,55 @@ public sealed partial class StackProcessTests {
             $"A red texel at {leftmost} of {map.Width} is in UV set 1's half."
         );
     }
+
+    /// <summary>
+    ///     A pick on a set laid out in its mesh's second UV set says the place in that UV set (#210), which Find Layer,
+    ///     the color picker and the clone source read: before, it said the first UV set's, a place the set does not
+    ///     paint. The point it met is the triangle's, so its place in either layout follows from where it is.
+    /// </summary>
+    [Fact]
+    public async Task A_pick_on_a_set_in_its_second_uv_set_says_the_place_in_that_uv_set() {
+        using var deadline = Deadline(300);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var mesh = TwoLayoutTriangle(Path.Combine(folder.FullName, "meshes"));
+        var (instance, _) = await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(mesh, deadline.Token);
+        var stack = Path.GetRelativePath(
+                Library,
+                Directory.EnumerateFiles(Path.Combine(Library, "projects", project), "*.vxlayers").Single()
+            )
+            .Replace('\\', '/');
+        var state = await OpenAsync(stack, deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackSetSettings(UvSet: 1));
+        using var frames = await WearAsync(instance, state.Id, deadline.Token);
+
+        var picked = await FirstHitAsync(deadline.Token);
+
+        // The ramp's corners are (0, 0, 0), (1, 0, 0.5) and (0, 1, 0.5), so a point's x and y are its weights.
+        var (x, y) = (picked.Position![0], picked.Position[1]);
+        Assert.Equal(0.5f + 0.25f * x, picked.U, 0.01f);
+        Assert.Equal(0.25f + 0.25f * y, picked.V, 0.01f);
+    }
+
+    /// <summary>The first of a few places on the picture, from a few sides, that meets the ramp.</summary>
+    async Task<ViewportPick> FirstHitAsync(CancellationToken token) {
+        foreach (var camera in new ViewportCameraState[] { new(0, 0, 1.05), new(0, 1.2, 1.05), new(0, -1.2, 1.05) }) {
+            foreach (var (x, y) in new[] { (0.5, 0.5), (0.45, 0.55), (0.4, 0.6), (0.55, 0.45) }) {
+                using var response = await http.PostAsJsonAsync(
+                    "/api/v1/viewport/pick",
+                    new(x, y, camera, Picture, Picture),
+                    ContractsJsonContext.Default.ViewportPickRequest,
+                    token
+                );
+                Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync(token));
+                var picked = await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.ViewportPick, token);
+                if (picked!.Found) {
+                    return picked;
+                }
+            }
+        }
+
+        Assert.Fail("No place on the picture met the ramp.");
+        return null!;
+    }
 }

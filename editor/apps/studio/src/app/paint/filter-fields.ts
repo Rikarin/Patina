@@ -16,7 +16,16 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
-import { type GraphField, fieldsOf, hexOfLanes, lanesOfHex, sliderRange } from '../graph/graph-fields';
+import {
+  type GraphField,
+  colorTextOf,
+  fieldsOf,
+  hexOfLanes,
+  keptLanes,
+  lanesOfColorText,
+  lanesOfHex,
+  sliderRange
+} from '../graph/graph-fields';
 
 type NumberField = Extract<GraphField, { control: 'number' }>;
 
@@ -199,14 +208,27 @@ export class FilterFields {
   }
 
   protected hexOf(field: Extract<GraphField, { control: 'colour' }>): string {
-    return hexOfLanes(this.valueOf(field.name, field.fallback));
+    return hexOfLanes(this.lanesOf(field));
   }
 
   protected setHex(field: Extract<GraphField, { control: 'colour' }>, hex: string): void {
     const lanes = lanesOfHex(hex);
-    if (lanes && hex.toUpperCase() !== this.hexOf(field)) {
-      this.numberChange.emit({ name: field.name, value: [...lanes] });
+    if (!lanes || hex.toUpperCase() === this.hexOf(field)) {
+      return;
     }
+
+    if (field.source === 'value') {
+      this.numberChange.emit({ name: field.name, value: [...lanes] });
+    } else {
+      // A compound's Color setting is text, and keeps a lane the eight-bit picker did not move.
+      this.textChange.emit({ name: field.name, value: colorTextOf(keptLanes(this.lanesOf(field), lanes)) });
+    }
+  }
+
+  private lanesOf(field: Extract<GraphField, { control: 'colour' }>): readonly number[] {
+    return field.source === 'value'
+      ? this.valueOf(field.name, field.fallback)
+      : (lanesOfColorText(this.textOf(field)) ?? [1, 1, 1, 1]);
   }
 
   protected textOf(field: Extract<GraphField, { source: 'text' }>): string {

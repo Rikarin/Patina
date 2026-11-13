@@ -224,10 +224,16 @@ export class FilterInputs {
     return node ? this.generators().get(node) : undefined;
   }
 
-  /** What a slot reads when the layer says nothing, which is what its first choice says. */
+  /**
+   * What a slot reads when the layer says nothing, which is what its first choice says. A channel the set lacks is read
+   * as it would stand untouched (#254), so the slot says that rather than the layers beneath.
+   */
   protected unset(slot: StackFilterInput): string {
     if (slot.channel) {
-      return `${labelIn(this.sourceTerms(), 'Beneath')} · ${channelName(slot.channel)}`;
+      const channels = this.channels();
+      return channels.length > 0 && !channels.includes(slot.channel)
+        ? `Untouched · ${channelName(slot.channel)}`
+        : `${labelIn(this.sourceTerms(), 'Beneath')} · ${channelName(slot.channel)}`;
     }
 
     if (slot.subject) {

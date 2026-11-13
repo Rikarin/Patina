@@ -18,6 +18,9 @@ public static class StackInputs {
     const string PaintKey = "paint";
     const string ModelKey = "model";
 
+    /// <summary>A stack's Width and Height when its file leaves them out, as Vixen reads it.</summary>
+    const int DefaultSide = 1024;
+
     /// <summary>The paint files, the mesh and the bake a stack reads, as paths beside it, in a fixed order.</summary>
     /// <param name="stack">The stack's path.</param>
     /// <param name="text">Its text.</param>
@@ -56,29 +59,71 @@ public static class StackInputs {
     }
 
     /// <summary>
-    ///     The UV set a stack's texture set is laid out in: the set named <paramref name="set" />, or its first. Zero,
-    ///     the first, when the file does not say or cannot be read.
+    ///     What a stack exports at, for what it costs (#207): its size, and how many maps its texture sets make,
+    ///     one per channel of each. Null when the file cannot be read as a stack.
     /// </summary>
-    public static int UvSetOf(string text, string? set) {
+    public static TextureSize? SizeOf(string text) {
         YamlStream yaml = [];
         try {
             using StringReader reader = new(text);
             yaml.Load(reader);
         } catch (YamlException) {
-            return 0;
+            return null;
         }
 
         if (yaml.Documents.FirstOrDefault()?.RootNode is not YamlMappingNode root
-            || !root.Children.TryGetValue(new YamlScalarNode("sets"), out var sets)
-            || sets is not YamlSequenceNode list) {
-            return 0;
+            || !int.TryParse(Scalar(root, "baseWidth"), out var width)
+            || !int.TryParse(Scalar(root, "baseHeight"), out var height)
+            || width <= 0
+            || height <= 0) {
+            return null;
+        }
+
+        var maps = 0;
+        if (root.Children.TryGetValue(new YamlScalarNode("sets"), out var sets) && sets is YamlSequenceNode list) {
+            foreach (var set in list.Children.OfType<YamlMappingNode>()) {
+                if (set.Children.TryGetValue(new YamlScalarNode("channels"), out var channels)
+                    && channels is YamlSequenceNode held) {
+                    maps += held.Children.Count;
+                }
+            }
+        }
+
+        return new(width, height, maps);
+    }
+
+    /// <summary>
+    ///     What a stack's texture set reads its bake by: the UV set the set named <paramref name="set" />, or its
+    ///     first, is laid out in, and the stack's Width and Height (#262). The first UV set when the file does not say,
+    ///     and no shape and the first when it cannot be read.
+    /// </summary>
+    public static BakeFit.SetLayout LayoutOf(string text, string? set) {
+        YamlStream yaml = [];
+        try {
+            using StringReader reader = new(text);
+            yaml.Load(reader);
+        } catch (YamlException) {
+            return new(0);
+        }
+
+        if (yaml.Documents.FirstOrDefault()?.RootNode is not YamlMappingNode root) {
+            return new(0);
+        }
+
+        var width = Whole(root, "baseWidth", DefaultSide);
+        var height = Whole(root, "baseHeight", DefaultSide);
+        if (!root.Children.TryGetValue(new YamlScalarNode("sets"), out var sets) || sets is not YamlSequenceNode list) {
+            return new(0, width, height);
         }
 
         var chosen = list.Children.OfType<YamlMappingNode>()
                 .FirstOrDefault(entry => set is null || Scalar(entry, "name") == set)
             ?? list.Children.OfType<YamlMappingNode>().FirstOrDefault();
-        return chosen is not null && int.TryParse(Scalar(chosen, "uvSet"), out var uvSet) ? uvSet : 0;
+        return new(chosen is null ? 0 : Whole(chosen, "uvSet", 0), width, height);
     }
+
+    static int Whole(YamlMappingNode mapping, string key, int otherwise) =>
+        int.TryParse(Scalar(mapping, key), out var value) ? value : otherwise;
 
     static string? Scalar(YamlMappingNode mapping, string key) =>
         mapping.Children.TryGetValue(new YamlScalarNode(key), out var value) && value is YamlScalarNode scalar
@@ -106,4 +151,16 @@ public static class StackInputs {
                 break;
         }
     }
+}
+
+/// <summary>What a stack exports at: its size, and how many maps its texture sets make together (#207).</summary>
+/// <param name="Width">Its width in texels.</param>
+/// <param name="Height">Its height in texels.</param>
+/// <param name="Maps">One per channel of each texture set.</param>
+public readonly record struct TextureSize(int Width, int Height, int Maps) {
+    /// <summary>Bytes per texel of one map as an export writes it uncompressed: four eight-bit lanes.</summary>
+    public const int BytesPerTexel = 4;
+
+    /// <summary>What its maps hold together, uncompressed and without mip levels.</summary>
+    public long Bytes => (long)Width * Height * Maps * BytesPerTexel;
 }

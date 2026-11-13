@@ -157,7 +157,7 @@ public sealed class InstanceRegistry(string path) {
                     .ConfigureAwait(false);
             }
 
-            File.Move(temporary, path, true);
+            SharedFile.MoveOver(temporary, path);
         } finally {
             File.Delete(temporary); // already moved, unless the write failed
         }

@@ -382,6 +382,65 @@ test('a picture on the viewport projects through the brush, and as a stencil mas
   await window.screenshot({ path: join(shots, 'tool-stencil-result.png') });
 });
 
+test('the projection tool paints a picture in the 2D view, and a material from the screen (#128)', async () => {
+  await openOnMesh();
+  // The brush under the pointer is its own stamp on the viewport, and shows on the 2D view too (#137).
+  const middle = await at(0.5, 0.5);
+  await window.mouse.move(middle.x, middle.y);
+  await expect(window.getByTestId('viewport-brush')).toHaveAttribute('data-shape', 'stamp', { timeout: 30_000 });
+  await expect(window.getByTestId('brush-stamp')).toBeVisible();
+  const flatBox = await window.getByTestId('paint-picture').boundingBox();
+  if (flatBox) {
+    await window.mouse.move(flatBox.x + flatBox.width / 2, flatBox.y + flatBox.height / 2);
+  }
+
+  await expect(window.getByTestId('atlas-brush')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'brush-stamp-cursor.png') });
+  const picture = join(scratch, 'checker.png');
+  checker(picture);
+  await answerOpen(app, picture);
+  await window.getByTestId('paint-screen-picture-choose').click();
+  await expect(window.getByTestId('screen-picture-2d-frame')).toBeVisible({ timeout: 30_000 });
+  await expect(window.getByTestId('tool-strip')).toHaveAttribute('data-tool', 'projection');
+
+  // A stroke across the 2D view reads the picture where each texel is drawn under it.
+  const map = window.getByTestId('paint-picture');
+  const flat = async () => (await map.screenshot({ scale: 'css' })).toString('base64');
+  const before = await flat();
+  const area = await map.boundingBox();
+  if (!area) {
+    throw new Error('The 2D view has no box.');
+  }
+
+  await window.mouse.move(area.x + area.width * 0.3, area.y + area.height * 0.5);
+  await window.mouse.down();
+  await window.mouse.move(area.x + area.width * 0.7, area.y + area.height * 0.5, { steps: 24 });
+  await window.mouse.up();
+  await expect.poll(async () => changed(before, await flat()), { timeout: 60_000 }).toBeGreaterThan(400);
+  await settled();
+  expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
+  await window.screenshot({ path: join(shots, 'tool-projection-2d.png') });
+
+  // With a material in the brush panel, the projection paints the material where its frame stands instead.
+  await window.getByTestId('shelf-search').fill('Terracotta');
+  await window
+    .getByTestId('shelf-material')
+    .filter({ hasText: 'Terracotta' })
+    .first()
+    .click({ modifiers: ['Alt'] });
+  await expect(window.getByTestId('paint-material-name')).toContainText('Terracotta', { timeout: 30_000 });
+  await expect(window.getByTestId('tool-strip')).toHaveAttribute('data-tool', 'projection');
+  await expect(window.getByTestId('screen-material-frame')).toBeVisible();
+  await expect(window.getByTestId('screen-picture-frame')).toHaveCount(0);
+  await settled();
+  const plain = await shot();
+  await drag(0.4, 0.62, 0.6, 0.62);
+  await expect.poll(async () => changed(plain, await shot(), 8), { timeout: 60_000 }).toBeGreaterThan(150);
+  await settled();
+  expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
+  await window.screenshot({ path: join(shots, 'tool-projection-material.png') });
+});
+
 test('a dab on the strap paints the top under it only with the occlusion test off', async () => {
   await openOnMesh();
   await canvas().focus();

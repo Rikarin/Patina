@@ -1,0 +1,83 @@
+version: 1
+name: Worn Leather
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -320, y: -480 }
+  - { id: 2, type: Source/Mesh Map, x: -1600, y: 0, texts: { Map: curvature } }
+  - { id: 3, type: Filters/Blur HQ, x: -1280, y: 0, values: { Sigma: [1.5] } }
+  - { id: 4, type: Colour/Histogram Equalise, x: -960, y: 0 }
+  - { id: 5, type: Source/Mesh Map, x: -1600, y: 200, texts: { Map: ao } }
+  - { id: 6, type: Source/Mesh Map, x: -1600, y: 400, texts: { Map: position } }
+  - { id: 7, type: Source/Volume Noise, x: -1280, y: 400, values: { Octaves: [4], Gain: [0.6] }, texts: { Basis: Gradient, '=Scale': scale, '=Seed': seed } }
+  - id: 8
+    type: Filters/Pixel Processor
+    x: -640
+    y: 0
+    texts:
+      Expression: 'float4(smoothstep(0.92f - x * 0.35f, 1f - x * 0.1f, a.x), saturate(smoothstep(0.35f, 0.03f, a.x) * 0.7f + (1f - b.x) * 1.2f), 0f, 1f)'
+      '=X': wear
+  - id: 9
+    type: Filters/Pixel Processor
+    x: -320
+    y: 0
+    texts:
+      Expression: 'float4(a.x * saturate(1f - (0.55f - b.x) * 3f), saturate(a.y * x * 1.5f), b.x, 1f)'
+      '=X': creasing
+  - id: 10
+    type: Filters/Pixel Processor
+    x: 320
+    y: -480
+    texts:
+      Expression: 'float4(saturate(lerp(lerp(a.xyz, lerp(a.xyz, float3(dot(a.xyz, float3(0.3f, 0.59f, 0.11f)), dot(a.xyz, float3(0.3f, 0.59f, 0.11f)), dot(a.xyz, float3(0.3f, 0.59f, 0.11f))), 0.4f) * 1.35f + 0.05f, b.x), a.xyz * 0.55f, b.y) * (1f - x * 0.15f + b.z * x * 0.3f)), 1f)'
+      '=X': mottling
+  - id: 11
+    type: Filters/Pixel Processor
+    x: 320
+    y: -320
+    texts:
+      Expression: 'float4(saturate(lerp(lerp(a.xyz, a.xyz * 0.6f, b.x), a.xyz + 0.2f, b.y)), 1f)'
+  - id: 12
+    type: Filters/Pixel Processor
+    x: 320
+    y: -160
+    texts:
+      Expression: 'float4(a.xyz - b.y * 0.03f + (b.z - 0.5f) * x * 0.02f, 1f)'
+      '=X': mottling
+  - { id: 99, type: Sub-graph/Output, x: 640, y: -320 }
+edges:
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: Position }
+  - { fromNode: 4, fromPort: Out, toNode: 8, toPort: A }
+  - { fromNode: 5, fromPort: Out, toNode: 8, toPort: B }
+  - { fromNode: 8, fromPort: Out, toNode: 9, toPort: A }
+  - { fromNode: 7, fromPort: Out, toNode: 9, toPort: B }
+  - { fromNode: 1, fromPort: baseColor, toNode: 10, toPort: A }
+  - { fromNode: 9, fromPort: Out, toNode: 10, toPort: B }
+  - { fromNode: 1, fromPort: roughness, toNode: 11, toPort: A }
+  - { fromNode: 9, fromPort: Out, toNode: 11, toPort: B }
+  - { fromNode: 1, fromPort: height, toNode: 12, toPort: A }
+  - { fromNode: 9, fromPort: Out, toNode: 12, toPort: B }
+  - { fromNode: 10, fromPort: Out, toNode: 99, toPort: baseColor }
+  - { fromNode: 11, fromPort: Out, toNode: 99, toPort: roughness }
+  - { fromNode: 12, fromPort: Out, toNode: 99, toPort: height }
+groups: []
+comments: []
+interface:
+  - { name: baseColor, direction: Input, kind: Image, default: [], summary: 'The dyed leather.' }
+  - { name: roughness, direction: Input, kind: Image, default: [], summary: 'The roughness beneath.' }
+  - { name: height, direction: Input, kind: Image, default: [], summary: 'The height beneath.' }
+  - { name: baseColor, direction: Output, kind: Image, default: [], summary: 'The leather scuffed pale through its dye on the edges, dark in its creases and mottled between.' }
+  - { name: roughness, direction: Output, kind: Image, default: [], summary: 'The roughness, burnished smooth where it is handled and dry and rough in the creases.' }
+  - { name: height, direction: Output, kind: Image, default: [], summary: 'The height, with its creases pressed deeper.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Worn leather: dye scuffed away on the edges, creases darkened and dried, handled faces burnished, in every channel at once.'
+  doesNotTile: 'Reads mesh maps, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: wear, label: Edge Wear, default: '0.5', summary: 'How far the dye is scuffed away on the edges.', kind: Float, minimum: 0, maximum: 1, group: Wear }
+  - { name: creasing, label: Creasing, default: '0.5', summary: 'How dark and dry the creases and hollows are.', kind: Float, minimum: 0, maximum: 1, group: Wear }
+  - { name: mottling, label: Mottling, default: '0.4', summary: 'How unevenly the colour has aged across the leather.', kind: Float, minimum: 0, maximum: 1, group: Wear }
+  - { name: scale, label: Breakup Scale, default: '8', summary: 'How many patches the wear breaks into across the model.', kind: Float, minimum: 1, maximum: 32, group: Breakup }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the breakup. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Breakup }

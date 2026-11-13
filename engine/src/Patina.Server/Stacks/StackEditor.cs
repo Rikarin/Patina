@@ -561,8 +561,13 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         }
 
         var channel = StackDocuments.ChannelName(stroke.Channel);
+        // A layer keeps what it held for a channel taken off the set (#141), so it may still write it (#261).
         if (Set.Channels.TrueForAll(held => held.Usage != stroke.Channel)) {
-            throw new StackEditRefusedException($"This document has no {StackDocuments.ChannelName(channel)} channel.");
+            throw new StackEditRefusedException(
+                $"This document has no {channel} channel.",
+                Api.Refusals.ChannelMissing,
+                new Dictionary<string, string> { ["channel"] = channel }
+            );
         }
 
         if (!layer.Writes(stroke.Channel)) {

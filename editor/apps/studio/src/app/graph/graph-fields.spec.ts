@@ -1,10 +1,12 @@
 import type { GraphNodeType } from '@patina/api-client';
 import {
   cardLinesOf,
+  colorTextOf,
   expressionKey,
   fieldsOf,
   hexOfLanes,
   isWireable,
+  lanesOfColorText,
   lanesOfHex,
   sliderRange,
   wireFamily
@@ -164,5 +166,23 @@ describe('cardLinesOf', () => {
       { title: 'Path', value: 'a.png' },
       { title: 'on', value: 'Off' }
     ]);
+  });
+});
+
+describe("a Color parameter's text", () => {
+  it("reads Vixen's spelling: three or four numbers, a missing alpha being one", () => {
+    expect(lanesOfColorText('0.8, 0.4, 0.1')).toEqual([0.8, 0.4, 0.1, 1]);
+    expect(lanesOfColorText('2,0,0,0.5')).toEqual([2, 0, 0, 0.5]);
+  });
+
+  it('reads nothing else', () => {
+    for (const text of ['', '1,1', '1,1,1,1,1', 'red,0,0', '1,,1', 'Infinity,0,0']) {
+      expect(lanesOfColorText(text)).toBeNull();
+    }
+  });
+
+  it('writes four numbers that read back the same', () => {
+    expect(colorTextOf([0.25, 1.5, 0])).toBe('0.25,1.5,0,1');
+    expect(lanesOfColorText(colorTextOf([0.1, 0.2, 0.3, 0.4]))).toEqual([0.1, 0.2, 0.3, 0.4]);
   });
 });

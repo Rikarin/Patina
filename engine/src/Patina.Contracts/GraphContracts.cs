@@ -34,7 +34,7 @@ public sealed record GraphEdgeState(int FromNode, string FromPort, int ToNode, s
 /// <param name="Name">What it is called.</param>
 /// <param name="Default">Its default, as text.</param>
 /// <param name="Summary">One line about it.</param>
-/// <param name="Kind">Text, Bool, Int or Float.</param>
+/// <param name="Kind">Text, Bool, Int, Float or Color, whose default is four numbers separated by commas.</param>
 /// <param name="Minimum">Its lower bound, or null for none.</param>
 /// <param name="Maximum">Its upper bound, or null for none.</param>
 /// <param name="Group">The heading it sits under.</param>

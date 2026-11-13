@@ -192,7 +192,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 16;
+    public const int ProtocolVersion = 17;
 
     public string Type { get; set; } = string.Empty;
 
@@ -309,6 +309,12 @@ public sealed class IpcMessage {
     ///     empty low mesh for none.
     /// </summary>
     public ViewportBakePreview? BakePreview { get; set; }
+
+    /// <summary>
+    ///     For <see cref="IpcTypes.ViewportBakePreview" />: what the viewport draws alone (#136), so the preview draws
+    ///     the low mesh's parts that show and nothing of the rest; null for the whole model.
+    /// </summary>
+    public ViewportIsolation? BakePreviewIsolation { get; set; }
 
     /// <summary>The key to what <see cref="IpcTypes.ViewportBakePreview" /> drew, in its answer.</summary>
     public BakePreviewState? BakePreviewShown { get; set; }
@@ -466,13 +472,15 @@ public sealed record ViewportMapSet(
 ///     the stack worn; zero for none.
 /// </param>
 /// <param name="Resolution">The side of a map for a material whose own size cannot be read, in texels.</param>
+/// <param name="Highlight">What is marked on the model, or null for nothing.</param>
 public sealed record ViewportDisplaySet(
     ViewportDisplay Display,
     ViewportMapFile? Look,
     ViewportMapFile? Picture,
     ViewportIsolation? Isolation = null,
     double TexelDensity = 0,
-    int Resolution = 2048
+    int Resolution = 2048,
+    ViewportHighlight? Highlight = null
 );
 
 /// <summary>
@@ -503,7 +511,20 @@ public sealed record ViewportRender(int Width, int Height, string SharedMemory, 
 /// <param name="Width">The picture's width in the units the reply's view is in.</param>
 /// <param name="Height">Its height.</param>
 /// <param name="Mesh">The mesh. Only its file is read, so this answers where there is no Vulkan.</param>
-public sealed record ViewportPickAsk(double X, double Y, ViewportCamera Camera, int Width, int Height, string Mesh);
+/// <param name="UvSets">
+///     The coordinate set each worn material is laid out in, by name, where it is not the first (#210): the place on
+///     the map a pick says is in its texture set's own layout, which Find Layer, the color picker and the clone source
+///     read. Null reads every material in the first.
+/// </param>
+public sealed record ViewportPickAsk(
+    double X,
+    double Y,
+    ViewportCamera Camera,
+    int Width,
+    int Height,
+    string Mesh,
+    IReadOnlyDictionary<string, int>? UvSets = null
+);
 
 /// <summary>A frame that is now in shared memory.</summary>
 public sealed record ViewportFrame(int Width, int Height, double RenderMilliseconds);
@@ -562,11 +583,12 @@ public sealed record StackLayerThumbnail(string Layer, string Hash);
 /// <param name="V">Down it, 0 to 1.</param>
 public sealed record StackFindAsk(string Session, float U, float V);
 
-/// <summary>Asks for a picture of a brush, a stroke of it drawn small.</summary>
+/// <summary>Asks for a picture of a brush, a stroke of it drawn small, or one stamp of it.</summary>
 /// <param name="Folder">The stack's folder, which an alpha that is a picture is relative to.</param>
 /// <param name="Brush">The brush.</param>
 /// <param name="PreviewFolder">The content-addressed folder the picture goes in.</param>
-public sealed record BrushPreviewAsk(string Folder, StackBrush Brush, string PreviewFolder);
+/// <param name="Stamp">Whether it is one stamp, filling a square, rather than a stroke.</param>
+public sealed record BrushPreviewAsk(string Folder, StackBrush Brush, string PreviewFolder, bool Stamp = false);
 
 /// <summary>Asks for one picture of a loaded graph at the size the graph computes it.</summary>
 /// <param name="Session">The graph.</param>

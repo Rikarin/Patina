@@ -17,6 +17,7 @@ public sealed class BakePreviewSession(WorkerLink worker) : IDisposable {
     readonly Lock changing = new();
     readonly SemaphoreSlim telling = new(1, 1);
     ViewportBakePreview? preview;
+    ViewportIsolation? isolation;
     BakePreviewState state = BakePreviewState.Off;
     long version;
     (IpcConnection? Connection, long Version) told;
@@ -58,6 +59,23 @@ public sealed class BakePreviewSession(WorkerLink worker) : IDisposable {
         return State;
     }
 
+    /// <summary>
+    ///     Draws the preview over what the viewport draws alone (#136), told to the Worker with the next frame; null is
+    ///     the whole model.
+    /// </summary>
+    public void Isolate(ViewportIsolation? shown) {
+        lock (changing) {
+            if (shown == isolation) {
+                return;
+            }
+
+            isolation = shown;
+            if (preview is not null) {
+                version++;
+            }
+        }
+    }
+
     /// <summary>Tells a Worker the preview when it has not heard this one: a new Worker has heard nothing.</summary>
     /// <param name="connection">The Worker's link.</param>
     /// <param name="cancellationToken">Stops the wait.</param>
@@ -69,9 +87,10 @@ public sealed class BakePreviewSession(WorkerLink worker) : IDisposable {
         await telling.WaitAsync(cancellationToken);
         try {
             ViewportBakePreview? showing;
+            ViewportIsolation? alone;
             long asked;
             lock (changing) {
-                (showing, asked) = (preview, version);
+                (showing, alone, asked) = (preview, isolation, version);
                 // A Worker that never heard of a preview has none to take off.
                 if (told == (connection, asked) || (showing is null && told.Connection != connection && asked == 0)) {
                     return;
@@ -80,7 +99,11 @@ public sealed class BakePreviewSession(WorkerLink worker) : IDisposable {
 
             try {
                 var reply = await connection.SendAsync(
-                    new() { Type = IpcTypes.ViewportBakePreview, BakePreview = showing ?? new() },
+                    new() {
+                        Type = IpcTypes.ViewportBakePreview,
+                        BakePreview = showing ?? new(),
+                        BakePreviewIsolation = alone
+                    },
                     cancellationToken
                 );
                 lock (changing) {

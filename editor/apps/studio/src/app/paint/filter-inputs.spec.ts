@@ -23,7 +23,7 @@ const clouds: StackFilterKind = {
   inputs: []
 };
 
-function render(mask = false, inputs: FilterSources = {}) {
+function render(mask = false, inputs: FilterSources = {}, kind: Pick<StackFilterKind, 'inputs'> = warp) {
   const store = {
     vocabulary: signal({
       inputs: ['Beneath', 'Anchor', 'Generator', 'Texture', 'Bake'].map(value => ({
@@ -42,7 +42,7 @@ function render(mask = false, inputs: FilterSources = {}) {
     ]
   });
   const fixture = TestBed.createComponent(FilterInputs);
-  fixture.componentRef.setInput('kind', warp);
+  fixture.componentRef.setInput('kind', kind);
   fixture.componentRef.setInput('mask', mask);
   fixture.componentRef.setInput('inputs', inputs);
   fixture.componentRef.setInput('testId', 'in-');
@@ -60,6 +60,21 @@ describe('a filter input slot', () => {
     const { source } = render();
     expect(source('Input')?.textContent).toContain('Layers Beneath · this channel');
     expect(source('Warp')?.textContent.trim()).toBe('Choose what it reads');
+  });
+
+  it('says a channel the set lacks is read untouched, and one it has is read from the layers beneath', () => {
+    const { source } = render(
+      false,
+      {},
+      {
+        inputs: [
+          { port: 'Holes', summary: '', subject: false, optional: false, channel: 'opacity' },
+          { port: 'Tone', summary: '', subject: false, optional: false, channel: 'baseColor' }
+        ]
+      }
+    );
+    expect(source('Holes')?.textContent).toContain('Untouched · Opacity');
+    expect(source('Tone')?.textContent).toContain('Layers Beneath · Base Color');
   });
 
   it('has no slot for a mask step’s subject, which is the mask', () => {

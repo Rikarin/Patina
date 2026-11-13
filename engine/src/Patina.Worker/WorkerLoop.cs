@@ -247,7 +247,7 @@ sealed class WorkerLoop(
                 PaintTransfer.Move(canvas, from, to).Write(write);
             }
 
-            File.Move(part, file, true);
+            SharedFile.MoveOver(part, file);
         }
 
         return IpcMessage.Ok(request.Id);

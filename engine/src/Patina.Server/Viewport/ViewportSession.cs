@@ -120,7 +120,8 @@ public sealed class ViewportSession(
                     stack,
                     display.Isolation,
                     node?.Shown,
-                    following
+                    following,
+                    display.Highlight
                 );
             }
         }
@@ -468,7 +469,10 @@ public sealed class ViewportSession(
         ArgumentNullException.ThrowIfNull(settings);
         lock (changing) {
             display = settings with {
-                Isolation = display.Isolation, TexelDensity = display.TexelDensity, Resolution = display.Resolution
+                Isolation = display.Isolation,
+                TexelDensity = display.TexelDensity,
+                Resolution = display.Resolution,
+                Highlight = display.Highlight
             };
             mapsError = null;
             revision++;
@@ -501,6 +505,18 @@ public sealed class ViewportSession(
         ArgumentNullException.ThrowIfNull(isolation);
         lock (changing) {
             display = display with { Isolation = isolation.Whole ? null : isolation };
+            bakePreview.Isolate(display.Isolation);
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>Marks some of the model, for every client and for a new Worker. None takes the mark off.</summary>
+    public void Highlight(ViewportHighlight highlight) {
+        ArgumentNullException.ThrowIfNull(highlight);
+        lock (changing) {
+            display = display with { Highlight = highlight.None ? null : highlight };
             revision++;
         }
 
@@ -719,11 +735,13 @@ public sealed class ViewportSession(
         int across;
         int down;
         string path;
+        Dictionary<string, int>? laidOut;
         lock (changing) {
             path = mesh ?? throw new IpcException("Open a mesh first: there is nothing to pick.");
             look = Lens(request.Camera ?? camera, display.Display);
             across = request.Width ?? width;
             down = request.Height ?? height;
+            laidOut = layouts.Count == 0 ? null : new(layouts, StringComparer.Ordinal);
         }
 
         using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -736,7 +754,7 @@ public sealed class ViewportSession(
         }
 
         var reply = await connection.SendAsync(
-            new() { Type = IpcTypes.ViewportPick, Pick = new(request.X, request.Y, look, across, down, path) },
+            new() { Type = IpcTypes.ViewportPick, Pick = new(request.X, request.Y, look, across, down, path, laidOut) },
             cancellationToken
         );
         return reply.Picked!;

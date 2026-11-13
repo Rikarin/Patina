@@ -93,6 +93,26 @@ public sealed record StackLayer(
 /// <param name="Set">The texture set it is in, by name, or empty for the instance's own.</param>
 public sealed record StackInstanceRef(string Layer, string Set = "");
 
+/// <summary>An instance layer and the layer it stands for, across two texture sets of one model (#108).</summary>
+/// <param name="Set">The other texture set, by name.</param>
+/// <param name="Layer">The layer's id in that set.</param>
+/// <param name="Name">The layer's name there.</param>
+/// <param name="Source">
+///     For an instance in the other set, the id of the layer of this set it stands for; empty for a source.
+/// </param>
+public sealed record StackInstanceLink(string Set, string Layer, string Name, string Source = "");
+
+/// <summary>
+///     How a texture set's layers are tied to the model's other sets (#108): the instances elsewhere of its layers, and
+///     the layers elsewhere its own instances stand for, each with its name, which a client of one set cannot read.
+/// </summary>
+/// <param name="Instances">Layers of other sets that stand for one of this set's.</param>
+/// <param name="Sources">Layers of other sets that one of this set's instances stands for.</param>
+public sealed record StackInstanceLinks(
+    IReadOnlyList<StackInstanceLink> Instances,
+    IReadOnlyList<StackInstanceLink> Sources
+);
+
 /// <summary>A reference to an anchor point, by its name, in one channel.</summary>
 /// <param name="Anchor">The anchor point's name.</param>
 /// <param name="Channel">
@@ -419,8 +439,8 @@ public sealed record StackEvaluation(
 /// <param name="BakedOcclusion">How its occlusion does: <c>Combine</c>, <c>Replace</c>, <c>Off</c>.</param>
 /// <param name="BakeStale">
 ///     Why the bake the set reads no longer fits it, or null when it does or there is none: <c>mesh</c>, made on a mesh
-///     the set no longer stands on, or <c>uvSet</c>, laid out in another of the mesh's UV sets (#238). Either way its
-///     maps need baking again.
+///     the set no longer stands on, or <c>uvSet</c>, laid out in another of the mesh's UV sets (#238), or <c>shape</c>,
+///     of another shape than the set's Width by Height (#262). Either way its maps need baking again.
 /// </param>
 public sealed record StackState(
     string Id,

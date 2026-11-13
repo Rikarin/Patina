@@ -76,7 +76,7 @@ static partial class LibraryFolders {
             throw new ProjectExistsException($"'{trimmed}' already exists here.");
         }
 
-        Directory.Move(full, target);
+        SharedFile.MoveFolder(full, target);
         return to;
     }
 
@@ -182,14 +182,14 @@ static partial class LibraryFolders {
         try {
             foreach (var (from, to) in moves) {
                 if (from != to) {
-                    Directory.Move(Full(root, from), Full(root, to));
+                    SharedFile.MoveFolder(Full(root, from), Full(root, to));
                 }
 
                 moved++;
             }
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
             foreach (var (from, to) in moves.Take(moved).Where(static m => m.From != m.To)) {
-                Directory.Move(Full(root, to), Full(root, from));
+                SharedFile.MoveFolder(Full(root, to), Full(root, from));
             }
 
             throw;

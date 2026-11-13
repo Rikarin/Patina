@@ -479,6 +479,37 @@
         }
       }
     },
+    "/api/v1/viewport/highlight": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Marks some named meshes and materials (texture sets) on the model in one colour with their outline, for every client. Empty lists mark nothing.",
+        "operationId": "SetViewportHighlight",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportHighlight"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/bake": {
       "put": {
         "tags": [
@@ -2882,7 +2913,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "A picture the library holds, as its file: what a client shows of a projection or a stencil it frames.",
+        "summary": "A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260).",
         "operationId": "GetLibraryPicture",
         "parameters": [
           {
@@ -3898,6 +3929,512 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PackagePublished"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/snapshots": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "A document\u0027s snapshots, newest first.",
+        "operationId": "GetDocumentSnapshots",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSnapshotList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps the document\u0027s file and its paint as they are saved, under a name. Unsaved edits are refused.",
+        "operationId": "TakeDocumentSnapshot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnapshotTakeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Forgets a snapshot. The document is not changed.",
+        "operationId": "DeleteDocumentSnapshot",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSnapshotList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/snapshots/restore": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Puts a closed document back as a snapshot holds it, after keeping a snapshot of how it stood.",
+        "operationId": "RestoreDocumentSnapshot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnapshotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/samples": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The sample projects that can be made, by name.",
+        "operationId": "GetSamples",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Copies a sample into the library as a new project: its mesh, laid out, and a texturing document for each of its materials. A name already taken gets a number.",
+        "operationId": "MakeSample",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SampleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/costs": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "What a folder\u0027s documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document\u0027s size. No folder is the whole library.",
+        "operationId": "GetLibraryCosts",
+        "parameters": [
+          {
+            "name": "folder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryCosts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/costs/documents": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first.",
+        "operationId": "GetDocumentsOverBudget",
+        "parameters": [
+          {
+            "name": "over",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "folder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentCostPage"
                 }
               }
             }
@@ -5603,12 +6140,53 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/instances": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Lists the layers of the model\u0027s other texture sets that stand for this set\u0027s layers, and the layers there that this set\u0027s instances stand for, each by set, id and name.",
+        "operationId": "GetStackInstanceLinks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackInstanceLinks"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/brush-preview": {
       "post": {
         "tags": [
           "Stacks"
         ],
-        "summary": "A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack\u0027s strokes read. A brush no stroke could take is refused with its reason.",
+        "summary": "A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack\u0027s strokes read. With stamp, one stamp of it instead, as a cursor shows it: square, the stamp\u0027s long half-axis reaching the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke could take is refused with its reason.",
         "operationId": "PreviewStackBrush",
         "parameters": [
           {
@@ -5617,6 +6195,14 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "stamp",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           }
         ],
@@ -9289,6 +9875,77 @@
         },
         "description": "The body of \u0060POST /api/v1/export/compression\u0060 (#217): one file of an export, to see a region of it as the\nfile holds it beside what it was made from."
       },
+      "DocumentCost": {
+        "required": [
+          "path",
+          "width",
+          "height",
+          "maps",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its file, below the library."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Its width in texels.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height in texels.",
+            "format": "int32"
+          },
+          "maps": {
+            "type": "integer",
+            "description": "How many maps its texture sets export.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "What they hold together, uncompressed.",
+            "format": "int64"
+          }
+        },
+        "description": "One document and what it costs."
+      },
+      "DocumentCostPage": {
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentCost"
+            },
+            "description": "The documents on this page."
+          },
+          "total": {
+            "type": "integer",
+            "description": "How many cost more than the budget, on all pages.",
+            "format": "int32"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "The offset the page starts at.",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "The most items a page holds.",
+            "format": "int32"
+          }
+        },
+        "description": "One page of the documents that cost more than a budget, costliest first."
+      },
       "DocumentRecovery": {
         "type": "object",
         "properties": {
@@ -9320,6 +9977,64 @@
           }
         },
         "description": "What to do with autosaved work, with the document closed."
+      },
+      "DocumentSnapshot": {
+        "required": [
+          "id",
+          "name",
+          "taken",
+          "files",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Which snapshot, for a restore or a delete.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "What the person called it."
+          },
+          "taken": {
+            "type": "string",
+            "description": "When it was taken.",
+            "format": "date-time"
+          },
+          "files": {
+            "type": "integer",
+            "description": "How many files it holds: the document and its paint.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "How large those files are together, before any is shared with another snapshot.",
+            "format": "int64"
+          }
+        },
+        "description": "A named checkpoint of a document: its file and the paint it names, as they were (#209)."
+      },
+      "DocumentSnapshotList": {
+        "required": [
+          "path",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The document, below the library."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentSnapshot"
+            },
+            "description": "Its snapshots, newest first."
+          }
+        },
+        "description": "A document\u0027s snapshots, newest first."
       },
       "ExportFileChoice": {
         "required": [
@@ -10225,6 +10940,31 @@
           }
         },
         "description": "What a client may offer, with the dot."
+      },
+      "FolderCost": {
+        "required": [
+          "name",
+          "documents",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The folder or project, by its name in the folder asked about."
+          },
+          "documents": {
+            "type": "integer",
+            "description": "How many stacks are below it, at any depth.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "What their maps hold together, uncompressed at each document\u0027s size.",
+            "format": "int64"
+          }
+        },
+        "description": "What the documents below one folder or project cost (#207)."
       },
       "FolderCreateRequest": {
         "required": [
@@ -12516,7 +13256,7 @@
           },
           "kind": {
             "type": "string",
-            "description": "Text, Bool, Int or Float."
+            "description": "Text, Bool, Int, Float or Color, whose default is four numbers separated by commas."
           },
           "minimum": {
             "type": [
@@ -12922,7 +13662,8 @@
           "created",
           "progress",
           "attempts",
-          "cancelRequested"
+          "cancelRequested",
+          "version"
         ],
         "type": "object",
         "properties": {
@@ -13007,9 +13748,47 @@
           "cancelRequested": {
             "type": "boolean",
             "description": "Whether a client has asked for it to stop."
+          },
+          "version": {
+            "type": "integer",
+            "description": "How many times it has changed, rising with each change: an answer and an event can arrive in either order,\nand a client keeps whichever says more.",
+            "format": "int64"
           }
         },
         "description": "A piece of work the Server owns, which outlives the Worker running it and the Server itself."
+      },
+      "LibraryCosts": {
+        "required": [
+          "folder",
+          "documents",
+          "bytes",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "folder": {
+            "type": "string",
+            "description": "The folder below \u0060projects/\u0060, empty for the whole library."
+          },
+          "documents": {
+            "type": "integer",
+            "description": "How many stacks are below it.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "What they cost together.",
+            "format": "int64"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FolderCost"
+            },
+            "description": "Each folder or project directly in it."
+          }
+        },
+        "description": "What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A\ndocument\u0027s cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for\neach channel of each texture set. Compression and mip levels are a preset\u0027s, and are not counted."
       },
       "LibraryExportRequest": {
         "required": [
@@ -14334,7 +15113,7 @@
               "null",
               "string"
             ],
-            "description": "Why that bake no longer fits it, so its maps need baking again, or null: \u0060mesh\u0060, made on a mesh it no\nlonger stands on, or \u0060uvSet\u0060, laid out in another UV set than the one it chose (#238)."
+            "description": "Why that bake no longer fits it, so its maps need baking again, or null: \u0060mesh\u0060, made on a mesh it no\nlonger stands on, \u0060uvSet\u0060, laid out in another UV set than the one it chose (#238), or \u0060shape\u0060,\nof another shape than its Width by Height (#262)."
           },
           "tags": {
             "type": "array",
@@ -15170,6 +15949,42 @@
         },
         "description": "The body of \u0060PUT /api/v1/library/project/viewport\u0060."
       },
+      "SampleList": {
+        "required": [
+          "names"
+        ],
+        "type": "object",
+        "properties": {
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Each sample\u0027s name, which is also the project it makes."
+          }
+        },
+        "description": "The sample projects Patina ships, which a client offers to start from (#190)."
+      },
+      "SampleRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Which sample."
+          },
+          "folder": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The folder below \u0060projects/\u0060 to make it in, or null for the top."
+          }
+        },
+        "description": "Makes a project from a sample."
+      },
       "ServerPreferences": {
         "required": [
           "autosave"
@@ -15182,6 +15997,45 @@
           }
         },
         "description": "The Server\u0027s settings that belong to the person and not to a library or project, kept in a plain file beside\nthe discovery file, which anyone can read and edit."
+      },
+      "SnapshotRequest": {
+        "required": [
+          "path",
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The document, below the library."
+          },
+          "id": {
+            "type": "string",
+            "description": "The snapshot.",
+            "format": "uuid"
+          }
+        },
+        "description": "Puts a document back as a snapshot holds it, or forgets a snapshot."
+      },
+      "SnapshotTakeRequest": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The document, below the library."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What to call it. Empty gives it a name by number."
+          }
+        },
+        "description": "Takes a snapshot of a document as its file stands."
       },
       "StackAnchor": {
         "required": [
@@ -17436,6 +18290,43 @@
         },
         "description": "The layer on top at a place on a stack\u0027s map."
       },
+      "StackFrame": {
+        "required": [
+          "centre",
+          "scale",
+          "angle",
+          "tiled"
+        ],
+        "type": "object",
+        "properties": {
+          "centre": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Where its middle is on the stroke\u0027s picture, in the units stamps are in: two numbers."
+          },
+          "scale": {
+            "type": "number",
+            "description": "How many of those units one of its pixels covers, above zero.",
+            "format": "float",
+            "default": 1
+          },
+          "angle": {
+            "type": "number",
+            "description": "How far it is turned, clockwise on the screen, in radians.",
+            "format": "float",
+            "default": 0
+          },
+          "tiled": {
+            "type": "boolean",
+            "description": "Whether it repeats past its edges, or is nothing there.",
+            "default": false
+          }
+        },
+        "description": "Where something fixed on a stroke\u0027s picture stands: moved, scaled, turned and perhaps tiled."
+      },
       "StackIdColour": {
         "required": [
           "colour",
@@ -17557,6 +18448,59 @@
           }
         },
         "description": "Where one image input of a filter, a mask step or a graph fill reads."
+      },
+      "StackInstanceLink": {
+        "required": [
+          "set",
+          "layer",
+          "name",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "set": {
+            "type": "string",
+            "description": "The other texture set, by name."
+          },
+          "layer": {
+            "type": "string",
+            "description": "The layer\u0027s id in that set."
+          },
+          "name": {
+            "type": "string",
+            "description": "The layer\u0027s name there."
+          },
+          "source": {
+            "type": "string",
+            "description": "For an instance in the other set, the id of the layer of this set it stands for; empty for a source.",
+            "default": ""
+          }
+        },
+        "description": "An instance layer and the layer it stands for, across two texture sets of one model (#108)."
+      },
+      "StackInstanceLinks": {
+        "required": [
+          "instances",
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "instances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackInstanceLink"
+            },
+            "description": "Layers of other sets that stand for one of this set\u0027s."
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackInstanceLink"
+            },
+            "description": "Layers of other sets that one of this set\u0027s instances stands for."
+          }
+        },
+        "description": "How a texture set\u0027s layers are tied to the model\u0027s other sets (#108): the instances elsewhere of its layers, and\nthe layers elsewhere its own instances stand for, each with its name, which a client of one set cannot read."
       },
       "StackInstanceRef": {
         "required": [
@@ -18728,7 +19672,7 @@
               "null",
               "string"
             ],
-            "description": "Why the bake the set reads no longer fits it, or null when it does or there is none: \u0060mesh\u0060, made on a mesh\nthe set no longer stands on, or \u0060uvSet\u0060, laid out in another of the mesh\u0027s UV sets (#238). Either way its\nmaps need baking again."
+            "description": "Why the bake the set reads no longer fits it, or null when it does or there is none: \u0060mesh\u0060, made on a mesh\nthe set no longer stands on, or \u0060uvSet\u0060, laid out in another of the mesh\u0027s UV sets (#238), or \u0060shape\u0060,\nof another shape than the set\u0027s Width by Height (#262). Either way its maps need baking again."
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."
@@ -18794,6 +19738,17 @@
               {
                 "description": "For a material, how often its maps repeat, and how they turn and move.",
                 "$ref": "#/components/schemas/StackPlacement"
+              }
+            ]
+          },
+          "frame": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For a material, where its maps stand fixed on the stroke\u0027s picture, as the projection tool projects one from the\nscreen: each texel takes the map where it lands there, one of the map\u0027s pixels covering\nfloat StackFrame.Scale of the stroke\u0027s units. Null lays the maps as Projection\nsays. A material projected from the screen is not also laid in the model\u0027s space.",
+                "$ref": "#/components/schemas/StackFrame"
               }
             ]
           }
@@ -19246,6 +20201,13 @@
             "type": "integer",
             "description": "The side a new document gets when nobody says.",
             "format": "int32"
+          },
+          "vixen": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The version of Vixen, the engine library the graphs, layers and bakes run on (#190)."
           },
           "formats": {
             "description": "What can be read, for a client\u0027s file dialogs.",
@@ -19875,6 +20837,30 @@
         },
         "description": "Asks the viewport to show a graph on the mesh it is showing, or on the display\u0027s shape with none, as it stands\nnow: its Output nodes as a material, or one node\u0027s picture alone."
       },
+      "ViewportHighlight": {
+        "required": [
+          "parts",
+          "materials"
+        ],
+        "type": "object",
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Named meshes marked, as the model names them."
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Materials marked, as the model names them: a texture set is one."
+          }
+        },
+        "description": "What the viewport marks on the model (#136): named meshes and materials, a texture set being one, washed in one\ncolour and outlined over the model as it is shaded, such as the row a client points at in its list of texture\nsets. A part an isolation hides is not marked. Both empty marks nothing."
+      },
       "ViewportIsolation": {
         "required": [
           "parts",
@@ -20279,6 +21265,17 @@
               {
                 "description": "The graph the viewport keeps up with, or null.",
                 "$ref": "#/components/schemas/ViewportFollow"
+              }
+            ]
+          },
+          "highlight": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What is marked on the model, or null for nothing.",
+                "$ref": "#/components/schemas/ViewportHighlight"
               }
             ]
           }

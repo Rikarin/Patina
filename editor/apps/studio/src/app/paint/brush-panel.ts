@@ -185,11 +185,11 @@ const PreviewQuiet = 200;
         </div>
       }
     }
-    @if ((store.tool() === 'brush' || store.tool() === 'fill') && !store.masking()) {
+    @if ((store.tool() === 'brush' || store.tool() === 'fill' || store.tool() === 'projection') && !store.masking()) {
       <div class="flex items-center gap-2" data-testid="paint-material">
         <span
           class="text-foreground-muted w-16 shrink-0 text-xs"
-          title="A material paints every channel of the layer from its own maps. Alt-click one on the shelf to paint with it."
+          title="A material paints every channel of the layer from its own maps. Alt-click one on the shelf to paint with it. The projection tool paints it fixed on the view, where it stands, instead of the picture."
           >Material</span
         >
         @if (store.material(); as material) {
@@ -216,18 +216,33 @@ const PreviewQuiet = 200;
       </div>
       @if (store.material()) {
         <div class="flex items-center gap-2 ps-[4.5rem]" data-testid="paint-material-placement">
-          <xui-select
-            class="min-w-0 flex-1"
-            aria-label="Material projection"
-            data-testid="paint-material-projection"
-            title="How the material's maps land: over the UV layout, or in the model's space at one size everywhere"
-            [filterable]="false"
-            [itemDisabled]="needsModel()"
-            [itemText]="labelsOf(terms().materialProjections)"
-            [items]="valuesOf(terms().materialProjections)"
-            [value]="store.materialProjection()"
-            (valueChange)="$event && store.materialProjection.set($event)"
-          />
+          @if (store.projectsMaterial()) {
+            <span
+              class="flex flex-1 shrink-0 items-center gap-1 text-xs"
+              title="Repeats the material past its edges on the view"
+            >
+              <xui-switch
+                aria-label="Tiled"
+                data-testid="paint-material-tiled"
+                [checked]="store.materialFrame().tiled"
+                (checkedChange)="store.materialFrame.set({ ...store.materialFrame(), tiled: $event })"
+              />
+              Tiled
+            </span>
+          } @else {
+            <xui-select
+              class="min-w-0 flex-1"
+              aria-label="Material projection"
+              data-testid="paint-material-projection"
+              title="How the material's maps land: over the UV layout, or in the model's space at one size everywhere"
+              [filterable]="false"
+              [itemDisabled]="needsModel()"
+              [itemText]="labelsOf(terms().materialProjections)"
+              [items]="valuesOf(terms().materialProjections)"
+              [value]="store.materialProjection()"
+              (valueChange)="$event && store.materialProjection.set($event)"
+            />
+          }
           <xui-slider
             class="w-24 shrink-0"
             labelStepSize="0"
@@ -260,7 +275,7 @@ const PreviewQuiet = 200;
     <div class="flex items-center gap-2" data-testid="paint-screen-picture">
       <span
         class="text-foreground-muted w-16 shrink-0 text-xs"
-        title="A picture fixed on the viewport: the projection tool paints it, and a stencil masks any brush by its brightness"
+        title="A picture fixed on the view, in 3D or 2D: the projection tool paints it, and a stencil masks any brush by its brightness"
         >Picture</span
       >
       <span class="readout min-w-0 flex-1 truncate text-xs" data-testid="paint-screen-picture-name">{{
@@ -488,6 +503,17 @@ const PreviewQuiet = 200;
         [value]="store.brush().alpha ?? null"
         (valueChange)="set('alpha', $event)"
       />
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="paint-alpha-picture"
+        title="Choose a picture as the brush's alpha: its opacity where it has any, else its brightness, is what each stamp lays down"
+        (click)="chooseAlpha()"
+      >
+        Choose Picture…
+      </button>
     </div>
     @for (choice of choices; track choice.key) {
       <div class="flex items-center gap-1">
@@ -678,6 +704,18 @@ export class BrushPanel {
   /** The picture on the viewport by its file's name. */
   protected readonly pictureName = computed(() => this.store.screenPicture()?.image.split(/[/\\]/u).pop() ?? 'None');
 
+  /**
+   * Asks for a picture, brings it into the project, and makes it the brush's alpha (#122). A brush names its alpha from
+   * the folder of the stack it paints, and the picture comes back named from the library's.
+   */
+  protected async chooseAlpha(): Promise<void> {
+    const image = await this.project.pickPicture();
+    const stack = this.project.document()?.path;
+    if (image && stack) {
+      this.set('alpha', alphaPath(image, stack));
+    }
+  }
+
   /** Asks for a picture, brings it into the project, and puts it on the viewport, unplaced until it is drawn. */
   protected async choosePicture(): Promise<void> {
     const image = await this.project.pickPicture();
@@ -855,4 +893,19 @@ export class BrushPanel {
   protected setSymmetry(change: Partial<StackSymmetry>): void {
     this.store.symmetry.update(held => (held ? { ...held, ...change } : held));
   }
+}
+
+/**
+ * A picture's path below the library as a brush names it: from the folder of the stack it paints, which is how the
+ * engine finds it. Both paths are below the library.
+ */
+export function alphaPath(picture: string, stack: string): string {
+  const from = stack.replaceAll('\\', '/').split('/').slice(0, -1);
+  const to = picture.replaceAll('\\', '/').split('/');
+  let shared = 0;
+  while (shared < from.length && shared < to.length - 1 && from[shared] === to[shared]) {
+    shared++;
+  }
+
+  return [...from.slice(shared).map(() => '..'), ...to.slice(shared)].join('/');
 }

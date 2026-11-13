@@ -153,6 +153,20 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
+    /// <summary>
+    ///     What a bake of this texture set reads of it: its UV set and the shape it is authored at, as the last edit
+    ///     left them (#253).
+    /// </summary>
+    public BakeFit.SetLayout Layout {
+        get {
+            lock (Changing) {
+                return LayoutNow;
+            }
+        }
+    }
+
+    BakeFit.SetLayout LayoutNow => new(editor.Set.UvSet, editor.Document.BaseWidth, editor.Document.BaseHeight);
+
     /// <summary>The bake generators and bake masks read, kept in a file beside the stack.</summary>
     public string? MeshMaps { get; private set; }
 
@@ -240,10 +254,10 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     public StackState State {
         get {
             StackState state;
-            (string? Folder, string? Model, int UvSet) bake;
+            (string? Folder, string? Model, BakeFit.SetLayout Set) bake;
             lock (Changing) {
                 var set = editor.Set;
-                bake = (MeshMaps, ModelFile, set.UvSet);
+                bake = (MeshMaps, ModelFile, LayoutNow);
                 state = new(
                     Id,
                     Path,
@@ -273,7 +287,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
 
             // ⚠ Outside the lock: after a mesh change this reads the mesh once for the set's faces (#151), and strokes
             // and edits must not wait on that.
-            return state with { BakeStale = BakeFit.OfModel(bake.Folder, bake.Model, bake.UvSet) };
+            return state with { BakeStale = BakeFit.OfModel(bake.Folder, bake.Model, bake.Set) };
         }
     }
 

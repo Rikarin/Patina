@@ -15,16 +15,26 @@ namespace Patina.Content.Tests;
 public sealed class FactoryCompoundTests {
     /// <summary>The grunges #169 asks for by name, each of which has to ship.</summary>
     static readonly string[] Named = [
+        "Grunges/Concrete Pores",
+        "Grunges/Cracked Paint",
         "Grunges/Dirt Patches",
         "Grunges/Drip Paint",
         "Grunges/Dust Splash",
         "Grunges/Fibre Tangle",
+        "Grunges/Fine Scratches",
         "Grunges/Galvanised Spangle",
+        "Grunges/Mould Spots",
+        "Grunges/Oil Stains",
         "Grunges/Pitted Steel",
+        "Grunges/Rain Streaks",
+        "Grunges/Rust Spots",
+        "Grunges/Sandblasted",
         "Grunges/Scuffs",
         "Grunges/Shavings",
+        "Grunges/Smudges",
         "Grunges/Speckle",
-        "Grunges/Water Stains"
+        "Grunges/Water Stains",
+        "Grunges/Wiped Grime"
     ];
 
     [Fact]

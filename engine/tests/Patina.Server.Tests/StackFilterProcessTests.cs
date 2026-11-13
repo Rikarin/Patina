@@ -90,7 +90,8 @@ public sealed partial class StackProcessTests {
                 await EvaluatedAsync(socket, nudged.Revision, deadline.Token);
                 if (Whole(await PixelsAsync(state.Id, false, deadline.Token)) == plain
                     && !KeepsAHardEdge.Contains(kind.Node)
-                    && !SameOnAGreyMask.Contains(kind.Node)) {
+                    && !SameOnAGreyMask.Contains(kind.Node)
+                    && !MendsFromItself.Contains(kind.Node)) {
                     failures.Add($"mask {kind.Node} changes nothing, even with {Described(numbers, texts)}");
                 }
             }
@@ -122,7 +123,9 @@ public sealed partial class StackProcessTests {
     ///     Filters whose whole point is to leave a step where it is, so a mask of hard-edged strokes at two values
     ///     comes through them unchanged however they are set. Each is held to moving a soft picture on the layer side.
     /// </summary>
-    static readonly HashSet<string> KeepsAHardEdge = ["Filters/Median", "Filters/Painterly Smooth"];
+    static readonly HashSet<string> KeepsAHardEdge = [
+        "Filters/Median", "Filters/Painterly Smooth", "Filters/Anisotropic Painterly Smooth"
+    ];
 
     /// <summary>
     ///     A validator, which paints only what is out of range, and a grey stroke over a grey base is in it however its
@@ -146,6 +149,14 @@ public sealed partial class StackProcessTests {
     ///     changing a layer's colour.
     /// </summary>
     static readonly HashSet<string> SameOnAGreyMask = ["Colour/Channel Shuffle", "Filters/Pixel Processor"];
+
+    /// <summary>
+    ///     Photo mending (#178) that paints one part of a picture with another part of it: a patch cloned from a flat
+    ///     place onto a flat place, or a seam filled from edges that already match, gives the same mask back, and this
+    ///     mask is flat about its one stroke. Each is held to changing a layer's colour, and MeshCompoundTests to
+    ///     changing a noise.
+    /// </summary>
+    static readonly HashSet<string> MendsFromItself = ["Photo/Clone Patch", "Photo/Fix Seams"];
 
     /// <summary>Every map of a stack in one string, so a filter writing roughness alone is seen to change it.</summary>
     static string Whole(IReadOnlyList<StackPixels> maps) =>

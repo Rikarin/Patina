@@ -43,6 +43,16 @@ public sealed class SystemApiTests : IDisposable {
         return connection;
     }
 
+    /// <summary>About says which Vixen the engine runs on (#190): its version, and its commit abbreviated.</summary>
+    [Fact]
+    public async Task The_system_says_which_vixen_it_runs_on() {
+        using var client = server.AuthorisedClient();
+
+        var system = await SystemAsync(client);
+
+        Assert.Matches(@"^\d+\.\d+\.\d+(-[\w.]+)?(\+[0-9a-f]{1,9})?$", system!.Vixen);
+    }
+
     [Fact]
     public async Task There_is_one_list_of_sizes_and_a_client_reads_it_from_the_server() {
         using var client = server.AuthorisedClient();

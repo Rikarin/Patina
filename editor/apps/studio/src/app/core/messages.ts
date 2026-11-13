@@ -59,8 +59,11 @@ const Words: Readonly<Record<string, string>> = {
     'Several colors are picked out of a mesh map or a picture, so this mask needs one as its source. Choose a mesh map or a picture first.',
   'library-conflict': 'Something in the library is in the way. {reason}',
   'library-refused': 'The library can’t do that. {reason}',
+  'snapshot-unsaved': 'Save the document first, so the snapshot holds what you see.',
+  'snapshot-document-open': 'Close the document first, so the snapshot isn’t written over.',
   'material-missing': 'That material isn’t in the library any more. It may have been deleted outside Patina.',
-  'compound-needs-graph': 'A compound is copied beside the graph that uses it. Open that graph first.'
+  'compound-needs-graph': 'A compound is copied beside the graph that uses it. Open that graph first.',
+  'picture-unreadable': '{file} doesn’t read as a picture, so it wasn’t brought in. It may be damaged or cut short.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };
@@ -114,8 +117,8 @@ const CheckWords: Readonly<Record<string, string>> = {
   'density-low': 'Has {density} texels per unit, short of the {target} the project asks for.',
   'density-high': 'Has {density} texels per unit, more than the {target} the project asks for.',
   'bake-stale':
-    'Its mesh maps were baked on another mesh or in another UV set than its UV {uvSet}, so what reads them lands in ' +
-    'the wrong place. Bake it again.',
+    'Its mesh maps were baked on another mesh, in another UV set than its UV {uvSet} or at another shape than its ' +
+    'Width and Height, so what reads them lands in the wrong place. Bake it again.',
   'uv-outside': '{count} triangles reach past the first UV tile, which is the only one painted.',
   'uv-overlap': '{share} of the laid-out texels are under more than one triangle, so a stroke lands twice.',
   'uv-degenerate': '{count} triangles have no area in the UV layout, so no texel lands on them.',
