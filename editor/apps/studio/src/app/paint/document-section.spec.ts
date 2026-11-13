@@ -47,6 +47,14 @@ async function render(channels: readonly string[] = ['baseColor', 'roughness'], 
     // A fill is chosen, which no brush paints: the document's settings are there all the same (#201).
     canPaint: signal(false),
     showChannel: vi.fn(),
+    applyChannelsToAllSets: vi.fn(() =>
+      Promise.resolve({
+        sets: [
+          { set: 'Strap', path: 'strap.vxlayers', added: ['occlusion'], open: false },
+          { set: 'Lid', path: 'lid.vxlayers', added: [], open: true }
+        ]
+      })
+    ),
     edit
   };
   TestBed.configureTestingModule({
@@ -61,6 +69,7 @@ async function render(channels: readonly string[] = ['baseColor', 'roughness'], 
           meshName: signal('crate_low.glb'),
           mesh: signal({ path: 'projects/crate/crate_low.glb' }),
           document: signal({ kind: 'texturing', name: 'Crate' }),
+          textureSets: signal([{ material: 'Body' }, { material: 'Strap' }, { material: 'Lid' }]),
           settingsOpen: signal(false)
         }
       }
@@ -70,7 +79,7 @@ async function render(channels: readonly string[] = ['baseColor', 'roughness'], 
   await fixture.whenStable();
   await new Promise(resolve => setTimeout(resolve));
   await fixture.whenStable();
-  return { element: fixture.nativeElement as HTMLElement, edit, asked, fixture };
+  return { element: fixture.nativeElement as HTMLElement, edit, asked, fixture, paint };
 }
 
 describe('DocumentSection', () => {
@@ -111,6 +120,19 @@ describe('DocumentSection', () => {
     TestBed.resetTestingModule();
     const single = await render(['baseColor']);
     expect(single.element.querySelector('[data-testid=paint-remove-channel]')).toBeNull();
+  });
+
+  it('gives the model’s other texture sets this one’s channels and says what each gained (#141)', async () => {
+    const { element, fixture, paint } = await render();
+
+    element.querySelector<HTMLElement>('[data-testid=paint-apply-channels]')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(paint.applyChannelsToAllSets).toHaveBeenCalled();
+    expect(element.querySelector('[data-testid=paint-applied-channels]')?.textContent.trim()).toBe(
+      'Strap gained Ambient Occlusion. Lid had them all.'
+    );
   });
 
   it('says what the mesh under the texture set is, and offers the UV sets all its parts have', async () => {

@@ -136,6 +136,7 @@ export type StackMask = components['schemas']['StackMask'];
 export type StackMaskLayer = components['schemas']['StackMaskLayer'];
 export type StackInstanceRef = components['schemas']['StackInstanceRef'];
 export type StackInstanceLinks = components['schemas']['StackInstanceLinks'];
+export type StackChannelsApplied = components['schemas']['StackChannelsApplied'];
 export type StackAnchor = components['schemas']['StackAnchor'];
 export type StackAnchorRef = components['schemas']['StackAnchorRef'];
 export type StackVocabulary = components['schemas']['StackVocabulary'];

@@ -38,4 +38,25 @@ public sealed record StackSetSettings(
     string? BakedNormal = null,
     string? BakedOcclusion = null
 ) : StackCommand;
+
+/// <summary>What Apply Channels to All Sets did to one other texture set of the model (#141).</summary>
+/// <param name="Set">The set, by the material it paints.</param>
+/// <param name="Path">Its stack file.</param>
+/// <param name="Added">The channels it was given, by usage; none when it had them all or was left alone.</param>
+/// <param name="Open">
+///     Whether it is open in a session, which took the channels as an undo step of its own, unsaved. A set nobody has
+///     open had them written to its file.
+/// </param>
+/// <param name="Problem">Why it was left as it was, or null.</param>
+public sealed record StackChannelsSpread(
+    string Set,
+    string Path,
+    IReadOnlyList<string> Added,
+    bool Open,
+    string? Problem = null
+);
 #pragma warning restore SK7005
+
+/// <summary>What Apply Channels to All Sets did, one entry for each other texture set of the model.</summary>
+/// <param name="Sets">The model's other sets, the open ones first.</param>
+public sealed record StackChannelsApplied(IReadOnlyList<StackChannelsSpread> Sets);

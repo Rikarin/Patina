@@ -5,6 +5,7 @@ import {
   type HistoryList,
   type PatinaClient,
   type StackBrush,
+  type StackChannelsApplied,
   type StackClip,
   type StackCommand,
   type StackCommandBatch,
@@ -1008,6 +1009,20 @@ export class PaintStore {
 
     const client = await this.api();
     return unwrap(await client.GET('/api/v1/stacks/{id}/instances', { params: { path: { id } } }));
+  }
+
+  /**
+   * Gives the model's other texture sets the channels this one has and they lack (#141): an open one as an undo step of
+   * its own, a closed one in its file. Says what each was given.
+   */
+  async applyChannelsToAllSets(): Promise<StackChannelsApplied> {
+    const id = this.state()?.id;
+    if (!id) {
+      return { sets: [] };
+    }
+
+    const client = await this.api();
+    return unwrap(await client.POST('/api/v1/stacks/{id}/channels/apply-to-all', { params: { path: { id } } }));
   }
 
   /** The named meshes in this texture set, which a layer can be kept to. */

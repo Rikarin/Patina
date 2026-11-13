@@ -1575,6 +1575,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/channels/apply-to-all': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Gives each of the model's other texture sets the channels this set has and it lacks (#141), each starting as what leaves its material alone. A set open in a session takes them as one undo step of its own, left unsaved; a set nobody has open has them written to its file. Nothing is taken off a set. Says what each set was given, or why it was left alone. */
+    post: operations['ApplyStackChannelsToAllSets'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/{id}/brush-preview': {
     parameters: {
       query?: never;
@@ -5861,6 +5878,27 @@ export interface components {
       /** @description What it starts as. */
       default: number[];
     };
+    /** @description What Apply Channels to All Sets did, one entry for each other texture set of the model. */
+    StackChannelsApplied: {
+      /** @description The model's other sets, the open ones first. */
+      sets: components['schemas']['StackChannelsSpread'][];
+    };
+    /** @description What Apply Channels to All Sets did to one other texture set of the model (#141). */
+    StackChannelsSpread: {
+      /** @description The set, by the material it paints. */
+      set: string;
+      /** @description Its stack file. */
+      path: string;
+      /** @description The channels it was given, by usage; none when it had them all or was left alone. */
+      added: string[];
+      /**
+       * @description Whether it is open in a session, which took the channels as an undo step of its own, unsaved. A set nobody has
+       *     open had them written to its file.
+       */
+      open: boolean;
+      /** @description Why it was left as it was, or null. */
+      problem?: null | string;
+    };
     /** @description The reply to `GET /api/v1/stacks/{id}/checks`: one texture set measured against its project. */
     StackChecks: {
       /** @description The stack session. */
@@ -7686,8 +7724,8 @@ export interface components {
       texelDensity: number;
       /**
        * @description What happens when the islands do not fit at that density: `shrink` scales them all down, and
-       *     `refuse` stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one
-       *     tile.
+       *     `refuse` stops and says so. Spilling into a second UDIM tile is not offered while a texture set
+       *     paints one tile.
        */
       overflow: string;
     };
@@ -13176,6 +13214,37 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['StackInstanceLinks'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ApplyStackChannelsToAllSets: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackChannelsApplied'];
         };
       };
       /** @description Not Found */
