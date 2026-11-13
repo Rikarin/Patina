@@ -30,7 +30,9 @@ class ExportOptions:
     Changing one gives the export another key, so it never reuses files made under other settings.
 
         Attributes:
-            size (int | None | Unset): The longest side of every file, 1 to 8192: 2048 makes a 4096 map's file 2048.
+            size (int | None | Unset): The longest side of every file, 1 to 8192: 2048 makes a 4096 map's file 2048. A graph
+                is computed at it
+                rather than resampled to it; a bake's or a layer stack's maps are resampled.
             filter_ (None | str | Unset): How a file changes size: box, bilinear or nearest.
             padding (ExportPaddingInfo | None | Unset):
             dither (bool | None | Unset): Whether 8-bit files are dithered rather than rounded.

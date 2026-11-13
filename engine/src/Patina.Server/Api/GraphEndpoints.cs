@@ -53,6 +53,14 @@ static class GraphEndpoints {
                 Missing,
                 Refused
             );
+        graphs.MapPost("/{id}/node-types/thumbnails", DrawNodeTypesAsync)
+            .Describe(
+                "GetGraphNodeTypeThumbnails",
+                "Pictures of node types this graph can use, each at its defaults with a noise on its picture inputs, "
+                + "by hash under /previews, drawing those the cache lacks first. A type with no picture has none.",
+                Missing,
+                Unavailable
+            );
         graphs.MapGet("/{id}/compounds", GetCompounds)
             .Describe(
                 "GetGraphCompounds",
@@ -283,6 +291,32 @@ static class GraphEndpoints {
 
         filter = new(parsed, direction);
         return true;
+    }
+
+    /// <summary>Draws node types small, through the Worker, once per type and Vixen.</summary>
+    /// <param name="id">The session, whose compounds are among the types.</param>
+    /// <param name="request">The types, by path, as sources.</param>
+    /// <param name="sessions">The open graphs.</param>
+    /// <param name="thumbnails">The pictures.</param>
+    /// <param name="cancellationToken">Stops it between pictures.</param>
+    static async Task<Results<Ok<ThumbnailList>, ProblemHttpResult>> DrawNodeTypesAsync(
+        string id,
+        ThumbnailRequest request,
+        GraphSessions sessions,
+        Thumbnails thumbnails,
+        CancellationToken cancellationToken
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        try {
+            return TypedResults.Ok(
+                new ThumbnailList(await thumbnails.DrawNodesAsync(session, request.Sources, cancellationToken))
+            );
+        } catch (TimeoutException e) {
+            return Refusals.Of(e, StatusCodes.Status503ServiceUnavailable);
+        }
     }
 
     static Results<Ok<IReadOnlyList<GraphCompound>>, ProblemHttpResult> GetCompounds(

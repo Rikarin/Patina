@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { provideIcons } from '@ng-icons/core';
 import { matStar, matStarBorder } from '@ng-icons/material-icons/baseline';
 import type { GraphNodeType } from '@patina/api-client';
@@ -58,6 +58,17 @@ const SearchQuiet = 120;
             (dragstart)="drag($event, type)"
             (keydown.enter)="add(type)"
           >
+            @let picture = pictures.url(type.path);
+            @if (picture) {
+              <img
+                class="me-1.5 size-6 shrink-0 rounded-xs"
+                alt=""
+                data-testid="node-library-picture"
+                [src]="picture"
+              />
+            } @else {
+              <span class="me-1.5 size-6 shrink-0" aria-hidden="true"></span>
+            }
             <span class="min-w-0 flex-1 truncate py-0.5">{{ type.title }}</span>
             <button
               type="button"
@@ -83,6 +94,7 @@ const SearchQuiet = 120;
 })
 export class NodeLibrary {
   private readonly store = inject(GraphStore);
+  protected readonly pictures = this.store.nodePictures;
   protected readonly preferences = inject(Preferences);
   private readonly found = signal<{ query: string; types: readonly GraphNodeType[] }>({ query: '', types: [] });
   protected readonly query = signal('');
@@ -103,6 +115,11 @@ export class NodeLibrary {
   });
 
   constructor() {
+    // Each listed type's picture, in the order the list shows them, so the top rows come first.
+    effect(() => {
+      const listed = this.groups().flatMap(group => group.types.map(type => type.path));
+      untracked(() => this.pictures.want(listed));
+    });
     effect(onCleanup => {
       const query = this.query().trim();
       this.store.types();

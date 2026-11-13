@@ -30,6 +30,7 @@ import { DraftLayer } from './draft-layer';
 import { EditQueue } from './edit-queue';
 import type { WireCommand } from './graph-authoring';
 import { type GraphDocument, applyEvent, classify, documentOf, edgeKey } from './graph-model';
+import { NodePictures } from './node-pictures';
 import { PreviewLoader } from './preview-loader';
 
 export type GraphSessionState =
@@ -209,6 +210,25 @@ export class GraphStore {
   /** A node the library asked for, which the canvas places in the middle of what it shows. */
   readonly adding = signal<GraphNodeType | null>(null);
   readonly types = this.mutableTypes.asReadonly();
+  /** Small pictures of the node types this graph can use, for the palette and the Nodes list (#183). */
+  readonly nodePictures = new NodePictures({
+    draw: async types => {
+      const id = this.mutableDocument()?.id;
+      if (id === undefined || !this.client) {
+        return null;
+      }
+
+      const { data } = await this.client.POST('/api/v1/graphs/{id}/node-types/thumbnails', {
+        params: { path: { id } },
+        body: { sources: [...types] }
+      });
+      return data?.items ?? null;
+    },
+    fetch: async hash =>
+      (await this.api().GET('/api/v1/previews/{hash}', { params: { path: { hash } }, parseAs: 'blob' })).data ?? null,
+    url: blob => URL.createObjectURL(blob),
+    revoke: url => URL.revokeObjectURL(url)
+  });
   readonly link = this.mutableLink.asReadonly();
   /** Why the last edit did not happen. */
   readonly problem = this.mutableProblem.asReadonly();
@@ -296,6 +316,7 @@ export class GraphStore {
       this.stopped = true;
       this.stopFollowing();
       this.previews.dispose();
+      this.nodePictures.dispose();
     });
 
     // The session's selection is the Server's too, so a client that follows it, the viewport included, needs no editor
@@ -1394,6 +1415,8 @@ export class GraphStore {
 
   private showCatalogue([types, compounds]: [GraphNodeType[], GraphCompound[]]): void {
     this.mutableTypes.set(new Map(types.map(type => [type.path, type])));
+    // Another graph, or a compound saved: a type's picture may be another, and the Server says which.
+    this.nodePictures.forget();
     this.mutableCompounds.set(new Map(compounds.map(compound => [compound.type, compound])));
   }
 

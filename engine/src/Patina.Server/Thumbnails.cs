@@ -17,7 +17,7 @@ namespace Patina.Server;
 ///     the cache, so a restart draws nothing again, and a deleted cache costs only the drawing. A project is drawn as
 ///     the document that best stands for it, so its picture is that document's and costs nothing more.
 /// </summary>
-public sealed class Thumbnails(WorkerLink worker, PreviewStore store) : IDisposable {
+public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : IDisposable {
     /// <summary>The side of a picture, which is also the size a material is computed at for it.</summary>
     public const int Side = 256;
 

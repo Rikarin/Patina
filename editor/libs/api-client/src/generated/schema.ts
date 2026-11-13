@@ -1335,6 +1335,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/graphs/{id}/node-types/thumbnails': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Pictures of node types this graph can use, each at its defaults with a noise on its picture inputs, by hash under /previews, drawing those the cache lacks first. A type with no picture has none. */
+    post: operations['GetGraphNodeTypeThumbnails'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/graphs/{id}/compounds': {
     parameters: {
       query?: never;
@@ -3166,7 +3183,8 @@ export interface components {
     ExportOptions: {
       /**
        * Format: int32
-       * @description The longest side of every file, 1 to 8192: 2048 makes a 4096 map's file 2048.
+       * @description The longest side of every file, 1 to 8192: 2048 makes a 4096 map's file 2048. A graph is computed at it
+       *     rather than resampled to it; a bake's or a layer stack's maps are resampled.
        */
       size?: null | number;
       /** @description How a file changes size: box, bilinear or nearest. */
@@ -12548,6 +12566,50 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetGraphNodeTypeThumbnails: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ThumbnailRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ThumbnailList'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown;
         };
