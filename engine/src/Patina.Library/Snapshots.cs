@@ -191,7 +191,7 @@ public static class Snapshots {
         var temporary = $"{to}.{Environment.ProcessId}.snapshot.tmp";
         try {
             File.Copy(from, temporary, true);
-            File.Move(temporary, to, true);
+            SharedFile.MoveOver(temporary, to);
         } finally {
             File.Delete(temporary);
         }
