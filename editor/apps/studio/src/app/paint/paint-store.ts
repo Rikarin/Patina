@@ -36,7 +36,19 @@ import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
-import { extendedPath, placedDecal } from './surface-frame';
+import {
+  type Vector,
+  decalChannel,
+  decalFrame,
+  extendedPath,
+  geometryLines,
+  geometryWarp,
+  onDecal,
+  placedDecal,
+  underDecal,
+  vector
+} from './surface-frame';
+import { project } from './symmetry-guide';
 
 /** The most recent colours a project keeps, which is the Server's limit. */
 const RecentColours = 16;
@@ -693,6 +705,87 @@ export class PaintStore {
       } else {
         await this.edit({ op: 'setLayer', layer: layer.id, projection: 'Path', path: extendedPath(hit, layer.path) });
       }
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
+  /**
+   * A picture dropped on the mesh (#133): a new fill on top that shows it as a decal where it landed, facing out of the
+   * face it met, as wide as Place on Mesh makes one and as tall as the picture's shape says. It colours only the base
+   * color, so the surface beneath keeps its own finish. The layer and its decal are two steps, as any new fill's
+   * content is. False, with the reason in the failure, when the drop missed the mesh.
+   */
+  async addDecalOnMesh(picture: string, name: string, stamp: StackStamp, aim: Aim, aspect = 1): Promise<boolean> {
+    try {
+      const hit = await this.picked(stamp, aim);
+      if (!hit.found) {
+        this.failure.set('Drop the picture on the mesh to place it there as a decal.');
+        return false;
+      }
+
+      const before = new Set(this.layers().map(row => row.layer.id));
+      await this.addLayer('fill', name);
+      // Only the layer just made: a decal set on the one chosen before would move someone's work.
+      const layer = this.layer();
+      if (!layer || before.has(layer)) {
+        return false;
+      }
+
+      const usage = decalChannel(this.state()?.channels.map(channel => channel.usage) ?? []);
+      const decal = placedDecal(hit, null);
+      await this.edit({
+        op: 'setLayer',
+        layer,
+        fill: 'Texture',
+        textures: { [usage]: picture },
+        channels: [usage],
+        projection: 'Decal',
+        decal: { ...decal, height: decal.width * (Number.isFinite(aspect) && aspect > 0 ? aspect : 1) }
+      });
+      return true;
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+      return false;
+    }
+  }
+
+  /**
+   * Warp to Geometry (#134): measures the surface under the chosen decal and warps its picture to spread evenly along it,
+   * as one edit. The surface is found as the camera sees it, so it is measured best looking at the decal; where a
+   * line runs off the mesh it counts as flat.
+   */
+  async warpToGeometry(camera: ViewportCameraState): Promise<void> {
+    const layer = this.chosen();
+    const decal = layer?.projection === 'Decal' ? layer.decal : null;
+    if (!layer || !decal) {
+      return;
+    }
+
+    try {
+      // A square picture of the camera: places are put on it and asked back, so its size only has to agree with itself.
+      const aim = { width: 1024, height: 1024, camera };
+      const view = (await this.look(aim)).view;
+      const frame = decalFrame(decal);
+      const lines = await Promise.all(
+        geometryLines().map(line =>
+          Promise.all(
+            line.map(async ({ s, t }): Promise<Vector | null> => {
+              const shown = project(view, onDecal(decal, frame, s, t));
+              if (!shown) {
+                return null;
+              }
+
+              const hit = await this.picked({ x: shown[0], y: shown[1], pressure: 1 }, aim);
+              const at = vector(hit.position);
+              return hit.found && hit.position && underDecal(decal, at, hit.normal ? vector(hit.normal) : null)
+                ? at
+                : null;
+            })
+          )
+        )
+      );
+      await this.edit({ op: 'setLayer', layer: layer.id, decal: { ...decal, warp: geometryWarp(decal, lines) } });
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }

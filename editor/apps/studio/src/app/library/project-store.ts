@@ -932,10 +932,25 @@ export class ProjectStore {
       return null;
     }
 
+    return this.bringPicture('library' in choice ? choice.library : choice.machine);
+  }
+
+  /**
+   * Brings a picture into the open project, from the library or from this machine, and gives the path a layer reads it
+   * by; one already in the project is used where it is. Null, with the reason in the failure, when it cannot.
+   */
+  async bringPicture(picture: string): Promise<string | null> {
+    const project = this.current();
+    if (!project) {
+      this.startAction();
+      this.mutableFailure.set('Open a project to bring a picture into it.');
+      return null;
+    }
+
     this.startAction();
     try {
       const client = await this.library.api();
-      const body = { project: project.path, picture: 'library' in choice ? choice.library : choice.machine };
+      const body = { project: project.path, picture };
       const added = unwrap(await client.POST('/api/v1/library/project/pictures', { body })).path;
       await this.read(project.path);
       return added;

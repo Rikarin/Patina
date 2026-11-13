@@ -60,6 +60,21 @@ A mask entry has no content of its own, and #131 asks for a material laid along 
 path is a mask too: a fill with a path projection in a layer's mask stack is not built, but the node is a graph node, so
 a mask generator can use it.
 
+## Later additions (wave 11)
+
+- **A picture dropped on the mesh** is a decal on a new fill: the picture is brought into the project as Choose… brings
+  one, the fill is a Texture fill writing only the base color, and the decal is placed as Place on Mesh places one, as
+  tall as the picture's shape. Two edits, as any new fill's content is.
+- **Warp to Geometry** is the 3 by 3 warp computed, not a new kind of projection: three rows and three columns across the
+  decal's square are found on the mesh through the viewport's pick, and the middle point of each moves to where half
+  the surface's length along it is reached. A 3 by 3 grid cannot undo a symmetric stretch (both halves of a cylinder
+  turn away alike), only an uneven one, such as a decal over an edge; a finer grid would be a change to the decal's
+  kernel. ⚠ The surface is found along the camera's rays, not the decal's facing, so it is measured best looking at
+  the decal; a pick outside the box's depth or facing away counts that stretch as flat.
+- **A ribbon over itself**: the kernel walks the polyline in passes, each run of segments that reaches a texel, and lays
+  each pass over the ones before it; within a pass the nearest segment wins as before. A stroke still takes the nearest
+  segment alone.
+
 ## The box
 
 `position` is 0 to 1 along each axis of the bake's own bounds, so a decal written in that space is stretched on any
