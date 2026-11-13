@@ -160,7 +160,8 @@ test('Import Materials brings a USD file’s material into the project as a grap
     Menu.getApplicationMenu()?.getMenuItemById('importMaterials')?.click();
   });
 
-  const graph = join(library, 'projects', 'housing', 'Brick.vxtexgraph');
+  // The file is named as every new document's is, in lower case, which Linux tells apart from Brick.vxtexgraph.
+  const graph = join(library, 'projects', 'housing', 'brick.vxtexgraph');
   await expect.poll(() => existsSync(graph), { timeout: 30_000 }).toBe(true);
   expect(readFileSync(graph, 'utf8')).toContain('pictures/brick/brick.png');
   expect(existsSync(join(library, 'projects', 'housing', 'pictures', 'brick', 'brick.png'))).toBe(true);
