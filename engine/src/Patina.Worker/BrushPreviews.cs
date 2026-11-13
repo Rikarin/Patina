@@ -105,7 +105,7 @@ static class BrushPreviews {
             White,
             0
         );
-        stroke.MoveTo(new(StampSide * 0.5f, StampSide * 0.5f), null, 1f);
+        stroke.MoveTo(new(StampSide * 0.5f, StampSide * 0.5f));
         return image;
     }
 }

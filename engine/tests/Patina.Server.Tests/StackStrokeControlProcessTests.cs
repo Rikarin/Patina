@@ -116,7 +116,7 @@ public sealed partial class StackProcessTests {
 
         async Task<Bitmap> DrawnAsync(StackBrush brush, bool stamp = false) {
             using var response = await http.PostAsJsonAsync(
-                $"/api/v1/stacks/{state.Id}/brush-preview{(stamp ? "?stamp=true" : "")}",
+                $"/api/v1/stacks/{state.Id}/brush-preview{(stamp ? "?stamp=true" : string.Empty)}",
                 brush,
                 ContractsJsonContext.Default.StackBrush,
                 deadline.Token

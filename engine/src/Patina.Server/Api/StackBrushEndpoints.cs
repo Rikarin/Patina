@@ -52,7 +52,9 @@ static class StackBrushEndpoints {
         return await StackEndpoints.AskWorkerAsync(
             id,
             sessions,
-            async session => new StackBrushPreview(await evaluator.PreviewBrushAsync(session, brush, stamp, cancellationToken))
+            async session => new StackBrushPreview(
+                await evaluator.PreviewBrushAsync(session, brush, stamp, cancellationToken)
+            )
         );
     }
 
