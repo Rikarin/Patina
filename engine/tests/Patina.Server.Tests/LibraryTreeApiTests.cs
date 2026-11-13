@@ -587,7 +587,7 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
     [InlineData("model.blend")]
     [InlineData("scene.usd")]
     [InlineData("notes.txt")]
-    [InlineData("height.tif")]
+    [InlineData("height.webp")]
     public async Task An_import_nothing_can_read_is_refused_and_copies_nothing(string name) {
         await MakeCrateAsync();
         var file = Path.Combine(files.FullName, name);
