@@ -36,12 +36,17 @@ static class StrokeSources {
                 var document = part.SourceDocument
                     ?? throw new IpcException("A clone or a material stroke came without what it reads.");
                 var offset = read.Offset is [var x, var y] ? new Vector2(x, y) : Vector2.Zero;
+                var frame = read.Frame;
 
                 // ⚠ Made as the stroke's turn comes and not as it begins: a replay begins every stroke before it
                 // stamps any, and a composite read then would be of canvases the strokes before it have not reached.
-                return new Deferred(() => composite(document, part.Usage) is { } image
-                        ? new PaintAtlasSource(image, canvas.Width, canvas.Height, offset)
-                        : null
+                // A material projected from the screen is its maps read where each texel lands on the stroke's
+                // picture, as a picture the projection tool paints is.
+                return new Deferred(() => composite(document, part.Usage) switch {
+                        null => null,
+                        { } image when frame is not null => new PaintProjectedPicture(image, Frame(frame)),
+                        { } image => new PaintAtlasSource(image, canvas.Width, canvas.Height, offset)
+                    }
                 );
             default:
                 throw new IpcException($"'{part.Source.Kind}' is not where a stroke's colour can come from.");
@@ -75,6 +80,9 @@ static class StrokeSources {
 
     static PaintFrame Frame(StackPicture picture) =>
         new(new(picture.Centre[0], picture.Centre[1]), picture.Scale, picture.Angle, picture.Tiled);
+
+    static PaintFrame Frame(StackFrame frame) =>
+        new(new(frame.Centre[0], frame.Centre[1]), frame.Scale, frame.Angle, frame.Tiled);
 
     /// <summary>A source made the first time a stamp asks, and nothing at all when there is nothing to read.</summary>
     sealed class Deferred(Func<IPaintSource?> make) : IPaintSource {

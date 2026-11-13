@@ -11,6 +11,7 @@ from ... import errors
 from ...models.problem_details import ProblemDetails
 from ...models.stack_brush import StackBrush
 from ...models.stack_brush_preview import StackBrushPreview
+from ...types import UNSET, Unset
 from typing import cast
 
 
@@ -19,6 +20,7 @@ def _get_kwargs(
     id: str,
     *,
     body: StackBrush,
+    stamp: bool | Unset = False,
 
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
@@ -26,11 +28,18 @@ def _get_kwargs(
 
     
 
-    
+    params: dict[str, Any] = {}
+
+    params["stamp"] = stamp
+
+
+    params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
+
 
     _kwargs: dict[str, Any] = {
         "method": "post",
         "url": "/api/v1/stacks/{id}/brush-preview".format(id=quote(str(id), safe=""),),
+        "params": params,
     }
 
     _kwargs["json"] = body.to_dict()
@@ -91,14 +100,18 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
     body: StackBrush,
+    stamp: bool | Unset = False,
 
 ) -> Response[ProblemDetails | StackBrushPreview]:
     """ A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising
-    and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. A brush
-    no stroke could take is refused with its reason.
+    and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. With
+    stamp, one stamp of it instead, as a cursor shows it: square, the stamp's long half-axis reaching
+    the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke
+    could take is refused with its reason.
 
     Args:
         id (str):
+        stamp (bool | Unset):  Default: False.
         body (StackBrush): A brush. Everything but the radius has the value a new brush has.
 
     Raises:
@@ -113,6 +126,7 @@ def sync_detailed(
     kwargs = _get_kwargs(
         id=id,
 body=body,
+stamp=stamp,
 
     )
 
@@ -127,14 +141,18 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
     body: StackBrush,
+    stamp: bool | Unset = False,
 
 ) -> ProblemDetails | StackBrushPreview | None:
     """ A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising
-    and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. A brush
-    no stroke could take is refused with its reason.
+    and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. With
+    stamp, one stamp of it instead, as a cursor shows it: square, the stamp's long half-axis reaching
+    the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke
+    could take is refused with its reason.
 
     Args:
         id (str):
+        stamp (bool | Unset):  Default: False.
         body (StackBrush): A brush. Everything but the radius has the value a new brush has.
 
     Raises:
@@ -150,6 +168,7 @@ def sync(
         id=id,
 client=client,
 body=body,
+stamp=stamp,
 
     ).parsed
 
@@ -158,14 +177,18 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
     body: StackBrush,
+    stamp: bool | Unset = False,
 
 ) -> Response[ProblemDetails | StackBrushPreview]:
     """ A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising
-    and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. A brush
-    no stroke could take is refused with its reason.
+    and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. With
+    stamp, one stamp of it instead, as a cursor shows it: square, the stamp's long half-axis reaching
+    the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke
+    could take is refused with its reason.
 
     Args:
         id (str):
+        stamp (bool | Unset):  Default: False.
         body (StackBrush): A brush. Everything but the radius has the value a new brush has.
 
     Raises:
@@ -180,6 +203,7 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         id=id,
 body=body,
+stamp=stamp,
 
     )
 
@@ -194,14 +218,18 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
     body: StackBrush,
+    stamp: bool | Unset = False,
 
 ) -> ProblemDetails | StackBrushPreview | None:
     """ A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising
-    and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. A brush
-    no stroke could take is refused with its reason.
+    and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. With
+    stamp, one stamp of it instead, as a cursor shows it: square, the stamp's long half-axis reaching
+    the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke
+    could take is refused with its reason.
 
     Args:
         id (str):
+        stamp (bool | Unset):  Default: False.
         body (StackBrush): A brush. Everything but the radius has the value a new brush has.
 
     Raises:
@@ -217,5 +245,6 @@ async def asyncio(
         id=id,
 client=client,
 body=body,
+stamp=stamp,
 
     )).parsed

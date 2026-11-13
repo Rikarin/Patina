@@ -12,6 +12,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.stack_frame import StackFrame
   from ..models.stack_picture import StackPicture
   from ..models.stack_placement import StackPlacement
 
@@ -43,6 +44,7 @@ class StackStrokeSource:
                 A projection in the model's space needs a mesh.
             planar_axis (None | str | Unset): For a planar material, the axis it projects along: X, Y or Z.
             placement (None | StackPlacement | Unset):
+            frame (None | StackFrame | Unset):
      """
 
     kind: str
@@ -52,6 +54,7 @@ class StackStrokeSource:
     projection: None | str | Unset = UNSET
     planar_axis: None | str | Unset = UNSET
     placement: None | StackPlacement | Unset = UNSET
+    frame: None | StackFrame | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -59,6 +62,7 @@ class StackStrokeSource:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_frame import StackFrame # noqa: PLC0415
         from ..models.stack_picture import StackPicture # noqa: PLC0415
         from ..models.stack_placement import StackPlacement # noqa: PLC0415
         kind = self.kind
@@ -107,6 +111,14 @@ class StackStrokeSource:
         else:
             placement = self.placement
 
+        frame: dict[str, Any] | None | Unset
+        if isinstance(self.frame, Unset):
+            frame = UNSET
+        elif isinstance(self.frame, StackFrame):
+            frame = self.frame.to_dict()
+        else:
+            frame = self.frame
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -125,6 +137,8 @@ class StackStrokeSource:
             field_dict["planarAxis"] = planar_axis
         if placement is not UNSET:
             field_dict["placement"] = placement
+        if frame is not UNSET:
+            field_dict["frame"] = frame
 
         return field_dict
 
@@ -132,6 +146,7 @@ class StackStrokeSource:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_frame import StackFrame # noqa: PLC0415
         from ..models.stack_picture import StackPicture # noqa: PLC0415
         from ..models.stack_placement import StackPlacement # noqa: PLC0415
         d = dict(src_dict)
@@ -225,6 +240,26 @@ class StackStrokeSource:
         placement = _parse_placement(d.pop("placement", UNSET))
 
 
+        def _parse_frame(data: object) -> None | StackFrame | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                frame_type_1 = StackFrame.from_dict(data)
+
+
+
+                return frame_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackFrame | Unset, data)
+
+        frame = _parse_frame(d.pop("frame", UNSET))
+
+
         stack_stroke_source = cls(
             kind=kind,
             graph=graph,
@@ -233,6 +268,7 @@ class StackStrokeSource:
             projection=projection,
             planar_axis=planar_axis,
             placement=placement,
+            frame=frame,
         )
 
 

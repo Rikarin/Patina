@@ -6186,7 +6186,7 @@
         "tags": [
           "Stacks"
         ],
-        "summary": "A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack\u0027s strokes read. A brush no stroke could take is refused with its reason.",
+        "summary": "A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack\u0027s strokes read. With stamp, one stamp of it instead, as a cursor shows it: square, the stamp\u0027s long half-axis reaching the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke could take is refused with its reason.",
         "operationId": "PreviewStackBrush",
         "parameters": [
           {
@@ -6195,6 +6195,14 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "stamp",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           }
         ],
@@ -18282,6 +18290,43 @@
         },
         "description": "The layer on top at a place on a stack\u0027s map."
       },
+      "StackFrame": {
+        "required": [
+          "centre",
+          "scale",
+          "angle",
+          "tiled"
+        ],
+        "type": "object",
+        "properties": {
+          "centre": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Where its middle is on the stroke\u0027s picture, in the units stamps are in: two numbers."
+          },
+          "scale": {
+            "type": "number",
+            "description": "How many of those units one of its pixels covers, above zero.",
+            "format": "float",
+            "default": 1
+          },
+          "angle": {
+            "type": "number",
+            "description": "How far it is turned, clockwise on the screen, in radians.",
+            "format": "float",
+            "default": 0
+          },
+          "tiled": {
+            "type": "boolean",
+            "description": "Whether it repeats past its edges, or is nothing there.",
+            "default": false
+          }
+        },
+        "description": "Where something fixed on a stroke\u0027s picture stands: moved, scaled, turned and perhaps tiled."
+      },
       "StackIdColour": {
         "required": [
           "colour",
@@ -19693,6 +19738,17 @@
               {
                 "description": "For a material, how often its maps repeat, and how they turn and move.",
                 "$ref": "#/components/schemas/StackPlacement"
+              }
+            ]
+          },
+          "frame": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For a material, where its maps stand fixed on the stroke\u0027s picture, as the projection tool projects one from the\nscreen: each texel takes the map where it lands there, one of the map\u0027s pixels covering\nfloat StackFrame.Scale of the stroke\u0027s units. Null lays the maps as Projection\nsays. A material projected from the screen is not also laid in the model\u0027s space.",
+                "$ref": "#/components/schemas/StackFrame"
               }
             ]
           }

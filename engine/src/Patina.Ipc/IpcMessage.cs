@@ -583,11 +583,12 @@ public sealed record StackLayerThumbnail(string Layer, string Hash);
 /// <param name="V">Down it, 0 to 1.</param>
 public sealed record StackFindAsk(string Session, float U, float V);
 
-/// <summary>Asks for a picture of a brush, a stroke of it drawn small.</summary>
+/// <summary>Asks for a picture of a brush, a stroke of it drawn small, or one stamp of it.</summary>
 /// <param name="Folder">The stack's folder, which an alpha that is a picture is relative to.</param>
 /// <param name="Brush">The brush.</param>
 /// <param name="PreviewFolder">The content-addressed folder the picture goes in.</param>
-public sealed record BrushPreviewAsk(string Folder, StackBrush Brush, string PreviewFolder);
+/// <param name="Stamp">Whether it is one stamp, filling a square, rather than a stroke.</param>
+public sealed record BrushPreviewAsk(string Folder, StackBrush Brush, string PreviewFolder, bool Stamp = false);
 
 /// <summary>Asks for one picture of a loaded graph at the size the graph computes it.</summary>
 /// <param name="Session">The graph.</param>

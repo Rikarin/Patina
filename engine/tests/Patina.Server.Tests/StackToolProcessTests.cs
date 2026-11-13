@@ -192,7 +192,8 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     A material brush lays what its graph makes: under a dab, the base colour is what a fill of the same graph
-    ///     shows there, and not the stroke's colour.
+    ///     shows there, and not the stroke's colour. Projected from the screen, it lays the same where its maps stand
+    ///     and nothing past their edge.
     /// </summary>
     [Fact]
     public async Task A_material_brush_lays_what_its_graph_makes() {
@@ -224,20 +225,28 @@ public sealed partial class StackProcessTests {
         var size = (await PixelsAsync(state.Id, false, deadline.Token)).First(static map => map.Usage == "baseColor")
             .Width;
         var at = size / 2;
-
-        await EditAsync(
-            state.Id,
-            deadline.Token,
-            new StackStroke(
-                "material",
-                paint,
-                "baseColor",
-                new(size / 8f, Falloff: 0f),
-                Red,
-                [new(at, at)],
-                Source: new("material", graph)
-            )
+        var blank = await TexelAsync(state.Id, "blank", at, at, deadline.Token);
+        var dab = new StackStroke(
+            "material",
+            paint,
+            "baseColor",
+            new(size / 8f, Falloff: 0f),
+            Red,
+            [new(at, at)],
+            Source: new("material", graph)
         );
+
+        // Projected from the screen (#128): where the maps stand they are laid, and past their edge nothing is.
+        var far = new StackFrame([at + size * 4f, at], 1f);
+        await EditAsync(state.Id, deadline.Token, dab with { Source = dab.Source! with { Frame = far } });
+        var missed = await TexelAsync(state.Id, "missed", at, at, deadline.Token);
+        await ActAsync(state.Id, "undo", deadline.Token);
+        var near = new StackFrame([at, at], 0.5f, 0.3f);
+        await EditAsync(state.Id, deadline.Token, dab with { Source = dab.Source! with { Frame = near } });
+        var projected = await TexelAsync(state.Id, "projected", at, at, deadline.Token);
+        await ActAsync(state.Id, "undo", deadline.Token);
+
+        await EditAsync(state.Id, deadline.Token, dab);
         var painted = await TexelAsync(state.Id, "painted", at, at, deadline.Token);
 
         await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Cells"));
@@ -246,6 +255,8 @@ public sealed partial class StackProcessTests {
         var filled = await TexelAsync(state.Id, "filled", at, at, deadline.Token);
 
         Assert.Equal(filled, painted);
+        Assert.Equal(filled, projected);
+        Assert.Equal(blank, missed);
     }
 
     static bool Bluish(byte red, byte green, byte blue) => blue - red > 100;

@@ -1584,7 +1584,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. A brush no stroke could take is refused with its reason. */
+    /** A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. With stamp, one stamp of it instead, as a cursor shows it: square, the stamp's long half-axis reaching the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke could take is refused with its reason. */
     post: operations['PreviewStackBrush'];
     delete?: never;
     options?: never;
@@ -6671,6 +6671,28 @@ export interface components {
        */
       layer?: null | string;
     };
+    /** @description Where something fixed on a stroke's picture stands: moved, scaled, turned and perhaps tiled. */
+    StackFrame: {
+      /** @description Where its middle is on the stroke's picture, in the units stamps are in: two numbers. */
+      centre: number[];
+      /**
+       * Format: float
+       * @description How many of those units one of its pixels covers, above zero.
+       * @default 1
+       */
+      scale: number;
+      /**
+       * Format: float
+       * @description How far it is turned, clockwise on the screen, in radians.
+       * @default 0
+       */
+      angle: number;
+      /**
+       * @description Whether it repeats past its edges, or is nothing there.
+       * @default false
+       */
+      tiled: boolean;
+    };
     /** @description One colour of a stack's id map. */
     StackIdColour: {
       /** @description Red, green and blue, 0 to 1, as the map stores them. */
@@ -7371,6 +7393,7 @@ export interface components {
       /** @description For a planar material, the axis it projects along: X, Y or Z. */
       planarAxis?: null | string;
       placement?: null | components['schemas']['StackPlacement'];
+      frame?: null | components['schemas']['StackFrame'];
     };
     /** @description An open stack, for a list. */
     StackSummary: {
@@ -13168,7 +13191,9 @@ export interface operations {
   };
   PreviewStackBrush: {
     parameters: {
-      query?: never;
+      query?: {
+        stamp?: boolean;
+      };
       header?: never;
       path: {
         id: string;

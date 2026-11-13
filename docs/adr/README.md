@@ -33,3 +33,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0031](0031-viewport-lens-and-reach.md): accepted: the viewport's lens is scaled to the model and it has no temporal filter, a stroke reaches what the viewport showed when it began, and a drawing of lines goes through the preview folder.
 - [0033](0033-picking-files.md): accepted: the Server lists the pictures and meshes the library holds, a picture comes into a project by its library path, and the editor picks from that list with the machine's dialog beside it.
 - [0038](0038-snapshots.md): accepted: a snapshot is a list beside the document and bytes kept by revision under `.revisions/`, not a Git commit, and it goes back only into a closed document.
+- [0034](0034-3d-mouse.md): accepted: a 3D mouse is read as plain HID through WebHID, with no vendor SDK, and moves the viewport's camera as a drag does.

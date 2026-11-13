@@ -106,16 +106,17 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     A brush's picture is a stroke of it drawn small (#123): the same brush draws the same picture, another shape
-    ///     another one, its size does not change it, and a brush no stroke could take is refused with its reason.
+    ///     another one, its size does not change it, and a brush no stroke could take is refused with its reason. One
+    ///     stamp of it is drawn alone for a cursor.
     /// </summary>
     [Fact]
     public async Task A_brush_preview_draws_a_stroke_of_the_brush_at_a_size_of_its_own() {
         using var deadline = Deadline(240);
         var (_, state) = await StartAsync("Preview.vxlayers", deadline.Token);
 
-        async Task<Bitmap> DrawnAsync(StackBrush brush) {
+        async Task<Bitmap> DrawnAsync(StackBrush brush, bool stamp = false) {
             using var response = await http.PostAsJsonAsync(
-                $"/api/v1/stacks/{state.Id}/brush-preview",
+                $"/api/v1/stacks/{state.Id}/brush-preview{(stamp ? "?stamp=true" : string.Empty)}",
                 brush,
                 ContractsJsonContext.Default.StackBrush,
                 deadline.Token
@@ -139,6 +140,16 @@ public sealed partial class StackProcessTests {
         Assert.InRange(Painted(round), 2000, 256 * 64 - 2000);
         Assert.Equal(round.Pixels, again.Pixels);
         Assert.NotEqual(round.Pixels, chisel.Pixels);
+
+        // One stamp, as a cursor shows it (#137): the round one fills the disc inside its square, a stretched one is as
+        // long and narrower, and nothing random moves it.
+        var dab = await DrawnAsync(StackBrushes.Default with { Falloff = 0f }, true);
+        var jittered = await DrawnAsync(StackBrushes.Default with { Falloff = 0f, PositionJitter = 1f }, true);
+        var stretched = await DrawnAsync(StackBrushes.Default with { Falloff = 0f, Aspect = 4f }, true);
+        Assert.Equal((96, 96), (dab.Width, dab.Height));
+        Assert.InRange(Painted(dab), Math.PI * 48 * 48 * 0.9, Math.PI * 48 * 48 * 1.05);
+        Assert.Equal(dab.Pixels, jittered.Pixels);
+        Assert.InRange(Painted(stretched), Painted(dab) * 0.2, Painted(dab) * 0.3);
 
         using var refused = await http.PostAsJsonAsync(
             $"/api/v1/stacks/{state.Id}/brush-preview",
