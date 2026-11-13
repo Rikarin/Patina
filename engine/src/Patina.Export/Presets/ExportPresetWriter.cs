@@ -12,8 +12,8 @@ namespace Patina.Export.Presets;
 /// <summary>
 ///     A preset as a document a client edits, and back to the file (ADR 0019). The file is the truth: a document is
 ///     written as the language spells it, read back by <see cref="ExportPresetReader" />, and kept only if that reads
-///     it, so the editor can make nothing a hand-written file could not say. Comments in a hand-written file do not
-///     survive an edit in the editor; the fields do.
+///     it, so the editor can make nothing a hand-written file could not say. A hand-written file's comments above its
+///     fields and textures survive an edit in the editor (<see cref="PresetComments" />); one inside a texture does not.
 /// </summary>
 public static partial class ExportPresetWriter {
     const string Header =
@@ -147,7 +147,10 @@ public static partial class ExportPresetWriter {
         }
 
         var file = FileOf(folder, document.Id);
-        LibraryFiles.Replace(file, Text(document));
+        // The comments of the file this one takes the place of: the one renamed, or the one of its id.
+        var before = new[] { old, file }.FirstOrDefault(File.Exists);
+        var text = Text(document);
+        LibraryFiles.Replace(file, before is null ? text : PresetComments.Of(File.ReadAllText(before)).Into(text));
         if (old is not null) {
             File.Delete(old);
         }
