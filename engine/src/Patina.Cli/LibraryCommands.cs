@@ -108,9 +108,7 @@ static class LibraryCommands {
     }
 
     static int Usage() {
-        Console.Error.WriteLine(
-            $"Usage: patina library new <path> [--name <name>] | {CheckUsage.Trim()}"
-        );
+        Console.Error.WriteLine($"Usage: patina library new <path> [--name <name>] | {CheckUsage.Trim()}");
         return ExitUsage;
     }
 }

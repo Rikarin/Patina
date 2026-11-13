@@ -464,7 +464,8 @@ public static class RevisionPurge {
     public static (int Files, long Bytes) Run(string root, CheckReport report) {
         ArgumentNullException.ThrowIfNull(report);
         var (files, bytes) = (0, 0L);
-        foreach (var finding in report.Findings.Where(static f => f.Kind == FindingKind.UnusedRevision && Kept(f.Path))) {
+        foreach (var finding in report.Findings.Where(static f => f.Kind == FindingKind.UnusedRevision && Kept(f.Path)
+                 )) {
             var file = new FileInfo(LibraryLayout.Full(root, finding.Path));
             if (!file.Exists) {
                 continue;
