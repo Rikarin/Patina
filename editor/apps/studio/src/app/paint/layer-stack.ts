@@ -40,6 +40,7 @@ import { blendName as blendLabelOf, channelName, termName } from '../core/labels
 import { MenuKeys } from '../core/menu-keys';
 import { diagnosticOf, messageOf } from '../core/messages';
 import { percent } from '../core/numbers';
+import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { IsolationStore } from '../viewport/isolation-store';
 import { type DropZone, dropManyCommands, nudgeCommands } from './layer-drag';
@@ -272,6 +273,16 @@ const MaskMarks: Readonly<Record<string, string>> = {
         <ng-icon xui size="sm" name="matDeleteOutline" />
       </button>
     </div>
+
+    @if (store.link() === 'reconnecting') {
+      <xui-callout class="shrink-0 text-xs" color="error" compact data-testid="layers-offline">
+        Lost touch with Patina’s engine. The stack comes back when it reconnects; an edit made before then is refused.
+      </xui-callout>
+    } @else if (workerMissing()) {
+      <xui-callout class="shrink-0 text-xs" color="warning" compact data-testid="layers-no-worker">
+        The GPU engine is not running. Edits are kept, and the paint shows again when it starts.
+      </xui-callout>
+    }
 
     @if (staleBake(); as stale) {
       <xui-callout class="shrink-0 text-xs" color="warning" compact data-testid="layers-stale-bake">
@@ -1470,6 +1481,12 @@ const MaskMarks: Readonly<Record<string, string>> = {
 })
 export class LayerStack {
   protected readonly store = inject(PaintStore);
+  private readonly status = inject(SystemStatus);
+  /** The Server answers but its GPU engine does not, so nothing new can be drawn. */
+  protected readonly workerMissing = computed(() => {
+    const state = this.status.state();
+    return state.kind === 'online' && !state.system.worker.connected;
+  });
   protected readonly project = inject(ProjectStore);
   private readonly isolation = inject(IsolationStore);
 

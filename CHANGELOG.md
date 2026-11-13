@@ -304,6 +304,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A minimum occluder distance at or past the occluder distance no longer bakes white ambient occlusion and a flat bent normal without
   a word. The Bake dialog says so under the field and will not bake, and the Server, `patina bake-maps` and the engine refuse it,
   with the code `bake-occluder-minimum` for clients. Thickness reads only the occluder distance, so it still bakes.
+- Paint says when it has lost Patina's engine, as Graph does: Layers shows that the stack comes back when the engine reconnects, and warns when the GPU engine is not running.
 
 ### Changed
 
