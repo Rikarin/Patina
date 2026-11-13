@@ -222,7 +222,7 @@ export class BakeStore {
   private put(job: JobState): void {
     this.byId.update(jobs => {
       const held = jobs.get(job.id);
-      return held && (held.version ?? 0) > (job.version ?? 0) ? jobs : new Map(jobs).set(job.id, job);
+      return held && held.version > job.version ? jobs : new Map(jobs).set(job.id, job);
     });
   }
 

@@ -16,6 +16,7 @@ function job(overrides: Partial<JobState> = {}): JobState {
     created: '2026-11-05T00:00:00Z',
     bake,
     cancelRequested: false,
+    version: 1,
     ...overrides
   } as JobState;
 }
