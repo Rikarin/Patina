@@ -95,13 +95,14 @@ public sealed partial class BakeProcessTests {
         await SelectAsync(new([2]));
         await UntilAsync(static state => state.Node?.Node == 2, "Letting the pin go did not show the selection.");
 
-        // A frame says what lies on the mesh has changed since the first.
-        uint input = 0;
-        byte[] frame;
-        do {
-            await SendAsync(socket, new(Input: ++input), deadline.Token);
+        // A frame says what lies on the mesh has changed since the first. One input, and the frames until one answers
+        // it: another input with each frame read never caught up where frames were already on their way, as on
+        // lavapipe, since each read took one of them and each input asked for one more.
+        await SendAsync(socket, new(Input: 1), deadline.Token);
+        var frame = await FrameAsync(socket, deadline.Token);
+        while (BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(16)) != 1) {
             frame = await FrameAsync(socket, deadline.Token);
-        } while (BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(16)) != input);
+        }
 
         Assert.NotEqual(
             BinaryPrimitives.ReadUInt32LittleEndian(first.AsSpan(28)),
