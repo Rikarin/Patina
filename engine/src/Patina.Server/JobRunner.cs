@@ -17,6 +17,7 @@ public sealed class JobRunner : BackgroundService {
     readonly BakeCache cache;
     readonly WorkerLink worker;
     readonly BuildRunner builds;
+    readonly BakeLinks links;
     readonly ILogger<JobRunner> logger;
 
     public JobRunner(
@@ -24,11 +25,13 @@ public sealed class JobRunner : BackgroundService {
         BakeCache cache,
         WorkerLink worker,
         LibraryHost library,
+        BakeLinks links,
         ILogger<JobRunner> logger
     ) {
         this.queue = queue;
         this.cache = cache;
         this.worker = worker;
+        this.links = links;
         this.logger = logger;
         builds = new(library, ToolCatalog.Default);
         worker.Reported += Hear;
@@ -183,7 +186,8 @@ public sealed class JobRunner : BackgroundService {
     }
 
     /// <summary>
-    ///     Puts the maps where the request wanted them. Off the link's loop, since the files can be large.
+    ///     Puts the maps where the request wanted them, and the open documents they are of on them before anyone hears
+    ///     the job is done. Off the link's loop, since the files can be large.
     /// </summary>
     void Deliver(string id, int attempt, BakeManifest manifest) {
         if (queue.Find(id) is not { } job) {
@@ -191,7 +195,9 @@ public sealed class JobRunner : BackgroundService {
         }
 
         try {
-            queue.Complete(id, attempt, cache.Deliver(job.Key, manifest, job.Bake!, false));
+            var result = cache.Deliver(job.Key, manifest, job.Bake!, false);
+            links.Delivered(job.Bake!);
+            queue.Complete(id, attempt, result);
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
             queue.Fail(id, attempt, e.Message);
         }

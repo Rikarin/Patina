@@ -235,6 +235,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A bake of an open texture set is what the set reads once the job is done, whichever client asked for it (#268): the Server points the set at the new maps itself, so a client that only bakes, such as a script or a future Blender add-on, no longer leaves the set's generators reading no bake. A bake into the folder an open graph or set already reads is read again the same way.
 - A bake's preview keeps to what the viewport shows alone (#136): with some parts isolated, the reach, the cage and the seams are drawn over those parts and nothing of the rest, and with none of the texture set shown it draws nothing and says so.
 - Changing a texture set's Width or Height marks its mesh maps out of date when they were baked at another shape (#262): Layers, the Bake dialog and Checks say they need baking again, as they do after a mesh or UV set change. Through the API a set's and a document's `bakeStale` says `shape`.
 - A bake that follows a texture set's shape reads the set as it is open, so Quick Bake right after changing Height bakes at the new shape before the set is saved (#253).

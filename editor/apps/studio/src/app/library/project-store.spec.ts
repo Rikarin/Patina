@@ -66,7 +66,7 @@ function harness() {
   const paint = {
     state: paintState,
     failure: signal<string | null>(null),
-    useMeshMaps: vi.fn(() => Promise.resolve()),
+    reread: vi.fn(() => Promise.resolve()),
     open: vi.fn((path: string) => {
       sessions.add(`session:${path}`);
       paintState.set({ id: `session:${path}`, history: { dirty: false } });

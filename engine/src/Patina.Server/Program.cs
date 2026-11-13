@@ -118,6 +118,7 @@ builder.Services.AddSingleton(static services => new BakeCache(
         JobRunner.Folders(services.GetRequiredService<ServerIdentity>()).Bakes
     )
 );
+builder.Services.AddSingleton<BakeLinks>();
 builder.Services.AddHostedService<JobRunner>();
 builder.Services.AddHostedService<Autosave>();
 builder.Services.AddHostedService<DiscoveryPublisher>();

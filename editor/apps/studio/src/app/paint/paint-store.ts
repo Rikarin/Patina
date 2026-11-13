@@ -2087,6 +2087,11 @@ export class PaintStore {
     }
   }
 
+  /** Reads the set again, as after the Server changed what it reads on its own, such as a finished bake (#268). */
+  reread(): Promise<void> {
+    return this.refresh();
+  }
+
   private async refresh(): Promise<void> {
     const id = this.state()?.id;
     if (id) {

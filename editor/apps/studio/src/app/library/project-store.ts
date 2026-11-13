@@ -237,14 +237,13 @@ export class ProjectStore {
       }
     });
 
-    // A bake of what is open is what its layers were waiting for, the same folder again included.
-    // A bake of several texture sets is a job each, and each links its own set's layers as it finishes.
+    // A bake of what is open is what its layers were waiting for, the same folder again included. The Server points
+    // the set at it (#268); a bake of several texture sets is a job each, and each is read again as it finishes.
     effect(() => {
       for (const job of this.bakes.batch()) {
-        const folder = job.bake?.output;
-        if (job.state === 'done' && folder && !this.linkedBakes.has(job.id)) {
+        if (job.state === 'done' && job.bake && !this.linkedBakes.has(job.id)) {
           this.linkedBakes.add(job.id);
-          untracked(() => void this.linkBake(folder, job.bake?.material ?? null));
+          untracked(() => void this.bakeDone());
         }
       }
     });
@@ -1258,9 +1257,13 @@ export class ProjectStore {
     return contents;
   }
 
-  private async linkBake(folder: string, material: string | null): Promise<void> {
-    if (this.paint.state() && (this.document()?.material ?? null) === material) {
-      await this.paint.useMeshMaps(folder);
+  /**
+   * The Server pointed the open set at the bake before it said the job was done, if the bake is of that set (#268): what
+   * is left here is to read the set and the project again, for which bake they read and whether it fits.
+   */
+  private async bakeDone(): Promise<void> {
+    if (this.paint.state()) {
+      await this.paint.reread();
     }
 
     const project = this.current()?.path;
