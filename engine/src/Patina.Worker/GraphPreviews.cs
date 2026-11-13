@@ -1,4 +1,3 @@
-using Patina.Ipc;
 using System.Collections.Immutable;
 using Vixen.TextureGraph;
 

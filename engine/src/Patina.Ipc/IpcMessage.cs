@@ -886,7 +886,7 @@ public static class GraphPreviewFiles {
         File.WriteAllBytes(temporary, bytes);
         try {
             File.Move(temporary, path);
-        } catch (Exception e) when ((e is IOException or UnauthorizedAccessException) && File.Exists(path)) {
+        } catch (Exception e) when (e is IOException or UnauthorizedAccessException && File.Exists(path)) {
             File.Delete(temporary);
         }
     }

@@ -34,10 +34,8 @@ public sealed class GraphPreviewFilesTests : IDisposable {
                         try {
                             using var held = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
                             Thread.SpinWait(2000);
-                        } catch (FileNotFoundException) {
-                        } catch (DirectoryNotFoundException) {
                         } catch (IOException) {
-                            // A writer is renaming it in.
+                            // Not there yet, or a writer is renaming it in: a reader tries again, as the Server does.
                         }
                     }
                 },
