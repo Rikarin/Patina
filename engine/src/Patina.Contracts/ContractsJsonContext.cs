@@ -71,6 +71,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(StackClipRequest))]
 [JsonSerializable(typeof(StackClip))]
 [JsonSerializable(typeof(StackSaveMaterialRequest)), JsonSerializable(typeof(StackSavedMaterial))]
+[JsonSerializable(typeof(StackInstanceLinks))]
 [JsonSerializable(typeof(ViewportPickRequest))]
 [JsonSerializable(typeof(ViewportStackRequest))]
 [JsonSerializable(typeof(StackEditResult))]

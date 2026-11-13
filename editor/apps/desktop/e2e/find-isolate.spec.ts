@@ -222,7 +222,8 @@ test('an instance in another texture set shows its source and follows an unsaved
   await expect(picture).not.toHaveAttribute('src', bare ?? '', { timeout: 30_000 });
   await settled();
   const shown = await picture.getAttribute('src');
-  await expect(window.getByTestId('paint-instance-source')).toContainText('in metal');
+  // The source is named as metal names it, not by its id (#108).
+  await expect(window.getByTestId('paint-instance-source')).toContainText('Stands for Paint in metal');
   await expect(window.getByTestId('app-undo')).toHaveAttribute('aria-label', 'Undo Paste as instances');
   await window.screenshot({ path: join(shots, 'instance-2-wood-instance.png') });
 
@@ -230,6 +231,9 @@ test('an instance in another texture set shows its source and follows an unsaved
   await window.getByTestId('texture-set-metal').click();
   await expect(window.getByTestId('texture-set-metal')).toHaveAttribute('aria-selected', 'true');
   await expect(paint).toBeVisible({ timeout: 30_000 });
+  // The source lists its instance in wood, and Go opens wood on it.
+  await paint.click();
+  await expect(window.getByTestId('paint-instance-wood')).toContainText('in wood', { timeout: 30_000 });
   await paint.click({ button: 'right' });
   await window.getByTestId('layer-menu-mask-black').click();
   await settled();

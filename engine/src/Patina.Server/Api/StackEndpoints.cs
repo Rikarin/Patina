@@ -23,6 +23,7 @@ static class StackEndpoints {
         var stacks = api.MapGroup("/stacks").WithTags(Tag);
         stacks.MapStackChecks();
         stacks.MapStackShelf();
+        stacks.MapStackLinks();
         stacks.MapStackBrushes();
         stacks.MapStackMesh();
         stacks.MapStackPixels();

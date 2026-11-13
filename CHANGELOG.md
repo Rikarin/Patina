@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A layer's instances in the model's other texture sets are listed in its Properties beside those in its own set, each with the set it is in and a Go that opens that set on it, and an instance of a layer in another set says the source's name rather than its id (#108). Through the API `GET /api/v1/stacks/{id}/instances` lists both ways, from open sets as they stand and from the others' files.
 - Pointing at a texture set in Texture Sets, or at a part in its Isolate parts list, marks it on the model (#136): its faces washed orange with their outline drawn round them, over the material as it is shaded, until the pointer leaves the row. A part shown alone elsewhere is not marked where it is hidden. Through the API `PUT /api/v1/viewport/highlight` marks named meshes and materials for every client, and the viewport's state says what is marked.
 - A picture dropped on the mesh becomes a decal there: from this machine or from the library tree, it is brought into the project and laid on a new fill on top, facing out of the face it landed on, at the picture's own shape, colouring only the base color. The layer and its decal undo as two steps.
 - Warp to Geometry, beside Warp in a decal's properties, measures the surface under the decal as the viewport sees it and moves the warp grid's middle row and column so each half of the picture covers as much of the surface: a decal across a bend is no longer stretched over the side that turns away. It is one edit, and Straighten undoes it.

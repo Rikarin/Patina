@@ -5634,6 +5634,47 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/instances": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Lists the layers of the model\u0027s other texture sets that stand for this set\u0027s layers, and the layers there that this set\u0027s instances stand for, each by set, id and name.",
+        "operationId": "GetStackInstanceLinks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackInstanceLinks"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/brush-preview": {
       "post": {
         "tags": [
@@ -17588,6 +17629,59 @@
           }
         },
         "description": "Where one image input of a filter, a mask step or a graph fill reads."
+      },
+      "StackInstanceLink": {
+        "required": [
+          "set",
+          "layer",
+          "name",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "set": {
+            "type": "string",
+            "description": "The other texture set, by name."
+          },
+          "layer": {
+            "type": "string",
+            "description": "The layer\u0027s id in that set."
+          },
+          "name": {
+            "type": "string",
+            "description": "The layer\u0027s name there."
+          },
+          "source": {
+            "type": "string",
+            "description": "For an instance in the other set, the id of the layer of this set it stands for; empty for a source.",
+            "default": ""
+          }
+        },
+        "description": "An instance layer and the layer it stands for, across two texture sets of one model (#108)."
+      },
+      "StackInstanceLinks": {
+        "required": [
+          "instances",
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "instances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackInstanceLink"
+            },
+            "description": "Layers of other sets that stand for one of this set\u0027s."
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackInstanceLink"
+            },
+            "description": "Layers of other sets that one of this set\u0027s instances stands for."
+          }
+        },
+        "description": "How a texture set\u0027s layers are tied to the model\u0027s other sets (#108): the instances elsewhere of its layers, and\nthe layers elsewhere its own instances stand for, each with its name, which a client of one set cannot read."
       },
       "StackInstanceRef": {
         "required": [
