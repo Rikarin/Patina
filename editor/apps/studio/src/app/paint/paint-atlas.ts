@@ -21,7 +21,7 @@ const Painting = 'painting:';
   imports: [XuiButtonImports, XuiNonIdealStateImports, XuiSelectImports, XuiSpinnerImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2',
+    class: 'relative flex h-full min-h-0 items-center justify-center overflow-hidden p-2 [container-type:size]',
     'data-commands': 'atlas'
   },
   template: `
@@ -81,15 +81,19 @@ const Painting = 'painting:';
     @if (store.picture(); as picture) {
       @if (tiling() && tiled()) {
         <div
-          class="well aspect-square h-full max-h-full max-w-full"
+          class="well"
           data-testid="paint-tiled"
+          [style.aspect-ratio]="aspect()"
+          [style.width]="wellWidth()"
           [style.background-image]="'url(' + picture + ')'"
           [style.background-size]="'33.3333% 33.3333%'"
         ></div>
       } @else {
         <div
-          class="well relative aspect-square max-h-full max-w-full touch-none overflow-hidden"
+          class="well relative touch-none overflow-hidden"
           data-testid="paint-canvas"
+          [style.aspect-ratio]="aspect()"
+          [style.width]="wellWidth()"
           [style.transform]="transform()"
           (wheel)="wheel($event)"
         >
@@ -252,6 +256,14 @@ export class PaintAtlas {
   private readonly side = computed<readonly [number, number]>(() => {
     const state = this.store.state();
     return [state?.width ?? 1, state?.height ?? 1];
+  });
+
+  /** The well's shape is the set's, which need not be square (#246). */
+  protected readonly aspect = computed(() => `${this.side()[0]} / ${this.side()[1]}`);
+  /** As wide as the pane allows while the whole of the set's height still fits in it. */
+  protected readonly wellWidth = computed(() => {
+    const [width, height] = this.side();
+    return `min(100cqw, ${(100 * width) / height}cqh)`;
   });
 
   private painting = false;

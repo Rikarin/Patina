@@ -190,6 +190,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The 2D view of a texture set that is not square is the set's shape: the map, its UV layout and the pointer's readout no longer sit in a square well, stretched.
 - Bake settings changed one after another in quick succession are all kept in the project. A change made while the one before it was still being written could be undone by it, so the project kept an earlier setting.
 - The first stroke on a dense mesh starts sooner: the engine lays out the mesh for the brush in about half the time, 0.7 to 1.3 s instead of 2.1 to 3.6 s for two million triangles.
 - A new image material is authored at 1024, as every new graph is, so a radius in it means what it does in any other graph.
