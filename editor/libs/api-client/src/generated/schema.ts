@@ -1042,6 +1042,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/samples': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The sample projects that can be made, by name. */
+    get: operations['GetSamples'];
+    put?: never;
+    /** Copies a sample into the library as a new project: its mesh, laid out, and a texturing document for each of its materials. A name already taken gets a number. */
+    post: operations['MakeSample'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/thumbnails': {
     parameters: {
       query?: never;
@@ -5411,6 +5429,18 @@ export interface components {
        */
       viewport: components['schemas']['ViewportDisplay'];
     };
+    /** @description The sample projects Patina ships, which a client offers to start from (#190). */
+    SampleList: {
+      /** @description Each sample's name, which is also the project it makes. */
+      names: string[];
+    };
+    /** @description Makes a project from a sample. */
+    SampleRequest: {
+      /** @description Which sample. */
+      name: string;
+      /** @description The folder below `projects/` to make it in, or null for the top. */
+      folder?: null | string;
+    };
     /**
      * @description The Server's settings that belong to the person and not to a library or project, kept in a plain file beside
      *     the discovery file, which anyone can read and edit.
@@ -7365,6 +7395,8 @@ export interface components {
        * @description The side a new document gets when nobody says.
        */
       defaultTextureSide: number;
+      /** @description The version of Vixen, the engine library the graphs, layers and bakes run on (#190). */
+      vixen?: null | string;
       /** @description What can be read, for a client's file dialogs. */
       formats: components['schemas']['FileFormats'];
     };
@@ -11345,6 +11377,104 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['DocumentSnapshot'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetSamples: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SampleList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  MakeSample: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SampleRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectSummary'];
         };
       };
       /** @description Bad Request */

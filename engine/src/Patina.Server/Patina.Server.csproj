@@ -26,5 +26,6 @@
   <ItemGroup>
     <EmbeddedResource Include="../../../content/materials/*.vxtexgraph" LogicalName="Starter/%(Filename)"/>
     <EmbeddedResource Include="../../../content/brushes/*.ptbrush" LogicalName="Brush/%(Filename)"/>
+    <EmbeddedResource Include="../../../content/samples/**/*" LogicalName="Sample/%(RecursiveDir)%(Filename)%(Extension)"/>
   </ItemGroup>
 </Project>

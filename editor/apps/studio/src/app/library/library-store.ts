@@ -220,6 +220,25 @@ export class LibraryStore {
     return project;
   }
 
+  /** Copies one of Patina's samples into the library as a new project, selected as a created one is (#190). */
+  async makeSample(name: string): Promise<ProjectSummary> {
+    const client = await this.api();
+    const project = unwrap(await client.POST('/api/v1/library/samples', { body: { name } }));
+    this.selection.select({ kind: 'project', project });
+    void this.poll();
+    return project;
+  }
+
+  /** The samples Patina ships, by name. None when the engine cannot say. */
+  async samples(): Promise<readonly string[]> {
+    try {
+      const client = await this.api();
+      return unwrap(await client.GET('/api/v1/library/samples')).names;
+    } catch {
+      return [];
+    }
+  }
+
   async api(): Promise<PatinaClient> {
     this.client ??= this.createClient(await this.connection());
     return this.client;

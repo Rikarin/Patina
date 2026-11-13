@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { desktop } from './desktop';
+import { messageOf } from './messages';
 import { Preferences, type RecentDocument } from './preferences';
 
 /** How many recent documents Start offers. */
@@ -54,6 +55,29 @@ const Kinds = [
           }
         </section>
       }
+      @if (samples().length > 0) {
+        <section class="flex w-full max-w-3xl flex-col gap-1" aria-labelledby="start-samples-title">
+          <h2 id="start-samples-title" class="text-foreground-muted text-sm font-semibold">Samples</h2>
+          <div class="flex flex-wrap gap-2">
+            @for (sample of samples(); track sample) {
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                title="Copy this sample into the library as a project of your own, and open it"
+                [attr.data-testid]="'start-sample-' + sample"
+                [disabled]="making()"
+                (click)="openSample(sample)"
+              >
+                {{ sample }}
+              </button>
+            }
+          </div>
+          @if (sampleFailure(); as failure) {
+            <p class="text-error text-sm" data-testid="start-sample-failure">{{ failure }}</p>
+          }
+        </section>
+      }
       <p class="text-foreground-muted text-sm">Or open a project from the Library.</p>
     } @else {
       <h1 class="text-lg font-semibold">Welcome to Patina</h1>
@@ -102,10 +126,36 @@ export class StartPane {
       : [];
   });
 
+  /** The samples Patina ships, to start from (#190). */
+  protected readonly samples = signal<readonly string[]>([]);
+  protected readonly making = signal(false);
+  protected readonly sampleFailure = signal<string | null>(null);
+
   constructor() {
     void desktop()
       ?.recentLibraries()
       .then(paths => this.recent.set(paths));
+    // Once a library is ready, not on every poll of it.
+    const ready = computed(() => this.library.state().kind === 'ready');
+    effect(() => {
+      if (ready()) {
+        void this.library.samples().then(names => this.samples.set(names));
+      }
+    });
+  }
+
+  /** Makes a project of a sample and opens it, so a first look has something to take apart. */
+  protected async openSample(name: string): Promise<void> {
+    this.making.set(true);
+    this.sampleFailure.set(null);
+    try {
+      const project = await this.library.makeSample(name);
+      await this.project.open(project.path);
+    } catch (failure) {
+      this.sampleFailure.set(messageOf(failure));
+    } finally {
+      this.making.set(false);
+    }
   }
 
   protected newLibrary(): void {

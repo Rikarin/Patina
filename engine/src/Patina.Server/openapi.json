@@ -4184,6 +4184,116 @@
         }
       }
     },
+    "/api/v1/library/samples": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The sample projects that can be made, by name.",
+        "operationId": "GetSamples",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Copies a sample into the library as a new project: its mesh, laid out, and a texturing document for each of its materials. A name already taken gets a number.",
+        "operationId": "MakeSample",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SampleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/thumbnails": {
       "post": {
         "tags": [
@@ -15477,6 +15587,42 @@
         },
         "description": "The body of \u0060PUT /api/v1/library/project/viewport\u0060."
       },
+      "SampleList": {
+        "required": [
+          "names"
+        ],
+        "type": "object",
+        "properties": {
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Each sample\u0027s name, which is also the project it makes."
+          }
+        },
+        "description": "The sample projects Patina ships, which a client offers to start from (#190)."
+      },
+      "SampleRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Which sample."
+          },
+          "folder": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The folder below \u0060projects/\u0060 to make it in, or null for the top."
+          }
+        },
+        "description": "Makes a project from a sample."
+      },
       "ServerPreferences": {
         "required": [
           "autosave"
@@ -19592,6 +19738,13 @@
             "type": "integer",
             "description": "The side a new document gets when nobody says.",
             "format": "int32"
+          },
+          "vixen": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The version of Vixen, the engine library the graphs, layers and bakes run on (#190)."
           },
           "formats": {
             "description": "What can be read, for a client\u0027s file dialogs.",

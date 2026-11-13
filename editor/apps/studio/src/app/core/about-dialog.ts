@@ -64,6 +64,7 @@ export class AboutDialog {
     const lines: { key: string; name: string; value: string | null | undefined }[] = [
       { key: 'patina', name: 'Patina', value: system?.version },
       { key: 'gpu', name: 'GPU engine', value: system?.worker.version },
+      { key: 'vixen', name: 'Vixen', value: system?.vixen },
       { key: 'api', name: 'API', value: system ? String(system.apiVersion) : null },
       { key: 'runtime', name: 'Runtime', value: system?.host.runtime },
       { key: 'system', name: 'System', value: system ? `${system.host.os}, ${system.host.architecture}` : null },

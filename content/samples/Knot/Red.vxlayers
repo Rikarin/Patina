@@ -1,0 +1,49 @@
+version: 1
+name: Red
+model: knot.glb
+baseWidth: 2048
+baseHeight: 1024
+sets:
+  - name: Red
+    channels:
+      - usage: baseColor
+        default: [0.5, 0.5, 0.5, 1]
+      - usage: roughness
+        default: [0.5, 0.5, 0.5, 1]
+      - usage: metalness
+        default: [0, 0, 0, 1]
+    layers:
+      - id: lacquer
+        name: Red Lacquer
+        kind: Fill
+        values:
+          baseColor: [0.7, 0.05, 0.04, 1]
+          roughness: [0.4, 0.4, 0.4, 1]
+          metalness: [0, 0, 0, 1]
+      - id: stains
+        name: Water Stains
+        kind: Fill
+        blend: Multiply
+        opacity: 0.5
+        values:
+          baseColor: [0.75, 0.6, 0.55, 1]
+          roughness: [1.2, 1.2, 1.2, 1]
+          metalness: [1, 1, 1, 1]
+        mask:
+          source: Generator
+          generator: Grunges/Water Stains
+      - id: dust
+        name: Dust
+        kind: Fill
+        blend: Copy
+        opacity: 0.55
+        values:
+          baseColor: [0.55, 0.5, 0.44, 1]
+          roughness: [0.9, 0.9, 0.9, 1]
+          metalness: [0, 0, 0, 1]
+        mask:
+          source: Generator
+          generator: Grunges/Speckle
+      - id: paint
+        name: Paint
+        kind: Paint

@@ -63,6 +63,8 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(DocumentSnapshotList))]
 [JsonSerializable(typeof(SnapshotTakeRequest))]
 [JsonSerializable(typeof(SnapshotRequest))]
+[JsonSerializable(typeof(SampleList))]
+[JsonSerializable(typeof(SampleRequest))]
 [JsonSerializable(typeof(BrushPresetInfo), TypeInfoPropertyName = nameof(BrushPresetInfo))]
 [JsonSerializable(typeof(BrushPresetList), TypeInfoPropertyName = nameof(BrushPresetList))]
 [JsonSerializable(typeof(ProjectPaintSettings))]
