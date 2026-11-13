@@ -59,24 +59,37 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
     ///     Another texture set of the model, by name: a stack beside this one, as its open session has it or as its
     ///     file says. Sets of one model are documents of one project, which sit together.
     /// </summary>
-    TextureSetAsset? Sibling(StackSession asking, string name) {
+    TextureSetAsset? Sibling(StackSession asking, string name) =>
+        Siblings(asking).FirstOrDefault(set => set.Name == name);
+
+    /// <summary>
+    ///     The model's other texture sets: each stack beside this one, as its open session has it or as its file says,
+    ///     the open ones first.
+    /// </summary>
+    public IEnumerable<TextureSetAsset> Siblings(StackSession asking) {
+        ArgumentNullException.ThrowIfNull(asking);
+        return SiblingsOf(asking);
+    }
+
+    IEnumerable<TextureSetAsset> SiblingsOf(StackSession asking) {
         foreach (var open in table.All) {
-            if (open != asking && open.Folder == asking.Folder && open.Published is { } set && set.Name == name) {
-                return set;
+            if (open != asking && open.Folder == asking.Folder && open.Published is { } set) {
+                yield return set;
             }
         }
 
         if (asking.Folder is not { } folder || !Directory.Exists(folder)) {
-            return null;
+            yield break;
         }
 
         HashSet<string> held = new(table.All.Select(static session => session.Path), StringComparer.Ordinal) {
             asking.Path
         };
-        return Directory.EnumerateFiles(folder, $"*{StackDocuments.Extension}")
-            .Where(file => !held.Contains(file))
-            .Select(Read)
-            .FirstOrDefault(set => set?.Name == name);
+        foreach (var file in Directory.EnumerateFiles(folder, $"*{StackDocuments.Extension}")) {
+            if (!held.Contains(file) && Read(file) is { } set) {
+                yield return set;
+            }
+        }
     }
 
     /// <summary>A stack's set from its file, kept until the file changes.</summary>

@@ -193,6 +193,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/highlight': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Marks some named meshes and materials (texture sets) on the model in one colour with their outline, for every client. Empty lists mark nothing. */
+    put: operations['SetViewportHighlight'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/bake': {
     parameters: {
       query?: never;
@@ -1535,6 +1552,23 @@ export interface paths {
     put?: never;
     /** Saves layers, or one layer's mask, into a project as a smart material or smart mask its shelf offers. */
     post: operations['SaveStackMaterial'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/instances': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Lists the layers of the model's other texture sets that stand for this set's layers, and the layers there that this set's instances stand for, each by set, id and name. */
+    get: operations['GetStackInstanceLinks'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -6681,6 +6715,30 @@ export interface components {
        */
       map: string;
     };
+    /** @description An instance layer and the layer it stands for, across two texture sets of one model (#108). */
+    StackInstanceLink: {
+      /** @description The other texture set, by name. */
+      set: string;
+      /** @description The layer's id in that set. */
+      layer: string;
+      /** @description The layer's name there. */
+      name: string;
+      /**
+       * @description For an instance in the other set, the id of the layer of this set it stands for; empty for a source.
+       * @default
+       */
+      source: string;
+    };
+    /**
+     * @description How a texture set's layers are tied to the model's other sets (#108): the instances elsewhere of its layers, and
+     *     the layers elsewhere its own instances stand for, each with its name, which a client of one set cannot read.
+     */
+    StackInstanceLinks: {
+      /** @description Layers of other sets that stand for one of this set's. */
+      instances: components['schemas']['StackInstanceLink'][];
+      /** @description Layers of other sets that one of this set's instances stands for. */
+      sources: components['schemas']['StackInstanceLink'][];
+    };
     /** @description The layer an instance stands for. */
     StackInstanceRef: {
       /** @description The source layer's id. */
@@ -7935,6 +7993,17 @@ export interface components {
       port?: null | string;
     };
     /**
+     * @description What the viewport marks on the model (#136): named meshes and materials, a texture set being one, washed in one
+     *     colour and outlined over the model as it is shaded, such as the row a client points at in its list of texture
+     *     sets. A part an isolation hides is not marked. Both empty marks nothing.
+     */
+    ViewportHighlight: {
+      /** @description Named meshes marked, as the model names them. */
+      parts: string[];
+      /** @description Materials marked, as the model names them: a texture set is one. */
+      materials: string[];
+    };
+    /**
      * @description What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The
      *     rest of the model is not drawn and casts no shadow. Both empty is the whole model.
      */
@@ -8124,6 +8193,7 @@ export interface components {
       isolation?: null | components['schemas']['ViewportIsolation'];
       node?: null | components['schemas']['ViewportNodeShown'];
       following?: null | components['schemas']['ViewportFollow'];
+      highlight?: null | components['schemas']['ViewportHighlight'];
     };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {
@@ -8542,6 +8612,30 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['ViewportIsolation'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+    };
+  };
+  SetViewportHighlight: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportHighlight'];
       };
     };
     responses: {
@@ -13025,6 +13119,37 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackInstanceLinks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackInstanceLinks'];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

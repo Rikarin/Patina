@@ -479,6 +479,37 @@
         }
       }
     },
+    "/api/v1/viewport/highlight": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Marks some named meshes and materials (texture sets) on the model in one colour with their outline, for every client. Empty lists mark nothing.",
+        "operationId": "SetViewportHighlight",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportHighlight"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/bake": {
       "put": {
         "tags": [
@@ -6098,6 +6129,47 @@
           },
           "422": {
             "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/instances": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Lists the layers of the model\u0027s other texture sets that stand for this set\u0027s layers, and the layers there that this set\u0027s instances stand for, each by set, id and name.",
+        "operationId": "GetStackInstanceLinks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackInstanceLinks"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -18326,6 +18398,59 @@
         },
         "description": "Where one image input of a filter, a mask step or a graph fill reads."
       },
+      "StackInstanceLink": {
+        "required": [
+          "set",
+          "layer",
+          "name",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "set": {
+            "type": "string",
+            "description": "The other texture set, by name."
+          },
+          "layer": {
+            "type": "string",
+            "description": "The layer\u0027s id in that set."
+          },
+          "name": {
+            "type": "string",
+            "description": "The layer\u0027s name there."
+          },
+          "source": {
+            "type": "string",
+            "description": "For an instance in the other set, the id of the layer of this set it stands for; empty for a source.",
+            "default": ""
+          }
+        },
+        "description": "An instance layer and the layer it stands for, across two texture sets of one model (#108)."
+      },
+      "StackInstanceLinks": {
+        "required": [
+          "instances",
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "instances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackInstanceLink"
+            },
+            "description": "Layers of other sets that stand for one of this set\u0027s."
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackInstanceLink"
+            },
+            "description": "Layers of other sets that one of this set\u0027s instances stands for."
+          }
+        },
+        "description": "How a texture set\u0027s layers are tied to the model\u0027s other sets (#108): the instances elsewhere of its layers, and\nthe layers elsewhere its own instances stand for, each with its name, which a client of one set cannot read."
+      },
       "StackInstanceRef": {
         "required": [
           "layer",
@@ -20650,6 +20775,30 @@
         },
         "description": "Asks the viewport to show a graph on the mesh it is showing, or on the display\u0027s shape with none, as it stands\nnow: its Output nodes as a material, or one node\u0027s picture alone."
       },
+      "ViewportHighlight": {
+        "required": [
+          "parts",
+          "materials"
+        ],
+        "type": "object",
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Named meshes marked, as the model names them."
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Materials marked, as the model names them: a texture set is one."
+          }
+        },
+        "description": "What the viewport marks on the model (#136): named meshes and materials, a texture set being one, washed in one\ncolour and outlined over the model as it is shaded, such as the row a client points at in its list of texture\nsets. A part an isolation hides is not marked. Both empty marks nothing."
+      },
       "ViewportIsolation": {
         "required": [
           "parts",
@@ -21054,6 +21203,17 @@
               {
                 "description": "The graph the viewport keeps up with, or null.",
                 "$ref": "#/components/schemas/ViewportFollow"
+              }
+            ]
+          },
+          "highlight": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What is marked on the model, or null for nothing.",
+                "$ref": "#/components/schemas/ViewportHighlight"
               }
             ]
           }

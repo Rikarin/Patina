@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { type ViewportIsolation, unwrap } from '@patina/api-client';
+import { type ViewportHighlight, type ViewportIsolation, unwrap } from '@patina/api-client';
 import { messageOf } from '../core/messages';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 
@@ -16,6 +16,10 @@ export class IsolationStore {
 
   readonly isolation = signal<ViewportIsolation>(Whole);
   readonly error = signal<string | null>(null);
+  /** What the viewport marks on the model as this client asked: a row pointed at, or nothing. */
+  readonly marked = signal<ViewportHighlight>(Whole);
+  private marking: Promise<void> = Promise.resolve();
+  private sent: ViewportHighlight = Whole;
 
   /** Draws a material alone, or the whole model again if it is the one drawn alone. */
   toggleMaterial(material: string): Promise<void> {
@@ -49,6 +53,41 @@ export class IsolationStore {
     this.isolation.set(isolation ?? Whole);
   }
 
+  /**
+   * Marks a texture set or a named mesh on the model while it is pointed at in a list (#136), or nothing. Marks are sent
+   * one after another, so a pointer run down a list ends on the row it stopped at.
+   */
+  mark(marked: ViewportHighlight): Promise<void> {
+    const held = this.marked();
+    if (same(held.parts, marked.parts) && same(held.materials, marked.materials)) {
+      return this.marking;
+    }
+
+    this.marked.set(marked);
+    this.marking = this.marking.then(() => this.sendMark());
+    return this.marking;
+  }
+
+  /** Takes the mark off. */
+  unmark(): Promise<void> {
+    return this.mark(Whole);
+  }
+
+  private async sendMark(): Promise<void> {
+    const body = this.marked();
+    if (same(body.parts, this.sent.parts) && same(body.materials, this.sent.materials)) {
+      return;
+    }
+
+    this.sent = body;
+    try {
+      const client = this.createClient(await this.connection());
+      unwrap(await client.PUT('/api/v1/viewport/highlight', { body }));
+    } catch (failure) {
+      this.error.set(messageOf(failure));
+    }
+  }
+
   private async set(isolation: ViewportIsolation): Promise<void> {
     this.isolation.set(isolation);
     try {
@@ -60,4 +99,8 @@ export class IsolationStore {
       this.error.set(messageOf(failure));
     }
   }
+}
+
+function same(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((name, at) => name === b[at]);
 }

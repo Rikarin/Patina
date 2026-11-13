@@ -93,44 +93,58 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
     .poll(async () => Number(await viewport.getAttribute('data-frames')), { timeout: 30_000 })
     .toBeGreaterThan(0);
 
-  /** How many pixels of the composited canvas are a quad's pale grey, which the sky never is. */
-  const quads = async (): Promise<number> => {
+  /** How many pixels of the composited canvas are a quad's pale grey, which the sky never is; or marked orange. */
+  const quads = async (marked = false): Promise<number> => {
     const box = await viewport.boundingBox();
     if (!box) {
       throw new Error('The viewport has no box.');
     }
 
     const png = (await window.screenshot({ clip: box })).toString('base64');
-    return window.evaluate(async data => {
-      const image = new Image();
-      image.src = `data:image/png;base64,${data}`;
-      await image.decode();
-      const surface = new OffscreenCanvas(image.width, image.height);
-      const context = surface.getContext('2d');
-      if (!context) {
-        throw new Error('No 2D context.');
-      }
+    return window.evaluate(
+      async ({ data, orange }) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${data}`;
+        await image.decode();
+        const surface = new OffscreenCanvas(image.width, image.height);
+        const context = surface.getContext('2d');
+        if (!context) {
+          throw new Error('No 2D context.');
+        }
 
-      context.drawImage(image, 0, 0);
-      const pixels = context.getImageData(0, 0, image.width, image.height).data;
-      let pale = 0;
-      for (let i = 0; i < pixels.length; i += 4) {
-        pale += (pixels[i] ?? 0) > 140 && (pixels[i + 1] ?? 0) > 140 && (pixels[i + 2] ?? 0) > 140 ? 1 : 0;
-      }
+        context.drawImage(image, 0, 0);
+        const pixels = context.getImageData(0, 0, image.width, image.height).data;
+        let pale = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          const [r, g, b] = [pixels[i] ?? 0, pixels[i + 1] ?? 0, pixels[i + 2] ?? 0];
+          pale += (orange ? r > 140 && r > b + 50 : r > 140 && g > 140 && b > 140) ? 1 : 0;
+        }
 
-      return pale;
-    }, png);
+        return pale;
+      },
+      { data: png, orange: marked }
+    );
   };
 
   await expect.poll(quads, { timeout: 30_000 }).toBeGreaterThan(1_000);
   const whole = await quads();
   await viewport.screenshot({ path: join(shots, 'isolate-1-whole.png') });
 
+  // Pointing at a set marks it on the model, and the mark goes with the pointer (#136).
+  const unmarked = await quads(true);
+  await window.getByTestId('texture-set-wood').hover();
+  await expect.poll(() => quads(true), { timeout: 30_000 }).toBeGreaterThan(unmarked + 1_000);
+  await viewport.screenshot({ path: join(shots, 'isolate-0-wood-marked.png') });
+  await viewport.hover();
+  await expect.poll(() => quads(true), { timeout: 30_000 }).toBeLessThan(unmarked + 200);
+
   // One of two equal quads alone is about half of what both were.
   const isolate = window.getByTestId('texture-set-isolate-wood');
   await isolate.click();
   await expect(isolate).toHaveAttribute('aria-pressed', 'true');
-  await expect.poll(quads, { timeout: 30_000 }).toBeLessThan(whole * 0.7);
+  // Off the row, so the count is of the quad and not its mark.
+  await viewport.hover();
+  await expect.poll(() => quads(), { timeout: 30_000 }).toBeLessThan(whole * 0.7);
   expect(await quads()).toBeGreaterThan(whole * 0.3);
   await viewport.screenshot({ path: join(shots, 'isolate-2-wood-alone.png') });
 
@@ -213,7 +227,8 @@ test('an instance in another texture set shows its source and follows an unsaved
   await expect(picture).not.toHaveAttribute('src', bare ?? '', { timeout: 30_000 });
   await settled();
   const shown = await picture.getAttribute('src');
-  await expect(window.getByTestId('paint-instance-source')).toContainText('in metal');
+  // The source is named as metal names it, not by its id (#108).
+  await expect(window.getByTestId('paint-instance-source')).toContainText('Stands for Paint in metal');
   await expect(window.getByTestId('app-undo')).toHaveAttribute('aria-label', 'Undo Paste as instances');
   await window.screenshot({ path: join(shots, 'instance-2-wood-instance.png') });
 
@@ -221,6 +236,9 @@ test('an instance in another texture set shows its source and follows an unsaved
   await window.getByTestId('texture-set-metal').click();
   await expect(window.getByTestId('texture-set-metal')).toHaveAttribute('aria-selected', 'true');
   await expect(paint).toBeVisible({ timeout: 30_000 });
+  // The source lists its instance in wood, and Go opens wood on it.
+  await paint.click();
+  await expect(window.getByTestId('paint-instance-wood')).toContainText('in wood', { timeout: 30_000 });
   await paint.click({ button: 'right' });
   await window.getByTestId('layer-menu-mask-black').click();
   await settled();

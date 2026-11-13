@@ -11,6 +11,7 @@ import {
   type StackEvent,
   type StackFilterKind,
   type StackIdColour,
+  type StackInstanceLinks,
   type StackLayer,
   type StackMask,
   type StackMaskEffect,
@@ -937,6 +938,20 @@ export class PaintStore {
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }
+  }
+
+  /**
+   * How this set's layers are tied to the model's other sets (#108): their instances there, and the names of the layers
+   * there that this set's instances stand for.
+   */
+  async instanceLinks(): Promise<StackInstanceLinks> {
+    const id = this.state()?.id;
+    if (!id) {
+      return { instances: [], sources: [] };
+    }
+
+    const client = await this.api();
+    return unwrap(await client.GET('/api/v1/stacks/{id}/instances', { params: { path: { id } } }));
   }
 
   /** The named meshes in this texture set, which a layer can be kept to. */

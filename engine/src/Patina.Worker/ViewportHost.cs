@@ -173,6 +173,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         isolatedParts = [..told.Isolation?.Parts ?? []];
         isolatedMaterials = [..told.Isolation?.Materials ?? []];
         renderer.Isolate(isolatedParts, isolatedMaterials);
+        renderer.Highlight(told.Highlight?.Parts ?? [], told.Highlight?.Materials ?? []);
         SetEnvironment(settings.Environment);
         try {
             SetLook(told.Look?.Path, told.Look?.Hash);

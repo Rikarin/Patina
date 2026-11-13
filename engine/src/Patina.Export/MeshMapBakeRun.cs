@@ -139,9 +139,31 @@ public static class MeshMapBakeRun {
     ///     It has no such material, or a part of it has no such set. A texture set whose material was renamed asks for
     ///     this, and the whole mesh in its place would bake every part into one atlas, overlaps included.
     /// </exception>
-    public static FlatModel Read(string path, string? material, int uvSet = 0) {
+    public static FlatModel Read(string path, string? material, int uvSet = 0) => Read(path, material, uvSet, null);
+
+    /// <summary>
+    ///     Reads a mesh file as <see cref="Read(string, string?, int)" /> does, and of that only the parts an isolation
+    ///     shows (#136): the named meshes and the parts of the named materials.
+    /// </summary>
+    /// <param name="path">The file.</param>
+    /// <param name="material">The material, or null for the whole mesh.</param>
+    /// <param name="uvSet">The coordinate set, by the file's number.</param>
+    /// <param name="shown">What is drawn alone, or null for the whole model.</param>
+    /// <exception cref="ModelFormatException">It is not a readable model.</exception>
+    /// <exception cref="InvalidDataException">It has no such material, or a part of it has no such set.</exception>
+    public static FlatModel Read(string path, string? material, int uvSet, ViewportIsolation? shown) {
         var read = Model(path, uvSet != 0);
         var names = MaterialNames.Unique(read.Model.Materials);
+        if (shown is { Whole: false }) {
+            read.Model.Parts = [
+                ..read.Model.Parts.Where(part => shown.Parts.Contains(part.Mesh)
+                    || (part.Material >= 0
+                        && part.Material < names.Length
+                        && shown.Materials.Contains(names[part.Material]))
+                )
+            ];
+        }
+
         if (material is not null) {
             var index = Array.IndexOf(names, material);
             if (index < 0) {

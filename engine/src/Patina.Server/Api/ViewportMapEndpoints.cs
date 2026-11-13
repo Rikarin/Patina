@@ -56,6 +56,13 @@ static class ViewportMapEndpoints {
                 "Draws only some named meshes and materials (texture sets) of the model, for every client. Empty lists "
                 + "draw the whole model."
             );
+        api.MapPut("/viewport/highlight", Highlight)
+            .WithName("SetViewportHighlight")
+            .WithTags(Tag)
+            .WithSummary(
+                "Marks some named meshes and materials (texture sets) on the model in one colour with their outline, "
+                + "for every client. Empty lists mark nothing."
+            );
         api.MapPut("/viewport/bake", ShowBakeAsync)
             .WithName("ShowBakeInViewport")
             .WithTags(Tag)
@@ -249,6 +256,11 @@ static class ViewportMapEndpoints {
 
     static Ok<ViewportState> Isolate(ViewportIsolation request, ViewportSession session) {
         session.Isolate(request);
+        return TypedResults.Ok(session.State);
+    }
+
+    static Ok<ViewportState> Highlight(ViewportHighlight request, ViewportSession session) {
+        session.Highlight(request);
         return TypedResults.Ok(session.State);
     }
 

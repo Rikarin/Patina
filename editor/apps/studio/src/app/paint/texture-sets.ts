@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked
+} from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiContextMenuImports } from '@xui/context-menu';
 import { XuiMenuImports } from '@xui/menu';
@@ -11,8 +20,8 @@ import { IsolationStore } from '../viewport/isolation-store';
 import { PaintStore } from './paint-store';
 
 /**
- * The model's texture sets: a document per material, of which one is being painted, each shown alone on request. A
- * set's own settings, its size, UV set and height to normal, are in Properties' document section (#201).
+ * The model's texture sets: a document per material, of which one is being painted, each shown alone on request and
+ * marked on the model while it is pointed at. A set's own settings, its size, UV set and height to normal, are in Properties' document section (#201).
  */
 @Component({
   selector: 'ptn-texture-sets',
@@ -37,7 +46,14 @@ import { PaintStore } from './paint-store';
       (contextmenu)="aim($event)"
     >
       @for (set of sets(); track set.path) {
-        <div class="border-hairline flex h-7 w-full items-center border-b" [attr.data-set]="set.path">
+        <div
+          class="border-hairline flex h-7 w-full items-center border-b"
+          [attr.data-set]="set.path"
+          (pointerenter)="markSet(set.material)"
+          (pointerleave)="isolation.unmark()"
+          (focusin)="markSet(set.material)"
+          (focusout)="isolation.unmark()"
+        >
           <button
             type="button"
             role="option"
@@ -138,7 +154,14 @@ import { PaintStore } from './paint-store';
           }
         </div>
         @for (part of parts(); track part) {
-          <div class="flex h-7 items-center gap-2 text-xs">
+          <div
+            class="flex h-7 items-center gap-2 text-xs"
+            [attr.data-testid]="'texture-set-part-row-' + part"
+            (pointerenter)="isolation.mark({ parts: [part], materials: [] })"
+            (pointerleave)="isolation.unmark()"
+            (focusin)="isolation.mark({ parts: [part], materials: [] })"
+            (focusout)="isolation.unmark()"
+          >
             <span class="min-w-0 flex-1 truncate" [title]="part">{{ part }}</span>
             <xui-switch
               [aria-label]="'Show ' + part + ' alone'"
@@ -174,6 +197,8 @@ export class TextureSets {
   });
 
   constructor() {
+    // A list that goes while a row is pointed at would leave its mark on the model.
+    inject(DestroyRef).onDestroy(() => void this.isolation.unmark());
     effect(() => {
       if (this.store.state()?.id) {
         untracked(
@@ -208,6 +233,14 @@ export class TextureSets {
   protected aim(event: { target: EventTarget | null }): void {
     const path = (event.target as HTMLElement).closest<HTMLElement>('[data-set]')?.dataset['set'] ?? null;
     this.aimed.set(this.sets().find(set => set.path === path) ?? null);
+  }
+
+  /**
+   * Marks the set pointed at on the model (#136). A model of one material has one set, which is the whole model and
+   * needs no mark.
+   */
+  protected markSet(material: string | null): void {
+    void (material ? this.isolation.mark({ parts: [], materials: [material] }) : this.isolation.unmark());
   }
 
   protected choose(path: string): void {

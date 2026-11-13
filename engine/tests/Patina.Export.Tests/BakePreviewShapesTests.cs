@@ -92,6 +92,35 @@ public sealed class BakePreviewShapesTests : IDisposable {
     }
 
     /// <summary>
+    ///     Under an isolation the reach is drawn over the parts that show and nothing of the rest (#136): the shell of
+    ///     the second quad alone, and nothing at all when no part of the set shows.
+    /// </summary>
+    [Fact]
+    public void An_isolation_draws_the_reach_of_the_parts_shown_alone() {
+        var quads = Quads("quads.obj", "left", "right");
+        var preview = new ViewportBakePreview {
+            High = [quads],
+            Low = quads,
+            HighMesh = false,
+            Matches = false,
+            Seams = false,
+            Options = new() { Rays = new() { Units = "absolute", Front = 0.2, Rear = 0.1 } }
+        };
+
+        var whole = BakePreviewShapes.Build(preview);
+        var right = BakePreviewShapes.Build(preview, new(["right"], []));
+        var none = BakePreviewShapes.Build(preview, new(["elsewhere"], []));
+
+        Assert.Equal(12 * BakePreviewShapes.FloatsPerVertex, whole.Triangles.Length);
+        Assert.Equal(6 * BakePreviewShapes.FloatsPerVertex, right.Triangles.Length);
+        Assert.All(Coordinate(right.Triangles, 0), static x => Assert.InRange(x, 1.9f, 3.1f));
+        Assert.All(Coordinate(right.Lines, 0), static x => Assert.InRange(x, 1.9f, 3.1f));
+        Assert.Empty(none.Triangles);
+        Assert.Empty(none.Lines);
+        Assert.Contains(none.Warnings, static warning => warning.Contains("shown alone", StringComparison.Ordinal));
+    }
+
+    /// <summary>
     ///     Asked to show matches that are not on, the preview says every ray may strike all of the high
     ///     mesh.
     /// </summary>

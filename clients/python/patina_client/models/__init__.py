@@ -325,6 +325,8 @@ from .stack_id_colours import StackIdColours
 from .stack_input import StackInput
 from .stack_input_parameters_type_1 import StackInputParametersType1
 from .stack_input_values_type_1 import StackInputValuesType1
+from .stack_instance_link import StackInstanceLink
+from .stack_instance_links import StackInstanceLinks
 from .stack_instance_ref import StackInstanceRef
 from .stack_layer import StackLayer
 from .stack_layer_inputs_type_1 import StackLayerInputsType1
@@ -385,6 +387,7 @@ from .viewport_camera_state import ViewportCameraState
 from .viewport_display import ViewportDisplay
 from .viewport_follow import ViewportFollow
 from .viewport_graph_request import ViewportGraphRequest
+from .viewport_highlight import ViewportHighlight
 from .viewport_isolation import ViewportIsolation
 from .viewport_map_paths import ViewportMapPaths
 from .viewport_mesh_request import ViewportMeshRequest
@@ -723,6 +726,8 @@ __all__ = (
     "StackInput",
     "StackInputParametersType1",
     "StackInputValuesType1",
+    "StackInstanceLink",
+    "StackInstanceLinks",
     "StackInstanceRef",
     "StackLayer",
     "StackLayerInputsType1",
@@ -783,6 +788,7 @@ __all__ = (
     "ViewportDisplay",
     "ViewportFollow",
     "ViewportGraphRequest",
+    "ViewportHighlight",
     "ViewportIsolation",
     "ViewportMapPaths",
     "ViewportMeshRequest",

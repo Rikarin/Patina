@@ -27,7 +27,7 @@ static class BakePreviewHost {
 
         BakePreviewDrawing drawing;
         try {
-            drawing = BakePreviewShapes.Build(preview);
+            drawing = BakePreviewShapes.Build(preview, request.BakePreviewIsolation);
         } catch (Exception e) when (e is ModelFormatException
                                         or InvalidDataException
                                         or IOException

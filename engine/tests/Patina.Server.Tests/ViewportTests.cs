@@ -224,23 +224,11 @@ public sealed class ViewportProcessTests : IDisposable {
     public async Task Display_settings_reach_the_frames_and_outlive_the_worker() {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         deadline.CancelAfter(TimeSpan.FromSeconds(120));
-        var instance = await StartServerAsync(deadline.Token);
-        var worker = StartWorker();
-        using var socket = await ConnectAsync(instance, deadline.Token);
-        await SendAsync(socket, new(Width: 160, Height: 100, Input: 1), deadline.Token);
-        await UntilSizeAsync(instance, 160, deadline.Token);
-        await OpenMeshAsync(instance, deadline.Token);
+        var (instance, worker, socket) = await WatchAsync(deadline.Token);
+        using var watching = socket;
         Assert.InRange(Warm(await ReceiveFrameAsync(socket, instance, deadline.Token)), 160, 160 * 100);
 
-        using (var request = Authorised(HttpMethod.Put, instance, "/api/v1/viewport/display")) {
-            request.Content = JsonContent.Create(
-                new(View: ViewportViews.Clay),
-                ContractsJsonContext.Default.ViewportDisplay
-            );
-            using var response = await Http.SendAsync(request, deadline.Token);
-            response.EnsureSuccessStatusCode();
-        }
-
+        await PutAsync(instance, "/api/v1/viewport/display", Clay, deadline.Token);
         await SendAsync(socket, new(Input: 2), deadline.Token);
         Assert.InRange(Warm(await FrameAfterAsync(socket, instance, 2, deadline.Token)), 0, 16);
 
@@ -250,10 +238,69 @@ public sealed class ViewportProcessTests : IDisposable {
         StartWorker();
         Assert.InRange(Warm(await FrameAfterAsync(socket, instance, 3, deadline.Token)), 0, 16);
         Assert.Equal(ViewportViews.Clay, (await StateAsync(instance, deadline.Token)).Display.View);
+    }
 
-        static int Warm(byte[] frame) =>
-            Enumerable.Range(0, (frame.Length - HeaderBytes) / 4)
-                .Count(i => frame[HeaderBytes + i * 4] > frame[HeaderBytes + i * 4 + 2] + 40);
+    /// <summary>
+    ///     A mark is the Server's (#136): the material named is washed warm in clay's grey, a display change and a new
+    ///     Worker keep it, the state says what is marked, and an empty mark takes it off.
+    /// </summary>
+    [Fact]
+    public async Task A_marked_material_reaches_the_frames_and_outlives_the_worker() {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(120));
+        var (instance, worker, socket) = await WatchAsync(deadline.Token);
+        using var watching = socket;
+        await ReceiveFrameAsync(socket, instance, deadline.Token);
+        await PutAsync(instance, "/api/v1/viewport/display", Clay, deadline.Token);
+        await SendAsync(socket, new(Input: 2), deadline.Token);
+        Assert.InRange(Warm(await FrameAfterAsync(socket, instance, 2, deadline.Token)), 0, 16);
+
+        await PutAsync(instance, "/api/v1/viewport/highlight", new ViewportHighlight([], ["Gold"]), deadline.Token);
+        await SendAsync(socket, new(Input: 3), deadline.Token);
+        var marked = Warm(await FrameAfterAsync(socket, instance, 3, deadline.Token));
+        Assert.InRange(marked, 160, 160 * 100);
+        Assert.Equal(["Gold"], (await StateAsync(instance, deadline.Token)).Highlight?.Materials);
+
+        await PutAsync(instance, "/api/v1/viewport/display", Clay, deadline.Token);
+        worker.Kill();
+        await worker.WaitForExitAsync(deadline.Token);
+        await SendAsync(socket, new(new(1d, 0.3d, 1.05d), Input: 4), deadline.Token);
+        StartWorker();
+        Assert.InRange(Warm(await FrameAfterAsync(socket, instance, 4, deadline.Token)), 160, 160 * 100);
+
+        await PutAsync(instance, "/api/v1/viewport/highlight", new ViewportHighlight([], []), deadline.Token);
+        await SendAsync(socket, new(Input: 5), deadline.Token);
+        Assert.InRange(Warm(await FrameAfterAsync(socket, instance, 5, deadline.Token)), 0, 16);
+        Assert.Null((await StateAsync(instance, deadline.Token)).Highlight);
+    }
+
+    static readonly ViewportDisplay Clay = new(View: ViewportViews.Clay);
+
+    /// <summary>A Server and a Worker, and a client of 160 by 100 watching the fixture.</summary>
+    async Task<(ServerInstance Instance, Process Worker, ClientWebSocket Socket)> WatchAsync(
+        CancellationToken cancellationToken
+    ) {
+        var instance = await StartServerAsync(cancellationToken);
+        var worker = StartWorker();
+        var socket = await ConnectAsync(instance, cancellationToken);
+        await SendAsync(socket, new(Width: 160, Height: 100, Input: 1), cancellationToken);
+        await UntilSizeAsync(instance, 160, cancellationToken);
+        await OpenMeshAsync(instance, cancellationToken);
+        return (instance, worker, socket);
+    }
+
+    /// <summary>How many of a frame's pixels are warm: far more red than blue, which grey never is.</summary>
+    static int Warm(byte[] frame) =>
+        Enumerable.Range(0, (frame.Length - HeaderBytes) / 4)
+            .Count(i => frame[HeaderBytes + i * 4] > frame[HeaderBytes + i * 4 + 2] + 40);
+
+    static async Task PutAsync<T>(ServerInstance instance, string path, T body, CancellationToken cancellationToken) {
+        using var request = Authorised(HttpMethod.Put, instance, path);
+        var shape = (System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>)
+            ContractsJsonContext.Default.GetTypeInfo(typeof(T))!;
+        request.Content = JsonContent.Create(body, shape);
+        using var response = await Http.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
     }
 
     /// <summary>The first frame that includes an input.</summary>

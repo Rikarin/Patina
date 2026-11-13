@@ -192,7 +192,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 16;
+    public const int ProtocolVersion = 17;
 
     public string Type { get; set; } = string.Empty;
 
@@ -309,6 +309,12 @@ public sealed class IpcMessage {
     ///     empty low mesh for none.
     /// </summary>
     public ViewportBakePreview? BakePreview { get; set; }
+
+    /// <summary>
+    ///     For <see cref="IpcTypes.ViewportBakePreview" />: what the viewport draws alone (#136), so the preview draws
+    ///     the low mesh's parts that show and nothing of the rest; null for the whole model.
+    /// </summary>
+    public ViewportIsolation? BakePreviewIsolation { get; set; }
 
     /// <summary>The key to what <see cref="IpcTypes.ViewportBakePreview" /> drew, in its answer.</summary>
     public BakePreviewState? BakePreviewShown { get; set; }
@@ -466,13 +472,15 @@ public sealed record ViewportMapSet(
 ///     the stack worn; zero for none.
 /// </param>
 /// <param name="Resolution">The side of a map for a material whose own size cannot be read, in texels.</param>
+/// <param name="Highlight">What is marked on the model, or null for nothing.</param>
 public sealed record ViewportDisplaySet(
     ViewportDisplay Display,
     ViewportMapFile? Look,
     ViewportMapFile? Picture,
     ViewportIsolation? Isolation = null,
     double TexelDensity = 0,
-    int Resolution = 2048
+    int Resolution = 2048,
+    ViewportHighlight? Highlight = null
 );
 
 /// <summary>
