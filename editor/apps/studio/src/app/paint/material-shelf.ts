@@ -183,7 +183,9 @@ const Favourites = 'favourites';
               [class.group-hover:opacity-100]="!starred"
               [attr.aria-label]="(starred ? 'Unstar ' : 'Star ') + material.name"
               [attr.aria-pressed]="starred"
-              [title]="starred ? 'Takes the star away' : 'Keeps this material at the top of the shelf, and in Favourites'"
+              [title]="
+                starred ? 'Takes the star away' : 'Keeps this material at the top of the shelf, and in Favourites'
+              "
               (click)="preferences.toggleFavouriteMaterial(material.source)"
             >
               <ng-icon xui size="sm" [name]="starred ? 'matStar' : 'matStarBorder'" />
@@ -242,11 +244,7 @@ export class MaterialShelf {
 
   protected readonly everything = Everything;
   protected readonly roles = computed(() => [Everything, ...this.roleTerms().map(term => term.value)]);
-  protected readonly origins = computed(() => [
-    Everything,
-    Favourites,
-    ...this.originTerms().map(term => term.value)
-  ]);
+  protected readonly origins = computed(() => [Everything, Favourites, ...this.originTerms().map(term => term.value)]);
   protected readonly favourites = computed(() => new Set(this.preferences.favouriteMaterials()));
   protected readonly views = Views;
   protected readonly roleLabel = (role: string): string =>
