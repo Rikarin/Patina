@@ -204,7 +204,7 @@ test('the panel says why the Server refused a high poly mesh', async () => {
   await window.getByTestId('open-bake').click();
   await choose('high', '/nowhere/high.glb');
 
-  await expect(window.getByTestId('app-failure')).toContainText('/nowhere/high.glb');
+  await expect(window.getByTestId('app-failure')).toContainText('high.glb isn’t there any more');
 });
 
 test('a bake goes on reporting once its dialog closes: the status bar says how far, and Activity keeps how it ended', async () => {
@@ -230,11 +230,11 @@ test('a bake goes on reporting once its dialog closes: the status bar says how f
   await window.getByTestId('activity-close').click();
   await window.getByTestId('open-bake').click();
   await choose('high', '/nowhere/high.glb');
-  await expect(window.getByTestId('app-failure')).toContainText('/nowhere/high.glb');
+  await expect(window.getByTestId('app-failure')).toContainText('high.glb isn’t there any more');
   await window.keyboard.press('Escape');
   await window.getByTestId('app-failure-dismiss').click();
   await expect(window.getByTestId('activity-unread')).toBeVisible();
   await window.getByTestId('activity-readout').click();
-  await expect(panel.getByTestId('activity-notice').first()).toContainText('/nowhere/high.glb');
+  await expect(panel.getByTestId('activity-notice').first()).toContainText('high.glb isn’t there any more');
   await expect(window.getByTestId('activity-unread')).toHaveCount(0);
 });
