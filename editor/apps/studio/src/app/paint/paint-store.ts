@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, inject, signal, untracked } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import {
   ApiError,
   type Connection,
@@ -402,6 +402,13 @@ export class PaintStore {
   readonly maskLayer = signal<number | null>(null);
   /** What a stroke on a mask lays down, from nothing shown to everything: a mask is one number, not a colour. */
   readonly maskGrey = signal(0);
+  /**
+   * The quick mask (#127): `paint` while strokes paint it instead of a layer, `keep` while they are kept to it, or
+   * `off`. The Server holds it for the session and lays it over the model in red while it is on.
+   */
+  readonly quickMask = signal<'off' | 'paint' | 'keep'>('off');
+  /** Whether strokes kept to the quick mask go where it is not painted, rather than where it is. */
+  readonly quickMaskInverted = signal(false);
   readonly brush = signal<BrushSettings>(settingsOf(NewBrush));
   readonly vocabulary = signal<StackVocabulary | null>(null);
   /** The layers last copied, from this stack or another. The Server holds them, pixels and all. */
@@ -510,6 +517,11 @@ export class PaintStore {
   });
 
   constructor() {
+    // The viewport draws where the brush's mirror meets the model (#132), while a stack on a mesh is worn.
+    effect(() => {
+      const symmetry = this.worn() && this.state()?.model.trim() ? this.symmetry() : null;
+      untracked(() => void this.showSymmetry(symmetry));
+    });
     inject(DestroyRef).onDestroy(() => {
       this.stopped = true;
       this.socket?.close();
@@ -939,9 +951,71 @@ export class PaintStore {
     this.idColours.set(null);
     this.picking.set(null);
     this.unbaked.set(null);
+    this.quickMask.set('off');
+    this.quickMaskInverted.set(false);
     const socket = this.socket;
     this.socket = null;
     socket?.close();
+  }
+
+  /**
+   * Paints the quick mask, or keeps strokes to what was painted on it: the first turns it on and the second applies
+   * it, as one key does (#127). It shows on the model while it is on.
+   */
+  async toggleQuickMask(): Promise<void> {
+    await this.showQuickMask(this.quickMask() === 'paint' ? 'keep' : 'paint', false);
+  }
+
+  /** The symmetry the viewport was last asked to draw, as JSON, so the same one is not sent twice. */
+  private symmetryShown = 'null';
+
+  private async showSymmetry(symmetry: StackSymmetry | null): Promise<void> {
+    const text = JSON.stringify(symmetry);
+    if (text === this.symmetryShown) {
+      return;
+    }
+
+    this.symmetryShown = text;
+    try {
+      const client = await this.api();
+      unwrap(await client.PUT('/api/v1/viewport/symmetry', { body: { symmetry } }));
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
+  /** Takes the quick mask off and starts the next one empty. */
+  async clearQuickMask(): Promise<void> {
+    this.quickMaskInverted.set(false);
+    await this.showQuickMask('off', true);
+  }
+
+  private async showQuickMask(mode: 'off' | 'paint' | 'keep', clear: boolean): Promise<void> {
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    this.quickMask.set(mode);
+    try {
+      const client = await this.api();
+      const body = { shown: mode !== 'off', clear };
+      unwrap(await client.PUT('/api/v1/stacks/{id}/quick-mask', { params: { path: { id } }, body }));
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
+  /** What a stroke asks of the quick mask: to paint it, to be kept inside or outside it, or nothing. */
+  private quickMaskOfStroke(): 'paint' | 'inside' | 'outside' | null {
+    switch (this.quickMask()) {
+      case 'paint':
+        return 'paint';
+      case 'keep':
+        return this.quickMaskInverted() ? 'outside' : 'inside';
+      default:
+        return null;
+    }
   }
 
   /** Puts a layer's mask in front of the brush, which starts as what shows on a flat mask: white on black, or black. */
@@ -1794,9 +1868,13 @@ export class PaintStore {
     const brush = this.wholeBrush();
     const radius =
       !view && brush.sizeSpace === 'screen' ? Math.max(0.5, brush.radius * this.atlasScale()) : brush.radius;
-    const source = this.sourceOf(tool, view, curve);
+    const quickMask = this.quickMaskOfStroke();
+    // A quick mask is one grey, painted white or wiped, and takes a smudge or a picture but no material or clone.
+    const anySource = this.sourceOf(tool, view, curve);
+    const source =
+      quickMask === 'paint' && anySource?.kind !== 'smudge' && anySource?.kind !== 'picture' ? null : anySource;
     const resume = this.resumeFrom;
-    if (tool === 'clone' && !source) {
+    if (tool === 'clone' && !source && quickMask !== 'paint') {
       this.failure.set(this.cloneSource() ? CloneOnModel : CloneFirst);
       return;
     }
@@ -1806,20 +1884,24 @@ export class PaintStore {
     const grey = this.maskGrey();
     const target = this.layers().find(row => row.layer.id === layer)?.layer;
     const writes = (usage: string) => !target || writesChannel(target, usage);
-    const channels: [string, number[]][] = this.masking()
-      ? [[this.channel(), [grey, grey, grey, 1]]]
-      : source?.kind === 'material'
-        ? (this.state()?.channels ?? [])
-            .filter(channel => writes(channel.usage))
-            .map((channel): [string, number[]] => [channel.usage, colourOf(this.colour())])
-        : [
-            [this.channel(), colourOf(this.colour())],
-            ...(tool === 'projection'
-              ? []
-              : [...this.alsoPaints()]
-                  .filter(([usage]) => usage !== this.channel() && writes(usage))
-                  .map(([usage, colour]): [string, number[]] => [usage, colourOf(colour)]))
-          ];
+    const masking = this.masking() && quickMask !== 'paint';
+    const channels: [string, number[]][] =
+      quickMask === 'paint'
+        ? [[this.channel(), [1, 1, 1, 1]]]
+        : masking
+          ? [[this.channel(), [grey, grey, grey, 1]]]
+          : source?.kind === 'material'
+            ? (this.state()?.channels ?? [])
+                .filter(channel => writes(channel.usage))
+                .map((channel): [string, number[]] => [channel.usage, colourOf(this.colour())])
+            : [
+                [this.channel(), colourOf(this.colour())],
+                ...(tool === 'projection'
+                  ? []
+                  : [...this.alsoPaints()]
+                      .filter(([usage]) => usage !== this.channel() && writes(usage))
+                      .map(([usage, colour]): [string, number[]] => [usage, colourOf(colour)]))
+              ];
     const revision = await this.command({
       commands: channels.map(([channel, colour]) => ({
         op: 'stroke' as const,
@@ -1831,8 +1913,8 @@ export class PaintStore {
         colour: tool === 'eraser' ? [0, 0, 0, 0] : colour,
         stamps,
         open,
-        mask: this.masking(),
-        maskLayer: this.masking() ? this.maskLayer() : null,
+        mask: masking,
+        maskLayer: masking ? this.maskLayer() : null,
         view,
         curve,
         symmetry,
@@ -1844,7 +1926,8 @@ export class PaintStore {
         fill: curve === 'fill' ? this.fillMode() : null,
         outline,
         through: outline && view !== null && this.fillThrough(),
-        resume: curve === 'free' ? resume : null
+        resume: curve === 'free' ? resume : null,
+        quickMask
       }))
     });
     if (revision !== null && revision > this.lastShown) {

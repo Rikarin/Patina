@@ -510,6 +510,47 @@
         }
       }
     },
+    "/api/v1/viewport/symmetry": {
+      "put": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Draws where a symmetry\u0027s mirror meets the model, as a line across its surface hidden where the model hides it, for every client. Null draws nothing, and so does a radial symmetry.",
+        "operationId": "SetViewportSymmetry",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportSymmetry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/bake": {
       "put": {
         "tags": [
@@ -6249,6 +6290,96 @@
           },
           "503": {
             "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/quick-mask": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The session\u0027s quick mask: whether the viewport lays it over the model, and whether it is painted.",
+        "operationId": "GetStackQuickMask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackQuickMaskState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Shows or hides the session\u0027s quick mask in the viewport, red where it is painted, or starts a new, empty one. A stroke paints it with quickMask paint, and is kept inside or outside it with inside or outside. It is the session\u0027s: no save writes it, and neither change is a step of history.",
+        "operationId": "SetStackQuickMask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackQuickMaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackQuickMaskState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -17751,6 +17882,13 @@
             "type": "boolean",
             "description": "With an outline through a view, whether what the camera cannot see inside it is filled too: the far side of the\nmesh, and what lies behind something nearer. False fills only what is seen. The atlas has no camera, so an\noutline there takes everything inside it.",
             "default": false
+          },
+          "quickMask": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The session\u0027s quick mask (#127), or null to leave it out: \u0060paint\u0060 paints the quick mask itself, by the red\nof Colour, instead of the layer, which may then be any; \u0060inside\u0060 keeps the stroke to\nwhere the quick mask is painted, and \u0060outside\u0060 to where it is not. A quick mask nothing is painted on keeps\nnothing back."
           }
         },
         "description": "Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one\nStroke and they make one undo step, ended by one with Open false."
@@ -19373,6 +19511,43 @@
           }
         },
         "description": "Something a stack\u0027s compile had to say."
+      },
+      "StackQuickMaskRequest": {
+        "required": [
+          "shown",
+          "clear"
+        ],
+        "type": "object",
+        "properties": {
+          "shown": {
+            "type": "boolean",
+            "description": "Whether the viewport lays the quick mask over the model in red."
+          },
+          "clear": {
+            "type": "boolean",
+            "description": "Whether to start a new, empty quick mask. Not an undo step: strokes kept to the old one keep what they painted,\nand undoing a stroke on the old one changes nothing a later stroke reads.",
+            "default": false
+          }
+        },
+        "description": "Shows or hides a stack\u0027s quick mask in the viewport, or clears it (#127)."
+      },
+      "StackQuickMaskState": {
+        "required": [
+          "shown",
+          "painted"
+        ],
+        "type": "object",
+        "properties": {
+          "shown": {
+            "type": "boolean",
+            "description": "Whether the viewport lays it over the model."
+          },
+          "painted": {
+            "type": "boolean",
+            "description": "Whether a stroke that stands has painted it, so that a stroke kept to it is kept."
+          }
+        },
+        "description": "A stack\u0027s quick mask."
       },
       "StackSample": {
         "required": [
@@ -21278,9 +21453,37 @@
                 "$ref": "#/components/schemas/ViewportHighlight"
               }
             ]
+          },
+          "symmetry": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The symmetry whose mirror is drawn across the model, or null for none.",
+                "$ref": "#/components/schemas/StackSymmetry"
+              }
+            ]
           }
         },
         "description": "The reply to \u0060GET /api/v1/viewport\u0060. The Server owns all of this; a Worker can die without losing it."
+      },
+      "ViewportSymmetry": {
+        "type": "object",
+        "properties": {
+          "symmetry": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The symmetry, as a stroke takes it, or null for none.",
+                "$ref": "#/components/schemas/StackSymmetry"
+              }
+            ]
+          }
+        },
+        "description": "The symmetry a brush paints with, which the viewport draws where its mirror\u0027s plane meets the model (#132): the\nline the plane cuts across the surface, hidden where the model hides it. A radial symmetry draws nothing here."
       },
       "WorkerStatus": {
         "required": [

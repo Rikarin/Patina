@@ -63,6 +63,14 @@ static class ViewportMapEndpoints {
                 "Marks some named meshes and materials (texture sets) on the model in one colour with their outline, "
                 + "for every client. Empty lists mark nothing."
             );
+        api.MapPut("/viewport/symmetry", Mirror)
+            .WithName("SetViewportSymmetry")
+            .WithTags(Tag)
+            .WithSummary(
+                "Draws where a symmetry's mirror meets the model, as a line across its surface hidden where the model "
+                + "hides it, for every client. Null draws nothing, and so does a radial symmetry."
+            )
+            .ProducesProblem(Refused);
         api.MapPut("/viewport/bake", ShowBakeAsync)
             .WithName("ShowBakeInViewport")
             .WithTags(Tag)
@@ -261,6 +269,15 @@ static class ViewportMapEndpoints {
 
     static Ok<ViewportState> Highlight(ViewportHighlight request, ViewportSession session) {
         session.Highlight(request);
+        return TypedResults.Ok(session.State);
+    }
+
+    static Results<Ok<ViewportState>, ProblemHttpResult> Mirror(ViewportSymmetry request, ViewportSession session) {
+        if (request.Symmetry?.Problem() is { } problem) {
+            return Refusals.Problem(problem, Refused, Refusals.BrushRefused, Refusals.Reason(problem));
+        }
+
+        session.Symmetry(request.Symmetry);
         return TypedResults.Ok(session.State);
     }
 

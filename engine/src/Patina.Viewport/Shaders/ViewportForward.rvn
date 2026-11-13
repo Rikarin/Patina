@@ -59,6 +59,9 @@ shader ViewportForward {
     var occlusionMap: Texture2D
     var emissiveMap: Texture2D
     var opacityMap: Texture2D
+
+    // A quick mask, red over the surface where it is painted, in every view; black where a stack has none.
+    var quickMaskMap: Texture2D
     var mapSampler: Sampler
 
     stream var worldPosition: float3
@@ -100,7 +103,7 @@ shader ViewportForward {
         }
 
         if (view > 1.5f) {
-            return float4(Shown(opacity), 1f)
+            return float4(Masked(Shown(opacity)), 1f)
         }
 
         val n = ShadedNormal()
@@ -122,10 +125,16 @@ shader ViewportForward {
         val emitted = view > 0.5f ? float3(0f, 0f, 0f) : emissiveMap.Sample(mapSampler, surfaceUv).rgb
         val geometric = Math.SafeNormalize(worldNormal)
 
-        return float4(
-            Direct(n, v, perceptual, f0, diffuseColor, occlusion) * Sunlit(geometric) + Ambient(n, v, geometric, perceptual, f0, diffuseColor, occlusion) + emitted,
-            1f
-        )
+        val lit = Direct(n, v, perceptual, f0, diffuseColor, occlusion) * Sunlit(geometric) + Ambient(n, v, geometric, perceptual, f0, diffuseColor, occlusion) + emitted
+        return float4(Masked(lit), 1f)
+    }
+
+    // A quick mask's red laid over what is shown, as much as it is painted: the picture is kept beneath, its green and
+    // blue turned down, so what the mask covers still reads.
+    func Masked(colour: float3): float3 {
+        val painted = saturate(quickMaskMap.Sample(mapSampler, surfaceUv).r) * 0.65f
+        val red = float3(colour.x * 0.4f + 0.35f, colour.y * 0.25f, colour.z * 0.25f)
+        return lerp(colour, red, painted)
     }
 
     // A view of what is stored. The renderer draws these with no curve and an exposure of one, and the frame is encoded

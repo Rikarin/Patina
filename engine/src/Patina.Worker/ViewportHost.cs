@@ -165,6 +165,20 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         return IpcMessage.Ok(request.Id);
     }
 
+    /// <summary>A symmetry's mirror as the viewport draws it across the model (#132); none for a radial one.</summary>
+    static (int Axis, bool Origin, float Offset)? Mirror(StackSymmetry? symmetry) {
+        if (symmetry is not { Kind: "mirror" } mirror) {
+            return null;
+        }
+
+        var axis = mirror.Axis switch {
+            "y" => 1,
+            "z" => 2,
+            _ => 0
+        };
+        return (axis, mirror.Centre == "origin", mirror.Offset);
+    }
+
     static Viewport.ViewportMapFile? File(Ipc.ViewportMapFile? file) => file is null ? null : new(file.Path, file.Hash);
 
     /// <summary>
@@ -179,6 +193,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         isolatedMaterials = [..told.Isolation?.Materials ?? []];
         renderer.Isolate(isolatedParts, isolatedMaterials);
         renderer.Highlight(told.Highlight?.Parts ?? [], told.Highlight?.Materials ?? []);
+        renderer.Mirror(Mirror(told.Symmetry));
         SetEnvironment(settings.Environment);
         try {
             SetLook(told.Look?.Path, told.Look?.Hash);

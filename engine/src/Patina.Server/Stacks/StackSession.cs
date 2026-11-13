@@ -21,7 +21,10 @@ public sealed record StackWork(
     IReadOnlyList<StackJournalEntry> Standing,
     IReadOnlyList<long> Forget,
     bool Forced
-);
+) {
+    /// <summary>The quick mask the viewport lays over the model, or null for none (#127).</summary>
+    public string? QuickMask { get; init; }
+}
 
 /// <summary>
 ///     One open stack. The Server owns the document, its history, its numbered events and the journal of strokes; none
@@ -381,6 +384,29 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
+    /// <summary>The quick mask (#127): whether the viewport shows it, and whether it is painted.</summary>
+    public StackQuickMaskState QuickMask => Read(static held => held.QuickMask.State(held.Standing));
+
+    /// <summary>
+    ///     Shows or hides the quick mask, or starts a new one. Neither is an edit of the document or a step of its
+    ///     history, so nothing is announced; the viewport catches up on the next evaluation, which this asks for.
+    /// </summary>
+    public StackQuickMaskState SetQuickMask(StackQuickMaskRequest request) {
+        StackQuickMaskState state;
+        lock (Changing) {
+            if (request.Clear) {
+                editor.QuickMask.Clear();
+            }
+
+            editor.QuickMask.Shown = request.Shown;
+            state = editor.QuickMask.State(editor.Standing);
+            forced = true;
+        }
+
+        wake();
+        return state;
+    }
+
     /// <summary>Asks for an evaluation of the stack as it stands.</summary>
     public void Evaluate() {
         lock (Changing) {
@@ -422,7 +448,10 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
             work = new(revision, string.Empty, editor.Standing, [..editor.Forgotten], forced);
             siblings = editor.Sibling;
             var document = editor.Document;
-            work = work with { Document = StackDocuments.Text(Composed(document, siblings)) };
+            work = work with {
+                Document = StackDocuments.Text(Composed(document, siblings)),
+                QuickMask = editor.QuickMask.Shown ? editor.QuickMask.Paint : null
+            };
         }
 
         return work;
@@ -518,7 +547,9 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                         entry.Resume,
                         entry.Isolation,
                         entry.Outline,
-                        entry.Through
+                        entry.Through,
+                        entry.Keep,
+                        entry.KeepOutside
                     )
                 );
                 sent[entry.Id] = (entry.Stamps.Count, entry.Open);

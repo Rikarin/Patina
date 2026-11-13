@@ -192,7 +192,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 17;
+    public const int ProtocolVersion = 18;
 
     public string Type { get; set; } = string.Empty;
 
@@ -473,6 +473,7 @@ public sealed record ViewportMapSet(
 /// </param>
 /// <param name="Resolution">The side of a map for a material whose own size cannot be read, in texels.</param>
 /// <param name="Highlight">What is marked on the model, or null for nothing.</param>
+/// <param name="Symmetry">The symmetry whose mirror is drawn where it meets the model, or null for none.</param>
 public sealed record ViewportDisplaySet(
     ViewportDisplay Display,
     ViewportMapFile? Look,
@@ -480,7 +481,8 @@ public sealed record ViewportDisplaySet(
     ViewportIsolation? Isolation = null,
     double TexelDensity = 0,
     int Resolution = 2048,
-    ViewportHighlight? Highlight = null
+    ViewportHighlight? Highlight = null,
+    StackSymmetry? Symmetry = null
 );
 
 /// <summary>
@@ -695,6 +697,11 @@ public sealed record StackLoad(
 /// </param>
 /// <param name="Outline">For a fill, whether its stamps are one outline to fill inside, not clicks.</param>
 /// <param name="Through">For an outline through a view, whether what the camera cannot see is filled too.</param>
+/// <param name="Keep">
+///     The quick mask the stroke is kept to, a paint file relative to the stack whose mask channel's red lets it
+///     through (#127), or null.
+/// </param>
+/// <param name="KeepOutside">Whether the stroke is kept to where that quick mask is not painted instead.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -719,7 +726,9 @@ public sealed record StackPaintPart(
     IReadOnlyList<float>? Resume = null,
     ViewportIsolation? Isolation = null,
     bool Outline = false,
-    bool Through = false
+    bool Through = false,
+    string? Keep = null,
+    bool KeepOutside = false
 );
 
 /// <summary>What a flattened group's canvas is made of.</summary>
@@ -739,12 +748,16 @@ public sealed record StackCapture(string Document, string Layer, bool Backdrop);
 /// <param name="Standing">Every stroke that stands, by number, in order.</param>
 /// <param name="Parts">The stamps this Worker has not been sent.</param>
 /// <param name="Forget">Strokes that can never stand again.</param>
+/// <param name="QuickMask">
+///     The quick mask the viewport lays over the model in red, a paint file relative to the stack, or null for none.
+/// </param>
 public sealed record StackSync(
     string Session,
     string? Document,
     IReadOnlyList<long> Standing,
     IReadOnlyList<StackPaintPart> Parts,
-    IReadOnlyList<long> Forget
+    IReadOnlyList<long> Forget,
+    string? QuickMask = null
 );
 
 /// <summary>Asks for the stack to be composited as it stands.</summary>

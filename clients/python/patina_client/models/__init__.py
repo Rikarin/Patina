@@ -357,6 +357,8 @@ from .stack_pixels import StackPixels
 from .stack_placement import StackPlacement
 from .stack_preview import StackPreview
 from .stack_problem import StackProblem
+from .stack_quick_mask_request import StackQuickMaskRequest
+from .stack_quick_mask_state import StackQuickMaskState
 from .stack_sample import StackSample
 from .stack_sampled_channel import StackSampledChannel
 from .stack_save_material_request import StackSaveMaterialRequest
@@ -399,6 +401,7 @@ from .viewport_screenshot import ViewportScreenshot
 from .viewport_screenshot_request import ViewportScreenshotRequest
 from .viewport_stack_request import ViewportStackRequest
 from .viewport_state import ViewportState
+from .viewport_symmetry import ViewportSymmetry
 from .worker_status import WorkerStatus
 
 __all__ = (
@@ -759,6 +762,8 @@ __all__ = (
     "StackPlacement",
     "StackPreview",
     "StackProblem",
+    "StackQuickMaskRequest",
+    "StackQuickMaskState",
     "StackSample",
     "StackSampledChannel",
     "StackSavedMaterial",
@@ -801,5 +806,6 @@ __all__ = (
     "ViewportScreenshotRequest",
     "ViewportStackRequest",
     "ViewportState",
+    "ViewportSymmetry",
     "WorkerStatus",
 )

@@ -318,6 +318,13 @@ public sealed record ViewportHighlight(IReadOnlyList<string> Parts, IReadOnlyLis
 }
 
 /// <summary>
+///     The symmetry a brush paints with, which the viewport draws where its mirror's plane meets the model (#132): the
+///     line the plane cuts across the surface, hidden where the model hides it. A radial symmetry draws nothing here.
+/// </summary>
+/// <param name="Symmetry">The symmetry, as a stroke takes it, or null for none.</param>
+public sealed record ViewportSymmetry(StackSymmetry? Symmetry);
+
+/// <summary>
 ///     Asks for the viewport's picture as a PNG on the Server's machine: the camera, display settings and look it has
 ///     now, at a size of its own. Nothing about it reaches a client's stream.
 /// </summary>
@@ -423,6 +430,7 @@ public sealed record ViewportNodeShown(string Graph, int Node, string Port);
 /// </param>
 /// <param name="Following">The graph the viewport keeps up with, or null.</param>
 /// <param name="Highlight">What is marked on the model, or null for nothing.</param>
+/// <param name="Symmetry">The symmetry whose mirror is drawn across the model, or null for none.</param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 public sealed record ViewportState(
@@ -439,7 +447,8 @@ public sealed record ViewportState(
     ViewportIsolation? Isolation = null,
     ViewportNodeShown? Node = null,
     ViewportFollow? Following = null,
-    ViewportHighlight? Highlight = null
+    ViewportHighlight? Highlight = null,
+    StackSymmetry? Symmetry = null
 );
 #pragma warning restore SK7005
 
