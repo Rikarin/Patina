@@ -3040,7 +3040,7 @@ export interface components {
       /** @description True puts it in place of the file, and false forgets it. */
       restore: boolean;
     };
-    /** @description A named checkpoint of a document: its file and the paint it names, as they were when it was taken (#209). */
+    /** @description A named checkpoint of a document: its file and the paint it names, as they were (#209). */
     DocumentSnapshot: {
       /**
        * Format: uuid

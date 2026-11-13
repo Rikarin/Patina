@@ -23,7 +23,7 @@ T = TypeVar("T", bound="DocumentSnapshot")
 
 @_attrs_define
 class DocumentSnapshot:
-    """ A named checkpoint of a document: its file and the paint it names, as they were when it was taken (#209).
+    """ A named checkpoint of a document: its file and the paint it names, as they were (#209).
 
         Attributes:
             id (UUID): Which snapshot, for a restore or a delete.
