@@ -101,26 +101,29 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
     }
 
     const png = (await window.screenshot({ clip: box })).toString('base64');
-    return window.evaluate(async ({ data, orange }) => {
-      const image = new Image();
-      image.src = `data:image/png;base64,${data}`;
-      await image.decode();
-      const surface = new OffscreenCanvas(image.width, image.height);
-      const context = surface.getContext('2d');
-      if (!context) {
-        throw new Error('No 2D context.');
-      }
+    return window.evaluate(
+      async ({ data, orange }) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${data}`;
+        await image.decode();
+        const surface = new OffscreenCanvas(image.width, image.height);
+        const context = surface.getContext('2d');
+        if (!context) {
+          throw new Error('No 2D context.');
+        }
 
-      context.drawImage(image, 0, 0);
-      const pixels = context.getImageData(0, 0, image.width, image.height).data;
-      let pale = 0;
-      for (let i = 0; i < pixels.length; i += 4) {
-        const [r, g, b] = [pixels[i] ?? 0, pixels[i + 1] ?? 0, pixels[i + 2] ?? 0];
-        pale += (orange ? r > 140 && r > b + 50 : r > 140 && g > 140 && b > 140) ? 1 : 0;
-      }
+        context.drawImage(image, 0, 0);
+        const pixels = context.getImageData(0, 0, image.width, image.height).data;
+        let pale = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          const [r, g, b] = [pixels[i] ?? 0, pixels[i + 1] ?? 0, pixels[i + 2] ?? 0];
+          pale += (orange ? r > 140 && r > b + 50 : r > 140 && g > 140 && b > 140) ? 1 : 0;
+        }
 
-      return pale;
-    }, { data: png, orange: marked });
+        return pale;
+      },
+      { data: png, orange: marked }
+    );
   };
 
   await expect.poll(quads, { timeout: 30_000 }).toBeGreaterThan(1_000);
