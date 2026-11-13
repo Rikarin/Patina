@@ -793,6 +793,12 @@ public sealed class ViewportSession(
                 new() { Type = IpcTypes.ViewportDisplay, Display = settings },
                 cancellationToken
             );
+            if (logger.IsEnabled(LogLevel.Information)) {
+                // What the Worker draws alone, for a frame that shows otherwise to be traced (#271).
+                var parts = string.Join(", ", settings.Isolation?.Parts ?? []);
+                var materials = string.Join(", ", settings.Isolation?.Materials ?? []);
+                ServerLog.ViewportIsolated(logger, parts, materials);
+            }
         } catch (IpcException e) {
             ServerLog.ViewportFailed(logger, e.Message);
             lock (changing) {

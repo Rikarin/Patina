@@ -237,6 +237,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - A bake of an open texture set is what the set reads once the job is done, whichever client asked for it (#268): the Server points the set at the new maps itself, so a client that only bakes, such as a script or a future Blender add-on, no longer leaves the set's generators reading no bake. A bake into the folder an open graph or set already reads is read again the same way.
+- A picture or a material fixed on the view stands in the middle of the 2D view as it does in the viewport, however much narrower the 2D view is (#271): its place is kept from the middle of each view, where it was kept in the viewport's pixels and sat off to one side in the other.
+- Pointing at a part of millions of triangles marks it without uploading all of them (#271): past 250,000 triangles its wash is drawn one triangle in so many, evenly, and its outline whole.
 - Restoring a snapshot, or what autosave kept, leaves the panes as they were (#270): the document closes and opens again in place, and History stayed hidden behind the workspace's other tabs after. A snapshot Delete that is refused says why, where it was dropped silently before.
 - A bake's preview keeps to what the viewport shows alone (#136): with some parts isolated, the reach, the cage and the seams are drawn over those parts and nothing of the rest, and with none of the texture set shown it draws nothing and says so.
 - Changing a texture set's Width or Height marks its mesh maps out of date when they were baked at another shape (#262): Layers, the Bake dialog and Checks say they need baking again, as they do after a mesh or UV set change. Through the API a set's and a document's `bakeStale` says `shape`.

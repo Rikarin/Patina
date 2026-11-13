@@ -139,7 +139,11 @@ export interface CloneSource {
 /** A picture on the viewport, fixed on the screen: what the projection tool paints and a stencil masks with. */
 export type ScreenPicture = StackPicture;
 
-/** Where something fixed on a view stands, in the view's pixels: a picture, or a material the projection tool paints. */
+/**
+ * Where something fixed on a view stands: a picture, or a material the projection tool paints. Its centre is in pixels
+ * from the middle of the view, so the viewport and the 2D view, whatever their sizes, each draw it in their own middle
+ * (#271).
+ */
 export type ScreenFrame = StackFrame;
 
 /** A step that moves, scales and turns a frame about its centre, as the stencil's keys take it. */
@@ -158,6 +162,12 @@ export interface FrameStep {
 export function frameOnMap<T extends ScreenFrame>(frame: T, origin: readonly [number, number], texels: number): T {
   const [x, y] = frame.centre as [number, number];
   return { ...frame, centre: [(x - origin[0]) * texels, (y - origin[1]) * texels], scale: frame.scale * texels };
+}
+
+/** A frame kept from the middle of a view, placed in the pixels of a view this size (#271). */
+export function frameOnPane<T extends ScreenFrame>(frame: T, size: readonly [number, number]): T {
+  const [x, y] = frame.centre as [number, number];
+  return { ...frame, centre: [size[0] / 2 + x, size[1] / 2 + y] };
 }
 
 /** A frame moved, scaled and turned by a step about its centre. */
@@ -393,6 +403,8 @@ export class PaintStore {
    * is placed in. The 2D view sets it as a stroke starts, with {@link atlasScale}.
    */
   readonly atlasOrigin = signal<readonly [number, number]>([0, 0]);
+  /** How large the 2D view is in its pixels, whose middle a frame is kept from. Set with {@link atlasOrigin}. */
+  readonly atlasPane = signal<readonly [number, number]>([0, 0]);
   /** Whether strokes go to the chosen layer's mask rather than its channels. */
   readonly masking = signal(false);
   /**
@@ -1902,7 +1914,9 @@ export class PaintStore {
    * map in the 2D view.
    */
   private placed<T extends ScreenFrame>(frame: T, view: StackView | null): T {
-    return view ? frame : frameOnMap(frame, this.atlasOrigin(), this.atlasScale());
+    return view
+      ? frameOnPane(frame, [view.width, view.height])
+      : frameOnMap(frameOnPane(frame, this.atlasPane()), this.atlasOrigin(), this.atlasScale());
   }
 
   /**
