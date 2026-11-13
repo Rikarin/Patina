@@ -165,8 +165,10 @@ export async function leave(app: ElectronApplication): Promise<void> {
   while (pids.some(running) && Date.now() < deadline) {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
+  // ⚠ Killed outright: a plain kill is SIGTERM on Linux, which .NET answers with an orderly shutdown, and a Worker deep
+  // in an evaluation on the software GPU can draw that out past the runner's teardown. Windows ends it either way.
   for (const pid of pids.filter(running)) {
-    process.kill(pid);
+    process.kill(pid, 'SIGKILL');
   }
 }
 
