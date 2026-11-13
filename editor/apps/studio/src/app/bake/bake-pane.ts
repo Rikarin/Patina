@@ -47,7 +47,10 @@ const Maps: readonly { name: string; about: string }[] = [
     name: 'colour',
     about: 'The high mesh’s color carried onto the low mesh, or any picture moved from its UV layout to the low mesh’s.'
   },
-  { name: 'opacity', about: 'White where a ray found the high mesh and black where it found none, for cards and cut-outs.' },
+  {
+    name: 'opacity',
+    about: 'White where a ray found the high mesh and black where it found none, for cards and cut-outs.'
+  },
   { name: 'edges', about: 'A band along the sharp or hard edges, white on the edge, for wear that follows them.' },
   { name: 'islands', about: 'A flat color per UV island of the low mesh, for a variation per island.' }
 ];

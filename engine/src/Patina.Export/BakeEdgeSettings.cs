@@ -10,7 +10,8 @@ static class BakeEdgeSettings {
         rounding.Enabled ? Of(rounding.Edges, rounding.Width, rounding.Angle, rounding.Profile) : null;
 
     /// <summary>The edges the edges map marks, which Vixen reads only when the map is baked.</summary>
-    public static BakeRounding Marked(BakeEdgeOptions edges) => Of(edges.Edges, edges.Width, edges.Angle, edges.Profile);
+    public static BakeRounding Marked(BakeEdgeOptions edges) =>
+        Of(edges.Edges, edges.Width, edges.Angle, edges.Profile);
 
     static BakeRounding Of(string edges, double width, double angle, string profile) =>
         new((float)width, edges == "hard" ? RoundedEdges.Hard : RoundedEdges.Angle, (float)angle) {

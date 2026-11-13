@@ -105,8 +105,7 @@ public sealed class BakeMapKindsTests : IDisposable {
         var custom = Bake(
             "custom",
             static options => options with {
-                Maps = ["curvature"],
-                Curvature = new() { Range = "custom", Radius = 0.01 }
+                Maps = ["curvature"], Curvature = new() { Range = "custom", Radius = 0.01 }
             }
         );
         var low = MeshMapBakeRun.Read(Into(BakeFixture.LowFile)).Mesh.Bounds;

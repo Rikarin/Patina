@@ -21,7 +21,8 @@ public sealed record BakeCurvatureOptions {
     /// <summary>What is wrong, or null.</summary>
     public string? Problem() =>
         !Ranges.Contains(Range, StringComparer.Ordinal) ? $"'{Range}' is not a curvature range."
-        : Range == "custom" && !(Radius > 0 && double.IsFinite(Radius)) ? "A custom curvature radius is more than nothing."
+        : Range == "custom"
+        && !(Radius > 0 && double.IsFinite(Radius)) ? "A custom curvature radius is more than nothing."
         : null;
 }
 

@@ -54,11 +54,10 @@ public sealed record BakeOptions {
     public static IReadOnlyList<string> Spaces { get; } = ["tangent", "object"];
 
     /// <summary>Every map a bake can write, in the order they are reported.</summary>
-    public static IReadOnlyList<string> AllMaps { get; } =
-        [
-            "normal", "height", "ao", "bent", "curvature", "thickness", "position", "world", "id", "colour", "opacity",
-            "edges", "islands"
-        ];
+    public static IReadOnlyList<string> AllMaps { get; } = [
+        "normal", "height", "ao", "bent", "curvature", "thickness", "position", "world", "id", "colour", "opacity",
+        "edges", "islands"
+    ];
 
     /// <summary>The atlas's width, in texels, and its height too unless <see cref="Rows" /> says otherwise.</summary>
     public int Resolution { get; set; } = 2048;
@@ -392,13 +391,16 @@ public sealed record BakeRoundingOptions {
     public string Profile { get; set; } = "even";
 
     /// <summary>What is wrong, or null.</summary>
-    public string? Problem() =>
-        !BakeEdgeOptions.Profiles.Contains(Profile, StringComparer.Ordinal) ? $"'{Profile}' is not a profile."
-        : !EdgeWords.Contains(Edges, StringComparer.Ordinal) ? $"'{Edges}' is not angle or hard."
-        : !(Width >= 0 && double.IsFinite(Width)) ? "A rounded edge's width cannot be negative."
-        : Enabled && Width <= 0 ? "A rounded edge needs a width."
-        : Angle is < 0 or > 180 ? "The rounding angle is 0 to 180 degrees."
-        : null;
+    public string? Problem() {
+        (bool Wrong, string Why)[] checks = [
+            (!BakeEdgeOptions.Profiles.Contains(Profile, StringComparer.Ordinal), $"'{Profile}' is not a profile."),
+            (!EdgeWords.Contains(Edges, StringComparer.Ordinal), $"'{Edges}' is not angle or hard."),
+            (!(Width >= 0 && double.IsFinite(Width)), "A rounded edge's width cannot be negative."),
+            (Enabled && Width <= 0, "A rounded edge needs a width."),
+            (Angle is < 0 or > 180, "The rounding angle is 0 to 180 degrees.")
+        ];
+        return checks.FirstOrDefault(static check => check.Wrong).Why;
+    }
 }
 
 /// <summary>Where a colour map's colour comes from.</summary>
