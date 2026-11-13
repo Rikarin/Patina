@@ -108,7 +108,7 @@ sealed partial class StackHost {
                     ]
                 }
                 : chosen with { Layers = [layer with { Enabled = true }] };
-            LayerStackEvaluator run = new(evaluator, canvases, path, fill);
+            LayerStackEvaluator run = new(evaluator, canvases, path, fill) { PositionBox = positionBox };
             var refused = run.Prepare(document with { Sets = [alone] }, alone, compounds.Registry, compounds.Source);
             if (refused.Count > 0 || run.Plan is null) {
                 run.Dispose();

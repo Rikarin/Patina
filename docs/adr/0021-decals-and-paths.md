@@ -65,9 +65,14 @@ a mask generator can use it.
 `position` is 0 to 1 along each axis of the bake's own bounds, so a decal written in that space is stretched on any
 model that is not a cube. **A decal and a path are written in the model's own units, with the box the bake is
 normalised in beside them** (`Box`, six numbers). The client sends the model's bounds as `POST /viewport/pick` gives
-them, which is the bake's box when the maps are baked from the model itself. ⚠ A bake from a high mesh whose bounds
-differ from the low mesh's moves a decal by the difference, and a model swapped for one with other bounds leaves the
-stored box stale: nothing rewrites it yet.
+them, which is the bake's box when the maps are baked from the model itself.
+
+**The bake's own box wins** (wave 11). A bake from a high mesh whose bounds differ from the low mesh's, a model swapped
+for one with other bounds, and a position map written with another range (`cube`, `sphere`, `none`, ADR 0008) all left
+the stored box wrong and moved the decal by the difference. The baker knows the box exactly, so the bake's manifest
+records it as `PositionBox`, and every host that evaluates a stack with that bake (the Worker, `patina build`) reads every
+decal and path through it (Vixen's `LayerStackEvaluator.PositionBox`). Nothing in the document is rewritten: the box is a
+fact about the bake, not the decal, and the stored one is only the fallback for a bake made before the manifest said it.
 
 ## UV sets
 

@@ -58,6 +58,28 @@ public static class BakedMapPicture {
         return found;
     }
 
+    /// <summary>
+    ///     The box a bake's position map spans in the model's units, six numbers, which decals and paths read the map
+    ///     through (#133); null when no bake in the folder has a position map that says it.
+    /// </summary>
+    /// <param name="folder">The folder a bake was delivered to, or null.</param>
+    public static IReadOnlyList<float>? PositionBox(string? folder) {
+        if (folder is null || !Directory.Exists(folder)) {
+            return null;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(folder, $"*.{BakeCache.ManifestFile}")
+                     .Order(StringComparer.Ordinal)) {
+            if (BakeCache.ReadManifestFile(file) is { PositionBox: { Count: 6 } box } manifest
+                && box.All(float.IsFinite)
+                && manifest.Result.Maps.Any(static map => map.Map == "position")) {
+                return box;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>Whether a float file holds this map's measurement from below zero, which a picture centres.</summary>
     public static bool IsSigned(string map) => map is "normal" or "height" or "bent" or "curvature" or "world";
 

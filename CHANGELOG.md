@@ -202,6 +202,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A decal or a path no longer moves when its mesh maps come from a high poly mesh whose bounds differ from the low one's, when the model is swapped for one with other bounds, or when the position map is baked with the Cube, Sphere or None range. A bake now records the box its position map spans, and decals and paths are read through it, in the viewport and in every export. A bake made before this keeps the old behaviour until it is baked again.
+- Where a ribbon crosses itself, the later pass now lies over the earlier one, as tape would, instead of the nearer stretch showing alone; a half-clear ribbon is darker where it crosses.
 - On Windows a graph opened from a project now opens in that project's tab, not in a second tab with no project, so its display settings are kept and it comes back when Patina opens again; and a document the Server brought back after a restart offers what autosave kept, as it does on Linux and macOS.
 - Exporting some of a project's texture sets, or one document, no longer deletes the files the other sets last exported into the same folder. Only an export of the whole project tidies away files it no longer makes.
 - A mesh change that touched one texture set's faces no longer says every set's mesh maps need baking again. Layers, the Bake dialog, Checks and Project Settings say so only for the sets whose own faces changed, in their UV set; the others' bakes still fit. A bake made before this release says so for every set once, until it is baked again.

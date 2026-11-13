@@ -142,7 +142,9 @@ public sealed class OutputBuilders(
                         .ToArray()
                 ) {
                     // What a set exports is what it shows: its bake's normal and occlusion beneath its layers (#86).
-                    Baked = BakedMapPicture.Shading(meshMaps)
+                    Baked = BakedMapPicture.Shading(meshMaps),
+                    // Decals and paths read the bake through the box it says, not the one they were placed with (#133).
+                    PositionBox = BakedMapPicture.PositionBox(meshMaps)
                 };
                 var problems = run.Prepare(document, set, shelf.Registry, shelf.Source);
                 if (problems.Count > 0 || run.Plan is null) {

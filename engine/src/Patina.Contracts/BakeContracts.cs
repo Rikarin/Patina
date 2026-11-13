@@ -103,6 +103,12 @@ public sealed record JobPage(IReadOnlyList<JobState> Jobs, long Sequence);
 ///     The revision of those faces as the bake read them, in its UV set: a mesh that changed elsewhere leaves these
 ///     maps fitting the set (#151). Null for a bake made before it was recorded.
 /// </param>
+/// <param name="PositionBox">
+///     The box the position map spans in the model's units, the least corner's three numbers then the greatest's: a
+///     position value of zero on an axis is the first, one the second, whichever range wrote it. Decals and paths read
+///     the map through it rather than the box they were placed with (#133). Null for a bake made before it was
+///     recorded.
+/// </param>
 public sealed record BakeManifest(
     string Name,
     string Format,
@@ -111,7 +117,8 @@ public sealed record BakeManifest(
     int UvSet = 0,
     string Space = "tangent",
     string? Material = null,
-    string? Geometry = null
+    string? Geometry = null,
+    IReadOnlyList<float>? PositionBox = null
 );
 
 /// <summary>Says which folder of baked maps a graph's Mesh Map nodes read.</summary>

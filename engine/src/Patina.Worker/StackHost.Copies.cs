@@ -87,7 +87,10 @@ sealed partial class StackHost {
                 // A draft, as the picture the artist was looking at is one; a refusal leaves the canvas empty, which
                 // the stack's own problems will already be saying.
                 using LayerStackEvaluator run = new(session.evaluator, session.canvases, session.path, session.fill) {
-                    Draft = true, Capture = capture.Layer, Backdrop = capture.Backdrop
+                    Draft = true,
+                    Capture = capture.Layer,
+                    Backdrop = capture.Backdrop,
+                    PositionBox = session.positionBox
                 };
                 if (run.Prepare(document, set, session.compounds.Registry, session.compounds.Source).Count > 0) {
                     return;
