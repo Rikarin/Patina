@@ -569,6 +569,12 @@ describe('requestFor', () => {
     expect(requestFor(settings, unreal, { projects: ['p'] }).options).toBeUndefined();
   });
 
+  it('sends no set’s own size while the sets are merged, which are one set of files at the export’s size (#252)', () => {
+    const chosen = { ...settings, perSet: { Head: { size: 512 } } };
+    expect(requestFor({ ...chosen, merge: true }, unreal, { projects: ['p'] }).options).toEqual({ merge: true });
+    expect(requestFor(chosen, unreal, { projects: ['p'] }).options).toEqual({ perSet: [{ set: 'Head', size: 512 }] });
+  });
+
   it('names a document the project does not export as it is, and no sets, so it exports on its own (#153)', () => {
     expect(requestFor(settings, unreal, { projects: ['p'], documents: ['rust.vxtexgraph'], sets: null })).toEqual({
       presets: ['unreal'],

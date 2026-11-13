@@ -92,6 +92,22 @@ public static class ExportRun {
         }
 
         if (preset.Merge && SetMerge.Merge(sets, warnings) is { } merged) {
+            // One set of files has one size and one set of choices: the export's. A set's own are named, not lost quietly.
+            var own = sets.Where(set => preset.PerSet.ContainsKey(set.Name))
+                .Select(set => preset.PerSet[set.Name].Size is { } size && size != preset.Size
+                        ? $"{set.Name} ({size} px)"
+                        : set.Name
+                )
+                .ToList();
+            if (own.Count > 0) {
+                warnings.Add(
+                    "The texture sets were merged into one set of files, written with the export's own settings, so "
+                    + "what was chosen for "
+                    + string.Join(", ", own)
+                    + " alone was not used."
+                );
+            }
+
             sets = [merged];
             several = false;
         }
