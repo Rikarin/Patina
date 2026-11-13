@@ -41,7 +41,13 @@ public enum FindingKind {
     StaleOutput,
 
     /// <summary>An output whose key cannot be computed, for one of the reasons above.</summary>
-    UnresolvedOutput
+    UnresolvedOutput,
+
+    /// <summary>
+    ///     Bytes under <c>.revisions</c> that no snapshot and no pin names any more (#270), which
+    ///     <c>patina library check --purge-revisions</c> removes.
+    /// </summary>
+    UnusedRevision
 }
 
 /// <summary>One thing the check found.</summary>
@@ -53,7 +59,8 @@ public sealed record Finding(FindingKind Kind, string Path, string Detail) {
     public bool IsError =>
         Kind is not (FindingKind.SchemaDrift
             or FindingKind.StaleOutput
-            or FindingKind.UnidentifiedFile);
+            or FindingKind.UnidentifiedFile
+            or FindingKind.UnusedRevision);
 }
 
 /// <summary>The health of a library, from <c>patina library check</c>.</summary>
@@ -126,6 +133,7 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
         Add(connection, findings, FindingKind.UnidentifiedFile, UnidentifiedFiles);
         Add(connection, findings, FindingKind.MissingAssetFile, MissingAssetFiles);
         AddMissingRevisions(connection, findings);
+        AddUnusedRevisions(connection, findings);
 
         var graph = LoadGraph(connection);
         var paths = LoadAssetPaths(connection);
@@ -184,6 +192,37 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
             if (revision.Text != current && !File.Exists(LibraryLayout.RevisionPath(root, revision))) {
                 findings.Add(
                     new(FindingKind.MissingRevision, reader.GetString(0), $"asset {reader.GetString(1)} at {revision}")
+                );
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Kept bytes that nothing names: no snapshot, which a deleted one or a deleted document leaves behind, and no
+    ///     pin. Said of none when a snapshot list cannot be read, since it might name any of them.
+    /// </summary>
+    void AddUnusedRevisions(SqliteConnection connection, List<Finding> findings) {
+        var kept = Path.Combine(root, LibraryLayout.RevisionsFolder);
+        if (!Directory.Exists(kept) || Snapshots.NamedRevisions(root) is not { } named) {
+            return;
+        }
+
+        using (var command = connection.CreateCommand()) {
+            command.CommandText = Pins;
+            using var reader = command.ExecuteReader();
+            while (reader.Read()) {
+                named.Add(Revision.Stored(reader.GetString(2)).Hex);
+            }
+        }
+
+        foreach (var file in new DirectoryInfo(kept).EnumerateFiles("*", SearchOption.AllDirectories)) {
+            if (!named.Contains(file.Name)) {
+                findings.Add(
+                    new(
+                        FindingKind.UnusedRevision,
+                        LibraryLayout.Relative(root, file.FullName),
+                        $"{file.Length} bytes no snapshot or pin names"
+                    )
                 );
             }
         }
@@ -413,4 +452,42 @@ sealed record LibraryDocumentState(IReadOnlyList<Finding> Findings) {
                 ? [new(FindingKind.SchemaDrift, LibraryLayout.LibraryFile, drift.Detail)]
                 : []
         );
+}
+
+/// <summary>
+///     Removes the kept bytes a check found unused (#270). Only safe holding the <see cref="LibraryLock" />: a snapshot
+///     taken between the check and this would name bytes this removes.
+/// </summary>
+public static class RevisionPurge {
+    /// <summary>Removes each unused revision the report lists.</summary>
+    /// <returns>How many files went, and how many bytes they held.</returns>
+    public static (int Files, long Bytes) Run(string root, CheckReport report) {
+        ArgumentNullException.ThrowIfNull(report);
+        var (files, bytes) = (0, 0L);
+        foreach (var finding in report.Findings.Where(static f => f.Kind == FindingKind.UnusedRevision && Kept(f.Path))) {
+            var file = new FileInfo(LibraryLayout.Full(root, finding.Path));
+            if (!file.Exists) {
+                continue;
+            }
+
+            var length = file.Length;
+            try {
+                file.Delete();
+            } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+                continue; // held open: it stays, and the next check lists it again
+            }
+
+            files++;
+            bytes += length;
+            if (file.Directory is { } folder && !folder.EnumerateFileSystemInfos().Any()) {
+                folder.Delete();
+            }
+        }
+
+        return (files, bytes);
+    }
+
+    static bool Kept(string path) =>
+        path.StartsWith($"{LibraryLayout.RevisionsFolder}/", StringComparison.Ordinal)
+        && !path.Contains("..", StringComparison.Ordinal);
 }

@@ -4,6 +4,11 @@ namespace Patina.Cli;
 
 /// <summary><c>patina library</c>: the library layer's operations, with no Server needed.</summary>
 static class LibraryCommands {
+    /// <summary>What <c>patina library check</c> takes.</summary>
+    public const string CheckUsage = "  patina library check <path> [--all] [--purge-revisions]";
+
+    const string AllFlag = "--all";
+    const string PurgeFlag = "--purge-revisions";
     const int DefaultPruneDays = 30;
 
     const int ExitClean = 0;
@@ -49,7 +54,8 @@ static class LibraryCommands {
     }
 
     public static int Check(string path, string[] options) {
-        if (options is not ([] or ["--all"])) {
+        var purge = options.Contains(PurgeFlag);
+        if (options.Any(static o => o is not (AllFlag or PurgeFlag)) || options.Distinct().Count() != options.Length) {
             return Usage();
         }
 
@@ -59,10 +65,22 @@ static class LibraryCommands {
             return ExitFindings;
         }
 
+        // Removing kept bytes wants nobody taking a snapshot meanwhile, and only a Server takes one.
+        using var taken = purge ? LibraryLock.Take(root) : null;
+        if (purge && taken is null) {
+            Console.Error.WriteLine("A Server has this library open.");
+            return ExitFindings;
+        }
+
         try {
             using var library = OpenLibrary.Open(root);
             var report = library.Check();
-            Print(report, options is ["--all"]);
+            Print(report, options.Contains(AllFlag));
+            if (purge) {
+                var (files, bytes) = RevisionPurge.Run(root, report);
+                Console.WriteLine($"Removed {files} unused revisions, {bytes} bytes.");
+            }
+
             return report.HasErrors ? ExitFindings : ExitClean;
         } catch (LibraryFormatException e) {
             Console.Error.WriteLine(e.Message);
@@ -91,7 +109,7 @@ static class LibraryCommands {
 
     static int Usage() {
         Console.Error.WriteLine(
-            "Usage: patina library new <path> [--name <name>] | patina library check <path> [--all]"
+            $"Usage: patina library new <path> [--name <name>] | {CheckUsage.Trim()}"
         );
         return ExitUsage;
     }

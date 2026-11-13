@@ -197,12 +197,50 @@ public static class Snapshots {
         }
     }
 
-    static List<Entry> Read(string document) {
-        var path = ListPath(document);
-        if (!File.Exists(path)) {
-            return [];
+    /// <summary>
+    ///     The revisions, by their hex, that any snapshot in the library names, wherever its document is, the bin
+    ///     included (#270). Null when a list cannot be read, since then nothing can be said to be named by none.
+    /// </summary>
+    /// <param name="root">The library.</param>
+    public static HashSet<string>? NamedRevisions(string root) {
+        HashSet<string> named = new(StringComparer.Ordinal);
+        foreach (var list in ListsBelow(root)) {
+            try {
+                foreach (var revision in ReadList(list).SelectMany(static entry => entry.Files.Values)) {
+                    if (Revision.TryParse(revision, out var parsed)) {
+                        named.Add(parsed.Hex);
+                    }
+                }
+            } catch (Exception e) when (e is IOException or LibraryFormatException or FormatException) {
+                return null;
+            }
         }
 
+        return named;
+    }
+
+    /// <summary>Every snapshot list below a folder, passing by what holds none: kept bytes, the cache and Git.</summary>
+    static IEnumerable<string> ListsBelow(string folder) {
+        foreach (var child in Directory.EnumerateDirectories(folder)) {
+            var name = Path.GetFileName(child);
+            if (name == Folder) {
+                foreach (var list in Directory.EnumerateFiles(child, "*.yaml")) {
+                    yield return list;
+                }
+            } else if (name is not (LibraryLayout.RevisionsFolder or LibraryLayout.CacheFolder or ".git")) {
+                foreach (var list in ListsBelow(child)) {
+                    yield return list;
+                }
+            }
+        }
+    }
+
+    static List<Entry> Read(string document) {
+        var path = ListPath(document);
+        return File.Exists(path) ? ReadList(path) : [];
+    }
+
+    static List<Entry> ReadList(string path) {
         var fields = new YamlFields(YamlText.Parse(SharedFile.ReadAllText(path), path), path);
         if (fields.Number(SchemaKey, Schema) > Schema) {
             throw new LibraryFormatException(path, "a newer Patina wrote it.", true);

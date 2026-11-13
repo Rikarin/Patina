@@ -85,6 +85,31 @@ public sealed class SnapshotTests : IDisposable {
         Assert.Equal(Stack, File.ReadAllText(Document));
     }
 
+    /// <summary>A forgotten snapshot's bytes are listed by the check and purged on request, and nothing named goes (#270).</summary>
+    [Fact]
+    public void Bytes_no_snapshot_names_any_more_are_checked_and_purged_and_the_named_ones_stay() {
+        Write(Document, Stack);
+        Write(Paint("a"), "first strokes");
+        var kept = Snapshots.Take(library.Root, Document, "Kept");
+        Write(Paint("a"), "later strokes");
+        var forgotten = Snapshots.Take(library.Root, Document, "Forgotten");
+        Snapshots.Forget(Document, forgotten.Id);
+
+        CheckReport report;
+        using (var open = library.Open()) {
+            report = open.Check();
+        }
+
+        var unused = Assert.Single(report.Findings, static f => f.Kind == FindingKind.UnusedRevision);
+        Assert.False(unused.IsError);
+        Assert.StartsWith(".revisions/", unused.Path, StringComparison.Ordinal);
+        Assert.Equal((1, (long)"later strokes".Length), RevisionPurge.Run(library.Root, report));
+        Assert.False(File.Exists(LibraryLayout.Full(library.Root, unused.Path)));
+
+        Snapshots.Restore(library.Root, Document, kept.Id);
+        Assert.Equal("first strokes", File.ReadAllText(Paint("a")));
+    }
+
     [Fact]
     public void Paint_named_outside_the_documents_folder_is_neither_kept_nor_written() {
         Write(Document, Stack.Replace("paint/b.vxpaint", "../../outside.vxpaint", StringComparison.Ordinal));
