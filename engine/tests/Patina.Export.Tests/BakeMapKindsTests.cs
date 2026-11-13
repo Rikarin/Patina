@@ -31,7 +31,7 @@ public sealed class BakeMapKindsTests : IDisposable {
     Bitmap Picture(string into, string map) =>
         PngCodec.Decode(File.ReadAllBytes(Path.Combine(Into(into), $"{map}.png")));
 
-    /// <summary>The red byte of every texel a chart covers, which the islands map says: its background is black.</summary>
+    /// <summary>The red byte of every texel a chart covers, as the islands map says: its background is black.</summary>
     static List<int> Covered(Bitmap picture, Bitmap islands) {
         List<int> values = [];
         for (var at = 0; at < islands.Pixels.Length; at += 4) {

@@ -3,7 +3,7 @@ using Vixen.Geometry.Remeshing;
 
 namespace Patina.Export;
 
-/// <summary>A bake's edges as Vixen takes them: the ones rounded into the normal, the ones the edges map marks.</summary>
+/// <summary>A bake's edges as Vixen takes them: those rounded into the normal, those the edges map marks.</summary>
 static class BakeEdgeSettings {
     /// <summary>The edges to round, or null when rounding is off.</summary>
     public static BakeRounding? Rounding(BakeRoundingOptions rounding) =>
