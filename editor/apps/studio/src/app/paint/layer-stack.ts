@@ -276,7 +276,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
 
     @if (store.link() === 'reconnecting') {
       <xui-callout class="shrink-0 text-xs" color="error" compact data-testid="layers-offline">
-        Lost touch with Patina’s engine. The stack comes back when it reconnects; an edit made before then is refused.
+        Lost touch with Patina’s engine. Layers come back when it reconnects; an edit made before then is refused.
       </xui-callout>
     } @else if (workerMissing()) {
       <xui-callout class="shrink-0 text-xs" color="warning" compact data-testid="layers-no-worker">

@@ -6,6 +6,7 @@ import type {
   GraphSettingDefinition
 } from '@patina/api-client';
 import { choiceName } from '../core/labels';
+import { amount } from '../core/numbers';
 import { titleOf } from './graph-authoring';
 
 /** What every row has besides its control: what it is called, and when it shows. */
@@ -214,7 +215,7 @@ export interface CardLine {
 export const CardLineLimit = 4;
 
 function numberText(value: number, whole: boolean): string {
-  return whole ? String(Math.round(value)) : String(Number(value.toFixed(3)));
+  return whole ? String(Math.round(value)) : String(Number(amount(value, 3)));
 }
 
 function sameLanes(set: readonly number[], fallback: readonly number[]): boolean {
