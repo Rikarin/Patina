@@ -179,6 +179,12 @@ public sealed record ExportOptions {
 
     /// <summary>Changes for one texture set at a time, over these, or null for none.</summary>
     public IReadOnlyList<ExportSetOptions>? PerSet { get; init; }
+
+    /// <summary>
+    ///     Whether the texture sets written go into one set of files, each set where its own layout puts it, as an
+    ///     atlas of sets that share one UV square. A set's own changes do not apply to it.
+    /// </summary>
+    public bool? Merge { get; init; }
 }
 
 /// <summary>An export preset.</summary>
@@ -253,6 +259,13 @@ public sealed record BuildRequest {
 
     /// <summary>Only these projects. Null or empty for all of them.</summary>
     public IReadOnlyList<Guid>? Projects { get; init; }
+
+    /// <summary>
+    ///     Only these documents of the one project named, by their file below it, each a texture set of its own whatever
+    ///     it is: a graph in a texturing project or one that is not a material exports too. Null or empty for what the
+    ///     project exports.
+    /// </summary>
+    public IReadOnlyList<string>? Documents { get; init; }
 
     /// <summary>
     ///     The presets to export through. Null means the library's <c>exportTargets</c>; empty, no
@@ -432,7 +445,13 @@ public sealed record ProjectReportPage(int Total, IReadOnlyList<ProjectReport> I
 /// </summary>
 /// <param name="Key">The export key they came from.</param>
 /// <param name="Files">The files, relative to that folder.</param>
-public sealed record ExportDelivery(string Key, IReadOnlyList<string> Files);
+public sealed record ExportDelivery(string Key, IReadOnlyList<string> Files) {
+    /// <summary>
+    ///     The texture set each file belongs to, by file, so that an export of some sets leaves the others' files
+    ///     alone. A file with no set, or one from a delivery before sets were kept, goes only when every set is exported.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Sets { get; init; }
+}
 
 /// <summary>One output for whatever builds it: everything by full path, so that it needs no library.</summary>
 /// <param name="Tool">What builds it.</param>

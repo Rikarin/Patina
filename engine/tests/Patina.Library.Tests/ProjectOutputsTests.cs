@@ -173,6 +173,30 @@ public sealed class ProjectOutputsTests : IDisposable {
         Assert.False(outputs[1].Settings.ContainsKey(ProjectOutputs.MeshSetting));
     }
 
+    /// <summary>
+    ///     A graph in a texturing project is what its layers read and not what it ships, until it is exported on its
+    ///     own: then it is a set of its own, and the project's stacks are left out (#153). So is a mask graph.
+    /// </summary>
+    [Fact]
+    public void A_document_named_on_its_own_exports_whatever_it_is_and_nothing_else_does() {
+        var project = Project(
+            Item(DocumentKinds.Texturing, "crate.vxlayers", "Body"),
+            Item(DocumentKinds.Graph, "rust.vxtexgraph"),
+            Item(DocumentKinds.Graph, "scratches.vxtexgraph", role: GraphRoles.Mask),
+            Item(DocumentKinds.BrushPreset, "soft.vxbrush")
+        );
+
+        var outputs = ProjectOutputs.Of(project, folder.FullName, ["rust.vxtexgraph", "scratches.vxtexgraph"]);
+
+        Assert.Equal(
+            [("rust.vxtexgraph", "rust"), ("scratches.vxtexgraph", "scratches")],
+            outputs.Select(static o => (o.Settings[ProjectOutputs.GraphSetting], o.Settings[ProjectOutputs.SetSetting]))
+        );
+        Assert.All(outputs, static o => Assert.Equal(BuildTools.TextureGraph, o.Tool));
+        Assert.Empty(ProjectOutputs.Of(project, folder.FullName, ["soft.vxbrush"]));
+        Assert.Equal("crate.vxlayers", Assert.Single(ProjectOutputs.Of(project, folder.FullName, [])).Name);
+    }
+
     [Fact]
     public void Outputs_written_by_hand_replace_what_the_documents_imply() {
         OutputDeclaration written = new("lods", BuildTools.MeshLod, ["low.glb"], [], new Dictionary<string, string>());

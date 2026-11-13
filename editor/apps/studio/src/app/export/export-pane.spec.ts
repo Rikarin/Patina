@@ -563,4 +563,17 @@ describe('requestFor', () => {
       }
     });
   });
+
+  it('asks for the sets merged into one set of files only when the dialog says so (#211)', () => {
+    expect(requestFor({ ...settings, merge: true }, unreal, { projects: ['p'] }).options).toEqual({ merge: true });
+    expect(requestFor(settings, unreal, { projects: ['p'] }).options).toBeUndefined();
+  });
+
+  it('names a document the project does not export as it is, and no sets, so it exports on its own (#153)', () => {
+    expect(requestFor(settings, unreal, { projects: ['p'], documents: ['rust.vxtexgraph'], sets: null })).toEqual({
+      presets: ['unreal'],
+      projects: ['p'],
+      documents: ['rust.vxtexgraph']
+    });
+  });
 });

@@ -2695,6 +2695,12 @@ export interface components {
       /** @description Only these projects. Null or empty for all of them. */
       projects?: null | string[];
       /**
+       * @description Only these documents of the one project named, by their file below it, each a texture set of its own whatever
+       *     it is: a graph in a texturing project or one that is not a material exports too. Null or empty for what the
+       *     project exports.
+       */
+      documents?: null | string[];
+      /**
        * @description The presets to export through. Null means the library's `exportTargets`; empty, no
        *     export.
        */
@@ -2945,6 +2951,11 @@ export interface components {
       files?: null | components['schemas']['ExportFileChoice'][];
       /** @description Changes for one texture set at a time, over these, or null for none. */
       perSet?: null | components['schemas']['ExportSetOptions'][];
+      /**
+       * @description Whether the texture sets written go into one set of files, each set where its own layout puts it, as an
+       *     atlas of sets that share one UV square. A set's own changes do not apply to it.
+       */
+      merge?: null | boolean;
     };
     /** @description What fills the texels a mesh's layout leaves empty. */
     ExportPaddingInfo: {
@@ -5045,6 +5056,8 @@ export interface components {
       files: components['schemas']['ExportFileSetting'][];
       /** @description Changes for one texture set at a time, over the rest, as IReadOnlyList&lt;ExportSetOptions&gt;? ExportOptions.PerSet. */
       perSet: components['schemas']['ExportSetOptions'][];
+      /** @description Whether the texture sets go into one set of files, each where its own layout puts it. */
+      merge?: null | boolean;
     };
     /** @description A result of a bake in a project's folder. */
     ProjectFile: {

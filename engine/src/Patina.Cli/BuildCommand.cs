@@ -14,7 +14,7 @@ namespace Patina.Cli;
 static class BuildCommand {
     public const string Usage = """
                                   patina build --library <path> [--changed] [--asset <guid>] [--project <guid>]...
-                                               [--preset <id>]... [--no-export] [--folder <path>] [--dry-run]
+                                               [--document <file>]... [--preset <id>]... [--no-export] [--folder <path>] [--dry-run]
                                 """
         + "\n"
         + BuildFlags.Usage;
@@ -103,6 +103,7 @@ static class BuildCommand {
         Guid? asset = null;
         string? folder = null;
         List<Guid> projects = [];
+        List<string> documents = [];
         List<string> presets = [];
         var none = false;
         var dryRun = false;
@@ -143,6 +144,10 @@ static class BuildCommand {
                     projects.Add(id);
                     at++;
                     break;
+                case "--document" when value is not null:
+                    documents.Add(value.Replace('\\', '/'));
+                    at++;
+                    break;
                 default:
                     return null;
             }
@@ -155,6 +160,7 @@ static class BuildCommand {
         var request = new BuildRequest {
             Asset = asset,
             Projects = projects.Count > 0 ? projects : null,
+            Documents = documents.Count > 0 ? documents : null,
             Presets = none ? [] : Named(presets),
             Folder = folder
         };

@@ -70,6 +70,10 @@ public static class MapPictures {
             return ExrCodec.Decode(data);
         }
 
+        if (kind is ".tif" or ".tiff") {
+            return TiffReader.Decode(data);
+        }
+
         if (kind == ".png") {
             var (width, height, channels, samples) = PngCodec.Decode16(data);
             var values = new float[samples.Length];

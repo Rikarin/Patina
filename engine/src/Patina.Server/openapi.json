@@ -8925,6 +8925,16 @@
             },
             "description": "Only these projects. Null or empty for all of them."
           },
+          "documents": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Only these documents of the one project named, by their file below it, each a texture set of its own whatever\nit is: a graph in a texturing project or one that is not a material exports too. Null or empty for what the\nproject exports."
+          },
           "presets": {
             "type": [
               "null",
@@ -9473,6 +9483,13 @@
               "$ref": "#/components/schemas/ExportSetOptions"
             },
             "description": "Changes for one texture set at a time, over these, or null for none."
+          },
+          "merge": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether the texture sets written go into one set of files, each set where its own layout puts it, as an\natlas of sets that share one UV square. A set's own changes do not apply to it."
           }
         },
         "description": "A preset\u0027s settings changed for one export, as an export dialog changes them. Null fields keep the preset\u0027s.\nChanging one gives the export another key, so it never reuses files made under other settings."
@@ -14537,6 +14554,13 @@
               "$ref": "#/components/schemas/ExportSetOptions"
             },
             "description": "Changes for one texture set at a time, over the rest, as IReadOnlyList\u0026lt;ExportSetOptions\u0026gt;? ExportOptions.PerSet."
+          },
+          "merge": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether the texture sets go into one set of files, each where its own layout puts it."
           }
         },
         "description": "A project\u0027s export settings, kept in its \u0060project.yaml\u0060 so they travel with the library: what a client\u0027s\nexport starts from next time. Any client reads and writes them; a build reads only what a request sends, so\nkeeping them changes no key."

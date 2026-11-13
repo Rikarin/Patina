@@ -131,6 +131,12 @@ public sealed record ExportPreset(
     /// <summary>The texture sets exported, or null for all of them.</summary>
     public IReadOnlyList<string>? Sets { get; init; }
 
+    /// <summary>
+    ///     Whether the sets exported are written as one set of files, each set where its layout puts it
+    ///     (<see cref="SetMerge" />).
+    /// </summary>
+    public bool Merge { get; init; }
+
     /// <summary>The material files written beside the textures: any of <see cref="ExportMaterials" />.</summary>
     public IReadOnlyList<string> Materials { get; init; } = [];
 
