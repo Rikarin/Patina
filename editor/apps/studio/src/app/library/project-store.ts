@@ -12,7 +12,6 @@ import {
 } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { desktop } from '../core/desktop';
-import { type FileChoice, FilePicker } from '../core/file-picker';
 import { messageOf } from '../core/messages';
 import { Preferences, type RecentDocument } from '../core/preferences';
 import { RecoveryOffers } from '../core/recovery-offers';
@@ -23,6 +22,7 @@ import type { WorkspaceName } from '../core/workspaces';
 import { GraphStore } from '../graph/graph-store';
 import { BrushStore } from '../paint/brush-store';
 import { PaintStore } from '../paint/paint-store';
+import { FileChooser } from './file-chooser';
 import { LibraryStore } from './library-store';
 
 /** An open document. Its session stays on the Server while another tab is in front, with all its edits and history. */
@@ -81,7 +81,7 @@ function remember(key: string, value: string | null): void {
 @Injectable({ providedIn: 'root' })
 export class ProjectStore {
   private readonly library = inject(LibraryStore);
-  private readonly picker = inject(FilePicker);
+  private readonly chooser = inject(FileChooser);
   private readonly paint = inject(PaintStore);
   private readonly brushes = inject(BrushStore);
   private readonly graph = inject(GraphStore);
@@ -927,7 +927,9 @@ export class ProjectStore {
   /** Asks the user for a picture and brings it into the project, for a layer or a mask to read. */
   async pickPicture(): Promise<string | null> {
     const project = this.current();
-    const choice = project ? await this.choosePicture(project.path) : null;
+    const choice = project
+      ? await this.chooser.choose({ kind: 'picture', title: 'Choose a Picture', project: project.path })
+      : null;
     if (!project || !choice) {
       return null;
     }
@@ -943,25 +945,6 @@ export class ProjectStore {
       this.mutableFailure.set(messageOf(failure));
       return null;
     }
-  }
-
-  /**
-   * A picture from the library, the project's own first, or from this machine (#4). With nothing in the library to
-   * pick from, this machine's dialog is all there is, so it opens at once where there is one.
-   */
-  private async choosePicture(project: string): Promise<FileChoice | null> {
-    const bridge = desktop();
-    if (bridge) {
-      const client = await this.library.api();
-      const query = { kind: 'picture', project };
-      const listed = await client.GET('/api/v1/library/files', { params: { query } }).catch(() => null);
-      if (!listed?.data?.files.length) {
-        const file = await bridge.openImage(this.status.pictures());
-        return file ? { machine: file } : null;
-      }
-    }
-
-    return this.picker.pick({ kind: 'picture', title: 'Choose a Picture', project });
   }
 
   /**

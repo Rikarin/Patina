@@ -17,10 +17,10 @@ import { XuiInputImports } from '@xui/input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSwitchImports } from '@xui/switch';
 import { XuiTagInputImports } from '@xui/tag-input';
-import { desktop } from '../core/desktop';
 import { labelsOf, valuesOf } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
+import { FileChooser } from './file-chooser';
 import { LibraryStore } from './library-store';
 import { LibraryTreeStore } from './library-tree-store';
 import { MeshFactsView } from './mesh-facts';
@@ -91,24 +91,12 @@ const ProjectKinds = [
           <div class="flex flex-col gap-1" [hidden]="kind() !== 'texturing'">
             <span class="section-label">Mesh</span>
             <div class="flex items-center gap-2">
-              @if (canPick) {
-                <span class="min-w-0 flex-1 truncate" data-testid="new-project-mesh-name">{{
-                  meshName() || 'None yet'
-                }}</span>
-                <button type="button" xuiButton size="sm" data-testid="new-project-mesh" (click)="pickMesh()">
-                  Choose…
-                </button>
-              } @else {
-                <input
-                  class="w-full"
-                  xuiInput
-                  autocomplete="off"
-                  aria-label="Mesh file"
-                  data-testid="new-project-mesh-path"
-                  [value]="mesh()"
-                  (input)="mesh.set(text($event))"
-                />
-              }
+              <span class="min-w-0 flex-1 truncate" data-testid="new-project-mesh-name" [title]="mesh()">{{
+                meshName() || 'None yet'
+              }}</span>
+              <button type="button" xuiButton size="sm" data-testid="new-project-mesh" (click)="pickMesh()">
+                Choose…
+              </button>
             </div>
             @if (kind() === 'texturing' && mesh().trim()) {
               @defer (on immediate) {
@@ -119,27 +107,15 @@ const ProjectKinds = [
           <div class="flex flex-col gap-1" [hidden]="kind() !== 'texturing'">
             <span class="section-label">High poly mesh, to bake from</span>
             <div class="flex items-center gap-2">
-              @if (canPick) {
-                <span class="min-w-0 flex-1 truncate" data-testid="new-project-high-name">{{
-                  highName() || 'None'
-                }}</span>
-                @if (high()) {
-                  <button type="button" xuiButton size="sm" variant="ghost" (click)="high.set('')">Clear</button>
-                }
-                <button type="button" xuiButton size="sm" data-testid="new-project-high" (click)="pickHigh()">
-                  Choose…
-                </button>
-              } @else {
-                <input
-                  class="w-full"
-                  xuiInput
-                  autocomplete="off"
-                  aria-label="High poly mesh file"
-                  data-testid="new-project-high-path"
-                  [value]="high()"
-                  (input)="high.set(text($event))"
-                />
+              <span class="min-w-0 flex-1 truncate" data-testid="new-project-high-name" [title]="high()">{{
+                highName() || 'None'
+              }}</span>
+              @if (high()) {
+                <button type="button" xuiButton size="sm" variant="ghost" (click)="high.set('')">Clear</button>
               }
+              <button type="button" xuiButton size="sm" data-testid="new-project-high" (click)="pickHigh()">
+                Choose…
+              </button>
             </div>
           </div>
           @if (kind() === 'texturing') {
@@ -179,27 +155,29 @@ const ProjectKinds = [
   `
 })
 export class NewProjectDialog {
+  /** A mesh or a picture from the library, or from this computer (#4): it has no project of its own yet. */
   protected async pickMesh(): Promise<void> {
-    const mesh = await desktop()?.openMesh(this.status.meshes());
+    const mesh = await this.chooser.path({ kind: 'mesh', title: 'Choose a Mesh', project: null });
     if (mesh) {
       this.mesh.set(mesh);
     }
   }
 
   protected async pickHigh(): Promise<void> {
-    const high = await desktop()?.openMesh(this.status.meshes());
+    const high = await this.chooser.path({ kind: 'mesh', title: 'Choose a High Poly Mesh', project: null });
     if (high) {
       this.high.set(high);
     }
   }
 
   protected async pickImage(): Promise<void> {
-    const image = await desktop()?.openImage(this.status.pictures());
+    const image = await this.chooser.path({ kind: 'picture', title: 'Choose a Picture', project: null });
     if (image) {
       this.image.set(image);
     }
   }
 
+  private readonly chooser = inject(FileChooser);
   private readonly status = inject(SystemStatus);
   private readonly store = inject(LibraryStore);
   private readonly tree = inject(LibraryTreeStore);
@@ -212,7 +190,6 @@ export class NewProjectDialog {
   readonly startKind = input('texturing');
 
   protected readonly name = signal('');
-  protected readonly canPick = desktop() !== undefined;
   protected readonly sides = this.status.textureSides;
   protected readonly kinds = valuesOf(ProjectKinds);
   protected readonly kindName = labelsOf(ProjectKinds);

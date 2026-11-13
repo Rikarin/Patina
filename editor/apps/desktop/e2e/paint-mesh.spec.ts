@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen, ending, leave, newLibrary, newProject, pick } from './projects';
+import { answerOpen, chooseFromComputer, ending, leave, newLibrary, newProject, pick } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -311,7 +311,7 @@ test('each material of a mesh is a texture set, and paint follows a repacked mes
   await app.evaluate(({ BrowserWindow }) => {
     BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'projectSettings');
   });
-  await window.getByTestId('project-settings-mesh').click();
+  await chooseFromComputer(app, window, 'project-settings-mesh');
   // A new mesh closes the open documents and loses their undo, and the dialog says so before Apply does it.
   await expect(window.getByTestId('project-settings-closes')).toContainText('undo history is lost');
   await expect(window.getByTestId('project-settings-apply')).toHaveText('Close and Apply');

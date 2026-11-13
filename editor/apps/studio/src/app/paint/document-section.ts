@@ -4,7 +4,6 @@ import { XuiButtonImports } from '@xui/button';
 import { XuiMenuImports } from '@xui/menu';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
-import { desktop } from '../core/desktop';
 import { labelIn } from '../core/labels';
 import { count } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
@@ -57,7 +56,7 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
               {{ project.meshName() ?? project.document()?.name }}
             </span>
           </span>
-          @if (canPick && project.document()?.kind === 'texturing') {
+          @if (project.document()?.kind === 'texturing') {
             <button
               type="button"
               xuiButton
@@ -224,7 +223,6 @@ export class DocumentSection {
   protected readonly project = inject(ProjectStore);
   private readonly status = inject(SystemStatus);
   private readonly library = inject(LibraryStore);
-  protected readonly canPick = desktop() !== undefined;
   protected readonly heightNormals = HeightNormals;
   protected readonly bakedNormals = BakedNormals;
   protected readonly bakedOcclusions = BakedOcclusions;

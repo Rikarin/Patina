@@ -28,7 +28,9 @@ references and a browse route.
 
 - A client on another computer picks a picture the library holds. It still cannot bring one in from its own disk: that needs an
   upload, which no route takes yet.
-- The Bake dialog's meshes and a project's mesh are still chosen from the machine's disk, and typed outside the desktop app. The
-  list already takes `kind=mesh` for when they move to it.
+- Meshes followed in wave 11: New Project, Project Settings and the Bake dialog choose a mesh through `FileChooser`, which opens
+  Choose a Mesh the same way. A bake and a project's mesh read a path on the Server's machine, so a mesh or a picture the library
+  holds is given as the library's path joined to its own; the Server copies a project's mesh in as it did one from the disk. Only
+  the bake's output folder is still typed outside the desktop app, as the list holds no folders.
 - The list is read from the folders each time, as the project's own contents are; a library of many thousands of pictures would want
   it from the index instead.
