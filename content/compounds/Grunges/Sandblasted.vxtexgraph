@@ -1,0 +1,30 @@
+version: 1
+name: Sandblasted
+nodes:
+  - { id: 1, type: Source/Noise, x: 0, y: 0, values: { Octaves: [1] }, texts: { Basis: White, '=Scale': '256f' } }
+  - { id: 2, type: Filters/Blur HQ, x: 300, y: 0, texts: { '=Sigma': '0.5f + (1f - scale) * 1.5f' } }
+  - { id: 3, type: Source/Noise, x: 0, y: 300, values: { Octaves: [4], Gain: [0.5] }, texts: { Basis: Gradient, '=Scale': '4f' } }
+  - id: 4
+    type: Filters/Pixel Processor
+    x: 600
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(saturate((a.x - 0.5f) * (2f + y * 10f) + 0.5f) * smoothstep(x, x + 0.25f, b.x), 0f, 0f, 1f)'
+      '=X': '0.7f - amount * 0.7f'
+      '=Y': contrast
+  - { id: 99, type: Sub-graph/Output, x: 900, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 4, toPort: A }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: B }
+  - { fromNode: 4, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'A fine, even frosting of grit, as blasting leaves on glass or metal, heavier in places. White is blasted.' }
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - { name: scale, label: Scale, default: '0.5', summary: 'How large the features are: low is coarser grit, high is finer.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: amount, label: Amount, default: '0.5', summary: 'How much of the surface the grunge covers.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: contrast, label: Contrast, default: '0.5', summary: 'How hard its edges are: low is soft and faint, high is crisp.', kind: Float, minimum: 0, maximum: 1, group: Grunge }

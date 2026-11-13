@@ -1,0 +1,32 @@
+version: 1
+name: Cracked Paint
+nodes:
+  - { id: 1, type: Noise/Cell Walls, x: 0, y: 0, texts: { '=Cells': '6f + scale * 18f' } }
+  - { id: 2, type: Source/Noise, x: 0, y: 300, values: { Octaves: [3], Gain: [0.5] }, texts: { Basis: Gradient, '=Scale': '8f' } }
+  - { id: 3, type: Filters/Warp, x: 300, y: 0, values: { Intensity: [4] } }
+  - { id: 4, type: Source/Noise, x: 300, y: 300, values: { Octaves: [3], Gain: [0.5] }, texts: { Basis: Gradient, '=Scale': '3f' } }
+  - id: 5
+    type: Filters/Pixel Processor
+    x: 600
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(smoothstep(0.5f - y * 0.45f, 0.55f, a.x) * smoothstep(x, x + 0.15f, b.x), 0f, 0f, 1f)'
+      '=X': '0.75f - amount * 0.75f'
+      '=Y': contrast
+  - { id: 99, type: Sub-graph/Output, x: 900, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Warp }
+  - { fromNode: 3, fromPort: Out, toNode: 5, toPort: A }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: B }
+  - { fromNode: 5, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'A crazed network of cracks, as old paint and varnish split into plates, over some of the surface. White is a crack.' }
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - { name: scale, label: Scale, default: '0.5', summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: amount, label: Amount, default: '0.5', summary: 'How much of the surface the grunge covers.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: contrast, label: Contrast, default: '0.5', summary: 'How hard its edges are: low is soft and faint, high is crisp.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
