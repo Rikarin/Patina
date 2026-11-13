@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type MaterialInfo, createPatinaClient } from '@patina/api-client';
+import { Preferences } from '../core/preferences';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { LibraryThumbnails } from '../library/thumbnails';
@@ -70,6 +71,10 @@ function setup() {
   return { fixture, page, names, searches, using, wanted };
 }
 
+afterEach(() => {
+  globalThis.localStorage.clear(); // a star is this machine's, and each test starts with none
+});
+
 async function settled(fixture: ReturnType<typeof setup>['fixture']): Promise<void> {
   await new Promise(resolve => setTimeout(resolve));
   await fixture.whenStable();
@@ -107,8 +112,8 @@ describe('MaterialShelf', () => {
     page.querySelector<HTMLElement>('[data-testid="shelf-origin"] button')?.click();
     await settled(fixture);
     const options = [...document.querySelectorAll('[role="option"]')].map(option => option.textContent.trim());
-    expect(options).toEqual(['Everywhere', 'Starter', 'Other projects']);
-    document.querySelectorAll<HTMLElement>('[role="option"]')[2]?.click();
+    expect(options).toEqual(['Everywhere', 'Favourites', 'Starter', 'Other projects']);
+    document.querySelectorAll<HTMLElement>('[role="option"]')[3]?.click();
     await settled(fixture);
 
     expect(names()).toEqual(['RustProps']);
@@ -134,5 +139,27 @@ describe('MaterialShelf', () => {
     second?.dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }));
     expect(using.paintWith).toHaveBeenCalledWith(rust);
     expect(using.use).toHaveBeenCalledTimes(1);
+  });
+
+  it('lists a starred material first, keeps the star on this machine and shows Favourites alone (#203)', async () => {
+    const { fixture, page, names } = setup();
+    await vi.waitFor(async () => {
+      await settled(fixture);
+      expect(names()).toEqual(['PlasticStarter', 'RustProps']);
+    });
+
+    const star = page.querySelector<HTMLElement>(`[aria-label="Star Rust"]`);
+    star?.click();
+    await settled(fixture);
+
+    expect(names()).toEqual(['RustProps', 'PlasticStarter']);
+    expect(page.querySelector('[aria-label="Unstar Rust"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(TestBed.inject(Preferences).favouriteMaterials()).toEqual([rust.source]);
+
+    page.querySelector<HTMLElement>('[data-testid="shelf-origin"] button')?.click();
+    await settled(fixture);
+    document.querySelectorAll<HTMLElement>('[role="option"]')[1]?.click();
+    await settled(fixture);
+    expect(names()).toEqual(['RustProps']);
   });
 });
