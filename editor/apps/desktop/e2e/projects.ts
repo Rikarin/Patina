@@ -42,7 +42,7 @@ export async function chooseInLibrary(window: Page, testId: string, name: string
   await window.getByTestId(testId).click();
   const dialog = window.getByTestId('pick-file');
   await dialog.getByTestId('pick-file-item').filter({ hasText: name }).first().click();
-  await window.getByTestId('pick-file-choose').click(); // in the footer, below the dialog's body
+  await dialog.getByTestId('pick-file-choose').click();
   await expect(dialog).toHaveCount(0);
 }
 

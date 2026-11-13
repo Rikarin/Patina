@@ -54,7 +54,7 @@ public sealed class JobQueue {
             // Whatever had this job is gone or will be told nothing. Its work can be run again, and that is all that
             // was ever in its hands.
             if (job.State == JobStates.Running) {
-                job = AfterLoss(job);
+                job = AfterLoss(job) with { Version = job.Version + 1 };
                 Write(job);
             }
 
@@ -265,6 +265,7 @@ public sealed class JobQueue {
 
     JobState Put(JobState job, bool persist = true) {
         lock (changing) {
+            job = job with { Version = (jobs.GetValueOrDefault(job.Id)?.Version ?? job.Version) + 1 };
             jobs[job.Id] = job;
             if (persist) {
                 Write(job);

@@ -150,7 +150,6 @@ public sealed partial class StackProcessTests {
         var projectFolder = Path.Combine(Library, "projects", project);
         var state = await OpenAsync($"projects/{project}/housing.vxlayers", deadline.Token);
         await EditAsync(state.Id, deadline.Token, new StackSetSettings(512, 256));
-        await SaveAsync(state.Id, deadline.Token);
         BakeRequest request = new() {
             High = [Path.Combine(meshes, BakeFixture.HighFile)],
             Low = Path.Combine(projectFolder, BakeFixture.LowFile),
@@ -158,7 +157,9 @@ public sealed partial class StackProcessTests {
             Options = new() { Resolution = ExportSide, Maps = ["position"], Format = "png16" }
         };
 
+        // Not saved yet: the open set's shape is the one a bake follows, as the client shows it.
         var followed = await BakeAsync(request, deadline.Token);
+        await SaveAsync(state.Id, deadline.Token);
 
         Assert.Equal(ExportSide / 2, followed.Bake!.Options.Rows);
         Assert.Null(followed.Bake.Options.FollowSetShape);

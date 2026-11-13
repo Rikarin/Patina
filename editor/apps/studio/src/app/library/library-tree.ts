@@ -715,7 +715,8 @@ export class LibraryTree {
     this.dragged = [...this.tree.selected()];
     event.dataTransfer?.setData(DragType, JSON.stringify(this.dragged));
     if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
+      // A move within the tree, a copy where a picture lands elsewhere, such as a decal on the mesh: each target says.
+      event.dataTransfer.effectAllowed = 'copyMove';
     }
   }
 

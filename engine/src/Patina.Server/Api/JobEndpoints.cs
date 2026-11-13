@@ -3,6 +3,7 @@ using Patina.Contracts;
 using Patina.Export;
 using Patina.Jobs;
 using Patina.Library;
+using Patina.Server.Stacks;
 using System.Net.WebSockets;
 using System.Text.Json;
 
@@ -53,11 +54,12 @@ static class JobEndpoints {
         JobQueue queue,
         BakeCache cache,
         LibraryHost host,
+        StackSessions stacks,
         CancellationToken cancellationToken
     ) {
         try {
             BakeInputs.Check(request);
-            request = BakeLayouts.Resolved(host.Library, request);
+            request = BakeLayouts.Resolved(host.Library, request, stacks);
             var key = (await Task.Run(() => BakeKeyReads.KeyOf(request, ToolCatalog.Default), cancellationToken)).Hex;
             var job = cache.Find(key) is { } manifest
                 ? queue.Finished(

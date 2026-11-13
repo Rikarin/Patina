@@ -153,6 +153,20 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
+    /// <summary>
+    ///     What a bake of this texture set reads of it: its UV set and the shape it is authored at, as the last edit left
+    ///     them (#253).
+    /// </summary>
+    public BakeFit.SetLayout Layout {
+        get {
+            lock (Changing) {
+                return LayoutNow;
+            }
+        }
+    }
+
+    BakeFit.SetLayout LayoutNow => new(editor.Set.UvSet, editor.Document.BaseWidth, editor.Document.BaseHeight);
+
     /// <summary>The bake generators and bake masks read, kept in a file beside the stack.</summary>
     public string? MeshMaps { get; private set; }
 
@@ -243,7 +257,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
             (string? Folder, string? Model, BakeFit.SetLayout Set) bake;
             lock (Changing) {
                 var set = editor.Set;
-                bake = (MeshMaps, ModelFile, new(set.UvSet, editor.Document.BaseWidth, editor.Document.BaseHeight));
+                bake = (MeshMaps, ModelFile, LayoutNow);
                 state = new(
                     Id,
                     Path,

@@ -216,6 +216,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Changing a texture set's Width or Height marks its mesh maps out of date when they were baked at another shape (#262): Layers, the Bake dialog and Checks say they need baking again, as they do after a mesh or UV set change. Through the API a set's and a document's `bakeStale` says `shape`.
+- A bake that follows a texture set's shape reads the set as it is open, so Quick Bake right after changing Height bakes at the new shape before the set is saved (#253).
+- Dragging a picture from the library tree onto the mesh shows a copy cursor, not a move one: the picture stays where it was (#264).
+- A filter's slot for a channel the texture set lacks says Untouched, which is what it reads since such a channel stands untouched, not Beneath (#264).
+- The Bake dialog no longer shows a cancelled bake as still running when the answer to Cancel arrives after the bake has stopped. Through the API each job carries a `version` that rises with each change, so a client keeps the newer of an answer and an event (#264).
 - A decal or a path no longer moves when its mesh maps come from a high poly mesh whose bounds differ from the low one's, when the model is swapped for one with other bounds, or when the position map is baked with the Cube, Sphere or None range. A bake now records the box its position map spans, and decals and paths are read through it, in the viewport and in every export. A bake made before this keeps the old behaviour until it is baked again.
 - Where a ribbon crosses itself, the later pass now lies over the earlier one, as tape would, instead of the nearer stretch showing alone; a half-clear ribbon is darker where it crosses.
 - A merged export says what it did not use: merged sets are one set of files at the export's size, so the Export dialog turns each set's own size off while Merge is on and says why, and an export asked for through the API with a set's own changes and Merge names those sets in its report.

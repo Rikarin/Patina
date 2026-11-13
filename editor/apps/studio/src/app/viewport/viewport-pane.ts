@@ -899,7 +899,8 @@ export class ViewportPane implements AfterViewInit {
       event.preventDefault();
       event.stopPropagation();
       if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = carries === 'file' ? 'copy' : 'move';
+        // The picture is brought into the project or read where it is; either way it stays where it was.
+        event.dataTransfer.dropEffect = 'copy';
       }
       return;
     }
