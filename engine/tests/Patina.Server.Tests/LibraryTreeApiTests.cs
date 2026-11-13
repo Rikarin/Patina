@@ -270,6 +270,36 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
     }
 
     /// <summary>
+    ///     A project file another program keeps open past the Server's wait is refused as a busy file, with a code a
+    ///     client can tell from a conflict, and the file is left as it was (#266). It used to be an uncoded 409.
+    /// </summary>
+    [Fact]
+    public async Task A_write_to_a_file_another_program_holds_is_refused_as_busy() {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows refuses a rename onto an open file.");
+        await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Crate"), Token);
+        var file = Path.Combine(server.Library, "projects", "crate", "project.yaml");
+        var before = await File.ReadAllTextAsync(file, Token);
+
+        HttpResponseMessage kept;
+        await using (new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)) {
+            kept = await client.PutAsJsonAsync(
+                "/api/v1/library/project/export",
+                new ProjectExportRequest("crate", new ProjectExportSettings { Preset = "godot" }),
+                Token
+            );
+        }
+
+        using (kept) {
+            Assert.Equal(HttpStatusCode.Conflict, kept.StatusCode);
+            using var problem = JsonDocument.Parse(await kept.Content.ReadAsStringAsync(Token));
+            Assert.Equal("file-busy", problem.RootElement.GetProperty("code").GetString());
+            Assert.Equal("project.yaml", problem.RootElement.GetProperty("values").GetProperty("file").GetString());
+        }
+
+        Assert.Equal(before, await File.ReadAllTextAsync(file, Token));
+    }
+
+    /// <summary>
     ///     An export of the whole library belongs to no project, so the Server keeps its settings in
     ///     <c>library.yaml</c>, and <c>GET /library</c> reads them back for any client: a scope change in one client
     ///     loses nothing, and no project's file takes them (#227).

@@ -456,6 +456,7 @@ static class LibraryTreeEndpoints {
             ProjectRefusedException refused => Refusals.Of(refused),
             StackEditRefusedException refused => Refusals.Of(refused, StatusCodes.Status400BadRequest),
             LibraryItemOpenException => Problem(e, StatusCodes.Status409Conflict),
+            _ when Refusals.Busy(e) is { } busy => busy,
             IOException or UnauthorizedAccessException => Problem(e, StatusCodes.Status409Conflict),
             _ => null
         };

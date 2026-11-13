@@ -90,7 +90,8 @@ public static class SharedFile {
     ///     open, with "Access to the path is denied", and sharing delete does not help: a library scan that read a
     ///     project's <c>project.yaml</c> just as a client tagged the project turned the save into a 409 (#257). A
     ///     read is short, so the move is tried again until <see cref="Patience" /> has passed. On Linux and macOS
-    ///     the first try succeeds.
+    ///     the first try succeeds. A move still refused then throws <see cref="FileBusyException" />, which a client
+    ///     is told is a busy file rather than a conflict (#266).
     /// </remarks>
     /// <param name="from">The finished file, which is gone afterwards.</param>
     /// <param name="to">Where it goes, replacing what is there.</param>
@@ -121,11 +122,25 @@ public static class SharedFile {
                 }
 
                 return;
-            } catch (Exception e) when (Held(e) && waited.Elapsed < Patience && Possible(from, to, folder)) {
+            } catch (Exception e) when (Held(e) && Possible(from, to, folder)) {
+                if (waited.Elapsed >= Patience) {
+                    if (Busy(e)) {
+                        throw FileBusyException.Of(folder ? from : to, e);
+                    }
+
+                    throw;
+                }
+
                 Thread.Sleep(pause);
             }
         }
     }
+
+    /// <summary>
+    ///     Whether a failure is one somebody else holding the file makes: access refused, or a sharing or lock
+    ///     violation (Win32 errors 32 and 33).
+    /// </summary>
+    static bool Busy(Exception e) => e is UnauthorizedAccessException || (e.HResult & 0xFFFF) is 32 or 33;
 
     /// <summary>Whether a failed move can still succeed: what moves is there, and a folder's place free.</summary>
     static bool Possible(string from, string to, bool folder) =>

@@ -45,6 +45,8 @@ const Words: Readonly<Record<string, string>> = {
   'file-kind-unknown': 'The library lists pictures and meshes, and nothing else.',
   'history-empty': 'There is nothing to {what}.',
   'file-exists': 'There is a {file} there already. Choose another name.',
+  'file-busy':
+    '{file} is in use by another program, so it couldn’t be changed. Close it there, or wait a moment, and try again.',
   'file-missing': '{file} isn’t there any more. It may have been moved or deleted outside Patina.',
   'id-map-missing': 'This document has no ID map yet. Bake one, with ID among the maps.',
   'job-missing': 'That bake or export is no longer in Activity. The engine may have restarted since.',
