@@ -15694,6 +15694,9 @@
             "$ref": "#/components/schemas/StackCommandStackNestLayer"
           },
           {
+            "$ref": "#/components/schemas/StackCommandStackRemoveChannel"
+          },
+          {
             "$ref": "#/components/schemas/StackCommandStackSetSeed"
           },
           {
@@ -15748,6 +15751,7 @@
             "setModel": "#/components/schemas/StackCommandStackSetModel",
             "addChannel": "#/components/schemas/StackCommandStackAddChannel",
             "nestLayer": "#/components/schemas/StackCommandStackNestLayer",
+            "removeChannel": "#/components/schemas/StackCommandStackRemoveChannel",
             "setSeed": "#/components/schemas/StackCommandStackSetSeed",
             "duplicateLayers": "#/components/schemas/StackCommandStackDuplicateLayers",
             "pasteLayers": "#/components/schemas/StackCommandStackPasteLayers",
@@ -16148,6 +16152,26 @@
           }
         },
         "description": "Pastes what a copy holds, as new layers with canvases of their own, in this stack or another. Limits to named\nmeshes stay only in the stack they were made for."
+      },
+      "StackCommandStackRemoveChannel": {
+        "required": [
+          "usage",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "removeChannel"
+            ],
+            "type": "string"
+          },
+          "usage": {
+            "type": "string",
+            "description": "Which, one the set has. A set keeps at least one channel."
+          }
+        },
+        "description": "Takes a channel off the texture set (#141): no layer writes it and no export finds it. What the layers held for\nit, their values and paint, stays in them, so adding the channel again brings it back."
       },
       "StackCommandStackRemoveLayer": {
         "required": [

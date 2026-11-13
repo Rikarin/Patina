@@ -1,5 +1,6 @@
 using CsCheck;
 using Patina.Contracts;
+using Patina.Server.Api;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
 using Vixen.Texturing.Layers;
@@ -319,6 +320,49 @@ public sealed class StackEditorPropertyTests {
         Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackAddChannel("sparkle")])));
         Assert.NotNull(editor.Undo());
         Assert.Equal(before, editor.Set.Channels.Count);
+    }
+
+    /// <summary>
+    ///     A channel comes off the set as one step and comes back as it was (#141): the layers keep what they held for
+    ///     it. The set keeps one channel, and a channel it lacks is refused with a code.
+    /// </summary>
+    [Fact]
+    public void A_channel_can_be_removed_and_added_back_with_what_the_layers_held() {
+        var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
+        editor.Apply(new([new StackAddChannel("roughness")]));
+        editor.Apply(new([new StackSetLayer("paint", Values: new Dictionary<string, IReadOnlyList<float>> {
+            ["roughness"] = [0.25f, 0.25f, 0.25f, 1f]
+        })]));
+        var layers = editor.Set.Layers;
+
+        editor.Apply(new([new StackRemoveChannel("roughness")]));
+
+        Assert.DoesNotContain(editor.Set.Channels, static channel => channel.Usage == "roughness");
+        Assert.Equal("Remove Roughness", editor.History.UndoLabel);
+        Assert.Equal(layers, editor.Set.Layers);
+        Assert.Equal(
+            Refusals.ChannelMissing,
+            Assert.Throws<StackEditRefusedException>(() => editor.Apply(new([new StackRemoveChannel("roughness")])))
+                .Code
+        );
+
+        editor.Apply(new([new StackAddChannel("roughness")]));
+        Assert.Equal(layers, editor.Set.Layers);
+        Assert.NotNull(editor.Undo());
+        Assert.NotNull(editor.Undo());
+        Assert.Contains(editor.Set.Channels, static channel => channel.Usage == "roughness");
+
+        foreach (var channel in editor.Set.Channels.Skip(1).ToList()) {
+            editor.Apply(new([new StackRemoveChannel(channel.Usage)]));
+        }
+
+        Assert.Equal(
+            Refusals.ChannelLast,
+            Assert.Throws<StackEditRefusedException>(
+                    () => editor.Apply(new([new StackRemoveChannel(editor.Set.Channels.Single().Usage)]))
+                )
+                .Code
+        );
     }
 
     [Fact]

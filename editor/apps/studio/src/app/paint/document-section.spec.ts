@@ -95,6 +95,24 @@ describe('DocumentSection', () => {
     expect(edit).toHaveBeenCalledWith({ op: 'addChannel', usage: 'occlusion' });
   });
 
+  it('removes any channel of a set with more than one (#141), and offers none to remove from a set of one', async () => {
+    const { element, edit, fixture } = await render();
+
+    element.querySelector<HTMLElement>('[data-testid=paint-remove-channel]')?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const offered = [
+      ...document.querySelectorAll<HTMLElement>('[role=menu] button[data-testid^=paint-remove-channel-]')
+    ];
+    expect(offered.map(item => item.textContent.trim())).toEqual(['Base Color', 'Roughness']);
+    offered[1]?.click();
+    expect(edit).toHaveBeenCalledWith({ op: 'removeChannel', usage: 'roughness' });
+
+    TestBed.resetTestingModule();
+    const single = await render(['baseColor']);
+    expect(single.element.querySelector('[data-testid=paint-remove-channel]')).toBeNull();
+  });
+
   it('says what the mesh under the texture set is, and offers the UV sets all its parts have', async () => {
     const { element, asked } = await render();
     const text = (id: string) => element.querySelector(`[data-testid=${id}]`)?.textContent.trim();

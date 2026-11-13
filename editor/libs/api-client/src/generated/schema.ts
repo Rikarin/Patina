@@ -5642,6 +5642,7 @@ export interface components {
       | components['schemas']['StackCommandStackSetModel']
       | components['schemas']['StackCommandStackAddChannel']
       | components['schemas']['StackCommandStackNestLayer']
+      | components['schemas']['StackCommandStackRemoveChannel']
       | components['schemas']['StackCommandStackSetSeed']
       | components['schemas']['StackCommandStackDuplicateLayers']
       | components['schemas']['StackCommandStackPasteLayers']
@@ -5830,6 +5831,16 @@ export interface components {
        * @default Mask
        */
       part: string;
+    };
+    /**
+     * @description Takes a channel off the texture set (#141): no layer writes it and no export finds it. What the layers held for
+     *     it, their values and paint, stays in them, so adding the channel again brings it back.
+     */
+    StackCommandStackRemoveChannel: {
+      /** @enum {string} */
+      op: 'removeChannel';
+      /** @description Which, one the set has. A set keeps at least one channel. */
+      usage: string;
     };
     /** @description Removes a layer. */
     StackCommandStackRemoveLayer: {
