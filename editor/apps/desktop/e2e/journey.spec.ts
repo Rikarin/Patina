@@ -106,7 +106,9 @@ test('a new user makes a library, groups projects in folders, and comes back to 
 
   // A folder, named as it is made, and a colour from its menu.
   await window.getByTestId('tree-row').first().click();
-  await window.getByTestId('library-tree').click({ position: { x: 100, y: 200 } });
+  // An empty spot near the tree's foot, whatever its height: the window's frame takes more room on Windows.
+  const height = (await window.getByTestId('library-tree').boundingBox())?.height ?? 200;
+  await window.getByTestId('library-tree').click({ position: { x: 100, y: height - 8 } });
   await window.getByTestId('library-new-folder').click();
   await window.getByTestId('tree-rename').fill('Hero Props');
   await window.getByTestId('tree-rename').press('Enter');
