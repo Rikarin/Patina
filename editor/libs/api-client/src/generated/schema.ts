@@ -7831,8 +7831,8 @@ export interface components {
       /**
        * @description `smudge` drags what the canvas holds along the stroke, with the brush's flow; `clone` copies the
        *                 stack's composite from Offset away, as it stood when the stroke began; `material` lays
-       *                 what Graph makes in the stroke's channel; `picture` projects
-       *                 Picture.
+       *                 what Graph or Layered makes in the stroke's channel; `picture`
+       *                 projects Picture.
        */
       kind: string;
       /** @description For a material, the graph whose maps are laid, as a graph fill names it. */
@@ -7851,6 +7851,13 @@ export interface components {
       planarAxis?: null | string;
       placement?: null | components['schemas']['StackPlacement'];
       frame?: null | components['schemas']['StackFrame'];
+      /**
+       * @description For a material, instead of Graph: a layered material, as the shelf names it in
+       *     string MaterialInfo.Source (#125). Its layers composite on the stroke's texture set, reading its mesh
+       *     maps, and the stroke lays what they make, each layer where its own projection puts it; so it takes no
+       *     Projection, axis or Placement of its own.
+       */
+      layered?: null | string;
     };
     /** @description An open stack, for a list. */
     StackSummary: {
@@ -7907,6 +7914,19 @@ export interface components {
       angle: number;
       /** @description The box the mesh's `position` bake is normalised in, as a decal's is. */
       box?: null | number[];
+      /**
+       * Format: float
+       * @description For a stroke, how far apart its stamps are as a share of the path's full width, 0 to 16: zero is one unbroken
+       *     band, anything above it a row of round stamps never closer than a tenth of the width. A ribbon takes none.
+       * @default 0
+       */
+      spacing: number;
+      /**
+       * Format: float
+       * @description How far each stamp moves at random, 0 to 1: that share of the width to the side and of half the spacing along.
+       * @default 0
+       */
+      jitter: number;
     };
     /**
      * @description How a stroke on a mesh copies itself: through a plane, or round an axis. The plane or the axis passes through

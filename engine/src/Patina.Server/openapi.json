@@ -20763,7 +20763,7 @@
         "properties": {
           "kind": {
             "type": "string",
-            "description": "\u0060smudge\u0060 drags what the canvas holds along the stroke, with the brush\u0027s flow; \u0060clone\u0060 copies the\n            stack\u0027s composite from Offset away, as it stood when the stroke began; \u0060material\u0060 lays\n            what Graph makes in the stroke\u0027s channel; \u0060picture\u0060 projects\n            Picture."
+            "description": "\u0060smudge\u0060 drags what the canvas holds along the stroke, with the brush\u0027s flow; \u0060clone\u0060 copies the\n            stack\u0027s composite from Offset away, as it stood when the stroke began; \u0060material\u0060 lays\n            what Graph or Layered makes in the stroke\u0027s channel; \u0060picture\u0060\n            projects Picture."
           },
           "graph": {
             "type": [
@@ -20829,6 +20829,13 @@
                 "$ref": "#/components/schemas/StackFrame"
               }
             ]
+          },
+          "layered": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For a material, instead of Graph: a layered material, as the shelf names it in\nstring MaterialInfo.Source (#125). Its layers composite on the stroke\u0027s texture set, reading its mesh\nmaps, and the stroke lays what they make, each layer where its own projection puts it; so it takes no\nProjection, axis or Placement of its own."
           }
         },
         "description": "Where a stroke\u0027s colour comes from, when it is not one colour."
@@ -20874,7 +20881,9 @@
           "hardness",
           "ribbon",
           "repeat",
-          "angle"
+          "angle",
+          "spacing",
+          "jitter"
         ],
         "type": "object",
         "properties": {
@@ -20923,6 +20932,18 @@
               "format": "float"
             },
             "description": "The box the mesh\u0027s \u0060position\u0060 bake is normalised in, as a decal\u0027s is."
+          },
+          "spacing": {
+            "type": "number",
+            "description": "For a stroke, how far apart its stamps are as a share of the path\u0027s full width, 0 to 16: zero is one unbroken\nband, anything above it a row of round stamps never closer than a tenth of the width. A ribbon takes none.",
+            "format": "float",
+            "default": 0
+          },
+          "jitter": {
+            "type": "number",
+            "description": "How far each stamp moves at random, 0 to 1: that share of the width to the side and of half the spacing along.",
+            "format": "float",
+            "default": 0
           }
         },
         "description": "A curve on the model that a fill with the \u0060Path\u0060 projection is laid along (#130, #131): the points stay in\nthe stack, so they can be moved after the stroke is seen, and the stroke follows. It passes through each point."

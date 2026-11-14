@@ -75,6 +75,18 @@ a mask generator can use it.
   each pass over the ones before it; within a pass the nearest segment wins as before. A stroke still takes the nearest
   segment alone.
 
+## Later additions (wave 14)
+
+- **Stamps along a path** (#130): a stroke's `Spacing`, a share of the path's full width, makes it a row of round stamps
+  rather than one band, still evaluated and never stamped into a canvas. Each texel finds the nearest place on each
+  segment as before and is measured in the path's own frame there (how far along, across, and what is left over: off
+  the surface, or past the path's end), against the stamps either side; stamps stand at whole spacings from the start
+  and none past the end. `Jitter` moves each stamp by a hash of its number, so a path jitters the same way on every
+  host. ⚠ The spacing is never closer than a tenth of the width, which keeps the stamps one segment weighs for a texel
+  within the kernel's loop of 32. A ribbon takes no stamps: its picture runs along the whole path.
+- Still not done: a brush alpha on the stamps (it needs a second picture input on the node and a picture on the
+  path), erase and smudge along a path, a filled path, snapping, a Paths panel, and distance along the surface.
+
 ## The box
 
 `position` is 0 to 1 along each axis of the bake's own bounds, so a decal written in that space is stretched on any

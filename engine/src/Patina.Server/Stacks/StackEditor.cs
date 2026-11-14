@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Server.Graphs;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Vixen.Authoring;
@@ -325,6 +326,22 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         }
     }
 
+    /// <summary>
+    ///     A layered material a stroke lays (#125), made ready for the set as applying it would make it, with the
+    ///     graphs it needs brought into the project; default for any other source.
+    /// </summary>
+    /// <exception cref="StackEditRefusedException">There is no such material, or it has none for this set.</exception>
+    ImmutableArray<LayerAsset> Layered(StackStrokeSource? source) {
+        if (source is not { Kind: "material", Layered: { } named }) {
+            return default;
+        }
+
+        var material = MaterialShelf.Read(Library, named);
+        CompoundsArrived |= MaterialShelf.BringCompounds(Library, named, AssetPath);
+        var applied = SmartMaterial.Prepare(Set, material);
+        return applied.Layers.IsDefaultOrEmpty ? throw new StackEditRefusedException(applied.Status) : applied.Layers;
+    }
+
     void Apply(string source, string set, Action<IAuthoringCommand> run) {
         var material = MaterialShelf.Read(Library, source);
         CompoundsArrived |= MaterialShelf.BringCompounds(Library, source, AssetPath);
@@ -551,7 +568,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             && QuickMask.Painted(Standing.Concat(step.Strokes));
         step.Strokes.Add(
             new(nextEntry++, painted, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start) {
-                SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set),
+                SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set, Layered(stroke.Source)),
                 Width = width,
                 Height = height,
                 StampScale = by,

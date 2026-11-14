@@ -1063,6 +1063,10 @@ describe('PaintStore', () => {
     store.materialProjection.set('Triplanar');
     store.materialScale.set(4);
     expect(await source()).toMatchObject({ kind: 'material', projection: 'Triplanar', placement: { scale: 4 } });
+
+    // A layered material lays its own layers where they put themselves, so it sends no graph, projection or scale.
+    store.material.set({ name: 'Plastic', layered: 'smart:Plastic', source: 'smart:Plastic' });
+    expect(await source()).toEqual({ kind: 'material', layered: 'smart:Plastic' });
   });
 
   it('draws no line through a camera that has moved since the stroke', async () => {

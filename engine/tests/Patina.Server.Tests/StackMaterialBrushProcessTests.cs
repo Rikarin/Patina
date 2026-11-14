@@ -88,6 +88,57 @@ public sealed partial class StackProcessTests {
         );
     }
 
+    /// <summary>
+    ///     ⚠ A layered material lays what applying it lays (#125): its own layers composite on the set, and the stroke
+    ///     takes what they make there, rather than one graph's maps. A graph or a placement beside it is refused, since
+    ///     its layers are placed by their own projections.
+    /// </summary>
+    [Fact]
+    public async Task A_layered_material_brush_lays_what_applying_the_material_lays() {
+        using var deadline = Deadline(300);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        await StartAsync("Layered.vxlayers", deadline.Token);
+        var made = await http.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new { name = "Panel", kind = "layered-material" },
+            deadline.Token
+        );
+        Assert.True(made.IsSuccessStatusCode, await made.Content.ReadAsStringAsync(deadline.Token));
+        var state = await OpenAsync("projects/panel/panel.vxlayers", deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("paint", "Paint"));
+        var paint = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        var size = (await PixelsAsync(state.Id, false, deadline.Token)).First(static map => map.Usage == "baseColor")
+            .Width;
+        var at = size / 2;
+        var blank = await TexelAsync(state.Id, "blank", at, at, deadline.Token);
+        var dab = new StackStroke(
+            "material",
+            paint,
+            "baseColor",
+            new(size / 8f, Falloff: 0f),
+            Red,
+            [new(at, at)],
+            Source: new("material", Layered: "smart:Plastic")
+        );
+
+        await RefusedAsync(state.Id, deadline.Token, dab with { Source = dab.Source! with { Placement = new(2f) } });
+        await RefusedAsync(state.Id, deadline.Token, dab with { Source = dab.Source! with { Graph = "a.vxtexgraph" } });
+
+        await EditAsync(state.Id, deadline.Token, dab);
+        var painted = await TexelAsync(state.Id, "painted", at, at, deadline.Token);
+        await ActAsync(state.Id, "undo", deadline.Token);
+
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackAddLayer("material", string.Empty, Material: "smart:Plastic")
+        );
+        var applied = await TexelAsync(state.Id, "applied", at, at, deadline.Token);
+
+        Assert.NotEqual(blank, applied);
+        Assert.Equal(applied, painted);
+    }
+
     async Task<StackSample> SampleAsync(string id, float u, float v, CancellationToken token) {
         using var response = await http.PostAsJsonAsync(
             $"/api/v1/stacks/{id}/sample",
