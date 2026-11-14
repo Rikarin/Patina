@@ -34,6 +34,16 @@ public static class MapFile {
         return ExportPresetReader.QualityProblem(format, Quality(format, quality));
     }
 
+    /// <summary>
+    ///     The format a map is written in when the one asked for follows its maps (#141): as deep as the map, in the
+    ///     numbers its file holds. Any other format is itself.
+    /// </summary>
+    /// <param name="usage">The map's channel, which says whether its numbers are sRGB.</param>
+    /// <param name="format">One of <see cref="ExportFormats.All" />.</param>
+    /// <param name="depth">How many bits a lane the map holds: 8, 16 or 32.</param>
+    public static string Settled(string usage, string format, int depth) =>
+        ExportFormats.Settled(format, depth, ExportMaps.IsColour(usage) ? "srgb" : "linear");
+
     /// <summary>A file's quality, or the format's default when it names none.</summary>
     public static string Quality(string format, string? quality) =>
         quality ?? ExportPresetReader.DefaultQuality(format);

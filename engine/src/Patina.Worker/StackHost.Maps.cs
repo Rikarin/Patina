@@ -13,15 +13,17 @@ namespace Patina.Worker;
 sealed partial class StackHost {
     /// <summary>
     ///     Each map of an evaluation, as a digest, and as a file named after the stack when a folder is given: an 8-bit
-    ///     RGBA PNG of the digested pixels, or the file asked for, made from the map at the depth it was evaluated at.
+    ///     RGBA PNG of the digested pixels, or the file asked for, made from the map at the depth it was evaluated at,
+    ///     and in a format that follows its maps as deep as its channel is painted (#141).
     /// </summary>
     static List<StackPixels> Read(
         LayerStackEvaluator run,
         TextureBake bake,
-        string name,
+        (string Name, IReadOnlyDictionary<string, int> Depths) named,
         string? folder,
         StackFileAsk? file
     ) {
+        var name = named.Name;
         var outputs = run.Outputs;
         var images = outputs.Select(static output => output.Image).ToArray();
         var maps = bake.Read(images);
@@ -31,7 +33,19 @@ sealed partial class StackHost {
             var (output, map) = (outputs[at], maps[at]);
             var written = raw is null
                 ? Export(name, output.Usage, map, folder)
-                : Export(name, output.Usage, RawPictures.ToFloat(raw[at]).Image, folder!, file!);
+                : Export(
+                    name,
+                    output.Usage,
+                    RawPictures.ToFloat(raw[at]).Image,
+                    folder!,
+                    file! with {
+                        Format = MapFile.Settled(
+                            output.Usage,
+                            file!.Format,
+                            named.Depths.GetValueOrDefault(output.Usage, RawPictures.DepthOf(raw[at].Format))
+                        )
+                    }
+                );
             pixels.Add(new(output.Usage, map.Width, map.Height, Digest(map), written));
         }
 

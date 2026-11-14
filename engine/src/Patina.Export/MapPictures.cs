@@ -12,12 +12,32 @@ namespace Patina.Export;
 /// <param name="Name">Which map: one of <see cref="ExportMaps" />.</param>
 /// <param name="Image">The samples.</param>
 /// <param name="Green">For a normal, which way its green runs.</param>
-public sealed record MapPicture(string Name, FloatImage Image, GreenAxis Green);
+public sealed record MapPicture(string Name, FloatImage Image, GreenAxis Green) {
+    /// <summary>
+    ///     How many bits a lane it was made at (#141): 8, 16 or 32, which a file whose format follows its maps is
+    ///     written at.
+    /// </summary>
+    public int Depth { get; init; } = 8;
+}
 
 /// <summary>Reads and writes the lossless maps an output's object holds, at the depth they arrived.</summary>
 public static class MapPictures {
     /// <summary>Where a PNG's header says how many bits a sample has.</summary>
     const int PngDepthAt = 24;
+
+    /// <summary>
+    ///     How deep a map of an object built before maps said their depth is: a byte in a PNG, and sixteen bits in an
+    ///     EXR, which is the depth a graph and a stack compute at unless they ask for more.
+    /// </summary>
+    static int DepthOfFile(string file) => file.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? 8 : 16;
+
+    /// <summary>How many bits a lane a bake's maps hold, from its format: one of <c>BakeInputs.Formats</c>.</summary>
+    public static int DepthOfBake(string format) =>
+        format switch {
+            BakeInputs.Png8 => 8,
+            BakeInputs.Exr32 => 32,
+            _ => 16
+        };
 
     /// <summary>A manifest's name for a way green runs.</summary>
     public static string NameOf(GreenAxis green) => green == GreenAxis.Up ? "up" : "down";
@@ -33,7 +53,7 @@ public static class MapPictures {
                     map.Map,
                     ReadFile(Path.Combine(folder, map.File)),
                     map.Green == "down" ? GreenAxis.Down : GreenAxis.Up
-                )
+                ) { Depth = map.Depth > 0 ? map.Depth : DepthOfFile(map.File) }
             )
         ];
     }

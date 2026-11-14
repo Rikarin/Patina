@@ -157,7 +157,7 @@ public sealed class OutputBuilders(
             }
         );
 
-        var manifest = Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Down));
+        var manifest = Painted(Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Down)), set);
         if (manifest.Maps is not [var first, ..]
             || Coverage(step, set.UvSet, first.Width, first.Height) is not { } laid) {
             return manifest;
@@ -166,11 +166,29 @@ public sealed class OutputBuilders(
         // The set's files are named by the UDIM tile its layout sits on (#20).
         return laid.Picture is { } islands
             ? manifest with {
-                Maps = [..manifest.Maps, MapPictures.Write(folder, ExportMaps.Coverage, islands, true, null)],
+                Maps = [
+                    ..manifest.Maps,
+                    MapPictures.Write(folder, ExportMaps.Coverage, islands, true, null) with { Depth = 8 }
+                ],
                 Udim = laid.Udim
             }
             : manifest with { Udim = laid.Udim };
     }
+
+    /// <summary>
+    ///     A stack's maps as deep as its channels are painted (#141), not as deep as the set computed them: a channel
+    ///     painted at eight bits is an eight-bit map to an export whose file follows the channel, though the composite
+    ///     ran at sixteen.
+    /// </summary>
+    static BuildManifest Painted(BuildManifest manifest, TextureSetAsset set) =>
+        manifest with {
+            Maps = [
+                ..manifest.Maps.Select(map => set.Channels.Find(channel => channel.Usage == map.Map) is { } channel
+                    ? map with { Depth = PaintTexelFormats.BytesPerTexel(channel.Format) * 2 }
+                    : map
+                )
+            ]
+        };
 
     /// <summary>
     ///     Which texels of the stack's mesh layout its texture set covers, one where it does: what an export's padding
@@ -215,6 +233,7 @@ public sealed class OutputBuilders(
         Directory.CreateDirectory(maps);
 
         List<BuiltMap> built = [];
+        var depth = MapPictures.DepthOfBake(manifest.Format);
         foreach (var map in MapPictures.OfBake(bake, manifest)) {
             var written = MapPictures.Write(
                 maps,
@@ -223,7 +242,7 @@ public sealed class OutputBuilders(
                 false,
                 map.Name == ExportMaps.Normal ? map.Green : null
             );
-            built.Add(written with { File = $"maps/{written.File}" });
+            built.Add(written with { File = $"maps/{written.File}", Depth = depth });
         }
 
         return built;
@@ -257,9 +276,14 @@ public sealed class OutputBuilders(
         List<BuiltMap> maps = [];
         for (var at = 0; at < usages.Length; at++) {
             var (image, eightBit) = RawPictures.ToFloat(raw[at]);
-            maps.Add(
-                MapPictures.Write(folder, usages[at], image, eightBit, usages[at] == ExportMaps.Normal ? green : null)
+            var written = MapPictures.Write(
+                folder,
+                usages[at],
+                image,
+                eightBit,
+                usages[at] == ExportMaps.Normal ? green : null
             );
+            maps.Add(written with { Depth = RawPictures.DepthOf(raw[at].Format) });
         }
 
         return new(step.Tool, maps, [], []);
@@ -335,6 +359,14 @@ static class MeshMapSettings {
 
 /// <summary>A plan image's bytes as numbers, keeping how many bits they had.</summary>
 public static class RawPictures {
+    /// <summary>How many bits a lane of a plan image holds: 8, 16 or 32.</summary>
+    public static int DepthOf(PixelFormat format) =>
+        format switch {
+            PixelFormat.R16Float or PixelFormat.Rgba16Float => 16,
+            PixelFormat.R32Float or PixelFormat.Rgba32Float => 32,
+            _ => 8
+        };
+
     /// <summary>The samples, and whether they came from bytes.</summary>
     public static (FloatImage Image, bool EightBit) ToFloat(TextureRawImage raw) {
         var texels = raw.Width * raw.Height;

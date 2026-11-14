@@ -40,11 +40,19 @@ public static class DerivedMaps {
         Dictionary<string, MapPicture> completed = new(maps, StringComparer.Ordinal);
         foreach (var map in missing) {
             if (Make(map, maps) is { } made) {
-                completed[map] = new(map, made, GreenAxis.Up);
+                completed[map] = new(map, made, GreenAxis.Up) { Depth = DepthOf(map, maps) };
             }
         }
 
         return completed;
+    }
+
+    /// <summary>A derived map is as deep as the deepest map it is worked out from (#141).</summary>
+    static int DepthOf(string map, IReadOnlyDictionary<string, MapPicture> maps) {
+        string[] from = map == ExportMaps.Glossiness
+            ? [ExportMaps.Roughness]
+            : [ExportMaps.BaseColor, ExportMaps.Metalness];
+        return from.Select(name => maps.GetValueOrDefault(name)?.Depth ?? 8).Max();
     }
 
     static FloatImage? Make(string map, IReadOnlyDictionary<string, MapPicture> maps) {

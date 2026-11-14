@@ -192,22 +192,55 @@ public static class ExportFormats {
     public const string WebP = "webp";
     public const string Hdr = "hdr";
 
+    /// <summary>A PNG as deep as the maps it reads (#141): 8-bit, or 16-bit for linear numbers from deeper maps.</summary>
+    public const string Png = "png";
+
+    /// <summary>A TIFF as deep as the maps it reads: 8-bit, or 16-bit or 32-bit float for linear numbers.</summary>
+    public const string Tiff = "tiff";
+
+    /// <summary>An OpenEXR as deep as the maps it reads: 16-bit float, or 32-bit float for 32-bit maps.</summary>
+    public const string Exr = "exr";
+
     /// <summary>The JPEG quality a preset that names none gets.</summary>
     public const int DefaultJpegQuality = 90;
 
     public static IReadOnlyList<string> All { get; } =
-        [Png8, Png16, Tga, Jpeg, Tiff8, Tiff16, Tiff32, WebP, Exr16, Exr32, Hdr, Ktx2, Dds];
+        [Png8, Png16, Png, Tga, Jpeg, Tiff8, Tiff16, Tiff32, Tiff, WebP, Exr16, Exr32, Exr, Hdr, Ktx2, Dds];
+
+    /// <summary>
+    ///     Whether a format's depth follows the maps a file reads (#141), as a channel is painted, and is settled for
+    ///     each file when it is written.
+    /// </summary>
+    public static bool Follows(string format) => format is Png or Tiff or Exr;
+
+    /// <summary>
+    ///     The format a file of a following format is written in, from the deepest map it reads: as deep as that map
+    ///     where the format and the file's numbers allow it. An sRGB file stays eight bits, which sRGB numbers are made
+    ///     for and the only depth a PNG or TIFF here holds them at. Any other format is itself.
+    /// </summary>
+    /// <param name="format">One of <see cref="All" />.</param>
+    /// <param name="depth">How many bits a lane the deepest map it reads holds: 8, 16 or 32.</param>
+    /// <param name="space">srgb or linear: what the file's numbers are.</param>
+    public static string Settled(string format, int depth, string space) {
+        var linear = space == "linear";
+        return format switch {
+            Png => linear && depth > 8 ? Png16 : Png8,
+            Tiff => !linear || depth <= 8 ? Tiff8 : depth <= 16 ? Tiff16 : Tiff32,
+            Exr => depth > 16 ? Exr32 : Exr16,
+            _ => format
+        };
+    }
 
     /// <summary>What a format's files end in.</summary>
     public static string ExtensionOf(string format) =>
         format switch {
-            Png8 or Png16 => ".png",
-            Exr16 or Exr32 => ".exr",
+            Png8 or Png16 or Png => ".png",
+            Exr16 or Exr32 or Exr => ".exr",
             Ktx2 => ".ktx2",
             Dds => ".dds",
             Tga => ".tga",
             Jpeg => ".jpg",
-            Tiff8 or Tiff16 or Tiff32 => ".tif",
+            Tiff8 or Tiff16 or Tiff32 or Tiff => ".tif",
             WebP => ".webp",
             Hdr => ".hdr",
             _ => throw new ArgumentException($"'{format}' is not a format.", nameof(format))
@@ -226,6 +259,9 @@ public static class ExportFormats {
             WebP => "WebP lossless",
             Exr16 => "OpenEXR 16-bit float",
             Exr32 => "OpenEXR 32-bit float",
+            Png => "PNG at its maps' depth",
+            Tiff => "TIFF at its maps' depth",
+            Exr => "OpenEXR at its maps' depth",
             Hdr => "Radiance HDR",
             Ktx2 => "KTX2",
             Dds => "DDS",
@@ -235,13 +271,13 @@ public static class ExportFormats {
     /// <summary>How many lanes a file of a format can hold.</summary>
     public static IReadOnlyList<int> LanesOf(string format) =>
         format switch {
-            Png8 or Png16 or Tga or WebP => [1, 3, 4],
+            Png8 or Png16 or Png or Tga or WebP => [1, 3, 4],
             Jpeg or Hdr => [1, 3],
             _ => [1, 2, 3, 4]
         };
 
     /// <summary>Whether a format holds float numbers, which are linear.</summary>
-    public static bool IsFloat(string format) => format is Exr16 or Exr32 or Tiff32 or Hdr;
+    public static bool IsFloat(string format) => format is Exr16 or Exr32 or Exr or Tiff32 or Hdr;
 
     /// <summary>Whether a format holds 16-bit integers, which here are linear.</summary>
     public static bool IsWide(string format) => format is Png16 or Tiff16;
