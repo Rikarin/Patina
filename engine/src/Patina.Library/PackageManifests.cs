@@ -49,6 +49,13 @@ public static class PackageManifests {
             : manifest;
     }
 
+    /// <summary>Whether a package can be called this: a name that can be a folder's on every system.</summary>
+    public static bool IsName(string name) =>
+        name.Length > 0
+        && name == name.Trim()
+        && name is not ("." or "..")
+        && name.IndexOfAny([..Path.GetInvalidFileNameChars(), '/', '\\', ':', '*', '?', '"', '<', '>', '|']) < 0;
+
     /// <summary>Whether a path is a package folder: one ending in the extension with a manifest in it.</summary>
     public static bool IsPackage(string path) =>
         Path.TrimEndingDirectorySeparator(path).EndsWith(Extension, StringComparison.Ordinal)

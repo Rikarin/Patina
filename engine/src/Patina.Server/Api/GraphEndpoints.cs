@@ -81,6 +81,7 @@ static class GraphEndpoints {
                 Missing,
                 Refused
             );
+        graphs.MapGraphRelink();
         graphs.MapPost("/{id}/undo", Undo)
             .Describe("UndoGraph", "Takes back the newest batch, whichever client sent it.", Missing, Conflict);
         graphs.MapPost("/{id}/redo", Redo)
@@ -155,6 +156,7 @@ static class GraphEndpoints {
                 "The events after a number. /ws/graphs/{id}?since= sends the same events as they happen.",
                 Missing
             );
+        api.MapPreviewSave(Tag);
         api.MapGet("/previews/{hash}", GetPreview)
             .WithTags(Tag)
             .Produces<byte[]>(StatusCodes.Status200OK, "image/png")
@@ -531,7 +533,7 @@ static class GraphEndpoints {
             since
         );
 
-    static ProblemHttpResult NoSession(string id) =>
+    internal static ProblemHttpResult NoSession(string id) =>
         Refusals.Problem(
             $"There is no open graph '{id}'.",
             StatusCodes.Status404NotFound,

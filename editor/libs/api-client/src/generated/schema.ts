@@ -330,6 +330,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/previews/{hash}/save': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Writes a picture the Server has written, by its hash, to a PNG file on the Server's machine, replacing one there. POST /graphs/{id}/images writes a node's picture at full size first. */
+    post: operations['SavePreview'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/previews/{hash}': {
     parameters: {
       query?: never;
@@ -1091,6 +1108,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/packages/import': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings a package into the library's packages folder from a zip of it or from its folder, replacing one of its name, once all of it has been read as a package this Patina can use. */
+    post: operations['ImportPackage'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project/bake/plan': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The bakes a project's own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh. */
+    get: operations['GetProjectBakePlan'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/snapshots': {
     parameters: {
       query?: never;
@@ -1449,6 +1500,23 @@ export interface paths {
     put?: never;
     /** Applies a batch of edits, whole or not at all, as one undo step. */
     post: operations['ApplyGraphCommands'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/relink': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Points every Bitmap node that reads a picture at another file, as one undo step. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
+    post: operations['RelinkGraphPicture'];
     delete?: never;
     options?: never;
     head?: never;
@@ -4728,6 +4796,13 @@ export interface components {
        */
       height: number;
     };
+    /** @description The body of `POST /api/v1/graphs/{id}/relink`: a picture the graph reads, and the file it is now. */
+    GraphRelinkRequest: {
+      /** @description The picture as the graph's Bitmap nodes name it. */
+      from: string;
+      /** @description The file to read instead: absolute, or below the library. */
+      to: string;
+    };
     /**
      * @description The nodes chosen in a graph session, and the one kept on view whatever is chosen. A session has one selection,
      *     whichever client made it last, so a client that follows it, such as the viewport, needs no editor (#244).
@@ -5337,6 +5412,11 @@ export interface components {
       file?: null | string;
       /** @description Why it cannot be brought, or null when it can. */
       problem?: null | string;
+      /**
+       * @description The compound that names it, or null when the graph itself does, which is when relinking the graph's Bitmap
+       *     nodes (`POST /api/v1/graphs/{id}/relink`) reaches it.
+       */
+      in?: null | string;
     };
     /** @description A picture a package carries. */
     PackageFile: {
@@ -5344,6 +5424,20 @@ export interface components {
       path: string;
       /** @description How the graph named it before it was published. */
       from: string;
+    };
+    /** @description A package that has been brought into a library. */
+    PackageImported: {
+      /** @description Its folder, below the library. */
+      path: string;
+      /** @description What its `package.yaml` says. */
+      manifest: components['schemas']['PackageManifest'];
+      /** @description True when a package of its name was there, and this one replaced it. */
+      replaced: boolean;
+    };
+    /** @description The body of `POST /api/v1/library/packages/import`. */
+    PackageImportRequest: {
+      /** @description The package to bring in: a zip of one, or its `.ptpkg` folder, as a path on the machine the Server runs on. */
+      source: string;
     };
     /**
      * @description A package's `package.yaml` (ADR 0027): what a `.ptpkg` folder holds besides its graph, and what made
@@ -5400,6 +5494,11 @@ export interface components {
       /** @description What it is used as, or null for the role its project gives it. */
       role?: null | string;
     };
+    /** @description The body of `POST /api/v1/previews/{hash}/save`. */
+    PreviewSaveRequest: {
+      /** @description The PNG to write, as a whole path on the Server's machine, in a folder that exists. */
+      file: string;
+    };
     ProblemDetails: {
       type?: null | string;
       title?: null | string;
@@ -5407,6 +5506,18 @@ export interface components {
       status?: null | number;
       detail?: null | string;
       instance?: null | string;
+    };
+    /**
+     * @description The bakes a project's own settings ask for (#186): one request per texture set to bake, or one for the whole
+     *     mesh, as the Bake dialog sends them. `GET /api/v1/library/project/bake/plan` answers it, and
+     *     `patina bake-maps --project … --dry-run` prints it, so a script bakes a project the way the editor does
+     *     without working the requests out itself.
+     */
+    ProjectBakePlan: {
+      /** @description The project's folder. */
+      project: string;
+      /** @description What to send to `POST /api/v1/jobs/bakes`, one at a time or all at once. */
+      requests: components['schemas']['BakeRequest'][];
     };
     /** @description The body of `PUT /api/v1/library/project/bake`. */
     ProjectBakeRequest: {
@@ -9608,6 +9719,48 @@ export interface operations {
       };
     };
   };
+  SavePreview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        hash: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PreviewSaveRequest'];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetPreview: {
     parameters: {
       query?: never;
@@ -12220,6 +12373,107 @@ export interface operations {
       };
     };
   };
+  ImportPackage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PackageImportRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PackageImported'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetProjectBakePlan: {
+    parameters: {
+      query: {
+        project: string;
+        document?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectBakePlan'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetDocumentSnapshots: {
     parameters: {
       query: {
@@ -13462,6 +13716,50 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['GraphCommandBatch'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphEditResult'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RelinkGraphPicture: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphRelinkRequest'];
       };
     };
     responses: {

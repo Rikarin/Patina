@@ -49,6 +49,12 @@ export const CommandTable: readonly CommandSpec[] = [
     section: 'File',
     hint: 'Brings the materials of a glTF, MaterialX or USD file into the project, each as a graph'
   },
+  {
+    id: 'importPackage',
+    label: 'Import Package…',
+    section: 'File',
+    hint: 'Brings a zipped package into the library’s packages, where every project’s shelf offers it'
+  },
   { id: 'export', label: 'Export…', section: 'File', keys: ['Mod+Shift+E'] },
   { id: 'bake', label: 'Bake…', section: 'File', keys: ['Mod+Shift+B'], hint: 'Bakes mesh maps' },
   {
@@ -464,6 +470,7 @@ export const MenuBar: readonly {
       '-',
       'import',
       'importMaterials',
+      'importPackage',
       'export',
       'bake',
       'quickBake',

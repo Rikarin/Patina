@@ -43,6 +43,12 @@ internal static class MeshMapCommand {
             return 2;
         }
 
+        return Bake(request, threads, cacheFolder);
+    }
+
+    /// <summary>One bake, from the cache when it holds it, with its maps' paths on standard output.</summary>
+    /// <returns>0, or 1 when it failed, or 130 when it was stopped.</returns>
+    public static int Bake(BakeRequest request, int threads, string? cacheFolder) {
         using var stop = new CancellationTokenSource();
         Console.CancelKeyPress += (_, args) => {
             args.Cancel = true;

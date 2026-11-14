@@ -906,6 +906,60 @@
         }
       }
     },
+    "/api/v1/previews/{hash}/save": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Writes a picture the Server has written, by its hash, to a PNG file on the Server\u0027s machine, replacing one there. POST /graphs/{id}/images writes a node\u0027s picture at full size first.",
+        "operationId": "SavePreview",
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/previews/{hash}": {
       "get": {
         "tags": [
@@ -4188,6 +4242,135 @@
         }
       }
     },
+    "/api/v1/library/packages/import": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings a package into the library\u0027s packages folder from a zip of it or from its folder, replacing one of its name, once all of it has been read as a package this Patina can use.",
+        "operationId": "ImportPackage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackageImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackageImported"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/bake/plan": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The bakes a project\u0027s own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh.",
+        "operationId": "GetProjectBakePlan",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectBakePlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/snapshots": {
       "get": {
         "tags": [
@@ -5741,6 +5924,67 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/GraphCommandBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/relink": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Points every Bitmap node that reads a picture at another file, as one undo step. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
+        "operationId": "RelinkGraphPicture",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphRelinkRequest"
               }
             }
           },
@@ -14053,6 +14297,24 @@
         },
         "description": "Where a node\u0027s picture is: \u0060GET /api/v1/previews/{hash}\u0060. Pixels never cross JSON."
       },
+      "GraphRelinkRequest": {
+        "required": [
+          "from",
+          "to"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "The picture as the graph\u0027s Bitmap nodes name it."
+          },
+          "to": {
+            "type": "string",
+            "description": "The file to read instead: absolute, or below the library."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/graphs/{id}/relink\u0060: a picture the graph reads, and the file it is now."
+      },
       "GraphSelection": {
         "required": [
           "nodes"
@@ -15438,6 +15700,13 @@
               "string"
             ],
             "description": "Why it cannot be brought, or null when it can."
+          },
+          "in": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The compound that names it, or null when the graph itself does, which is when relinking the graph\u0027s Bitmap\nnodes (\u0060POST /api/v1/graphs/{id}/relink\u0060) reaches it."
           }
         },
         "description": "Something a graph reads that publishing it as a package has to bring, or cannot."
@@ -15459,6 +15728,42 @@
           }
         },
         "description": "A picture a package carries."
+      },
+      "PackageImported": {
+        "required": [
+          "path",
+          "manifest",
+          "replaced"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its folder, below the library."
+          },
+          "manifest": {
+            "description": "What its \u0060package.yaml\u0060 says.",
+            "$ref": "#/components/schemas/PackageManifest"
+          },
+          "replaced": {
+            "type": "boolean",
+            "description": "True when a package of its name was there, and this one replaced it."
+          }
+        },
+        "description": "A package that has been brought into a library."
+      },
+      "PackageImportRequest": {
+        "required": [
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "The package to bring in: a zip of one, or its \u0060.ptpkg\u0060 folder, as a path on the machine the Server runs on."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/packages/import\u0060."
       },
       "PackageManifest": {
         "required": [
@@ -15600,6 +15905,19 @@
         },
         "description": "The body of \u0060POST /api/v1/library/packages\u0060."
       },
+      "PreviewSaveRequest": {
+        "required": [
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "The PNG to write, as a whole path on the Server\u0027s machine, in a folder that exists."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/previews/{hash}/save\u0060."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -15635,6 +15953,27 @@
             ]
           }
         }
+      },
+      "ProjectBakePlan": {
+        "required": [
+          "project",
+          "requests"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project\u0027s folder."
+          },
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BakeRequest"
+            },
+            "description": "What to send to \u0060POST /api/v1/jobs/bakes\u0060, one at a time or all at once."
+          }
+        },
+        "description": "The bakes a project\u0027s own settings ask for (#186): one request per texture set to bake, or one for the whole\nmesh, as the Bake dialog sends them. \u0060GET /api/v1/library/project/bake/plan\u0060 answers it, and\n\u0060patina bake-maps --project \u2026 --dry-run\u0060 prints it, so a script bakes a project the way the editor does\nwithout working the requests out itself."
       },
       "ProjectBakeRequest": {
         "required": [

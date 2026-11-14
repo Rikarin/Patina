@@ -27,6 +27,41 @@ static class PackageEndpoints {
                 "Publishes a saved graph as a package in the library's packages folder, replacing one of its name. "
                 + "Every project's shelf then offers it."
             );
+
+        library.MapPost("/packages/import", ImportPackage)
+            .Described(
+                "ImportPackage",
+                "Brings a package into the library's packages folder from a zip of it or from its folder, replacing "
+                + "one of its name, once all of it has been read as a package this Patina can use."
+            );
+    }
+
+    static Results<Ok<PackageImported>, ProblemHttpResult> ImportPackage(
+        LibraryHost host,
+        PackageImportRequest request
+    ) {
+        if (host.Library is not { } library) {
+            return LibraryTreeEndpoints.NoLibrary();
+        }
+
+        try {
+            var (package, manifest, replaced) = PackageArchives.Import(
+                Path.GetFullPath(request.Source, library.RootPath),
+                Path.Combine(library.RootPath, PackageManifests.LibraryFolder)
+            );
+            return TypedResults.Ok(
+                new PackageImported(LibraryLayout.Relative(library.RootPath, package), manifest, replaced)
+            );
+        } catch (Exception e) when (e is InvalidDataException or LibraryFormatException) {
+            return Refusals.Problem(
+                e.Message,
+                StatusCodes.Status422UnprocessableEntity,
+                Refusals.PackageRefused,
+                Refusals.Reason(e.Message)
+            );
+        } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
+            return problem;
+        }
     }
 
     static Results<Ok<PackagePlan>, ProblemHttpResult> GetPackagePlan(LibraryHost host, string graph, string? role) =>
