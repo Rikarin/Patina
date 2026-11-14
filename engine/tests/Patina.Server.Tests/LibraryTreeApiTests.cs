@@ -284,7 +284,7 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
         await using (new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)) {
             kept = await client.PutAsJsonAsync(
                 "/api/v1/library/project/export",
-                new ProjectExportRequest("crate", new ProjectExportSettings { Preset = "godot" }),
+                new ProjectExportRequest("crate", new() { Preset = "godot" }),
                 Token
             );
         }
