@@ -64,6 +64,27 @@ describe('FileChooser', () => {
     expect(listed).not.toHaveBeenCalled();
   });
 
+  it('chooses a folder to write into from the library outside the desktop app, as a path on the Server (#4)', async () => {
+    const { chooser: files, picker } = chooser([]);
+
+    const chosen = files.folder('Choose an Output Folder', 'crate');
+    await vi.waitFor(() =>
+      expect(picker.request()).toEqual({ kind: 'folder', title: 'Choose an Output Folder', project: 'crate' })
+    );
+    picker.answer({ library: 'exports/crate' });
+
+    expect(await chosen).toBe('C:\\Art\\Game.ptlib/exports/crate');
+  });
+
+  it('chooses a folder from the system dialog on the desktop, which sees the whole machine', async () => {
+    const openFolder = vi.fn(() => Promise.resolve('D:\\Out'));
+    Object.assign(globalThis, { patina: { openFolder } });
+    const { chooser: files, picker } = chooser([]);
+
+    expect(await files.folder('Export to a Folder')).toBe('D:\\Out');
+    expect(picker.request()).toBeNull();
+  });
+
   it('joins a library path to the library once, whatever the library path ends in', () => {
     expect(pathOnServer('/srv/Game.ptlib/', 'projects/a/a.glb')).toBe('/srv/Game.ptlib/projects/a/a.glb');
     expect(pathOnServer('C:\\Game.ptlib\\', 'projects/a/a.glb')).toBe('C:\\Game.ptlib/projects/a/a.glb');

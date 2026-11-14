@@ -191,4 +191,69 @@ describe('MaterialShelf', () => {
     expect(using.use).not.toHaveBeenCalled();
     expect(using.paintWith).not.toHaveBeenCalled();
   });
+
+  it('adds several materials chosen with Ctrl held together, in the shelf order (#203)', async () => {
+    const { fixture, page, names, using } = setup();
+    await vi.waitFor(async () => {
+      await settled(fixture);
+      expect(names()).toEqual(['PlasticStarter', 'RustProps']);
+    });
+
+    const [first, second] = page.querySelectorAll<HTMLElement>('[data-testid="shelf-material"]');
+    second?.dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }));
+    first?.dispatchEvent(new MouseEvent('click', { bubbles: true, metaKey: true }));
+    await settled(fixture);
+
+    expect(using.use).not.toHaveBeenCalled();
+    expect(first?.getAttribute('aria-selected')).toBe('true');
+    expect(page.querySelector('[data-testid="shelf-chosen"]')?.textContent).toContain('2 materials chosen');
+
+    page.querySelector<HTMLElement>('[data-testid="shelf-add-chosen"]')?.click();
+    await settled(fixture);
+
+    expect(using.use.mock.calls).toEqual([[plastic], [rust]]);
+    expect(page.querySelector('[data-testid="shelf-chosen"]')).toBeNull();
+  });
+
+  it('keeps a search to come back to, and forgets it again (#203)', async () => {
+    const { fixture, page, names } = setup();
+    await vi.waitFor(async () => {
+      await settled(fixture);
+      expect(names()).toEqual(['PlasticStarter', 'RustProps']);
+    });
+    const menu = async () => {
+      page.querySelector<HTMLElement>('[data-testid="shelf-searches"]')?.click();
+      await settled(fixture);
+    };
+    const search = page.querySelector<HTMLInputElement>('[data-testid="shelf-search"]');
+    const type = async (words: string) => {
+      if (search) {
+        search.value = words;
+        search.dispatchEvent(new Event('input'));
+      }
+      await settled(fixture);
+    };
+
+    await type('scratches');
+    await menu();
+    document.querySelector<HTMLElement>('[data-testid="shelf-keep-search"]')?.click();
+    await settled(fixture);
+    expect(TestBed.inject(Preferences).shelfSearches()).toEqual([{ search: 'scratches', role: 'all', origin: 'all' }]);
+
+    await type('');
+    await menu();
+    const kept = document.querySelector<HTMLElement>('[data-testid="shelf-kept-search"]');
+    expect(kept?.textContent.trim()).toBe('“scratches”');
+    kept?.click();
+    await vi.waitFor(async () => {
+      await settled(fixture);
+      expect(search?.value).toBe('scratches');
+      expect(names()).toEqual(['RustProps']);
+    });
+
+    await menu();
+    document.querySelector<HTMLElement>('[data-testid="shelf-forget-search"]')?.click();
+    await settled(fixture);
+    expect(TestBed.inject(Preferences).shelfSearches()).toEqual([]);
+  });
 });

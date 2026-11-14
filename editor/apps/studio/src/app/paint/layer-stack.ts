@@ -37,13 +37,13 @@ import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { Activity } from '../core/activity';
 import { Commands } from '../core/commands';
-import { desktop } from '../core/desktop';
 import { IconImports } from '../core/icons';
 import { blendName as blendLabelOf, channelName, termName } from '../core/labels';
 import { MenuKeys } from '../core/menu-keys';
 import { diagnosticOf, messageOf } from '../core/messages';
 import { percent } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
+import { FileChooser } from '../library/file-chooser';
 import { ProjectStore } from '../library/project-store';
 import { IsolationStore } from '../viewport/isolation-store';
 import { type DropZone, dropManyCommands, nudgeCommands } from './layer-drag';
@@ -1908,6 +1908,7 @@ export class LayerStack {
   });
   protected readonly commands = inject(Commands);
   private readonly activity = inject(Activity);
+  private readonly chooser = inject(FileChooser);
   protected readonly tagSwatch = tagSwatch;
 
   /** Marks every chosen layer with a colour, or takes the mark away, as one step (#106). */
@@ -1922,7 +1923,7 @@ export class LayerStack {
    * flattened folder writes the picture it was flattened to.
    */
   protected async exportAlone(layer: StackLayer, mask = false): Promise<void> {
-    const folder = await desktop()?.openFolder();
+    const folder = await this.chooser.folder('Export to a Folder', this.project.current()?.path ?? null);
     if (!folder) {
       return;
     }

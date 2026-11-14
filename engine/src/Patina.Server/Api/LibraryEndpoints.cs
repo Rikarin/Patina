@@ -150,6 +150,7 @@ static class LibraryEndpoints {
                         request.Rows
                     )
                 );
+                BakeAtSize(library, project.Path, kind, request.Resolution);
             }
 
             host.RequestRescan();
@@ -158,6 +159,16 @@ static class LibraryEndpoints {
             return Refusals.Of(e);
         } catch (ProjectRefusedException e) {
             return Refusals.Of(e);
+        }
+    }
+
+    /// <summary>
+    ///     A texturing project bakes at the size it was made at until someone says otherwise (#144): its bake settings
+    ///     start from that width, and each set's height follows the set. One made at the bake's own default keeps none.
+    /// </summary>
+    static void BakeAtSize(OpenLibrary library, string project, string kind, int? side) {
+        if (kind == DocumentKinds.Texturing && side is { } width && width != new BakeOptions().Resolution) {
+            library.SetBake(project, new() { Options = new() { Resolution = width } });
         }
     }
 

@@ -9,19 +9,20 @@ import {
   untracked
 } from '@angular/core';
 import { provideIcons } from '@ng-icons/core';
-import { matStar, matStarBorder } from '@ng-icons/material-icons/baseline';
+import { matBookmarkBorder, matStar, matStarBorder } from '@ng-icons/material-icons/baseline';
 import { type MaterialInfo, type StackTerm, unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiInputImports } from '@xui/input';
+import { XuiMenuImports } from '@xui/menu';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
-import { type XuiSegmentedOption, XuiSegmentedControlImports } from '@xui/segmented-control';
+import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { Commands } from '../core/commands';
 import { IconImports } from '../core/icons';
 import { labelIn } from '../core/labels';
 import { messageOf } from '../core/messages';
-import { Preferences } from '../core/preferences';
+import { Preferences, type ShelfSearch, sameSearch } from '../core/preferences';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { LibraryThumbnails } from '../library/thumbnails';
@@ -54,27 +55,42 @@ const Preset = 'preset';
     XuiButtonImports,
     XuiCalloutImports,
     XuiInputImports,
+    XuiMenuImports,
     XuiNonIdealStateImports,
     XuiSegmentedControlImports,
     XuiSelectImports
   ],
-  providers: [provideIcons({ matStar, matStarBorder })],
+  providers: [provideIcons({ matBookmarkBorder, matStar, matStarBorder })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
     <div class="flex shrink-0 flex-col gap-1.5 p-2">
-      <input
-        class="w-full"
-        xuiInput
-        size="sm"
-        type="search"
-        autocomplete="off"
-        aria-label="Search materials"
-        data-testid="shelf-search"
-        placeholder="Search by name, tag, type, origin or path"
-        [value]="search()"
-        (input)="search.set(text($event))"
-      />
+      <div class="flex min-w-0 items-center gap-1">
+        <input
+          class="min-w-0 flex-1"
+          xuiInput
+          size="sm"
+          type="search"
+          autocomplete="off"
+          aria-label="Search materials"
+          data-testid="shelf-search"
+          placeholder="Search by name, tag, type, origin or path"
+          [value]="search()"
+          (input)="search.set(text($event))"
+        />
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          aria-label="Kept searches"
+          title="Searches kept to come back to"
+          data-testid="shelf-searches"
+          [xuiMenuTriggerFor]="searchMenu"
+        >
+          <ng-icon xui size="sm" name="matBookmarkBorder" />
+        </button>
+      </div>
       <div class="flex min-w-0 items-center gap-1.5">
         <xui-select
           class="min-w-0 flex-1 [&_button]:text-xs"
@@ -109,6 +125,13 @@ const Preset = 'preset';
         (valueChange)="choose($event ?? 'list')"
       />
     </div>
+    @if (chosen().size > 0) {
+      <div class="chrome-bar flex shrink-0 items-center gap-1.5 px-2 py-1 text-xs" data-testid="shelf-chosen">
+        <span class="min-w-0 flex-1 truncate">{{ chosenSaid() }}</span>
+        <button type="button" xuiButton size="sm" data-testid="shelf-add-chosen" (click)="addChosen()">Add All</button>
+        <button type="button" xuiButton size="sm" variant="ghost" (click)="chosen.set(empty)">Clear</button>
+      </div>
+    }
     @if (failure() ?? using.failure(); as reason) {
       <xui-callout color="error" compact data-testid="shelf-failure">{{ reason }}</xui-callout>
     }
@@ -140,6 +163,8 @@ const Preset = 'preset';
                 : 'hover:bg-selection flex w-full min-w-0 flex-col gap-1 rounded-sm p-1 text-start text-xs'
             "
             [disabled]="material.role === 'empty'"
+            [attr.aria-selected]="chosen().has(material.source)"
+            [class.bg-selection]="chosen().has(material.source)"
             [title]="
               material.role === 'empty'
                 ? 'This graph has no Output yet.'
@@ -148,7 +173,7 @@ const Preset = 'preset';
                   describe(material) +
                   (material.role === 'preset'
                     ? '\\nClick to paint with this preset'
-                    : '\\nClick to add, drag into the stack, or Alt-click to paint with it')
+                    : '\\nClick to add, Ctrl-click to choose several, drag into the stack, or Alt-click to paint with it')
             "
             (click)="use(material, $event)"
             (dragstart)="carry($event, material)"
@@ -231,6 +256,40 @@ const Preset = 'preset';
         </li>
       }
     </ul>
+
+    <ng-template #searchMenu>
+      <xui-menu aria-label="Kept searches" data-testid="shelf-searches-menu">
+        @for (kept of preferences.shelfSearches(); track $index) {
+          <button
+            type="button"
+            xuiMenuItem
+            data-testid="shelf-kept-search"
+            [title]="'Searches for this again'"
+            (triggered)="apply(kept)"
+          >
+            {{ searchName(kept) }}
+          </button>
+        } @empty {
+          <span class="text-foreground-muted px-2 py-1 text-xs">None kept yet</span>
+        }
+        <xui-menu-divider />
+        @if (keptNow()) {
+          <button type="button" xuiMenuItem data-testid="shelf-forget-search" (triggered)="forget()">
+            Forget This Search
+          </button>
+        } @else {
+          <button
+            type="button"
+            xuiMenuItem
+            data-testid="shelf-keep-search"
+            [disabled]="!searching()"
+            (triggered)="keep()"
+          >
+            Keep This Search
+          </button>
+        }
+      </xui-menu>
+    </ng-template>
   `
 })
 export class MaterialShelf {
@@ -264,7 +323,29 @@ export class MaterialShelf {
   /** How large the pictures are, which the person's preferences keep. */
   protected readonly view = this.preferences.shelfView;
   protected readonly failure = signal<string | null>(null);
-  private searching: ReturnType<typeof setTimeout> | undefined;
+  private searchTimer: ReturnType<typeof setTimeout> | undefined;
+  protected readonly empty: ReadonlySet<string> = new Set();
+  /** Materials chosen with Ctrl or the platform key held, by source, to add together (#203). */
+  protected readonly chosen = signal<ReadonlySet<string>>(this.empty);
+  protected readonly chosenSaid = computed(() => {
+    const count = this.chosen().size;
+    return `${count} ${count === 1 ? 'material' : 'materials'} chosen`;
+  });
+  /** The search, type and origin as they stand, which the shelf can keep. */
+  private readonly current = computed<ShelfSearch>(() => ({
+    search: this.search().trim(),
+    role: this.role(),
+    origin: this.origin()
+  }));
+  /** Whether anything narrows the shelf, so that there is a search to keep. */
+  protected readonly searching = computed(() => {
+    const now = this.current();
+    return now.search !== '' || now.role !== Everything || now.origin !== Everything;
+  });
+  /** Whether the search as it stands is one kept. */
+  protected readonly keptNow = computed(() =>
+    this.preferences.shelfSearches().some(kept => sameSearch(kept, this.current()))
+  );
   /**
    * What the Server found for the search, narrowed to a type and an origin, the starred ones first (#203). The search
    * itself is the Server's (#230).
@@ -289,14 +370,14 @@ export class MaterialShelf {
       const project = this.project.current()?.path;
       const search = this.search().trim();
       this.library.changes();
-      clearTimeout(this.searching);
+      clearTimeout(this.searchTimer);
       if (project) {
         // A search reaches materials past what the list holds, so it asks the Server, though not at every key.
-        this.searching = setTimeout(() => untracked(() => void this.load(project, search)), search ? SearchQuiet : 0);
+        this.searchTimer = setTimeout(() => untracked(() => void this.load(project, search)), search ? SearchQuiet : 0);
       }
     });
     inject(DestroyRef).onDestroy(() => {
-      clearTimeout(this.searching);
+      clearTimeout(this.searchTimer);
     });
   }
 
@@ -315,6 +396,44 @@ export class MaterialShelf {
     this.origin.set(Everything);
   }
 
+  /** A kept search as the menu names it: its words, then its type and origin when it narrows by them. */
+  protected searchName(kept: ShelfSearch): string {
+    const words = kept.search ? `“${kept.search}”` : '';
+    const narrowed = [kept.role, kept.origin]
+      .map((value, index) =>
+        value === Everything ? '' : index === 0 ? this.roleLabel(value) : this.originLabel(value)
+      )
+      .filter(Boolean);
+    return [words, ...narrowed].filter(Boolean).join(' · ');
+  }
+
+  /** Searches the shelf as a kept search says. */
+  protected apply(kept: ShelfSearch): void {
+    this.search.set(kept.search);
+    this.role.set(kept.role);
+    this.origin.set(kept.origin);
+  }
+
+  /** Keeps the search as it stands, last in the menu. */
+  protected keep(): void {
+    this.preferences.set({ shelfSearches: [...this.preferences.shelfSearches(), this.current()] });
+  }
+
+  /** Forgets the search as it stands. */
+  protected forget(): void {
+    const now = this.current();
+    this.preferences.set({ shelfSearches: this.preferences.shelfSearches().filter(kept => !sameSearch(kept, now)) });
+  }
+
+  /** Adds every chosen material, in the shelf's order, one after the other, as clicks on each would. */
+  protected async addChosen(): Promise<void> {
+    const chosen = this.chosen();
+    this.chosen.set(this.empty);
+    for (const material of this.shown().filter(item => chosen.has(item.source))) {
+      await this.using.use(material);
+    }
+  }
+
   protected originOf(material: MaterialInfo): string {
     return material.project ?? this.originLabel(material.origin);
   }
@@ -326,8 +445,21 @@ export class MaterialShelf {
     return `${this.roleLabel(material.role)}, ${this.originOf(material)}${about}${tags}`;
   }
 
-  /** A click adds a material; with Alt held, a material the brush can lay becomes the brush's (#125). */
+  /**
+   * A click adds a material; with Alt held, a material the brush can lay becomes the brush's (#125); with Ctrl or the
+   * platform key held, it is chosen, or no longer chosen, to add with others (#203).
+   */
   protected use(material: MaterialInfo, event?: MouseEvent): void {
+    if ((event?.ctrlKey || event?.metaKey) && material.role !== Preset) {
+      const next = new Set(this.chosen());
+      if (!next.delete(material.source)) {
+        next.add(material.source);
+      }
+
+      this.chosen.set(next);
+      return;
+    }
+
     if (material.role === Preset) {
       void this.brushes.useSource(material.source);
       return;

@@ -20,7 +20,6 @@ import { XuiSegmentedControlImports } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
-import { desktop } from '../core/desktop';
 import type { PickKind } from '../core/file-picker';
 import { imageFormatName, jobStateName, termName } from '../core/labels';
 import { messageOf } from '../core/messages';
@@ -317,25 +316,22 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     [attr.aria-label]="field.label"
                     [attr.data-testid]="'bake-' + field.key"
                     [placeholder]="field.placeholder"
-                    [readOnly]="picked(field.key)"
+                    [readOnly]="true"
                     [title]="path(field.key)"
-                    [value]="picked(field.key) ? nameOf(path(field.key)) : path(field.key)"
-                    (change)="setPath(field.key, text($event))"
+                    [value]="nameOf(path(field.key))"
                   />
-                  @if (picked(field.key)) {
-                    <button
-                      type="button"
-                      xuiButton
-                      size="sm"
-                      variant="ghost"
-                      [attr.aria-label]="'Choose ' + field.label"
-                      [title]="'Choose ' + field.label"
-                      [attr.data-testid]="'bake-choose-' + field.key"
-                      (click)="pick(field.key)"
-                    >
-                      Choose…
-                    </button>
-                  }
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    variant="ghost"
+                    [attr.aria-label]="'Choose ' + field.label"
+                    [title]="'Choose ' + field.label"
+                    [attr.data-testid]="'bake-choose-' + field.key"
+                    (click)="pick(field.key)"
+                  >
+                    Choose…
+                  </button>
                   @if (path(field.key)) {
                     <button
                       type="button"
@@ -1312,7 +1308,6 @@ export class BakePane {
   protected readonly sideName = (value: string) =>
     this.options()?.followSetShape === false ? `${value} × ${this.options()?.rows ?? value}` : `${value} wide`;
   protected readonly rowsName = (value: string) => (value ? `${value} texels` : 'Same as width');
-  protected readonly canPick = desktop() !== undefined;
   protected readonly roundedEdges = RoundedEdges;
   protected readonly edgeMeshes = EdgeMeshes;
   protected readonly profiles = Profiles;
@@ -1541,17 +1536,13 @@ export class BakePane {
   }
 
   /**
-   * Whether a field is chosen rather than typed: a file from the library or this machine (#4), and a folder from this
-   * machine's dialog, where there is one.
+   * Every field is chosen rather than typed (#4): a file from the library or this machine, and a folder from this
+   * machine's dialog on the desktop or the library's folders elsewhere.
    */
-  protected picked(field: PathField): boolean {
-    return field !== 'output' || this.canPick;
-  }
-
   protected async pick(field: PathField): Promise<void> {
     const path =
       field === 'output'
-        ? await desktop()?.openFolder()
+        ? await this.chooser.folder('Choose an Output Folder', this.project.current()?.path ?? null)
         : await this.choose(
             field === 'cage' ? 'mesh' : 'picture',
             field === 'cage' ? 'Choose a Cage' : field === 'skewMap' ? 'Choose a Skew Map' : 'Choose a Distance Map'
