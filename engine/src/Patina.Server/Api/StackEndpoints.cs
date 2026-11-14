@@ -392,7 +392,7 @@ static class StackEndpoints {
             return NoSession(id);
         }
 
-        return StackDocuments.Kind(node, session.Folder) is { } kind
+        return StackNodeKinds.Kind(node, session.Folder) is { } kind
             ? TypedResults.Ok(kind)
             : Refusals.Problem(
                 $"'{node}' is not a node or a compound this document can run.",
