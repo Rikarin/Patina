@@ -228,6 +228,33 @@ public sealed class BakeMapKindsTests : IDisposable {
         Assert.NotEqual(Picture("from-mesh", "curvature").Pixels, Picture("from-map", "curvature").Pixels);
     }
 
+    /// <summary>
+    ///     A curvature by secondary rays reaches the bake (#148), and its sampling radius is the scale of the bend it
+    ///     reads: two radii read the same fixture otherwise.
+    /// </summary>
+    [Fact]
+    public void A_curvature_by_rays_is_read_at_its_sampling_radius() {
+        Bake("from-mesh", static options => options with { Maps = ["curvature"] }, true);
+        Bake(
+            "rays-near",
+            static options => options with {
+                Maps = ["curvature"], Curvature = new() { Source = "rays", Sampling = 0.005 }
+            },
+            true
+        );
+        Bake(
+            "rays-far",
+            static options => options with {
+                Maps = ["curvature"], Curvature = new() { Source = "rays", Sampling = 0.05, Rays = 8 }
+            },
+            true
+        );
+
+        var near = Picture("rays-near", "curvature").Pixels;
+        Assert.NotEqual(Picture("from-mesh", "curvature").Pixels, near);
+        Assert.NotEqual(near, Picture("rays-far", "curvature").Pixels);
+    }
+
     /// <summary>The options refuse a profile, a curvature range and an edges width that are not ones.</summary>
     [Fact]
     public void Profiles_ranges_and_widths_that_are_not_ones_are_refused() {
@@ -237,6 +264,8 @@ public sealed class BakeMapKindsTests : IDisposable {
         Assert.Contains("curvature", new BakeOptions { Curvature = new() { Range = "loose" } }.Problem());
         Assert.Contains("curvature", new BakeOptions { Curvature = new() { Source = "photo" } }.Problem());
         Assert.Contains("radius", new BakeOptions { Curvature = new() { Range = "custom", Radius = 0 } }.Problem());
+        Assert.Contains("sampling", new BakeOptions { Curvature = new() { Source = "rays", Sampling = 0 } }.Problem());
+        Assert.Contains("256", new BakeOptions { Curvature = new() { Source = "rays", Rays = 0 } }.Problem());
         Assert.Null(new BakeOptions { Maps = ["opacity", "edges", "islands"] }.Problem());
     }
 }

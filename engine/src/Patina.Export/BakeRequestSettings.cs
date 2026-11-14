@@ -53,9 +53,13 @@ static class BakeRequestSettings {
                 _ => HeightRange.Measured
             },
             HeightScale = (float)options.Height.Scale,
-            CurvatureSource = options.Curvature.Source == "normal-map"
-                ? CurvatureSource.NormalMap
-                : CurvatureSource.Mesh,
+            CurvatureSource = options.Curvature.Source switch {
+                "normal-map" => CurvatureSource.NormalMap,
+                "rays" => CurvatureSource.Rays,
+                _ => CurvatureSource.Mesh
+            },
+            CurvatureSampling = (float)options.Curvature.Sampling,
+            CurvatureRays = options.Curvature.Rays,
             PositionRange = options.Position.Range switch {
                 "cube" => PositionRange.Cube,
                 "sphere" => PositionRange.Sphere,

@@ -751,7 +751,7 @@
         "tags": [
           "Viewport"
         ],
-        "summary": "Lays a bake\u0027s setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. An empty low mesh takes it off.",
+        "summary": "Lays a bake\u0027s setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. A project takes the meshes, cage and options from its own bake settings, as its bake plan does. An empty low mesh with no project takes it off.",
         "operationId": "PreviewBakeInViewport",
         "requestBody": {
           "content": {
@@ -770,6 +770,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BakePreviewState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -10020,13 +10030,15 @@
         "required": [
           "source",
           "range",
-          "radius"
+          "radius",
+          "sampling",
+          "rays"
         ],
         "type": "object",
         "properties": {
           "source": {
             "type": "string",
-            "description": "Where the bends come from: \u0060mesh\u0060, the high mesh\u0027s own faces where each ray lands; or\n\u0060normal-map\u0060, the bends of the baked normal map, which is the high mesh\u0027s detail over the low mesh,\ndown to its smallest grooves, and none of the low mesh\u0027s own shape.",
+            "description": "Where the bends come from: \u0060mesh\u0060, the high mesh\u0027s own faces where each ray lands;\n\u0060normal-map\u0060, the bends of the baked normal map, which is the high mesh\u0027s detail over the low mesh,\ndown to its smallest grooves, and none of the low mesh\u0027s own shape; or \u0060rays\u0060, secondary rays\ndouble BakeCurvatureOptions.Sampling round where each ray lands, a bend at that scale, so a hard edge of a low poly high\nmesh reads as one.",
             "default": "mesh"
           },
           "range": {
@@ -10039,6 +10051,18 @@
             "description": "For \u0060custom\u0060: the radius of the tightest bend the map tells apart, in the rays\u0027 units.",
             "format": "double",
             "default": 0.01
+          },
+          "sampling": {
+            "type": "number",
+            "description": "For \u0060rays\u0060: how far round where each ray lands the secondary rays look, in the rays\u0027 units, which is\nthe radius of the bend read and the finest one told apart.",
+            "format": "double",
+            "default": 0.01
+          },
+          "rays": {
+            "type": "integer",
+            "description": "For \u0060rays\u0060: how many secondary rays each sample casts, 1 to 256.",
+            "format": "int32",
+            "default": 16
           }
         },
         "description": "The curvature map\u0027s source and stored range (#148)."
@@ -23246,6 +23270,20 @@
         ],
         "type": "object",
         "properties": {
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A project, by its path below \u0060projects/\u0060, whose own bake settings give the meshes, the cage and the\noptions in place of those sent, as \u0060GET /library/project/bake/plan\u0060 works them out; null to send them."
+          },
+          "document": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "With a project, a document by its path below the library, whose mesh the bake is onto; null for the mesh\nthe project\u0027s bake plan takes."
+          },
           "high": {
             "type": "array",
             "items": {
@@ -23255,7 +23293,7 @@
           },
           "low": {
             "type": "string",
-            "description": "The mesh baked onto, or empty to take the preview off.",
+            "description": "The mesh baked onto, or empty with no project to take the preview off.",
             "default": ""
           },
           "cage": {
@@ -23314,7 +23352,7 @@
             "default": 0.25
           }
         },
-        "description": "A bake\u0027s setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,\nand what of it to draw. Paths on the Server\u0027s machine, as in a bake request."
+        "description": "A bake\u0027s setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,\nand what of it to draw. Paths on the Server\u0027s machine, as in a bake request, or a project whose own settings the\nServer reads them from, as it plans that project\u0027s bake (#296)."
       },
       "ViewportBakeRequest": {
         "required": [

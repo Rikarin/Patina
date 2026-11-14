@@ -75,7 +75,8 @@ const Profiles = [
 ];
 const CurvatureSources = [
   { value: 'mesh', label: 'Mesh' },
-  { value: 'normal-map', label: 'Normal map' }
+  { value: 'normal-map', label: 'Normal map' },
+  { value: 'rays', label: 'Rays' }
 ];
 const CurvatureRanges = [
   { value: 'auto', label: 'Automatic' },
@@ -951,8 +952,38 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 <p class="text-foreground-muted text-xs">
                   Mesh reads the bends of the high poly mesh’s faces. Normal map reads the bends the baked normal map
                   carries: the high poly detail over the low poly mesh, down to its finest grooves, without the low poly
-                  mesh’s own shape.
+                  mesh’s own shape. Rays looks round each point as far as the sampling radius and reads the bend at that
+                  size, so a hard edge with no faces to bend over still reads as an edge.
                 </p>
+                @if (options.curvature.source === 'rays') {
+                  <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                    <div class="flex min-w-0 flex-col gap-1">
+                      <span class="text-foreground-muted text-xs">Sampling radius, {{ unit() }}</span>
+                      <xui-numeric-input
+                        size="sm"
+                        aria-label="Curvature sampling radius"
+                        data-testid="bake-curvature-sampling"
+                        [min]="0"
+                        [stepSize]="step()"
+                        [value]="shown(options.curvature.sampling)"
+                        (valueChange)="setCurvature({ sampling: stored($event) })"
+                      />
+                    </div>
+                    <div class="flex min-w-0 flex-col gap-1">
+                      <span class="text-foreground-muted text-xs">Rays</span>
+                      <xui-numeric-input
+                        size="sm"
+                        aria-label="Curvature rays"
+                        data-testid="bake-curvature-rays"
+                        [max]="256"
+                        [min]="1"
+                        [stepSize]="4"
+                        [value]="options.curvature.rays"
+                        (valueChange)="setCurvature({ rays: $event ?? 16 })"
+                      />
+                    </div>
+                  </div>
+                }
                 <div class="flex items-center justify-between gap-2 text-sm">
                   Range
                   <xui-segmented-control
