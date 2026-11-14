@@ -307,6 +307,13 @@ export const CommandTable: readonly CommandSpec[] = [
     area: 'graph',
     hint: 'Each node lists what was changed on it, under its title'
   },
+  {
+    id: 'toggleGraphTimings',
+    label: 'Timings on Cards',
+    section: 'Graph',
+    area: 'graph',
+    hint: 'Each node shows how long it took on the GPU the last time it ran'
+  },
   { id: 'curvedWires', label: 'Curved Wires', section: 'Graph', area: 'graph' },
   { id: 'angledWires', label: 'Angled Wires', section: 'Graph', area: 'graph' },
   { id: 'straightWires', label: 'Straight Wires', section: 'Graph', area: 'graph' },
@@ -538,6 +545,7 @@ export const MenuBar: readonly {
       { submenu: 'Wires', items: ['curvedWires', 'angledWires', 'straightWires'] },
       'toggleGraphSnap',
       'toggleGraphParameters',
+      'toggleGraphTimings',
       '-',
       'publishPackage',
       '-',

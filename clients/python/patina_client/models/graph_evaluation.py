@@ -13,6 +13,7 @@ from typing import cast
 
 if TYPE_CHECKING:
   from ..models.graph_diagnostic import GraphDiagnostic
+  from ..models.graph_node_time import GraphNodeTime
   from ..models.graph_preview import GraphPreview
 
 
@@ -36,6 +37,9 @@ class GraphEvaluation:
             previews (list[GraphPreview]): The previews that differ from the last evaluation's. All of them are in the
                 state.
             diagnostics (list[GraphDiagnostic]): Everything the compiler reported.
+            times (list[GraphNodeTime]): How long each node whose operations ran took on the GPU. A node answered from the
+                result cache keeps its time
+                from before, which the state holds.
             error (None | str | Unset): Why it did not finish, or null. "No Vulkan" means the Worker has no GPU.
      """
 
@@ -46,6 +50,7 @@ class GraphEvaluation:
     milliseconds: float
     previews: list[GraphPreview]
     diagnostics: list[GraphDiagnostic]
+    times: list[GraphNodeTime]
     error: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -55,6 +60,7 @@ class GraphEvaluation:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.graph_diagnostic import GraphDiagnostic # noqa: PLC0415
+        from ..models.graph_node_time import GraphNodeTime # noqa: PLC0415
         from ..models.graph_preview import GraphPreview # noqa: PLC0415
         revision = self.revision
 
@@ -80,6 +86,13 @@ class GraphEvaluation:
 
 
 
+        times = []
+        for times_item_data in self.times:
+            times_item = times_item_data.to_dict()
+            times.append(times_item)
+
+
+
         error: None | str | Unset
         if isinstance(self.error, Unset):
             error = UNSET
@@ -97,6 +110,7 @@ class GraphEvaluation:
             "milliseconds": milliseconds,
             "previews": previews,
             "diagnostics": diagnostics,
+            "times": times,
         })
         if error is not UNSET:
             field_dict["error"] = error
@@ -108,6 +122,7 @@ class GraphEvaluation:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.graph_diagnostic import GraphDiagnostic # noqa: PLC0415
+        from ..models.graph_node_time import GraphNodeTime # noqa: PLC0415
         from ..models.graph_preview import GraphPreview # noqa: PLC0415
         d = dict(src_dict)
         revision = d.pop("revision")
@@ -140,6 +155,16 @@ class GraphEvaluation:
             diagnostics.append(diagnostics_item)
 
 
+        times = []
+        _times = d.pop("times")
+        for times_item_data in (_times):
+            times_item = GraphNodeTime.from_dict(times_item_data)
+
+
+
+            times.append(times_item)
+
+
         def _parse_error(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -158,6 +183,7 @@ class GraphEvaluation:
             milliseconds=milliseconds,
             previews=previews,
             diagnostics=diagnostics,
+            times=times,
             error=error,
         )
 

@@ -1524,6 +1524,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/graphs/{id}/histogram': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Counts a node's picture, at the size the graph computes it, into a histogram per channel on the GPU: 256 shares of its texels for red, green, blue, alpha and luma. */
+    post: operations['ReadGraphHistogram'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/graphs/{id}/mesh-maps': {
     parameters: {
       query?: never;
@@ -4293,6 +4310,11 @@ export interface components {
       diagnostics: components['schemas']['GraphDiagnostic'][];
       /** @description Why it did not finish, or null. "No Vulkan" means the Worker has no GPU. */
       error?: null | string;
+      /**
+       * @description How long each node whose operations ran took on the GPU. A node answered from the result cache keeps its time
+       *     from before, which the state holds.
+       */
+      times: components['schemas']['GraphNodeTime'][];
     };
     /**
      * @description One numbered event of a session. Sequence numbers rise by one, so a client that sees a gap has missed something
@@ -4398,6 +4420,41 @@ export interface components {
        * @default
        */
       description: string;
+    };
+    /**
+     * @description A node's picture counted into a histogram per channel, on the GPU, at the size the graph computes it. Each list
+     *     is 256 shares of the picture's texels, summing to one: bin `b` holds the values `v` with
+     *     `floor(256 v) = b`, clamped, so a value of one shares the top bin. Numbers about the picture, not its
+     *     pixels.
+     */
+    GraphHistogram: {
+      /**
+       * Format: int32
+       * @description The node.
+       */
+      node: number;
+      /** @description Its output port, or the usage of an Output node. */
+      port: string;
+      /**
+       * Format: int32
+       * @description The picture's width as counted, which is the size the graph computes it.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height.
+       */
+      height: number;
+      /** @description The red channel's shares. */
+      red: number[];
+      /** @description The green channel's. */
+      green: number[];
+      /** @description The blue channel's. */
+      blue: number[];
+      /** @description The alpha channel's. */
+      alpha: number[];
+      /** @description Rec. 709 luma's, weighted from the stored red, green and blue. */
+      luma: number[];
     };
     /** @description What the undo history offers. */
     GraphHistoryState: {
@@ -4530,6 +4587,20 @@ export interface components {
        * @default false
        */
       bypassed: boolean;
+    };
+    /** @description How long one node's operations took on the GPU, the last time an evaluation ran them. */
+    GraphNodeTime: {
+      /**
+       * Format: int32
+       * @description The node. A compound's inner operations are its own.
+       */
+      node: number;
+      /**
+       * Format: double
+       * @description The sum of its operations' times, each from the GPU timestamp after the operation before it. Operations overlap
+       *     on a GPU, so these rank where a graph spends its time rather than time each node exactly.
+       */
+      milliseconds: number;
     };
     /** @description A node a client can add, for a palette. */
     GraphNodeType: {
@@ -4743,6 +4814,8 @@ export interface components {
       info: components['schemas']['GraphInfoState'];
       /** @description The nodes chosen in it, as the last client to say so chose them. */
       selection: components['schemas']['GraphSelection'];
+      /** @description The newest GPU time of each node an evaluation has timed. */
+      times: components['schemas']['GraphNodeTime'][];
     };
     /** @description An open graph, for a list. */
     GraphSummary: {
@@ -13461,6 +13534,59 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['GraphImage'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ReadGraphHistogram: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphImageRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphHistogram'];
         };
       };
       /** @description Not Found */

@@ -78,6 +78,12 @@ public static class IpcTypes {
     /// </summary>
     public const string GraphImage = "graph.image";
 
+    /// <summary>
+    ///     Server to Worker: count one node's picture, at the size the graph computes it, into a histogram per channel;
+    ///     answers with <see cref="IpcMessage.GraphLevels" />.
+    /// </summary>
+    public const string GraphHistogram = "graph.histogram";
+
     /// <summary>Server to Worker: forget the graph named by <see cref="IpcMessage.GraphClose" />.</summary>
     public const string GraphClose = "graph.close";
 
@@ -282,6 +288,12 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to graph.image.</summary>
     public GraphFullImage? GraphFullImage { get; set; }
+
+    /// <summary>graph.histogram: which picture.</summary>
+    public GraphHistogramAsk? GraphHistogram { get; set; }
+
+    /// <summary>The reply to graph.histogram.</summary>
+    public GraphLevels? GraphLevels { get; set; }
 
     /// <summary>The reply to graph.evaluate.</summary>
     public GraphResult? GraphResult { get; set; }
@@ -620,6 +632,33 @@ public sealed record GraphImageAsk(string Session, int Node, string Port, string
 /// <summary>A full-size picture that is now in the cache. The pixels are not in the message.</summary>
 public sealed record GraphFullImage(string Hash, int Width, int Height);
 
+/// <summary>Asks for the histogram of one picture of a loaded graph, at the size the graph computes it.</summary>
+/// <param name="Session">The graph.</param>
+/// <param name="Node">The node.</param>
+/// <param name="Port">Its output port, or the usage of an Output node.</param>
+public sealed record GraphHistogramAsk(string Session, int Node, string Port);
+
+/// <summary>
+///     A picture's histogram: per channel, 256 shares of its texels summing to one, bin <c>b</c> holding the values
+///     <c>v</c> with <c>floor(256 v) = b</c>, clamped. Numbers about a picture, not its pixels.
+/// </summary>
+/// <param name="Width">The picture's width, as counted.</param>
+/// <param name="Height">Its height.</param>
+/// <param name="Red">The red channel's shares.</param>
+/// <param name="Green">The green channel's.</param>
+/// <param name="Blue">The blue channel's.</param>
+/// <param name="Alpha">The alpha channel's.</param>
+/// <param name="Luma">Rec. 709 luma's, from the stored red, green and blue.</param>
+public sealed record GraphLevels(
+    int Width,
+    int Height,
+    IReadOnlyList<float> Red,
+    IReadOnlyList<float> Green,
+    IReadOnlyList<float> Blue,
+    IReadOnlyList<float> Alpha,
+    IReadOnlyList<float> Luma
+);
+
 /// <summary>What a <see cref="MaterialThumbnailAsk" /> holds.</summary>
 public static class MaterialThumbnailKinds {
     public const string Graph = "graph";
@@ -918,50 +957,11 @@ public sealed record MaterialReadAsk(string File, string Folder);
 /// <param name="Mips">Whether a KTX2 or DDS file carries a mip chain.</param>
 public sealed record StackFileAsk(string Format, string Compression, string Quality, bool Mips);
 
-/// <summary>Where a preview lives in the cache, for the Worker that writes it and the Server that serves it.</summary>
-public static class GraphPreviewFiles {
-    public const string Extension = ".png";
-
-    /// <summary>What a drawing of lines is kept as, such as a UV layout.</summary>
-    public const string Drawing = ".svg";
-
-    public static string PathOf(string folder, string hash, string extension = Extension) =>
-        Path.Combine(folder, hash[..2], string.Concat(hash, extension));
-
-    /// <summary>
-    ///     Writes a file under its hash: whoever reads it sees all of it or no file. A file already there is the same
-    ///     bytes, since the name is their hash, so it is kept and never replaced.
-    /// </summary>
-    /// <remarks>
-    ///     ⚠ Never moved over (#250). On Windows a rename onto a file fails with "Access to the path is denied" while
-    ///     anyone has that file open, and two nodes with one picture reach here at once under one hash, while the
-    ///     Server may be serving it. One of them wins, and the others' pictures are already there.
-    /// </remarks>
-    /// <param name="folder">The preview cache.</param>
-    /// <param name="hash">The digest of <paramref name="bytes" />.</param>
-    /// <param name="bytes">What the file holds.</param>
-    /// <param name="extension">What kind of file it is.</param>
-    public static void Store(string folder, string hash, byte[] bytes, string extension = Extension) {
-        var path = PathOf(folder, hash, extension);
-        if (File.Exists(path)) {
-            return;
-        }
-
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-
-        // A name of its own, for the writers that reach here together.
-        var temporary = $"{path}.{Guid.NewGuid():N}.tmp";
-        File.WriteAllBytes(temporary, bytes);
-        try {
-            File.Move(temporary, path);
-        } catch (Exception e) when (e is IOException or UnauthorizedAccessException && File.Exists(path)) {
-            File.Delete(temporary);
-        }
-    }
-}
-
 /// <summary>A preview that is now in the cache. The pixels are not in the message.</summary>
 public sealed record GraphResultPreview(int Node, string Port, string Hash, int Width, int Height);
+
+/// <summary>How long one node's operations took on the GPU in an evaluation that ran them.</summary>
+public sealed record GraphResultTime(int Node, double Milliseconds);
 
 /// <summary>A compiler diagnostic.</summary>
 public sealed record GraphResultProblem(string Id, string Message, string Severity, int Node, string Port);
@@ -974,6 +974,10 @@ public sealed record GraphResultProblem(string Id, string Message, string Severi
 /// <param name="Milliseconds">The time in the Worker.</param>
 /// <param name="Previews">Every node's preview.</param>
 /// <param name="Problems">Everything the compiler reported.</param>
+/// <param name="Times">
+///     Each node whose operations ran, and how long they took on the GPU. A node answered from the result cache is not
+///     here.
+/// </param>
 public sealed record GraphResult(
     bool Compiled,
     bool Evaluated,
@@ -981,7 +985,8 @@ public sealed record GraphResult(
     int Reused,
     double Milliseconds,
     IReadOnlyList<GraphResultPreview> Previews,
-    IReadOnlyList<GraphResultProblem> Problems
+    IReadOnlyList<GraphResultProblem> Problems,
+    IReadOnlyList<GraphResultTime> Times
 );
 
 [JsonSourceGenerationOptions(

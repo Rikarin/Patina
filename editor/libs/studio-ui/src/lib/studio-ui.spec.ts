@@ -1,5 +1,5 @@
 import { evaluateCurve, formatCurves, parseCurves, straightCurves } from './curve';
-import { computeHistogram, isolateChannel, peakOf } from './histogram';
+import { isolateChannel, peakOf } from './histogram';
 import { blackToWhite, colourAt, cssOfRamp, formatRamp, parseRamp, roundPosition } from './ramp';
 
 describe('curves', () => {
@@ -71,16 +71,13 @@ describe('ramps', () => {
 describe('histograms', () => {
   const pixels = new Uint8ClampedArray([255, 0, 0, 255, 255, 255, 0, 10]);
 
-  it('counts each level once per pixel', () => {
-    const histogram = computeHistogram(pixels);
-    expect(histogram.r[255]).toBe(2);
-    expect(histogram.g[0]).toBe(1);
-    expect(histogram.b[0]).toBe(2);
-    expect(peakOf(histogram)).toBe(2);
+  it('scales to the busiest colour level, shares or counts', () => {
+    expect(peakOf({ r: [0.25, 0.5], g: [0.75, 0], b: [0, 0.1], luma: [1, 0] })).toBe(0.75);
+    expect(peakOf({ r: [2, 0], g: [1], b: [], luma: [9] })).toBe(2);
   });
 
   it('never divides by nothing', () => {
-    expect(peakOf(computeHistogram(new Uint8ClampedArray(0)))).toBe(1);
+    expect(peakOf({ r: [], g: [0], b: [0], luma: [] })).toBe(1);
   });
 
   it('shows one channel as opaque grey, and leaves the whole picture alone', () => {

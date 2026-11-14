@@ -48,6 +48,10 @@ public sealed class GraphSession(
     const string DefaultOutputUsage = "baseColor";
     readonly GraphEditor editor = new(GraphDocuments.Parse(text), registry);
     readonly Dictionary<(int Node, string Port), GraphPreview> previews = [];
+
+    /// <summary>The newest GPU time of each node, kept while the result cache answers for it (#182).</summary>
+    readonly Dictionary<int, double> times = [];
+
     readonly Action wake = wake;
     string fileHash = Hash(text);
     long revision = 1;
@@ -147,7 +151,11 @@ public sealed class GraphSession(
                     settled,
                     ReadOnly,
                     GraphDocuments.Info(document),
-                    Chosen(nodes)
+                    Chosen(nodes),
+                    [
+                        ..times.Where(time => nodes.Contains(time.Key))
+                            .Select(static time => new GraphNodeTime(time.Key, time.Value))
+                    ]
                 );
             }
         }
@@ -385,6 +393,10 @@ public sealed class GraphSession(
                 foreach (var (key, preview) in now) {
                     previews[key] = preview;
                 }
+
+                foreach (var time in result.Times) {
+                    times[time.Node] = time.Milliseconds;
+                }
             }
 
             GraphDiagnostic[] diagnostics = [
@@ -406,7 +418,8 @@ public sealed class GraphSession(
                     result.Milliseconds,
                     changed,
                     diagnostics,
-                    null
+                    null,
+                    [..result.Times.Select(static time => new GraphNodeTime(time.Node, time.Milliseconds))]
                 )
             );
         }
@@ -416,7 +429,7 @@ public sealed class GraphSession(
     public void Fail(GraphWork work, string reason) {
         lock (Changing) {
             Finish(work);
-            Report(new(work.Revision, false, 0, 0, 0, [], [], reason));
+            Report(new(work.Revision, false, 0, 0, 0, [], [], reason, []));
         }
     }
 

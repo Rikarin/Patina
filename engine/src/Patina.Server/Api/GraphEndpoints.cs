@@ -126,6 +126,15 @@ static class GraphEndpoints {
                 Conflict,
                 Unavailable
             );
+        graphs.MapPost("/{id}/histogram", ReadHistogram)
+            .Describe(
+                "ReadGraphHistogram",
+                "Counts a node's picture, at the size the graph computes it, into a histogram per channel on the GPU: "
+                + "256 shares of its texels for red, green, blue, alpha and luma.",
+                Missing,
+                Conflict,
+                Unavailable
+            );
         graphs.MapPut("/{id}/mesh-maps", UseMeshMaps)
             .Describe(
                 "SetGraphMeshMaps",
@@ -411,20 +420,63 @@ static class GraphEndpoints {
         }
     }
 
-    static async Task<Results<Ok<GraphImage>, ProblemHttpResult>> WriteImage(
+    static Task<Results<Ok<GraphImage>, ProblemHttpResult>> WriteImage(
         string id,
         GraphImageRequest request,
         GraphSessions sessions,
         GraphEvaluator evaluator,
         CancellationToken cancellationToken
+    ) =>
+        OnEngine(
+            id,
+            sessions,
+            async session => {
+                var image = await evaluator.ImageAsync(session, request.Node, request.Port, cancellationToken);
+                return new GraphImage(image.Hash, image.Width, image.Height);
+            }
+        );
+
+    static Task<Results<Ok<GraphHistogram>, ProblemHttpResult>> ReadHistogram(
+        string id,
+        GraphImageRequest request,
+        GraphSessions sessions,
+        GraphEvaluator evaluator,
+        CancellationToken cancellationToken
+    ) =>
+        OnEngine(
+            id,
+            sessions,
+            async session => {
+                var levels = await evaluator.HistogramAsync(session, request.Node, request.Port, cancellationToken);
+                return new GraphHistogram(
+                    request.Node,
+                    request.Port,
+                    levels.Width,
+                    levels.Height,
+                    levels.Red,
+                    levels.Green,
+                    levels.Blue,
+                    levels.Alpha,
+                    levels.Luma
+                );
+            }
+        );
+
+    /// <summary>
+    ///     Asks the Worker something about an open graph: a refusal from the engine is a conflict, and a Worker that
+    ///     cannot be reached is unavailable.
+    /// </summary>
+    static async Task<Results<Ok<T>, ProblemHttpResult>> OnEngine<T>(
+        string id,
+        GraphSessions sessions,
+        Func<GraphSession, Task<T>> ask
     ) {
         if (sessions.Find(id) is not { } session) {
             return NoSession(id);
         }
 
         try {
-            var image = await evaluator.ImageAsync(session, request.Node, request.Port, cancellationToken);
-            return TypedResults.Ok(new GraphImage(image.Hash, image.Width, image.Height));
+            return TypedResults.Ok(await ask(session));
         } catch (IpcException e) {
             return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
         } catch (Exception e) when (e is IOException or TimeoutException) {

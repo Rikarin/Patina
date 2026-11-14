@@ -18,6 +18,15 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
     readonly GraphPictures pictures = new();
     readonly CompoundShelf compounds = new();
 
+    /// <summary>What a histogram counts, in the order <see cref="GraphLevels" /> holds them.</summary>
+    static readonly TextureHistogramLane[] Lanes = [
+        TextureHistogramLane.Red,
+        TextureHistogramLane.Green,
+        TextureHistogramLane.Blue,
+        TextureHistogramLane.Alpha,
+        TextureHistogramLane.Luma
+    ];
+
     /// <summary>What a thumbnail's copy is called. It is never held, so it never meets a session.</summary>
     const string ThumbnailSession = "thumbnail";
 
@@ -42,16 +51,65 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         var runner = gpu.Evaluator;
         var problems = graph.Prepare(runner, out var compiled);
         if (graph.Plan is not { } plan) {
-            return Reply(new(compiled, false, 0, 0, Milliseconds(start), [], problems));
+            return Reply(new(compiled, false, 0, 0, Milliseconds(start), [], problems, []));
         }
 
         var extended = GraphPreviews.Extend(plan, graph.Images, evaluate.PreviewSide, graph.Checks);
-        using var bake = runner.EvaluateIncremental(extended.Plan, graph.Uploads!.Externals);
+        using var bake = Timed(runner, extended.Plan, graph.Uploads!.Externals);
         var stored = Write(bake, extended.Images, evaluate.PreviewFolder);
         problems = [
             ..problems, ..graph.Checks.Where(check => check.Failed(bake)).Select(static check => Problem(check.Problem))
         ];
-        return Reply(new(compiled, true, bake.Ran.Length, bake.Reused, Milliseconds(start), stored, problems));
+        var times = GraphTimes.Of(bake.OpMilliseconds, graph.OpNodes);
+        return Reply(new(compiled, true, bake.Ran.Length, bake.Reused, Milliseconds(start), stored, problems, times));
+    }
+
+    /// <summary>
+    ///     An evaluation that times its operations, for the nodes' timing badges (#182). The evaluator is the device's
+    ///     and shared, so the switch goes back as it was.
+    /// </summary>
+    static TextureBake Timed(
+        TexturePlanEvaluator runner,
+        TexturePlan plan,
+        IReadOnlyDictionary<int, TextureExternal> externals
+    ) {
+        runner.TimeOps = true;
+        try {
+            return runner.EvaluateIncremental(plan, externals);
+        } finally {
+            runner.TimeOps = false;
+        }
+    }
+
+    /// <summary>
+    ///     Counts one picture into a histogram per channel at the size the graph computes it, on the GPU, from the plan
+    ///     the last evaluation ran. The result cache usually holds the picture, so only the counting runs (#172).
+    /// </summary>
+    public IpcMessage Histogram(IpcMessage request) {
+        var ask = request.GraphHistogram ?? throw new IpcException("graph.histogram says nothing to count.");
+        var graph = Find(ask.Session);
+        var (plan, image) = Picture(graph, ask.Node, ask.Port);
+        var counted = TextureHistograms.Append(plan, image, Lanes);
+        using var bake = gpu.Evaluator.EvaluateIncremental(counted.Plan, graph.Uploads!.Externals);
+        var shares = counted.Tables.Select(table => TextureHistograms.Read(bake, table)).ToArray();
+        var size = plan.SizeOf(image);
+        return new() {
+            Type = IpcTypes.Ok, GraphLevels = new(size.X, size.Y, shares[0], shares[1], shares[2], shares[3], shares[4])
+        };
+    }
+
+    /// <summary>The plan the last evaluation ran and the image one node's port wrote in it.</summary>
+    static (TexturePlan Plan, int Image) Picture(Loaded graph, int node, string port) {
+        if (graph.Plan is not { } plan) {
+            throw new IpcException("This graph has not evaluated, so it has no picture to write.");
+        }
+
+        var image = graph.Images.FirstOrDefault(i => i.Node == node && i.Port == port);
+        if (image.Port is null || plan.Ops.All(op => op.Output != image.Image)) {
+            throw new IpcException($"Node {node} has no picture on '{port}'.");
+        }
+
+        return (plan, image.Image);
     }
 
     /// <summary>
@@ -61,18 +119,9 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
     public IpcMessage Image(IpcMessage request) {
         var ask = request.GraphImage ?? throw new IpcException("graph.image says nothing to write.");
         var graph = Find(ask.Session);
-        if (graph.Plan is not { } plan) {
-            throw new IpcException("This graph has not evaluated, so it has no picture to write.");
-        }
-
-        var image = graph.Images.FirstOrDefault(i => i.Node == ask.Node && i.Port == ask.Port);
-        if (image.Port is null || plan.Ops.All(op => op.Output != image.Image)) {
-            throw new IpcException($"Node {ask.Node} has no picture on '{ask.Port}'.");
-        }
-
-        using var bake = gpu.Evaluator
-            .EvaluateIncremental(GraphPreviews.Full(plan, image.Image), graph.Uploads!.Externals);
-        var picture = previews.WriteOne(bake, image.Image, ask.Folder);
+        var (plan, image) = Picture(graph, ask.Node, ask.Port);
+        using var bake = gpu.Evaluator.EvaluateIncremental(GraphPreviews.Full(plan, image), graph.Uploads!.Externals);
+        var picture = previews.WriteOne(bake, image, ask.Folder);
         return new() { Type = IpcTypes.Ok, GraphFullImage = new(picture.Hash, picture.Width, picture.Height) };
     }
 
@@ -159,6 +208,9 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
 
         public IReadOnlyList<GraphPreviewSource> Images { get; private set; } = [];
 
+        /// <summary>Whose each op of <see cref="Plan" /> is, by the node's number; 0 for no node's.</summary>
+        public IReadOnlyList<int> OpNodes { get; private set; } = [];
+
         public IReadOnlyList<TextureGraphCheck> Checks => compiler.Checks;
 
         public void Dispose() => Uploads?.Dispose();
@@ -210,6 +262,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
             Uploads = uploads;
             Plan = compilation.Value;
             Images = GraphPreviews.Sources(compiler);
+            OpNodes = [..compiler.OpNodes.Select(static node => node.Value)];
             return Problems();
         }
 

@@ -6044,6 +6044,77 @@
         }
       }
     },
+    "/api/v1/graphs/{id}/histogram": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Counts a node\u0027s picture, at the size the graph computes it, into a histogram per channel on the GPU: 256 shares of its texels for red, green, blue, alpha and luma.",
+        "operationId": "ReadGraphHistogram",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphImageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphHistogram"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/graphs/{id}/mesh-maps": {
       "put": {
         "tags": [
@@ -13014,7 +13085,8 @@
           "reused",
           "milliseconds",
           "previews",
-          "diagnostics"
+          "diagnostics",
+          "times"
         ],
         "type": "object",
         "properties": {
@@ -13062,6 +13134,13 @@
               "string"
             ],
             "description": "Why it did not finish, or null. \u0022No Vulkan\u0022 means the Worker has no GPU."
+          },
+          "times": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeTime"
+            },
+            "description": "How long each node whose operations ran took on the GPU. A node answered from the result cache keeps its time\nfrom before, which the state holds."
           }
         },
         "description": "What one evaluation did."
@@ -13273,6 +13352,82 @@
           }
         },
         "description": "A frame round some nodes. It holds no geometry: a client draws it from where its nodes are."
+      },
+      "GraphHistogram": {
+        "required": [
+          "node",
+          "port",
+          "width",
+          "height",
+          "red",
+          "green",
+          "blue",
+          "alpha",
+          "luma"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "integer",
+            "description": "The node.",
+            "format": "int32"
+          },
+          "port": {
+            "type": "string",
+            "description": "Its output port, or the usage of an Output node."
+          },
+          "width": {
+            "type": "integer",
+            "description": "The picture\u0027s width as counted, which is the size the graph computes it.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height.",
+            "format": "int32"
+          },
+          "red": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The red channel\u0027s shares."
+          },
+          "green": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The green channel\u0027s."
+          },
+          "blue": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The blue channel\u0027s."
+          },
+          "alpha": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The alpha channel\u0027s."
+          },
+          "luma": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Rec. 709 luma\u0027s, weighted from the stored red, green and blue."
+          }
+        },
+        "description": "A node\u0027s picture counted into a histogram per channel, on the GPU, at the size the graph computes it. Each list\nis 256 shares of the picture\u0027s texels, summing to one: bin \u0060b\u0060 holds the values \u0060v\u0060 with\n\u0060floor(256 v) = b\u0060, clamped, so a value of one shares the top bin. Numbers about the picture, not its\npixels."
       },
       "GraphHistoryState": {
         "required": [
@@ -13550,6 +13705,26 @@
           }
         },
         "description": "A node as a document holds it."
+      },
+      "GraphNodeTime": {
+        "required": [
+          "node",
+          "milliseconds"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "integer",
+            "description": "The node. A compound\u0027s inner operations are its own.",
+            "format": "int32"
+          },
+          "milliseconds": {
+            "type": "number",
+            "description": "The sum of its operations\u0027 times, each from the GPU timestamp after the operation before it. Operations overlap\non a GPU, so these rank where a graph spends its time rather than time each node exactly.",
+            "format": "double"
+          }
+        },
+        "description": "How long one node\u0027s operations took on the GPU, the last time an evaluation ran them."
       },
       "GraphNodeType": {
         "required": [
@@ -13928,7 +14103,8 @@
           "settled",
           "readOnly",
           "info",
-          "selection"
+          "selection",
+          "times"
         ],
         "type": "object",
         "properties": {
@@ -14055,6 +14231,13 @@
           "selection": {
             "description": "The nodes chosen in it, as the last client to say so chose them.",
             "$ref": "#/components/schemas/GraphSelection"
+          },
+          "times": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeTime"
+            },
+            "description": "The newest GPU time of each node an evaluation has timed."
           }
         },
         "description": "The reply to \u0060GET /api/v1/graphs/{id}\u0060: the whole document as the Server holds it."
