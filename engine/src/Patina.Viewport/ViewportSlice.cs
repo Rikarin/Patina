@@ -77,7 +77,7 @@ static class ViewportSlice {
         Span<Vector3> ends = stackalloc Vector3[2];
         for (var edge = 0; edge < 3 && found < 2; edge++) {
             var (a, b) = (side[edge], side[(edge + 1) % 3]);
-            if ((a < 0f) == (b < 0f)) {
+            if (a < 0f == b < 0f) {
                 continue;
             }
 

@@ -83,7 +83,7 @@ sealed partial class StackHost {
 
             var file = LibraryLayout.Beside(folder, name);
             var mask = canvases.Open(file)?.Channel(PaintReference.Mask) ?? new PaintImage(width, height);
-            return new PaintImageKeep(mask, width, height, part.KeepOutside);
+            return new(mask, width, height, part.KeepOutside);
         }
     }
 
