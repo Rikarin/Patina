@@ -14,6 +14,8 @@ static class Help {
             "  patina cache prune <library> [--days <n>]"),
         (["bake"], "Evaluates a graph or a package on the GPU and writes each output as a PNG.", GraphBake.Usage),
         (["bake-maps"], "Bakes mesh maps from a high mesh onto a low one, on the CPU.", MeshMapCommand.Usage),
+        (["package", "import"], "Brings a package, zipped or as its folder, into a library or a folder.",
+            GraphCommands.ImportUsage),
         (["package"], "Publishes a graph as a package: its compounds and pictures in one folder.",
             GraphCommands.PackageUsage),
         (["build", "compare"], "Prints what differs between two builds, as JSON.", BuildCompareCommand.Usage),

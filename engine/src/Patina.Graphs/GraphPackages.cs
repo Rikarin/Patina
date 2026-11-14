@@ -139,11 +139,7 @@ public static class GraphPackages {
     /// </summary>
     static string NameOf(NodeGraphAsset graph, string file) {
         var name = graph.Name.Trim();
-        return name.Length > 0
-            && name is not ("." or "..")
-            && name.IndexOfAny([..Path.GetInvalidFileNameChars(), '/', '\\', ':', '*', '?', '"', '<', '>', '|']) < 0
-                ? name
-                : Path.GetFileNameWithoutExtension(file);
+        return PackageManifests.IsName(name) ? name : Path.GetFileNameWithoutExtension(file);
     }
 
     static string LibraryPath(string library, string name) =>
@@ -202,7 +198,7 @@ public static class GraphPackages {
     /// <param name="roots">Where a picture is found: beside the graph, then in the library.</param>
     sealed class Walk(string folder, PublishedCompounds published, IReadOnlyList<string> roots) {
         readonly HashSet<string> seen = new(StringComparer.Ordinal);
-        readonly Queue<NodeGraphAsset> pending = [];
+        readonly Queue<(NodeGraphAsset Graph, string? In)> pending = [];
         readonly string? library = roots.Count > 1 ? roots[1] : null;
 
         public List<Compound> Compounds { get; } = [];
@@ -211,17 +207,17 @@ public static class GraphPackages {
         public List<PackageDependency> Dependencies { get; } = [];
 
         public void Through(NodeGraphAsset graph) {
-            pending.Enqueue(graph);
-            while (pending.TryDequeue(out var asset)) {
-                foreach (var node in asset.Nodes) {
-                    Visit(node);
+            pending.Enqueue((graph, null));
+            while (pending.TryDequeue(out var held)) {
+                foreach (var node in held.Graph.Nodes) {
+                    Visit(node, held.In);
                 }
             }
         }
 
-        void Visit(GraphNodeAsset node) {
+        void Visit(GraphNodeAsset node, string? into) {
             if (node.Type == BitmapNode) {
-                Picture(node.Texts.GetValueOrDefault(SourceSetting, string.Empty).Trim());
+                Picture(node.Texts.GetValueOrDefault(SourceSetting, string.Empty).Trim(), into);
             } else if (!SubGraphs.IsBoundary(node.Type) && !Reroutes.IsReroute(node.Type) && seen.Add(node.Type)) {
                 Type(node.Type);
             }
@@ -237,7 +233,7 @@ public static class GraphPackages {
                 var asset = YamlSerializer.Parse<NodeGraphAsset>(SharedFile.ReadAllText(file));
                 Compounds.Add(new(type, file, asset));
                 Dependencies.Add(new("compound", type, Shown(file)));
-                pending.Enqueue(asset);
+                pending.Enqueue((asset, type));
             } else if (TextureCompoundLibrary.Shipped.Contains(type)) {
                 Shipped.Add(type);
                 Dependencies.Add(new("shipped", type, null));
@@ -246,7 +242,8 @@ public static class GraphPackages {
             }
         }
 
-        void Picture(string reference) {
+        /// <summary>A picture, named by the graph or by the compound <paramref name="into" />.</summary>
+        void Picture(string reference, string? into) {
             if (reference.Length == 0
                 || reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)
                 || Pictures.ContainsKey(reference)) {
@@ -261,9 +258,10 @@ public static class GraphPackages {
                         "picture",
                         reference,
                         null,
-                        "It is not beside the graph or in the library. Point the Bitmap at it again."
+                        "It is not beside the graph or in the library. Point the Bitmap at it again.",
+                        into
                     )
-                    : new("picture", reference, Shown(found))
+                    : new("picture", reference, Shown(found), null, into)
             );
         }
 

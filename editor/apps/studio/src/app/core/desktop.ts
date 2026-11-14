@@ -61,6 +61,8 @@ export interface DesktopBridge {
   openLook(): Promise<string | null>;
   /** Asks for an export preset someone shared, a <code>.yaml</code> file. */
   openPreset(): Promise<string | null>;
+  /** Asks for a package someone sent, a <code>.zip</code> of its folder. */
+  openPackage(): Promise<string | null>;
   /** Where a file dropped on the window is. */
   pathOf(file: File): string;
 

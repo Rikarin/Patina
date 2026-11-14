@@ -466,6 +466,15 @@ function handleIpc(): void {
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
+  handle('patina:openPackage', async () => {
+    const options: OpenDialogOptions = {
+      title: 'Import Package',
+      properties: ['openFile'],
+      filters: [{ name: 'Zipped packages', extensions: ['zip'] }]
+    };
+    const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
+    return picked.canceled ? null : (picked.filePaths[0] ?? null);
+  });
   handle('patina:openImage', async (_event, formats: unknown) => {
     const options: OpenDialogOptions = {
       properties: ['openFile'],

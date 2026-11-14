@@ -18,6 +18,8 @@ switch (args) {
         return GraphBake.Run(graph, folder, read);
     case ["graph", "info", var graph]:
         return GraphCommands.Info(graph);
+    case ["package", "import", var source, .. var options]:
+        return GraphCommands.Import(source, options);
     case ["package", var graph, var folder, .. var options]:
         return GraphCommands.Package(graph, folder, options);
     case ["build", "compare", var before, var after]:

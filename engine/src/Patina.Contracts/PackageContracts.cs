@@ -12,6 +12,9 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(PackagePlan))]
 [JsonSerializable(typeof(PackageRequest))]
 [JsonSerializable(typeof(PackagePublished))]
+[JsonSerializable(typeof(PackageImportRequest))]
+[JsonSerializable(typeof(PackageImported))]
+[JsonSerializable(typeof(GraphRelinkRequest))]
 [JsonSerializable(typeof(GraphFacts))]
 public sealed partial class PackageJsonContext : JsonSerializerContext;
 
@@ -58,7 +61,17 @@ public sealed record PackageFile(string Path, string From);
 /// <param name="Name">The node type, or the picture as the graph names it.</param>
 /// <param name="File">Where it was found, below the library when it is in one, or null when it was not.</param>
 /// <param name="Problem">Why it cannot be brought, or null when it can.</param>
-public sealed record PackageDependency(string Kind, string Name, string? File, string? Problem = null);
+/// <param name="In">
+///     The compound that names it, or null when the graph itself does, which is when relinking the graph's Bitmap
+///     nodes (<c>POST /api/v1/graphs/{id}/relink</c>) reaches it.
+/// </param>
+public sealed record PackageDependency(
+    string Kind,
+    string Name,
+    string? File,
+    string? Problem = null,
+    string? In = null
+);
 
 /// <summary>What publishing a graph as a package would do, for a dialog to show before it does.</summary>
 /// <param name="Name">The package's name.</param>
@@ -85,6 +98,23 @@ public sealed record PackageRequest(string Graph, string? Role = null);
 /// <param name="Path">Its folder, below the library.</param>
 /// <param name="Manifest">What its <c>package.yaml</c> says.</param>
 public sealed record PackagePublished(string Path, PackageManifest Manifest);
+
+/// <summary>The body of <c>POST /api/v1/library/packages/import</c>.</summary>
+/// <param name="Source">
+///     The package to bring in: a zip of one, or its <c>.ptpkg</c> folder, as a path on the machine the Server runs on.
+/// </param>
+public sealed record PackageImportRequest(string Source);
+
+/// <summary>A package that has been brought into a library.</summary>
+/// <param name="Path">Its folder, below the library.</param>
+/// <param name="Manifest">What its <c>package.yaml</c> says.</param>
+/// <param name="Replaced">True when a package of its name was there, and this one replaced it.</param>
+public sealed record PackageImported(string Path, PackageManifest Manifest, bool Replaced);
+
+/// <summary>The body of <c>POST /api/v1/graphs/{id}/relink</c>: a picture the graph reads, and the file it is now.</summary>
+/// <param name="From">The picture as the graph's Bitmap nodes name it.</param>
+/// <param name="To">The file to read instead: absolute, or below the library.</param>
+public sealed record GraphRelinkRequest(string From, string To);
 
 /// <summary>
 ///     What <c>patina graph info</c> prints: everything a caller needs to evaluate a graph or a package without opening

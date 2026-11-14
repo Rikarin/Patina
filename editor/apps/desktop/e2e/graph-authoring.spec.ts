@@ -7,13 +7,14 @@ import {
   type Page
 } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave } from './projects';
+import { answerOpen, leave } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
+const patina = resolve(__dirname, '../../../../engine/src/Patina.Cli/bin/Release/net11.0/patina.dll');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
 const Name = 'Rust Plate';
 /** Noise (1), Blur (2), Invert (3), HSL (4), Blur (5) and an Output (6), wired in that order. */
@@ -317,4 +318,21 @@ test('says what the graph is about, and publishes it as a package with what it r
   const graph = readFileSync(join(folder, `${Name}.vxtexgraph`), 'utf8');
   expect(graph).toContain('description: A plate gone to rust.');
   expect(graph).toMatch(/tags: \[metal, rust\]/);
+
+  // Sent as one file, it comes back in through File, Import Package…, in place of the one that went.
+  const source = readdirSync(join(library, 'projects'), { recursive: true, encoding: 'utf8' }).find(file =>
+    file.endsWith(`${Name}.vxtexgraph`)
+  );
+  expect(source).toBeDefined();
+  const sent = join(scratch, 'sent');
+  execFileSync('dotnet', [patina, 'package', join(library, 'projects', source ?? ''), sent, '--zip'], {
+    stdio: 'inherit'
+  });
+  rmSync(folder, { recursive: true, force: true });
+  await answerOpen(app, join(sent, `${Name}.zip`));
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'importPackage');
+  });
+  await expect.poll(() => existsSync(join(folder, 'package.yaml')), { timeout: 30_000 }).toBe(true);
+  expect(readFileSync(join(folder, `${Name}.vxtexgraph`), 'utf8')).toContain('description: A plate gone to rust.');
 });

@@ -1099,6 +1099,23 @@ export class GraphStore {
     return unwrap(await this.api().POST('/api/v1/library/packages', { body: { graph, role } }));
   }
 
+  /**
+   * Points every Bitmap node that reads the picture `from` at the file `to`, as one undo step (#185). The Server names
+   * the file as the graph finds it, so this sends the path the person picked. A refusal is thrown for the caller to
+   * show, since it comes from a dialog.
+   */
+  async relinkPicture(from: string, to: string): Promise<void> {
+    const id = this.mutableDocument()?.id;
+    if (id === undefined) {
+      throw new Error('No graph is open.');
+    }
+
+    this.endGesture();
+    await this.edits.submit(async () =>
+      unwrap(await this.api().POST('/api/v1/graphs/{id}/relink', { params: { path: { id } }, body: { from, to } }))
+    );
+  }
+
   /** Sets a compound node's settings to one of its compound's presets, as one undo step. */
   applyNodePreset(node: number, preset: GraphPresetState): void {
     const settings = new Set(

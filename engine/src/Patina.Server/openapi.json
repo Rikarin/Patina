@@ -4127,6 +4127,67 @@
         }
       }
     },
+    "/api/v1/library/packages/import": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings a package into the library\u0027s packages folder from a zip of it or from its folder, replacing one of its name, once all of it has been read as a package this Patina can use.",
+        "operationId": "ImportPackage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackageImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackageImported"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/snapshots": {
       "get": {
         "tags": [
@@ -5680,6 +5741,67 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/GraphCommandBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/relink": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Points every Bitmap node that reads a picture at another file, as one undo step. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
+        "operationId": "RelinkGraphPicture",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphRelinkRequest"
               }
             }
           },
@@ -13992,6 +14114,24 @@
         },
         "description": "Where a node\u0027s picture is: \u0060GET /api/v1/previews/{hash}\u0060. Pixels never cross JSON."
       },
+      "GraphRelinkRequest": {
+        "required": [
+          "from",
+          "to"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "The picture as the graph\u0027s Bitmap nodes name it."
+          },
+          "to": {
+            "type": "string",
+            "description": "The file to read instead: absolute, or below the library."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/graphs/{id}/relink\u0060: a picture the graph reads, and the file it is now."
+      },
       "GraphSelection": {
         "required": [
           "nodes"
@@ -15361,6 +15501,13 @@
               "string"
             ],
             "description": "Why it cannot be brought, or null when it can."
+          },
+          "in": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The compound that names it, or null when the graph itself does, which is when relinking the graph\u0027s Bitmap\nnodes (\u0060POST /api/v1/graphs/{id}/relink\u0060) reaches it."
           }
         },
         "description": "Something a graph reads that publishing it as a package has to bring, or cannot."
@@ -15382,6 +15529,42 @@
           }
         },
         "description": "A picture a package carries."
+      },
+      "PackageImported": {
+        "required": [
+          "path",
+          "manifest",
+          "replaced"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its folder, below the library."
+          },
+          "manifest": {
+            "description": "What its \u0060package.yaml\u0060 says.",
+            "$ref": "#/components/schemas/PackageManifest"
+          },
+          "replaced": {
+            "type": "boolean",
+            "description": "True when a package of its name was there, and this one replaced it."
+          }
+        },
+        "description": "A package that has been brought into a library."
+      },
+      "PackageImportRequest": {
+        "required": [
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "The package to bring in: a zip of one, or its \u0060.ptpkg\u0060 folder, as a path on the machine the Server runs on."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/packages/import\u0060."
       },
       "PackageManifest": {
         "required": [
