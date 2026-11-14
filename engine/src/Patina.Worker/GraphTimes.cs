@@ -3,7 +3,9 @@ using System.Collections.Immutable;
 
 namespace Patina.Worker;
 
-/// <summary>What each node of a graph cost on the GPU, from the times of the operations it was compiled to (#182).</summary>
+/// <summary>
+///     What each node of a graph cost on the GPU, from the times of the operations it was compiled to (#182).
+/// </summary>
 static class GraphTimes {
     /// <summary>
     ///     Sums each operation's time into the node it was emitted for. Operations past the compiled plan's, the

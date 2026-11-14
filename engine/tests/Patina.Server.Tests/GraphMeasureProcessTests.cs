@@ -5,8 +5,8 @@ using Vixen.Core.Imaging;
 namespace Patina.Server.Tests;
 
 /// <summary>
-///     What a graph measures about itself: each node's GPU time (#182's timing badges) and a picture's histogram counted
-///     on the GPU at full size (#172), through the real Server and Worker.
+///     What a graph measures about itself: each node's GPU time (#182's timing badges) and a picture's histogram
+///     counted on the GPU at full size (#172), through the real Server and Worker.
 /// </summary>
 public sealed partial class GraphProcessTests {
     [Fact]

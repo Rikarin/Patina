@@ -255,6 +255,8 @@ public sealed record HistoryJump(long? Step);
 ///     How long each node whose operations ran took on the GPU. A node answered from the result cache keeps its time
 ///     from before, which the state holds.
 /// </param>
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
+#pragma warning disable SK7005
 public sealed record GraphEvaluation(
     long Revision,
     bool Compiled,
@@ -266,6 +268,7 @@ public sealed record GraphEvaluation(
     string? Error,
     IReadOnlyList<GraphNodeTime> Times
 );
+#pragma warning restore SK7005
 
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
 #pragma warning disable SK7005
@@ -694,7 +697,8 @@ public sealed record GraphImage(string Hash, int Width, int Height);
 /// <summary>
 ///     A node's picture counted into a histogram per channel, on the GPU, at the size the graph computes it. Each list
 ///     is 256 shares of the picture's texels, summing to one: bin <c>b</c> holds the values <c>v</c> with
-///     <c>floor(256 v) = b</c>, clamped, so a value of one shares the top bin. Numbers about the picture, not its pixels.
+///     <c>floor(256 v) = b</c>, clamped, so a value of one shares the top bin. Numbers about the picture, not its
+///     pixels.
 /// </summary>
 /// <param name="Node">The node.</param>
 /// <param name="Port">Its output port, or the usage of an Output node.</param>
@@ -705,6 +709,8 @@ public sealed record GraphImage(string Hash, int Width, int Height);
 /// <param name="Blue">The blue channel's.</param>
 /// <param name="Alpha">The alpha channel's.</param>
 /// <param name="Luma">Rec. 709 luma's, weighted from the stored red, green and blue.</param>
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
+#pragma warning disable SK7005
 public sealed record GraphHistogram(
     int Node,
     string Port,
@@ -716,12 +722,13 @@ public sealed record GraphHistogram(
     IReadOnlyList<float> Alpha,
     IReadOnlyList<float> Luma
 );
+#pragma warning restore SK7005
 
 /// <summary>How long one node's operations took on the GPU, the last time an evaluation ran them.</summary>
 /// <param name="Node">The node. A compound's inner operations are its own.</param>
 /// <param name="Milliseconds">
-///     The sum of its operations' times, each from the GPU timestamp after the operation before it. Operations overlap on
-///     a GPU, so these rank where a graph spends its time rather than time each node exactly.
+///     The sum of its operations' times, each from the GPU timestamp after the operation before it. Operations overlap
+///     on a GPU, so these rank where a graph spends its time rather than time each node exactly.
 /// </param>
 public sealed record GraphNodeTime(int Node, double Milliseconds);
 

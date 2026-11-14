@@ -94,8 +94,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         var shares = counted.Tables.Select(table => TextureHistograms.Read(bake, table)).ToArray();
         var size = plan.SizeOf(image);
         return new() {
-            Type = IpcTypes.Ok,
-            GraphLevels = new(size.X, size.Y, shares[0], shares[1], shares[2], shares[3], shares[4])
+            Type = IpcTypes.Ok, GraphLevels = new(size.X, size.Y, shares[0], shares[1], shares[2], shares[3], shares[4])
         };
     }
 

@@ -4396,7 +4396,8 @@ export interface components {
     /**
      * @description A node's picture counted into a histogram per channel, on the GPU, at the size the graph computes it. Each list
      *     is 256 shares of the picture's texels, summing to one: bin `b` holds the values `v` with
-     *     `floor(256 v) = b`, clamped, so a value of one shares the top bin. Numbers about the picture, not its pixels.
+     *     `floor(256 v) = b`, clamped, so a value of one shares the top bin. Numbers about the picture, not its
+     *     pixels.
      */
     GraphHistogram: {
       /**
@@ -4568,8 +4569,8 @@ export interface components {
       node: number;
       /**
        * Format: double
-       * @description The sum of its operations' times, each from the GPU timestamp after the operation before it. Operations overlap on
-       *     a GPU, so these rank where a graph spends its time rather than time each node exactly.
+       * @description The sum of its operations' times, each from the GPU timestamp after the operation before it. Operations overlap
+       *     on a GPU, so these rank where a graph spends its time rather than time each node exactly.
        */
       milliseconds: number;
     };

@@ -51,6 +51,7 @@ public sealed class GraphSession(
 
     /// <summary>The newest GPU time of each node, kept while the result cache answers for it (#182).</summary>
     readonly Dictionary<int, double> times = [];
+
     readonly Action wake = wake;
     string fileHash = Hash(text);
     long revision = 1;

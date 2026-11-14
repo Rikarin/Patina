@@ -25,8 +25,8 @@ class GraphNodeTime:
         Attributes:
             node (int): The node. A compound's inner operations are its own.
             milliseconds (float): The sum of its operations' times, each from the GPU timestamp after the operation before
-                it. Operations overlap on
-                a GPU, so these rank where a graph spends its time rather than time each node exactly.
+                it. Operations overlap
+                on a GPU, so these rank where a graph spends its time rather than time each node exactly.
      """
 
     node: int

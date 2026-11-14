@@ -13391,7 +13391,7 @@
             "description": "Rec. 709 luma\u0027s, weighted from the stored red, green and blue."
           }
         },
-        "description": "A node\u0027s picture counted into a histogram per channel, on the GPU, at the size the graph computes it. Each list\nis 256 shares of the picture\u0027s texels, summing to one: bin \u0060b\u0060 holds the values \u0060v\u0060 with\n\u0060floor(256 v) = b\u0060, clamped, so a value of one shares the top bin. Numbers about the picture, not its pixels."
+        "description": "A node\u0027s picture counted into a histogram per channel, on the GPU, at the size the graph computes it. Each list\nis 256 shares of the picture\u0027s texels, summing to one: bin \u0060b\u0060 holds the values \u0060v\u0060 with\n\u0060floor(256 v) = b\u0060, clamped, so a value of one shares the top bin. Numbers about the picture, not its\npixels."
       },
       "GraphHistoryState": {
         "required": [
@@ -13684,7 +13684,7 @@
           },
           "milliseconds": {
             "type": "number",
-            "description": "The sum of its operations\u0027 times, each from the GPU timestamp after the operation before it. Operations overlap on\na GPU, so these rank where a graph spends its time rather than time each node exactly.",
+            "description": "The sum of its operations\u0027 times, each from the GPU timestamp after the operation before it. Operations overlap\non a GPU, so these rank where a graph spends its time rather than time each node exactly.",
             "format": "double"
           }
         },

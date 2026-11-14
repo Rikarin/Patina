@@ -23,7 +23,8 @@ T = TypeVar("T", bound="GraphHistogram")
 class GraphHistogram:
     """ A node's picture counted into a histogram per channel, on the GPU, at the size the graph computes it. Each list
     is 256 shares of the picture's texels, summing to one: bin `b` holds the values `v` with
-    `floor(256 v) = b`, clamped, so a value of one shares the top bin. Numbers about the picture, not its pixels.
+    `floor(256 v) = b`, clamped, so a value of one shares the top bin. Numbers about the picture, not its
+    pixels.
 
         Attributes:
             node (int): The node.
