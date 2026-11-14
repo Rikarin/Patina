@@ -23,11 +23,31 @@ public static class StackNodeKinds {
     ///     What an image input can read as a generator: every node and shipped compound that reads no image and writes
     ///     at least one, less the two an input names by their own sources, an image and a mesh map.
     /// </summary>
-    public static IReadOnlyList<StackFilterKind> Sources() =>
-        Kinds(static type => type.Path is not ("Source/Bitmap" or "Source/Mesh Map")
-            && Pictures(type).Count > 0
-            && !type.Ports.Any(static port => port is { Direction: PortDirection.Input, Kind: PortKind.Image })
-        );
+    public static IReadOnlyList<StackFilterKind> Sources() => Kinds(IsSource);
+
+    /// <summary>
+    ///     The generators of a stack's project's own (#298): its compounds an image input can read as a generator, which
+    ///     no shared list holds, a multi-result one with its results.
+    /// </summary>
+    /// <param name="folder">The folder of the stack, whose compounds folder holds them.</param>
+    public static IReadOnlyList<StackFilterKind> OwnSources(string? folder) {
+        if (folder is null) {
+            return [];
+        }
+
+        HashSet<string> shipped = [..Registry(null, out _).Types.Select(static type => type.Path)];
+        var library = Registry(folder, out var compounds);
+        return [
+            ..library.Types.Where(type => !shipped.Contains(type.Path) && IsSource(type))
+                .OrderBy(static type => type.Path, StringComparer.Ordinal)
+                .Select(type => Kind(type, library, compounds))
+        ];
+    }
+
+    static bool IsSource(NodeTypeDefinition type) =>
+        type.Path is not ("Source/Bitmap" or "Source/Mesh Map")
+        && Pictures(type).Count > 0
+        && !type.Ports.Any(static port => port is { Direction: PortDirection.Input, Kind: PortKind.Image });
 
     static IReadOnlyList<StackFilterKind> Kinds(Func<NodeTypeDefinition, bool> offered) {
         var library = LayerStackCompiler.Library(out var compounds);

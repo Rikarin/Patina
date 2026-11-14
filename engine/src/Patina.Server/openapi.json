@@ -7818,6 +7818,50 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/sources": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The project\u0027s own compounds an image input can read as a generator: each reads no image and writes at least one, with what it takes and, for one that writes several, its results. The shipped ones are the vocabulary\u0027s sources.",
+        "operationId": "GetStackSources",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StackFilterKind"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/node-types/thumbnails": {
       "post": {
         "tags": [

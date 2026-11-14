@@ -46,6 +46,7 @@ function render(mask = false, inputs: FilterSources = {}, kind: Pick<StackFilter
       meshMaps: [{ value: 'curvature', label: 'Curvature' }],
       sources: [clouds]
     }),
+    ownSources: signal([edges]),
     state: signal({ channels: [{ usage: 'baseColor' }, { usage: 'height' }] })
   };
   TestBed.configureTestingModule({
@@ -132,5 +133,20 @@ describe('a filter input slot', () => {
 
     await chooseIn(fixture, element, 'in-Warp-result', 'Edge');
     expect(emitted.at(-1)?.['Warp']).toMatchObject({ generator: 'Edges', output: 'Edge' });
+  });
+
+  it('lists the project’s own generators beside the shipped ones (#298)', async () => {
+    const held: StackInput = {
+      source: 'Generator',
+      channel: '',
+      generator: 'Noise/Clouds',
+      asset: '',
+      map: '',
+      output: ''
+    };
+    const { fixture, element, emitted } = render(false, { Warp: held });
+
+    await chooseIn(fixture, element, 'in-Warp-generator', 'Edges · Compounds');
+    expect(emitted.at(-1)?.['Warp']).toMatchObject({ generator: 'Edges' });
   });
 });
