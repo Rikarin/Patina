@@ -4,7 +4,7 @@ using System.Net;
 
 namespace Patina.Server.Tests;
 
-/// <summary>Check Library, cache prune and Clean over the API, as the CLI does them with no Server (#192, #162).</summary>
+/// <summary>Check Library, cache prune and Clean over the API, as the CLI does them alone (#192, #162).</summary>
 public sealed class LibraryHealthApiTests : IAsyncLifetime {
     readonly ServerFixture server = new();
     HttpClient client = null!;

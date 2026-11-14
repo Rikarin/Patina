@@ -594,7 +594,7 @@ public sealed class FrameMemoryTests : IDisposable {
         Assert.False(File.Exists(path));
     }
 
-    /// <summary>A Server that never draws takes no room for frames, so one on a full disk still starts (#291).</summary>
+    /// <summary>A Server that never draws takes no room for frames, so it starts on a full disk (#291).</summary>
     [Fact]
     public void A_server_takes_no_room_for_frames_until_it_draws_one() {
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.frames");
@@ -609,8 +609,8 @@ public sealed class FrameMemoryTests : IDisposable {
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}", "gone", "x.frames");
         using var own = new FrameMemory(Options.Create(new ServerOptions { Worker = new() { FramesPath = path } }));
 
-        var refused = await Assert.ThrowsAsync<FramesUnavailableException>(
-            () => own.RentAsync(TestContext.Current.CancellationToken)
+        var refused = await Assert.ThrowsAsync<FramesUnavailableException>(() =>
+            own.RentAsync(TestContext.Current.CancellationToken)
         );
 
         Assert.Contains(path, refused.Message, StringComparison.Ordinal);
