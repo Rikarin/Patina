@@ -11,6 +11,9 @@ public sealed class ServerFixture : WebApplicationFactory<Program> {
 
     public string Library => Directory.CreateDirectory(Path.Combine(scratch.FullName, "Game.ptlib")).FullName;
 
+    /// <summary>The largest file this Server takes from a client.</summary>
+    public const long UploadMostBytes = 1 << 20;
+
     public string SocketPath { get; } = Patina.Testing.TempFolders.NewSocket();
 
     /// <summary>The preferences file this Server keeps, in its own folder.</summary>
@@ -31,6 +34,11 @@ public sealed class ServerFixture : WebApplicationFactory<Program> {
         builder.UseSetting("Patina:DiscoveryFile", Path.Combine(scratch.FullName, "servers.json"));
         // Nor the person's own preferences, which a test that sets them would write over.
         builder.UseSetting("Patina:PreferencesFile", PreferencesFile);
+        // A file over the upload limit is refused at 1 MiB here, not at 4 GiB.
+        builder.UseSetting(
+            "Patina:UploadMostBytes",
+            UploadMostBytes.ToString(System.Globalization.CultureInfo.InvariantCulture)
+        );
     }
 
     protected override void Dispose(bool disposing) {

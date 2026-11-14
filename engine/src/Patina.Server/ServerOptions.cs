@@ -21,6 +21,12 @@ public sealed class ServerOptions {
     /// <summary>The discovery file, or null for the per-user default.</summary>
     public string? DiscoveryFile { get; set; }
 
+    /// <summary>
+    ///     The largest file a client may send the library, or null for <see cref="Patina.Library.LibraryUploads.MostBytes" />:
+    ///     a test lowers it to see a file over it refused without sending gigabytes.
+    /// </summary>
+    public long? UploadMostBytes { get; set; }
+
     public WorkerOptions Worker { get; set; } = new();
 }
 

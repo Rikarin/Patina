@@ -45,6 +45,22 @@ public sealed partial class LibraryTreeApiTests {
         Assert.Empty(Directory.GetFiles(Path.Combine(server.Library, "uploads"), ".partial-*"));
     }
 
+    /// <summary>
+    ///     A file over the limit is refused with a code before any of it is kept (#297): the Server here takes 1 MiB, the
+    ///     product 4 GiB, by the same check.
+    /// </summary>
+    [Fact]
+    public async Task A_file_over_the_limit_is_refused_and_nothing_is_kept() {
+        using var refused = await UploadAsync("huge.png", new byte[ServerFixture.UploadMostBytes + 1]);
+        using var taken = await UploadAsync("small.png", new byte[ServerFixture.UploadMostBytes]);
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, refused.StatusCode);
+        Assert.Contains("upload-too-large", await refused.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+        taken.EnsureSuccessStatusCode();
+        var kept = Directory.EnumerateFiles(Path.Combine(server.Library, "uploads"), "*", SearchOption.AllDirectories);
+        Assert.Equal(["small.png"], kept.Select(Path.GetFileName));
+    }
+
     /// <summary>A name that is no picture or mesh, or is more than a file's name, is refused with a code.</summary>
     [Theory]
     [InlineData("notes.txt")]
