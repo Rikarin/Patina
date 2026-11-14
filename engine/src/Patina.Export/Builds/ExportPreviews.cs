@@ -104,7 +104,10 @@ public static class ExportPreviews {
     /// <summary>The set asked for, or the first: as <see cref="ExportSteps.SetsOf" /> names them.</summary>
     static string SetOf(IReadOnlyList<ExportSource> sources, string? asked) {
         List<string> names = [
-            ..sources.Select(static s => s.Set).Where(static s => s.Length > 0).Distinct().DefaultIfEmpty(string.Empty)
+            ..sources.Select(static s => s.Set)
+                .Where(static s => s.Length > 0)
+                .Distinct()
+                .DefaultIfEmpty(string.Empty)
         ];
         return asked is null || names.Contains(asked, StringComparer.Ordinal)
             ? asked ?? names[0]
@@ -116,12 +119,15 @@ public static class ExportPreviews {
         ArgumentNullException.ThrowIfNull(step);
         var known = Path.Combine(step.Export.Folder, Measured);
         return File.Exists(known)
-            ? JsonSerializer.Deserialize(SharedFile.ReadAllBytes(known), ExportJsonContext.Default.CompressionPreviewInfo)
+            ? JsonSerializer.Deserialize(
+                SharedFile.ReadAllBytes(known),
+                ExportJsonContext.Default.CompressionPreviewInfo
+            )
             : null;
     }
 
     /// <summary>Makes a planned preview: decodes the set's maps, compresses the region and writes its files.</summary>
-    /// <exception cref="BuildRefusedException">A file the preset does not write, or one this set cannot have.</exception>
+    /// <exception cref="BuildRefusedException">A file the preset does not write, or one the set cannot have.</exception>
     public static CompressionPreviewInfo Run(CompressionStep step, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(step);
         var request = step.Request;

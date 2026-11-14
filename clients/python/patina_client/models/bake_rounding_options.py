@@ -23,21 +23,21 @@ class BakeRoundingOptions:
     """ Edges baked round into the normal map, the bevel a hard-surface model was not modelled with.
 
         Attributes:
-            enabled (bool): Whether edges are rounded at all.
-            width (float): How far either side of an edge the bevel reaches, in the rays' units.
+            enabled (bool): Whether edges are rounded at all. Default: False.
+            width (float): How far either side of an edge the bevel reaches, in the rays' units. Default: 0.01.
             edges (str): Which edges: `angle`, every edge whose faces meet at double BakeRoundingOptions.Angle or more, or
                 `hard`, the
-                edges the mesh's own normals split, which is the nearest a mesh file has to an edge weight.
-            angle (float): For `angle`: the least angle between two faces that is an edge, in degrees.
+                edges the mesh's own normals split, which is the nearest a mesh file has to an edge weight. Default: 'angle'.
+            angle (float): For `angle`: the least angle between two faces that is an edge, in degrees. Default: 30.0.
             profile (str): How the normal turns across the bevel: `even`, a round fillet; `smooth`, flat at the bevel's side
-                and turning fastest near the edge; or `chamfer`, one flat face at the halfway angle.
+                and turning fastest near the edge; or `chamfer`, one flat face at the halfway angle. Default: 'even'.
      """
 
-    enabled: bool
-    width: float
-    edges: str
-    angle: float
-    profile: str
+    enabled: bool = False
+    width: float = 0.01
+    edges: str = 'angle'
+    angle: float = 30.0
+    profile: str = 'even'
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

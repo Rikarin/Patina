@@ -165,9 +165,9 @@ public static class IpcTypes {
     public const string MaterialRead = "material.read";
 
     /// <summary>
-    ///     Server to Worker: decode the picture <see cref="IpcMessage.PictureRead" /> names, and write a PNG of it where
-    ///     it says (#293). The Server decodes no picture: a decoder is a parser of a file anybody made. Uses no device,
-    ///     and is answered beside the queue; answered in <see cref="IpcMessage.PictureReadEnd" />.
+    ///     Server to Worker: decode the picture <see cref="IpcMessage.PictureRead" /> names, and write a PNG of it
+    ///     where it says (#293). The Server decodes no picture: a decoder is a parser of a file anybody made. Uses no
+    ///     device, and is answered beside the queue; answered in <see cref="IpcMessage.PictureReadEnd" />.
     /// </summary>
     public const string PictureRead = "picture.read";
 
@@ -179,7 +179,8 @@ public static class IpcTypes {
 
     /// <summary>
     ///     Server to Worker: make a compression preview from a plan (<see cref="IpcMessage.CompressionStep" />) into
-    ///     the cache, answered in <see cref="IpcMessage.CompressionPreview" />. Uses no device; beside the queue (#293).
+    ///     the cache, answered in <see cref="IpcMessage.CompressionPreview" />. Uses no device, so it is answered beside
+    ///     the queue (#293).
     /// </summary>
     public const string ExportCompress = "export.compress";
 
@@ -417,7 +418,7 @@ public sealed class IpcMessage {
 
     public IdColoursAsk? IdColoursAsk { get; set; }
 
-    /// <summary>A bake's ID colours, in the answer to <see cref="IpcTypes.BakeIdColours" />; null for no ID map.</summary>
+    /// <summary>A bake's ID colours, answering <see cref="IpcTypes.BakeIdColours" />; null for no ID map.</summary>
     public StackIdColours? IdColours { get; set; }
 
     public CompressionStep? CompressionStep { get; set; }

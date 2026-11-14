@@ -243,7 +243,11 @@ public sealed partial class LibraryTreeApiTests {
 
         foreach (var refused in new[] { first, again }) {
             Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
-            Assert.Contains("picture-unreadable", await refused.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+            Assert.Contains(
+                "picture-unreadable",
+                await refused.Content.ReadAsStringAsync(Token),
+                StringComparison.Ordinal
+            );
         }
 
         Assert.Equal(HttpStatusCode.OK, fine.StatusCode);

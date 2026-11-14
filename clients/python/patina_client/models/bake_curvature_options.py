@@ -26,12 +26,13 @@ class BakeCurvatureOptions:
             range_ (str): `auto`, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or
                             `custom`, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a
                 crease, so every
-                            bake made with it agrees.
-            radius (float): For `custom`: the radius of the tightest bend the map tells apart, in the rays' units.
+                            bake made with it agrees. Default: 'auto'.
+            radius (float): For `custom`: the radius of the tightest bend the map tells apart, in the rays' units. Default:
+                0.01.
      """
 
-    range_: str
-    radius: float
+    range_: str = 'auto'
+    radius: float = 0.01
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

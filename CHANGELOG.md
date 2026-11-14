@@ -515,6 +515,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- A bake's key carries the baker's own revision as well as Patina's version (#294), so a fix to how maps bake reaches every bake made before it instead of being answered from the cache. Each bake is made once more after this update.
+- The Python client gives each plain bake setting, and every other number, word or switch a request may leave as it starts, its default (#294): a script written before a new setting was added keeps working. The API document says each such default.
+- The Server logs ASP.NET Core's warnings and nothing below them (#294): a line per request filled the app's log of the engine, and the Diagnostics dialog now keeps the last 2,000 lines of each engine process, from 200.
 - Every pane's own bar is one height (#200): Graph, Graph Beside, Layers, the mask under a layer, the 2D view, Library, Snapshots, Checks, Bake and Activity were 28 to 36 pixels tall, so bars side by side in the dock now line up. Each says what it is to a screen reader, as a toolbar or, for the 2D view's readouts, a group.
 - Bake, Export and Activity show progress with xUI's progress bar, striped while it runs (#195).
 - A request the GPU engine refuses, or that finds it gone or slow, says so in the app's words rather than the engine's or the system's (#198), and so do a graph edit the graph cannot take, a save over a file changed outside Patina, a file that cannot be written, and a job that is gone. Through the API these refusals carry the codes `engine-refused`, `engine-unavailable`, `graph-refused`, `file-changed`, `file-unwritable` and `job-missing`; 42 refusals are left without a code, from 80.

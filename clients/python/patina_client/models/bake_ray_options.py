@@ -23,35 +23,38 @@ class BakeRayOptions:
     """ How far a bake's rays look from the low mesh, and what they may strike.
 
         Attributes:
-            front (float): How far a ray looks outward, in front of the low mesh.
-            rear (float): How far a ray looks inward, behind the low mesh, or past it from a cage.
+            front (float): How far a ray looks outward, in front of the low mesh. Default: 0.05.
+            rear (float): How far a ray looks inward, behind the low mesh, or past it from a cage. Default: 0.05.
             units (str): What the distances here and in BakeOcclusionOptions are in: `relative`, fractions of the
-                high mesh's bounding-box diagonal, or `absolute`, the model's own units.
+                high mesh's bounding-box diagonal, or `absolute`, the model's own units. Default: 'relative'.
             ignore_backfaces (bool): Whether a ray passes through a high face turned away from the low mesh's facing.
+                Default: False.
             automatic_cage (bool): Whether, with no cage file, the rays start on the low mesh pushed out by the front
                 distance and take the
-                first surface they meet, as from a cage, rather than the nearer surface either way (#148).
-            skew (float): How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.
-            skew_map (str): A grey image saying where to apply the skew, or empty for everywhere.
+                first surface they meet, as from a cage, rather than the nearer surface either way (#148). Default: False.
+            skew (float): How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1. Default:
+                0.0.
+            skew_map (str): A grey image saying where to apply the skew, or empty for everywhere. Default: ''.
             distance_map (str): A grey image correcting how far the rays reach over the atlas, or empty for as set: mid grey
                 leaves them,
-                black pulls them onto the low mesh and white sends them twice as far, front, rear and cage alike.
-            match_by_name (bool): Whether a part of the low mesh only strikes the high part of the same name.
-            low_suffix (str): What a low part's name ends in, which matching by name takes off.
-            high_suffix (str): What a high part's name ends in, which matching by name takes off.
+                black pulls them onto the low mesh and white sends them twice as far, front, rear and cage alike. Default: ''.
+            match_by_name (bool): Whether a part of the low mesh only strikes the high part of the same name. Default:
+                False.
+            low_suffix (str): What a low part's name ends in, which matching by name takes off. Default: '_low'.
+            high_suffix (str): What a high part's name ends in, which matching by name takes off. Default: '_high'.
      """
 
-    front: float
-    rear: float
-    units: str
-    ignore_backfaces: bool
-    automatic_cage: bool
-    skew: float
-    skew_map: str
-    distance_map: str
-    match_by_name: bool
-    low_suffix: str
-    high_suffix: str
+    front: float = 0.05
+    rear: float = 0.05
+    units: str = 'relative'
+    ignore_backfaces: bool = False
+    automatic_cage: bool = False
+    skew: float = 0.0
+    skew_map: str = ''
+    distance_map: str = ''
+    match_by_name: bool = False
+    low_suffix: str = '_low'
+    high_suffix: str = '_high'
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

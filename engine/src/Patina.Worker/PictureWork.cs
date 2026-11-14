@@ -5,9 +5,9 @@ using Patina.Ipc;
 namespace Patina.Worker;
 
 /// <summary>
-///     What decodes a picture for the Server, which decodes none (#293, plan §3.1): a library picture read whole or shown
-///     as a PNG, a bake's ID colours, and a compression preview. None of it uses the device or keeps anything, so it
-///     is answered beside the queue.
+///     What decodes a picture for the Server, which decodes none (#293, plan §3.1): a library picture read whole or
+///     shown as a PNG, a bake's ID colours, and a compression preview. None of it uses the device or keeps anything,
+///     so it is answered beside the queue.
 /// </summary>
 static class PictureWork {
     public static IpcMessage Answer(IpcMessage request, CancellationToken cancellationToken) =>

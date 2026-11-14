@@ -4,9 +4,9 @@ using Patina.Ipc;
 namespace Patina.Server.Tests;
 
 /// <summary>
-///     A Worker for an in-memory Server that only decodes pictures (#293), with the library code the real Worker answers
-///     <see cref="IpcTypes.PictureRead" /> with, so an API test of a library picture needs no GPU process. Anything else
-///     it is asked is refused. <c>StackProcessTests</c> asks the real Worker.
+///     A Worker for an in-memory Server that only decodes pictures (#293), with the library code the real Worker
+///     answers <see cref="IpcTypes.PictureRead" /> with, so an API test of a library picture needs no GPU process.
+///     Anything else it is asked is refused. <c>StackProcessTests</c> asks the real Worker.
 /// </summary>
 sealed class PictureWorker : IAsyncDisposable {
     readonly Stream stream;
@@ -57,7 +57,9 @@ sealed class PictureWorker : IAsyncDisposable {
         }
 
         return new() {
-            Type = IpcTypes.Ok, Id = request.Id, PictureReadEnd = new(PictureReads.Read(ask.File, ask.Preview, ask.Side))
+            Type = IpcTypes.Ok,
+            Id = request.Id,
+            PictureReadEnd = new(PictureReads.Read(ask.File, ask.Preview, ask.Side))
         };
     }
 

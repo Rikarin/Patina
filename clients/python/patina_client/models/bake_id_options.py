@@ -25,12 +25,12 @@ class BakeIdOptions:
         Attributes:
             source (str): `auto`: vertex colours, else materials when there are several, else connected shells. Or one of
                             `material`, `material-colour` (each material's base colour), `vertex-colour`, `mesh`
-                            (each named part) and `shell`.
-            palette (str): How labels become colours: `random`, `hue` or `grey`. Colours stay colours.
+                            (each named part) and `shell`. Default: 'auto'.
+            palette (str): How labels become colours: `random`, `hue` or `grey`. Colours stay colours. Default: 'random'.
      """
 
-    source: str
-    palette: str
+    source: str = 'auto'
+    palette: str = 'random'
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

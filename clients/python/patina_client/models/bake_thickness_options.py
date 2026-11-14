@@ -23,10 +23,11 @@ class BakeThicknessOptions:
     """ The thickness map's own settings.
 
         Attributes:
-            normalised (bool): Whether the map is divided by its largest value, so the thickest texel reads white.
+            normalised (bool): Whether the map is divided by its largest value, so the thickest texel reads white. Default:
+                True.
      """
 
-    normalised: bool
+    normalised: bool = True
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
