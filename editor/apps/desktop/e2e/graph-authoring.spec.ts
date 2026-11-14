@@ -185,7 +185,9 @@ test('shows what each node took on the GPU, and exposes all of a node at once', 
   await window.getByTestId('arrange-timings').click();
   await expect(node(2).getByTestId('graph-node-time')).toHaveText(/ ms$/);
 
-  await node(2).locator('xui-graph-node-preview').click();
+  // The HSL's hue, saturation and lightness, at once; a node with one number, such as the blur, has no Expose All.
+  await node(4).locator('xui-graph-node-preview').click();
+  await expect(window.getByTestId('graph-expose-all')).toHaveText(/\(3\)/);
   await window.getByTestId('graph-expose-all').click();
   await expect(window.getByTestId('app-undo')).toHaveAttribute('title', /^Undo Expose All\b/);
   await expect(window.getByTestId('graph-expose-all')).toHaveCount(0);
