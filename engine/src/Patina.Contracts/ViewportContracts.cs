@@ -257,6 +257,32 @@ public sealed record ViewportPickRequest(
     int? Height = null
 );
 
+/// <summary>
+///     Asks which named meshes show inside a rectangle on the viewport's picture (#110): a marquee, which takes every
+///     mesh it reaches into a layer's meshes, or out of them. Through what the viewport draws, as a pick is, so a mesh
+///     hidden behind another or isolated away is not reached.
+/// </summary>
+/// <param name="X">One corner, across the picture, 0 to 1.</param>
+/// <param name="Y">That corner, down it, 0 to 1.</param>
+/// <param name="ToX">The opposite corner, across.</param>
+/// <param name="ToY">The opposite corner, down.</param>
+/// <param name="Camera">The camera to look through, or null for the viewport's.</param>
+/// <param name="Width">The picture's width, or null for the viewport's.</param>
+/// <param name="Height">Its height.</param>
+public sealed record ViewportMarqueeRequest(
+    double X,
+    double Y,
+    double ToX,
+    double ToY,
+    ViewportCameraState? Camera = null,
+    int? Width = null,
+    int? Height = null
+);
+
+/// <summary>The named meshes a marquee reached (#110), by name in ordinal order; none when the model names none.</summary>
+/// <param name="Parts">Their names.</param>
+public sealed record ViewportMarquee(IReadOnlyList<string> Parts);
+
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 

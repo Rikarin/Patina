@@ -126,6 +126,20 @@ test('a mask opens as a stack of its own, takes paint over its base, and goes ba
   await window.getByRole('option', { name: 'Dirt', exact: true }).click();
   await expect(window.getByTestId('paint-mask-layer-knob-amount')).toBeVisible({ timeout: 30_000 });
 
+  // The mask alone on the model, in the viewport's picture view, and the material again (#109).
+  const view = window.getByTestId('viewport-view');
+  const viewport = window.getByRole('application', { name: 'Viewport' });
+  const frames = async (): Promise<number> => Number(await viewport.getAttribute('data-frames'));
+  await window.getByTestId('mask-stack-show').click();
+  await expect(window.getByTestId('mask-stack-show')).toHaveAttribute('aria-pressed', 'true');
+  await expect(view).toContainText('Paint', { timeout: 60_000 });
+  const asked = await frames();
+  await expect.poll(frames, { timeout: 30_000 }).toBeGreaterThan(asked);
+  await window.screenshot({ path: join(shots, 'mask-stack-4-mask-on-mesh.png') });
+  await window.getByTestId('mask-stack-show').click();
+  await expect(window.getByTestId('mask-stack-show')).toHaveAttribute('aria-pressed', 'false');
+  await expect(view).not.toContainText('Paint');
+
   // Back to the layers, with the layer still chosen and its mask in front.
   await window.getByTestId('mask-stack-back').click();
   await expect(window.getByTestId('paint-layers')).toBeVisible();

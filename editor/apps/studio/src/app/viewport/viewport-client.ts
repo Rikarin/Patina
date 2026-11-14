@@ -146,8 +146,12 @@ export class ViewportClient {
     effect(() => {
       const target = jump.target();
       if (target) {
-        untracked(() => this.go(target.to.view ?? null, target.to.camera ?? null));
+        untracked(() => this.go(target.to.view ?? null, target.to.camera ?? null, target.to.picture ?? null));
       }
+    });
+    effect(() => {
+      const display = this.display();
+      jump.shownPicture.set(display.view === 'picture' ? (display.picture ?? null) : null);
     });
     // A project opens its viewport as it was left, once its contents have been read. Only a change of project puts
     // it back, not a save.
@@ -167,9 +171,14 @@ export class ViewportClient {
     this.keepLater();
   }
 
-  /** Shows a view and looks through a camera, for another pane: either left out stays as it is. */
-  private go(view: string | null, camera: ViewportCameraState | null): void {
-    if (view !== null && view !== this.display().view) {
+  /**
+   * Shows a view and looks through a camera, for another pane: either left out stays as it is. A picture is shown
+   * again even when it is the one on view, since its file may have been written again.
+   */
+  private go(view: string | null, camera: ViewportCameraState | null, picture: string | null): void {
+    if (picture !== null) {
+      this.setDisplay({ view: 'picture', picture });
+    } else if (view !== null && view !== this.display().view) {
       this.setDisplay({ view, picture: null });
     }
 

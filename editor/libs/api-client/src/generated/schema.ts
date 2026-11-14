@@ -108,6 +108,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/marquee': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** The named meshes that show inside a rectangle in the viewport, which a layer kept to some meshes takes or leaves (#110). */
+    post: operations['MarqueeInViewport'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/cast': {
     parameters: {
       query?: never;
@@ -8403,6 +8420,49 @@ export interface components {
       /** @description What the surface covers, read from red and shown as cut out or not. */
       opacity?: null | string;
     };
+    /** @description The named meshes a marquee reached (#110), by name in ordinal order; none when the model names none. */
+    ViewportMarquee: {
+      /** @description Their names. */
+      parts: string[];
+    };
+    /**
+     * @description Asks which named meshes show inside a rectangle on the viewport's picture (#110): a marquee, which takes every
+     *     mesh it reaches into a layer's meshes, or out of them. Through what the viewport draws, as a pick is, so a mesh
+     *     hidden behind another or isolated away is not reached.
+     */
+    ViewportMarqueeRequest: {
+      /**
+       * Format: double
+       * @description One corner, across the picture, 0 to 1.
+       */
+      x: number;
+      /**
+       * Format: double
+       * @description That corner, down it, 0 to 1.
+       */
+      y: number;
+      /**
+       * Format: double
+       * @description The opposite corner, across.
+       */
+      toX: number;
+      /**
+       * Format: double
+       * @description The opposite corner, down.
+       */
+      toY: number;
+      camera?: null | components['schemas']['ViewportCameraState'];
+      /**
+       * Format: int32
+       * @description The picture's width, or null for the viewport's.
+       */
+      width?: null | number;
+      /**
+       * Format: int32
+       * @description Its height.
+       */
+      height?: null | number;
+    };
     /** @description Asks the viewport to show a mesh. */
     ViewportMeshRequest: {
       /** @description The file's path, on the Server's machine. */
@@ -8797,6 +8857,48 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ViewportPick'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  MarqueeInViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportMarqueeRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportMarquee'];
         };
       };
       /** @description Conflict */

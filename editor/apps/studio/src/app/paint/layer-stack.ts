@@ -31,6 +31,7 @@ import { XuiInputImports } from '@xui/input';
 import { XuiMenuImports } from '@xui/menu';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiPopoverImports } from '@xui/popover';
+import { XuiSegmentedControlImports } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
@@ -47,7 +48,9 @@ import { ProjectStore } from '../library/project-store';
 import { IsolationStore } from '../viewport/isolation-store';
 import { type DropZone, dropManyCommands, nudgeCommands } from './layer-drag';
 import { tagSwatch } from './layer-tags';
+import { MaskOnMesh } from './mask-on-mesh';
 import { MaterialUse } from './material-use';
+import { PartCombines } from './mesh-selection';
 import { type LayerRow, PaintStore, hexOf, maskOn, proxyName, toggledEffect } from './paint-store';
 
 const RowHeight = 56;
@@ -117,6 +120,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
     XuiMenuImports,
     XuiNonIdealStateImports,
     XuiPopoverImports,
+    XuiSegmentedControlImports,
     XuiSelectImports,
     XuiSliderImports,
     XuiSwitchImports
@@ -395,6 +399,20 @@ const MaskMarks: Readonly<Record<string, string>> = {
           ‹ Layers
         </button>
         <span class="min-w-0 flex-1 truncate text-xs" data-testid="mask-stack-title">{{ owner.name }} · Mask</span>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          class="shrink-0 px-1.5 text-xs"
+          data-testid="mask-stack-show"
+          title="Shows this mask on the model on its own, white where the layer shows, or the material again (Alt-click the mask)"
+          [attr.aria-pressed]="maskOnMesh.layer() === owner.id"
+          [class.bg-selection]="maskOnMesh.layer() === owner.id"
+          (click)="maskOnMesh.toggle(owner.id)"
+        >
+          On Mesh
+        </button>
         @if (chosenEffects().size > 0) {
           <button
             type="button"
@@ -1056,12 +1074,12 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 xuiButton
                 size="sm"
                 data-testid="layer-meshes-pick"
-                title="Each click on the model takes the mesh under it into this layer, or out of it"
+                title="Each click on the model takes the mesh under it into this layer, or out of it, and a drag takes every mesh inside it. Shift adds, Ctrl removes."
                 [attr.aria-pressed]="store.pickingPart() === layer.id"
                 [variant]="store.pickingPart() === layer.id ? 'default' : 'ghost'"
                 (click)="store.pickingPart.set(store.pickingPart() === layer.id ? null : layer.id)"
               >
-                {{ store.pickingPart() === layer.id ? 'Click the model…' : 'Pick on Mesh' }}
+                {{ store.pickingPart() === layer.id ? 'Click or drag on the model…' : 'Pick on Mesh' }}
               </button>
               <button
                 type="button"
@@ -1076,6 +1094,17 @@ const MaskMarks: Readonly<Record<string, string>> = {
                 {{ hidesOthers(layer) ? 'Show All' : 'Hide Others' }}
               </button>
             </div>
+            @if (store.pickingPart() === layer.id) {
+              <xui-segmented-control
+                size="sm"
+                fill
+                aria-label="What a drag on the model does"
+                data-testid="layer-meshes-combine"
+                [options]="partCombines"
+                [value]="store.partCombine()"
+                (valueChange)="$event && store.partCombine.set($event)"
+              />
+            }
           }
           @for (part of parts(); track part) {
             <div class="flex h-7 items-center gap-2">
@@ -1289,6 +1318,9 @@ const MaskMarks: Readonly<Record<string, string>> = {
           <button type="button" xuiMenuItem data-testid="mask-menu-open" (triggered)="openMaskStack(layer)">
             {{ commands.label('openMaskStack') }}
           </button>
+          <button type="button" xuiMenuItem data-testid="mask-menu-show" (triggered)="maskOnMesh.toggle(layer.id)">
+            {{ maskOnMesh.layer() === layer.id ? 'Show Material on Mesh' : 'Show Mask on Mesh' }}
+          </button>
           <button type="button" xuiMenuItem data-testid="mask-menu-invert" (triggered)="invertMask(layer)">
             Invert Mask
           </button>
@@ -1382,6 +1414,14 @@ const MaskMarks: Readonly<Record<string, string>> = {
             } @else {
               <button type="button" xuiMenuItem data-testid="layer-menu-mask-open" (triggered)="openMaskStack(layer)">
                 {{ commands.label('openMaskStack') }}
+              </button>
+              <button
+                type="button"
+                xuiMenuItem
+                data-testid="layer-menu-mask-show"
+                (triggered)="maskOnMesh.toggle(layer.id)"
+              >
+                {{ maskOnMesh.layer() === layer.id ? 'Show Material on Mesh' : 'Show Mask on Mesh' }}
               </button>
               <button
                 type="button"
@@ -1527,6 +1567,8 @@ export class LayerStack {
   });
   protected readonly project = inject(ProjectStore);
   private readonly isolation = inject(IsolationStore);
+  /** The layer whose mask the viewport shows on its own (#109). */
+  protected readonly maskOnMesh = inject(MaskOnMesh);
 
   /**
    * Why this texture set's mesh maps need baking again, or null: its own bake's word while it is open, since a mesh
@@ -1659,6 +1701,8 @@ export class LayerStack {
     }
   }
   protected readonly maskLayerSources = MaskLayerSources;
+  /** How a marquee joins the meshes it reaches to a layer's (#110). */
+  protected readonly partCombines = PartCombines;
   /** The layer whose mask the list shows as a stack of its own, in place of the layers (#109), or null. */
   protected readonly maskStack = signal<string | null>(null);
   protected readonly maskStackLayer = computed(() => {
@@ -1673,6 +1717,9 @@ export class LayerStack {
   protected maskClicked(event: MouseEvent, layer: StackLayer): void {
     if (event.shiftKey) {
       void this.store.switchMask(layer);
+    } else if (event.altKey) {
+      // Alt-click shows the mask alone on the model, or the material again (#109).
+      this.maskOnMesh.toggle(layer.id);
     } else {
       this.choose(layer, true);
     }
@@ -1681,7 +1728,7 @@ export class LayerStack {
   protected maskTitle(layer: StackLayer): string {
     const kind = `${termName(layer.mask.source)} mask`;
     return maskOn(layer)
-      ? `${kind}. Double-click to open it as a stack, Shift-click to switch it off`
+      ? `${kind}. Double-click to open it in Layers, Alt-click to see it on the model, Shift-click to switch it off`
       : `${kind}, switched off. Shift-click to switch it on`;
   }
 

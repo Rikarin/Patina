@@ -58,6 +58,12 @@ public static class IpcTypes {
     public const string ViewportCast = "viewport.cast";
 
     /// <summary>
+    ///     Server to Worker: the named meshes that show inside the rectangle from <see cref="IpcMessage.Pick" /> to its
+    ///     second corner; answers with <see cref="IpcMessage.Marqueed" />. It reads the mesh and no device (#110).
+    /// </summary>
+    public const string ViewportMarquee = "viewport.marquee";
+
+    /// <summary>
     ///     Server to Worker: from now on the viewport wears the stack <see cref="IpcMessage.Following" />, or nothing
     ///     when that is null. The maps go from the stack's evaluation to the viewport inside the Worker.
     /// </summary>
@@ -198,7 +204,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 18;
+    public const int ProtocolVersion = 19;
 
     public string Type { get; set; } = string.Empty;
 
@@ -234,6 +240,9 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to viewport.pick.</summary>
     public ViewportPick? Picked { get; set; }
+
+    /// <summary>The reply to viewport.marquee.</summary>
+    public ViewportMarquee? Marqueed { get; set; }
 
     /// <summary>viewport.cast: the rays and the mesh.</summary>
     public ViewportCastAsk? Cast { get; set; }
@@ -530,6 +539,8 @@ public sealed record ViewportRender(int Width, int Height, string SharedMemory, 
 ///     the map a pick says is in its texture set's own layout, which Find Layer, the color picker and the clone source
 ///     read. Null reads every material in the first.
 /// </param>
+/// <param name="ToX">For viewport.marquee, the rectangle's opposite corner across, 0 to 1; null for a pick.</param>
+/// <param name="ToY">Its opposite corner down.</param>
 public sealed record ViewportPickAsk(
     double X,
     double Y,
@@ -537,7 +548,9 @@ public sealed record ViewportPickAsk(
     int Width,
     int Height,
     string Mesh,
-    IReadOnlyDictionary<string, int>? UvSets = null
+    IReadOnlyDictionary<string, int>? UvSets = null,
+    double? ToX = null,
+    double? ToY = null
 );
 
 /// <summary>Rays along one direction to meet the mesh with (#263).</summary>

@@ -130,6 +130,28 @@ public sealed partial class StackProcessTests {
         );
         Assert.Equal("housing_low", picked.Part);
         Assert.Contains(picked.Part, parts!.Parts);
+        // A marquee reaches what shows inside it: the housing in the middle, its strap too across the whole picture,
+        // and nothing in a corner the model does not reach.
+        Assert.Equal(["housing_low"], await MarqueeAsync(0.49, 0.49, 0.51, 0.51, deadline.Token));
+        Assert.Equal(["housing_low", "strap_low"], await MarqueeAsync(1, 1, 0, 0, deadline.Token));
+        Assert.Empty(await MarqueeAsync(0, 0, 0.02, 0.02, deadline.Token));
+    }
+
+    async Task<IReadOnlyList<string>> MarqueeAsync(
+        double x,
+        double y,
+        double toX,
+        double toY,
+        CancellationToken token
+    ) {
+        using var response = await http.PostAsJsonAsync(
+            "/api/v1/viewport/marquee",
+            new(x, y, toX, toY, null, Picture, Picture),
+            ContractsJsonContext.Default.ViewportMarqueeRequest,
+            token
+        );
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync(token));
+        return (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.ViewportMarquee, token))!.Parts;
     }
 
     /// <summary>
