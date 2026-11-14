@@ -42,8 +42,12 @@ and draw it again at the new size, or to keep the pixels and never lose any of t
   carried onto the canvas's texels by the Server before it is journalled (`StackStrokeScale`, #281): its stamps, the
   rest of its drag, where it resumes, a brush sized on the map or in texels, a stencil's and a picture's place and
   scale and a clone's offset are multiplied by the canvas's width over the set's. A texel's middle is at its index and
-  a half on both, so it lands where the brush went. Only a larger canvas of another shape is refused: painting it at
-  the set's size would throw its detail away.
+  a half on both, so it lands where the brush went. A canvas of another shape, larger than the set on either side, is
+  first enlarged to the smallest size of the set's shape that holds it (`StackCanvasSides.Holding`: the set's size
+  times the larger of the two ratios, canvas over set), each texel repeated as any enlargement is, and is then painted
+  as a canvas of the set's shape. Scaling a stroke by two factors instead would keep the canvas smaller, but a brush's
+  turn, an alpha, a stencil and a projected picture would all shear, which no stroke field can say. Only a canvas that
+  would pass the largest side that way is refused (`stroke-canvas-larger`).
 - **A stroke's undo holds the pixels it painted over**, so a canvas a stroke of the open session began on is not
   enlarged under it; that stroke is refused, saying to save and open the document again. Each stroke carries the set's
   size it was made at (`StackPaintPart.Width`, `Height`), so a Worker replaying a session after a crash paints an old
@@ -54,11 +58,27 @@ replay would have redrawn it sharp. And a layer painted at 4096 is painted again
 
 ### Bit depth
 
-Paint stays RGBA8 (`PaintImage`). A 16-bit or float channel needs a second texel width through the tile cache, the
-stroke kernels, the undo snapshots and the `.vxpaint` format, and the evaluator already holds 16F and 32F results, so
-the decision is to add depth to a *channel* in Vixen's paint image, chosen per channel in the set's settings, and to
-treat today's 8-bit canvases as that channel's first format. Nothing in Patina depends on the width of a texel beyond
-`PaintImage.BytesPerTexel`, which is where it starts. Not done in this ADR.
+The width of a texel is a channel's (`ChannelAsset.Format`, `format:` in the stack file when not 8-bit), one of Vixen's
+`PaintTexelFormat`: `Rgba8`, `Rgba16Float` or `Rgba32Float`. Floats and not sixteen-bit integers, because they are what
+the evaluator already holds between kernels, so a wide channel is uploaded as it is held. `setChannelFormat` changes one
+channel's as one undo step, *Channel depth*, and the state's `channels[].format` and the vocabulary's `formats` say them.
+
+- **A stroke holds every value in four float lanes** and rounds only where it writes, to the image's width, so an 8-bit
+  channel paints the bytes it always did (two digests from the build before pin it) and a wide one keeps what eight
+  bits round away. The Server journals the colour in full beside the packed one (`StackPaintPart.Lanes`) for a stroke
+  at a wider width.
+- **Widened, never narrowed, as a canvas is enlarged and never shrunk.** The Server decides the width a stroke paints at
+  and journals it (`StackPaintPart.Format`, wire version 20): what the set asks, unless the channel already holds more,
+  which keeps its width so no paint is rounded, or a stroke of this session began on the canvas, whose undo holds the
+  image it painted over, which keeps its width until the document is opened again (nothing is refused). The Worker
+  widens a channel exactly into a new canvas that shares the other channels' images (`PaintCanvas.Formatted`), so
+  their undo still names the images the canvas holds, and a replay after a lost Worker paints at the width the
+  journal says.
+- **The file.** A canvas with a wide channel is a `.vxpaint` of version 4, where each channel says its format; a canvas
+  of 8-bit channels is still written as version 3, byte for byte.
+
+What it costs: a 16-bit channel is twice the memory and file of an 8-bit one, a 32-bit four times. A clone, a projected
+picture and a material read their sources at eight bits a lane.
 
 ## UV sets (#210)
 

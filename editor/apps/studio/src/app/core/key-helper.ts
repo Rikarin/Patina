@@ -42,7 +42,7 @@ interface HelperLine {
           <div class="columns-1 gap-6 sm:columns-2 lg:columns-3">
             @for (section of sections(); track section.name) {
               <section class="mb-3 break-inside-avoid" [attr.data-testid]="'key-helper-' + section.name">
-                <h3 class="text-foreground-muted mb-1 text-xs font-semibold">{{ section.name }}</h3>
+                <h3 class="section-label mb-1">{{ section.name }}</h3>
                 @for (line of section.lines; track line.id) {
                   <div class="flex items-baseline gap-2 py-0.5" [attr.data-testid]="'key-helper-line-' + line.id">
                     <span class="min-w-0 flex-1 truncate">{{ line.label }}</span>
@@ -53,7 +53,7 @@ interface HelperLine {
             }
             @if (moving(); as navigation) {
               <section class="mb-3 break-inside-avoid" data-testid="key-helper-navigation">
-                <h3 class="text-foreground-muted mb-1 text-xs font-semibold">Moving the view</h3>
+                <h3 class="section-label mb-1">Moving the view</h3>
                 <div class="flex items-baseline gap-2 py-0.5">
                   <span class="min-w-0 flex-1">Orbit</span><span class="readout">{{ navigation.orbit }}</span>
                 </div>

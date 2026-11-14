@@ -36,6 +36,7 @@ from .build_preview import BuildPreview
 from .build_preview_project import BuildPreviewProject
 from .build_request import BuildRequest
 from .cache_info import CacheInfo
+from .cache_prune_request import CachePruneRequest
 from .check_problem import CheckProblem
 from .check_problem_values import CheckProblemValues
 from .check_target import CheckTarget
@@ -186,12 +187,16 @@ from .library_costs import LibraryCosts
 from .library_export_request import LibraryExportRequest
 from .library_file import LibraryFile
 from .library_file_list import LibraryFileList
+from .library_finding import LibraryFinding
+from .library_finding_group import LibraryFindingGroup
+from .library_health import LibraryHealth
 from .library_info import LibraryInfo
 from .library_move_request import LibraryMoveRequest
 from .library_moved import LibraryMoved
 from .library_preset_request import LibraryPresetRequest
 from .library_report import LibraryReport
 from .library_targets_request import LibraryTargetsRequest
+from .library_tidied import LibraryTidied
 from .material_brush import MaterialBrush
 from .material_import_request import MaterialImportRequest
 from .material_import_result import MaterialImportResult
@@ -304,6 +309,8 @@ from .stack_command_stack_remove_layer import StackCommandStackRemoveLayer
 from .stack_command_stack_remove_layer_op import StackCommandStackRemoveLayerOp
 from .stack_command_stack_remove_mask_layer import StackCommandStackRemoveMaskLayer
 from .stack_command_stack_remove_mask_layer_op import StackCommandStackRemoveMaskLayerOp
+from .stack_command_stack_set_channel_format import StackCommandStackSetChannelFormat
+from .stack_command_stack_set_channel_format_op import StackCommandStackSetChannelFormatOp
 from .stack_command_stack_set_height_normal import StackCommandStackSetHeightNormal
 from .stack_command_stack_set_height_normal_op import StackCommandStackSetHeightNormalOp
 from .stack_command_stack_set_instance import StackCommandStackSetInstance
@@ -469,6 +476,7 @@ __all__ = (
     "BuildPreviewProject",
     "BuildRequest",
     "CacheInfo",
+    "CachePruneRequest",
     "CheckProblem",
     "CheckProblemValues",
     "CheckTarget",
@@ -619,12 +627,16 @@ __all__ = (
     "LibraryExportRequest",
     "LibraryFile",
     "LibraryFileList",
+    "LibraryFinding",
+    "LibraryFindingGroup",
+    "LibraryHealth",
     "LibraryInfo",
     "LibraryMoved",
     "LibraryMoveRequest",
     "LibraryPresetRequest",
     "LibraryReport",
     "LibraryTargetsRequest",
+    "LibraryTidied",
     "MaterialBrush",
     "MaterialImportRequest",
     "MaterialImportResult",
@@ -737,6 +749,8 @@ __all__ = (
     "StackCommandStackRemoveLayerOp",
     "StackCommandStackRemoveMaskLayer",
     "StackCommandStackRemoveMaskLayerOp",
+    "StackCommandStackSetChannelFormat",
+    "StackCommandStackSetChannelFormatOp",
     "StackCommandStackSetHeightNormal",
     "StackCommandStackSetHeightNormalOp",
     "StackCommandStackSetInstance",

@@ -51,6 +51,8 @@ class StackVocabulary:
             tags (list[StackTerm] | None | Unset): The colors a layer can be marked with, None first.
             kinds (list[StackTerm] | None | Unset): The kinds a graph's ports and parameters take: Number for Float, and the
                 rest.
+            formats (list[StackTerm] | None | Unset): How wide a channel's painted texels can be (#19): 8-bit, and 16-bit
+                and 32-bit float.
      """
 
     blends: list[StackTerm]
@@ -70,6 +72,7 @@ class StackVocabulary:
     lanes: list[StackTerm] | None | Unset = UNSET
     tags: list[StackTerm] | None | Unset = UNSET
     kinds: list[StackTerm] | None | Unset = UNSET
+    formats: list[StackTerm] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -208,6 +211,19 @@ class StackVocabulary:
         else:
             kinds = self.kinds
 
+        formats: list[dict[str, Any]] | None | Unset
+        if isinstance(self.formats, Unset):
+            formats = UNSET
+        elif isinstance(self.formats, list):
+            formats = []
+            for formats_type_1_item_data in self.formats:
+                formats_type_1_item = formats_type_1_item_data.to_dict()
+                formats.append(formats_type_1_item)
+
+
+        else:
+            formats = self.formats
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -233,6 +249,8 @@ class StackVocabulary:
             field_dict["tags"] = tags
         if kinds is not UNSET:
             field_dict["kinds"] = kinds
+        if formats is not UNSET:
+            field_dict["formats"] = formats
 
         return field_dict
 
@@ -450,6 +468,31 @@ class StackVocabulary:
         kinds = _parse_kinds(d.pop("kinds", UNSET))
 
 
+        def _parse_formats(data: object) -> list[StackTerm] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                formats_type_1 = []
+                _formats_type_1 = data
+                for formats_type_1_item_data in (_formats_type_1):
+                    formats_type_1_item = StackTerm.from_dict(formats_type_1_item_data)
+
+
+
+                    formats_type_1.append(formats_type_1_item)
+
+                return formats_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[StackTerm] | None | Unset, data)
+
+        formats = _parse_formats(d.pop("formats", UNSET))
+
+
         stack_vocabulary = cls(
             blends=blends,
             filters=filters,
@@ -468,6 +511,7 @@ class StackVocabulary:
             lanes=lanes,
             tags=tags,
             kinds=kinds,
+            formats=formats,
         )
 
 

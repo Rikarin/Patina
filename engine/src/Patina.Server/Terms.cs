@@ -23,6 +23,11 @@ public static class Terms {
         ["metalness"] = "Metallic",
         ["occlusion"] = "Ambient Occlusion",
 
+        // Channel depths (#19).
+        ["Rgba8"] = "8-bit",
+        ["Rgba16Float"] = "16-bit float",
+        ["Rgba32Float"] = "32-bit float",
+
         // Mesh maps.
         ["ao"] = "Ambient Occlusion",
         ["bent"] = "Bent Normal",

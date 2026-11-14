@@ -1384,6 +1384,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/check': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Rescans, then reports the library's health by kind of finding, errors first, as patina library check prints it. Changes nothing. */
+    post: operations['CheckLibrary'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/cache/prune': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Removes built objects, bakes and reports nothing has touched for a number of days, 30 by default. A later build makes them again. Refused while a bake or build is queued or running. */
+    post: operations['PruneCache'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/clean': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it. */
+    post: operations['CleanLibrary'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/graphs': {
     parameters: {
       query?: never;
@@ -3203,6 +3254,14 @@ export interface components {
        * @description The room it takes on disk.
        */
       bytes: number;
+    };
+    /** @description The body of `POST /api/v1/library/cache/prune`. */
+    CachePruneRequest: {
+      /**
+       * Format: int32
+       * @description How long a built object or report may go untouched before it goes, 0 or more.
+       */
+      days: number;
     };
     /** @description One problem a texture set has before it is exported. */
     CheckProblem: {
@@ -5083,6 +5142,52 @@ export interface components {
       /** @description Whether there were more than the list holds. */
       more: boolean;
     };
+    /** @description One thing a library check found. */
+    LibraryFinding: {
+      /** @description The file or project it concerns, relative to the library. */
+      path: string;
+      /** @description The specifics. */
+      detail: string;
+    };
+    /** @description What one kind of finding of a library check came to, as `patina library check` prints it. */
+    LibraryFindingGroup: {
+      /** @description What was found, such as `MissingReference` or `StaleOutput`. */
+      kind: string;
+      /** @description Whether the library is wrong, as opposed to having work to do or room to tidy. */
+      isError: boolean;
+      /**
+       * Format: int32
+       * @description How many there are in all.
+       */
+      count: number;
+      /** @description The first of them, at most int LibraryHealth.FindingsPerKind. */
+      findings: components['schemas']['LibraryFinding'][];
+    };
+    /** @description The health of a library, from `POST /api/v1/library/check`. */
+    LibraryHealth: {
+      /**
+       * Format: int32
+       * @description The projects checked.
+       */
+      projects: number;
+      /**
+       * Format: int32
+       * @description The shared assets checked.
+       */
+      assets: number;
+      /**
+       * Format: int32
+       * @description The outputs checked.
+       */
+      outputs: number;
+      /**
+       * Format: int32
+       * @description How many findings say the library is wrong.
+       */
+      errors: number;
+      /** @description The findings by kind, errors first. */
+      groups: components['schemas']['LibraryFindingGroup'][];
+    };
     /** @description The reply to `GET /api/v1/library`: what opening a library reads, and nothing more. */
     LibraryInfo: {
       /**
@@ -5214,6 +5319,19 @@ export interface components {
        *     the library ships to. Empty, such a build writes nothing.
        */
       presets: string[];
+    };
+    /** @description What tidying the library took away. */
+    LibraryTidied: {
+      /**
+       * Format: int32
+       * @description How many entries or folders went.
+       */
+      removed: number;
+      /**
+       * Format: int64
+       * @description The room that freed on disk.
+       */
+      bytes: number;
     };
     /** @description A graph rendered to a picture a brush stamps. */
     MaterialBrush: {
@@ -6358,6 +6476,12 @@ export interface components {
       usage: string;
       /** @description What it starts as. */
       default: number[];
+      /**
+       * @description How wide the texels are that a stroke paints it at (#19): one of the vocabulary's formats, Rgba8 unless the set
+       *     says more.
+       * @default Rgba8
+       */
+      format: string;
     };
     /** @description What Apply Channels to All Sets did, one entry for each other texture set of the model. */
     StackChannelsApplied: {
@@ -6452,6 +6576,7 @@ export interface components {
       | components['schemas']['StackCommandStackAddChannel']
       | components['schemas']['StackCommandStackNestLayer']
       | components['schemas']['StackCommandStackRemoveChannel']
+      | components['schemas']['StackCommandStackSetChannelFormat']
       | components['schemas']['StackCommandStackSetSeed']
       | components['schemas']['StackCommandStackDuplicateLayers']
       | components['schemas']['StackCommandStackPasteLayers']
@@ -6705,6 +6830,20 @@ export interface components {
        */
       index: number;
     };
+    /**
+     * @description How wide the texels are that strokes paint a channel at (#19): eight bits a lane, or sixteen or thirty-two bit
+     *     floats, which keep what eight bits round away, for a height above all. One undo step, <i>Channel depth</i>. A
+     *     layer painted before is widened, exactly, by its next stroke, unless a stroke of the session already painted it,
+     *     which holds the pixels it painted over; one wider than the set asks keeps its width, so paint is never rounded.
+     */
+    StackCommandStackSetChannelFormat: {
+      /** @enum {string} */
+      op: 'setChannelFormat';
+      /** @description Which channel, one the set has. */
+      usage: string;
+      /** @description One of the vocabulary's formats. */
+      format: string;
+    };
     /** @description Says how the texture set's height becomes the normal its surface is lit with. */
     StackCommandStackSetHeightNormal: {
       /** @enum {string} */
@@ -6890,6 +7029,8 @@ export interface components {
        *     `Replace`; or `Off`.
        */
       bakedOcclusion?: null | string;
+      /** @description What the set is for, in a person's words (#141), which nothing evaluates or exports. Empty takes it away. */
+      description?: null | string;
     };
     /**
      * @description Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
@@ -7986,6 +8127,11 @@ export interface components {
        * @default 1001
        */
       udim: number;
+      /**
+       * @description What the set is for, in a person's words (#141), or empty.
+       * @default
+       */
+      description: string;
     };
     /** @description Where a stroke's colour comes from, when it is not one colour. */
     StackStrokeSource: {
@@ -8213,6 +8359,8 @@ export interface components {
       tags?: null | components['schemas']['StackTerm'][];
       /** @description The kinds a graph's ports and parameters take: Number for Float, and the rest. */
       kinds?: null | components['schemas']['StackTerm'][];
+      /** @description How wide a channel's painted texels can be (#19): 8-bit, and 16-bit and 32-bit float. */
+      formats?: null | components['schemas']['StackTerm'][];
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {
@@ -13353,6 +13501,151 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CacheInfo'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CheckLibrary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryHealth'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PruneCache: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': null | components['schemas']['CachePruneRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryTidied'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CleanLibrary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryTidied'];
         };
       };
       /** @description Bad Request */
