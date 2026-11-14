@@ -5,7 +5,7 @@ const ViewWidth = 256;
 const ViewHeight = 64;
 
 /** On a root scale, so that one level holding most of a picture does not flatten all the others. */
-function areaOf(counts: Uint32Array, peak: number): string {
+function areaOf(counts: readonly number[], peak: number): string {
   let path = `M0 ${String(ViewHeight)}`;
   counts.forEach((count, level) => {
     path += `L${String(level)} ${String(ViewHeight - Math.sqrt(Math.min(count, peak) / peak) * ViewHeight)}`;

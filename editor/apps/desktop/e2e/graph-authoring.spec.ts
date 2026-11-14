@@ -178,6 +178,20 @@ test('lists what was changed on a node on its card, when asked to', async () => 
   await window.screenshot({ path: join(shots, 'authoring-parameters-on-cards.png') });
 });
 
+test('shows what each node took on the GPU, and exposes all of a node at once', async () => {
+  await openGraph();
+  await expect(node(2).getByTestId('graph-node-time')).toHaveCount(0);
+  await window.getByTestId('graph-arrange').click();
+  await window.getByTestId('arrange-timings').click();
+  await expect(node(2).getByTestId('graph-node-time')).toHaveText(/ ms$/);
+
+  await node(2).locator('xui-graph-node-preview').click();
+  await window.getByTestId('graph-expose-all').click();
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('title', /^Undo Expose All\b/);
+  await expect(window.getByTestId('graph-expose-all')).toHaveCount(0);
+  await window.screenshot({ path: join(shots, 'authoring-timings-on-cards.png') });
+});
+
 test('arranges, badges a problem and colours a frame', async () => {
   await openGraph();
   const before = await node(2).boundingBox();

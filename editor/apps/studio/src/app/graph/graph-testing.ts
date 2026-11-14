@@ -44,6 +44,7 @@ export function state(overrides: Partial<GraphState> = {}): GraphState {
     readOnly: false,
     info: { description: '', author: '', tags: [] },
     selection: { nodes: [] },
+    times: [],
     ...overrides
   };
 }
@@ -82,7 +83,8 @@ export function evaluated(sequence: number, hashes: Record<number, string>): Gra
         width: 256,
         height: 256
       })),
-      diagnostics: []
+      diagnostics: [],
+      times: []
     }
   };
 }

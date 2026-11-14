@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { provideIcons } from '@ng-icons/core';
 import { matPublish, matRadioButtonUnchecked } from '@ng-icons/material-icons/baseline';
-import type { GraphEdgeState, GraphNodeState, GraphPresetState } from '@patina/api-client';
+import type { GraphEdgeState, GraphNodeState, GraphPresetState, GraphSettingDefinition } from '@patina/api-client';
 import {
   AngleDial,
   CurveEditor,
@@ -41,6 +41,13 @@ import { GraphStore } from './graph-store';
 
 type NumberField = Extract<GraphField, { control: 'number' }>;
 type ColourField = Extract<GraphField, { control: 'colour' }>;
+
+/** A field made a parameter: the parameter, and the text that points the field at it. */
+interface Exposure {
+  parameter: GraphSettingDefinition;
+  port: string;
+  value: string;
+}
 
 const SliderSteps = 1000;
 /** How a setting names a parameter of its graph instead of holding a value: Vixen's name-knob reference. */
@@ -101,6 +108,20 @@ export { keptLanes } from './graph-fields';
       </div>
     }
 
+    @if (exposable().length > 1) {
+      <button
+        class="mb-3"
+        type="button"
+        xuiButton
+        size="sm"
+        data-testid="graph-expose-all"
+        title="Makes each number, choice and color on this node that nothing drives a parameter of the graph, as one undo step"
+        [disabled]="!store.editable()"
+        (click)="exposeAll()"
+      >
+        Expose All ({{ exposable().length }})
+      </button>
+    }
     @for (group of groups(); track group.name) {
       @if (group.name) {
         <p class="section-label mt-3 mb-1">{{ group.name }}</p>
@@ -468,23 +489,80 @@ export class GraphInspector {
       return;
     }
 
-    const name = this.freeName(field.name);
-    this.store.addParameter({
-      name,
-      default: this.textOf(field),
-      summary: field.summary,
-      kind: 'Text',
-      minimum: null,
-      maximum: null,
-      group: '',
-      accepted: [...field.choices]
-    });
-    this.store.setText(this.node().id, field.name, `${ReferencePrefix}${name}`);
-    this.store.endGesture();
+    this.exposeOne(field);
   }
 
-  private freeName(field: string): string {
+  /** Makes one field a parameter: the parameter, then the field pointed at it. */
+  private exposeOne(field: GraphField): void {
+    const exposure = this.exposureOf(field, this.freeName(field.name));
+    if (exposure) {
+      this.store.addParameter(exposure.parameter);
+      this.store.setText(this.node().id, exposure.port, exposure.value);
+      this.store.endGesture();
+    }
+  }
+
+  /** Every field shown that one click could make a parameter, which Expose All does at once (#181). */
+  protected readonly exposable = computed(() =>
+    this.groups()
+      .flatMap(group => group.fields)
+      .filter(
+        field =>
+          this.shown(field) &&
+          !this.wireInto(field) &&
+          ((field.control === 'number' && this.canExpose(field)) ||
+            (field.control === 'colour' && field.source === 'value' && this.expressionOf(field.name) === '') ||
+            this.canExposeSetting(field))
+      )
+  );
+
+  /** Makes every field {@link exposable} lists a parameter, each named apart, as one undo step. */
+  protected exposeAll(): void {
     const taken = new Set(this.store.document()?.parameters.map(parameter => parameter.name) ?? []);
+    const exposures = this.exposable().flatMap(field => {
+      const exposure = this.exposureOf(field, this.freeName(field.name, taken));
+      if (exposure) {
+        taken.add(exposure.parameter.name);
+      }
+
+      return exposure ? [exposure] : [];
+    });
+    this.store.exposeAll(this.node().id, exposures);
+  }
+
+  /** The parameter a field becomes under a name, and how the field then names it; null for one that cannot be. */
+  private exposureOf(field: GraphField, name: string): Exposure | null {
+    const node = { name, summary: field.summary, group: '', minimum: null, maximum: null };
+    if (field.control === 'choice') {
+      const parameter = { ...node, default: this.textOf(field), kind: 'Text', accepted: [...field.choices] };
+      return { parameter, port: field.name, value: `${ReferencePrefix}${name}` };
+    }
+
+    if (field.control === 'colour' && field.source === 'value') {
+      const parameter = { ...node, default: colorTextOf(this.lanesOf(field)), kind: 'Color', accepted: [] };
+      return { parameter, port: expressionKey(field.name), value: name };
+    }
+
+    if (field.control === 'number') {
+      const value = this.numberOf(field);
+      const parameter = {
+        ...node,
+        default: String(value),
+        kind: field.whole ? 'Int' : 'Float',
+        minimum: field.minimum ?? Math.min(0, value),
+        maximum: field.maximum ?? Math.max(1, value * 2),
+        accepted: []
+      };
+      return { parameter, port: expressionKey(field.name), value: name };
+    }
+
+    return null;
+  }
+
+  private freeName(
+    field: string,
+    taken: ReadonlySet<string> = new Set(this.store.document()?.parameters.map(parameter => parameter.name) ?? [])
+  ): string {
     const stem = field.replace(/[^A-Za-z0-9]/gu, '') || 'Parameter';
     let name = stem;
     for (let count = 2; taken.has(name); count += 1) {
@@ -585,19 +663,7 @@ export class GraphInspector {
       return;
     }
 
-    const name = this.freeName(field.name);
-    this.store.addParameter({
-      name,
-      default: colorTextOf(this.lanesOf(field)),
-      summary: field.summary,
-      kind: 'Color',
-      minimum: null,
-      maximum: null,
-      group: '',
-      accepted: []
-    });
-    this.store.setText(this.node().id, expressionKey(field.name), name);
-    this.store.endGesture();
+    this.exposeOne(field);
   }
 
   /** A port's lanes, or a compound's Color setting read from its text. */
@@ -624,21 +690,7 @@ export class GraphInspector {
 
   /** Makes a parameter of the field's name, starting where the field is, and drives the field from it. */
   protected expose(field: NumberField): void {
-    const name = this.freeName(field.name);
-
-    const value = this.numberOf(field);
-    this.store.addParameter({
-      name,
-      default: String(value),
-      summary: field.summary,
-      kind: field.whole ? 'Int' : 'Float',
-      minimum: field.minimum ?? Math.min(0, value),
-      maximum: field.maximum ?? Math.max(1, value * 2),
-      group: '',
-      accepted: []
-    });
-    this.store.setText(this.node().id, expressionKey(field.name), name);
-    this.store.endGesture();
+    this.exposeOne(field);
   }
 
   protected expressionOf(port: string): string {

@@ -32,6 +32,30 @@ describe('graph events', () => {
     expect(next.history.dirty).toBe(true);
   });
 
+  it('keeps the GPU time of a node the result cache answers for, and drops it with the node', () => {
+    const before = documentOf(
+      state({
+        times: [
+          { node: 1, milliseconds: 2.5 },
+          { node: 2, milliseconds: 0.5 }
+        ]
+      })
+    );
+    const event = evaluated(1, {});
+    const times = [{ node: 2, milliseconds: 0.75 }];
+    const ran = applyEvent(before, {
+      ...event,
+      ...(event.evaluation ? { evaluation: { ...event.evaluation, times } } : {})
+    });
+    const removed = applyEvent(ran, { ...edited(2, []), delta: { ...noDelta, removedNodes: [1] } });
+
+    expect([...ran.times]).toEqual([
+      [1, 2.5],
+      [2, 0.75]
+    ]);
+    expect([...removed.times]).toEqual([[2, 0.75]]);
+  });
+
   it('leaves untouched nodes as they were, so that a view can keep them', () => {
     const before = documentOf(state());
     const next = applyEvent(before, edited(1, [node(2, { Scale: [3] })]));
@@ -116,7 +140,8 @@ describe('evaluationSummary', () => {
     reused: 1,
     milliseconds: 12.4,
     previews: [],
-    diagnostics: []
+    diagnostics: [],
+    times: []
   };
   const summary = (overrides: Parameters<typeof state>[0]) => evaluationSummary(documentOf(state(overrides)));
 

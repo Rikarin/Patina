@@ -41,6 +41,8 @@ export interface GraphDocument {
   comments: readonly GraphCommentState[];
   /** The newest preview of each node. A node has one image output, so a node is enough of a key. */
   previews: ReadonlyMap<number, GraphPreview>;
+  /** The newest GPU time of each node, in milliseconds, kept while the result cache answers for it. */
+  times: ReadonlyMap<number, number>;
   repairs: readonly GraphDiagnostic[];
   evaluation: GraphEvaluation | null;
   /** The newest revision with nothing left to evaluate. Below {@link revision}, evaluation is behind. */
@@ -75,6 +77,7 @@ export function documentOf(state: GraphState): GraphDocument {
     groups: state.groups,
     comments: state.comments,
     previews: new Map(state.previews.map(preview => [preview.node, preview])),
+    times: new Map(state.times.map(time => [time.node, time.milliseconds])),
     repairs: state.repairs,
     evaluation: state.evaluation ?? null,
     settled: state.settled,
@@ -133,6 +136,18 @@ export function applyEvent(document: GraphDocument, event: GraphEvent): GraphDoc
 
       next.previews = previews;
     }
+
+    if (event.evaluation.times.length > 0) {
+      // Only what ran is timed, so a node the result cache answered keeps its time.
+      const times = new Map(next.times);
+      for (const time of event.evaluation.times) {
+        if (next.nodes.has(time.node)) {
+          times.set(time.node, time.milliseconds);
+        }
+      }
+
+      next.times = times;
+    }
   }
 
   return next;
@@ -155,12 +170,15 @@ function applyDelta(document: GraphDocument, delta: GraphDelta): void {
 
   if (delta.removedNodes.length > 0) {
     const previews = new Map(document.previews);
+    const times = new Map(document.times);
     for (const id of delta.removedNodes) {
       nodes.delete(id);
       previews.delete(id);
+      times.delete(id);
     }
 
     document.previews = previews;
+    document.times = times;
   }
 
   document.nodes = nodes;

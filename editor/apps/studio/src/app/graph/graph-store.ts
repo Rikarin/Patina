@@ -7,6 +7,7 @@ import {
   type GraphEdgeState,
   type GraphEditResult,
   type GraphEvent,
+  type GraphHistogram,
   type GraphInterfacePort,
   type GraphNodeType,
   type GraphPresetState,
@@ -31,6 +32,7 @@ import { DraftLayer } from './draft-layer';
 import { EditQueue } from './edit-queue';
 import type { WireCommand } from './graph-authoring';
 import { type GraphDocument, applyEvent, classify, documentOf, edgeKey } from './graph-model';
+import { type CopiedValues, pastedValues } from './graph-values';
 import { NodePictures } from './node-pictures';
 import { PreviewLoader } from './preview-loader';
 
@@ -91,6 +93,9 @@ const PasteOffset = 40;
 /** What Copy took: nodes as they were, and the wires between them. Every graph on screen shares it, so a copy from one
  * pastes into another (#40), and it survives closing the graph. */
 const clipboard: { held: Pick<GraphState, 'nodes' | 'edges'> | null } = { held: null };
+
+/** What Copy Values took from one node, shared by every graph on screen as Copy is (#181). */
+const copiedValues = signal<CopiedValues | null>(null);
 
 type DraftValue = readonly number[] | string;
 
@@ -624,6 +629,20 @@ export class GraphStore {
     void this.apply([{ op: 'addParameter', parameter }], null);
   }
 
+  /** Adds parameters and points a node's fields at them, as one undo step (#181's batch expose). */
+  exposeAll(
+    node: number,
+    exposures: readonly { parameter: GraphSettingDefinition; port: string; value: string }[]
+  ): void {
+    const commands: GraphCommand[] = [
+      ...exposures.map(({ parameter }): GraphCommand => ({ op: 'addParameter', parameter })),
+      ...exposures.map(({ port, value }): GraphCommand => ({ op: 'setText', node, port, value }))
+    ];
+    if (commands.length > 0) {
+      void this.apply(commands, 'Expose All');
+    }
+  }
+
   /**
    * A parameter as this client last asked for it, until the document has caught up with that edit. Two quick edits of
    * one parameter, such as its label and then its group, each send the whole parameter, so the second has to start
@@ -766,6 +785,26 @@ export class GraphStore {
     void this.apply([{ op: 'removeComment', id }], null);
   }
 
+  /**
+   * A node's picture counted into a histogram per channel by the Worker, on the GPU, at the size the graph computes it
+   * (#172). Null when it cannot be counted, which says why.
+   */
+  async histogram(node: number, port: string): Promise<GraphHistogram | null> {
+    const id = this.mutableDocument()?.id;
+    if (id === undefined) {
+      return null;
+    }
+
+    try {
+      return unwrap(
+        await this.api().POST('/api/v1/graphs/{id}/histogram', { params: { path: { id } }, body: { node, port } })
+      );
+    } catch (error) {
+      this.refused(error);
+      return null;
+    }
+  }
+
   /** Writes a node's picture at full size and fetches it. The Worker does the work and the file is the answer. */
   async fullImage(node: number, port: string): Promise<{ blob: Blob; width: number; height: number } | null> {
     const id = this.mutableDocument()?.id;
@@ -841,6 +880,38 @@ export class GraphStore {
     } catch (failure) {
       this.mutableProblem.set(messageOf(failure));
       return [];
+    }
+  }
+
+  /** The type whose values Paste Values holds, or null when Copy Values has taken none. */
+  readonly copiedType = computed(() => copiedValues()?.type ?? null);
+
+  /** Remembers the numbers and texts set on one node, for Paste Values. */
+  copyValues(node: number): void {
+    const held = this.mutableDocument()?.nodes.get(node);
+    if (held) {
+      copiedValues.set({ type: held.type, values: { ...held.values }, texts: { ...held.texts } });
+    }
+  }
+
+  /**
+   * Gives every chosen node of the copied type the numbers and texts Copy Values took, as one undo step. The others
+   * are left as they are.
+   */
+  pasteValues(nodes: readonly number[]): void {
+    const copied = copiedValues();
+    const document = this.mutableDocument();
+    const type = copied ? this.mutableTypes().get(copied.type) : undefined;
+    if (!copied || !document || !type) {
+      return;
+    }
+
+    const commands = nodes.flatMap(id => {
+      const target = document.nodes.get(id);
+      return target ? pastedValues(type, copied, target) : [];
+    });
+    if (commands.length > 0) {
+      void this.apply(commands, 'Paste Values');
     }
   }
 

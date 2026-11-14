@@ -49,6 +49,7 @@ import { Commands } from '../core/commands';
 import { FileConflictDialog } from '../core/file-conflict-dialog';
 import { IconImports } from '../core/icons';
 import { diagnosticOf } from '../core/messages';
+import { brief } from '../core/numbers';
 import { Preferences, type WireStyle } from '../core/preferences';
 import { SystemStatus } from '../core/system-status';
 import { frameShown } from './frame-colours';
@@ -479,6 +480,7 @@ export class GraphThumbnail {
       }
       @for (view of views(); track view.id) {
         @let problem = problems().get(view.id);
+        @let time = timings().get(view.id);
         <xui-graph-node
           data-testid="graph-node"
           [accent]="view.reroute ? undefined : view.accent"
@@ -499,7 +501,7 @@ export class GraphThumbnail {
           (dblclick)="enter(view)"
           (positionChange)="move(view.id, $event)"
         >
-          @if (view.bypassed || problem) {
+          @if (view.bypassed || problem || time) {
             <xui-graph-node-actions>
               @if (view.bypassed) {
                 <xui-tag
@@ -521,6 +523,14 @@ export class GraphThumbnail {
                   [class.text-warning-foreground]="problem.severity === 'Warning'"
                   [title]="problem.summary"
                   >{{ problem.count }}</span
+                >
+              }
+              @if (time) {
+                <span
+                  class="readout text-foreground-muted text-[10px] leading-4"
+                  data-testid="graph-node-time"
+                  [title]="time.title"
+                  >{{ time.text }}</span
                 >
               }
             </xui-graph-node-actions>
@@ -661,6 +671,17 @@ export class GraphThumbnail {
         >
           Parameters on Cards
         </button>
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="arrange-timings"
+          role="menuitemcheckbox"
+          [attr.aria-checked]="preferences.graphTimings()"
+          [selected]="preferences.graphTimings()"
+          (triggered)="commands.run('toggleGraphTimings')"
+        >
+          Timings on Cards
+        </button>
         @for (style of wireStyles; track style.command) {
           <button
             type="button"
@@ -714,6 +735,27 @@ export class GraphThumbnail {
           (triggered)="store.remove(selectedNodes(), [])"
         >
           Delete <span menuItemLabel>{{ commands.keyText('delete') }}</span>
+        </button>
+        <xui-menu-divider />
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="node-copy-values"
+          title="Remembers the numbers and settings of this node, for Paste Values"
+          [disabled]="selectedNodes().length !== 1"
+          (triggered)="store.copyValues(selectedNodes()[0] ?? -1)"
+        >
+          Copy Values
+        </button>
+        <button
+          type="button"
+          xuiMenuItem
+          data-testid="node-paste-values"
+          [disabled]="!store.editable() || !canPasteValues()"
+          [title]="pasteValuesTitle()"
+          (triggered)="store.pasteValues(selectedNodes())"
+        >
+          Paste Values
         </button>
         <xui-menu-divider />
         <button
@@ -1022,6 +1064,41 @@ export class GraphCanvas {
     }
 
     return lines;
+  });
+
+  /**
+   * What each card says it cost when the graph shows timings on cards: its operations' GPU time the last time they ran,
+   * which a node the result cache answers keeps (#182).
+   */
+  protected readonly timings = computed(() => {
+    const shown = new Map<number, { text: string; title: string }>();
+    if (!this.preferences.graphTimings()) {
+      return shown;
+    }
+
+    for (const [node, time] of this.document()?.times ?? []) {
+      shown.set(node, {
+        text: brief(time),
+        title: `${brief(time)} on the GPU the last time this node ran. Nodes overlap on a GPU, so compare these rather than add them.`
+      });
+    }
+
+    return shown;
+  });
+
+  /** Whether a chosen node is of the type Copy Values took, so Paste Values has somewhere to go. */
+  protected readonly canPasteValues = computed(() => {
+    const type = this.store.copiedType();
+    const nodes = this.document()?.nodes;
+    return type !== null && this.selectedNodes().some(id => nodes?.get(id)?.type === type);
+  });
+
+  protected readonly pasteValuesTitle = computed(() => {
+    const type = this.store.copiedType();
+    const title = type === null ? null : (this.store.types().get(type)?.title ?? type);
+    return title === null
+      ? 'Copy Values from a node first'
+      : `Gives each chosen ${title} the numbers and settings copied, as one undo step`;
   });
 
   /** The one selected node's two inputs Swap Inputs would trade, or null when there is no such pair. */
@@ -1496,6 +1573,14 @@ export class GraphCanvas {
       {
         checked: () => this.preferences.graphSnap(),
         run: () => this.preferences.set({ graphSnap: !this.preferences.graphSnap() })
+      },
+      this.destroyed
+    );
+    this.commands.handle(
+      'toggleGraphTimings',
+      {
+        checked: () => this.preferences.graphTimings(),
+        run: () => this.preferences.set({ graphTimings: !this.preferences.graphTimings() })
       },
       this.destroyed
     );

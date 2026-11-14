@@ -9,7 +9,8 @@ import {
   untracked,
   viewChild
 } from '@angular/core';
-import { ChannelView, HistogramChart, type PictureChannel, computeHistogram } from '@patina/studio-ui';
+import type { GraphHistogram } from '@patina/api-client';
+import { ChannelView, type Histogram, HistogramChart, type PictureChannel } from '@patina/studio-ui';
 import { XuiButtonImports } from '@xui/button';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
@@ -74,7 +75,8 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
  * A node's picture at any zoom, its texels square, one channel at a time, over a checkerboard where it is see-through.
  * It follows the selected node, or the one pinned, and shows the picture at the size the graph computes it (ADR 0005):
  * the 256-pixel reduction is on screen until the full picture arrives, and the readout says which. Tile shows it three
- * by three, to see the seams. The histogram is counted from the reduction, the pixels already here, and says so.
+ * by three, to see the seams. The histogram is the Server's, counted on the GPU from the picture at full size (#172),
+ * and says so; the last one stays until the next picture's arrives.
  */
 @Component({
   selector: 'ptn-texture-view',
@@ -189,7 +191,7 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
           <p class="text-foreground-muted absolute inset-0 m-auto h-fit text-center">No picture yet.</p>
         }
       </div>
-      @if (reduction(); as small) {
+      @if (counted(); as levels) {
         <div class="flex shrink-0 flex-col gap-0.5 p-1">
           <ptn-histogram class="h-12" [histogram]="histogram()" [label]="histogramLabel()" />
           <span class="readout text-foreground-muted truncate" data-testid="texture-histogram-label">{{
@@ -236,6 +238,18 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
         >
           Tile
         </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          data-testid="texture-copy"
+          [disabled]="!picture"
+          [title]="copyTitle()"
+          (click)="copyImage()"
+        >
+          {{ copied() === 'copied' ? 'Copied' : copied() === 'refused' ? 'Not Copied' : 'Copy Image' }}
+        </button>
         <xui-segmented-control
           class="ms-auto min-w-0"
           size="sm"
@@ -268,12 +282,16 @@ export class TextureView {
   private readonly room = signal({ width: 0, height: 0 });
   /** The hash of the full picture last asked for, so one evaluation is asked for once. */
   private asked: string | null = null;
+  /** The hash of the picture last counted, so one evaluation is counted once. */
+  private countedHash: string | null = null;
 
   /** One on the picture's fitted size: the readout says what that is in the picture's own pixels. */
   protected readonly zoom = signal(1);
   protected readonly channel = signal<PictureChannel>('rgba');
   protected readonly tiled = signal(false);
   protected readonly loadingFull = signal(false);
+  /** Whether the picture on screen was just copied, which the button says until the picture changes. */
+  protected readonly copied = signal<'copied' | 'refused' | null>(null);
   protected readonly texel = signal<string | null>(null);
   protected readonly across = computed(() => (this.tiled() ? TileCount : 1));
   protected readonly tiles = computed(() => (this.tiled() ? Tiles : Tiles.slice(0, 1)));
@@ -323,14 +341,16 @@ export class TextureView {
     return percent(picture && picture.width > 0 ? this.displayed().width / picture.width : this.zoom());
   });
   protected readonly pixels = computed(() => (this.full() ? this.fullPixels() : this.reductionPixels()));
-  protected readonly histogram = computed(() => {
-    const pixels = this.reductionPixels();
-    return pixels ? computeHistogram(pixels.data) : null;
+  /** The newest histogram the Server counted of the node on view, kept until the next one arrives. */
+  protected readonly counted = signal<GraphHistogram | null>(null);
+  protected readonly histogram = computed((): Histogram | null => {
+    const levels = this.counted();
+    return levels ? { r: levels.red, g: levels.green, b: levels.blue, luma: levels.luma } : null;
   });
   protected readonly histogramLabel = computed(() => {
-    const reduction = this.reduction();
-    return reduction
-      ? `Histogram of the ${String(reduction.width)} × ${String(reduction.height)} reduction`
+    const levels = this.counted();
+    return levels
+      ? `Histogram of the ${String(levels.width)} × ${String(levels.height)} picture, counted on the GPU`
       : 'Histogram';
   });
   protected readonly sizeText = computed(() => {
@@ -342,6 +362,11 @@ export class TextureView {
     const size = `${String(picture.width)} × ${String(picture.height)}`;
     return this.full() ? size : `${size}, a reduction${this.loadingFull() ? ' until the full size comes' : ''}`;
   });
+  protected readonly copyTitle = computed(() =>
+    this.full()
+      ? 'Copies the picture at the size the graph computes it, as a PNG'
+      : 'Copies the picture on screen, as a PNG. Until the full size comes, that is the reduction'
+  );
   protected readonly pinTitle = computed(() => {
     const pinned = this.store.pinned();
     const type = pinned ? this.store.types().get(pinned.type) : undefined;
@@ -365,6 +390,7 @@ export class TextureView {
       const url = this.reduction()?.url;
       untracked(() => {
         this.reductionPixels.set(null);
+        this.copied.set(null);
       });
       if (url) {
         void pixelsOf(url).then(pixels => {
@@ -382,6 +408,20 @@ export class TextureView {
       if (node && hash && hash !== this.asked) {
         this.asked = hash;
         untracked(() => void this.loadFull(node.id, hash));
+      }
+    });
+
+    // Each new picture of the node on view is counted, at full size, by the Server. Another node's is not kept.
+    effect(() => {
+      const node = this.store.viewedNode();
+      const hash = this.reduction()?.hash;
+      if (node?.id !== untracked(this.counted)?.node) {
+        this.counted.set(null);
+      }
+
+      if (node && hash && hash !== this.countedHash) {
+        this.countedHash = hash;
+        untracked(() => void this.count(node.id, hash));
       }
     });
 
@@ -428,6 +468,38 @@ export class TextureView {
     } else {
       // Asked again with the next picture, or on choosing the node again.
       this.asked = null;
+    }
+  }
+
+  private async count(node: number, hash: string): Promise<void> {
+    const port = this.store.document()?.previews.get(node)?.port ?? 'Out';
+    const levels = await this.store.histogram(node, port);
+    if (this.reduction()?.hash !== hash) {
+      return;
+    }
+
+    if (levels) {
+      this.counted.set(levels);
+    } else {
+      // Counted again with the next picture, or on choosing the node again.
+      this.countedHash = null;
+    }
+  }
+
+  /** Puts the picture on screen on the clipboard as the PNG it is: the full size once it has come (#184). */
+  protected async copyImage(): Promise<void> {
+    const url = this.shown()?.url;
+    if (!url) {
+      return;
+    }
+
+    try {
+      const blob = await (await fetch(url)).blob();
+      await navigator.clipboard.write([new ClipboardItem({ [blob.type || 'image/png']: blob })]);
+      this.copied.set('copied');
+    } catch {
+      // The clipboard is the system's, and it can say no; the button says so until the picture changes.
+      this.copied.set('refused');
     }
   }
 
