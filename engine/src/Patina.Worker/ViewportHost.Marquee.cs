@@ -14,7 +14,7 @@ sealed partial class ViewportHost {
     /// </summary>
     public IpcMessage Marquee(IpcMessage request) {
         var pick = request.Pick ?? throw new IpcException("viewport.marquee says nothing.");
-        if (pick.ToX is not { } toX || pick.ToY is not { } toY) {
+        if (pick.To is not { } to) {
             throw new IpcException("viewport.marquee has one corner; it needs the opposite one too.");
         }
 
@@ -23,7 +23,7 @@ sealed partial class ViewportHost {
         var (through, triangles) = Through(pick.Mesh, shelf);
         var reached = new SortedSet<string>(StringComparer.Ordinal);
         var corner = new Vector2((float)pick.X, (float)pick.Y);
-        var opposite = new Vector2((float)toX, (float)toY);
+        var opposite = new Vector2((float)to.X, (float)to.Y);
         foreach (var point in MarqueeGrid.Points(corner, opposite, pick.Width, pick.Height)) {
             if (through.TryHit(view.RayAt(point), out var hit)
                 && shelf.Geometry.PartOf(Original(triangles, hit.Triangle)) is { Length: > 0 } part) {

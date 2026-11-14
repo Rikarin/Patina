@@ -539,8 +539,7 @@ public sealed record ViewportRender(int Width, int Height, string SharedMemory, 
 ///     the map a pick says is in its texture set's own layout, which Find Layer, the color picker and the clone source
 ///     read. Null reads every material in the first.
 /// </param>
-/// <param name="ToX">For viewport.marquee, the rectangle's opposite corner across, 0 to 1; null for a pick.</param>
-/// <param name="ToY">Its opposite corner down.</param>
+/// <param name="To">For viewport.marquee, the rectangle's opposite corner; null for a pick.</param>
 public sealed record ViewportPickAsk(
     double X,
     double Y,
@@ -549,9 +548,13 @@ public sealed record ViewportPickAsk(
     int Height,
     string Mesh,
     IReadOnlyDictionary<string, int>? UvSets = null,
-    double? ToX = null,
-    double? ToY = null
+    ViewportCorner? To = null
 );
+
+/// <summary>A corner of a rectangle on the viewport's picture.</summary>
+/// <param name="X">Across, 0 to 1.</param>
+/// <param name="Y">Down, 0 to 1.</param>
+public sealed record ViewportCorner(double X, double Y);
 
 /// <summary>Rays along one direction to meet the mesh with (#263).</summary>
 /// <param name="Origins">Where each ray starts, in the mesh's own space: three numbers to a ray.</param>

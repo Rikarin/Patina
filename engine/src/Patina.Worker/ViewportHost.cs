@@ -107,7 +107,9 @@ sealed partial class ViewportHost(string shaderCache, MeshShelf meshes) : IDispo
         };
     }
 
-    /// <summary>A question about where things are on the mesh, which reads no device: a pick, a cast or a marquee.</summary>
+    /// <summary>
+    ///     A question about where things are on the mesh, which reads no device: a pick, a cast or a marquee.
+    /// </summary>
     public IpcMessage Locate(IpcMessage request) =>
         request.Type switch {
             IpcTypes.ViewportCast => Cast(request),

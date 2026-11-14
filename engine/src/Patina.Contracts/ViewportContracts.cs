@@ -279,7 +279,9 @@ public sealed record ViewportMarqueeRequest(
     int? Height = null
 );
 
-/// <summary>The named meshes a marquee reached (#110), by name in ordinal order; none when the model names none.</summary>
+/// <summary>
+///     The named meshes a marquee reached (#110), by name in ordinal order; none when the model names none.
+/// </summary>
 /// <param name="Parts">Their names.</param>
 public sealed record ViewportMarquee(IReadOnlyList<string> Parts);
 

@@ -18,8 +18,8 @@ public static class MarqueeGrid {
     public const int MostAcross = 160;
 
     /// <summary>
-    ///     The points of the grid, in picture pixels from the top left, for a rectangle given as two opposite corners in
-    ///     fractions of the picture, in either order. What lies outside the picture is left out.
+    ///     The points of the grid, in picture pixels from the top left, for a rectangle given as two opposite
+    ///     corners in fractions of the picture, in either order. What lies outside the picture is left out.
     /// </summary>
     /// <param name="corner">One corner, 0 to 1 each way.</param>
     /// <param name="opposite">The other.</param>

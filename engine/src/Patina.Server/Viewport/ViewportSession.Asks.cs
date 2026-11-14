@@ -22,7 +22,7 @@ public sealed partial class ViewportSession {
         CancellationToken cancellationToken
     ) {
         var ask = Ask(request.X, request.Y, request.Camera, request.Width, request.Height, "select") with {
-            ToX = request.ToX, ToY = request.ToY
+            To = new(request.ToX, request.ToY)
         };
         var reply = await AskWorkerAsync(new() { Type = IpcTypes.ViewportMarquee, Pick = ask }, cancellationToken);
         return reply.Marqueed!;
