@@ -39,8 +39,11 @@ and draw it again at the new size, or to keep the pixels and never lose any of t
 - **A canvas never shrinks.** A stroke on the model paints one larger than its set, of the set's shape, at the canvas's
   own size (#19): it is placed by the picture, not by texels, so its stroke entry carries the canvas's size and a
   brush sized in texels is scaled to keep its size. A stroke in the 2D View, whose stamps are the set's texels, is
-  refused with a sentence that says to paint it on the model or set the resolution back: painting it at the smaller
-  size would throw its detail away.
+  carried onto the canvas's texels by the Server before it is journalled (`StackStrokeScale`, #281): its stamps, the
+  rest of its drag, where it resumes, a brush sized on the map or in texels, a stencil's and a picture's place and
+  scale and a clone's offset are multiplied by the canvas's width over the set's. A texel's middle is at its index and
+  a half on both, so it lands where the brush went. Only a larger canvas of another shape is refused: painting it at
+  the set's size would throw its detail away.
 - **A stroke's undo holds the pixels it painted over**, so a canvas a stroke of the open session began on is not
   enlarged under it; that stroke is refused, saying to save and open the document again. Each stroke carries the set's
   size it was made at (`StackPaintPart.Width`, `Height`), so a Worker replaying a session after a crash paints an old
@@ -75,8 +78,15 @@ the place of the first:
 
 A part of the set without the chosen UV set is refused by name, never painted in the first. A pick on the model says its
 place on the map in the UV set of the material it met (`viewport.pick` carries the worn sets' `UvSets`, wire version 17),
-so Find Layer, the color picker and the clone source read the set's own layout. Painting across a UV set boundary and
-set-to-set projection are not done.
+so Find Layer, the color picker and the clone source read the set's own layout.
+
+**Carrying paint to another UV set.** A set's paint is texels, so a set moved to another UV set would show it wherever
+the new layout puts those texels. `carryPaint` (one undo step with the `setSettings` that moves it, wire version 19)
+makes every canvas of the set a new canvas the Worker fills as a copy of the old one laid out again on the surface
+(`StackCarry` on a copy's journal entry, `PaintTransfer.Move` between the set's triangles in the two UV sets), as
+Preserve Paint moves paint to a new mesh. New canvases rather than the old ones rewritten, because an undo then only
+names the old canvases again, and a replay after a crash makes the copies the same way. The same command projects
+paint laid out in any of the mesh's UV sets onto the set's own. Painting across a UV set boundary is not done.
 
 ## What a mesh is (#146, #231)
 
@@ -103,6 +113,13 @@ The tile travels with a stack's build object (`BuildManifest.Udim`) to its expor
   per set reuses all of that unchanged, and the common UDIM layout of a game or film asset already gives each tile a
   material. A material that reaches several tiles stays as it was: said out loud when its set opens, its bake refused,
   and its strokes past the first tile landing nowhere, with "give each tile a material of its own" as the way out.
-- **Merging** (#211) is of sets sharing one square, so sets on different tiles are not merged; the export says so.
-- **Not done:** a set across several tiles; the preset editor's file list, which reads no mesh, still names every set
-  1001; and the Texture Sets pane does not show a set's tile.
+- **Merging** (#211) is of sets sharing one square, so sets on different tiles merge into one set of files per tile,
+  and only when every file the preset writes names its tile with `{udim}` or `{tile}`: otherwise the files of two tiles
+  would be one file, and the sets are written one by one with a sentence saying what to add (#281).
+- **Before a build.** The Server reads a set's tile from its mesh in its UV set (`SetUdim`, once per file while it stays
+  as it was), as it reads a set's faces for its bake, so a stack's state carries `udim`, the Texture Sets pane shows it,
+  and a preset's file list names each set by its tile (#281).
+- **A build object made before a change to what it holds** keeps its key, since a tool's version moves only with the
+  product's. `OutputKeys.Generation` is in every output's key and is raised with such a change; it was raised to 2 for
+  the tile in the manifest.
+- **Not done:** a set across several tiles.
