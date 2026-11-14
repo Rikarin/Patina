@@ -122,7 +122,8 @@ sealed partial class StackHost {
         /// <summary>
         ///     A canvas made the size a stroke paints at (#19). Larger is exact and loses nothing, and is done only to
         ///     a canvas no stroke of this session has begun on, since a stroke's undo holds the pixels it painted over.
-        ///     A canvas larger than its set keeps its size and is sampled at the set's, so it is never made smaller.
+        ///     A canvas larger than its set keeps its size and is sampled at the set's, so it is never made smaller; one of
+        ///     another shape arrives with the size of the set's shape that holds it, which only enlarges it.
         /// </summary>
         /// <exception cref="IpcException">The canvas cannot be painted at that size here.</exception>
         PaintCanvas Resized(string file, string name, PaintCanvas canvas, (int Width, int Height) side) {

@@ -22,9 +22,11 @@ public sealed class StackCanvasSides(string folder) {
 
     /// <summary>
     ///     The size a stroke paints a canvas at, which is the set's, or refuses a stroke a Worker could not begin. A
-    ///     canvas larger than its set, of the set's shape, is painted at its own size (#19), so the detail it holds
-    ///     stays: a stroke on the model is placed by the picture and not by texels, and one in the 2D view is carried
-    ///     onto the canvas's texels (<see cref="StackStrokeScale" />).
+    ///     canvas larger than its set is painted at its own size (#19), so the detail it holds stays: a stroke on the
+    ///     model is placed by the picture and not by texels, and one in the 2D view is carried onto the canvas's texels
+    ///     (<see cref="StackStrokeScale" />). One of another shape, larger on either side, is painted at the smallest
+    ///     size of the set's shape that holds it (<see cref="Holding" />), to which the Worker enlarges it, each texel
+    ///     repeated, so a stroke is carried onto it by one factor and lands as on a canvas of the set's shape.
     /// </summary>
     /// <param name="layer">The layer's name, for the reason.</param>
     /// <param name="paint">The canvas, beside the stack.</param>
@@ -39,19 +41,22 @@ public sealed class StackCanvasSides(string folder) {
             return (width, height);
         }
 
-        var values = new Dictionary<string, string> {
-            ["layer"] = layer, ["held"] = Size(held.Width, held.Height), ["size"] = Size(width, height)
-        };
-        if (held.Width > width || held.Height > height) {
-            if (held.Width >= width
-                && held.Height >= height
-                && (long)held.Width * height == (long)held.Height * width) {
-                return held;
-            }
+        var target = Holding(held, width, height);
+        if (target == held) {
+            return held;
+        }
 
+        var values = new Dictionary<string, string> {
+            ["layer"] = layer,
+            ["held"] = Size(held.Width, held.Height),
+            ["size"] = Size(width, height),
+            ["target"] = Size(target.Width, target.Height)
+        };
+        if (Math.Max(target.Width, target.Height) > TextureSizes.Largest) {
             throw new StackEditRefusedException(
-                $"'{layer}' holds {values["held"]} texels of another shape than the texture set's {values["size"]}. "
-                + "Painting it smaller would throw its detail away, so set the size back to that shape to paint it.",
+                $"'{layer}' holds {values["held"]} texels of another shape than the texture set's {values["size"]}, and "
+                + $"painting it at the set's shape would make it {values["target"]}, past the largest side. Set the size "
+                + "back to that shape to paint it.",
                 Api.Refusals.CanvasLarger,
                 values
             );
@@ -60,13 +65,32 @@ public sealed class StackCanvasSides(string folder) {
         if (stroked.Contains(paint)) {
             throw new StackEditRefusedException(
                 $"'{layer}' was painted at {values["held"]} earlier in this session. Save, close and open the document "
-                + $"again to paint it at {values["size"]}.",
+                + $"again to paint it at {values["target"]}.",
                 Api.Refusals.CanvasPaintedAtSize,
                 values
             );
         }
 
-        return (width, height);
+        return target;
+    }
+
+    /// <summary>
+    ///     The smallest size of the set's shape that holds a canvas on both sides, and never smaller than the set: the
+    ///     set's size times the larger of the canvas's two sides over the set's. The canvas's own size when it is of
+    ///     the set's shape and larger.
+    /// </summary>
+    /// <param name="held">The canvas's size.</param>
+    /// <param name="width">The set's width.</param>
+    /// <param name="height">The set's height.</param>
+    public static (int Width, int Height) Holding((int Width, int Height) held, int width, int height) {
+        // The larger of the two ratios canvas over set, as a fraction of whole numbers so that powers of two are exact.
+        var (over, under) = (long)held.Width * height >= (long)held.Height * width
+            ? ((long)held.Width, (long)width)
+            : (held.Height, height);
+        return over <= under
+            ? (width, height)
+            : ((int)Math.Min(int.MaxValue, Ceiling(width * over, under)),
+                (int)Math.Min(int.MaxValue, Ceiling(height * over, under)));
     }
 
     /// <summary>
@@ -122,6 +146,8 @@ public sealed class StackCanvasSides(string folder) {
             return null;
         }
     }
+
+    static long Ceiling(long value, long by) => (value + by - 1) / by;
 
     static string Size(int width, int height) => string.Create(CultureInfo.InvariantCulture, $"{width} × {height}");
 }

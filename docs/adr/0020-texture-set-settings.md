@@ -42,8 +42,12 @@ and draw it again at the new size, or to keep the pixels and never lose any of t
   carried onto the canvas's texels by the Server before it is journalled (`StackStrokeScale`, #281): its stamps, the
   rest of its drag, where it resumes, a brush sized on the map or in texels, a stencil's and a picture's place and
   scale and a clone's offset are multiplied by the canvas's width over the set's. A texel's middle is at its index and
-  a half on both, so it lands where the brush went. Only a larger canvas of another shape is refused: painting it at
-  the set's size would throw its detail away.
+  a half on both, so it lands where the brush went. A canvas of another shape, larger than the set on either side, is
+  first enlarged to the smallest size of the set's shape that holds it (`StackCanvasSides.Holding`: the set's size
+  times the larger of the two ratios, canvas over set), each texel repeated as any enlargement is, and is then painted
+  as a canvas of the set's shape. Scaling a stroke by two factors instead would keep the canvas smaller, but a brush's
+  turn, an alpha, a stencil and a projected picture would all shear, which no stroke field can say. Only a canvas that
+  would pass the largest side that way is refused (`stroke-canvas-larger`).
 - **A stroke's undo holds the pixels it painted over**, so a canvas a stroke of the open session began on is not
   enlarged under it; that stroke is refused, saying to save and open the document again. Each stroke carries the set's
   size it was made at (`StackPaintPart.Width`, `Height`), so a Worker replaying a session after a crash paints an old

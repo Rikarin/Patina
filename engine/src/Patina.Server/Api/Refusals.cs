@@ -70,14 +70,16 @@ public static class Refusals {
         new Dictionary<string, string> { ["reason"] = reason };
 
     /// <summary>
-    ///     A stroke on a canvas larger than its texture set, which painting would make smaller (#19, #241). Values:
-    ///     <c>layer</c>, <c>held</c> (the canvas's size) and <c>size</c> (the set's).
+    ///     A stroke on a canvas of another shape than its texture set, which painting at the set's shape would make larger
+    ///     than the largest side (#19, #241). Values: <c>layer</c>, <c>held</c> (the canvas's size), <c>size</c> (the
+    ///     set's) and <c>target</c> (the size of the set's shape it would be painted at).
     /// </summary>
     public const string CanvasLarger = "stroke-canvas-larger";
 
     /// <summary>
     ///     A stroke at a new size on a canvas a stroke of this session began on at another, whose undo holds the
-    ///     pixels it painted over (#19, #241). Values: <c>layer</c>, <c>held</c> and <c>size</c>.
+    ///     pixels it painted over (#19, #241). Values: <c>layer</c>, <c>held</c>, <c>size</c> and <c>target</c> (the size
+    ///     it would be painted at).
     /// </summary>
     public const string CanvasPaintedAtSize = "stroke-canvas-painted-at-size";
 

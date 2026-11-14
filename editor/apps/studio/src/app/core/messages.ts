@@ -22,11 +22,11 @@ const Words: Readonly<Record<string, string>> = {
   'channel-last': '{channel} is this texture set’s only channel, so it can’t be removed. Add another channel first.',
   'stroke-brush-refused': 'That brush can’t be used. {reason}',
   'stroke-canvas-larger':
-    '{layer} holds {held} texels, of another shape than the texture set’s {size}. Painting it smaller would lose detail: set the size back to {held} to paint it.',
+    '{layer} holds {held} texels, of another shape than the texture set’s {size}, and painting it at the set’s shape would make it {target}, past the largest side. Set the size back to that shape to paint it.',
   'carry-paint-same-uv-set':
     'The texture set is laid out in UV set {uvSet} already, so its paint is where it belongs. Choose the UV set the paint was laid out in.',
   'stroke-canvas-painted-at-size':
-    '{layer} was painted at {held} earlier in this session. Save, close and open the document again to paint it at {size}.',
+    '{layer} was painted at {held} earlier in this session. Save, close and open the document again to paint it at {target}.',
   'history-step-gone': 'That step is no longer in the history: an edit made since replaced it.',
   'anchor-taken': 'Another layer is already the anchor “{anchor}”. Choose another name.',
   'anchor-in-use': '{layer} reads the anchor “{anchor}”. Point it elsewhere before taking the anchor away.',
