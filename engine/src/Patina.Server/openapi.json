@@ -6379,7 +6379,7 @@
         "tags": [
           "Graphs"
         ],
-        "summary": "Points every Bitmap node that reads a picture at another file, as one undo step. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
+        "summary": "Points every Bitmap node that reads a picture at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
         "operationId": "RelinkGraphPicture",
         "parameters": [
           {
@@ -14948,11 +14948,19 @@
         "properties": {
           "from": {
             "type": "string",
-            "description": "The picture as the graph\u0027s Bitmap nodes name it."
+            "description": "The picture as the graph\u0027s Bitmap nodes name it; not read when a node is named."
           },
           "to": {
             "type": "string",
             "description": "The file to read instead: absolute, or below the library."
+          },
+          "node": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "One Bitmap node to point at the file, whatever it reads now, or null for every one that reads\n            From (#292).",
+            "format": "int32"
           }
         },
         "description": "The body of \u0060POST /api/v1/graphs/{id}/relink\u0060: a picture the graph reads, and the file it is now."

@@ -208,4 +208,35 @@ public sealed class PackageImportApiTests : IAsyncLifetime {
         );
         Assert.Equal("pictures/moss-new.png", saved.Nodes[0].Texts["Source"]);
     }
+
+    /// <summary>A picked Source: that node alone reads the file, named as the graph finds it.</summary>
+    [Fact]
+    public async Task One_bitmap_is_pointed_at_a_picked_picture_and_no_other_node_is() {
+        await File.WriteAllTextAsync(Path.Combine(server.Library, "loose", "Moss.vxtexgraph"), Moss, Token);
+        var picked = Path.Combine(server.Library, "loose", "pictures", "bark.png");
+        await File.WriteAllBytesAsync(picked, [3], Token);
+        var state = await client.OpenAsync("loose/Moss.vxtexgraph", Token);
+
+        var chosen = await client.PostAsJsonAsync(
+            $"/api/v1/graphs/{state.Id}/relink",
+            new GraphRelinkRequest(string.Empty, "loose/pictures/bark.png", 2),
+            Token
+        );
+        var notBitmap = await client.PostAsJsonAsync(
+            $"/api/v1/graphs/{state.Id}/relink",
+            new GraphRelinkRequest(string.Empty, "loose/pictures/bark.png", 4),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.OK, chosen.StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, notBitmap.StatusCode);
+        var after = await client.StateAsync(state.Id, Token);
+        Assert.Equal(
+            ["moss.png", "pictures/bark.png", "other.png"],
+            after.Nodes.Where(static n => n.Type == "Source/Bitmap")
+                .OrderBy(static n => n.Id)
+                .Select(static n => n.Texts["Source"])
+        );
+        Assert.Equal("Choose Picture", after.History.UndoLabel);
+    }
 }

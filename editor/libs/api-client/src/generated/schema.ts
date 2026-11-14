@@ -1634,7 +1634,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Points every Bitmap node that reads a picture at another file, as one undo step. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
+    /** Points every Bitmap node that reads a picture at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
     post: operations['RelinkGraphPicture'];
     delete?: never;
     options?: never;
@@ -5091,10 +5091,16 @@ export interface components {
     };
     /** @description The body of `POST /api/v1/graphs/{id}/relink`: a picture the graph reads, and the file it is now. */
     GraphRelinkRequest: {
-      /** @description The picture as the graph's Bitmap nodes name it. */
+      /** @description The picture as the graph's Bitmap nodes name it; not read when a node is named. */
       from: string;
       /** @description The file to read instead: absolute, or below the library. */
       to: string;
+      /**
+       * Format: int32
+       * @description One Bitmap node to point at the file, whatever it reads now, or null for every one that reads
+       *                 From (#292).
+       */
+      node?: null | number;
     };
     /**
      * @description The nodes chosen in a graph session, and the one kept on view whatever is chosen. A session has one selection,
