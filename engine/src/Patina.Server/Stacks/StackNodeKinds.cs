@@ -51,7 +51,7 @@ static class StackNodeKinds {
         return library.TryGet(node.Trim(), out var type) ? Kind(type, library, compounds) : null;
     }
 
-    /// <summary>Every node type a stack in <paramref name="folder" /> can run, its project's compounds included.</summary>
+    /// <summary>Every node type a stack in <paramref name="folder" /> can run, with its project's compounds.</summary>
     public static IReadOnlyList<NodeTypeDefinition> Types(string? folder) => [..Registry(folder, out _).Types];
 
     static NodeTypeRegistry Registry(string? folder, out ISubGraphSource compounds) {

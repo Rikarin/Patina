@@ -607,6 +607,9 @@ public static class MaterialThumbnailKinds {
     public const string Stack = "stack";
 }
 
+// SK7005: a message record's constructor is its wire shape, one parameter per field.
+#pragma warning disable SK7005
+
 /// <summary>A material to draw small, once, with nothing kept but the picture.</summary>
 /// <param name="Kind">What the document is: <c>graph</c> or <c>stack</c>.</param>
 /// <param name="Path">Its file, which paint and pictures are found beside. A shipped one names a place for it.</param>
@@ -617,8 +620,8 @@ public static class MaterialThumbnailKinds {
 /// <param name="Usage">The map to draw: an Output's usage, or a stack's channel.</param>
 /// <param name="PreviewFolder">The content-addressed cache the PNG is written to.</param>
 /// <param name="MeshMaps">
-///     The folder of baked maps a graph's Mesh Map nodes read, or null for none, as for a node type drawn for a document
-///     painted on a mesh.
+///     The folder of baked maps a graph's Mesh Map nodes read, or null for none, as for a node type drawn for a
+///     document painted on a mesh.
 /// </param>
 public sealed record MaterialThumbnailAsk(
     string Kind,
@@ -631,9 +634,6 @@ public sealed record MaterialThumbnailAsk(
     string PreviewFolder,
     string? MeshMaps = null
 );
-
-// SK7005: a message record's constructor is its wire shape, one parameter per field.
-#pragma warning disable SK7005
 
 /// <summary>A stack for a Worker to hold.</summary>
 /// <param name="Session">The session.</param>

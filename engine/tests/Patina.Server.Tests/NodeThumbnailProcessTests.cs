@@ -43,8 +43,8 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
-    ///     A stack's node types are drawn as a graph's palette draws them, keyed the same, so the layer panel's lists can
-    ///     show each (#290). A generator reads mesh maps, so a stack with none has no picture of it; the bake test
+    ///     A stack's node types are drawn as a graph's palette draws them, keyed the same, so the layer panel's lists
+    ///     can show each (#290). A generator reads mesh maps, so a stack with none has no picture of it; the bake test
     ///     draws one from a stack's bake.
     /// </summary>
     [Fact]

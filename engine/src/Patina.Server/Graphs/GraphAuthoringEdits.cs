@@ -98,7 +98,7 @@ sealed class GraphAuthoringEdits(NodeGraphModel graph, GraphParameterEdits param
         return new(nodes, bypass.Bypassed);
     }
 
-    /// <summary>Sets the size nodes are computed at, which a boundary, a dot or an Output has none of its own.</summary>
+    /// <summary>Sets the size nodes are computed at. A boundary, a dot or an Output has none of its own.</summary>
     SetLevelCommand BuildLevel(GraphSetLevel set, Dictionary<int, int> refs) {
         if (set.Nodes.Count == 0) {
             throw new GraphEditRefusedException("Sizing nothing is not an edit.");
@@ -106,7 +106,8 @@ sealed class GraphAuthoringEdits(NodeGraphModel graph, GraphParameterEdits param
 
         if (set.Level is < TextureGraphCompiler.FinestNodeLevel or > TextureGraphCompiler.CoarsestNodeLevel) {
             throw new GraphEditRefusedException(
-                "A node is computed from four times its graph's size to a sixteenth of it, or at the size of its inputs."
+                "A node is computed from four times its graph's size to a sixteenth of it, "
+                + "or at the size of its inputs."
             );
         }
 

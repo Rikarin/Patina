@@ -12358,6 +12358,9 @@
             "$ref": "#/components/schemas/GraphCommandGraphSetSetting"
           },
           {
+            "$ref": "#/components/schemas/GraphCommandGraphSetLevel"
+          },
+          {
             "$ref": "#/components/schemas/GraphCommandGraphAddParameter"
           },
           {
@@ -12397,9 +12400,6 @@
             "$ref": "#/components/schemas/GraphCommandGraphSetBypass"
           },
           {
-            "$ref": "#/components/schemas/GraphCommandGraphSetLevel"
-          },
-          {
             "$ref": "#/components/schemas/GraphCommandGraphArrange"
           },
           {
@@ -12428,6 +12428,7 @@
             "setValue": "#/components/schemas/GraphCommandGraphSetValue",
             "setText": "#/components/schemas/GraphCommandGraphSetText",
             "setSetting": "#/components/schemas/GraphCommandGraphSetSetting",
+            "setLevel": "#/components/schemas/GraphCommandGraphSetLevel",
             "addParameter": "#/components/schemas/GraphCommandGraphAddParameter",
             "setParameter": "#/components/schemas/GraphCommandGraphSetParameter",
             "removeParameter": "#/components/schemas/GraphCommandGraphRemoveParameter",
@@ -12441,7 +12442,6 @@
             "setComment": "#/components/schemas/GraphCommandGraphSetComment",
             "removeComment": "#/components/schemas/GraphCommandGraphRemoveComment",
             "setBypass": "#/components/schemas/GraphCommandGraphSetBypass",
-            "setLevel": "#/components/schemas/GraphCommandGraphSetLevel",
             "arrange": "#/components/schemas/GraphCommandGraphArrange",
             "savePreset": "#/components/schemas/GraphCommandGraphSavePreset",
             "removePreset": "#/components/schemas/GraphCommandGraphRemovePreset",
