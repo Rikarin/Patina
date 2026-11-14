@@ -7746,8 +7746,8 @@ export interface components {
       /** @description The name it was given, with a number when the one asked for was taken. */
       name: string;
       /**
-       * @description What the stack had to say as it became a graph, such as a layer whose source is missing: the graph has the
-       *     rest.
+       * @description What the stack had to say as it became a graph, each said once, such as a layer left out because it has
+       *     nothing to show: the graph has the rest.
        */
       problems: string[];
     };

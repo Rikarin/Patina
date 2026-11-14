@@ -107,6 +107,29 @@ test('a half set layer says so on its row, and leaves the stack working', async 
   await expect(fill.getByTestId('layer-fault')).toHaveCount(0, { timeout: 30_000 });
 });
 
+test('Open as Graph saves the layers, writes their graph beside them and opens it, and the layers stay (#205)', async () => {
+  // An unsaved layer, which the graph cannot read until it is saved; the paint layer has never been painted.
+  await window.getByTestId('paint-add-fill').click();
+  await expect(names()).toHaveCount(3);
+  await expect(window.getByTestId('active-unsaved')).toBeVisible();
+
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'openStackAsGraph');
+  });
+
+  await expect(window.getByTestId('graph-name')).toHaveText(/^crate Graph$/iu, { timeout: 30_000 });
+  await expect(window.getByTestId('graph-node').first()).toBeVisible();
+  // It computes: an unpainted layer reads clear, as in the stack, and is no missing file.
+  await expect(window.getByTestId('graph-evaluation')).toHaveText(/Updated in \d+ ms|Up to date/, { timeout: 60_000 });
+  await expect(window.getByTestId('graph-evaluation-error')).toHaveCount(0);
+  await expect(window.getByTestId('document-tab')).toHaveCount(2);
+  await window.screenshot({ path: join(shots, 'layers-open-as-graph.png') });
+
+  await window.getByTestId('document-tab').filter({ hasNotText: 'Graph' }).click();
+  await expect(names()).toHaveCount(3);
+  await expect(window.getByTestId('active-unsaved')).toHaveCount(0);
+});
+
 test('layers added with one name are numbered', async () => {
   await window.getByTestId('paint-add').click();
   await expect(names().first()).toContainText('Paint 2');

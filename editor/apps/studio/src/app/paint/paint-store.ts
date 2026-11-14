@@ -979,12 +979,10 @@ export class PaintStore {
     this.startAction();
     try {
       const client = await this.api();
-      const made = unwrap(
-        await client.POST('/api/v1/stacks/{id}/graph', { params: { path: { id } }, body: { name } })
-      );
+      const made = unwrap(await client.POST('/api/v1/stacks/{id}/graph', { params: { path: { id } }, body: { name } }));
       this.notice.set(
         made.problems.length > 0
-          ? `Wrote ${made.name}, without what could not come: ${made.problems.join(' ')}`
+          ? `Wrote ${made.name}. ${made.problems.join(' ')}`
           : `Wrote ${made.name}. The layers stay as they are; the graph is yours to take further.`
       );
       return made.path;

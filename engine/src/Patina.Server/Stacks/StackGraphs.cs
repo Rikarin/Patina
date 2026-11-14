@@ -50,6 +50,8 @@ static class StackGraphs {
         var build = Build(session);
         var (file, named) = NewFile(library, project.Path, name);
         var full = library.ProjectFile(project.Path, file);
+        // Called what the project lists it as, where the build names it after the stack and its set.
+        build.Graph.Name = named;
         LibraryFiles.Replace(full, LayerStackExplode.ToYaml(build));
         if (session.MeshMaps is { } bake) {
             // The bake the stack reads, which the graph's mesh maps read too; relative, as a graph's own choice is.
@@ -60,7 +62,7 @@ static class StackGraphs {
         return new(
             $"{LibraryLayout.ProjectsFolder}/{project.Path.Trim('/')}/{file}",
             named,
-            [..build.Problems.Select(static problem => problem.Message)]
+            [..build.Problems.Select(static problem => problem.Message).Distinct(StringComparer.Ordinal)]
         );
     }
 
@@ -103,6 +105,12 @@ static class StackGraphs {
 
         LayerStackExplode.Decorate(build);
         var graph = build.Graph;
+        // Vixen's header says the layers are gone, which they are not here: the stack stays beside its graph.
+        foreach (var comment in graph.Comments.Where(static c => c.Text == LayerStackExplode.ExplodedHeader)) {
+            comment.Text = $"Written from the layers of {document.Name}, which stay as they were. Nothing keeps this "
+                + "graph in step with them, and every node here is yours to change.";
+        }
+
         TextureGraphSettings.Declare(graph, document.BaseWidth, document.BaseHeight, document.Seed);
         var side = Math.Max(document.BaseWidth, document.BaseHeight);
         if (TextureSizes.Sides.Contains(side)) {

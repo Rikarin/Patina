@@ -20815,7 +20815,7 @@
             "items": {
               "type": "string"
             },
-            "description": "What the stack had to say as it became a graph, such as a layer whose source is missing: the graph has the\nrest."
+            "description": "What the stack had to say as it became a graph, each said once, such as a layer left out because it has\nnothing to show: the graph has the rest."
           }
         },
         "description": "What writing a stack\u0027s graph made."

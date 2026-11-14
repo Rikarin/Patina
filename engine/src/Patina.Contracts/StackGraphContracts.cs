@@ -11,7 +11,7 @@ public sealed record StackGraphRequest(string Name);
 /// <param name="Path">The graph document, below the library, as a project lists it.</param>
 /// <param name="Name">The name it was given, with a number when the one asked for was taken.</param>
 /// <param name="Problems">
-///     What the stack had to say as it became a graph, such as a layer whose source is missing: the graph has the
-///     rest.
+///     What the stack had to say as it became a graph, each said once, such as a layer left out because it has
+///     nothing to show: the graph has the rest.
 /// </param>
 public sealed record StackGraphMade(string Path, string Name, IReadOnlyList<string> Problems);

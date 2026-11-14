@@ -75,7 +75,9 @@ public sealed class StackGraphApiTests : IAsyncLifetime {
         Assert.EndsWith(".vxtexgraph", made.Path, StringComparison.Ordinal);
         var file = Path.Combine(server.Library, made.Path);
         Assert.Equal(Path.GetDirectoryName(stackFile), Path.GetDirectoryName(Path.GetFullPath(file)));
-        Assert.Contains("Exploded from a .vxlayers layer stack", await File.ReadAllTextAsync(file, Token));
+        var text = await File.ReadAllTextAsync(file, Token);
+        Assert.Contains("which stay as they were", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Exploded", text, StringComparison.Ordinal);
         Assert.Equal(stackBefore, await File.ReadAllTextAsync(stackFile, Token));
 
         var contents = (await client.GetFromJsonAsync<ProjectContents>("/api/v1/library/project?path=crate", Token))!;
@@ -84,6 +86,7 @@ public sealed class StackGraphApiTests : IAsyncLifetime {
         Assert.Equal("Crate Graph", listed.Name);
 
         var graph = await client.OpenAsync(file, Token);
+        Assert.Equal("Crate Graph", graph.Name);
         Assert.Contains(graph.Nodes, static node => node.Type == "Output/Output");
         Assert.Equal("false", graph.Settings["tilingX"]);
         Assert.Equal("false", graph.Settings["tilingY"]);
