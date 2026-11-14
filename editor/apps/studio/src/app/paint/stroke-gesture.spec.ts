@@ -14,7 +14,7 @@ function lassoStore() {
     fillOutline: (points: readonly StackStamp[]) => {
       filled.push(points);
       return Promise.resolve();
-    },
+    }
   };
 
   return { store: store as unknown as PaintStore, filled };
