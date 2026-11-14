@@ -86,6 +86,12 @@ sealed class WorkerLoop(
             } finally {
                 bakes.LinkLost();
                 builds.LinkLost();
+                // ⚠ The stacks were the lost Server's: the next one opens its documents again under new ids, and one
+                // left here would lend its unsaved canvases to them (#108's sharing), strokes the person was told were
+                // gone. Any Server tells a new link everything again.
+                lock (gpu.Gate) {
+                    stacks.LinkLost();
+                }
             }
         }
     }

@@ -9,7 +9,10 @@ abstract class SessionHost<T> : IDisposable where T : class, IDisposable {
 
     protected abstract string Kind { get; }
 
-    public void Dispose() {
+    public void Dispose() => LinkLost();
+
+    /// <summary>Lets every session go: they were the Server's, and a Server tells a new link everything.</summary>
+    public void LinkLost() {
         foreach (var session in sessions.Values) {
             session.Dispose();
         }
