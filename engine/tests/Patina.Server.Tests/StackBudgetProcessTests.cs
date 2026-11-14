@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Library;
 
 namespace Patina.Server.Tests;
 
@@ -66,6 +67,49 @@ public sealed partial class StackProcessTests {
             painted.Milliseconds < Math.Max(2000, whole.Milliseconds),
             $"A stroke took {painted.Milliseconds:F0} ms where the whole stack took {whole.Milliseconds:F0} ms."
         );
+    }
+
+    /// <summary>
+    ///     What each layer hands the next is kept in <c>.ptcache</c> by a save, so a Worker that never ran the stack
+    ///     runs only the layer an edit changed and reads what is beneath it from disk (#208). Without the kept results a
+    ///     new Worker runs the whole stack, which is the sabotage this goes red under. What it reads is the picture a
+    ///     clean evaluation makes.
+    /// </summary>
+    [Fact]
+    public async Task A_saved_stack_keeps_its_layers_for_a_new_worker() {
+        using var deadline = Deadline(300);
+        var (instance, state) = await StartAsync("Kept.vxlayers", deadline.Token, out var worker);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        List<StackCommand> layers = [];
+        for (var index = 0; index < 12; index++) {
+            layers.Add(
+                (index & 3) == 3
+                    ? new StackAddLayer("filter", $"Filter {index}", Filter: "Hsl")
+                    : new StackAddLayer("fill", $"Fill {index}", Tint)
+            );
+        }
+
+        var built = await EditAsync(state.Id, deadline.Token, [..layers]);
+        var whole = await EvaluatedAsync(socket, built.Revision, deadline.Token);
+        await SaveAsync(state.Id, deadline.Token);
+        var kept = LibraryLayout.ResultsPath(Library);
+        Assert.True(
+            Directory.Exists(kept) && Directory.EnumerateFiles(kept, "*.result", SearchOption.AllDirectories).Any(),
+            "A save kept no layer's result."
+        );
+
+        worker.Kill();
+        await worker.WaitForExitAsync(deadline.Token);
+        StartWorker();
+        var top = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        var moved = await EditAsync(state.Id, deadline.Token, new StackSetLayer(top, Opacity: 0.4f));
+        var after = await EvaluatedAsync(socket, moved.Revision, deadline.Token);
+        TestContext.Current.SendDiagnosticMessage($"Whole: {whole.Ran} ops; after a restart: {after.Ran} ops.");
+        Assert.True(after.Ran * 3 < whole.Ran, $"A new Worker ran {after.Ran} of the stack's {whole.Ran} ops.");
+
+        var read = await PixelsAsync(state.Id, false, deadline.Token);
+        var clean = await PixelsAsync(state.Id, true, deadline.Token);
+        Assert.All(clean, map => Assert.Equal(map.Digest, Digest(read, map.Usage)));
     }
 
     /// <summary>

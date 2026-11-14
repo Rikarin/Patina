@@ -92,6 +92,9 @@ public static class LibraryLayout {
 
     public static string PaintPath(string root) => Path.Combine(root, CacheFolder, "paint");
 
+    /// <summary>A stack's layer results kept between sessions, by content key and adapter (#208).</summary>
+    public static string ResultsPath(string root) => Path.Combine(root, CacheFolder, "results");
+
     /// <summary>Where this machine keeps the file a mesh came from, when that is outside the library.</summary>
     public static string MeshSourcePath(string root, AssetId mesh) =>
         Path.Combine(root, CacheFolder, "mesh-sources", mesh.Value.ToString("N"));

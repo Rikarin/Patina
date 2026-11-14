@@ -210,7 +210,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 19;
+    public const int ProtocolVersion = 20;
 
     public string Type { get; set; } = string.Empty;
 
@@ -615,6 +615,10 @@ public sealed record MaterialThumbnailAsk(
 ///     Paint files this session's strokes made. A journal starts before them, so what a save left in them is not a
 ///     base.
 /// </param>
+/// <param name="Results">
+///     Where the library keeps evaluation results between sessions, <c>.ptcache/results</c>, or null for nowhere
+///     (#208).
+/// </param>
 public sealed record StackLoad(
     string Session,
     string Path,
@@ -624,7 +628,8 @@ public sealed record StackLoad(
     IReadOnlyList<string> ImageRoots,
     string? MeshMaps,
     string? Checkpoint,
-    IReadOnlyList<string> Created
+    IReadOnlyList<string> Created,
+    string? Results = null
 );
 
 #pragma warning restore SK7005

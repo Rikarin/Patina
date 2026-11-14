@@ -46,6 +46,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         var load = request.StackLoad ?? throw new IpcException("stack.load holds no stack.");
         var folder = load.Folder is null ? null : Path.Combine(load.Folder, LibraryLayout.CompoundsFolder);
         Hold(load.Session, new(load, gpu.Evaluator, compounds.Of(folder), pictures, meshes));
+        gpu.Keep(load.Results);
         return IpcMessage.Ok(request.Id);
     }
 
@@ -164,7 +165,12 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
     /// <summary>Writes every canvas this session changed, beside the stack or into a checkpoint.</summary>
     public IpcMessage Save(IpcMessage request) {
         var save = request.StackSave ?? throw new IpcException("stack.save says nothing.");
-        Find(save.Session).Save(save.Folder);
+        var stack = Find(save.Session);
+        stack.Save(save.Folder);
+        if (save.Folder is null) {
+            stack.Persist();
+        }
+
         return IpcMessage.Ok(request.Id);
     }
 
@@ -689,6 +695,27 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                 if (to is null) {
                     canvases.Saved(Path.Combine(folder, file));
                 }
+            }
+        }
+
+        /// <summary>
+        ///     Keeps what each layer hands the next, at full size, in the library's results, so the stack opened again
+        ///     after a restart runs nothing it ran before (#208). Under a proxy only once the full-size stack is
+        ///     here anyway: a save does not evaluate the whole stack for a cache's sake. A stack that does not
+        ///     evaluate keeps nothing, and the save that asked has already written what it owes.
+        /// </summary>
+        /// <returns>How many results were written.</returns>
+        public int Persist() {
+            if (proxy > 1 && whole is null) {
+                return 0;
+            }
+
+            try {
+                var run = Whole();
+                using var bake = run.Evaluate();
+                return run.Persist(bake);
+            } catch (IpcException) {
+                return 0;
             }
         }
 
