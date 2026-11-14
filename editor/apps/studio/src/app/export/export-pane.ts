@@ -172,7 +172,14 @@ function lanesOf(hex: string): number[] {
               {{ settings().folder ?? 'The library’s exports folder' }}
             </span>
             <div class="flex gap-1">
-              <button type="button" xuiButton size="sm" data-testid="export-folder-choose" (click)="chooseFolder()">
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="export-folder-choose"
+                (click)="chooseFolder()"
+              >
                 Choose…
               </button>
               @if (settings().folder) {
@@ -605,6 +612,7 @@ function lanesOf(hex: string): number[] {
               type="button"
               xuiButton
               size="sm"
+              variant="ghost"
               data-testid="export-preview"
               [disabled]="!chosen()"
               (click)="ask()"

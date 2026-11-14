@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { chooseIn } from '../core/select-testing';
 import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
@@ -177,20 +178,15 @@ describe('DocumentSection', () => {
 
   it('paints the channel being painted at another depth, one step (#19)', async () => {
     const { element, edit, fixture, paint } = await render(['baseColor', 'height']);
-    const depth = () => element.querySelector('[data-testid=paint-channel-depth]');
-    const pressed = () => depth()?.querySelector('[aria-pressed=true], [aria-checked=true]')?.textContent.trim();
-    expect(pressed()).toBe('8-bit');
+    const shown = () => element.querySelector('[data-testid=paint-channel-depth] button')?.textContent.trim();
+    expect(shown()).toContain('8-bit');
 
-    const wide = [...(depth()?.querySelectorAll('button') ?? [])].find(
-      button => button.textContent.trim() === '16-bit float'
-    );
-    wide?.click();
-    await fixture.whenStable();
+    await chooseIn(fixture, element, 'paint-channel-depth', '16-bit float');
     expect(edit).toHaveBeenCalledWith({ op: 'setChannelFormat', usage: 'baseColor', format: 'Rgba16Float' });
 
     paint.channel.set('height');
     await fixture.whenStable();
-    expect(pressed()).toBe('16-bit float');
+    expect(shown()).toContain('16-bit float');
   });
 
   it('writes what the texture set is for as a set setting, only when it changed (#141)', async () => {

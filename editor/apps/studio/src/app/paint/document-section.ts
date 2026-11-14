@@ -158,11 +158,14 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
         }
         @if (channelDepth(); as depth) {
           <dt class="text-foreground-muted" [title]="depthHint">{{ nameOf(store.channel()) }} depth</dt>
+          <!-- A list, not a segmented control: three labels of two words each wrapped in a pane this narrow (#13). -->
           <dd data-testid="paint-channel-depth" [title]="depthHint">
-            <xui-segmented-control
-              size="sm"
+            <xui-select
+              class="w-full"
               aria-label="Channel depth"
-              [options]="depths()"
+              [filterable]="false"
+              [itemText]="depthName()"
+              [items]="depthValues()"
               [value]="depth"
               (valueChange)="setDepth($event)"
             />
@@ -342,6 +345,12 @@ export class DocumentSection {
   protected readonly depths = computed<readonly XuiSegmentedOption[]>(() =>
     (this.store.vocabulary()?.formats ?? []).map(term => ({ value: term.value, label: term.label }))
   );
+
+  protected readonly depthValues = computed(() => this.depths().map(option => option.value));
+  protected readonly depthName = computed(() => {
+    const depths = this.depths();
+    return (value: string) => depths.find(option => option.value === value)?.label ?? value;
+  });
 
   /** How finely the channel being painted is held, or null for a document that says nothing of it. */
   protected readonly channelDepth = computed(() => {

@@ -35,11 +35,11 @@ const NotStrokes: ReadonlySet<PaintTool> = new Set(['fill', 'picker']);
       data-testid="tool-settings-bar"
       [attr.data-tool]="paint.tool()"
     >
-      <span class="section-label shrink-0" data-testid="tool-settings-name">{{ toolName() }}</span>
+      <span class="section-label shrink-0 @max-[44rem]:hidden" data-testid="tool-settings-name">{{ toolName() }}</span>
       @if (strokes()) {
         <span class="text-foreground-muted shrink-0 text-xs" [title]="sizeMeans()">Size</span>
         <xui-slider
-          class="w-28 shrink"
+          class="max-w-28 min-w-16 flex-1"
           labelStepSize="0"
           aria-label="Brush size"
           data-testid="tool-settings-size"
@@ -49,13 +49,13 @@ const NotStrokes: ReadonlySet<PaintTool> = new Set(['fill', 'picker']);
           [value]="sizePosition()"
           (valueChange)="paint.radius.set(radiusAt($event))"
         />
-        <span class="readout w-14 shrink-0 text-end text-xs" data-testid="tool-settings-size-readout">{{
+        <span class="readout w-12 shrink-0 text-end text-xs" data-testid="tool-settings-size-readout">{{
           sizeShown()
         }}</span>
         @for (slider of sliders; track slider.key) {
-          <span class="text-foreground-muted shrink-0 text-xs @max-[40rem]:hidden">{{ slider.label }}</span>
+          <span class="text-foreground-muted shrink-0 text-xs @max-[30rem]:hidden">{{ slider.label }}</span>
           <xui-slider
-            class="w-20 shrink @max-[40rem]:hidden"
+            class="max-w-20 min-w-12 flex-1 @max-[30rem]:hidden"
             labelStepSize="0"
             [attr.aria-label]="slider.label"
             [attr.data-testid]="'tool-settings-' + slider.key"
@@ -65,7 +65,7 @@ const NotStrokes: ReadonlySet<PaintTool> = new Set(['fill', 'picker']);
             [value]="paint.brush()[slider.key]"
             (valueChange)="set(slider.key, $event)"
           />
-          <span class="readout w-10 shrink-0 text-end text-xs @max-[40rem]:hidden">{{
+          <span class="readout w-9 shrink-0 text-end text-xs @max-[30rem]:hidden">{{
             percent(paint.brush()[slider.key])
           }}</span>
         }

@@ -375,6 +375,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                       : 'Each texture set bakes at its own shape. Turn off Follow each set’s shape to choose a height.'
                   "
                   [disabled]="options.followSetShape !== false"
+                  [placeholder]="options.followSetShape !== false ? 'Each set’s own' : rowsName('')"
                   [itemText]="rowsName"
                   [items]="rowChoices()"
                   [value]="String(options.rows ?? '')"

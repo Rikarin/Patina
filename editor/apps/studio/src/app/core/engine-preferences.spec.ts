@@ -64,8 +64,8 @@ describe('sameOptions (#189)', () => {
     const a = { resolution: 1024, rays: { front: 0.1, back: 0.2 }, maps: ['normal', 'ao'] };
     const b = { maps: ['normal', 'ao'], rays: { back: 0.2, front: 0.1 }, resolution: 1024 };
     expect(sameOptions(a as unknown as BakeOptions, b as unknown as BakeOptions)).toBe(true);
-    expect(
-      sameOptions(a as unknown as BakeOptions, { ...b, maps: ['ao', 'normal'] } as unknown as BakeOptions)
-    ).toBe(false);
+    expect(sameOptions(a as unknown as BakeOptions, { ...b, maps: ['ao', 'normal'] } as unknown as BakeOptions)).toBe(
+      false
+    );
   });
 });

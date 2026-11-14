@@ -517,6 +517,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The densest panes, reviewed in the bezel skin (#13, `docs/04-design-review.md`): a channel's depth in Properties is a list that keeps to one line, where its three labels wrapped; Texture Sets starts tall enough to show the first part; Export's Choose… and Preview and Preferences' Keyboard Shortcuts… no longer look like each dialog's main action; and the Bake dialog's Height says "Each set's own" while each set's shape decides it, where it asked to select.
 - Every pane's own bar is one height (#200): Graph, Graph Beside, Layers, the mask under a layer, the 2D view, Library, Snapshots, Checks, Bake and Activity were 28 to 36 pixels tall, so bars side by side in the dock now line up. Each says what it is to a screen reader, as a toolbar or, for the 2D view's readouts, a group.
 - Bake, Export and Activity show progress with xUI's progress bar, striped while it runs (#195).
 - A request the GPU engine refuses, or that finds it gone or slow, says so in the app's words rather than the engine's or the system's (#198), and so do a graph edit the graph cannot take, a save over a file changed outside Patina, a file that cannot be written, and a job that is gone. Through the API these refusals carry the codes `engine-refused`, `engine-unavailable`, `graph-refused`, `file-changed`, `file-unwritable` and `job-missing`; 42 refusals are left without a code, from 80.

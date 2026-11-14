@@ -201,7 +201,14 @@ const MostKept = 20;
             <h3 class="section-label">Keys</h3>
             <div class="flex items-center gap-3">
               <span class="text-foreground-muted min-w-0 flex-1 text-xs">Every key, and presets from other apps.</span>
-              <button type="button" xuiButton size="sm" data-testid="preferences-keys" (click)="showKeys()">
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="preferences-keys"
+                (click)="showKeys()"
+              >
                 {{ commands.label('shortcuts') }}
               </button>
             </div>
