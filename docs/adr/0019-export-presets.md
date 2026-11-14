@@ -150,6 +150,12 @@ order (`baseColor.r, .g, .b`); a grey slot is lane `r` of the map in any lane, i
 roughness inverted. Opacity counts only when the set had an opacity map, because its default is opaque and a material
 told an image holds opacity is drawn transparent. A slot a format cannot carry is left out and the report says so.
 
+A set of files merged per UDIM tile (#281) lies on several tiles, and one material file per kind named only the first
+tile's files (#289). Now USD and MaterialX write one file whose texture paths hold the `<UDIM>` token, which both read as
+every tile's number, when the files' names differ only by that number (`{udim}`); glTF has no tiles, so it writes one
+material per tile, `{project}_1001.gltf` and so on, as USD and MaterialX also do when the names say the tile another way
+(`{tile}`'s `u1_v1`) (`TileMaterials`).
+
 | | glTF 2.0 (`gltf`) | USD (`usda`) | MaterialX 1.38 (`mtlx`) |
 |---|---|---|---|
 | Written by | Vixen's `ModelWriter.GltfMaterials`: materials, textures, images and a sampler, no mesh | `MaterialFiles.Usd`: a `Material` with a `UsdPreviewSurface` | `MaterialFiles.MaterialX`: a node graph, a `standard_surface` and a `surfacematerial` |

@@ -273,6 +273,14 @@ Two tests stand in for the engines until someone opens the files in them:
   BC1 and BC3 were read with theirs moved to the UNORM twin, which is the same blocks. It reads no half, float or 16-bit plain
   DDS (DXGI 10, 2 and 11), so those still have only their layout checked. This was run once by hand, since CI has no Pillow: it
   is evidence that the files decode as the encoder meant on the CPU, and not on a GPU.
+- _2026-11-14 (#289):_ BC6H on a ramp from 0 to 4 was measured again, as the worst texel's error in value, at each level:
+  across 8, 16, 32 and 64 texels the worst is 0.073, 0.049, 0.057 and 0.021 at Balanced, the same to three places at Best,
+  and 0.115, 0.111, 0.060 and 0.022 at Fast. The 0.125 seen in wave 14 was not reproduced at Balanced; it is near Fast's.
+  **Best's search of every partition and endpoint walk buys nothing here: the search is not the limit.** The worst texel
+  is always in the block that starts at zero. BC6H interpolates half-float bit patterns, which grow with the logarithm of
+  the value, so a block running from 0 to 0.8 has a palette crowded near zero and a gap of about 0.4 at its top, and the
+  encoder's error is measured in those patterns, which is a relative error and right for light. Measuring it in values
+  instead would trade the dark end of every HDR picture for the bright end of this one; that is not done.
 
 What only a person with the engine can check, one import per engine, recorded here when done:
 
