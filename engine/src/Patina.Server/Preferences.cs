@@ -51,11 +51,11 @@ public sealed class Preferences {
     }
 
     /// <summary>Changes the settings and keeps them in the file.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">A setting is out of range.</exception>
+    /// <exception cref="ArgumentException">A setting is out of range, or the bake options are ones no bake can use.</exception>
     /// <exception cref="IOException">The file could not be written.</exception>
     public ServerPreferences Set(ServerPreferences preferences) {
         ArgumentNullException.ThrowIfNull(preferences);
-        Check(preferences.Autosave);
+        Check(preferences);
         lock (gate) {
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
             LibraryFiles.Replace(
@@ -64,6 +64,14 @@ public sealed class Preferences {
             );
             current = preferences;
             return current;
+        }
+    }
+
+    /// <summary>Every setting in range, and bake options a bake can use.</summary>
+    static void Check(ServerPreferences preferences) {
+        Check(preferences.Autosave);
+        if (preferences.Bake?.Problem() is { } problem) {
+            throw new ArgumentException(problem, nameof(preferences));
         }
     }
 
@@ -93,7 +101,7 @@ public sealed class Preferences {
                 return defaults;
             }
 
-            Check(read.Autosave);
+            Check(read);
             return read;
         } catch (Exception e) when (e is JsonException or IOException or ArgumentException) {
             ServerLog.PreferencesUnreadable(logger, file, e.Message);

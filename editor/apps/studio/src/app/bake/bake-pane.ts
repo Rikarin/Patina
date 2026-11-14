@@ -20,6 +20,7 @@ import { XuiSegmentedControlImports } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { EnginePreferences, sameOptions } from '../core/engine-preferences';
 import type { PickKind } from '../core/file-picker';
 import { imageFormatName, jobStateName, termName } from '../core/labels';
 import { messageOf } from '../core/messages';
@@ -1280,6 +1281,18 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
         type="button"
         xuiButton
         class="ms-auto"
+        size="sm"
+        variant="ghost"
+        data-testid="bake-make-default"
+        title="Every project made from now on bakes with these options, in any app attached to the engine. Preferences can go back to Patina's."
+        [disabled]="!settings.options() || isDefault()"
+        (click)="makeDefault()"
+      >
+        {{ isDefault() ? 'Default' : 'Make Default' }}
+      </button>
+      <button
+        type="button"
+        xuiButton
         color="primary"
         size="sm"
         data-testid="bake-start"
@@ -1298,6 +1311,22 @@ export class BakePane {
   private readonly chooser = inject(FileChooser);
   private readonly status = inject(SystemStatus);
   protected readonly graph = inject(GraphStore);
+  private readonly engine = inject(EnginePreferences);
+
+  /** Whether these options are already the ones a new project bakes with. */
+  protected readonly isDefault = computed(() => {
+    const options = this.settings.options();
+    const preferred = this.engine.bake();
+    return options !== null && preferred !== null && sameOptions(options, preferred);
+  });
+
+  /** Makes these options the ones every project made from now on bakes with (#189). */
+  protected async makeDefault(): Promise<void> {
+    const options = this.settings.options();
+    if (options) {
+      await this.engine.makeBakeDefault(options);
+    }
+  }
   protected readonly Math = Math;
   protected readonly String = String;
   protected readonly Number = Number;
@@ -1346,6 +1375,7 @@ export class BakePane {
 
   constructor() {
     void this.settings.readPreview();
+    void this.engine.read();
   }
 
   protected readonly section = signal<Section>('common');

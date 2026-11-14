@@ -107,6 +107,7 @@ static class LibraryEndpoints {
     static Results<Created<ProjectSummary>, ProblemHttpResult> CreateProject(
         LibraryHost host,
         StackSessions stacks,
+        Preferences preferences,
         ProjectCreateRequest request
     ) {
         if (host.Library is not { } library) {
@@ -151,9 +152,9 @@ static class LibraryEndpoints {
                         request.Rows
                     )
                 );
-                BakeAtSize(library, project.Path, kind, request.Resolution);
             }
 
+            BakeAsPreferred(library, project.Path, kind, request.Resolution, preferences.Current.Bake);
             host.RequestRescan();
             return TypedResults.Created((string?)null, project);
         } catch (FileNotFoundException e) {
@@ -164,13 +165,18 @@ static class LibraryEndpoints {
     }
 
     /// <summary>
-    ///     A texturing project bakes at the size it was made at until someone says otherwise (#144): its bake settings
-    ///     start from that width, and each set's height follows the set. One made at the bake's own default keeps none.
+    ///     A new project bakes as the person made their default (#189), and a texturing one at the size it was made at
+    ///     until someone says otherwise (#144): its bake settings start from that width, and each set's height follows
+    ///     the set. One made at the bake's own default with no default of the person's keeps none.
     /// </summary>
-    static void BakeAtSize(OpenLibrary library, string project, string kind, int? side) {
-        if (kind == DocumentKinds.Texturing && side is { } width && width != new BakeOptions().Resolution) {
-            library.SetBake(project, new() { Options = new() { Resolution = width } });
+    static void BakeAsPreferred(OpenLibrary library, string project, string? kind, int? side, BakeOptions? preferred) {
+        var width = kind == DocumentKinds.Texturing ? side : null;
+        var options = preferred ?? new BakeOptions();
+        if (preferred is null && (width is null || width == options.Resolution)) {
+            return;
         }
+
+        library.SetBake(project, new() { Options = width is { } made ? options with { Resolution = made } : options });
     }
 
     static Results<Created<GraphCreated>, ProblemHttpResult> CreateGraph(LibraryHost host, GraphCreateRequest request) {

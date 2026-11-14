@@ -6225,6 +6225,7 @@ export interface components {
     ServerPreferences: {
       /** @description How unsaved work is kept. */
       autosave: components['schemas']['AutosavePreferences'];
+      bake?: null | components['schemas']['BakeOptions'];
     };
     /** @description Puts a document back as a snapshot holds it, or forgets a snapshot. */
     SnapshotRequest: {
