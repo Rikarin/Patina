@@ -214,6 +214,15 @@ public sealed class StackVocabularyTests {
         Assert.Contains("Colour/Gradient Map", adjustments);
         Assert.Contains("Surface/Bevel", adjustments);
         Assert.DoesNotContain("Colour/Blend", adjustments);
+
+        // #116: the distance along a direction and the fills of a mask's islands and a picture's flat areas.
+        Assert.Contains("Analysis/Directional Distance", adjustments);
+        Assert.Contains("Analysis/Flood Fill", adjustments);
+        Assert.Contains("Utility/Area Fill", adjustments);
+
+        // #283: a whole family that reads no layer's picture is left off, and so is a node with two pictures out.
+        Assert.DoesNotContain(adjustments, static path => path.StartsWith("Environment/", StringComparison.Ordinal));
+        Assert.DoesNotContain("Surface/Erosion Channels", adjustments);
     }
 
     /// <summary>A person picks by name, and only the numbers a form can show may be asked for.</summary>

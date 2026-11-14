@@ -114,9 +114,9 @@ public sealed class CompressionPreviewTests : IDisposable {
     }
 
     /// <summary>
-    ///     Every format an export writes, read back by what Patina reads pictures with: PNG, TGA, JPEG, Radiance HDR
-    ///     and OpenEXR through MapPictures, KTX2 and DDS through Vixen's readers. TIFF and WebP have no reader here;
-    ///     Vixen's ImageWriterTests read them back with libtiff, ImageIO and libwebp.
+    ///     Every format an export writes, read back by what Patina reads pictures with: PNG, TGA, JPEG, Radiance HDR,
+    ///     OpenEXR, TIFF and lossless WebP through MapPictures, KTX2 and DDS through Vixen's readers (#156). Vixen's
+    ///     ImageWriterTests also read TIFF and WebP back with libtiff, ImageIO and libwebp.
     /// </summary>
     [Theory]
     [InlineData(ExportFormats.Png8, "srgb", 1 / 255d)]
@@ -126,6 +126,8 @@ public sealed class CompressionPreviewTests : IDisposable {
     [InlineData(ExportFormats.Hdr, "linear", 0.01)]
     [InlineData(ExportFormats.Exr16, "linear", 0.001)]
     [InlineData(ExportFormats.Exr32, "linear", 1e-6)]
+    [InlineData(ExportFormats.Tiff16, "linear", 1 / 65535d)]
+    [InlineData(ExportFormats.WebP, "srgb", 1 / 255d)]
     [InlineData(ExportFormats.Ktx2, "linear", 1 / 65535d)]
     [InlineData(ExportFormats.Dds, "linear", 1 / 65535d)]
     public void Every_format_reads_back_as_the_picture_it_was(string format, string space, double within) {

@@ -4,6 +4,7 @@ from .asset_impact import AssetImpact
 from .asset_page import AssetPage
 from .asset_summary import AssetSummary
 from .autosave_preferences import AutosavePreferences
+from .bake_border_options import BakeBorderOptions
 from .bake_colour_options import BakeColourOptions
 from .bake_curvature_options import BakeCurvatureOptions
 from .bake_edge_options import BakeEdgeOptions
@@ -275,6 +276,8 @@ from .stack_command_stack_add_mask_layer import StackCommandStackAddMaskLayer
 from .stack_command_stack_add_mask_layer_op import StackCommandStackAddMaskLayerOp
 from .stack_command_stack_apply_mask import StackCommandStackApplyMask
 from .stack_command_stack_apply_mask_op import StackCommandStackApplyMaskOp
+from .stack_command_stack_carry_paint import StackCommandStackCarryPaint
+from .stack_command_stack_carry_paint_op import StackCommandStackCarryPaintOp
 from .stack_command_stack_duplicate_layers import StackCommandStackDuplicateLayers
 from .stack_command_stack_duplicate_layers_op import StackCommandStackDuplicateLayersOp
 from .stack_command_stack_flatten_layer import StackCommandStackFlattenLayer
@@ -408,6 +411,8 @@ from .viewport_graph_request import ViewportGraphRequest
 from .viewport_highlight import ViewportHighlight
 from .viewport_isolation import ViewportIsolation
 from .viewport_map_paths import ViewportMapPaths
+from .viewport_marquee import ViewportMarquee
+from .viewport_marquee_request import ViewportMarqueeRequest
 from .viewport_mesh_request import ViewportMeshRequest
 from .viewport_node_shown import ViewportNodeShown
 from .viewport_pick import ViewportPick
@@ -424,6 +429,7 @@ __all__ = (
     "AssetPage",
     "AssetSummary",
     "AutosavePreferences",
+    "BakeBorderOptions",
     "BakeColourOptions",
     "BakeCurvatureOptions",
     "BakedMapFile",
@@ -695,6 +701,8 @@ __all__ = (
     "StackCommandStackAddMaskLayerOp",
     "StackCommandStackApplyMask",
     "StackCommandStackApplyMaskOp",
+    "StackCommandStackCarryPaint",
+    "StackCommandStackCarryPaintOp",
     "StackCommandStackDuplicateLayers",
     "StackCommandStackDuplicateLayersOp",
     "StackCommandStackFlattenLayer",
@@ -828,6 +836,8 @@ __all__ = (
     "ViewportHighlight",
     "ViewportIsolation",
     "ViewportMapPaths",
+    "ViewportMarquee",
+    "ViewportMarqueeRequest",
     "ViewportMeshRequest",
     "ViewportNodeShown",
     "ViewportPick",

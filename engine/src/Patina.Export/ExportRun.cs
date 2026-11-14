@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export.Builds;
 using Patina.Export.Materials;
 using Patina.Export.Presets;
 using Patina.Jobs;
@@ -19,7 +20,10 @@ public sealed record ExportSet(string Name, IReadOnlyDictionary<string, MapPictu
 /// <summary>What a delivery put in a folder.</summary>
 /// <param name="Files">The files, absolute.</param>
 /// <param name="Warnings">What a person should know: a material slot left out, and why.</param>
-public sealed record ExportDelivered(IReadOnlyList<string> Files, IReadOnlyList<string> Warnings);
+public sealed record ExportDelivered(IReadOnlyList<string> Files, IReadOnlyList<string> Warnings) {
+    /// <summary>Each of <see cref="Files" />' SHA-256, in the same order.</summary>
+    public IReadOnlyList<string> Digests { get; init; } = [];
+}
 
 /// <summary>
 ///     An export of some of a project's texture sets into the folder of all of them: it replaces only these sets'
@@ -94,9 +98,10 @@ public static class ExportRun {
             sets = [..sets.Where(set => chosen.Contains(set.Name, StringComparer.Ordinal))];
         }
 
-        if (preset.Merge && SetMerge.Merge(sets, warnings) is { } merged) {
+        var namedByTile = preset.Textures.All(static texture => SetMerge.NamesTile(texture.File));
+        if (preset.Merge && SetMerge.PerTile(sets, namedByTile, warnings) is { } merged) {
             Unused(preset, sets, warnings);
-            sets = [merged];
+            sets = merged;
             several = false;
         }
 
@@ -284,6 +289,7 @@ public static class ExportRun {
         }
 
         var relative = delivered.Select(path => Path.GetRelativePath(target, path)).ToList();
+        var digests = BuildComparisons.Digests(delivered);
         var placed = before?.Sets ?? new Dictionary<string, string>();
         foreach (var old in before?.Files.Except(relative, StringComparer.Ordinal).ToList() ?? []) {
             var set = placed.GetValueOrDefault(old);
@@ -304,11 +310,34 @@ public static class ExportRun {
         LibraryFiles.Replace(
             Path.Combine(target, BuildObjects.DeliveredFile),
             JsonSerializer.SerializeToUtf8Bytes(
-                new(key, relative) { Sets = sets },
+                new(key, relative) { Sets = sets, Digests = Digested(relative, digests, before?.Digests) },
                 ContractsJsonContext.Default.ExportDelivery
             )
         );
-        return new(delivered, materials.Warnings);
+        return new(delivered, materials.Warnings) { Digests = digests };
+    }
+
+    /// <summary>
+    ///     Each delivered file's digest, by file (#280): the files this delivery wrote come first and take
+    ///     <paramref name="made" /> in order, and another set's file kept after them takes what the delivery before
+    ///     said, where it said.
+    /// </summary>
+    static Dictionary<string, string> Digested(
+        IReadOnlyList<string> files,
+        IEnumerable<string> made,
+        IReadOnlyDictionary<string, string>? before
+    ) {
+        Dictionary<string, string> digests = new(StringComparer.Ordinal);
+        using var written = made.GetEnumerator();
+        foreach (var file in files) {
+            if (written.MoveNext()) {
+                digests[file] = written.Current;
+            } else if (before?.GetValueOrDefault(file) is { } digest) {
+                digests[file] = digest;
+            }
+        }
+
+        return digests;
     }
 
     /// <summary>

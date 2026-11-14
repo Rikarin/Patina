@@ -8,7 +8,8 @@ namespace Patina.Server.Tests;
 public sealed partial class StackProcessTests {
     /// <summary>
     ///     What glTF says beyond a material's pictures, brought in through the Worker and drawn on the GPU (#157): a
-    ///     picture moved by its texture transform is drawn moved, a blended material's alpha is the exported alpha, and
+    ///     picture moved by its texture transform is drawn moved and clamped where its sampler clamps it (#280), a
+    ///     blended material's alpha is the exported alpha, and
     ///     an emissive factor times its strength is the emission. A node input spelled wrong would be dropped silently,
     ///     so only the exported pixels prove the graph says what was meant.
     /// </summary>
@@ -43,11 +44,14 @@ public sealed partial class StackProcessTests {
             ];
         }
 
-        // The picture is red on its left half and blue on its right; moved by half, the left reads the right.
+        // The picture is red on its left half and blue on its right; moved by half, the left reads the right, and
+        // the right reads past the edge, which its sampler clamps. Repeated, it would read red. ⚠ The bitmap's own
+        // bilinear resample wraps, so its last column is half blue and half the first column's red, and a clamp
+        // reads that half.
         var left = Texel("Placed_albedo.png", 0.25f);
         var right = Texel("Placed_albedo.png", 0.75f);
         Assert.True(left[2] > 200 && left[0] < 50, string.Join(",", left));
-        Assert.True(right[0] > 200 && right[2] < 50, string.Join(",", right));
+        Assert.True(right[2] > 100 && right[0] < 200, string.Join(",", right));
         Assert.InRange(left[3], 126, 130);
         // Linear (0.5, 0.25, 0) times a strength of 2 is (1, 0.5, 0), which is sRGB (255, 188, 0).
         var emission = Texel("Placed_emission.png", 0.5f);
@@ -59,7 +63,8 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     A glTF of one triangle and one material: a picture red on the left and blue on the right, moved by half its
-    ///     width, at half alpha and blended, and an emission of numbers alone made brighter by its strength.
+    ///     width and clamped at its edges, at half alpha and blended, and an emission of numbers alone made brighter by
+    ///     its strength.
     /// </summary>
     static string WritePlacedGltf(string folder) {
         const int Side = 8;
@@ -69,7 +74,7 @@ public sealed partial class StackProcessTests {
         }
 
         File.WriteAllBytes(Path.Combine(folder, "halves.png"), PngCodec.Encode8(Side, Side, 3, pixels));
-        return TriangleGltf(
+        var gltf = TriangleGltf(
             Path.Combine(folder, "placed.gltf"),
             """
             {
@@ -88,5 +93,17 @@ public sealed partial class StackProcessTests {
             """,
             ["halves.png"]
         );
+        // CLAMP_TO_EDGE both ways.
+        File.WriteAllText(
+            gltf,
+            File.ReadAllText(gltf)
+                .Replace(
+                    "\"textures\": [{ \"source\": 0 }]",
+                    "\"samplers\": [{ \"wrapS\": 33071, \"wrapT\": 33071 }], "
+                    + "\"textures\": [{ \"source\": 0, \"sampler\": 0 }]",
+                    StringComparison.Ordinal
+                )
+        );
+        return gltf;
     }
 }

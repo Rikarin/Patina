@@ -1,0 +1,69 @@
+version: 1
+name: Wrinkles
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: curvature } }
+  - { id: 2, type: Filters/Blur HQ, x: -960, y: 0, texts: { '=Sigma': '2f + spread * 14f' } }
+  - { id: 3, type: Colour/Histogram Equalise, x: -640, y: 0 }
+  - id: 4
+    type: Colour/Levels
+    x: -320
+    y: 0
+    texts:
+      '=Input Black': '0.5f + spread * 0.5f'
+      '=Input White': '0.05f + spread * 0.4f'
+  - { id: 5, type: Source/Mesh Map, x: -1280, y: 360, texts: { Map: position } }
+  - id: 6
+    type: Colour/Channel Mix
+    x: -960
+    y: 360
+    texts:
+      '=Red from Red': '0.25f'
+  - id: 7
+    type: Source/Volume Noise
+    x: -640
+    y: 360
+    values: { Octaves: [3], Gain: [0.5] }
+    texts:
+      Basis: Gradient
+      Profile: Ridged
+      '=Scale': '6f + frequency * 42f'
+      '=Seed': seed
+  - id: 8
+    type: Filters/Pixel Processor
+    x: 0
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(smoothstep(1f - x, 1f - x + y, b.x) * a.x, 0f, 0f, 1f)'
+      '=X': '0.15f + amount * 0.6f'
+      '=Y': '0.02f + softness * 0.3f'
+  - { id: 99, type: Sub-graph/Output, x: 320, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Input }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: Position }
+  - { fromNode: 4, fromPort: Out, toNode: 8, toPort: A }
+  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: B }
+  - { fromNode: 8, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'Ridges of creased skin or cloth, gathered in the hollows and seams and thinning out over the swells. White is a ridge.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Wrinkles where a surface gathers: long creased ridges crowded into the concave parts of the model, as on a puffed or stuffed shape.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.5', summary: 'How many of the ridges show.', kind: Float, minimum: 0, maximum: 1, group: Wrinkles }
+  - { name: spread, label: Spread, default: '0.4', summary: 'How far out of the hollows the wrinkles reach. One covers every face.', kind: Float, minimum: 0, maximum: 1, group: Wrinkles }
+  - { name: frequency, label: Frequency, default: '0.4', summary: 'How close together the ridges run.', kind: Float, minimum: 0, maximum: 1, group: Wrinkles }
+  - { name: softness, label: Softness, default: '0.3', summary: 'How soft the side of a ridge is.', kind: Float, minimum: 0, maximum: 1, group: Wrinkles }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the wrinkles. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Wrinkles }

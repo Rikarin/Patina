@@ -183,6 +183,32 @@ const Samplings: readonly { value: string; label: string }[] = [
             xuiButton
             size="sm"
             variant="ghost"
+            data-testid="surface-path-copy"
+            title="Copies the path's points and settings, to paste onto another fill"
+            (click)="copyPath()"
+          >
+            Copy
+          </button>
+        }
+        @if (paint.pathClip()) {
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            data-testid="surface-path-paste"
+            title="Puts the copied path here, in place of this one"
+            (click)="pastePath()"
+          >
+            Paste
+          </button>
+        }
+        @if (count() > 0) {
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
             data-testid="surface-path-clear"
             title="Takes every point away, to draw the path again"
             (click)="setPath({ points: [] })"
@@ -218,6 +244,40 @@ const Samplings: readonly { value: string; label: string }[] = [
             (valueChange)="setPath({ hardness: $event })"
           />
         </div>
+        @if (!curve.ribbon) {
+          <div
+            class="flex items-center gap-2"
+            title="How far apart the stroke's stamps are, as a share of its width; 0 is one unbroken line"
+          >
+            <span class="text-foreground-muted w-16 shrink-0 text-xs">Spacing</span>
+            <xui-slider
+              class="min-w-0 flex-1"
+              labelStepSize="0"
+              aria-label="Path stamp spacing, as a share of its width"
+              data-testid="surface-path-spacing"
+              [max]="4"
+              [min]="0"
+              [stepSize]="0.05"
+              [value]="curve.spacing"
+              (valueChange)="setPath({ spacing: $event })"
+            />
+          </div>
+          <div class="flex items-center gap-2" title="How far each stamp moves at random, as a share of the width">
+            <span class="text-foreground-muted w-16 shrink-0 text-xs">Jitter</span>
+            <xui-slider
+              class="min-w-0 flex-1"
+              labelStepSize="0"
+              aria-label="Path stamp jitter"
+              data-testid="surface-path-jitter"
+              [disabled]="!curve.spacing"
+              [max]="1"
+              [min]="0"
+              [stepSize]="0.05"
+              [value]="curve.jitter"
+              (valueChange)="setPath({ jitter: $event })"
+            />
+          </div>
+        }
         <div
           class="flex items-center gap-2"
           title="Lays the fill's picture along the path, rather than showing it through"
@@ -304,6 +364,21 @@ export class SurfaceFields {
     const path = this.path();
     if (path) {
       void this.paint.edit({ op: 'setLayer', layer: this.layer().id, path: { ...path, ...change } });
+    }
+  }
+
+  protected copyPath(): void {
+    const path = this.path();
+    if (path) {
+      this.paint.pathClip.set(path);
+    }
+  }
+
+  /** The copied path onto this fill, as one edit; it keeps the box it was drawn in, since its points are in it. */
+  protected pastePath(): void {
+    const copied = this.paint.pathClip();
+    if (copied) {
+      void this.paint.edit({ op: 'setLayer', layer: this.layer().id, path: copied });
     }
   }
 

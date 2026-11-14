@@ -22,7 +22,7 @@ const facts = {
 };
 
 async function render(channels: readonly string[] = ['baseColor', 'roughness'], meshMaps: string | null = null) {
-  const edit = vi.fn((_command: unknown) => Promise.resolve(true));
+  const edit = vi.fn((..._commands: unknown[]) => Promise.resolve(true));
   const asked = vi.fn((_path: string, _init: unknown) => Promise.resolve({ data: facts, response: { ok: true } }));
   const paint = {
     state: signal({
@@ -145,6 +145,22 @@ describe('DocumentSection', () => {
     expect(text('paint-document-mesh-facts')).toBe('1,000 triangles, 2 parts, 2 UV sets');
     expect(element.querySelector('[data-testid=texture-set-uv-set]')).not.toBeNull();
     expect(element.querySelector('[data-testid=texture-set-height-normal]')).toBeNull();
+  });
+
+  it('carries the paint into a new UV set as one step, unless asked to leave it on the map (#210)', async () => {
+    const { element, edit, fixture } = await render();
+    const section = fixture.componentInstance as unknown as {
+      setUvSet(uvSet: number): void;
+      carryPaint: { set(on: boolean): void };
+    };
+
+    expect(element.querySelector('[data-testid=texture-set-carry-paint]')).not.toBeNull();
+    section.setUvSet(1);
+    expect(edit).toHaveBeenLastCalledWith({ op: 'setSettings', uvSet: 1 }, { op: 'carryPaint', fromUvSet: 0 });
+
+    section.carryPaint.set(false);
+    section.setUvSet(1);
+    expect(edit).toHaveBeenLastCalledWith({ op: 'setSettings', uvSet: 1 });
   });
 
   it('sets height to normal only for a set with a height channel', async () => {

@@ -171,15 +171,17 @@ static class MaterialImport {
             return picture;
         }
 
-        return graph.Chain(
-            picture,
+        var placed = graph.Node(
             "Space/Transform 2D",
+            [("Tiling", placement.Tiling)],
             [
                 ("Rotation", [node.Rotation]), ("Scale X", [node.ScaleX]), ("Scale Y", [node.ScaleY]),
                 ("Offset X", [node.OffsetX]), ("Offset Y", [node.OffsetY]), ("Shear X", [node.ShearX]),
                 ("Shear Y", [node.ShearY])
             ]
         );
+        graph.Edge(picture, placed, "Input");
+        return placed;
     }
 
     /// <summary>

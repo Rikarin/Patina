@@ -76,6 +76,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(StackChannelsApplied))]
 [JsonSerializable(typeof(StackPaceChange)), JsonSerializable(typeof(StackPace))]
 [JsonSerializable(typeof(ViewportPickRequest))]
+[JsonSerializable(typeof(ViewportMarqueeRequest)), JsonSerializable(typeof(ViewportMarquee))]
 [JsonSerializable(typeof(ViewportCastRequest)), JsonSerializable(typeof(ViewportCast))]
 [JsonSerializable(typeof(ViewportStackRequest))]
 [JsonSerializable(typeof(StackEditResult))]

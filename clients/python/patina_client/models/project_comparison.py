@@ -31,9 +31,10 @@ class ProjectComparison:
             id (UUID): The project.
             name (str): Its name.
             path (str): Its path below `projects/`.
-            touched (str): Which builds touched it: both, before or after. A build that leaves a project alone writes
-                nothing of it, so a
-                project only one build touched has its files listed as that build left them.
+            touched (str): Which builds have it: both, before or after. A build reports every project it selects, one it
+                finds fresh as
+                fresh with the digests of the files already there, so a project only one build has was not in the other at
+                all, and has its files listed as that build left them.
             outputs (list[OutputComparison]): Its outputs, with their keys in each build.
             files (list[FileComparison]): Its exported files, with their change.
      """

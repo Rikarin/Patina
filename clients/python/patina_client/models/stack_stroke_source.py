@@ -31,8 +31,8 @@ class StackStrokeSource:
         Attributes:
             kind (str): `smudge` drags what the canvas holds along the stroke, with the brush's flow; `clone` copies the
                             stack's composite from Offset away, as it stood when the stroke began; `material` lays
-                            what Graph makes in the stroke's channel; `picture` projects
-                            Picture.
+                            what Graph or Layered makes in the stroke's channel; `picture`
+                            projects Picture.
             graph (None | str | Unset): For a material, the graph whose maps are laid, as a graph fill names it.
             offset (list[float] | None | Unset): For a clone, how far the texel read is from the texel painted, in texels of
                 the map: two numbers.
@@ -45,6 +45,10 @@ class StackStrokeSource:
             planar_axis (None | str | Unset): For a planar material, the axis it projects along: X, Y or Z.
             placement (None | StackPlacement | Unset):
             frame (None | StackFrame | Unset):
+            layered (None | str | Unset): For a material, instead of Graph: a layered material, as the shelf names it in
+                string MaterialInfo.Source (#125). Its layers composite on the stroke's texture set, reading its mesh
+                maps, and the stroke lays what they make, each layer where its own projection puts it; so it takes no
+                Projection, axis or Placement of its own.
      """
 
     kind: str
@@ -55,6 +59,7 @@ class StackStrokeSource:
     planar_axis: None | str | Unset = UNSET
     placement: None | StackPlacement | Unset = UNSET
     frame: None | StackFrame | Unset = UNSET
+    layered: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -119,6 +124,12 @@ class StackStrokeSource:
         else:
             frame = self.frame
 
+        layered: None | str | Unset
+        if isinstance(self.layered, Unset):
+            layered = UNSET
+        else:
+            layered = self.layered
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -139,6 +150,8 @@ class StackStrokeSource:
             field_dict["placement"] = placement
         if frame is not UNSET:
             field_dict["frame"] = frame
+        if layered is not UNSET:
+            field_dict["layered"] = layered
 
         return field_dict
 
@@ -260,6 +273,16 @@ class StackStrokeSource:
         frame = _parse_frame(d.pop("frame", UNSET))
 
 
+        def _parse_layered(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        layered = _parse_layered(d.pop("layered", UNSET))
+
+
         stack_stroke_source = cls(
             kind=kind,
             graph=graph,
@@ -269,6 +292,7 @@ class StackStrokeSource:
             planar_axis=planar_axis,
             placement=placement,
             frame=frame,
+            layered=layered,
         )
 
 

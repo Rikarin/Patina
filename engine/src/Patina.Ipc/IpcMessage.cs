@@ -58,6 +58,12 @@ public static class IpcTypes {
     public const string ViewportCast = "viewport.cast";
 
     /// <summary>
+    ///     Server to Worker: the named meshes that show inside the rectangle from <see cref="IpcMessage.Pick" /> to its
+    ///     second corner; answers with <see cref="IpcMessage.Marqueed" />. It reads the mesh and no device (#110).
+    /// </summary>
+    public const string ViewportMarquee = "viewport.marquee";
+
+    /// <summary>
     ///     Server to Worker: from now on the viewport wears the stack <see cref="IpcMessage.Following" />, or nothing
     ///     when that is null. The maps go from the stack's evaluation to the viewport inside the Worker.
     /// </summary>
@@ -240,6 +246,9 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to viewport.pick.</summary>
     public ViewportPick? Picked { get; set; }
+
+    /// <summary>The reply to viewport.marquee.</summary>
+    public ViewportMarquee? Marqueed { get; set; }
 
     /// <summary>viewport.cast: the rays and the mesh.</summary>
     public ViewportCastAsk? Cast { get; set; }
@@ -466,101 +475,6 @@ public sealed record WorkerHealth(double UptimeSeconds, long WorkingSetBytes, do
 /// <param name="Maps">The values no physical material has, each with its share and its first texel.</param>
 public sealed record StackMeasured(int Width, int Height, LayoutMeasures? Layout, IReadOnlyList<MapMeasure> Maps);
 
-/// <summary>A picture on a disk the Worker can read, and the hash of what is in it.</summary>
-public sealed record ViewportMapFile(string Path, string Hash);
-
-/// <summary>The pictures laid over the open mesh's materials. A null slot keeps the material's own.</summary>
-public sealed record ViewportMapSet(
-    ViewportMapFile? BaseColor = null,
-    ViewportMapFile? Normal = null,
-    ViewportMapFile? Roughness = null,
-    ViewportMapFile? Metallic = null,
-    ViewportMapFile? Occlusion = null,
-    ViewportMapFile? Emissive = null,
-    ViewportMapFile? Opacity = null
-) {
-    /// <summary>Whether normals here point green down, as a graph's do.</summary>
-    public bool GreenDown { get; init; }
-}
-
-/// <summary>
-///     How frames are lit, shown and finished, with the files it names hashed: the viewing table, and the picture the
-///     picture view shows.
-/// </summary>
-/// <param name="Display">The settings as a client gave them.</param>
-/// <param name="Look">The <c>.cube</c> table, or null.</param>
-/// <param name="Picture">The picture, or null.</param>
-/// <param name="Isolation">The parts and materials drawn alone, or null for the whole model.</param>
-/// <param name="TexelDensity">
-///     The texel density the texel density view measures against, in texels per unit of the model, from the project of
-///     the stack worn; zero for none.
-/// </param>
-/// <param name="Resolution">The side of a map for a material whose own size cannot be read, in texels.</param>
-/// <param name="Highlight">What is marked on the model, or null for nothing.</param>
-/// <param name="Symmetry">The symmetry whose mirror is drawn where it meets the model, or null for none.</param>
-public sealed record ViewportDisplaySet(
-    ViewportDisplay Display,
-    ViewportMapFile? Look,
-    ViewportMapFile? Picture,
-    ViewportIsolation? Isolation = null,
-    double TexelDensity = 0,
-    int Resolution = 2048,
-    ViewportHighlight? Highlight = null,
-    StackSymmetry? Symmetry = null
-);
-
-/// <summary>
-///     An orbit around the model and the lens it looks through: radians, a distance in framings, a pan in bounding
-///     radii. The lens comes from the display settings, so a pick sees what the picture shows.
-/// </summary>
-public sealed record ViewportCamera(
-    double Yaw,
-    double Pitch,
-    double Distance,
-    double PanX = 0,
-    double PanY = 0,
-    double PanZ = 0,
-    double FieldOfView = 0.7,
-    bool Orthographic = false
-);
-
-/// <summary>
-///     One frame to render, and the slot of the shared-memory file to write it to: RGBA, tightly packed, top row first.
-///     The Server owns the file; the Worker maps it, and can map it again.
-/// </summary>
-public sealed record ViewportRender(int Width, int Height, string SharedMemory, long Offset, long Capacity);
-
-/// <summary>A position on the viewport's picture to find on the mesh.</summary>
-/// <param name="X">Across, 0 to 1.</param>
-/// <param name="Y">Down, 0 to 1.</param>
-/// <param name="Camera">The camera.</param>
-/// <param name="Width">The picture's width in the units the reply's view is in.</param>
-/// <param name="Height">Its height.</param>
-/// <param name="Mesh">The mesh. Only its file is read, so this answers where there is no Vulkan.</param>
-/// <param name="UvSets">
-///     The coordinate set each worn material is laid out in, by name, where it is not the first (#210): the place on
-///     the map a pick says is in its texture set's own layout, which Find Layer, the color picker and the clone source
-///     read. Null reads every material in the first.
-/// </param>
-public sealed record ViewportPickAsk(
-    double X,
-    double Y,
-    ViewportCamera Camera,
-    int Width,
-    int Height,
-    string Mesh,
-    IReadOnlyDictionary<string, int>? UvSets = null
-);
-
-/// <summary>Rays along one direction to meet the mesh with (#263).</summary>
-/// <param name="Origins">Where each ray starts, in the mesh's own space: three numbers to a ray.</param>
-/// <param name="Direction">The way every ray goes: three numbers.</param>
-/// <param name="Mesh">The mesh. Only its file is read, as a pick's is.</param>
-public sealed record ViewportCastAsk(IReadOnlyList<float> Origins, IReadOnlyList<float> Direction, string Mesh);
-
-/// <summary>A frame that is now in shared memory.</summary>
-public sealed record ViewportFrame(int Width, int Height, double RenderMilliseconds);
-
 /// <summary>
 ///     A graph for the Worker to hold. It is a copy: the Server has the document, and sends it again after a crash.
 /// </summary>
@@ -759,6 +673,7 @@ public sealed record StackLoad(
 ///     through (#127), or null.
 /// </param>
 /// <param name="KeepOutside">Whether the stroke is kept to where that quick mask is not painted instead.</param>
+/// <param name="Carry">With <paramref name="From" />, the UV sets the copy is carried between (#210), or null.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -785,8 +700,18 @@ public sealed record StackPaintPart(
     bool Outline = false,
     bool Through = false,
     string? Keep = null,
-    bool KeepOutside = false
+    bool KeepOutside = false,
+    StackCarry? Carry = null
 );
+
+/// <summary>
+///     With <see cref="StackPaintPart.From" />, the layouts a copy is carried between (#210): the canvas it copies is
+///     laid out in one of the mesh's UV sets, and the copy in another, each texel reading the place on the surface it
+///     covers.
+/// </summary>
+/// <param name="FromUvSet">The UV set the canvas copied is laid out in.</param>
+/// <param name="ToUvSet">The UV set the copy is laid out in.</param>
+public sealed record StackCarry(int FromUvSet, int ToUvSet);
 
 /// <summary>What a flattened group's canvas is made of.</summary>
 /// <param name="Document">The stack as text, as it stood when the group was flattened.</param>

@@ -59,6 +59,39 @@ public sealed class BuildComparisonsTests : IDisposable {
         Assert.Equal((3, 1), (comparison.ChangedFiles, comparison.SameFiles));
     }
 
+    /// <summary>
+    ///     A build that finds a project fresh reports it as fresh, with the digests its delivery kept, so a comparison
+    ///     says its files are the same rather than that the later build removed them (#280). Fresh counts in no total,
+    ///     and never stands over how a step of the same build ended.
+    /// </summary>
+    [Fact]
+    public void A_fresh_project_is_in_the_report_and_compares_as_the_same() {
+        var before = Build("a", Crate, "k1", ("albedo.png", "red"));
+        var reports = Path.Combine(folder.FullName, "reports", "b");
+        var journal = new BuildJournal(reports, "b", DateTimeOffset.UnixEpoch);
+        journal.Ended("o", Barrel, new OutputReport("Main", "graph", "k9", BuildStatuses.Built, 1, null));
+        journal.Fresh(Barrel, new("Main", "graph", "k9", BuildStatuses.Fresh, 0, null), null);
+        string[] files = [Path.Combine(Exports, "albedo.png")];
+        journal.Fresh(Crate, new("Main", "graph", "k1", BuildStatuses.Fresh, 0, null), null);
+        journal.Fresh(
+            Crate,
+            null,
+            new ExportReport("gltf", BuildStatuses.Fresh, Exports, files, [], [], null) {
+                Digests = BuildComparisons.Digests(files)
+            }
+        );
+
+        var totals = journal.Finish(0, 0, null, DateTimeOffset.UnixEpoch);
+
+        Assert.Equal((1, 1, 0L), (totals.Projects, totals.Built, totals.Files));
+        var barrel = BuildJournal.ReadProjects(reports, 0, 10).Items.Single(static p => p.Path == "barrel");
+        Assert.Equal(BuildStatuses.Built, Assert.Single(barrel.Outputs).Status);
+        var crate = BuildComparisons.Compare(before, reports).Projects.Single(static p => p.Path == "crate");
+        Assert.Equal(BuildComparisons.Touched.Both, crate.Touched);
+        Assert.Equal(BuildChanges.Same, Assert.Single(crate.Files).Change);
+        Assert.Equal(BuildChanges.Same, Assert.Single(crate.Outputs).Change);
+    }
+
     [Fact]
     public void A_project_only_one_build_touched_says_so_and_a_report_without_digests_is_unknown() {
         var before = Build("a", Crate, "k1", ("albedo.png", "red"));

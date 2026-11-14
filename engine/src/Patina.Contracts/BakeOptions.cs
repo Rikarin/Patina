@@ -56,7 +56,7 @@ public sealed record BakeOptions {
     /// <summary>Every map a bake can write, in the order they are reported.</summary>
     public static IReadOnlyList<string> AllMaps { get; } = [
         "normal", "height", "ao", "bent", "curvature", "thickness", "position", "world", "id", "colour", "opacity",
-        "edges", "islands"
+        "edges", "islands", "borders"
     ];
 
     /// <summary>The atlas's width, in texels, and its height too unless <see cref="Rows" /> says otherwise.</summary>
@@ -85,6 +85,13 @@ public sealed record BakeOptions {
 
     /// <summary>How many texels of dilation surround each chart.</summary>
     public int Gutter { get; set; } = 4;
+
+    /// <summary>
+    ///     Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the
+    ///     smallest mipmaps keep the maps' own values rather than fading to the empty texture's (#148). Labels, the ID
+    ///     and UV Islands maps, and UV Borders keep their background.
+    /// </summary>
+    public bool Diffusion { get; set; }
 
     /// <summary>
     ///     Which maps to write: <c>normal</c>, <c>height</c>, <c>ao</c>, <c>bent</c>, <c>curvature</c>,
@@ -119,6 +126,9 @@ public sealed record BakeOptions {
     /// <summary>Which edges the edges map marks, how wide and in what profile.</summary>
     public BakeEdgeOptions Edges { get; set; } = new();
 
+    /// <summary>How far inside a UV island the borders map turns white.</summary>
+    public BakeBorderOptions Borders { get; set; } = new();
+
     /// <summary>What the ID map labels and how it colours them.</summary>
     public BakeIdOptions Id { get; set; } = new();
 
@@ -127,6 +137,13 @@ public sealed record BakeOptions {
 
     /// <summary>Where the colour map's colour comes from.</summary>
     public BakeColourOptions Colour { get; set; } = new();
+
+    /// <summary>
+    ///     Whether the maps repeat without a seam (#212): a high-poly patch baked onto a flat low patch, the high mesh
+    ///     laid again on each side of the low mesh's box so a ray near an edge meets what lies beyond it when the
+    ///     material repeats. Null or false bakes the high meshes once, as they are.
+    /// </summary>
+    public bool? Tileable { get; set; }
 
     /// <summary>
     ///     The code of the refusal of a minimum occluder distance at or past the occlusion distance while occlusion or
@@ -177,6 +194,7 @@ public sealed record BakeOptions {
             ?? Rounding.Problem()
             ?? Curvature.Problem()
             ?? Edges.Problem()
+            ?? Borders.Problem()
             ?? Colour.Problem(Maps.Contains("colour", StringComparer.Ordinal));
     }
 }

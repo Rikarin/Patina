@@ -91,6 +91,7 @@ export type BakeRayOptions = components['schemas']['BakeRayOptions'];
 export type BakeOcclusionOptions = components['schemas']['BakeOcclusionOptions'];
 export type BakeRoundingOptions = components['schemas']['BakeRoundingOptions'];
 export type BakeCurvatureOptions = components['schemas']['BakeCurvatureOptions'];
+export type BakeBorderOptions = components['schemas']['BakeBorderOptions'];
 export type BakeEdgeOptions = components['schemas']['BakeEdgeOptions'];
 export type BakeColourOptions = components['schemas']['BakeColourOptions'];
 export type ViewportBakePreview = components['schemas']['ViewportBakePreview'];

@@ -1,0 +1,38 @@
+version: 1
+name: ID Mask
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: id } }
+  - id: 2
+    type: Filters/Pixel Processor
+    x: -320
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(1f - smoothstep(w, w + 0.02f, distance(a.xyz, float3(x, y, z))), 0f, 0f, 1f)'
+      '=X': 'red'
+      '=Y': 'green'
+      '=Z': 'blue'
+      '=W': 'tolerance'
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: A }
+  - { fromNode: 2, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'White on every part whose color in the ID bake is the one chosen, fading out at the tolerance.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Selects the parts of the model painted one color in its ID bake, such as a strap, a trim or a screw head.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: red, label: Red, default: '1', summary: 'The red of the color to select, as the ID bake has it.', kind: Float, minimum: 0, maximum: 1, group: Color }
+  - { name: green, label: Green, default: '0', summary: 'The green of the color to select.', kind: Float, minimum: 0, maximum: 1, group: Color }
+  - { name: blue, label: Blue, default: '0', summary: 'The blue of the color to select.', kind: Float, minimum: 0, maximum: 1, group: Color }
+  - { name: tolerance, label: Tolerance, default: '0.1', summary: 'How far another color may be from it and still be taken.', kind: Float, minimum: 0, maximum: 1, group: Color }

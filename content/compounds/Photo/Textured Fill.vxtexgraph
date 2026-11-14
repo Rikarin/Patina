@@ -1,0 +1,60 @@
+version: 1
+name: Textured Fill
+nodes:
+  - { id: 1, type: Sub-graph/Input, x: -1600, y: 0 }
+  - { id: 2, type: Photo/Fill Holes, x: -1280, y: 0 }
+  - { id: 3, type: Space/Transform 2D, x: -960, y: 200, texts: { Tiling: Wrap, '=Offset X': '0.5f + seed * 0.1373f', '=Offset Y': '0.5f + seed * 0.0721f' } }
+  - { id: 4, type: Space/Transform 2D, x: -960, y: 360, texts: { Tiling: Wrap, '=Offset X': '0.5f + seed * 0.1373f', '=Offset Y': '0.5f + seed * 0.0721f' } }
+  - { id: 5, type: Space/Transform 2D, x: -960, y: 520, texts: { Tiling: Wrap, '=Offset X': '0.5f - seed * 0.0911f', '=Offset Y': 'seed * 0.1093f' } }
+  - { id: 6, type: Colour/Invert, x: -640, y: 360 }
+  - { id: 7, type: Colour/Mix, x: -320, y: 200 }
+  - { id: 8, type: Filters/Blur HQ, x: 0, y: 320, texts: { '=Sigma': '2f + grain * 14f' } }
+  - id: 9
+    type: Filters/Pixel Processor
+    x: 320
+    y: 200
+    texts:
+      Expression: 'float4(a.xyz - b.xyz, 1f) * 0.5f + float4(0.5f, 0.5f, 0.5f, 0.5f)'
+  - id: 10
+    type: Filters/Pixel Processor
+    x: 640
+    y: 0
+    texts:
+      Expression: 'float4(a.xyz + (b.xyz - 0.5f) * 2f * x, a.w)'
+      '=X': detail
+  - { id: 11, type: Colour/Mix, x: 960, y: 0 }
+  - { id: 99, type: Sub-graph/Output, x: 1280, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Input, toNode: 2, toPort: Input }
+  - { fromNode: 1, fromPort: Mask, toNode: 2, toPort: Mask }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 1, fromPort: Mask, toNode: 4, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 6, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 7, toPort: Background }
+  - { fromNode: 3, fromPort: Out, toNode: 7, toPort: Foreground }
+  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: Mask }
+  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: Input }
+  - { fromNode: 7, fromPort: Out, toNode: 9, toPort: A }
+  - { fromNode: 8, fromPort: Out, toNode: 9, toPort: B }
+  - { fromNode: 2, fromPort: Out, toNode: 10, toPort: A }
+  - { fromNode: 9, fromPort: Out, toNode: 10, toPort: B }
+  - { fromNode: 1, fromPort: Input, toNode: 11, toPort: Background }
+  - { fromNode: 10, fromPort: Out, toNode: 11, toPort: Foreground }
+  - { fromNode: 1, fromPort: Mask, toNode: 11, toPort: Mask }
+  - { fromNode: 11, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Input, direction: Input, kind: Image, default: [], summary: 'The photo to mend.' }
+  - { name: Mask, direction: Input, kind: Image, default: [], summary: 'Where to fill: white is filled, black is kept. A single channel.' }
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'The photo with its holes filled, smooth in tone and with the photo''s own grain laid over the fill.' }
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Fills the masked part of a photo and keeps its texture: the tone comes from around the hole, as Fill Holes gives it, and the grain from a clear part of the photo half way across it, or from a second one where the first is a hole too. A photo that does not tile carries its edge into the grain.'
+parameters:
+  - { name: detail, label: Detail, default: '1', summary: 'How much of the photo''s grain is laid over the fill. Nought is the smooth fill alone.', kind: Float, minimum: 0, maximum: 2, group: Fill }
+  - { name: grain, label: Grain Size, default: '0.3', summary: 'How coarse the grain carried into the hole is: low keeps the fine grain alone, high carries larger features too.', kind: Float, minimum: 0, maximum: 1, group: Fill }
+  - { name: seed, label: Seed, default: '0', summary: 'Another part of the photo to take the grain from. Every whole number is a different one.', kind: Int, minimum: 0, maximum: 100, group: Fill }

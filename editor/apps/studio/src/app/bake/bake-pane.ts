@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import type {
+  BakeBorderOptions,
   BakeColourOptions,
   BakeCurvatureOptions,
   BakeEdgeOptions,
@@ -19,7 +20,6 @@ import { XuiSegmentedControlImports } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
-import { desktop } from '../core/desktop';
 import type { PickKind } from '../core/file-picker';
 import { imageFormatName, jobStateName, termName } from '../core/labels';
 import { messageOf } from '../core/messages';
@@ -53,11 +53,19 @@ const Maps: readonly { name: string; about: string }[] = [
     about: 'White where a ray found the high mesh and black where it found none, for cards and cut-outs.'
   },
   { name: 'edges', about: 'A band along the sharp or hard edges, white on the edge, for wear that follows them.' },
-  { name: 'islands', about: 'A flat color per UV island of the low mesh, for a variation per island.' }
+  { name: 'islands', about: 'A flat color per UV island of the low mesh, for a variation per island.' },
+  {
+    name: 'borders',
+    about: 'Black on the border of each UV island of the low mesh and white inside it, to fade a pattern before a seam.'
+  }
 ];
 const RoundedEdges = [
   { value: 'angle', label: 'By angle' },
   { value: 'hard', label: 'Hard edges' }
+];
+const EdgeMeshes = [
+  { value: 'high', label: 'High mesh' },
+  { value: 'low', label: 'Low mesh' }
 ];
 const Profiles = [
   { value: 'even', label: 'Round' },
@@ -308,25 +316,22 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                     [attr.aria-label]="field.label"
                     [attr.data-testid]="'bake-' + field.key"
                     [placeholder]="field.placeholder"
-                    [readOnly]="picked(field.key)"
+                    [readOnly]="true"
                     [title]="path(field.key)"
-                    [value]="picked(field.key) ? nameOf(path(field.key)) : path(field.key)"
-                    (change)="setPath(field.key, text($event))"
+                    [value]="nameOf(path(field.key))"
                   />
-                  @if (picked(field.key)) {
-                    <button
-                      type="button"
-                      xuiButton
-                      size="sm"
-                      variant="ghost"
-                      [attr.aria-label]="'Choose ' + field.label"
-                      [title]="'Choose ' + field.label"
-                      [attr.data-testid]="'bake-choose-' + field.key"
-                      (click)="pick(field.key)"
-                    >
-                      Choose…
-                    </button>
-                  }
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    variant="ghost"
+                    [attr.aria-label]="'Choose ' + field.label"
+                    [title]="'Choose ' + field.label"
+                    [attr.data-testid]="'bake-choose-' + field.key"
+                    (click)="pick(field.key)"
+                  >
+                    Choose…
+                  </button>
                   @if (path(field.key)) {
                     <button
                       type="button"
@@ -414,6 +419,18 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
             </div>
             <label
               class="flex items-center justify-between gap-2 text-sm"
+              title="Fills the rest of the texture past the dilation with a smooth blend of the maps around it, so the smallest mipmaps keep their values. ID, UV Islands and UV Borders keep their background."
+            >
+              Fill past the dilation
+              <xui-switch
+                aria-label="Fill past the dilation"
+                data-testid="bake-diffusion"
+                [checked]="options.diffusion"
+                (checkedChange)="set({ diffusion: $event })"
+              />
+            </label>
+            <label
+              class="flex items-center justify-between gap-2 text-sm"
               title="A texture set wider than it is tall bakes at its own shape at this width, so a wide set and a square one bake together without stretching."
             >
               Follow each set’s shape
@@ -422,6 +439,18 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 data-testid="bake-follow-shape"
                 [checked]="options.followSetShape !== false"
                 (checkedChange)="set({ followSetShape: $event })"
+              />
+            </label>
+            <label
+              class="flex items-center justify-between gap-2 text-sm"
+              title="For a high-poly patch over a flat low patch: the high mesh is laid again on each side of the patch, so what spills past one edge comes back in at the other and the maps repeat without a seam."
+            >
+              Tileable
+              <xui-switch
+                aria-label="Tileable"
+                data-testid="bake-tileable"
+                [checked]="options.tileable === true"
+                (checkedChange)="set({ tileable: $event })"
               />
             </label>
 
@@ -957,6 +986,17 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   />
                 </div>
                 <div class="flex items-center justify-between gap-2 text-sm">
+                  Mesh
+                  <xui-segmented-control
+                    size="sm"
+                    aria-label="Whose edges are marked"
+                    data-testid="bake-edges-mesh"
+                    [options]="edgeMeshes"
+                    [value]="options.edges.mesh"
+                    (valueChange)="setEdges({ mesh: $event ?? options.edges.mesh })"
+                  />
+                </div>
+                <div class="flex items-center justify-between gap-2 text-sm">
                   Profile
                   <xui-segmented-control
                     size="sm"
@@ -968,8 +1008,28 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   />
                 </div>
                 <p class="text-foreground-muted text-xs">
-                  The high mesh’s edges, or the low mesh’s when it bakes onto itself. Round fades evenly away from the
-                  edge, Smooth softly, and Chamfer is white across the whole band.
+                  High mesh marks the edges where the rays land; Low mesh marks the low mesh’s own edges, even under a
+                  high mesh with none. Round fades evenly away from the edge, Smooth softly, and Chamfer is white across
+                  the whole band.
+                </p>
+              }
+              @case ('borders') {
+                <div class="flex items-center justify-between gap-2 text-sm">
+                  <span>Width, % of the texture</span>
+                  <xui-numeric-input
+                    size="sm"
+                    aria-label="Border width"
+                    data-testid="bake-borders-width"
+                    [max]="100"
+                    [min]="0.1"
+                    [stepSize]="0.5"
+                    [value]="toPercent(options.borders.width, 1)"
+                    (valueChange)="setBorders({ width: fromPercent($event ?? 2) })"
+                  />
+                </div>
+                <p class="text-foreground-muted text-xs">
+                  How far inside an island the map turns white. It measures along the UV layout, so a seam fades the
+                  same on every island.
                 </p>
               }
               @case ('thickness') {
@@ -1248,8 +1308,8 @@ export class BakePane {
   protected readonly sideName = (value: string) =>
     this.options()?.followSetShape === false ? `${value} × ${this.options()?.rows ?? value}` : `${value} wide`;
   protected readonly rowsName = (value: string) => (value ? `${value} texels` : 'Same as width');
-  protected readonly canPick = desktop() !== undefined;
   protected readonly roundedEdges = RoundedEdges;
+  protected readonly edgeMeshes = EdgeMeshes;
   protected readonly profiles = Profiles;
   protected readonly curvatureRanges = CurvatureRanges;
   protected readonly colourSources = ColourSources;
@@ -1410,6 +1470,10 @@ export class BakePane {
     this.settings.set(options => ({ ...options, curvature: { ...options.curvature, ...change } }));
   }
 
+  protected setBorders(change: Partial<BakeBorderOptions>): void {
+    this.settings.set(options => ({ ...options, borders: { ...options.borders, ...change } }));
+  }
+
   protected setEdges(change: Partial<BakeEdgeOptions>): void {
     this.settings.set(options => ({ ...options, edges: { ...options.edges, ...change } }));
   }
@@ -1472,17 +1536,13 @@ export class BakePane {
   }
 
   /**
-   * Whether a field is chosen rather than typed: a file from the library or this machine (#4), and a folder from this
-   * machine's dialog, where there is one.
+   * Every field is chosen rather than typed (#4): a file from the library or this machine, and a folder from this
+   * machine's dialog on the desktop or the library's folders elsewhere.
    */
-  protected picked(field: PathField): boolean {
-    return field !== 'output' || this.canPick;
-  }
-
   protected async pick(field: PathField): Promise<void> {
     const path =
       field === 'output'
-        ? await desktop()?.openFolder()
+        ? await this.chooser.folder('Choose an Output Folder', this.project.current()?.path ?? null)
         : await this.choose(
             field === 'cage' ? 'mesh' : 'picture',
             field === 'cage' ? 'Choose a Cage' : field === 'skewMap' ? 'Choose a Skew Map' : 'Choose a Distance Map'

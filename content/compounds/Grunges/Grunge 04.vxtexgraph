@@ -1,0 +1,32 @@
+version: 1
+name: Grunge 04
+nodes:
+  - { id: 1, type: Source/Noise, x: 0, y: 0, values: { Octaves: [1] }, texts: { Basis: Worley, '=Scale': '6f + scale * 14f' } }
+  - { id: 2, type: Source/Noise, x: 0, y: 300, values: { Octaves: [4], Gain: [0.5] }, texts: { Basis: Gradient, '=Scale': '3f' } }
+  - { id: 3, type: Source/Noise, x: 0, y: 600, values: { Octaves: [3], Gain: [0.5] }, texts: { Basis: Gradient, '=Scale': '4f' } }
+  - { id: 4, type: Filters/Warp, x: 300, y: 0, values: { Intensity: [6] } }
+  - id: 10
+    type: Filters/Pixel Processor
+    x: 900
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4((1f - smoothstep(x, x + 0.04f + (1f - y) * 0.25f, a.x)) * smoothstep(0.3f, 0.6f, b.x), 0f, 0f, 1f)'
+      '=X': '0.04f + amount * 0.12f'
+      '=Y': contrast
+  - { id: 99, type: Sub-graph/Output, x: 1200, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Warp }
+  - { fromNode: 4, fromPort: Out, toNode: 10, toPort: A }
+  - { fromNode: 2, fromPort: Out, toNode: 10, toPort: B }
+  - { fromNode: 10, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'Warped, rounded spots of stain, each a cell bent out of shape, as splashes dry on a floor. White is the stain.' }
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - { name: scale, label: Scale, default: '0.5', summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: amount, label: Amount, default: '0.5', summary: 'How much of the surface the grunge covers.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: contrast, label: Contrast, default: '0.5', summary: 'How hard its edges are: low is soft and faint, high is crisp.', kind: Float, minimum: 0, maximum: 1, group: Grunge }

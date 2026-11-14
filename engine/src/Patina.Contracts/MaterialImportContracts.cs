@@ -55,4 +55,10 @@ public sealed record ImportedSlot(
 /// <param name="Rotation">The turn, in radians, counter-clockwise in UV.</param>
 /// <param name="ScaleX">What U is multiplied by.</param>
 /// <param name="ScaleY">What V is multiplied by.</param>
-public sealed record ImportedPlacement(float OffsetX, float OffsetY, float Rotation, float ScaleX, float ScaleY);
+public sealed record ImportedPlacement(float OffsetX, float OffsetY, float Rotation, float ScaleX, float ScaleY) {
+    /// <summary>
+    ///     What is read beyond the picture's edges, as a <c>Space/Transform 2D</c> names it: <c>Wrap</c>, <c>Clamp</c>
+    ///     or <c>Mirror</c>. glTF's sampler says it per axis, and the node has one for both.
+    /// </summary>
+    public string Tiling { get; init; } = "Wrap";
+}

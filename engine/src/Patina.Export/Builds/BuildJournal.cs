@@ -74,18 +74,44 @@ public sealed class BuildJournal {
         Append(new(step, project.Id, project.Name, project.Path, null, export));
     }
 
+    /// <summary>
+    ///     Records an output or an export the build found fresh and left alone (#280), so that its report has every
+    ///     project it selected and a comparison can tell fresh from not in the build. Kept off the log and never put
+    ///     over how a step ended: a restarted build finds an earlier attempt's work fresh, and reports it as done.
+    /// </summary>
+    /// <param name="project">Whose it is.</param>
+    /// <param name="output">The fresh output, or null.</param>
+    /// <param name="export">The fresh export, or null.</param>
+    public void Fresh(ProjectIdentity project, OutputReport? output, ExportReport? export) {
+        ArgumentNullException.ThrowIfNull(project);
+        if (projects.TryGetValue(project.Id, out var entry)
+            && ((output is not null && entry.Outputs.Exists(o => o.Name == output.Name))
+                || (export is not null && entry.Exports.Exists(e => e.Preset == export.Preset)))) {
+            return;
+        }
+
+        Place(project, output, export);
+    }
+
     /// <summary>What has been done so far.</summary>
     /// <param name="fresh">Outputs nothing touched.</param>
     /// <param name="exportsFresh">Exports nothing touched.</param>
     /// <param name="finished">When it finished, if it has.</param>
     public LibraryReport Totals(int fresh, int exportsFresh, DateTimeOffset? finished = null) {
-        var outputs = projects.Values.SelectMany(static p => p.Outputs).ToList();
-        var exports = projects.Values.SelectMany(static p => p.Exports).ToList();
+        // What was fresh is in the reports and not in the totals, which count what the build did.
+        var outputs = projects.Values.SelectMany(static p => p.Outputs)
+            .Where(static o => o.Status != BuildStatuses.Fresh)
+            .ToList();
+        var exports = projects.Values.SelectMany(static p => p.Exports)
+            .Where(static e => e.Status != BuildStatuses.Fresh)
+            .ToList();
         return new() {
             Build = build,
             Started = started,
             Finished = finished,
-            Projects = projects.Count,
+            Projects = projects.Values.Count(static p => p.Outputs.Exists(static o => o.Status != BuildStatuses.Fresh)
+                || p.Exports.Exists(static e => e.Status != BuildStatuses.Fresh)
+            ),
             Built = outputs.Count(static o => o.Status == BuildStatuses.Built),
             Reused = outputs.Count(static o => o.Status == BuildStatuses.Reused),
             Fresh = fresh,
@@ -183,6 +209,10 @@ public sealed class BuildJournal {
 
     void Note(string step, ProjectIdentity project, OutputReport? output, ExportReport? export) {
         ended.Add(step);
+        Place(project, output, export);
+    }
+
+    void Place(ProjectIdentity project, OutputReport? output, ExportReport? export) {
         if (!projects.TryGetValue(project.Id, out var entry)) {
             projects[project.Id] = entry = new(project.Name, project.Path, [], []);
         }

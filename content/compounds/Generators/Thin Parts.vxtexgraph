@@ -1,0 +1,42 @@
+version: 1
+name: Thin Parts
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: thickness } }
+  - { id: 2, type: Source/Mesh Map, x: -1280, y: 220, texts: { Map: position } }
+  - { id: 3, type: Source/Volume Noise, x: -960, y: 220, values: { Octaves: [4] }, texts: { Basis: Gradient, '=Scale': scale, '=Seed': seed } }
+  - id: 4
+    type: Filters/Pixel Processor
+    x: -320
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4((1f - smoothstep(x - y * 0.5f, x + y * 0.5f + 0.001f, a.x)) * (1f - z + z * smoothstep(0.3f, 0.7f, b.x)), 0f, 0f, 1f)'
+      '=X': 'amount'
+      '=Y': 'softness'
+      '=Z': 'breakup'
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Position }
+  - { fromNode: 1, fromPort: Out, toNode: 4, toPort: A }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: B }
+  - { fromNode: 4, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'White where the model is thin: fins, rims, ears and leaves, where light shows through or wear goes first.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Selects the thin parts of the model by its thickness bake, broken up so that it is not one even band.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.3', summary: 'How thick a part may be and still be taken, as the thickness bake reads.', kind: Float, minimum: 0, maximum: 1, group: Thin }
+  - { name: softness, label: Softness, default: '0.2', summary: 'How gently the selection fades out as the model thickens.', kind: Float, minimum: 0, maximum: 1, group: Thin }
+  - { name: breakup, label: Breakup, default: '0.3', summary: 'How patchy the selection is.', kind: Float, minimum: 0, maximum: 1, group: Breakup }
+  - { name: scale, label: Breakup Scale, default: '8', summary: 'How many patches of breakup run across the model.', kind: Float, minimum: 1, maximum: 64, group: Breakup }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the breakup. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Breakup }

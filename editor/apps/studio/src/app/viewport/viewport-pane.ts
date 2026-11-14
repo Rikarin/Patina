@@ -29,6 +29,7 @@ import { ProjectStore } from '../library/project-store';
 import { BrushRing } from '../paint/brush-ring';
 import { MaterialUse } from '../paint/material-use';
 import { PaintStore, penOf } from '../paint/paint-store';
+import { PartMarquee } from '../paint/part-marquee';
 import { ScreenPictureOverlay, handleStencilKeys } from '../paint/screen-picture';
 import { StrokeGesture } from '../paint/stroke-gesture';
 import { isPicture, pictureName } from '../paint/surface-frame';
@@ -286,6 +287,16 @@ const PickFile = '…';
         (dragover)="overMesh($event)"
         (drop)="dropOnMesh($event)"
       ></canvas>
+      @if (marquee.box(); as box) {
+        <div
+          class="pointer-events-none absolute border border-dashed border-sky-300/80 bg-sky-300/10"
+          data-testid="viewport-marquee"
+          [style.height.px]="box.height"
+          [style.left.px]="box.left"
+          [style.top.px]="box.top"
+          [style.width.px]="box.width"
+        ></div>
+      }
       @if (paint.worn() && project.active()?.kind === 'texturing') {
         <ptn-screen-picture of="material" />
         <ptn-screen-picture />
@@ -435,6 +446,8 @@ export class ViewportPane implements AfterViewInit {
   private mirrorWanted = false;
   protected readonly options = inject(ViewOptions);
   protected readonly gesture = new StrokeGesture(this.paint, () => this.aim());
+  /** A click or a rectangle that picks a layer's meshes on the model (#110). */
+  protected readonly marquee = new PartMarquee(this.paint, () => this.aim());
   protected readonly curve = computed(() =>
     this.gesture
       .points()
@@ -777,9 +790,9 @@ export class ViewportPane implements AfterViewInit {
   }
 
   protected press(event: PointerEvent): void {
-    // A click takes the mesh under it into the layer's meshes, or out of them (#110).
-    if (this.paint.pickingPart() !== null && event.button === 0) {
-      void this.paint.togglePartOnMesh(this.stamp(event), this.aim());
+    // A click takes the mesh under it into the layer's meshes, or out of them, and a drag every one inside it (#110).
+    if (this.marquee.press(event, this.spot(event))) {
+      this.canvas().nativeElement.setPointerCapture(event.pointerId);
       return;
     }
 
@@ -831,6 +844,10 @@ export class ViewportPane implements AfterViewInit {
 
   protected drag(event: PointerEvent): void {
     this.brushAt.set(this.spot(event));
+    if (this.marquee.move(this.spot(event))) {
+      return;
+    }
+
     if (this.stroking) {
       // A display frame can hold several pointer moves, and a stroke wants all of them.
       const moves = event.getCoalescedEvents();
@@ -858,6 +875,10 @@ export class ViewportPane implements AfterViewInit {
   }
 
   protected release(event: PointerEvent): void {
+    if (this.marquee.release(event, this.spot(event))) {
+      return;
+    }
+
     if (this.stroking) {
       this.stroking = false;
       this.gesture.release();

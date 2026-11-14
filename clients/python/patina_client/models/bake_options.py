@@ -12,6 +12,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.bake_border_options import BakeBorderOptions
   from ..models.bake_colour_options import BakeColourOptions
   from ..models.bake_curvature_options import BakeCurvatureOptions
   from ..models.bake_edge_options import BakeEdgeOptions
@@ -41,6 +42,10 @@ class BakeOptions:
             format_ (str): `png8`, `png16`, `exr16` or `exr32`.
             supersampling (int): How many samples along each side of a texel.
             gutter (int): How many texels of dilation surround each chart.
+            diffusion (bool): Whether the texels past the dilation are filled too, each a smooth blend of the charts around
+                it, so the
+                smallest mipmaps keep the maps' own values rather than fading to the empty texture's (#148). Labels, the ID
+                and UV Islands maps, and UV Borders keep their background.
             maps (list[str]): Which maps to write: `normal`, `height`, `ao`, `bent`, `curvature`,
                 `thickness`, `position`, `world`, `id`, `colour`, `opacity` (where a ray
                 found the high mesh), `edges` (a band along its sharp or hard edges) and `islands` (a color per UV
@@ -54,6 +59,7 @@ class BakeOptions:
             thickness (BakeThicknessOptions): The thickness map's own settings.
             curvature (BakeCurvatureOptions): The curvature map's stored range (#148).
             edges (BakeEdgeOptions): Which edges the edges map marks, and the band it draws along them (#148).
+            borders (BakeBorderOptions): The borders map's width (#121).
             id (BakeIdOptions): What an ID map labels, and how it colours the labels.
             rounding (BakeRoundingOptions): Edges baked round into the normal map, the bevel a hard-surface model was not
                 modelled with.
@@ -67,12 +73,17 @@ class BakeOptions:
                 together each bake at their own (#253). Null follows too; only false keeps int? BakeOptions.Rows. A bake of no
                 texture set keeps int? BakeOptions.Rows, and a finished bake's options say the height it was made at and leave
                 this out.
+            tileable (bool | None | Unset): Whether the maps repeat without a seam (#212): a high-poly patch baked onto a
+                flat low patch, the high mesh
+                laid again on each side of the low mesh's box so a ray near an edge meets what lies beyond it when the
+                material repeats. Null or false bakes the high meshes once, as they are.
      """
 
     resolution: int
     format_: str
     supersampling: int
     gutter: int
+    diffusion: bool
     maps: list[str]
     space: str
     rays: BakeRayOptions
@@ -82,11 +93,13 @@ class BakeOptions:
     thickness: BakeThicknessOptions
     curvature: BakeCurvatureOptions
     edges: BakeEdgeOptions
+    borders: BakeBorderOptions
     id: BakeIdOptions
     rounding: BakeRoundingOptions
     colour: BakeColourOptions
     rows: int | None | Unset = UNSET
     follow_set_shape: bool | None | Unset = UNSET
+    tileable: bool | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -94,6 +107,7 @@ class BakeOptions:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.bake_border_options import BakeBorderOptions # noqa: PLC0415
         from ..models.bake_colour_options import BakeColourOptions # noqa: PLC0415
         from ..models.bake_curvature_options import BakeCurvatureOptions # noqa: PLC0415
         from ..models.bake_edge_options import BakeEdgeOptions # noqa: PLC0415
@@ -111,6 +125,8 @@ class BakeOptions:
         supersampling = self.supersampling
 
         gutter = self.gutter
+
+        diffusion = self.diffusion
 
         maps = self.maps
 
@@ -132,6 +148,8 @@ class BakeOptions:
 
         edges = self.edges.to_dict()
 
+        borders = self.borders.to_dict()
+
         id = self.id.to_dict()
 
         rounding = self.rounding.to_dict()
@@ -150,6 +168,12 @@ class BakeOptions:
         else:
             follow_set_shape = self.follow_set_shape
 
+        tileable: bool | None | Unset
+        if isinstance(self.tileable, Unset):
+            tileable = UNSET
+        else:
+            tileable = self.tileable
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -158,6 +182,7 @@ class BakeOptions:
             "format": format_,
             "supersampling": supersampling,
             "gutter": gutter,
+            "diffusion": diffusion,
             "maps": maps,
             "space": space,
             "rays": rays,
@@ -167,6 +192,7 @@ class BakeOptions:
             "thickness": thickness,
             "curvature": curvature,
             "edges": edges,
+            "borders": borders,
             "id": id,
             "rounding": rounding,
             "colour": colour,
@@ -175,6 +201,8 @@ class BakeOptions:
             field_dict["rows"] = rows
         if follow_set_shape is not UNSET:
             field_dict["followSetShape"] = follow_set_shape
+        if tileable is not UNSET:
+            field_dict["tileable"] = tileable
 
         return field_dict
 
@@ -182,6 +210,7 @@ class BakeOptions:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.bake_border_options import BakeBorderOptions # noqa: PLC0415
         from ..models.bake_colour_options import BakeColourOptions # noqa: PLC0415
         from ..models.bake_curvature_options import BakeCurvatureOptions # noqa: PLC0415
         from ..models.bake_edge_options import BakeEdgeOptions # noqa: PLC0415
@@ -200,6 +229,8 @@ class BakeOptions:
         supersampling = d.pop("supersampling")
 
         gutter = d.pop("gutter")
+
+        diffusion = d.pop("diffusion")
 
         maps = cast(list[str], d.pop("maps"))
 
@@ -241,6 +272,11 @@ class BakeOptions:
 
 
 
+        borders = BakeBorderOptions.from_dict(d.pop("borders"))
+
+
+
+
         id = BakeIdOptions.from_dict(d.pop("id"))
 
 
@@ -276,11 +312,22 @@ class BakeOptions:
         follow_set_shape = _parse_follow_set_shape(d.pop("followSetShape", UNSET))
 
 
+        def _parse_tileable(data: object) -> bool | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(bool | None | Unset, data)
+
+        tileable = _parse_tileable(d.pop("tileable", UNSET))
+
+
         bake_options = cls(
             resolution=resolution,
             format_=format_,
             supersampling=supersampling,
             gutter=gutter,
+            diffusion=diffusion,
             maps=maps,
             space=space,
             rays=rays,
@@ -290,11 +337,13 @@ class BakeOptions:
             thickness=thickness,
             curvature=curvature,
             edges=edges,
+            borders=borders,
             id=id,
             rounding=rounding,
             colour=colour,
             rows=rows,
             follow_set_shape=follow_set_shape,
+            tileable=tileable,
         )
 
 

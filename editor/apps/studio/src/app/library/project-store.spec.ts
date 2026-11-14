@@ -764,6 +764,23 @@ describe('ProjectStore', () => {
   });
 
   describe('snapshots (#209)', () => {
+    /** The Server says every open document is saved, as the tabs do. */
+    function serverClean({ client, sessions }: ReturnType<typeof harness>): void {
+      const get = client.GET.getMockImplementation();
+      if (!get) {
+        throw new Error('The harness answers every GET.');
+      }
+
+      client.GET.mockImplementation((route, options) =>
+        route === '/api/v1/stacks' || route === '/api/v1/graphs'
+          ? Promise.resolve({
+              data: [...sessions].map(id => ({ id, path: '', name: '', revision: 1, dirty: false })),
+              response: new Response()
+            })
+          : get(route, options)
+      );
+    }
+
     it('restores into a closed document, saving its edits first, then opens it again', async () => {
       const { store, removed, paint, client } = harness();
       await store.open('a');
@@ -813,6 +830,30 @@ describe('ProjectStore', () => {
       expect(store.failure()).toBe('There is no such snapshot.');
     });
 
+    it('saves first what the Server holds unsaved though the tab says it is clean (#284)', async () => {
+      const { store, paint, client } = harness();
+      await store.open('a');
+      expect(store.tabs()[0]?.dirty).toBe(false);
+
+      expect(await store.restoreSnapshot(paths.texturing, 'snap')).toBe(true);
+
+      expect(paint.act).toHaveBeenCalledWith('save');
+      expect(client.POST).toHaveBeenCalledWith('/api/v1/library/snapshots/restore', {
+        body: { path: paths.texturing, id: 'snap' }
+      });
+    });
+
+    it('saves nothing first when the Server and the tab both say the document is clean', async () => {
+      const test = harness();
+      const { store, paint } = test;
+      await store.open('a');
+      serverClean(test);
+
+      expect(await store.restoreSnapshot(paths.texturing, 'snap')).toBe(true);
+
+      expect(paint.act).not.toHaveBeenCalledWith('save');
+    });
+
     it('restores nothing when the edits could not be saved', async () => {
       const { store, paint, client } = harness();
       await store.open('a');
@@ -826,8 +867,10 @@ describe('ProjectStore', () => {
     });
 
     it('takes a snapshot of a clean document without saving it', async () => {
-      const { store, paint, client } = harness();
+      const test = harness();
+      const { store, paint, client } = test;
       await store.open('a');
+      serverClean(test);
 
       expect(await store.takeSnapshot(paths.texturing, 'Before rust')).toBe(true);
 

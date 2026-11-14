@@ -108,6 +108,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/marquee': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** The named meshes that show inside a rectangle in the viewport, which a layer kept to some meshes takes or leaves (#110). */
+    post: operations['MarqueeInViewport'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/cast': {
     parameters: {
       query?: never;
@@ -822,7 +839,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The pictures or meshes the library's projects hold, a project's own first: what a client offers to pick from, where a dialog of its own machine cannot see this one's disk. */
+    /** The pictures, meshes or folders the library's projects hold, a project's own first: what a client offers to pick from, where a dialog of its own machine cannot see this one's disk. Folders are those a client can write into: every project's and the ones in it, then the exports folder's. */
     get: operations['ListLibraryFiles'];
     put?: never;
     post?: never;
@@ -2482,6 +2499,15 @@ export interface components {
        */
       keep: number;
     };
+    /** @description The borders map's width (#121). */
+    BakeBorderOptions: {
+      /**
+       * Format: double
+       * @description How far inside its UV island a texel reads white, as a share of the texture: black on the island's border,
+       *     rising evenly to white this far in.
+       */
+      width: number;
+    };
     /** @description Where a colour map's colour comes from. */
     BakeColourOptions: {
       /**
@@ -2532,6 +2558,11 @@ export interface components {
     };
     /** @description Which edges the edges map marks, and the band it draws along them (#148). */
     BakeEdgeOptions: {
+      /**
+       * @description Whose edges are marked: `high`, the high mesh's, where the rays land; or `low`, the low mesh's, at
+       *     the texel, so its hard edges show even under a high mesh with none (#278).
+       */
+      mesh: string;
       /**
        * @description `hard`, the edges the high mesh's own normals split, or `angle`, every edge whose faces meet at
        *                 double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges.
@@ -2652,6 +2683,12 @@ export interface components {
        */
       gutter: number;
       /**
+       * @description Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the
+       *     smallest mipmaps keep the maps' own values rather than fading to the empty texture's (#148). Labels, the ID
+       *     and UV Islands maps, and UV Borders keep their background.
+       */
+      diffusion: boolean;
+      /**
        * @description Which maps to write: `normal`, `height`, `ao`, `bent`, `curvature`,
        *     `thickness`, `position`, `world`, `id`, `colour`, `opacity` (where a ray
        *     found the high mesh), `edges` (a band along its sharp or hard edges) and `islands` (a color per UV
@@ -2674,12 +2711,20 @@ export interface components {
       curvature: components['schemas']['BakeCurvatureOptions'];
       /** @description Which edges the edges map marks, how wide and in what profile. */
       edges: components['schemas']['BakeEdgeOptions'];
+      /** @description How far inside a UV island the borders map turns white. */
+      borders: components['schemas']['BakeBorderOptions'];
       /** @description What the ID map labels and how it colours them. */
       id: components['schemas']['BakeIdOptions'];
       /** @description Edges baked round into the normal, with no high poly to give them a bevel. */
       rounding: components['schemas']['BakeRoundingOptions'];
       /** @description Where the colour map's colour comes from. */
       colour: components['schemas']['BakeColourOptions'];
+      /**
+       * @description Whether the maps repeat without a seam (#212): a high-poly patch baked onto a flat low patch, the high mesh
+       *     laid again on each side of the low mesh's box so a ray near an edge meets what lies beyond it when the
+       *     material repeats. Null or false bakes the high meshes once, as they are.
+       */
+      tileable?: null | boolean;
     };
     /** @description How the position map turns a point on the high poly mesh into a value (#148). */
     BakePositionOptions: {
@@ -4930,13 +4975,13 @@ export interface components {
       /** @description What an export of the whole library is set to now. */
       export: components['schemas']['ProjectExportSettings'];
     };
-    /** @description A file the library holds, for a client to pick from where a native dialog cannot see (#4). */
+    /** @description A file or a folder the library holds, to pick from where a native dialog cannot see (#4). */
     LibraryFile: {
       /** @description Its path below the library. */
       path: string;
-      /** @description Its file's name. */
+      /** @description Its file's or folder's name. */
       name: string;
-      /** @description The project it is in, below `projects/`. */
+      /** @description The project it is in, below `projects/`, or empty for one in no project. */
       project: string;
     };
     /** @description The answer to `GET /api/v1/library/files`. */
@@ -5405,8 +5450,9 @@ export interface components {
       /** @description Its path below `projects/`. */
       path: string;
       /**
-       * @description Which builds touched it: both, before or after. A build that leaves a project alone writes nothing of it, so a
-       *     project only one build touched has its files listed as that build left them.
+       * @description Which builds have it: both, before or after. A build reports every project it selects, one it finds fresh as
+       *     fresh with the digests of the files already there, so a project only one build has was not in the other at
+       *     all, and has its files listed as that build left them.
        */
       touched: string;
       /** @description Its outputs, with their keys in each build. */
@@ -6270,6 +6316,7 @@ export interface components {
       | components['schemas']['StackCommandStackUnflattenLayer']
       | components['schemas']['StackCommandStackSetHeightNormal']
       | components['schemas']['StackCommandStackSetSettings']
+      | components['schemas']['StackCommandStackCarryPaint']
       | components['schemas']['StackCommandStackAddMaskLayer']
       | components['schemas']['StackCommandStackRemoveMaskLayer']
       | components['schemas']['StackCommandStackMoveMaskLayer']
@@ -6366,6 +6413,22 @@ export interface components {
        * @default true
        */
       merge: boolean;
+    };
+    /**
+     * @description Carries every canvas of the texture set from the layout of another of the mesh's UV sets onto the one it is laid
+     *     out in now, as one undo step (#210): each texel takes what was painted at its place on the surface. Sent after a
+     *     StackSetSettings that changes the UV set, in the same batch, it keeps the paint where it was on
+     *     the model; on its own it projects paint laid out in another UV set onto this one. Every canvas becomes a new
+     *     one, so an undo gives the old ones back untouched. A surface the other layout leaves out reads as nothing.
+     */
+    StackCommandStackCarryPaint: {
+      /** @enum {string} */
+      op: 'carryPaint';
+      /**
+       * Format: int32
+       * @description The UV set the paint is laid out in now, by its number; 0 is the first.
+       */
+      fromUvSet: number;
     };
     /**
      * @description Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:
@@ -7755,14 +7818,21 @@ export interface components {
        */
       bakeStale?: null | string;
       pace?: null | components['schemas']['StackPace'];
+      /**
+       * Format: int32
+       * @description The UDIM tile its layout sits on in its UV set (#281), which its exported files are named by: 1001 for a set on
+       *     the first tile, on no mesh, or reaching several, which its problems say.
+       * @default 1001
+       */
+      udim: number;
     };
     /** @description Where a stroke's colour comes from, when it is not one colour. */
     StackStrokeSource: {
       /**
        * @description `smudge` drags what the canvas holds along the stroke, with the brush's flow; `clone` copies the
        *                 stack's composite from Offset away, as it stood when the stroke began; `material` lays
-       *                 what Graph makes in the stroke's channel; `picture` projects
-       *                 Picture.
+       *                 what Graph or Layered makes in the stroke's channel; `picture`
+       *                 projects Picture.
        */
       kind: string;
       /** @description For a material, the graph whose maps are laid, as a graph fill names it. */
@@ -7781,6 +7851,13 @@ export interface components {
       planarAxis?: null | string;
       placement?: null | components['schemas']['StackPlacement'];
       frame?: null | components['schemas']['StackFrame'];
+      /**
+       * @description For a material, instead of Graph: a layered material, as the shelf names it in
+       *     string MaterialInfo.Source (#125). Its layers composite on the stroke's texture set, reading its mesh
+       *     maps, and the stroke lays what they make, each layer where its own projection puts it; so it takes no
+       *     Projection, axis or Placement of its own.
+       */
+      layered?: null | string;
     };
     /** @description An open stack, for a list. */
     StackSummary: {
@@ -7837,6 +7914,19 @@ export interface components {
       angle: number;
       /** @description The box the mesh's `position` bake is normalised in, as a decal's is. */
       box?: null | number[];
+      /**
+       * Format: float
+       * @description For a stroke, how far apart its stamps are as a share of the path's full width, 0 to 16: zero is one unbroken
+       *     band, anything above it a row of round stamps never closer than a tenth of the width. A ribbon takes none.
+       * @default 0
+       */
+      spacing: number;
+      /**
+       * Format: float
+       * @description How far each stamp moves at random, 0 to 1: that share of the width to the side and of half the spacing along.
+       * @default 0
+       */
+      jitter: number;
     };
     /**
      * @description How a stroke on a mesh copies itself: through a plane, or round an axis. The plane or the axis passes through
@@ -8476,6 +8566,49 @@ export interface components {
       /** @description What the surface covers, read from red and shown as cut out or not. */
       opacity?: null | string;
     };
+    /** @description The named meshes a marquee reached (#110), by name in ordinal order; none when the model names none. */
+    ViewportMarquee: {
+      /** @description Their names. */
+      parts: string[];
+    };
+    /**
+     * @description Asks which named meshes show inside a rectangle on the viewport's picture (#110): a marquee, which takes every
+     *     mesh it reaches into a layer's meshes, or out of them. Through what the viewport draws, as a pick is, so a mesh
+     *     hidden behind another or isolated away is not reached.
+     */
+    ViewportMarqueeRequest: {
+      /**
+       * Format: double
+       * @description One corner, across the picture, 0 to 1.
+       */
+      x: number;
+      /**
+       * Format: double
+       * @description That corner, down it, 0 to 1.
+       */
+      y: number;
+      /**
+       * Format: double
+       * @description The opposite corner, across.
+       */
+      toX: number;
+      /**
+       * Format: double
+       * @description The opposite corner, down.
+       */
+      toY: number;
+      camera?: null | components['schemas']['ViewportCameraState'];
+      /**
+       * Format: int32
+       * @description The picture's width, or null for the viewport's.
+       */
+      width?: null | number;
+      /**
+       * Format: int32
+       * @description Its height.
+       */
+      height?: null | number;
+    };
     /** @description Asks the viewport to show a mesh. */
     ViewportMeshRequest: {
       /** @description The file's path, on the Server's machine. */
@@ -8870,6 +9003,48 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ViewportPick'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  MarqueeInViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportMarqueeRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportMarquee'];
         };
       };
       /** @description Conflict */

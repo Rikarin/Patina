@@ -62,8 +62,8 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     A stroke a Worker could not paint for its canvas's size is refused before it begins, so it never stands and
-    ///     the stack still evaluates with nothing to undo (#241): a canvas larger than its set, and one a stroke of the
-    ///     session began on before the set grew.
+    ///     the stack still evaluates with nothing to undo (#241): a canvas larger than its set and of another shape,
+    ///     and one a stroke of the session began on before the set grew.
     /// </summary>
     [Fact]
     public async Task A_stroke_refused_for_its_canvas_size_never_stands() {
@@ -82,9 +82,9 @@ public sealed partial class StackProcessTests {
             Assert.True(closed.IsSuccessStatusCode);
         }
 
-        // Read from its file in a new session: 1024 is larger than a set made 512.
+        // Read from its file in a new session: 1024 square is larger than a set made 512 by 256, and of another shape.
         var again = await OpenAsync(state.Path, deadline.Token);
-        await EditAsync(again.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 2));
+        await EditAsync(again.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 4));
         await RefusedAsync(again.Id, "stroke-canvas-larger", line with { Stroke = "shrunk" }, deadline.Token);
         await SaveAsync(again.Id, deadline.Token);
         Assert.Equal("Texture set settings", (await StateAsync(again.Id, deadline.Token)).History.UndoLabel);
@@ -156,8 +156,9 @@ public sealed partial class StackProcessTests {
             deadline.Token
         );
 
-        // Back to 512: the second paste now holds 1024, larger than the set, resumed or not.
-        await EditAsync(small.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 2));
+        // Down to 512 by 256: the second paste now holds 1024 square, larger than the set and of another shape, resumed
+        // or not. Of the set's shape it would be painted at its own size (#19).
+        await EditAsync(small.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 4));
         await RefusedAsync(
             small.Id,
             "stroke-canvas-larger",
@@ -170,9 +171,8 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     A canvas larger than its set is painted on the model at its own size (#19): the stroke stands, shows in the
-    ///     set's maps as an evaluation from nothing shows it, and the canvas keeps the texels it had. A stroke in the
-    ///     2D view, whose stamps are the set's texels, is still refused. Every stroke on such a canvas was refused
-    ///     before.
+    ///     set's maps as an evaluation from nothing shows it, and the canvas keeps the texels it had. Every stroke on
+    ///     such a canvas was refused before.
     /// </summary>
     [Fact]
     public async Task A_canvas_larger_than_its_set_is_painted_on_the_model_at_its_own_size() {
@@ -184,7 +184,6 @@ public sealed partial class StackProcessTests {
         var line = new StackStroke("first", "paint", "baseColor", new(30f, 0.3f), Red, Line(100, 100, 10));
         await EditAsync(state.Id, deadline.Token, line);
         await EditAsync(state.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 2));
-        await RefusedAsync(state.Id, "stroke-canvas-larger", line with { Stroke = "flat" }, deadline.Token);
 
         var before = await PixelsAsync(state.Id, false, deadline.Token);
         var view = await AimAsync(0.5, 0.5, deadline.Token);
@@ -196,6 +195,40 @@ public sealed partial class StackProcessTests {
         Assert.Equal(Digest(clean, "baseColor"), Digest(shown, "baseColor"));
         await SaveAsync(state.Id, deadline.Token);
         Assert.Equal(Side, CanvasBeside(state.Path).Width);
+    }
+
+    /// <summary>
+    ///     A stroke in the 2D view on a canvas larger than its set is carried onto the canvas's texels (#19): drawn at
+    ///     300 on a set of 512, across two parts of one drag, it lands at 600 on the canvas of 1024, which keeps its
+    ///     size and the texels it had, and the set shows it as an evaluation from nothing does. It was refused before.
+    /// </summary>
+    [Fact]
+    public async Task A_stroke_in_the_2d_view_paints_a_larger_canvas_at_its_own_size() {
+        using var deadline = Deadline(240);
+        var (_, state) = await StartAsync("Flat.vxlayers", deadline.Token);
+        var line = new StackStroke("first", "paint", "baseColor", new(30f, 0.3f), Red, Line(100, 100, 10));
+        await EditAsync(state.Id, deadline.Token, line);
+        await SaveAsync(state.Id, deadline.Token);
+        var held = CanvasBeside(state.Path).Channel("baseColor");
+        await EditAsync(state.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 2));
+
+        var before = await PixelsAsync(state.Id, false, deadline.Token);
+        var flat = new StackStroke("flat", "paint", "baseColor", new(10f, 0.3f), Red, Line(300, 300, 5), true);
+        await EditAsync(state.Id, deadline.Token, flat);
+        await EditAsync(state.Id, deadline.Token, flat with { Stamps = Line(330, 300, 5), Open = false });
+
+        var shown = await PixelsAsync(state.Id, false, deadline.Token);
+        Assert.NotEqual(Digest(before, "baseColor"), Digest(shown, "baseColor"));
+        var clean = await PixelsAsync(state.Id, true, deadline.Token);
+        Assert.Equal(Digest(clean, "baseColor"), Digest(shown, "baseColor"));
+        await SaveAsync(state.Id, deadline.Token);
+
+        var canvas = CanvasBeside(state.Path).Channel("baseColor");
+        Assert.Equal(Side, canvas.Width);
+        Assert.NotEqual(canvas.Background, canvas.At(601, 601));
+        Assert.NotEqual(canvas.Background, canvas.At(700, 601));
+        Assert.Equal(canvas.Background, canvas.At(301, 301));
+        Assert.Equal(held.At(110, 101), canvas.At(110, 101));
     }
 
     async Task RefusedAsync(string id, string code, StackCommand command, CancellationToken token) {

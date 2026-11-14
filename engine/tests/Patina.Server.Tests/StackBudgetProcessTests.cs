@@ -67,4 +67,40 @@ public sealed partial class StackProcessTests {
             $"A stroke took {painted.Milliseconds:F0} ms where the whole stack took {whole.Milliseconds:F0} ms."
         );
     }
+
+    /// <summary>
+    ///     Only the stroke that makes a layer's canvas compiles: every stroke after it begins on the plan it left
+    ///     (#279). Under a proxy a stroke is still repaired in tiles, scaled from the canvas to the plan's size,
+    ///     rather than running every op above the canvas whole.
+    /// </summary>
+    [Fact]
+    public async Task A_new_stroke_compiles_nothing_and_a_proxy_repairs_its_tiles() {
+        using var deadline = Deadline(240);
+        var (instance, state) = await StartAsync("Strokes.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackAddLayer("fill", "Over", Tint),
+            new StackAddLayer("filter", "Shift", Filter: "Hsl")
+        );
+        var made = await PaintAsync(state.Id, "a", Line(100, 100, 10), false, deadline.Token);
+        await EvaluatedAsync(socket, made.Revision, deadline.Token);
+
+        var begun = await PaintAsync(state.Id, "b", Line(300, 300, 10), true, deadline.Token);
+        var second = await EvaluatedAsync(socket, begun.Revision, deadline.Token);
+        Assert.False(second.Compiled, "A stroke on a canvas that was there already compiled.");
+        Assert.True(second.Repaired > 0, "A new stroke ran whole.");
+        var ended = await PaintAsync(state.Id, "b", Line(400, 300, 10), false, deadline.Token);
+        await EvaluatedAsync(socket, ended.Revision, deadline.Token);
+
+        await PaceAsync(state.Id, new(Proxy: 4), deadline.Token);
+        var proxied = await PaintAsync(state.Id, "c", Line(600, 600, 10), true, deadline.Token);
+        await EvaluatedAsync(socket, proxied.Revision, deadline.Token);
+        var part = await PaintAsync(state.Id, "c", Line(700, 600, 10), false, deadline.Token);
+        var small = await EvaluatedAsync(socket, part.Revision, deadline.Token);
+        TestContext.Current.SendDiagnosticMessage($"Proxy stroke: {small.Ran} ops, {small.Repaired} repaired.");
+        Assert.False(small.Compiled, "A stroke under a proxy compiled.");
+        Assert.True(small.Repaired > 0, "A stroke under a proxy ran every op whole.");
+    }
 }

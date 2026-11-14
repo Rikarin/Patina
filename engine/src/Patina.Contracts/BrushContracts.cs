@@ -158,8 +158,8 @@ public sealed record BrushPresetUpdateRequest(string Project, string Source, Bru
 /// <param name="Kind">
 ///     <c>smudge</c> drags what the canvas holds along the stroke, with the brush's flow; <c>clone</c> copies the
 ///     stack's composite from <paramref name="Offset" /> away, as it stood when the stroke began; <c>material</c> lays
-///     what <paramref name="Graph" /> makes in the stroke's channel; <c>picture</c> projects
-///     <paramref name="Picture" />.
+///     what <paramref name="Graph" /> or <paramref name="Layered" /> makes in the stroke's channel; <c>picture</c>
+///     projects <paramref name="Picture" />.
 /// </param>
 /// <param name="Graph">For a material, the graph whose maps are laid, as a graph fill names it.</param>
 /// <param name="Offset">
@@ -180,6 +180,14 @@ public sealed record BrushPresetUpdateRequest(string Project, string Source, Bru
 ///     <see cref="StackFrame.Scale" /> of the stroke's units. Null lays the maps as <paramref name="Projection" />
 ///     says. A material projected from the screen is not also laid in the model's space.
 /// </param>
+/// <param name="Layered">
+///     For a material, instead of <paramref name="Graph" />: a layered material, as the shelf names it in
+///     <see cref="MaterialInfo.Source" /> (#125). Its layers composite on the stroke's texture set, reading its mesh
+///     maps, and the stroke lays what they make, each layer where its own projection puts it; so it takes no
+///     <paramref name="Projection" />, axis or <paramref name="Placement" /> of its own.
+/// </param>
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
 public sealed record StackStrokeSource(
     string Kind,
     string? Graph = null,
@@ -188,8 +196,10 @@ public sealed record StackStrokeSource(
     string? Projection = null,
     string? PlanarAxis = null,
     StackPlacement? Placement = null,
-    StackFrame? Frame = null
+    StackFrame? Frame = null,
+    string? Layered = null
 );
+#pragma warning restore SK7005
 
 /// <summary>Where something fixed on a stroke's picture stands: moved, scaled, turned and perhaps tiled.</summary>
 /// <param name="Centre">Where its middle is on the stroke's picture, in the units stamps are in: two numbers.</param>
@@ -292,8 +302,25 @@ public static class StackBrushes {
             _ => $"'{source.Kind}' is not where a stroke's colour can come from."
         };
 
+    /// <summary>What is wrong with a layered material brush, whose layers are placed by themselves, or null.</summary>
+    static string? LayeredProblem(StackStrokeSource source) {
+        if (string.IsNullOrWhiteSpace(source.Layered) || source.Graph is not null) {
+            return "A material brush names one material: a graph or a layered material.";
+        }
+
+        if (source.Projection is not (null or "Uv") || source.PlanarAxis is not null || source.Placement is not null) {
+            return "A layered material's layers are placed by their own projections, and it takes none of its own.";
+        }
+
+        return source.Frame is { } frame ? FrameProblem(frame.Centre, frame.Scale, frame.Angle) : null;
+    }
+
     /// <summary>What is wrong with a material brush's graph and where its maps land, or null.</summary>
     static string? MaterialProblem(StackStrokeSource source) {
+        if (source.Layered is not null) {
+            return LayeredProblem(source);
+        }
+
         if (string.IsNullOrWhiteSpace(source.Graph)) {
             return "A material brush names the graph it lays.";
         }

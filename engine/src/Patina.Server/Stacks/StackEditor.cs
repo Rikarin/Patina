@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Server.Graphs;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Vixen.Authoring;
@@ -228,7 +229,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         }
 
         foreach (var (entry, part) in parts) {
-            entry.Stamps.AddRange(part.Stamps);
+            entry.Extend(part.Stamps);
             entry.Open = part.Open;
         }
 
@@ -313,6 +314,9 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             case StackUnflattenLayer unflatten:
                 Unflatten(unflatten.Layer, set, Do);
                 break;
+            case StackCarryPaint carry:
+                Carry(carry, step, set, Do);
+                break;
             default:
                 if (!StackLayerEdits.Run(this, command, set, Do) && !StackSetEdits.Run(this, command, Do)) {
                     throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.");
@@ -320,6 +324,22 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
 
                 break;
         }
+    }
+
+    /// <summary>
+    ///     A layered material a stroke lays (#125), made ready for the set as applying it would make it, with the
+    ///     graphs it needs brought into the project; default for any other source.
+    /// </summary>
+    /// <exception cref="StackEditRefusedException">There is no such material, or it has none for this set.</exception>
+    ImmutableArray<LayerAsset> Layered(StackStrokeSource? source) {
+        if (source is not { Kind: "material", Layered: { } named }) {
+            return default;
+        }
+
+        var material = MaterialShelf.Read(Library, named);
+        CompoundsArrived |= MaterialShelf.BringCompounds(Library, named, AssetPath);
+        var applied = SmartMaterial.Prepare(Set, material);
+        return applied.Layers.IsDefaultOrEmpty ? throw new StackEditRefusedException(applied.Status) : applied.Layers;
     }
 
     void Apply(string source, string set, Action<IAuthoringCommand> run) {
@@ -538,20 +558,20 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         // undone.
         var (width, height) = layer is null
             ? (Document.BaseWidth, Document.BaseHeight)
-            : canvasSides.Check(layer.Name, paint, Document.BaseWidth, Document.BaseHeight, stroke.View is not null);
-        // A brush sized in texels keeps its size on the model when it paints a larger canvas at its own (#19).
-        var painted = width == Document.BaseWidth || stroke.Brush.SizeSpace != "texture"
-            ? stroke
-            : stroke with { Brush = stroke.Brush with { Radius = stroke.Brush.Radius * width / Document.BaseWidth } };
+            : canvasSides.Check(layer.Name, paint, Document.BaseWidth, Document.BaseHeight);
+        // A larger canvas is painted at its own size (#19): a stroke in the 2D view is carried onto its texels, and a
+        // brush sized in texels keeps its size on the model.
+        var (painted, by) = StackCanvasSides.Carried(stroke, width, Document.BaseWidth);
 
         // A quick mask nothing has painted keeps nothing back, rather than everything.
         var kept = stroke.QuickMask is StackQuickMasks.Inside or StackQuickMasks.Outside
             && QuickMask.Painted(Standing.Concat(step.Strokes));
         step.Strokes.Add(
             new(nextEntry++, painted, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start) {
-                SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set),
+                SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set, Layered(stroke.Source)),
                 Width = width,
                 Height = height,
+                StampScale = by,
                 // Only a stroke on the mesh has faces to keep to; one in the 2D view reaches the whole layout.
                 Isolation = stroke.View is null ? null : Isolation,
                 Keep = kept ? QuickMask.Paint : null,
@@ -892,6 +912,13 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
 
         run(new SetLayerCommand(this, new(set, id), group, group with { Paint = string.Empty }, "Unflatten folder"));
     }
+
+    /// <summary>The set's paint carried from another UV set's layout onto its own (#210).</summary>
+    void Carry(StackCarryPaint carry, UndoStep step, string set, Action<IAuthoringCommand> run) =>
+        new StackPaintCarry(this, set).Run(carry, run, step.Strokes);
+
+    /// <summary>The number the next entry of the journal takes.</summary>
+    internal long TakeEntry() => nextEntry++;
 
     internal void Journal(StackLayerCopies copies, UndoStep step) {
         foreach (var (from, to) in copies.Canvases) {

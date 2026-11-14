@@ -1,9 +1,7 @@
-using Patina.Content;
 using Patina.Contracts;
 using Patina.Library;
-using Patina.Server.Graphs;
+using System.Collections.Immutable;
 using System.Globalization;
-using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 using Vixen.Texturing;
 using Vixen.Texturing.Layers;
@@ -14,7 +12,7 @@ namespace Patina.Server.Stacks;
 /// <summary>What a stack looks like on the wire and in a file.</summary>
 public static class StackDocuments {
     public const string Extension = ".vxlayers";
-    const string ColourSelect = "Analysis/Colour Select";
+    internal const string ColourSelect = "Analysis/Colour Select";
     const string SelectColour = "Colour";
 
     /// <summary>Marks a mask entry as the one that keeps a layer to some meshes, and holds their names.</summary>
@@ -30,20 +28,16 @@ public static class StackDocuments {
 
     const float DefaultTolerance = 0.02f;
 
-    /// <exception cref="StackEditRefusedException">It is not a stack.</exception>
+    /// <exception cref="StackEditRefusedException">It is not a stack, or a newer build wrote it.</exception>
     public static LayerStackAsset Parse(string text) {
-        LayerStackAsset document;
         try {
-            document = LayerStackYaml.Read(text);
-        } catch (InvalidDataException e) {
-            throw new StackEditRefusedException(e.Message, e);
-        }
-
-        // ⚠ Before anything edits it: a save would write it back at this build's format, dropping what is newer (#162).
-        if (document.Version > LayerStackAsset.CurrentVersion) {
+            return LayerStackYaml.Read(text);
+        } catch (LayerStackNewerException e) {
+            // ⚠ Vixen refuses it before anything edits it: a save would write it back at this build's format, dropping
+            // what is newer (#162). The Worker and the CLI read through the same refusal (#279).
             var (written, reads) = (
-                document.Version.ToString(CultureInfo.InvariantCulture),
-                LayerStackAsset.CurrentVersion.ToString(CultureInfo.InvariantCulture)
+                e.Written.ToString(CultureInfo.InvariantCulture),
+                e.Reads.ToString(CultureInfo.InvariantCulture)
             );
             throw new StackEditRefusedException(
                 $"This document was written by a newer build of Patina, at format {written}, and this build reads up "
@@ -51,24 +45,31 @@ public static class StackDocuments {
                 Api.Refusals.DocumentNewer,
                 new Dictionary<string, string> { ["written"] = written, ["reads"] = reads }
             );
+        } catch (InvalidDataException e) {
+            throw new StackEditRefusedException(e.Message, e);
         }
-
-        return document;
     }
 
     public static string Text(LayerStackAsset document) => LayerStackYaml.Write(document);
 
     /// <summary>
     ///     What a clone or a material reads, written out when the stroke begins so a replay reads it again whatever is
-    ///     edited after: the set as it stands, or the set with the material's graph as its one fill layer. Null for
-    ///     any other stroke.
+    ///     edited after: the set as it stands for a clone, the set with the material's graph as its one fill layer, or
+    ///     the set with a layered material's own layers (#125). Null for any other stroke.
     /// </summary>
     /// <param name="source">Where the stroke's colour comes from.</param>
     /// <param name="document">The stack.</param>
-    /// <param name="set">The texture set the stroke paints.</param>
-    public static string? SourceText(StackStrokeSource? source, LayerStackAsset document, TextureSetAsset set) =>
+    /// <param name="set">The set the stroke paints.</param>
+    /// <param name="layered">A layered material's layers, made ready for the set, when the source names one.</param>
+    public static string? SourceText(
+        StackStrokeSource? source,
+        LayerStackAsset document,
+        TextureSetAsset set,
+        ImmutableArray<LayerAsset> layered = default
+    ) =>
         source?.Kind switch {
             "clone" => Text(document with { Sets = [set] }),
+            "material" when !layered.IsDefault => Text(document with { Sets = [set with { Layers = [..layered] }] }),
             "material" => Text(
                 document with {
                     Sets = [
@@ -123,7 +124,7 @@ public static class StackDocuments {
 
     public static StackVocabulary Vocabulary { get; } = new(
         Terms.InStack(Enum.GetNames<LayerBlendMode>()),
-        Filters(),
+        StackNodeKinds.Filters(),
         Terms.InStack(Enum.GetNames<LayerMaskSource>()),
         Terms.InStack(Enum.GetNames<LayerFillSource>()),
         Terms.InStack(Enum.GetNames<LayerProjection>()),
@@ -133,9 +134,9 @@ public static class StackDocuments {
         ),
         Terms.InStack(TextureNodeLibrary.MeshMaps),
         Terms.InStack(PaintAlphas.Names),
-        MaskEffects(),
-        Terms.InStack(Usages()),
-        GeneratorParameters(),
+        StackNodeKinds.MaskEffects(),
+        Terms.InStack(StackNodeKinds.Usages()),
+        StackNodeKinds.GeneratorParameters(),
         new(
             StackBrushes.Default,
             Terms.InBrush(StackBrushes.Falloffs),
@@ -153,7 +154,7 @@ public static class StackDocuments {
             Terms.InStack(StackBrushes.MaterialProjections)
         ),
         Terms.InStack(Enum.GetNames<LayerInputSource>()),
-        Sources(),
+        StackNodeKinds.Sources(),
         Terms.InStack(Enum.GetNames<LayerMaskLane>()),
         Terms.InTags(Enum.GetNames<LayerTag>()),
         Terms.Kinds()
@@ -418,105 +419,6 @@ public static class StackDocuments {
     /// <summary>Every layer of a stack, a folder's after it.</summary>
     static IEnumerable<LayerAsset> Everything(IEnumerable<LayerAsset> layers) =>
         layers.SelectMany(static layer => Everything(layer.Children).Prepend(layer));
-
-    /// <summary>
-    ///     Every adjustment a stack can run, read from the same registry and compounds its compile reads, each with
-    ///     what its node declares, so that a client shows what will run.
-    /// </summary>
-    static IReadOnlyList<StackFilterKind> Filters() => Kinds(LayerStackGraph.IsAdjustment);
-
-    /// <summary>
-    ///     What an image input can read as a generator: every node and shipped compound that reads no image and writes
-    ///     one, less the two an input names by their own sources, an image and a mesh map.
-    /// </summary>
-    static IReadOnlyList<StackFilterKind> Sources() =>
-        Kinds(static type => type.Path is not ("Source/Bitmap" or "Source/Mesh Map")
-            && type.Ports.Count(static port => port is { Direction: PortDirection.Output, Kind: PortKind.Image }) == 1
-            && !type.Ports.Any(static port => port is { Direction: PortDirection.Input, Kind: PortKind.Image })
-        );
-
-    static IReadOnlyList<StackFilterKind> Kinds(Func<NodeTypeDefinition, bool> offered) {
-        var library = LayerStackCompiler.Library(out var compounds);
-        return [
-            ..library.Types.Where(offered)
-                .OrderBy(static type => type.Path, StringComparer.Ordinal)
-                .Select(type => Kind(type, library, compounds))
-        ];
-    }
-
-    /// <summary>
-    ///     What any node or compound a stack can run takes, the project's own compounds included: its numbers, its
-    ///     settings and the images it reads (#111). A graph fill, a filter and a mask generator each have image inputs
-    ///     a client offers a slot for, and a compound of the project's own is in no list the vocabulary holds.
-    /// </summary>
-    /// <param name="node">The node type or compound, as a layer names it.</param>
-    /// <param name="folder">The folder of the stack, whose compounds folder the stack's Worker also reads.</param>
-    /// <returns>It, or null when neither the shipped nodes nor the project's compounds have it.</returns>
-    public static StackFilterKind? Kind(string node, string? folder) {
-        // Patina's own compounds publish beside Vixen's, as they do for the Worker that runs the stack.
-        FactoryCompounds.Register();
-        NodeTypeRegistry library = new();
-        NodeTypes.Register(library);
-        var compounds = TextureCompoundLibrary.Publish(
-            library,
-            folder is null ? null : Path.Combine(folder, LibraryLayout.CompoundsFolder),
-            out _
-        );
-        return library.TryGet(node.Trim(), out var type) ? Kind(type, library, compounds) : null;
-    }
-
-    static StackFilterKind Kind(NodeTypeDefinition type, NodeTypeRegistry library, ISubGraphSource compounds) =>
-        new(
-            type.Path,
-            Terms.Spelled(type.Title),
-            Terms.Spelled(type.Category),
-            type.Summary,
-            [
-                ..type.Ports.Where(static port => port is { Direction: PortDirection.Input, Kind: not PortKind.Image })
-                    .Select(GraphDocuments.Definition)
-            ],
-            [..type.Settings.Select(GraphDocuments.Definition)],
-            [
-                ..LayerStackGraph.Inputs(type, library, compounds)
-                    .Select(static input => new StackFilterInput(
-                            input.Port,
-                            input.Summary,
-                            input.Subject,
-                            input.Optional,
-                            input.Channel
-                        )
-                    )
-            ]
-        );
-
-    /// <summary>The usages an Output node takes, which is the one list of what a channel can be.</summary>
-    static IReadOnlyList<string> Usages() {
-        NodeTypeRegistry registry = new();
-        NodeTypes.Register(registry);
-        return [..registry.Get("Output/Output").Setting("Usage")!.Accepted];
-    }
-
-    static Dictionary<string, IReadOnlyList<GraphSettingDefinition>> GeneratorParameters() {
-        var library = LayerStackCompiler.Library(out _);
-        return TextureCompoundLibrary.Shipped
-            .Where(static path => path.StartsWith("Generators/", StringComparison.Ordinal))
-            .Where(path => library.TryGet(path, out _))
-            .ToDictionary(
-                static path => path,
-                path => {
-                    library.TryGet(path, out var type);
-                    return (IReadOnlyList<GraphSettingDefinition>)[..type!.Settings.Select(GraphDocuments.Definition)];
-                }
-            );
-    }
-
-    /// <summary>
-    ///     The filters with one image out, since a mask is one picture, less what a mask's colour selection is. That
-    ///     one has its own fields, and an entry of its node in a mask's list is that selection.
-    /// </summary>
-    static IReadOnlyList<StackFilterKind> MaskEffects() => [
-        ..Kinds(LayerStackGraph.IsMaskStep).Where(static filter => filter.Node != ColourSelect)
-    ];
 
     static MaskEffectAsset? Selection(MaskAsset mask) =>
         mask.Effects.Find(static effect => effect.Node == ColourSelect);

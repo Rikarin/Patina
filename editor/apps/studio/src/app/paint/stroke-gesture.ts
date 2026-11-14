@@ -8,8 +8,13 @@ export const DragTools: ReadonlySet<PaintTool> = new Set(['brush', 'eraser', 'sm
 /** How far a rectangle has to be dragged, in the stroke's units, before it is a rectangle rather than a click. */
 const ClickReach = 3;
 
-/** How far the pointer moves before a lasso takes another corner, in the stroke's units. */
-const LassoStep = 4;
+/**
+ * How far the pointer moves before a lasso takes another corner, in the stroke's units: a pixel, so the outline is where
+ * the pointer went (#129). It was four while a fill tested every corner of the outline against every triangle; Vixen's
+ * outline now keeps its edges in bands of its height, and a million points cost the same against a lasso round most of
+ * a 1920 by 1080 view at one pixel (7,488 corners, 92 ms) as at four (1,923 corners, 96 ms).
+ */
+const LassoStep = 1;
 
 /** The steps a line snaps to with Cmd or Ctrl held, in radians. */
 const SnapStep = Math.PI / 36;

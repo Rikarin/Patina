@@ -27,6 +27,7 @@ import {
   type StackStamp,
   type StackState,
   type StackStrokeSource,
+  type StackSurfacePath,
   type StackSymmetry,
   type StackView,
   type StackVocabulary,
@@ -42,6 +43,7 @@ import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
+import { type PartCombine, combinedParts } from './mesh-selection';
 import {
   type Vector,
   decalChannel,
@@ -184,10 +186,15 @@ function stepped<T extends ScreenFrame>(frame: T, step: FrameStep): T {
   };
 }
 
-/** A material from the shelf that a brush paints every channel of, by the graph its maps come from. */
+/**
+ * A material from the shelf that a brush paints every channel of: by the graph its maps come from, or a layered
+ * material whose own layers make them (#125).
+ */
 export interface BrushMaterial {
   name: string;
-  graph: string;
+  graph?: string;
+  /** A layered material, as the shelf names it: its layers are placed by their own projections, so it takes none. */
+  layered?: string;
   /** What the shelf names it by, whose picture the brush panel shows, if it came from the shelf. */
   source?: string;
 }
@@ -350,6 +357,8 @@ export class PaintStore {
   readonly fillMode = signal<FillMode>('polygon');
   /** The layer whose meshes a click on the model takes or leaves (#110), or null. */
   readonly pickingPart = signal<string | null>(null);
+  /** How a marquee on the model joins the meshes it reaches to the layer's (#110), with no modifier held. */
+  readonly partCombine = signal<Exclude<PartCombine, 'toggle'>>('replace');
   /** Whether the fill tool takes what is under a click, or what a rectangle or a lasso holds. */
   readonly fillShape = signal<FillShape>('click');
   /** Whether a rectangle or a lasso in the viewport also fills what the camera cannot see inside it. */
@@ -448,6 +457,11 @@ export class PaintStore {
    * its path, until it is set back to null.
    */
   readonly placing = signal<'decal' | 'path' | null>(null);
+  /**
+   * A path copied from a fill, to paste onto another (#130). It is numbers alone, its points in the model's space, so
+   * the app holds it rather than the Server.
+   */
+  readonly pathClip = signal<StackSurfacePath | null>(null);
   /**
    * The camera the viewport looks through, which the viewport keeps here for the panes outside it, such as
    * Properties' Warp to Geometry: null while no viewport is open.
@@ -1059,25 +1073,41 @@ export class PaintStore {
 
   /**
    * Takes the named mesh under a click on the model into the meshes of the layer {@link pickingPart} names, or out of
-   * them (#110). The last one stays, as it does in the list, since none at all is the whole model.
+   * them (#110); with Shift it only takes in, and with Ctrl only leaves out. The last one stays, as it does in the
+   * list, since none at all is the whole model.
    */
-  async togglePartOnMesh(stamp: StackStamp, aim: Aim): Promise<void> {
+  async togglePartOnMesh(stamp: StackStamp, aim: Aim, combine: PartCombine = 'toggle'): Promise<void> {
+    await this.pickParts(combine, async () => {
+      const hit = await this.picked(stamp, aim);
+      return hit.found && hit.part ? [hit.part] : [];
+    });
+  }
+
+  /**
+   * Joins the named meshes that show inside a rectangle on the model to the meshes of the layer {@link pickingPart}
+   * names (#110): only those, those as well, or all but those. The corners are in the units of a stroke.
+   */
+  async marqueePartsOnMesh(from: StackStamp, to: StackStamp, aim: Aim, combine: PartCombine): Promise<void> {
+    await this.pickParts(combine, async () => {
+      const client = await this.api();
+      const { width, height, camera } = aim;
+      const body = { x: from.x / width, y: from.y / height, toX: to.x / width, toY: to.y / height };
+      return unwrap(await client.POST('/api/v1/viewport/marquee', { body: { ...body, camera, width, height } })).parts;
+    });
+  }
+
+  private async pickParts(combine: PartCombine, reach: () => Promise<readonly string[]>): Promise<void> {
     const layer = this.layers().find(row => row.layer.id === this.pickingPart())?.layer;
     if (!layer) {
       return;
     }
 
     try {
-      const [hit, parts] = await Promise.all([this.picked(stamp, aim), this.meshParts()]);
-      const part = hit.found ? hit.part : null;
-      if (!part || !parts.includes(part)) {
-        return;
-      }
-
-      const held = layer.mask.meshParts?.length ? layer.mask.meshParts : parts;
-      const kept = parts.filter(name => (name === part ? !held.includes(part) : held.includes(name)));
-      if (kept.length > 0) {
-        await this.keepToMeshes(layer, kept.length === parts.length ? [] : kept);
+      const [reached, parts] = await Promise.all([reach(), this.meshParts()]);
+      const kept = combinedParts(parts, layer.mask.meshParts, reached, combine);
+      const before = layer.mask.meshParts ?? [];
+      if (kept && (kept.length !== before.length || kept.some(part => !before.includes(part)))) {
+        await this.keepToMeshes(layer, kept);
       }
     } catch (failure) {
       this.failure.set(messageOf(failure));
@@ -2011,9 +2041,13 @@ export class PaintStore {
       case 'fill': {
         const material = this.material();
         const projection = this.materialProjection();
-        return material && !this.masking() && (tool === 'brush' || curve === 'fill')
-          ? { ...this.materialOf(material), projection: projection === 'Uv' ? null : projection }
-          : null;
+        if (!material || this.masking() || (tool !== 'brush' && curve !== 'fill')) {
+          return null;
+        }
+
+        return material.layered
+          ? this.materialOf(material)
+          : { ...this.materialOf(material), projection: projection === 'Uv' ? null : projection };
       }
       default:
         return null;
@@ -2022,10 +2056,14 @@ export class PaintStore {
 
   /** A material as a stroke lays it, repeating as often as its scale says. */
   private materialOf(material: BrushMaterial): StackStrokeSource {
+    if (material.layered) {
+      return { kind: 'material', layered: material.layered };
+    }
+
     const scale = this.materialScale();
     return {
       kind: 'material',
-      graph: material.graph,
+      graph: material.graph ?? null,
       placement: scale === 1 ? null : { scale, rotation: 0, offsetX: 0, offsetY: 0, sharpness: 4 }
     };
   }

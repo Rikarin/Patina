@@ -165,6 +165,8 @@ export function extendedPath(hit: ViewportPick, held: StackSurfacePath | null | 
     hardness: 0.5,
     ribbon: false,
     repeat: 0,
+    spacing: 0,
+    jitter: 0,
     angle: 1.3,
     radius: modelSize(hit.bounds) * PathShare,
     ...held,

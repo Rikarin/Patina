@@ -374,10 +374,10 @@ public sealed record MaterialBrush(string Alpha);
 /// </param>
 public sealed record ProjectPictureRequest(string Project, string Picture);
 
-/// <summary>A file the library holds, for a client to pick from where a native dialog cannot see (#4).</summary>
+/// <summary>A file or a folder the library holds, to pick from where a native dialog cannot see (#4).</summary>
 /// <param name="Path">Its path below the library.</param>
-/// <param name="Name">Its file's name.</param>
-/// <param name="Project">The project it is in, below <c>projects/</c>.</param>
+/// <param name="Name">Its file's or folder's name.</param>
+/// <param name="Project">The project it is in, below <c>projects/</c>, or empty for one in no project.</param>
 public sealed record LibraryFile(string Path, string Name, string Project);
 
 /// <summary>The answer to <c>GET /api/v1/library/files</c>.</summary>

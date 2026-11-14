@@ -3,30 +3,39 @@ using Patina.Ipc;
 
 namespace Patina.Server.Viewport;
 
-/// <summary>What the viewport asks the Worker about the open mesh without drawing: picks and casts.</summary>
+/// <summary>What the viewport asks the Worker about the open mesh without drawing: picks, marquees and casts.</summary>
 public sealed partial class ViewportSession {
     /// <summary>What is under a position on the picture, through the Worker.</summary>
     /// <exception cref="IOException">The Worker went.</exception>
     /// <exception cref="IpcException">No mesh is open, or it cannot be read.</exception>
     public async Task<ViewportPick> PickAsync(ViewportPickRequest request, CancellationToken cancellationToken) {
-        ViewportCamera look;
-        int across;
-        int down;
-        string path;
-        Dictionary<string, int>? laidOut;
-        lock (changing) {
-            path = mesh ?? throw new IpcException("Open a mesh first: there is nothing to pick.");
-            look = Lens(request.Camera ?? camera, display.Display);
-            across = request.Width ?? width;
-            down = request.Height ?? height;
-            laidOut = layouts.Count == 0 ? null : new(layouts, StringComparer.Ordinal);
-        }
-
-        var reply = await AskWorkerAsync(
-            new() { Type = IpcTypes.ViewportPick, Pick = new(request.X, request.Y, look, across, down, path, laidOut) },
-            cancellationToken
-        );
+        var ask = Ask(request.X, request.Y, request.Camera, request.Width, request.Height, "pick");
+        var reply = await AskWorkerAsync(new() { Type = IpcTypes.ViewportPick, Pick = ask }, cancellationToken);
         return reply.Picked!;
+    }
+
+    /// <summary>The named meshes that show inside a rectangle on the picture, through the Worker (#110).</summary>
+    /// <exception cref="IOException">The Worker went.</exception>
+    /// <exception cref="IpcException">No mesh is open, or it cannot be read.</exception>
+    public async Task<ViewportMarquee> MarqueeAsync(
+        ViewportMarqueeRequest request,
+        CancellationToken cancellationToken
+    ) {
+        var ask = Ask(request.X, request.Y, request.Camera, request.Width, request.Height, "select") with {
+            To = new(request.ToX, request.ToY)
+        };
+        var reply = await AskWorkerAsync(new() { Type = IpcTypes.ViewportMarquee, Pick = ask }, cancellationToken);
+        return reply.Marqueed!;
+    }
+
+    /// <summary>A question about a place on the picture, through the camera asked about or the viewport's.</summary>
+    /// <exception cref="IpcException">No mesh is open.</exception>
+    ViewportPickAsk Ask(double x, double y, ViewportCameraState? asked, int? across, int? down, string verb) {
+        lock (changing) {
+            var path = mesh ?? throw new IpcException($"Open a mesh first: there is nothing to {verb}.");
+            var laidOut = layouts.Count == 0 ? null : new Dictionary<string, int>(layouts, StringComparer.Ordinal);
+            return new(x, y, Lens(asked ?? camera, display.Display), across ?? width, down ?? height, path, laidOut);
+        }
     }
 
     /// <summary>Where rays along one direction meet the open mesh, through the Worker, at once (#263).</summary>
