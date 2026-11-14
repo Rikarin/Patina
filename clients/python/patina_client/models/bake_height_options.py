@@ -25,12 +25,12 @@ class BakeHeightOptions:
         Attributes:
             range_ (str): `measured`, the largest height found; `rays`, the longer ray distance; or `custom`,
                             double BakeHeightOptions.Scale. The last two are the same for every bake made with them, so their
-                maps agree.
-            scale (float): The range for `custom`, in the rays' units.
+                maps agree. Default: 'measured'.
+            scale (float): The range for `custom`, in the rays' units. Default: 0.05.
      """
 
-    range_: str
-    scale: float
+    range_: str = 'measured'
+    scale: float = 0.05
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

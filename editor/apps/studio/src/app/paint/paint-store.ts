@@ -2328,13 +2328,28 @@ export class PaintStore {
     }
   }
 
+  /**
+   * The stack as the Server has it now. ⚠ A reply older than one taken already is dropped (#274): the Server takes its
+   * picture of the stack first and then waits, as for the Worker's first read of the mesh, so the replies to several
+   * edits can come back in any order, and on Linux CI's slow GPU the first edit's state arrived last and undid the
+   * rest on screen.
+   */
   private async refresh(): Promise<void> {
     const id = this.state()?.id;
     if (id) {
+      const asked = ++this.refreshesAsked;
       const client = await this.api();
-      this.adopt(unwrap(await client.GET('/api/v1/stacks/{id}', { params: { path: { id } } })));
+      const state = unwrap(await client.GET('/api/v1/stacks/{id}', { params: { path: { id } } }));
+      if (asked > this.refreshTaken) {
+        this.refreshTaken = asked;
+        this.adopt(state);
+      }
     }
   }
+
+  /** How many refreshes were asked for, and the newest whose reply was taken. */
+  private refreshesAsked = 0;
+  private refreshTaken = 0;
 
   private async follow(): Promise<void> {
     const id = this.state()?.id;

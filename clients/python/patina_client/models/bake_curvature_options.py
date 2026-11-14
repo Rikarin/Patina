@@ -20,22 +20,19 @@ T = TypeVar("T", bound="BakeCurvatureOptions")
 
 @_attrs_define
 class BakeCurvatureOptions:
-    """ The curvature map's source and stored range (#148).
+    """ The curvature map's stored range (#148).
 
         Attributes:
-            source (str): Where the bends come from: `mesh`, the high mesh's own faces where each ray lands; or
-                `normal-map`, the bends of the baked normal map, which is the high mesh's detail over the low mesh,
-                down to its smallest grooves, and none of the low mesh's own shape.
             range_ (str): `auto`, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or
                             `custom`, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a
                 crease, so every
-                            bake made with it agrees.
-            radius (float): For `custom`: the radius of the tightest bend the map tells apart, in the rays' units.
+                            bake made with it agrees. Default: 'auto'.
+            radius (float): For `custom`: the radius of the tightest bend the map tells apart, in the rays' units. Default:
+                0.01.
      """
 
-    source: str
-    range_: str
-    radius: float
+    range_: str = 'auto'
+    radius: float = 0.01
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -43,8 +40,6 @@ class BakeCurvatureOptions:
 
 
     def to_dict(self) -> dict[str, Any]:
-        source = self.source
-
         range_ = self.range_
 
         radius = self.radius
@@ -53,7 +48,6 @@ class BakeCurvatureOptions:
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
-            "source": source,
             "range": range_,
             "radius": radius,
         })
@@ -65,14 +59,11 @@ class BakeCurvatureOptions:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
-        source = d.pop("source")
-
         range_ = d.pop("range")
 
         radius = d.pop("radius")
 
         bake_curvature_options = cls(
-            source=source,
             range_=range_,
             radius=radius,
         )

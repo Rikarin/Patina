@@ -164,6 +164,20 @@ public static class IpcTypes {
     /// </summary>
     public const string MaterialRead = "material.read";
 
+    /// <summary>
+    ///     Server to Worker: decode the picture <see cref="PictureAsk.Read" /> names, and write a PNG of it where it
+    ///     says (#293). The Server decodes no picture: a decoder is a parser of a file anybody made. Like the two
+    ///     below, it is asked in <see cref="IpcMessage.Picture" />, answered in <see cref="IpcMessage.Pictured" />,
+    ///     uses no device and is answered beside the queue.
+    /// </summary>
+    public const string PictureRead = "picture.read";
+
+    /// <summary>Server to Worker: list the colours of a bake's ID map (<see cref="PictureAsk.IdColours" />).</summary>
+    public const string BakeIdColours = "bake.id-colours";
+
+    /// <summary>Server to Worker: make a planned compression preview (<see cref="PictureAsk.Compression" />).</summary>
+    public const string ExportCompress = "export.compress";
+
     /// <summary>Renders each fill of a stack alone, small.</summary>
     public const string StackThumbnails = "stack.thumbnails";
 
@@ -390,6 +404,12 @@ public sealed class IpcMessage {
 
     /// <summary>A model's materials as maps, in the answer to <see cref="IpcTypes.MaterialRead" />.</summary>
     public IReadOnlyList<ImportedMaterial>? MaterialsRead { get; set; }
+
+    /// <summary>What a picture request asks: <see cref="IpcTypes.PictureRead" /> and the two after it.</summary>
+    public PictureAsk? Picture { get; set; }
+
+    /// <summary>What a picture request answers.</summary>
+    public PictureAnswer? Pictured { get; set; }
 
     /// <summary>The model's other texture sets, worn along with <see cref="Following" />.</summary>
     public IReadOnlyList<string>? FollowingAlso { get; set; }

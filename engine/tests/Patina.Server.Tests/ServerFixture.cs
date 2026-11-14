@@ -36,14 +36,9 @@ public sealed class ServerFixture : WebApplicationFactory<Program> {
     protected override void Dispose(bool disposing) {
         base.Dispose(disposing);
         // WebApplicationFactory comes through here twice: from Dispose and from DisposeAsync.
-        scratch.Refresh();
-        if (scratch.Exists) {
-            try {
-                scratch.Delete(true);
-            } catch (IOException) {
-                // The Server's last write can land while the folder is going, and a temp folder left
-                // behind is not a test failure.
-            }
-        }
+        // ⚠ The Server's entry point lets the library's lock go only after the host has stopped, a moment after this
+        // returns, and its last write can land while the folder is going: about ten thousand folders were left (#294).
+        Patina.Testing.TempFolders.Delete(scratch.FullName);
+        File.Delete(SocketPath);
     }
 }

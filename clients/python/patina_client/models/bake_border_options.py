@@ -25,10 +25,10 @@ class BakeBorderOptions:
         Attributes:
             width (float): How far inside its UV island a texel reads white, as a share of the texture: black on the
                 island's border,
-                rising evenly to white this far in.
+                rising evenly to white this far in. Default: 0.02.
      """
 
-    width: float
+    width: float = 0.02
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

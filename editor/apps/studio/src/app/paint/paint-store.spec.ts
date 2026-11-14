@@ -182,6 +182,35 @@ function drop(socket: GraphSocket | undefined): void {
 
 const problem = (status: number, detail: string) => () => Response.json({ detail }, { status });
 
+describe('PaintStore refreshes (#274)', () => {
+  it('keeps the newest state when the replies to two edits come back in the other order', async () => {
+    const { store, server } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    let release: (() => void) | null = null;
+    const held = new Promise<void>(resolve => (release = resolve));
+    let gets = 0;
+    server.reply = (method, path) => {
+      if (method !== 'GET' || path !== '/api/v1/stacks/s1') {
+        return null;
+      }
+
+      gets++;
+      // The first edit's state was taken before the second's, and is answered after it.
+      return gets === 1
+        ? held.then(() => Response.json(stack({ name: 'Before', sequence: 4 })))
+        : Response.json(stack({ name: 'After', sequence: 5 }));
+    };
+
+    const first = store.edit({ op: 'setLayer', layer: 'base', name: 'Before' });
+    await vi.waitFor(() => expect(gets).toBe(1));
+    await store.edit({ op: 'setLayer', layer: 'base', name: 'After' });
+    (release as unknown as () => void)();
+    await first;
+
+    expect(store.state()?.name).toBe('After');
+  });
+});
+
 describe('PaintStore saving', () => {
   async function opened() {
     const test = setup();

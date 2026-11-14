@@ -2715,6 +2715,7 @@ export interface components {
        * Format: double
        * @description How far inside its UV island a texel reads white, as a share of the texture: black on the island's border,
        *     rising evenly to white this far in.
+       * @default 0.02
        */
       width: number;
     };
@@ -2724,9 +2725,13 @@ export interface components {
        * @description `auto`: the high mesh's vertex colours, else its materials. `vertex-colour`; `material`, each
        *                 material's base colour and base colour picture; or `texture`, the picture at string BakeColourOptions.Texture
        *                 read at the high mesh's own coordinates, which moves any map from one UV layout to another.
+       * @default auto
        */
       source: string;
-      /** @description For `texture`: the picture to carry across, as a path on the Server's machine. */
+      /**
+       * @description For `texture`: the picture to carry across, as a path on the Server's machine.
+       * @default
+       */
       texture: string;
     };
     /** @description The curvature map's source and stored range (#148). */
@@ -2741,11 +2746,13 @@ export interface components {
        * @description `auto`, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or
        *                 `custom`, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a crease, so every
        *                 bake made with it agrees.
+       * @default auto
        */
       range: string;
       /**
        * Format: double
        * @description For `custom`: the radius of the tightest bend the map tells apart, in the rays' units.
+       * @default 0.01
        */
       radius: number;
     };
@@ -2777,26 +2784,31 @@ export interface components {
       /**
        * @description Whose edges are marked: `high`, the high mesh's, where the rays land; or `low`, the low mesh's, at
        *     the texel, so its hard edges show even under a high mesh with none (#278).
+       * @default high
        */
       mesh: string;
       /**
        * @description `hard`, the edges the high mesh's own normals split, or `angle`, every edge whose faces meet at
        *                 double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges.
+       * @default hard
        */
       edges: string;
       /**
        * Format: double
        * @description How far either side of an edge the band reaches, in the rays' units.
+       * @default 0.01
        */
       width: number;
       /**
        * Format: double
        * @description For `angle`: the least angle between two faces that is an edge, in degrees.
+       * @default 30
        */
       angle: number;
       /**
        * @description How the band falls from white on the edge to black at its side: `even`, a straight ramp; `smooth`,
        *     a smoothstep; or `chamfer`, white all the way across.
+       * @default even
        */
       profile: string;
     };
@@ -2805,11 +2817,13 @@ export interface components {
       /**
        * @description `measured`, the largest height found; `rays`, the longer ray distance; or `custom`,
        *                 double BakeHeightOptions.Scale. The last two are the same for every bake made with them, so their maps agree.
+       * @default measured
        */
       range: string;
       /**
        * Format: double
        * @description The range for `custom`, in the rays' units.
+       * @default 0.05
        */
       scale: number;
     };
@@ -2819,9 +2833,13 @@ export interface components {
        * @description `auto`: vertex colours, else materials when there are several, else connected shells. Or one of
        *                 `material`, `material-colour` (each material's base colour), `vertex-colour`, `mesh`
        *                 (each named part) and `shell`.
+       * @default auto
        */
       source: string;
-      /** @description How labels become colours: `random`, `hue` or `grey`. Colours stay colours. */
+      /**
+       * @description How labels become colours: `random`, `hue` or `grey`. Colours stay colours.
+       * @default random
+       */
       palette: string;
     };
     /** @description The occlusion rays, which ambient occlusion, the bent normal and thickness share. */
@@ -2829,36 +2847,56 @@ export interface components {
       /**
        * Format: int32
        * @description How many rays a texel's occlusion is estimated with.
+       * @default 64
        */
       rays: number;
       /**
        * Format: double
        * @description How far an occluder counts, in the rays' units.
+       * @default 0.5
        */
       distance: number;
       /**
        * Format: double
        * @description The half-angle of the cone the rays fill, in degrees: 90 is the hemisphere.
+       * @default 90
        */
       spread: number;
-      /** @description How an occluder counts for less further away: `none`, `linear` or `smooth`. */
+      /**
+       * @description How an occluder counts for less further away: `none`, `linear` or `smooth`.
+       * @default none
+       */
       falloff: string;
-      /** @description How the rays are spread: `cosine` or `uniform`. */
+      /**
+       * @description How the rays are spread: `cosine` or `uniform`.
+       * @default cosine
+       */
       distribution: string;
       /**
        * Format: double
        * @description How near an occluder may be and not count, in the rays' units.
+       * @default 0
        */
       minimum: number;
-      /** @description Whether a ray passes through the back of a face. */
+      /**
+       * @description Whether a ray passes through the back of a face.
+       * @default false
+       */
       ignoreBackfaces: boolean;
-      /** @description Whether only the texel's own part occludes it, when parts are matched by name. */
+      /**
+       * @description Whether only the texel's own part occludes it, when parts are matched by name.
+       * @default false
+       */
       withinPart: boolean;
-      /** @description Whether a floor under the high mesh occludes too. Y is up. */
+      /**
+       * @description Whether a floor under the high mesh occludes too. Y is up.
+       * @default false
+       */
       groundPlane: boolean;
       /**
        * Format: double
        * @description How far above the high mesh's lowest point the floor is, in the rays' units.
+       * @default 0
        */
       groundOffset: number;
     };
@@ -2870,6 +2908,7 @@ export interface components {
       /**
        * Format: int32
        * @description The atlas's width, in texels, and its height too unless int? BakeOptions.Rows says otherwise.
+       * @default 2048
        */
       resolution: number;
       /**
@@ -2886,22 +2925,28 @@ export interface components {
        *     this out.
        */
       followSetShape?: null | boolean;
-      /** @description `png8`, `png16`, `exr16` or `exr32`. */
+      /**
+       * @description `png8`, `png16`, `exr16` or `exr32`.
+       * @default png16
+       */
       format: string;
       /**
        * Format: int32
        * @description How many samples along each side of a texel.
+       * @default 1
        */
       supersampling: number;
       /**
        * Format: int32
        * @description How many texels of dilation surround each chart.
+       * @default 4
        */
       gutter: number;
       /**
        * @description Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the
        *     smallest mipmaps keep the maps' own values rather than fading to the empty texture's (#148). Labels, the ID
        *     and UV Islands maps, and UV Borders keep their background.
+       * @default false
        */
       diffusion: boolean;
       /**
@@ -2911,7 +2956,10 @@ export interface components {
        *     island of the low mesh). The default is what a project's masks read.
        */
       maps: string[];
-      /** @description The frame of the normal and bent normal maps: `tangent` or `object`. */
+      /**
+       * @description The frame of the normal and bent normal maps: `tangent` or `object`.
+       * @default tangent
+       */
       space: string;
       /** @description How far the rays look and what they may strike, which every map rests on. */
       rays: components['schemas']['BakeRayOptions'];
@@ -2948,6 +2996,7 @@ export interface components {
        * @description `box`, each axis across the mesh's bounding box, so each channel is used whole and shapes stretch;
        *                 `cube`, every axis across the box's longest side, so distances agree; `sphere`, across the sphere
        *                 round the box, centred on its middle; or `none`, the point in model units, which only EXR keeps.
+       * @default box
        */
       range: string;
     };
@@ -2987,42 +3036,63 @@ export interface components {
       /**
        * Format: double
        * @description How far a ray looks outward, in front of the low mesh.
+       * @default 0.05
        */
       front: number;
       /**
        * Format: double
        * @description How far a ray looks inward, behind the low mesh, or past it from a cage.
+       * @default 0.05
        */
       rear: number;
       /**
        * @description What the distances here and in BakeOcclusionOptions are in: `relative`, fractions of the
        *     high mesh's bounding-box diagonal, or `absolute`, the model's own units.
+       * @default relative
        */
       units: string;
-      /** @description Whether a ray passes through a high face turned away from the low mesh's facing. */
+      /**
+       * @description Whether a ray passes through a high face turned away from the low mesh's facing.
+       * @default false
+       */
       ignoreBackfaces: boolean;
       /**
        * @description Whether, with no cage file, the rays start on the low mesh pushed out by the front distance and take the
        *     first surface they meet, as from a cage, rather than the nearer surface either way (#148).
+       * @default false
        */
       automaticCage: boolean;
       /**
        * Format: double
        * @description How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.
+       * @default 0
        */
       skew: number;
-      /** @description A grey image saying where to apply the skew, or empty for everywhere. */
+      /**
+       * @description A grey image saying where to apply the skew, or empty for everywhere.
+       * @default
+       */
       skewMap: string;
       /**
        * @description A grey image correcting how far the rays reach over the atlas, or empty for as set: mid grey leaves them,
        *     black pulls them onto the low mesh and white sends them twice as far, front, rear and cage alike.
+       * @default
        */
       distanceMap: string;
-      /** @description Whether a part of the low mesh only strikes the high part of the same name. */
+      /**
+       * @description Whether a part of the low mesh only strikes the high part of the same name.
+       * @default false
+       */
       matchByName: boolean;
-      /** @description What a low part's name ends in, which matching by name takes off. */
+      /**
+       * @description What a low part's name ends in, which matching by name takes off.
+       * @default _low
+       */
       lowSuffix: string;
-      /** @description What a high part's name ends in, which matching by name takes off. */
+      /**
+       * @description What a high part's name ends in, which matching by name takes off.
+       * @default _high
+       */
       highSuffix: string;
     };
     /**
@@ -3076,32 +3146,42 @@ export interface components {
     };
     /** @description Edges baked round into the normal map, the bevel a hard-surface model was not modelled with. */
     BakeRoundingOptions: {
-      /** @description Whether edges are rounded at all. */
+      /**
+       * @description Whether edges are rounded at all.
+       * @default false
+       */
       enabled: boolean;
       /**
        * Format: double
        * @description How far either side of an edge the bevel reaches, in the rays' units.
+       * @default 0.01
        */
       width: number;
       /**
        * @description Which edges: `angle`, every edge whose faces meet at double BakeRoundingOptions.Angle or more, or `hard`, the
        *     edges the mesh's own normals split, which is the nearest a mesh file has to an edge weight.
+       * @default angle
        */
       edges: string;
       /**
        * Format: double
        * @description For `angle`: the least angle between two faces that is an edge, in degrees.
+       * @default 30
        */
       angle: number;
       /**
        * @description How the normal turns across the bevel: `even`, a round fillet; `smooth`, flat at the bevel's side
        *     and turning fastest near the edge; or `chamfer`, one flat face at the halfway angle.
+       * @default even
        */
       profile: string;
     };
     /** @description The thickness map's own settings. */
     BakeThicknessOptions: {
-      /** @description Whether the map is divided by its largest value, so the thickest texel reads white. */
+      /**
+       * @description Whether the map is divided by its largest value, so the thickest texel reads white.
+       * @default true
+       */
       normalised: boolean;
     };
     /** @description What emptying the bin deleted. */
@@ -5827,7 +5907,10 @@ export interface components {
       sets: string[];
       /** @description Detailed meshes after the mesh's own, in order, as paths on the Server's machine. */
       high: string[];
-      /** @description A cage, as a path on the Server's machine, or empty for none. */
+      /**
+       * @description A cage, as a path on the Server's machine, or empty for none.
+       * @default
+       */
       cage: string;
     };
     /**
@@ -5838,22 +5921,26 @@ export interface components {
       /**
        * Format: double
        * @description The most GPU memory one texture set's exported files may take, in mebibytes, or zero for no limit.
+       * @default 0
        */
       memoryBudget: number;
       /**
        * Format: int32
        * @description The longest side a texture set's maps may have, in texels, or zero for no limit.
+       * @default 0
        */
       maxSize: number;
       /**
        * Format: double
        * @description The texel density the sets are held to, in texels per unit of the model (a metre in glTF), or zero for the
        *     library's.
+       * @default 0
        */
       texelDensity: number;
       /**
        * Format: double
        * @description How far a set's density may stray from it before it is flagged, as a share: 0.25 is a quarter.
+       * @default 0.25
        */
       densityTolerance: number;
     };
@@ -8702,32 +8789,38 @@ export interface components {
       /**
        * Format: int32
        * @description The atlas side the margin is counted against, in texels. A map of another size only rescales it.
+       * @default 2048
        */
       resolution: number;
       /**
        * Format: int32
        * @description The empty texels between two islands.
+       * @default 4
        */
       margin: number;
       /**
        * @description How islands are packed: `boxes` by their bounding boxes, `outlines` by their shapes, and
        *     `groups` by their shapes after joining nearly square neighbours.
+       * @default outlines
        */
       quality: string;
       /**
        * Format: int32
        * @description How many ways an island may be turned: 1 never, 2 a half turn, 4 every quarter turn.
+       * @default 4
        */
       rotations: number;
       /**
        * Format: double
        * @description Texels per world unit every island is scaled to, or zero for each island at its own scale.
+       * @default 0
        */
       texelDensity: number;
       /**
        * @description What happens when the islands do not fit at that density: `shrink` scales them all down, and
        *     `refuse` stops and says so. Spilling into a second UDIM tile is not offered while a texture set
        *     paints one tile.
+       * @default shrink
        */
       overflow: string;
     };
@@ -8785,7 +8878,10 @@ export interface components {
     ViewportBakePreview: {
       /** @description The detailed meshes, in order. */
       high: string[];
-      /** @description The mesh baked onto, or empty to take the preview off. */
+      /**
+       * @description The mesh baked onto, or empty to take the preview off.
+       * @default
+       */
       low: string;
       /** @description A cage, or null for the ray distances. */
       cage?: null | string;
@@ -8793,27 +8889,42 @@ export interface components {
       material?: null | string;
       /** @description The options the bake would run with: its distances, units, cage correction and matching. */
       options: components['schemas']['BakeOptions'];
-      /** @description Whether to draw where the rays start and how far they reach: the cage or the ray distances. */
+      /**
+       * @description Whether to draw where the rays start and how far they reach: the cage or the ray distances.
+       * @default true
+       */
       reach: boolean;
-      /** @description Whether to draw the high meshes, see-through. */
+      /**
+       * @description Whether to draw the high meshes, see-through.
+       * @default true
+       */
       highMesh: boolean;
-      /** @description Whether to colour the parts by which matched which, when parts are matched by name. */
+      /**
+       * @description Whether to colour the parts by which matched which, when parts are matched by name.
+       * @default true
+       */
       matches: boolean;
       /**
        * @description Whether to draw the low mesh's hard edges that have no UV seam, where a tangent-space normal map shows a
        *     line.
+       * @default true
        */
       seams: boolean;
-      /** @description Whether the model is drawn in a plain grey while the preview shows, so its colours read. */
+      /**
+       * @description Whether the model is drawn in a plain grey while the preview shows, so its colours read.
+       * @default true
+       */
       neutral: boolean;
       /**
        * Format: double
        * @description How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays.
+       * @default 0.12
        */
       shellOpacity: number;
       /**
        * Format: double
        * @description How opaque the high mesh is, 0 to 1, in its parts' colours or plain.
+       * @default 0.25
        */
       highOpacity: number;
     };

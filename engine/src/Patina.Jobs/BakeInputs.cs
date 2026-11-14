@@ -39,6 +39,13 @@ public static class BakeInputs {
     /// </summary>
     const string TangentBasis = "mikktspace, v down";
 
+    /// <summary>
+    ///     How the baker itself bakes (#294). The product version is in every key, but a fix to the baker in Vixen
+    ///     between two releases is not, and a cache hit would hand back a bake made before it. ⚠ Raise it with any
+    ///     change, in Vixen or here, that changes a pixel of the same request: moving the Vixen pin to a bake fix too.
+    /// </summary>
+    public const string BakerRevision = "2026-11-14";
+
     /// <summary>The maps a request may ask for by name, in the order they are reported.</summary>
     public static IReadOnlyList<string> Maps => BakeOptions.AllMaps;
 
@@ -148,7 +155,8 @@ public static class BakeInputs {
         };
         var settings = new Dictionary<string, string>(StringComparer.Ordinal) {
             ["options"] = JsonSerializer.Serialize(options, ContractsJsonContext.Default.BakeOptions),
-            ["basis"] = TangentBasis
+            ["basis"] = TangentBasis,
+            ["baker"] = BakerRevision
         };
         if (request.Material is { } material) {
             settings["material"] = material; // only then, so a bake of a whole mesh keeps the key it had

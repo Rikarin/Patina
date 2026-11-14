@@ -1,8 +1,8 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject, wholeAutosaves } from './projects';
+import { leave, newLibrary, newProject, removeScratch, wholeAutosaves } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
@@ -32,7 +32,7 @@ test.beforeEach(async () => {
 test.afterEach(async () => {
   await leave(app);
   // The Server is still on its way out, and writes its last files as it goes.
-  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+  removeScratch(scratch);
 });
 
 interface Sidecar {

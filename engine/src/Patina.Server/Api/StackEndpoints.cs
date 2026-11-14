@@ -409,9 +409,12 @@ static class StackEndpoints {
             );
     }
 
-    static Results<Ok<StackIdColours>, ProblemHttpResult> GetIdColours(
+    /// <summary>The Worker reads the ID map, since the Server decodes no picture (#293).</summary>
+    static async Task<Results<Ok<StackIdColours>, ProblemHttpResult>> GetIdColours(
         string id,
         StackSessions sessions,
+        WorkerLink worker,
+        CancellationToken cancellationToken,
         float? u = null,
         float? v = null
     ) {
@@ -419,7 +422,21 @@ static class StackEndpoints {
             return NoSession(id);
         }
 
-        return session.MeshMaps is { } folder && IdColours.Read(folder, u, v) is { } colours
+        StackIdColours? colours = null;
+        if (session.MeshMaps is { } folder) {
+            try {
+                var connection = await worker.ConnectionAsync(cancellationToken);
+                var reply = await connection.SendAsync(
+                    new() { Type = IpcTypes.BakeIdColours, Picture = new(IdColours: new(folder, u, v)) },
+                    cancellationToken
+                );
+                colours = reply.Pictured?.IdColours;
+            } catch (Exception e) when (e is IpcException or IOException) {
+                return Refusals.OfEngine(e, StatusCodes.Status502BadGateway);
+            }
+        }
+
+        return colours is not null
             ? TypedResults.Ok(colours)
             : Refusals.Problem(
                 "This document has no bake with an ID map.",

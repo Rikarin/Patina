@@ -1,13 +1,12 @@
 using Patina.Contracts;
-using Patina.Export;
 
-namespace Patina.Server.Stacks;
+namespace Patina.Export;
 
 /// <summary>
 ///     What a bake's id map holds. Its colours are flat, so they can be listed for a person to choose from, and a
-///     selection made from this list matches exactly.
+///     selection made from this list matches exactly. It decodes the map, so the Worker runs it (#293).
 /// </summary>
-static class IdColours {
+public static class IdColours {
     const string Map = "id";
     const int MaxColours = 32;
     const int ByteMax = 255;

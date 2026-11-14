@@ -26,12 +26,13 @@ class BakeColourOptions:
             source (str): `auto`: the high mesh's vertex colours, else its materials. `vertex-colour`; `material`, each
                             material's base colour and base colour picture; or `texture`, the picture at string
                 BakeColourOptions.Texture
-                            read at the high mesh's own coordinates, which moves any map from one UV layout to another.
-            texture (str): For `texture`: the picture to carry across, as a path on the Server's machine.
+                            read at the high mesh's own coordinates, which moves any map from one UV layout to another. Default:
+                'auto'.
+            texture (str): For `texture`: the picture to carry across, as a path on the Server's machine. Default: ''.
      """
 
-    source: str
-    texture: str
+    source: str = 'auto'
+    texture: str = ''
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

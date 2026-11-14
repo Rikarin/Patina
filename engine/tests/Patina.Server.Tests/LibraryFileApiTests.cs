@@ -210,6 +210,50 @@ public sealed partial class LibraryTreeApiTests {
         Assert.Single(Directory.EnumerateFiles(kept, "*.read"));
     }
 
+    /// <summary>
+    ///     A picture that took the Worker down is refused from then on and never handed to the next Worker, which it
+    ///     would take down too (#293); the next Worker still reads the others.
+    /// </summary>
+    [Fact]
+    public async Task A_picture_that_took_the_Worker_down_is_not_asked_about_again() {
+        await MakeCrateAsync();
+        var shared = Directory.CreateDirectory(Path.Combine(server.Library, "shared"));
+        await File.WriteAllBytesAsync(
+            Path.Combine(shared.FullName, "bomb.exr"),
+            ExrCodec.Encode(new(4, 4, 1, new float[16])),
+            Token
+        );
+        await File.WriteAllBytesAsync(
+            Path.Combine(shared.FullName, "fine.exr"),
+            ExrCodec.Encode(new(2, 2, 1, new float[4])),
+            Token
+        );
+        await pictures.DisposeAsync();
+        pictures = await PictureWorker.ConnectAsync(
+            server.SocketPath,
+            Token,
+            static file => file.EndsWith("bomb.exr", StringComparison.Ordinal)
+        );
+
+        using var first = await client.GetAsync("/api/v1/library/picture?path=shared/bomb.exr", Token);
+        await pictures.DisposeAsync();
+        pictures = await PictureWorker.ConnectAsync(server.SocketPath, Token);
+        using var again = await client.GetAsync("/api/v1/library/picture?path=shared/bomb.exr", Token);
+        using var fine = await client.GetAsync("/api/v1/library/picture?path=shared/fine.exr", Token);
+
+        foreach (var refused in new[] { first, again }) {
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+            Assert.Contains(
+                "picture-unreadable",
+                await refused.Content.ReadAsStringAsync(Token),
+                StringComparison.Ordinal
+            );
+        }
+
+        Assert.Equal(HttpStatusCode.OK, fine.StatusCode);
+        Assert.Equal(1, pictures.Reads);
+    }
+
     /// <summary>A broken picture already in the library is refused by name when a client asks to see it.</summary>
     [Fact]
     public async Task A_broken_picture_in_the_library_is_refused_when_shown() {

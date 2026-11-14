@@ -31,7 +31,7 @@ public sealed class ProcessTests : IDisposable {
         }
 
         File.Delete(socketPath);
-        folder.Delete(true);
+        Patina.Testing.TempFolders.Delete(folder.FullName);
     }
 
     Process Start(string dll, params string[] arguments) {

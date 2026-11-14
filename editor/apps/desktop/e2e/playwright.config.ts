@@ -13,6 +13,7 @@ if (dotnet.env['DOTNET_ROOT']) {
 /** Golden paths through the real desktop app: Electron, the built studio, and the sidecars. */
 export default defineConfig({
   testDir: '.',
+  globalSetup: './sweep.ts',
   timeout: 120_000,
   expect: { timeout: 15_000 },
   workers: 1,

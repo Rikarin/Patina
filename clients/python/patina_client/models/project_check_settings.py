@@ -25,19 +25,19 @@ class ProjectCheckSettings:
 
         Attributes:
             memory_budget (float): The most GPU memory one texture set's exported files may take, in mebibytes, or zero for
-                no limit.
-            max_size (int): The longest side a texture set's maps may have, in texels, or zero for no limit.
+                no limit. Default: 0.0.
+            max_size (int): The longest side a texture set's maps may have, in texels, or zero for no limit. Default: 0.
             texel_density (float): The texel density the sets are held to, in texels per unit of the model (a metre in
                 glTF), or zero for the
-                library's.
+                library's. Default: 0.0.
             density_tolerance (float): How far a set's density may stray from it before it is flagged, as a share: 0.25 is a
-                quarter.
+                quarter. Default: 0.25.
      """
 
-    memory_budget: float
-    max_size: int
-    texel_density: float
-    density_tolerance: float
+    memory_budget: float = 0.0
+    max_size: int = 0
+    texel_density: float = 0.0
+    density_tolerance: float = 0.25
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

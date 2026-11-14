@@ -9917,7 +9917,8 @@
           "width": {
             "type": "number",
             "description": "How far inside its UV island a texel reads white, as a share of the texture: black on the island\u0027s border,\nrising evenly to white this far in.",
-            "format": "double"
+            "format": "double",
+            "default": 0.02
           }
         },
         "description": "The borders map\u0027s width (#121)."
@@ -9931,11 +9932,13 @@
         "properties": {
           "source": {
             "type": "string",
-            "description": "\u0060auto\u0060: the high mesh\u0027s vertex colours, else its materials. \u0060vertex-colour\u0060; \u0060material\u0060, each\n            material\u0027s base colour and base colour picture; or \u0060texture\u0060, the picture at string BakeColourOptions.Texture\n            read at the high mesh\u0027s own coordinates, which moves any map from one UV layout to another."
+            "description": "\u0060auto\u0060: the high mesh\u0027s vertex colours, else its materials. \u0060vertex-colour\u0060; \u0060material\u0060, each\n            material\u0027s base colour and base colour picture; or \u0060texture\u0060, the picture at string BakeColourOptions.Texture\n            read at the high mesh\u0027s own coordinates, which moves any map from one UV layout to another.",
+            "default": "auto"
           },
           "texture": {
             "type": "string",
-            "description": "For \u0060texture\u0060: the picture to carry across, as a path on the Server\u0027s machine."
+            "description": "For \u0060texture\u0060: the picture to carry across, as a path on the Server\u0027s machine.",
+            "default": ""
           }
         },
         "description": "Where a colour map\u0027s colour comes from."
@@ -9954,12 +9957,14 @@
           },
           "range": {
             "type": "string",
-            "description": "\u0060auto\u0060, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or\n            \u0060custom\u0060, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a crease, so every\n            bake made with it agrees."
+            "description": "\u0060auto\u0060, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or\n            \u0060custom\u0060, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a crease, so every\n            bake made with it agrees.",
+            "default": "auto"
           },
           "radius": {
             "type": "number",
             "description": "For \u0060custom\u0060: the radius of the tightest bend the map tells apart, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0.01
           }
         },
         "description": "The curvature map\u0027s source and stored range (#148)."
@@ -10014,25 +10019,30 @@
         "properties": {
           "mesh": {
             "type": "string",
-            "description": "Whose edges are marked: \u0060high\u0060, the high mesh\u0027s, where the rays land; or \u0060low\u0060, the low mesh\u0027s, at\nthe texel, so its hard edges show even under a high mesh with none (#278)."
+            "description": "Whose edges are marked: \u0060high\u0060, the high mesh\u0027s, where the rays land; or \u0060low\u0060, the low mesh\u0027s, at\nthe texel, so its hard edges show even under a high mesh with none (#278).",
+            "default": "high"
           },
           "edges": {
             "type": "string",
-            "description": "\u0060hard\u0060, the edges the high mesh\u0027s own normals split, or \u0060angle\u0060, every edge whose faces meet at\n            double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges."
+            "description": "\u0060hard\u0060, the edges the high mesh\u0027s own normals split, or \u0060angle\u0060, every edge whose faces meet at\n            double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges.",
+            "default": "hard"
           },
           "width": {
             "type": "number",
             "description": "How far either side of an edge the band reaches, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0.01
           },
           "angle": {
             "type": "number",
             "description": "For \u0060angle\u0060: the least angle between two faces that is an edge, in degrees.",
-            "format": "double"
+            "format": "double",
+            "default": 30
           },
           "profile": {
             "type": "string",
-            "description": "How the band falls from white on the edge to black at its side: \u0060even\u0060, a straight ramp; \u0060smooth\u0060,\na smoothstep; or \u0060chamfer\u0060, white all the way across."
+            "description": "How the band falls from white on the edge to black at its side: \u0060even\u0060, a straight ramp; \u0060smooth\u0060,\na smoothstep; or \u0060chamfer\u0060, white all the way across.",
+            "default": "even"
           }
         },
         "description": "Which edges the edges map marks, and the band it draws along them (#148)."
@@ -10046,12 +10056,14 @@
         "properties": {
           "range": {
             "type": "string",
-            "description": "\u0060measured\u0060, the largest height found; \u0060rays\u0060, the longer ray distance; or \u0060custom\u0060,\n            double BakeHeightOptions.Scale. The last two are the same for every bake made with them, so their maps agree."
+            "description": "\u0060measured\u0060, the largest height found; \u0060rays\u0060, the longer ray distance; or \u0060custom\u0060,\n            double BakeHeightOptions.Scale. The last two are the same for every bake made with them, so their maps agree.",
+            "default": "measured"
           },
           "scale": {
             "type": "number",
             "description": "The range for \u0060custom\u0060, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0.05
           }
         },
         "description": "The height map\u0027s stored range."
@@ -10065,11 +10077,13 @@
         "properties": {
           "source": {
             "type": "string",
-            "description": "\u0060auto\u0060: vertex colours, else materials when there are several, else connected shells. Or one of\n            \u0060material\u0060, \u0060material-colour\u0060 (each material\u0027s base colour), \u0060vertex-colour\u0060, \u0060mesh\u0060\n            (each named part) and \u0060shell\u0060."
+            "description": "\u0060auto\u0060: vertex colours, else materials when there are several, else connected shells. Or one of\n            \u0060material\u0060, \u0060material-colour\u0060 (each material\u0027s base colour), \u0060vertex-colour\u0060, \u0060mesh\u0060\n            (each named part) and \u0060shell\u0060.",
+            "default": "auto"
           },
           "palette": {
             "type": "string",
-            "description": "How labels become colours: \u0060random\u0060, \u0060hue\u0060 or \u0060grey\u0060. Colours stay colours."
+            "description": "How labels become colours: \u0060random\u0060, \u0060hue\u0060 or \u0060grey\u0060. Colours stay colours.",
+            "default": "random"
           }
         },
         "description": "What an ID map labels, and how it colours the labels."
@@ -10092,47 +10106,57 @@
           "rays": {
             "type": "integer",
             "description": "How many rays a texel\u0027s occlusion is estimated with.",
-            "format": "int32"
+            "format": "int32",
+            "default": 64
           },
           "distance": {
             "type": "number",
             "description": "How far an occluder counts, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0.5
           },
           "spread": {
             "type": "number",
             "description": "The half-angle of the cone the rays fill, in degrees: 90 is the hemisphere.",
-            "format": "double"
+            "format": "double",
+            "default": 90
           },
           "falloff": {
             "type": "string",
-            "description": "How an occluder counts for less further away: \u0060none\u0060, \u0060linear\u0060 or \u0060smooth\u0060."
+            "description": "How an occluder counts for less further away: \u0060none\u0060, \u0060linear\u0060 or \u0060smooth\u0060.",
+            "default": "none"
           },
           "distribution": {
             "type": "string",
-            "description": "How the rays are spread: \u0060cosine\u0060 or \u0060uniform\u0060."
+            "description": "How the rays are spread: \u0060cosine\u0060 or \u0060uniform\u0060.",
+            "default": "cosine"
           },
           "minimum": {
             "type": "number",
             "description": "How near an occluder may be and not count, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0
           },
           "ignoreBackfaces": {
             "type": "boolean",
-            "description": "Whether a ray passes through the back of a face."
+            "description": "Whether a ray passes through the back of a face.",
+            "default": false
           },
           "withinPart": {
             "type": "boolean",
-            "description": "Whether only the texel\u0027s own part occludes it, when parts are matched by name."
+            "description": "Whether only the texel\u0027s own part occludes it, when parts are matched by name.",
+            "default": false
           },
           "groundPlane": {
             "type": "boolean",
-            "description": "Whether a floor under the high mesh occludes too. Y is up."
+            "description": "Whether a floor under the high mesh occludes too. Y is up.",
+            "default": false
           },
           "groundOffset": {
             "type": "number",
             "description": "How far above the high mesh\u0027s lowest point the floor is, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0
           }
         },
         "description": "The occlusion rays, which ambient occlusion, the bent normal and thickness share."
@@ -10163,7 +10187,8 @@
           "resolution": {
             "type": "integer",
             "description": "The atlas\u0027s width, in texels, and its height too unless int? BakeOptions.Rows says otherwise.",
-            "format": "int32"
+            "format": "int32",
+            "default": 2048
           },
           "rows": {
             "type": [
@@ -10182,21 +10207,25 @@
           },
           "format": {
             "type": "string",
-            "description": "\u0060png8\u0060, \u0060png16\u0060, \u0060exr16\u0060 or \u0060exr32\u0060."
+            "description": "\u0060png8\u0060, \u0060png16\u0060, \u0060exr16\u0060 or \u0060exr32\u0060.",
+            "default": "png16"
           },
           "supersampling": {
             "type": "integer",
             "description": "How many samples along each side of a texel.",
-            "format": "int32"
+            "format": "int32",
+            "default": 1
           },
           "gutter": {
             "type": "integer",
             "description": "How many texels of dilation surround each chart.",
-            "format": "int32"
+            "format": "int32",
+            "default": 4
           },
           "diffusion": {
             "type": "boolean",
-            "description": "Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the\nsmallest mipmaps keep the maps\u0027 own values rather than fading to the empty texture\u0027s (#148). Labels, the ID\nand UV Islands maps, and UV Borders keep their background."
+            "description": "Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the\nsmallest mipmaps keep the maps\u0027 own values rather than fading to the empty texture\u0027s (#148). Labels, the ID\nand UV Islands maps, and UV Borders keep their background.",
+            "default": false
           },
           "maps": {
             "type": "array",
@@ -10207,7 +10236,8 @@
           },
           "space": {
             "type": "string",
-            "description": "The frame of the normal and bent normal maps: \u0060tangent\u0060 or \u0060object\u0060."
+            "description": "The frame of the normal and bent normal maps: \u0060tangent\u0060 or \u0060object\u0060.",
+            "default": "tangent"
           },
           "rays": {
             "description": "How far the rays look and what they may strike, which every map rests on.",
@@ -10271,7 +10301,8 @@
         "properties": {
           "range": {
             "type": "string",
-            "description": "\u0060box\u0060, each axis across the mesh\u0027s bounding box, so each channel is used whole and shapes stretch;\n            \u0060cube\u0060, every axis across the box\u0027s longest side, so distances agree; \u0060sphere\u0060, across the sphere\n            round the box, centred on its middle; or \u0060none\u0060, the point in model units, which only EXR keeps."
+            "description": "\u0060box\u0060, each axis across the mesh\u0027s bounding box, so each channel is used whole and shapes stretch;\n            \u0060cube\u0060, every axis across the box\u0027s longest side, so distances agree; \u0060sphere\u0060, across the sphere\n            round the box, centred on its middle; or \u0060none\u0060, the point in model units, which only EXR keeps.",
+            "default": "box"
           }
         },
         "description": "How the position map turns a point on the high poly mesh into a value (#148)."
@@ -10360,49 +10391,60 @@
           "front": {
             "type": "number",
             "description": "How far a ray looks outward, in front of the low mesh.",
-            "format": "double"
+            "format": "double",
+            "default": 0.05
           },
           "rear": {
             "type": "number",
             "description": "How far a ray looks inward, behind the low mesh, or past it from a cage.",
-            "format": "double"
+            "format": "double",
+            "default": 0.05
           },
           "units": {
             "type": "string",
-            "description": "What the distances here and in BakeOcclusionOptions are in: \u0060relative\u0060, fractions of the\nhigh mesh\u0027s bounding-box diagonal, or \u0060absolute\u0060, the model\u0027s own units."
+            "description": "What the distances here and in BakeOcclusionOptions are in: \u0060relative\u0060, fractions of the\nhigh mesh\u0027s bounding-box diagonal, or \u0060absolute\u0060, the model\u0027s own units.",
+            "default": "relative"
           },
           "ignoreBackfaces": {
             "type": "boolean",
-            "description": "Whether a ray passes through a high face turned away from the low mesh\u0027s facing."
+            "description": "Whether a ray passes through a high face turned away from the low mesh\u0027s facing.",
+            "default": false
           },
           "automaticCage": {
             "type": "boolean",
-            "description": "Whether, with no cage file, the rays start on the low mesh pushed out by the front distance and take the\nfirst surface they meet, as from a cage, rather than the nearer surface either way (#148)."
+            "description": "Whether, with no cage file, the rays start on the low mesh pushed out by the front distance and take the\nfirst surface they meet, as from a cage, rather than the nearer surface either way (#148).",
+            "default": false
           },
           "skew": {
             "type": "number",
             "description": "How far rays lean from the smoothed direction towards the low mesh\u0027s own normal, 0 to 1.",
-            "format": "double"
+            "format": "double",
+            "default": 0
           },
           "skewMap": {
             "type": "string",
-            "description": "A grey image saying where to apply the skew, or empty for everywhere."
+            "description": "A grey image saying where to apply the skew, or empty for everywhere.",
+            "default": ""
           },
           "distanceMap": {
             "type": "string",
-            "description": "A grey image correcting how far the rays reach over the atlas, or empty for as set: mid grey leaves them,\nblack pulls them onto the low mesh and white sends them twice as far, front, rear and cage alike."
+            "description": "A grey image correcting how far the rays reach over the atlas, or empty for as set: mid grey leaves them,\nblack pulls them onto the low mesh and white sends them twice as far, front, rear and cage alike.",
+            "default": ""
           },
           "matchByName": {
             "type": "boolean",
-            "description": "Whether a part of the low mesh only strikes the high part of the same name."
+            "description": "Whether a part of the low mesh only strikes the high part of the same name.",
+            "default": false
           },
           "lowSuffix": {
             "type": "string",
-            "description": "What a low part\u0027s name ends in, which matching by name takes off."
+            "description": "What a low part\u0027s name ends in, which matching by name takes off.",
+            "default": "_low"
           },
           "highSuffix": {
             "type": "string",
-            "description": "What a high part\u0027s name ends in, which matching by name takes off."
+            "description": "What a high part\u0027s name ends in, which matching by name takes off.",
+            "default": "_high"
           }
         },
         "description": "How far a bake\u0027s rays look from the low mesh, and what they may strike."
@@ -10528,25 +10570,30 @@
         "properties": {
           "enabled": {
             "type": "boolean",
-            "description": "Whether edges are rounded at all."
+            "description": "Whether edges are rounded at all.",
+            "default": false
           },
           "width": {
             "type": "number",
             "description": "How far either side of an edge the bevel reaches, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0.01
           },
           "edges": {
             "type": "string",
-            "description": "Which edges: \u0060angle\u0060, every edge whose faces meet at double BakeRoundingOptions.Angle or more, or \u0060hard\u0060, the\nedges the mesh\u0027s own normals split, which is the nearest a mesh file has to an edge weight."
+            "description": "Which edges: \u0060angle\u0060, every edge whose faces meet at double BakeRoundingOptions.Angle or more, or \u0060hard\u0060, the\nedges the mesh\u0027s own normals split, which is the nearest a mesh file has to an edge weight.",
+            "default": "angle"
           },
           "angle": {
             "type": "number",
             "description": "For \u0060angle\u0060: the least angle between two faces that is an edge, in degrees.",
-            "format": "double"
+            "format": "double",
+            "default": 30
           },
           "profile": {
             "type": "string",
-            "description": "How the normal turns across the bevel: \u0060even\u0060, a round fillet; \u0060smooth\u0060, flat at the bevel\u0027s side\nand turning fastest near the edge; or \u0060chamfer\u0060, one flat face at the halfway angle."
+            "description": "How the normal turns across the bevel: \u0060even\u0060, a round fillet; \u0060smooth\u0060, flat at the bevel\u0027s side\nand turning fastest near the edge; or \u0060chamfer\u0060, one flat face at the halfway angle.",
+            "default": "even"
           }
         },
         "description": "Edges baked round into the normal map, the bevel a hard-surface model was not modelled with."
@@ -10559,7 +10606,8 @@
         "properties": {
           "normalised": {
             "type": "boolean",
-            "description": "Whether the map is divided by its largest value, so the thickest texel reads white."
+            "description": "Whether the map is divided by its largest value, so the thickest texel reads white.",
+            "default": true
           }
         },
         "description": "The thickness map\u0027s own settings."
@@ -16732,7 +16780,8 @@
           },
           "cage": {
             "type": "string",
-            "description": "A cage, as a path on the Server\u0027s machine, or empty for none."
+            "description": "A cage, as a path on the Server\u0027s machine, or empty for none.",
+            "default": ""
           }
         },
         "description": "What a project keeps about baking, in its own file: the options, which texture sets to bake, and the files\nbeyond the project\u0027s mesh that a bake reads."
@@ -16749,22 +16798,26 @@
           "memoryBudget": {
             "type": "number",
             "description": "The most GPU memory one texture set\u0027s exported files may take, in mebibytes, or zero for no limit.",
-            "format": "double"
+            "format": "double",
+            "default": 0
           },
           "maxSize": {
             "type": "integer",
             "description": "The longest side a texture set\u0027s maps may have, in texels, or zero for no limit.",
-            "format": "int32"
+            "format": "int32",
+            "default": 0
           },
           "texelDensity": {
             "type": "number",
             "description": "The texel density the sets are held to, in texels per unit of the model (a metre in glTF), or zero for the\nlibrary\u0027s.",
-            "format": "double"
+            "format": "double",
+            "default": 0
           },
           "densityTolerance": {
             "type": "number",
             "description": "How far a set\u0027s density may stray from it before it is flagged, as a share: 0.25 is a quarter.",
-            "format": "double"
+            "format": "double",
+            "default": 0.25
           }
         },
         "description": "What a project holds its texture sets to before they are exported (#159), kept in its \u0060project.yaml\u0060. A\nzero is no limit, and a texel density of zero is the library\u0027s."
@@ -22822,30 +22875,36 @@
           "resolution": {
             "type": "integer",
             "description": "The atlas side the margin is counted against, in texels. A map of another size only rescales it.",
-            "format": "int32"
+            "format": "int32",
+            "default": 2048
           },
           "margin": {
             "type": "integer",
             "description": "The empty texels between two islands.",
-            "format": "int32"
+            "format": "int32",
+            "default": 4
           },
           "quality": {
             "type": "string",
-            "description": "How islands are packed: \u0060boxes\u0060 by their bounding boxes, \u0060outlines\u0060 by their shapes, and\n\u0060groups\u0060 by their shapes after joining nearly square neighbours."
+            "description": "How islands are packed: \u0060boxes\u0060 by their bounding boxes, \u0060outlines\u0060 by their shapes, and\n\u0060groups\u0060 by their shapes after joining nearly square neighbours.",
+            "default": "outlines"
           },
           "rotations": {
             "type": "integer",
             "description": "How many ways an island may be turned: 1 never, 2 a half turn, 4 every quarter turn.",
-            "format": "int32"
+            "format": "int32",
+            "default": 4
           },
           "texelDensity": {
             "type": "number",
             "description": "Texels per world unit every island is scaled to, or zero for each island at its own scale.",
-            "format": "double"
+            "format": "double",
+            "default": 0
           },
           "overflow": {
             "type": "string",
-            "description": "What happens when the islands do not fit at that density: \u0060shrink\u0060 scales them all down, and\n\u0060refuse\u0060 stops and says so. Spilling into a second UDIM tile is not offered while a texture set\npaints one tile."
+            "description": "What happens when the islands do not fit at that density: \u0060shrink\u0060 scales them all down, and\n\u0060refuse\u0060 stops and says so. Spilling into a second UDIM tile is not offered while a texture set\npaints one tile.",
+            "default": "shrink"
           }
         },
         "description": "How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own."
@@ -22959,7 +23018,8 @@
           },
           "low": {
             "type": "string",
-            "description": "The mesh baked onto, or empty to take the preview off."
+            "description": "The mesh baked onto, or empty to take the preview off.",
+            "default": ""
           },
           "cage": {
             "type": [
@@ -22981,33 +23041,40 @@
           },
           "reach": {
             "type": "boolean",
-            "description": "Whether to draw where the rays start and how far they reach: the cage or the ray distances."
+            "description": "Whether to draw where the rays start and how far they reach: the cage or the ray distances.",
+            "default": true
           },
           "highMesh": {
             "type": "boolean",
-            "description": "Whether to draw the high meshes, see-through."
+            "description": "Whether to draw the high meshes, see-through.",
+            "default": true
           },
           "matches": {
             "type": "boolean",
-            "description": "Whether to colour the parts by which matched which, when parts are matched by name."
+            "description": "Whether to colour the parts by which matched which, when parts are matched by name.",
+            "default": true
           },
           "seams": {
             "type": "boolean",
-            "description": "Whether to draw the low mesh\u0027s hard edges that have no UV seam, where a tangent-space normal map shows a\nline."
+            "description": "Whether to draw the low mesh\u0027s hard edges that have no UV seam, where a tangent-space normal map shows a\nline.",
+            "default": true
           },
           "neutral": {
             "type": "boolean",
-            "description": "Whether the model is drawn in a plain grey while the preview shows, so its colours read."
+            "description": "Whether the model is drawn in a plain grey while the preview shows, so its colours read.",
+            "default": true
           },
           "shellOpacity": {
             "type": "number",
             "description": "How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays.",
-            "format": "double"
+            "format": "double",
+            "default": 0.12
           },
           "highOpacity": {
             "type": "number",
             "description": "How opaque the high mesh is, 0 to 1, in its parts\u0027 colours or plain.",
-            "format": "double"
+            "format": "double",
+            "default": 0.25
           }
         },
         "description": "A bake\u0027s setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,\nand what of it to draw. Paths on the Server\u0027s machine, as in a bake request."

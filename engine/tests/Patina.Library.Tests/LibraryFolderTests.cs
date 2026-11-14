@@ -374,9 +374,9 @@ public sealed class LibraryFolderTests : IDisposable {
     [Fact]
     public void One_mesh_goes_under_every_texturing_document_and_auto_unwrap_is_remembered() {
         var made = library.CreateProject(new("Crate"));
-        var folder = Directory.CreateTempSubdirectory("patina-mesh-");
-        var first = Path.Combine(folder.FullName, "first.glb");
-        var second = Path.Combine(folder.FullName, "second.glb");
+        var outside = folder.CreateSubdirectory("meshes");
+        var first = Path.Combine(outside.FullName, "first.glb");
+        var second = Path.Combine(outside.FullName, "second.glb");
         File.WriteAllText(first, "mesh");
         File.WriteAllText(second, "mesh");
         var before = library.AddMesh(made.Path, first, null);
@@ -502,7 +502,7 @@ public sealed class LibraryFolderTests : IDisposable {
     [Fact]
     public void A_project_remembers_how_it_unwraps_and_what_an_unwrap_came_to() {
         var made = library.CreateProject(new("Ball"));
-        var scratch = Directory.CreateTempSubdirectory("patina-unwrap-");
+        var scratch = folder.CreateSubdirectory("unwrap");
         var plain = Path.Combine(scratch.FullName, "ball.obj");
         var unwrapped = Path.Combine(scratch.FullName, "ball_unwrapped.glb");
         File.WriteAllText(plain, "mesh");

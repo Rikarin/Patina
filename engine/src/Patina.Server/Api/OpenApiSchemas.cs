@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Patina.Server.Api;
 
@@ -8,6 +11,11 @@ namespace Patina.Server.Api;
 ///     Generated clients (editor/libs/api-client, clients/python) then get exact types instead of everything-optional
 ///     ones.
 /// </summary>
+/// <remarks>
+///     ⚠ <b>A setting a request may leave out says what it starts as.</b> A contract made with nothing, such as a
+///     bake's options, gives its numbers, words and switches a <c>default</c>, which a generated Python client takes
+///     for its argument (#294): a new setting added to the options then breaks no script written before it.
+/// </remarks>
 static class OpenApiSchemas {
     public static void MarkNonNullablePropertiesRequired(this OpenApiOptions options) =>
         options.AddSchemaTransformer(static (schema, context, _) => {
@@ -24,9 +32,37 @@ static class OpenApiSchemas {
                             (schema.Required ??= new HashSet<string>()).Add(name);
                         }
                     }
+
+                    Defaults(properties, context.JsonTypeInfo);
                 }
 
                 return Task.CompletedTask;
             }
         );
+
+    /// <summary>The starting value of each plain setting of a contract that can be made with nothing.</summary>
+    static void Defaults(IDictionary<string, IOpenApiSchema> properties, JsonTypeInfo type) {
+        if (type.CreateObject is not { } create || type.Type.Assembly != typeof(Contracts.BakeOptions).Assembly) {
+            return;
+        }
+
+        var made = create();
+        foreach (var property in type.Properties) {
+            if (property.Get is { } get
+                && Plain(property.PropertyType)
+                && properties.TryGetValue(property.Name, out var found)
+                && found is OpenApiSchema { Default: null } schema
+                && get(made) is { } value) {
+                schema.Default = JsonSerializer.SerializeToNode(value, property.PropertyType, type.Options);
+            }
+        }
+    }
+
+    static bool Plain(Type type) =>
+        type == typeof(string)
+        || type == typeof(bool)
+        || type == typeof(int)
+        || type == typeof(double)
+        || type == typeof(float)
+        || type == typeof(long);
 }

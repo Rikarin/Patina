@@ -11,5 +11,6 @@
     <PackageReference Include="xunit.v3"/>
     <PackageReference Include="CsCheck"/>
     <Using Include="Xunit"/>
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/TempFolders.cs" Link="Shared/TempFolders.cs"/>
   </ItemGroup>
 </Project>
