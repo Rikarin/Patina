@@ -4,9 +4,9 @@ namespace Patina.Server;
 
 /// <summary>
 ///     How long a wait on the Worker lasts (#275). A Worker that is connected is working through what it was sent,
-///     however slow its device: a software GPU takes minutes over a large stack, and one whose device stops moving ends
-///     itself (<see cref="Patina.Ipc.DeviceWatch" />). So a wait gives up only when no Worker has been connected for the
-///     whole of its patience, never because the one connected is slow.
+///     however slow its device: a software GPU takes minutes over a large stack, and one whose device stops moving
+///     ends itself (<see cref="Patina.Ipc.DeviceWatch" />). So a wait gives up only when no Worker has been connected
+///     for the whole of its patience, never because the one connected is slow.
 /// </summary>
 public static class WorkerWait {
     /// <summary>Waits until nothing is pending, looking again at each of the session's events.</summary>

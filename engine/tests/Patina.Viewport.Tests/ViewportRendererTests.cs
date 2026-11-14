@@ -213,10 +213,9 @@ public sealed class ViewportRendererTests : IDisposable {
         Keep("sets-whole.png", whole);
         Keep("sets-wood-marked.png", marked);
 
-        // The e2e's test for orange: red over blue by a margin neither the grey quads nor the sky come near. ⚠ The wash
-        // is light, about (205, 180, 155) on a pale quad, so a margin of 50 passed by a hair and missed on Linux (#274).
-        static int Orange(byte[] pixels) =>
-            Enumerable.Range(0, Width * Height).Count(i => pixels[i * 4] > 120 && pixels[i * 4] > pixels[i * 4 + 2] + 25);
+        // The e2e's test for orange. ⚠ The wash is light, about (205, 180, 155) on a pale quad, so a margin of 50 over
+        // blue passed by a hair and missed on Linux (#274).
+        static int Orange(byte[] pixels) => Enumerable.Range(0, Width * Height).Count(i => Warm(pixels, i));
 
         Assert.Equal(0, Orange(whole));
         var orange = Orange(marked);
@@ -225,11 +224,14 @@ public sealed class ViewportRendererTests : IDisposable {
 
         // Only one quad: the orange is on one side of the middle of what was drawn.
         var columns = Enumerable.Range(0, Width * Height)
-            .Where(i => marked[i * 4] > 120 && marked[i * 4] > marked[i * 4 + 2] + 25)
+            .Where(i => Warm(marked, i))
             .Select(static i => i % Width)
             .ToList();
         Assert.True(columns.Max() - columns.Min() < Width / 2, "The mark spread over both quads.");
     }
+
+    /// <summary>Whether a pixel is orange: red over blue by a margin the grey quads and sky never reach.</summary>
+    static bool Warm(byte[] pixels, int i) => pixels[i * 4] > 120 && pixels[i * 4] > pixels[i * 4 + 2] + 25;
 
     static void Keep(string name, byte[] pixels) {
         if (Environment.GetEnvironmentVariable("PATINA_PICTURES") is { Length: > 0 } pictures) {

@@ -33,7 +33,7 @@ public sealed class WorkerWaitTests {
     public async Task No_worker_for_the_whole_patience_is_refused() {
         var waited = Stopwatch.StartNew();
 
-        await Assert.ThrowsAsync<RendererMissingException>(() => WorkerWait.UntilAsync(
+        await Assert.ThrowsAsync<RendererMissingException>(static () => WorkerWait.UntilAsync(
                 new Silent(),
                 static () => "evaluating",
                 static token => Task.Delay(Timeout.InfiniteTimeSpan, token),
@@ -46,8 +46,8 @@ public sealed class WorkerWaitTests {
     }
 
     [Fact]
-    public async Task Nothing_pending_waits_for_no_worker() =>
-        await WorkerWait.UntilAsync(
+    public Task Nothing_pending_waits_for_no_worker() =>
+        WorkerWait.UntilAsync(
             new Silent(),
             static () => null,
             static token => Task.Delay(Timeout.InfiniteTimeSpan, token),

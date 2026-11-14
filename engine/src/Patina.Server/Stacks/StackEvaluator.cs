@@ -139,8 +139,8 @@ public sealed class StackEvaluator(
     }
 
     /// <summary>
-    ///     Waits until the Worker's pixels are what the journal says, which a save and a read both need. It gives up only
-    ///     when no Worker comes, never because the one connected is slow (#275).
+    ///     Waits until the Worker's pixels are what the journal says, which a save and a read both need. It gives up
+    ///     only when no Worker comes, never because the one connected is slow (#275).
     /// </summary>
     async Task ReachedAsync(StackSession session, CancellationToken cancellationToken) {
         // ⚠ A paused stack evaluates for whoever waits here, or a save would wait for a resume that may never come.

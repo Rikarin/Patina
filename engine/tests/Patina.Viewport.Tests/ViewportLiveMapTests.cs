@@ -149,8 +149,8 @@ public sealed class ViewportLiveMapTests : IDisposable {
     ///     A quick mask is red over the model where it is painted and nowhere else (#127), and taken off leaves the
     ///     picture as it was. On Linux CI the e2e that paints one saw no red (#274); this says whether the renderer
     ///     draws it there. ⚠ On a brightly lit model the tint is faint, since it is laid on before the tone curve: a
-    ///     square near white comes out about (227, 209, 208) where it is painted, red lower than unmasked and under twenty
-    ///     levels over the mean of green and blue, so red is what green and blue lost and not a level of red.
+    ///     square near white comes out about (227, 209, 208) where it is painted, red lower than unmasked and under
+    ///     twenty levels over the mean of green and blue, so red is what green and blue lost and not a level of red.
     /// </summary>
     [Fact]
     public void A_quick_mask_is_red_where_it_is_painted() {
