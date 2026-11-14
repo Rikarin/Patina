@@ -1,4 +1,4 @@
-# ADR 0043: A stamp laid on the surface is weighed on the plane touching the surface under its middle
+# ADR 0045: A stamp laid on the surface is weighed on the plane touching the surface under its middle
 
 **Status:** accepted, 2026-11-14, for issue #123.
 

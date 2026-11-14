@@ -52,7 +52,7 @@ the top level and in a texture.
 | Field | Required | Value | Default |
 |---|---|---|---|
 | `file` | yes | a naming template (see Names), with no extension | |
-| `format` | yes | `png8`, `png16`, `tga`, `jpeg`, `tiff8`, `tiff16`, `tiff32`, `webp`, `exr16`, `exr32`, `hdr`, `ktx2`, `dds`, or `png`, `tiff`, `exr`: as deep as the maps it reads (ADR 0043) | |
+| `format` | yes | `png8`, `png16`, `tga`, `jpeg`, `tiff8`, `tiff16`, `tiff32`, `webp`, `exr16`, `exr32`, `hdr`, `ktx2`, `dds`, or `png`, `tiff`, `exr`: as deep as the maps it reads (ADR 0044) | |
 | `space` | yes | `srgb` or `linear`: what the file's numbers are | |
 | `compression` | no | `none`, `half`, `float`, `bc1`, `bc3`, `bc4`, `bc5`, `bc6h`, `bc7`; only for `ktx2` and `dds` | `none` |
 | `quality` | no | for `jpeg` 1 to 100; for everything else `fast`, `balanced` or `best` (how hard BC6H and BC7 search) | `90`, `balanced` |

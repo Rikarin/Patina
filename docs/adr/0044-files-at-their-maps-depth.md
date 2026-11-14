@@ -1,4 +1,4 @@
-# ADR 0043: A file can be as deep as the maps it reads, and a set computes at the depth its channels paint at
+# ADR 0044: A file can be as deep as the maps it reads, and a set computes at the depth its channels paint at
 
 **Status:** accepted, 2026-11-14, for issues #141 and #19.
 
