@@ -3,6 +3,7 @@ using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
+using Patina.Server.Viewport;
 using Vixen.NodeGraph;
 
 namespace Patina.Server.Api;
@@ -409,6 +410,7 @@ static class GraphEndpoints {
         LibraryHost host,
         StackSessions stacks,
         AutosaveGate autosave,
+        PanoramaKeeper panoramas,
         bool force = false
     ) {
         if (sessions.Find(id) is not { } session) {
@@ -418,6 +420,7 @@ static class GraphEndpoints {
         try {
             var result = session.Save(force);
             sessions.Republish(session);
+            panoramas.Saved(session.Path);
             if (host.Library is { } library) {
                 autosave.Forget(library.RootPath, session.Path);
                 MaterialShelf.RefreshOpen(library, stacks);

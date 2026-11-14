@@ -116,6 +116,8 @@ const NodeView = 'node:';
 const NoLook = 'none:';
 /** What the environment and look lists mean by asking for a file. */
 const PickFile = '…';
+/** What the environment list means by the graph in front, drawn as a panorama as it was last saved (#180). */
+const FrontGraph = 'graph:';
 
 /** The docked viewport: frames from the Worker on a canvas, and orbit input going the other way. */
 @Component({
@@ -625,19 +627,29 @@ export class ViewportPane implements AfterViewInit {
             ? (maps.get(choice) ?? fileName(choice.slice(MapPrefix.length)))
             : this.viewName(choice);
   });
-  /** The rooms, the file lighting the model when it is none of them, and a file to choose, where there are files. */
-  protected readonly environments = computed(() => [
-    ...Rooms.map(room => room.value),
-    ...(this.panorama() ? [this.display().environment] : []),
-    ...(this.canPick ? [PickFile] : [])
-  ]);
+  /**
+   * The rooms, the file lighting the model when it is none of them, the graph in front when it is not that file, and
+   * a file to choose, where there are files.
+   */
+  protected readonly environments = computed(() => {
+    const graph = this.graphs.front().document()?.path;
+    return [
+      ...Rooms.map(room => room.value),
+      ...(this.panorama() ? [this.display().environment] : []),
+      ...(graph && graph !== this.display().environment ? [FrontGraph] : []),
+      ...(this.canPick ? [PickFile] : [])
+    ];
+  });
   protected readonly environmentChoice = linkedSignal(() => this.display().environment);
   protected readonly environmentName = computed(() => {
     const panorama = this.panorama();
+    const graph = this.graphs.front().document()?.name ?? '';
     return (source: string): string =>
       source === PickFile
         ? 'From a file…'
-        : (Rooms.find(room => room.value === source)?.label ?? panorama ?? fileName(source));
+        : source === FrontGraph
+          ? `Graph · ${graph}`
+          : (Rooms.find(room => room.value === source)?.label ?? panorama ?? fileName(source));
   });
   protected readonly looks = computed(() => [
     NoLook,
@@ -680,9 +692,17 @@ export class ViewportPane implements AfterViewInit {
     void this.viewport.follow(graph, !(this.followsNode() && this.followed() === graph));
   }
 
-  /** A room, or a panorama from a file. A file not chosen leaves the list on what lights the model now. */
+  /**
+   * A room, a panorama or a graph from a file, or the graph in front. A file not chosen leaves the list on what lights
+   * the model now.
+   */
   protected async chooseEnvironment(choice: string | null): Promise<void> {
-    const source = choice === PickFile ? await desktop()?.openEnvironment(this.status.environments()) : choice;
+    const source =
+      choice === PickFile
+        ? await desktop()?.openEnvironment(this.status.environments())
+        : choice === FrontGraph
+          ? this.graphs.front().document()?.path
+          : choice;
     if (source) {
       this.viewport.setDisplay({ environment: source });
     } else {

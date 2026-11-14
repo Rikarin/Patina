@@ -223,7 +223,8 @@ sealed partial class ViewportHost(string shaderCache, MeshShelf meshes) : IDispo
         renderer.Isolate(isolatedParts, isolatedMaterials);
         renderer.Highlight(told.Highlight?.Parts ?? [], told.Highlight?.Materials ?? []);
         renderer.Mirror(Mirror(told.Symmetry));
-        SetEnvironment(settings.Environment);
+        // A graph that lights the model is the panorama the Server had drawn of it (#180).
+        SetEnvironment(told.Environment?.Path ?? settings.Environment);
         try {
             SetLook(told.Look?.Path, told.Look?.Hash);
         } catch (FormatException e) {

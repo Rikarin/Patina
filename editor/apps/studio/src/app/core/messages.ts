@@ -94,6 +94,8 @@ const Words: Readonly<Record<string, string>> = {
   'settings-refused': 'Those settings can’t be kept. {reason}',
   'project-missing': 'That project isn’t in the library any more. It may have been moved or deleted outside Patina.',
   'preview-missing': 'That preview isn’t kept any more. It is made again the next time it is shown.',
+  'panorama-empty':
+    '{file} draws nothing to light the viewport with. Give it an Output node, such as one after a Sky, and choose it again.',
   'build-refused': 'That can’t be built as the export settings are. {reason}',
   'build-report-missing': 'That build’s report isn’t kept any more, or the build didn’t finish.',
   'bake-refused': 'That bake can’t run as it is set up. {reason}',

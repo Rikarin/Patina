@@ -9403,7 +9403,9 @@ export interface components {
      */
     ViewportDisplay: {
       /**
-       * @description A built-in room (studio, overcast or sunset), or the path of an `.hdr` or `.exr` panorama.
+       * @description A built-in room (studio, overcast or sunset), the path of an `.hdr` or `.exr` panorama, or the path
+       *     of a graph whose Output, its base colour's if it has one, is drawn as a panorama with its numbers past one
+       *     (#180). A graph is drawn again when it is chosen again or saved.
        * @default studio
        */
       environment: string;
@@ -10328,6 +10330,15 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown;
         };

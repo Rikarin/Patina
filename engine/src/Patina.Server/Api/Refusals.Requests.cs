@@ -99,6 +99,22 @@ public static partial class Refusals {
         Problem(detail, StatusCodes.Status404NotFound, PreviewMissing);
 
     /// <summary>
+    ///     A graph named to light the viewport that has no Output node to draw, or whose Output draws nothing (#180).
+    ///     Values: <c>file</c>, the graph's name.
+    /// </summary>
+    public const string PanoramaEmpty = "panorama-empty";
+
+    /// <summary>A graph that cannot light the viewport: 422.</summary>
+    public static ProblemHttpResult NoPanorama(string file) =>
+        Problem(
+            $"'{Path.GetFileName(file)}' draws no picture to light the viewport with. A graph lights it through an "
+            + "Output node, its base colour's if it has one, read as a panorama.",
+            StatusCodes.Status422UnprocessableEntity,
+            PanoramaEmpty,
+            new Dictionary<string, string> { ["file"] = Path.GetFileName(file) }
+        );
+
+    /// <summary>
     ///     A build or a compression preview the library's export settings cannot make. Values: <c>reason</c>, which
     ///     is the export's own sentence.
     /// </summary>

@@ -484,6 +484,26 @@ public sealed partial class ViewportSession(
     }
 
     /// <summary>
+    ///     Lights the model with a graph's panorama drawn again, while that graph is still what lights it (#180).
+    /// </summary>
+    /// <param name="graph">The graph's file, as the display names it.</param>
+    /// <param name="panorama">Its picture as drawn now.</param>
+    /// <returns>Whether the graph still lit the model.</returns>
+    public bool Relight(string graph, ViewportMapFile panorama) {
+        lock (changing) {
+            if (display.Display.Environment != graph || display.Environment == panorama) {
+                return false;
+            }
+
+            display = display with { Environment = panorama };
+            revision++;
+        }
+
+        Wake();
+        return true;
+    }
+
+    /// <summary>
     ///     What the texel density view measures against: the project's density, and the side of a map whose own size
     ///     cannot be read. A project's, so it is set where a stack is worn and where a project's checks change.
     /// </summary>

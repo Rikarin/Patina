@@ -27,8 +27,10 @@ class ViewportDisplay:
     of a request is the one the viewport opens with.
 
         Attributes:
-            environment (str): A built-in room (studio, overcast or sunset), or the path of an `.hdr` or `.exr` panorama.
-                Default: 'studio'.
+            environment (str): A built-in room (studio, overcast or sunset), the path of an `.hdr` or `.exr` panorama, or
+                the path
+                of a graph whose Output, its base colour's if it has one, is drawn as a panorama with its numbers past one
+                (#180). A graph is drawn again when it is chosen again or saved. Default: 'studio'.
             environment_rotation (float): How far the environment has turned around the model. The light stays. Default:
                 0.0.
             background_blur (float): How blurred the background is, 0 sharp to 1 a haze. Lighting is not blurred. Default:

@@ -624,7 +624,13 @@ public sealed record MaterialThumbnailAsk(
     string Usage,
     string PreviewFolder,
     string? MeshMaps = null
-);
+) {
+    /// <summary>
+    ///     Whether the picture is drawn at the size the graph computes it and kept as a half-float <c>.exr</c> with
+    ///     its numbers as they are, past one, rather than small as a PNG: a graph that lights the viewport (#180).
+    /// </summary>
+    public bool Deep { get; init; }
+}
 
 /// <summary>A stack for a Worker to hold.</summary>
 /// <param name="Session">The session.</param>
