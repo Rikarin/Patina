@@ -46,6 +46,10 @@ static class BuildEndpoints {
             .WithSummary("One page of what a finished build did to each project, with the paths of what it wrote.")
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(Missing);
+        builds.MapGet("/{id}/compare", Compare)
+            .WithName("CompareBuilds")
+            .WithSummary("What differs from an earlier build: outputs by key, files by their bytes.")
+            .ProducesProblem(Missing);
     }
 
     /// <param name="host">The library.</param>
@@ -192,6 +196,25 @@ static class BuildEndpoints {
         return Directory.Exists(folder)
             ? TypedResults.Ok(BuildJournal.ReadProjects(folder, offset, limit))
             : NoReport(id);
+    }
+
+    /// <param name="id">The later build.</param>
+    /// <param name="before">The earlier build it is compared with.</param>
+    /// <param name="host">The library.</param>
+    static Results<Ok<BuildComparison>, ProblemHttpResult> Compare(string id, string before, LibraryHost host) {
+        if (host.Library is not { } library) {
+            return NoLibrary();
+        }
+
+        var later = BuildRunner.FolderOf(library.RootPath, Safe(id));
+        var earlier = BuildRunner.FolderOf(library.RootPath, Safe(before));
+        foreach (var (folder, name) in (IEnumerable<(string, string)>)[(earlier, before), (later, id)]) {
+            if (BuildJournal.ReadLibrary(folder) is null) {
+                return NoReport(name);
+            }
+        }
+
+        return TypedResults.Ok(BuildComparisons.Compare(earlier, later));
     }
 
     /// <summary>A job's id as part of a path: only what a job's id can be.</summary>

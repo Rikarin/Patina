@@ -8297,6 +8297,55 @@
         }
       }
     },
+    "/api/v1/builds/{id}/compare": {
+      "get": {
+        "tags": [
+          "Builds"
+        ],
+        "summary": "What differs from an earlier build: outputs by key, files by their bytes.",
+        "operationId": "CompareBuilds",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildComparison"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/export/presets/{id}": {
       "get": {
         "tags": [
@@ -9645,6 +9694,44 @@
           }
         },
         "description": "The body of \u0060PUT /api/v1/library/brushes\u0060, which rewrites a preset: from the brush as it stands, or to make\nit a favourite or not. A shipped preset cannot change, so changing one keeps a copy in the project instead."
+      },
+      "BuildComparison": {
+        "required": [
+          "before",
+          "after",
+          "projects",
+          "changedFiles",
+          "sameFiles"
+        ],
+        "type": "object",
+        "properties": {
+          "before": {
+            "type": "string",
+            "description": "The earlier build."
+          },
+          "after": {
+            "type": "string",
+            "description": "The later build."
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectComparison"
+            },
+            "description": "Each project either build touched, by path, with what differs."
+          },
+          "changedFiles": {
+            "type": "integer",
+            "description": "Files whose bytes differ or that only one build wrote.",
+            "format": "int32"
+          },
+          "sameFiles": {
+            "type": "integer",
+            "description": "Files both builds wrote byte for byte the same.",
+            "format": "int32"
+          }
+        },
+        "description": "What differs between two builds (#217): their outputs\u0027 keys and their files\u0027 bytes, project by project."
       },
       "BuildPreview": {
         "required": [
@@ -11030,7 +11117,8 @@
           "status",
           "files",
           "skipped",
-          "warnings"
+          "warnings",
+          "digests"
         ],
         "type": "object",
         "properties": {
@@ -11076,6 +11164,13 @@
               "string"
             ],
             "description": "Why it failed."
+          },
+          "digests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Each of IReadOnlyList\u0026lt;string\u0026gt; ExportReport.Files\u0027 SHA-256, in the same order, as the build left it, so that two builds can be\ncompared after the second has written over the first. Empty in a report from before builds kept them."
           }
         },
         "description": "One preset in a project\u0027s report."
@@ -11135,6 +11230,29 @@
           }
         },
         "description": "One texture set\u0027s changes over the whole export\u0027s (#153): its own size, padding, dithering and files. Null\nfields keep what the export says for every set."
+      },
+      "FileComparison": {
+        "required": [
+          "preset",
+          "file",
+          "change"
+        ],
+        "type": "object",
+        "properties": {
+          "preset": {
+            "type": "string",
+            "description": "The preset that wrote it."
+          },
+          "file": {
+            "type": "string",
+            "description": "Where it is, below the export\u0027s folder, with forward slashes."
+          },
+          "change": {
+            "type": "string",
+            "description": "One of BuildChanges."
+          }
+        },
+        "description": "One exported file in two builds."
       },
       "FileFormats": {
         "required": [
@@ -14657,6 +14775,38 @@
         },
         "description": "One named mesh where the file places it."
       },
+      "OutputComparison": {
+        "required": [
+          "name",
+          "change"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The output."
+          },
+          "before": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its build key in the earlier build, or null when that build did not touch it."
+          },
+          "after": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its build key in the later build, or null."
+          },
+          "change": {
+            "type": "string",
+            "description": "One of BuildChanges: the same key is the same result."
+          }
+        },
+        "description": "One output in two builds."
+      },
       "OutputReport": {
         "required": [
           "name",
@@ -15045,6 +15195,51 @@
           }
         },
         "description": "The body of \u0060PUT /api/v1/library/project/checks\u0060."
+      },
+      "ProjectComparison": {
+        "required": [
+          "id",
+          "name",
+          "path",
+          "touched",
+          "outputs",
+          "files"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The project.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Its name."
+          },
+          "path": {
+            "type": "string",
+            "description": "Its path below \u0060projects/\u0060."
+          },
+          "touched": {
+            "type": "string",
+            "description": "Which builds touched it: both, before or after. A build that leaves a project alone writes nothing of it, so a\nproject only one build touched has its files listed as that build left them."
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutputComparison"
+            },
+            "description": "Its outputs, with their keys in each build."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileComparison"
+            },
+            "description": "Its exported files, with their change."
+          }
+        },
+        "description": "What differs in one project between two builds."
       },
       "ProjectContents": {
         "required": [

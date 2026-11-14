@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
+  type BuildComparison,
   type BuildPreview,
   type BuildRequest,
   type CompressionPreviewInfo,
@@ -309,6 +310,10 @@ export class ExportStore {
   readonly report = signal<LibraryReport | null>(null);
   readonly projects = signal<readonly ProjectReport[]>([]);
   readonly projectCount = signal(0);
+  /** What differs from the build read before this one, in this session (#217), or null for none to compare with. */
+  readonly comparison = signal<BuildComparison | null>(null);
+  /** The last finished build read, which the next one is compared with. */
+  private previous: string | null = null;
 
   /** The build the panel is following, kept current by the jobs' events. */
   readonly build = computed<JobState | null>(() => {
@@ -431,6 +436,7 @@ export class ExportStore {
     this.report.set(null);
     this.projects.set([]);
     this.projectCount.set(0);
+    this.comparison.set(null);
     this.currentId.set(job.id);
   }
 
@@ -454,6 +460,22 @@ export class ExportStore {
     );
     this.projects.set(page.items);
     this.projectCount.set(page.total);
+    await this.compare(id);
+  }
+
+  /** Compares a finished build with the one read before it, which a build that failed to report leaves unknown. */
+  private async compare(id: string): Promise<void> {
+    const before = this.previous;
+    this.comparison.set(null);
+    this.previous = id;
+    if (!before || before === id) {
+      return;
+    }
+    const client = await this.api();
+    const compared = await client.GET('/api/v1/builds/{id}/compare', {
+      params: { path: { id }, query: { before } }
+    });
+    this.comparison.set(compared.data ?? null);
   }
 
   /**

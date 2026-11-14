@@ -162,4 +162,5 @@ export type ExportPresetCheck = components['schemas']['ExportPresetCheck'];
 export type CompressionPreviewInfo = components['schemas']['CompressionPreviewInfo'];
 export type CompressionPreviewRequest = components['schemas']['CompressionPreviewRequest'];
 export type LibraryReport = components['schemas']['LibraryReport'];
+export type BuildComparison = components['schemas']['BuildComparison'];
 export type ProjectReport = components['schemas']['ProjectReport'];

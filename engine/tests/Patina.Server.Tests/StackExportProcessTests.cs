@@ -308,16 +308,38 @@ public sealed partial class StackProcessTests {
             File.WriteAllBytes(Path.Combine(folder, $"{name}.png"), PngCodec.Encode8(4, 4, 3, pixels));
         }
 
+        var factor = roughness.ToString(CultureInfo.InvariantCulture);
+        return TriangleGltf(
+            Path.Combine(folder, "painted.gltf"),
+            $$"""
+              {
+                "name": "Imported",
+                "pbrMetallicRoughness": {
+                  "baseColorTexture": { "index": 0 },
+                  "metallicRoughnessTexture": { "index": 1 },
+                  "roughnessFactor": {{factor}},
+                  "metallicFactor": 1
+                },
+                "normalTexture": { "index": 2 }
+              }
+              """,
+            ["colour.png", "packed.png", "normal.png"]
+        );
+    }
+
+    /// <summary>A glTF of one triangle wearing one material, whose pictures are textures in the order given.</summary>
+    static string TriangleGltf(string path, string material, IReadOnlyList<string> pictures) {
         var floats = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1 };
         var bytes = new byte[floats.Length * 4];
         Buffer.BlockCopy(floats, 0, bytes, 0, bytes.Length);
-        var factor = roughness.ToString(CultureInfo.InvariantCulture);
-        var path = Path.Combine(folder, "painted.gltf");
+        var textures = string.Join(", ", pictures.Select(static (_, at) => $"{{ \"source\": {at} }}"));
+        var images = string.Join(", ", pictures.Select(static picture => $"{{ \"uri\": \"{picture}\" }}"));
         File.WriteAllText(
             path,
             $$"""
               {
                 "asset": { "version": "2.0" },
+                "extensionsUsed": ["KHR_texture_transform", "KHR_materials_emissive_strength"],
                 "scene": 0,
                 "scenes": [{ "nodes": [0] }],
                 "nodes": [{ "mesh": 0, "name": "Tri" }],
@@ -325,18 +347,9 @@ public sealed partial class StackProcessTests {
                   "name": "Tri",
                   "primitives": [{ "attributes": { "POSITION": 0, "TEXCOORD_0": 1 }, "material": 0 }]
                 }],
-                "materials": [{
-                  "name": "Imported",
-                  "pbrMetallicRoughness": {
-                    "baseColorTexture": { "index": 0 },
-                    "metallicRoughnessTexture": { "index": 1 },
-                    "roughnessFactor": {{factor}},
-                    "metallicFactor": 1
-                  },
-                  "normalTexture": { "index": 2 }
-                }],
-                "textures": [{ "source": 0 }, { "source": 1 }, { "source": 2 }],
-                "images": [{ "uri": "colour.png" }, { "uri": "packed.png" }, { "uri": "normal.png" }],
+                "materials": [{{material}}],
+                "textures": [{{textures}}],
+                "images": [{{images}}],
                 "buffers": [{
                   "byteLength": {{bytes.Length}},
                   "uri": "data:application/octet-stream;base64,{{Convert.ToBase64String(bytes)}}"

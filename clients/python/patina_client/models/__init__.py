@@ -30,6 +30,7 @@ from .brush_preset_create_request import BrushPresetCreateRequest
 from .brush_preset_info import BrushPresetInfo
 from .brush_preset_list import BrushPresetList
 from .brush_preset_update_request import BrushPresetUpdateRequest
+from .build_comparison import BuildComparison
 from .build_preview import BuildPreview
 from .build_preview_project import BuildPreviewProject
 from .build_request import BuildRequest
@@ -64,6 +65,7 @@ from .export_preset_texture_document import ExportPresetTextureDocument
 from .export_preset_write import ExportPresetWrite
 from .export_report import ExportReport
 from .export_set_options import ExportSetOptions
+from .file_comparison import FileComparison
 from .file_formats import FileFormats
 from .folder_cost import FolderCost
 from .folder_create_request import FolderCreateRequest
@@ -195,6 +197,7 @@ from .material_use_request import MaterialUseRequest
 from .mesh_facts import MeshFacts
 from .mesh_material_facts import MeshMaterialFacts
 from .mesh_part_facts import MeshPartFacts
+from .output_comparison import OutputComparison
 from .output_report import OutputReport
 from .package_compound import PackageCompound
 from .package_dependency import PackageDependency
@@ -208,6 +211,7 @@ from .project_bake_request import ProjectBakeRequest
 from .project_bake_settings import ProjectBakeSettings
 from .project_check_settings import ProjectCheckSettings
 from .project_checks_request import ProjectChecksRequest
+from .project_comparison import ProjectComparison
 from .project_contents import ProjectContents
 from .project_create_request import ProjectCreateRequest
 from .project_document_copy_request import ProjectDocumentCopyRequest
@@ -439,6 +443,7 @@ __all__ = (
     "BrushPresetInfo",
     "BrushPresetList",
     "BrushPresetUpdateRequest",
+    "BuildComparison",
     "BuildPreview",
     "BuildPreviewProject",
     "BuildRequest",
@@ -473,6 +478,7 @@ __all__ = (
     "ExportPresetWrite",
     "ExportReport",
     "ExportSetOptions",
+    "FileComparison",
     "FileFormats",
     "FolderCost",
     "FolderCreateRequest",
@@ -604,6 +610,7 @@ __all__ = (
     "MeshFacts",
     "MeshMaterialFacts",
     "MeshPartFacts",
+    "OutputComparison",
     "OutputReport",
     "PackageCompound",
     "PackageDependency",
@@ -617,6 +624,7 @@ __all__ = (
     "ProjectBakeSettings",
     "ProjectCheckSettings",
     "ProjectChecksRequest",
+    "ProjectComparison",
     "ProjectContents",
     "ProjectCreateRequest",
     "ProjectDocumentCopyRequest",

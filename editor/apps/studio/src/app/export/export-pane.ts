@@ -656,6 +656,14 @@ function lanesOf(hex: string): number[] {
               <span>Failed</span>
               <span class="readout" data-testid="export-report-failed">{{ report.failed }}</span>
             </div>
+            @if (store.comparison(); as compared) {
+              <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-comparison">
+                <span>Files changed since the last build</span>
+                <span class="readout" data-testid="export-comparison-changed">{{ compared.changedFiles }}</span>
+                <span>Files the same</span>
+                <span class="readout" data-testid="export-comparison-same">{{ compared.sameFiles }}</span>
+              </div>
+            }
             @if (report.nothing; as nothing) {
               <xui-callout color="warning" compact data-testid="export-report-nothing">{{ nothing }}</xui-callout>
             }
