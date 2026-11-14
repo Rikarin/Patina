@@ -50,14 +50,17 @@ public sealed record ProjectCheckSettings {
     ///     for any it leaves at zero.
     /// </summary>
     /// <param name="preset">The export preset's id, or null for the project's own limits.</param>
-    public ProjectCheckSettings For(string? preset) =>
-        Platforms.FirstOrDefault(platform => platform.Preset == preset) is { } own
-            ? this with {
-                MemoryBudget = own.MemoryBudget > 0 ? own.MemoryBudget : MemoryBudget,
-                MaxSize = own.MaxSize > 0 ? own.MaxSize : MaxSize,
-                TexelDensity = own.TexelDensity > 0 ? own.TexelDensity : TexelDensity
-            }
-            : this;
+    public ProjectCheckSettings For(string? preset) {
+        if (Platforms.FirstOrDefault(platform => platform.Preset == preset) is not { } own) {
+            return this;
+        }
+
+        return this with {
+            MemoryBudget = own.MemoryBudget > 0 ? own.MemoryBudget : MemoryBudget,
+            MaxSize = own.MaxSize > 0 ? own.MaxSize : MaxSize,
+            TexelDensity = own.TexelDensity > 0 ? own.TexelDensity : TexelDensity
+        };
+    }
 
     /// <summary>Two settings are equal when their numbers are, and their platforms in the same order.</summary>
     public bool Equals(ProjectCheckSettings? other) =>

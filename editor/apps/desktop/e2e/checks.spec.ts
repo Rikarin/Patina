@@ -122,11 +122,12 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
     .poll(() => readFileSync(projectFile(), 'utf8'), { timeout: 10_000 })
     .toMatch(/platforms:[\s\S]*maxSize: 16/u);
 
-  // Every set of the project at once: the one open is measured, and holds the same limit.
+  // Every set of the mesh at once, each held to the same limit, and measured where it is open.
   await window.getByRole('radio', { name: 'All sets' }).click();
   await window.getByTestId('checks-run').click();
-  await expect(window.getByTestId('checks-set')).toHaveCount(1, { timeout: 120_000 });
-  await expect(window.getByTestId('checks-project-memory')).toHaveText(/ MB for 1 set with Godot/u);
-  await expect(window.getByTestId('checks-set').locator('[data-code="texture-too-large"]')).toBeVisible();
-  await expect(window.getByTestId('checks-unmeasured')).toHaveCount(0);
+  const sets = window.getByTestId('checks-set');
+  await expect(sets).toHaveCount(2, { timeout: 120_000 });
+  await expect(window.getByTestId('checks-project-memory')).toHaveText(/ MB for 2 sets with Godot/u);
+  await expect(sets.locator('[data-code="texture-too-large"]')).toHaveCount(2);
+  await expect(sets.filter({ hasText: 'Gold' }).getByTestId('checks-unmeasured')).toHaveCount(0);
 });

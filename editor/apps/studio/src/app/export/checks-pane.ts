@@ -7,7 +7,8 @@ import type {
   PlatformCheckLimits,
   ProjectCheckSettings,
   ProjectChecks,
-  StackChecks
+  StackChecks,
+  StackState
 } from '@patina/api-client';
 import { unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
@@ -134,125 +135,126 @@ const Limits: readonly Limit[] = [
           <span class="text-foreground-muted text-xs" data-testid="checks-stale">Edited since</span>
         }
       </div>
-      @if (projectPath() && presets().length > 0) {
-        <label class="flex shrink-0 items-center gap-2 px-2 py-1 text-xs" title="The platform to check the sets for">
-          <span class="text-foreground-muted w-24 shrink-0">Platform</span>
-          <xui-select
-            class="min-w-0 flex-1"
-            aria-label="Platform"
-            data-testid="checks-platform"
-            [filterable]="false"
-            [itemText]="platformName"
-            [items]="platforms()"
-            [value]="platform()"
-            (valueChange)="choosePlatform($event)"
-          />
-        </label>
-      }
-      <ng-template #problemList let-checks let-here="here">
-        <ol class="py-1" aria-label="Problems" data-testid="checks-list">
-          @for (problem of checks.problems; track $index) {
-            <li>
-              <button
-                type="button"
-                class="hover:bg-hover flex w-full items-start gap-2 px-2 py-1 text-left text-sm"
-                data-testid="checks-problem"
-                [attr.data-code]="problem.code"
-                [title]="goes(problem, here)"
-                (click)="go(problem, here)"
-              >
-                <span
-                  class="mt-1 size-2 shrink-0 rounded-full"
-                  [class.bg-error]="problem.severity === 'error'"
-                  [class.bg-warning]="problem.severity !== 'error'"
-                  [attr.aria-label]="problem.severity === 'error' ? 'Error' : 'Warning'"
-                ></span>
-                <span class="min-w-0 flex-1">{{ words(problem) }}</span>
-              </button>
-            </li>
-          } @empty {
-            <li class="text-foreground-muted px-2 py-1 text-sm" data-testid="checks-clean">Nothing found.</li>
+      <!-- One scroll below the bar, so a long list never runs under the limits. -->
+      <div class="min-h-0 flex-1 overflow-y-auto">
+        @if (projectPath() && presets().length > 0) {
+          <label class="flex shrink-0 items-center gap-2 px-2 py-1 text-xs" title="The platform to check the sets for">
+            <span class="text-foreground-muted w-24 shrink-0">Platform</span>
+            <xui-select
+              class="min-w-0 flex-1"
+              aria-label="Platform"
+              data-testid="checks-platform"
+              [filterable]="false"
+              [itemText]="platformName"
+              [items]="platforms()"
+              [value]="platform()"
+              (valueChange)="choosePlatform($event)"
+            />
+          </label>
+        }
+        <ng-template #problemList let-checks let-here="here">
+          <ol class="py-1" aria-label="Problems" data-testid="checks-list">
+            @for (problem of checks.problems; track $index) {
+              <li>
+                <button
+                  type="button"
+                  class="hover:bg-hover flex w-full items-start gap-2 px-2 py-1 text-left text-sm"
+                  data-testid="checks-problem"
+                  [attr.data-code]="problem.code"
+                  [title]="goes(problem, here)"
+                  (click)="go(problem, here)"
+                >
+                  <span
+                    class="mt-1 size-2 shrink-0 rounded-full"
+                    [class.bg-error]="problem.severity === 'error'"
+                    [class.bg-warning]="problem.severity !== 'error'"
+                    [attr.aria-label]="problem.severity === 'error' ? 'Error' : 'Warning'"
+                  ></span>
+                  <span class="min-w-0 flex-1">{{ words(problem) }}</span>
+                </button>
+              </li>
+            } @empty {
+              <li class="text-foreground-muted px-2 py-1 text-sm" data-testid="checks-clean">Nothing found.</li>
+            }
+          </ol>
+        </ng-template>
+        @if (scope() === 'set' && result(); as checks) {
+          <dl class="grid shrink-0 grid-cols-[auto_1fr] gap-x-2 px-2 py-1 text-xs" data-testid="checks-summary">
+            <dt class="text-foreground-muted">Texel density</dt>
+            <dd class="readout" data-testid="checks-density">{{ density(checks) }}</dd>
+            <dt class="text-foreground-muted">GPU memory</dt>
+            <dd class="readout" data-testid="checks-memory">{{ memory(checks) }}</dd>
+          </dl>
+          @if (checks.files.length > 0) {
+            <details class="shrink-0 px-2 pb-1 text-xs" data-testid="checks-files">
+              <summary class="text-foreground-muted cursor-pointer">Memory by file</summary>
+              <ul class="mt-1" aria-label="Memory by file">
+                @for (file of checks.files; track file.file) {
+                  <li class="flex items-baseline gap-2" data-testid="checks-file" [title]="held(file)">
+                    <span class="min-w-0 flex-1 truncate">{{ file.file }}</span>
+                    <span class="text-foreground-muted readout">{{ file.width }} × {{ file.height }}</span>
+                    <span class="readout w-16 text-right">{{ size(file.bytes) }}</span>
+                  </li>
+                }
+              </ul>
+            </details>
           }
-        </ol>
-      </ng-template>
-      @if (scope() === 'set' && result(); as checks) {
-        <dl class="grid shrink-0 grid-cols-[auto_1fr] gap-x-2 px-2 py-1 text-xs" data-testid="checks-summary">
-          <dt class="text-foreground-muted">Texel density</dt>
-          <dd class="readout" data-testid="checks-density">{{ density(checks) }}</dd>
-          <dt class="text-foreground-muted">GPU memory</dt>
-          <dd class="readout" data-testid="checks-memory">{{ memory(checks) }}</dd>
-        </dl>
-        @if (checks.files.length > 0) {
-          <details class="shrink-0 px-2 pb-1 text-xs" data-testid="checks-files">
-            <summary class="text-foreground-muted cursor-pointer">Memory by file</summary>
-            <ul class="mt-1" aria-label="Memory by file">
-              @for (file of checks.files; track file.file) {
-                <li class="flex items-baseline gap-2" data-testid="checks-file" [title]="held(file)">
-                  <span class="min-w-0 flex-1 truncate">{{ file.file }}</span>
-                  <span class="text-foreground-muted readout">{{ file.width }} × {{ file.height }}</span>
-                  <span class="readout w-16 text-right">{{ size(file.bytes) }}</span>
-                </li>
-              }
-            </ul>
+          <ng-container *ngTemplateOutlet="problemList; context: { $implicit: checks, here: true }" />
+        } @else if (scope() === 'all' && project(); as all) {
+          <p class="readout shrink-0 px-2 py-1 text-xs" data-testid="checks-project-memory">{{ projectMemory(all) }}</p>
+          <div data-testid="checks-sets">
+            @for (set of all.sets; track set.document) {
+              <section class="border-hairline border-b" data-testid="checks-set" [attr.data-document]="set.document">
+                <h3 class="flex items-baseline gap-2 px-2 pt-1 text-xs font-medium">
+                  <span class="min-w-0 flex-1 truncate">{{ setName(set) }}</span>
+                  <span class="text-foreground-muted readout">{{ size(set.memoryBytes) }}</span>
+                  @if (!set.measured) {
+                    <span
+                      class="text-foreground-muted font-normal"
+                      data-testid="checks-unmeasured"
+                      title="Open the set to measure its texel density, UV layout and values"
+                      >Not measured</span
+                    >
+                  }
+                </h3>
+                <ng-container
+                  *ngTemplateOutlet="problemList; context: { $implicit: set, here: set.stack === state.id }"
+                />
+              </section>
+            } @empty {
+              <p class="text-foreground-muted px-2 py-1 text-sm">The project has no texture sets.</p>
+            }
+          </div>
+        } @else {
+          <p class="text-foreground-muted px-2 py-1 text-sm">
+            {{ running() ? 'Reading the maps…' : 'Check to measure the sets before they are exported.' }}
+          </p>
+        }
+        @if (failure(); as reason) {
+          <p class="text-error px-2 py-1 text-sm" role="alert" data-testid="checks-failure">{{ reason }}</p>
+        }
+        @if (projectPath()) {
+          <details class="border-hairline shrink-0 border-t px-2 py-1" data-testid="checks-limits">
+            <summary class="text-foreground-muted cursor-pointer text-xs">{{ limitsTitle() }}</summary>
+            @for (limit of shownLimits(); track limit.key) {
+              <label class="mt-1 flex items-center gap-2 text-xs" [title]="limitTitle(limit)">
+                <span class="text-foreground-muted w-24 shrink-0">{{ limit.label }}</span>
+                <!-- A limit runs the checks again, so it is kept when it is done being typed, not at each key. -->
+                <input
+                  type="number"
+                  min="0"
+                  class="min-w-0 flex-1"
+                  xuiInput
+                  size="sm"
+                  [attr.data-testid]="'checks-limit-' + limit.key"
+                  [value]="shownLimit(limit)"
+                  (change)="setLimit(limit, $event)"
+                />
+              </label>
+            }
           </details>
         }
-        <div class="min-h-0 flex-1 overflow-y-auto">
-          <ng-container *ngTemplateOutlet="problemList; context: { $implicit: checks, here: true }" />
-        </div>
-      } @else if (scope() === 'all' && project(); as all) {
-        <p class="readout shrink-0 px-2 py-1 text-xs" data-testid="checks-project-memory">{{ projectMemory(all) }}</p>
-        <div class="min-h-0 flex-1 overflow-y-auto" data-testid="checks-sets">
-          @for (set of all.sets; track set.document) {
-            <section class="border-hairline border-b" data-testid="checks-set" [attr.data-document]="set.document">
-              <h3 class="flex items-baseline gap-2 px-2 pt-1 text-xs font-medium">
-                <span class="min-w-0 flex-1 truncate">{{ setName(set) }}</span>
-                <span class="text-foreground-muted readout">{{ size(set.memoryBytes) }}</span>
-                @if (!set.measured) {
-                  <span
-                    class="text-foreground-muted font-normal"
-                    data-testid="checks-unmeasured"
-                    title="Open the set to measure its texel density, UV layout and values"
-                    >Not measured</span
-                  >
-                }
-              </h3>
-              <ng-container
-                *ngTemplateOutlet="problemList; context: { $implicit: set, here: set.stack === state.id }"
-              />
-            </section>
-          } @empty {
-            <p class="text-foreground-muted px-2 py-1 text-sm">The project has no texture sets.</p>
-          }
-        </div>
-      } @else {
-        <p class="text-foreground-muted px-2 py-1 text-sm">
-          {{ running() ? 'Reading the maps…' : 'Check to measure the sets before they are exported.' }}
-        </p>
-      }
-      @if (failure(); as reason) {
-        <p class="text-error px-2 py-1 text-sm" role="alert" data-testid="checks-failure">{{ reason }}</p>
-      }
-      @if (projectPath()) {
-        <details class="border-hairline shrink-0 border-t px-2 py-1" data-testid="checks-limits">
-          <summary class="text-foreground-muted cursor-pointer text-xs">{{ limitsTitle() }}</summary>
-          @for (limit of shownLimits(); track limit.key) {
-            <label class="mt-1 flex items-center gap-2 text-xs" [title]="limitTitle(limit)">
-              <span class="text-foreground-muted w-24 shrink-0">{{ limit.label }}</span>
-              <!-- A limit runs the checks again, so it is kept when it is done being typed, not at each key. -->
-              <input
-                type="number"
-                min="0"
-                class="min-w-0 flex-1"
-                xuiInput
-                size="sm"
-                [attr.data-testid]="'checks-limit-' + limit.key"
-                [value]="shownLimit(limit)"
-                (change)="setLimit(limit, $event)"
-              />
-            </label>
-          }
-        </details>
-      }
+      </div>
     } @else {
       <xui-non-ideal-state
         class="flex-1"
@@ -279,6 +281,8 @@ export class ChecksPane {
   protected readonly project = signal<ProjectChecks | null>(null);
   protected readonly running = signal(false);
   protected readonly failure = signal<string | null>(null);
+  /** Whether a check was asked for while one ran. */
+  private again = false;
   /** The revision of the set the result was measured at. */
   private readonly measuredAt = signal<{ id: string; revision: number } | null>(null);
   protected readonly stale = computed(() => {
@@ -318,13 +322,32 @@ export class ChecksPane {
     });
   }
 
-  /** Checks the set in front, or every set of the project, for the platform chosen. */
+  /**
+   * Checks the set in front, or every set of the project, for the platform chosen. A check asked for while one runs,
+   * after a limit or the platform changed, runs when it ends, or the list would answer what was asked before.
+   */
   async run(): Promise<void> {
     const state = this.stack();
-    if (state === null || this.running()) {
+    if (state === null) {
       return;
     }
 
+    if (this.running()) {
+      this.again = true;
+      return;
+    }
+
+    try {
+      await this.runOnce(state);
+    } finally {
+      if (this.again) {
+        this.again = false;
+        await this.run();
+      }
+    }
+  }
+
+  private async runOnce(state: StackState): Promise<void> {
     this.running.set(true);
     this.failure.set(null);
     const preset = this.platform() === Own ? {} : { preset: this.platform() };

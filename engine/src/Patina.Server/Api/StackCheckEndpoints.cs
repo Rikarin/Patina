@@ -22,7 +22,8 @@ static class StackCheckEndpoints {
                 "Checks the texture set before export, against its project's budget, size limit, texel density and "
                 + "export preset, and its layout and values against what a mesh and a physical material can have. Each "
                 + "problem has a stable code and where it is. A preset checks it for that platform, with the limits "
-                + "the project keeps for it. " + PresetQuery,
+                + "the project keeps for it. "
+                + PresetQuery,
                 StatusCodes.Status404NotFound,
                 StatusCodes.Status422UnprocessableEntity,
                 StatusCodes.Status503ServiceUnavailable
@@ -134,7 +135,9 @@ static class StackCheckEndpoints {
         return (unopened.State with { Id = string.Empty }, null);
     }
 
-    /// <summary>What the Worker measured of an open set, or null when it could not, and the set is judged unmeasured.</summary>
+    /// <summary>
+    ///     What the Worker measured of an open set, or null when it could not, and the set is judged unmeasured.
+    /// </summary>
     static async Task<StackMeasured?> MeasuredAsync(
         StackEvaluator evaluator,
         StackSession session,

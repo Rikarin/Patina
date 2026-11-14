@@ -92,8 +92,9 @@ def sync_detailed(
 
 ) -> Response[ProblemDetails | ProjectContents]:
     """ Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory
-    budget, a size limit and a texel density, which GET /stacks/{id}/checks and the texel density view
-    measure against.
+    budget, a size limit and a texel density, and limits of their own for each platform it ships to, by
+    the export preset that writes for it. GET /stacks/{id}/checks, GET /library/project/checks and the
+    texel density view measure against them.
 
     Args:
         body (ProjectChecksRequest): The body of `PUT /api/v1/library/project/checks`.
@@ -125,8 +126,9 @@ def sync(
 
 ) -> ProblemDetails | ProjectContents | None:
     """ Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory
-    budget, a size limit and a texel density, which GET /stacks/{id}/checks and the texel density view
-    measure against.
+    budget, a size limit and a texel density, and limits of their own for each platform it ships to, by
+    the export preset that writes for it. GET /stacks/{id}/checks, GET /library/project/checks and the
+    texel density view measure against them.
 
     Args:
         body (ProjectChecksRequest): The body of `PUT /api/v1/library/project/checks`.
@@ -153,8 +155,9 @@ async def asyncio_detailed(
 
 ) -> Response[ProblemDetails | ProjectContents]:
     """ Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory
-    budget, a size limit and a texel density, which GET /stacks/{id}/checks and the texel density view
-    measure against.
+    budget, a size limit and a texel density, and limits of their own for each platform it ships to, by
+    the export preset that writes for it. GET /stacks/{id}/checks, GET /library/project/checks and the
+    texel density view measure against them.
 
     Args:
         body (ProjectChecksRequest): The body of `PUT /api/v1/library/project/checks`.
@@ -186,8 +189,9 @@ async def asyncio(
 
 ) -> ProblemDetails | ProjectContents | None:
     """ Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory
-    budget, a size limit and a texel density, which GET /stacks/{id}/checks and the texel density view
-    measure against.
+    budget, a size limit and a texel density, and limits of their own for each platform it ships to, by
+    the export preset that writes for it. GET /stacks/{id}/checks, GET /library/project/checks and the
+    texel density view measure against them.
 
     Args:
         body (ProjectChecksRequest): The body of `PUT /api/v1/library/project/checks`.
