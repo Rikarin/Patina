@@ -164,7 +164,13 @@ public static class ExportMaterials {
     /// <summary>A MaterialX document with a standard_surface material.</summary>
     public const string MaterialX = "mtlx";
 
-    public static IReadOnlyList<string> All { get; } = [Gltf, Usd, MaterialX];
+    /// <summary>
+    ///     A MaterialX 1.39 document with an open_pbr_surface material (#142), written as <c>.openpbr.mtlx</c> so it
+    ///     can sit beside a standard surface one.
+    /// </summary>
+    public const string OpenPbr = "openpbr";
+
+    public static IReadOnlyList<string> All { get; } = [Gltf, Usd, MaterialX, OpenPbr];
 
     /// <summary>A material file's name for a person.</summary>
     public static string LabelOf(string kind) =>
@@ -172,8 +178,12 @@ public static class ExportMaterials {
             Gltf => "glTF material",
             Usd => "USD preview surface",
             MaterialX => "MaterialX standard surface",
+            OpenPbr => "MaterialX OpenPBR surface",
             _ => kind
         };
+
+    /// <summary>What a material file's name ends in, with its leading dot.</summary>
+    public static string ExtensionOf(string kind) => kind == OpenPbr ? ".openpbr.mtlx" : $".{kind}";
 }
 
 /// <summary>The file formats a preset can name.</summary>
@@ -192,7 +202,14 @@ public static class ExportFormats {
     public const string WebP = "webp";
     public const string Hdr = "hdr";
 
-    /// <summary>A PNG as deep as the maps it reads (#141): 8-bit, or 16-bit for linear numbers from deeper maps.</summary>
+    /// <summary>The JPEG quality a preset that names none gets.</summary>
+    public const int DefaultJpegQuality = 90;
+
+    public static IReadOnlyList<string> All { get; } =
+        [Png8, Png16, Png, Tga, Jpeg, Tiff8, Tiff16, Tiff32, Tiff, WebP, Exr16, Exr32, Exr, Hdr, Ktx2, Dds];
+
+    /// <summary>A PNG as deep as the maps it reads (#141): 8-bit, or 16-bit for linear numbers from deeper maps.
+    /// </summary>
     public const string Png = "png";
 
     /// <summary>A TIFF as deep as the maps it reads: 8-bit, or 16-bit or 32-bit float for linear numbers.</summary>
@@ -200,12 +217,6 @@ public static class ExportFormats {
 
     /// <summary>An OpenEXR as deep as the maps it reads: 16-bit float, or 32-bit float for 32-bit maps.</summary>
     public const string Exr = "exr";
-
-    /// <summary>The JPEG quality a preset that names none gets.</summary>
-    public const int DefaultJpegQuality = 90;
-
-    public static IReadOnlyList<string> All { get; } =
-        [Png8, Png16, Png, Tga, Jpeg, Tiff8, Tiff16, Tiff32, Tiff, WebP, Exr16, Exr32, Exr, Hdr, Ktx2, Dds];
 
     /// <summary>
     ///     Whether a format's depth follows the maps a file reads (#141), as a channel is painted, and is settled for

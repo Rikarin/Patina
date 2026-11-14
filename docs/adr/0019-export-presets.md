@@ -44,7 +44,7 @@ the top level and in a texture.
 | `filter` | no | `box`, `bilinear` or `nearest`: how a file changes size | `box` |
 | `dither` | no | `true` or `false`: 8-bit files round up by chance, not to the nearest level | `false` |
 | `padding` | no | see Padding | `none` |
-| `materials` | no | a list of `gltf`, `usda`, `mtlx`, each once | none |
+| `materials` | no | a list of `gltf`, `usda`, `mtlx`, `openpbr`, each once | none |
 | `textures` | yes | a list of one or more textures, no two with the same `file` | |
 
 ### A texture
@@ -173,6 +173,12 @@ material per tile, `{project}_1001.gltf` and so on, as USD and MaterialX also do
 | Normal | only a `y-up` preset | scale and bias turn a `y-down` normal over | a `y-down` normal is turned over before `normalmap` |
 | Occlusion, height, emissive, specular | occlusion from red; emissive sRGB | all four; specular as `useSpecularWorkflow` when there is no metalness | emissive; no occlusion, height or specular, which are said |
 | Image formats | PNG, JPEG, WebP through `EXT_texture_webp` (then required) | PNG, JPEG, TGA, HDR, EXR | PNG, JPEG, TGA, HDR, EXR |
+
+**OpenPBR** (`openpbr`, #142) is the MaterialX writer again, at version 1.39 with an `open_pbr_surface` in place of the
+standard surface, written as `<stem>.openpbr.mtlx` so it can sit beside a `.mtlx` of the same set. Its inputs are
+OpenPBR's: `base_metalness`, `geometry_normal` and `geometry_opacity` (one number, with no `convert`), and an emissive
+map sets `emission_luminance` to 1, as MaterialX's own translation from standard surface carries `emission`. It is the
+first step to OpenPBR as Patina's own model; its channels beyond the metal-roughness nine are not painted yet.
 
 The glTF writer is Vixen's, so there is one glTF writer; Vixen's `ModelReader` reads every slot back, the emissive one
 included, and its tests read a written material through Assimp. The USD and MaterialX writers are Patina's: they describe

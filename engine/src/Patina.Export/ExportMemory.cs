@@ -24,7 +24,10 @@ public static class ExportMemory {
             _ => format switch {
                 // A format that follows its maps is counted at the deepest it can be, which a budget must allow for.
                 ExportFormats.Png16 or ExportFormats.Png or ExportFormats.Tiff16 or ExportFormats.Exr16 => 2 * held,
-                ExportFormats.Exr32 or ExportFormats.Exr or ExportFormats.Tiff32 or ExportFormats.Tiff
+                ExportFormats.Exr32
+                    or ExportFormats.Exr
+                    or ExportFormats.Tiff32
+                    or ExportFormats.Tiff
                     or ExportFormats.Hdr => 4 * held,
                 _ => held
             }

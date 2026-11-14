@@ -157,7 +157,7 @@ public sealed class OutputBuilders(
             }
         );
 
-        var manifest = Painted(Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Down)), set);
+        var manifest = PaintedMaps.Of(Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Down)), set);
         if (manifest.Maps is not [var first, ..]
             || Coverage(step, set.UvSet, first.Width, first.Height) is not { } laid) {
             return manifest;
@@ -174,21 +174,6 @@ public sealed class OutputBuilders(
             }
             : manifest with { Udim = laid.Udim };
     }
-
-    /// <summary>
-    ///     A stack's maps as deep as its channels are painted (#141), not as deep as the set computed them: a channel
-    ///     painted at eight bits is an eight-bit map to an export whose file follows the channel, though the composite
-    ///     ran at sixteen.
-    /// </summary>
-    static BuildManifest Painted(BuildManifest manifest, TextureSetAsset set) =>
-        manifest with {
-            Maps = [
-                ..manifest.Maps.Select(map => set.Channels.Find(channel => channel.Usage == map.Map) is { } channel
-                    ? map with { Depth = PaintTexelFormats.BytesPerTexel(channel.Format) * 2 }
-                    : map
-                )
-            ]
-        };
 
     /// <summary>
     ///     Which texels of the stack's mesh layout its texture set covers, one where it does: what an export's padding
@@ -355,6 +340,23 @@ static class MeshMapSettings {
             : int.TryParse(text, CultureInfo.InvariantCulture, out var number)
                 ? number
                 : throw new InvalidDataException($"The setting '{name}' has to be a whole number, and it is '{text}'.");
+}
+
+/// <summary>
+///     A stack's maps as deep as its channels are painted (#141), not as deep as the set computed them: a channel
+///     painted at eight bits is an eight-bit map to an export whose file follows the channel, though the composite ran
+///     at sixteen.
+/// </summary>
+static class PaintedMaps {
+    public static BuildManifest Of(BuildManifest manifest, TextureSetAsset set) =>
+        manifest with {
+            Maps = [
+                ..manifest.Maps.Select(map => set.Channels.Find(channel => channel.Usage == map.Map) is { } channel
+                        ? map with { Depth = PaintTexelFormats.BytesPerTexel(channel.Format) * 2 }
+                        : map
+                )
+            ]
+        };
 }
 
 /// <summary>A plan image's bytes as numbers, keeping how many bits they had.</summary>

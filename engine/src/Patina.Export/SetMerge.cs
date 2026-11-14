@@ -192,9 +192,7 @@ public static class SetMerge {
             }
         );
         return first with {
-            Name = name,
-            Image = new(width, height, lanes, samples),
-            Depth = held.Max(static map => map?.Depth ?? 0)
+            Name = name, Image = new(width, height, lanes, samples), Depth = held.Max(static map => map?.Depth ?? 0)
         };
     }
 

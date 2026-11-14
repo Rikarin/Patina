@@ -1,5 +1,4 @@
 using Patina.Export.Presets;
-using Vixen.Core.Imaging;
 
 namespace Patina.Export.Tests;
 
@@ -85,7 +84,7 @@ public sealed class ChannelDepthExportTests : IDisposable {
         Assert.NotEqual(Between, MapPictures.ReadFile(Path.Combine(Where("narrow"), narrow.File)).Samples[0], 4);
     }
 
-    /// <summary>An EXR reading a map computed at 32 bits is a 32-bit float file, and a 16-bit map's a half one.</summary>
+    /// <summary>An EXR reading a map computed at 32 bits is a 32-bit float file, and a 16-bit map's a half.</summary>
     [Fact]
     public void An_exr_is_float_only_where_a_map_is() {
         var maps = new Dictionary<string, MapPicture> {
@@ -99,10 +98,15 @@ public sealed class ChannelDepthExportTests : IDisposable {
         Assert.Equal(ExportFormats.Exr16, Assert.Single(half.Files).Format);
     }
 
-    /// <summary>A following format holds what its family holds: an EXR is linear, as a 16-bit or float file is.</summary>
+    /// <summary>A following format holds what its family holds: an EXR is linear, as every float file is.</summary>
     [Fact]
     public void A_following_exr_refuses_srgb_numbers_and_a_png_takes_them() {
-        Assert.Throws<ExportPresetException>(static () => Preset("exr", "srgb", "[baseColor.r, baseColor.g, baseColor.b]"));
+        Assert.Throws<ExportPresetException>(static () => Preset(
+                "exr",
+                "srgb",
+                "[baseColor.r, baseColor.g, baseColor.b]"
+            )
+        );
         Assert.Equal("png", Preset("png", "srgb", "[baseColor.r, baseColor.g, baseColor.b]").Textures[0].Format);
     }
 

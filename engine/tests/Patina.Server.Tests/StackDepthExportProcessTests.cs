@@ -1,7 +1,6 @@
 using Patina.Bench;
 using Patina.Contracts;
 using Patina.Library;
-using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
 
@@ -11,8 +10,8 @@ public sealed partial class StackProcessTests {
     const int PngDepthAt = 24;
 
     /// <summary>
-    ///     A project preset of two PNGs that follow their maps: the height painted at 16-bit float is written as a 16-bit
-    ///     PNG holding a value eight bits round away, and the roughness painted at eight bits stays an 8-bit PNG.
+    ///     A project preset of two PNGs that follow their maps: the height painted at 16-bit float is written as a
+    ///     16-bit PNG holding a value eight bits round away, and the roughness painted at eight bits stays an 8-bit PNG.
     /// </summary>
     [Fact]
     public async Task A_png_that_follows_its_maps_is_as_deep_as_its_channel_is_painted() {
@@ -45,10 +44,9 @@ public sealed partial class StackProcessTests {
         );
 
         var state = await OpenAsync($"projects/{project}/housing.vxlayers", deadline.Token);
-        foreach (var usage in (string[])["height", "roughness"]) {
-            if (state.Channels.All(channel => channel.Usage != usage)) {
-                await EditAsync(state.Id, deadline.Token, new StackAddChannel(usage));
-            }
+        var held = state.Channels.Select(static channel => channel.Usage).ToHashSet(StringComparer.Ordinal);
+        foreach (var usage in ((string[])["height", "roughness"]).Where(usage => !held.Contains(usage))) {
+            await EditAsync(state.Id, deadline.Token, new StackAddChannel(usage));
         }
 
         await EditAsync(state.Id, deadline.Token, new StackSetChannelFormat("height", "Rgba16Float"));
