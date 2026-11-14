@@ -19,15 +19,22 @@ public sealed class MeshCompoundTests {
         "Generators/Distance From Point",
         "Generators/Drips",
         "Generators/Edge Select",
+        "Generators/Frayed Edges",
         "Generators/Ground Grime",
+        "Generators/ID Mask",
         "Generators/Light",
         "Generators/Linear Gradient",
         "Generators/Moss",
         "Generators/Paint Chips",
+        "Generators/Splashes",
         "Generators/Sun Fade",
+        "Generators/Surface Scratches",
+        "Generators/Thin Parts",
+        "Generators/Water Line",
         "Stylised/Baked Lighting",
         "Photo/Clone Patch",
         "Photo/Fix Seams",
+        "Photo/Textured Fill",
         "Stylised/Comic",
         "Stylised/Environment Lighting",
         "Stylised/Oil Paint",
@@ -168,6 +175,32 @@ public sealed class MeshCompoundTests {
             Assert.True(Mean(picture, middle, 8..^8) > 0.9, $"{path} misses its own band.");
             Assert.True(Mean(picture, other, 8..^8) < 0.02, $"{path} takes the other band.");
             Assert.True(Mean(picture, 100..120, 8..^8) < 0.02, $"{path} takes the flat.");
+        }
+    }
+
+    /// <summary>
+    ///     Wave 14's single generators pick what they say and leave the rest (#177): the stand-in's thickness climbs
+    ///     from thin on the left to thick on the right, its position climbs up the picture, and its ID bake is red on
+    ///     the left and blue on the right.
+    /// </summary>
+    [Theory]
+    [InlineData("Generators/Thin Parts", "left")]
+    [InlineData("Generators/Water Line", "bottom")]
+    [InlineData("Generators/ID Mask", "left")]
+    public void A_generator_picks_its_part_of_the_stand_in_and_leaves_the_rest(string path, string picked) {
+        if (Device() is not { } device) {
+            return;
+        }
+
+        using (device) {
+            var (compiler, graph) = Containing(path, out _, out _);
+            var picture = Bake(device, compiler, graph)["baseColor"];
+            var (own, other) = picked == "left"
+                ? (Mean(picture, ..(Side / 5), ..), Mean(picture, ^(Side / 5).., ..))
+                : (Mean(picture, .., ^(Side / 8)..), Mean(picture, .., ..(Side / 2)));
+
+            Assert.True(own > 0.3, $"{path} misses its own part: {own:0.000}");
+            Assert.True(other < 0.02, $"{path} takes the rest: {other:0.000}");
         }
     }
 

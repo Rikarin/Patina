@@ -1,0 +1,54 @@
+version: 1
+name: Frayed Edges
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: curvature } }
+  - { id: 2, type: Filters/Blur HQ, x: -960, y: 0, values: { Sigma: [1.5] } }
+  - { id: 3, type: Colour/Histogram Equalise, x: -640, y: 0 }
+  - { id: 4, type: Colour/Levels, x: -320, y: 200, values: { Input Black: [0.502], Input White: [0.506] } }
+  - id: 5
+    type: Colour/Levels
+    x: -320
+    y: 0
+    texts:
+      '=Input Black': '1f - amount * 0.5f'
+      '=Input White': '1f - amount * 0.5f + 0.06f'
+  - { id: 6, type: Colour/Blend, x: 0, y: 0, texts: { Mode: Multiply } }
+  - { id: 7, type: Source/Noise, x: -640, y: 400, values: { Octaves: [3], Gain: [0.5], Scale Y: [0.0625] }, texts: { Basis: Gradient, '=Scale': '64f + fibre * 192f', '=Seed': seed } }
+  - id: 8
+    type: Filters/Pixel Processor
+    x: 320
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(a.x * smoothstep(x * 0.8f - 0.05f, x * 0.8f + 0.05f, b.x), 0f, 0f, 1f)'
+      '=X': 'fray'
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Background }
+  - { fromNode: 4, fromPort: Out, toNode: 6, toPort: Foreground }
+  - { fromNode: 6, fromPort: Out, toNode: 8, toPort: A }
+  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: B }
+  - { fromNode: 8, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'White on the convex edges, torn into fine strands, as glass fibre, cloth or bark frays where it is worn.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'The convex edges of the model, frayed into fine strands along the layout rather than worn smoothly back.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.3', summary: 'How much of the edges is taken, sharpest first.', kind: Float, minimum: 0, maximum: 1, group: Edges }
+  - { name: fray, label: Fray, default: '0.5', summary: 'How much of the edge is torn into strands. Nought is a clean edge.', kind: Float, minimum: 0, maximum: 1, group: Edges }
+  - { name: fibre, label: Fibre, default: '0.5', summary: 'How fine the strands are: low is coarse, high is many fine ones.', kind: Float, minimum: 0, maximum: 1, group: Edges }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the strands. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Edges }
