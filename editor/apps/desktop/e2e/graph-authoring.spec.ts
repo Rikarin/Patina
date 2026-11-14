@@ -321,7 +321,7 @@ test('says what the graph is about, and publishes it as a package with what it r
 
   // Sent as one file, it comes back in through File, Import Package…, in place of the one that went.
   const source = readdirSync(join(library, 'projects'), { recursive: true, encoding: 'utf8' }).find(file =>
-    file.endsWith(`${Name}.vxtexgraph`)
+    file.endsWith(`${Name.replaceAll(' ', '_')}.vxtexgraph`)
   );
   expect(source).toBeDefined();
   const sent = join(scratch, 'sent');
