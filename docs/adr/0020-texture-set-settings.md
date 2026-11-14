@@ -58,11 +58,27 @@ replay would have redrawn it sharp. And a layer painted at 4096 is painted again
 
 ### Bit depth
 
-Paint stays RGBA8 (`PaintImage`). A 16-bit or float channel needs a second texel width through the tile cache, the
-stroke kernels, the undo snapshots and the `.vxpaint` format, and the evaluator already holds 16F and 32F results, so
-the decision is to add depth to a *channel* in Vixen's paint image, chosen per channel in the set's settings, and to
-treat today's 8-bit canvases as that channel's first format. Nothing in Patina depends on the width of a texel beyond
-`PaintImage.BytesPerTexel`, which is where it starts. Not done in this ADR.
+The width of a texel is a channel's (`ChannelAsset.Format`, `format:` in the stack file when not 8-bit), one of Vixen's
+`PaintTexelFormat`: `Rgba8`, `Rgba16Float` or `Rgba32Float`. Floats and not sixteen-bit integers, because they are what
+the evaluator already holds between kernels, so a wide channel is uploaded as it is held. `setChannelFormat` changes one
+channel's as one undo step, *Channel depth*, and the state's `channels[].format` and the vocabulary's `formats` say them.
+
+- **A stroke holds every value in four float lanes** and rounds only where it writes, to the image's width, so an 8-bit
+  channel paints the bytes it always did (two digests from the build before pin it) and a wide one keeps what eight
+  bits round away. The Server journals the colour in full beside the packed one (`StackPaintPart.Lanes`) for a stroke
+  at a wider width.
+- **Widened, never narrowed, as a canvas is enlarged and never shrunk.** The Server decides the width a stroke paints at
+  and journals it (`StackPaintPart.Format`, wire version 20): what the set asks, unless the channel already holds more,
+  which keeps its width so no paint is rounded, or a stroke of this session began on the canvas, whose undo holds the
+  image it painted over, which keeps its width until the document is opened again (nothing is refused). The Worker
+  widens a channel exactly into a new canvas that shares the other channels' images (`PaintCanvas.Formatted`), so
+  their undo still names the images the canvas holds, and a replay after a lost Worker paints at the width the
+  journal says.
+- **The file.** A canvas with a wide channel is a `.vxpaint` of version 4, where each channel says its format; a canvas
+  of 8-bit channels is still written as version 3, byte for byte.
+
+What it costs: a 16-bit channel is twice the memory and file of an 8-bit one, a 32-bit four times. A clone, a projected
+picture and a material read their sources at eight bits a lane.
 
 ## UV sets (#210)
 

@@ -85,6 +85,9 @@ public static class Refusals {
 
     // Here and not among the stroke codes above: SK7020 honours no suppression, and reads an unbroken run of codes as a
     // clone of the Worker's message types.
+    /// <summary>A channel depth that is none of the vocabulary's formats (#19). Values: <c>format</c>, as sent.</summary>
+    public const string ChannelFormatUnknown = "channel-format-unknown";
+
     /// <summary>A channel taken off a texture set that does not have it. Values: <c>channel</c>, its name.</summary>
     public const string ChannelMissing = "channel-missing";
 

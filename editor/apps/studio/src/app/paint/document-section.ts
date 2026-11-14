@@ -148,6 +148,18 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
             />
           </dd>
         }
+        @if (channelDepth(); as depth) {
+          <dt class="text-foreground-muted" [title]="depthHint">{{ nameOf(store.channel()) }} depth</dt>
+          <dd data-testid="paint-channel-depth" [title]="depthHint">
+            <xui-segmented-control
+              size="sm"
+              aria-label="Channel depth"
+              [options]="depths()"
+              [value]="depth"
+              (valueChange)="setDepth($event)"
+            />
+          </dd>
+        }
         @if (state.meshMaps) {
           <dt class="text-foreground-muted" [title]="bakedNormalHint">Baked normal</dt>
           <dd data-testid="texture-set-baked-normal" [title]="bakedNormalHint">
@@ -300,6 +312,28 @@ export class DocumentSection {
     'model. Off, the paint keeps its place on the map and lands wherever the new layout puts that.';
   protected readonly heightNormalHint =
     'A height channel lights the surface through the normal. Smooth blurs it a texel first.';
+  protected readonly depthHint =
+    'How finely strokes hold the channel being painted. 16-bit and 32-bit float keep the steps 8-bit rounds away, which ' +
+    'a painted height shows in its normal, at two and four times the memory. A layer painted before is widened, ' +
+    'exactly, by its next stroke, unless it was painted since the document was opened: then when it is opened again.';
+
+  /** The depths the vocabulary offers a channel (#19), as the engine labels them. */
+  protected readonly depths = computed<readonly XuiSegmentedOption[]>(() =>
+    (this.store.vocabulary()?.formats ?? []).map(term => ({ value: term.value, label: term.label }))
+  );
+
+  /** How finely the channel being painted is held, or null for a document that says nothing of it. */
+  protected readonly channelDepth = computed(() => {
+    const painted = this.store.state()?.channels.find(channel => channel.usage === this.store.channel());
+    return painted && this.depths().length > 0 ? painted.format : null;
+  });
+
+  /** Paints the channel at another depth, one undo step. */
+  protected setDepth(format: string | null): void {
+    if (format && format !== this.channelDepth()) {
+      void this.store.edit({ op: 'setChannelFormat', usage: this.store.channel(), format });
+    }
+  }
 
   /** What the engine read of the document's mesh, for its UV sets and the row that says what it is. */
   private readonly facts = signal<MeshFacts | null>(null);

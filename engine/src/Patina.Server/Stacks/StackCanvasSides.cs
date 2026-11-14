@@ -20,6 +20,23 @@ public sealed class StackCanvasSides(string folder) {
     readonly Dictionary<string, (int Width, int Height)> sides = new(StringComparer.Ordinal);
     readonly HashSet<string> stroked = new(StringComparer.Ordinal);
 
+    /// <summary>How wide each channel of each canvas is as a Worker holds it, where it is known.</summary>
+    readonly Dictionary<(string Paint, string Usage), PaintTexelFormat> formats = [];
+
+    /// <summary>
+    ///     How wide the texels are that a stroke paints a canvas's channel at (#19): what the set asks, unless the
+    ///     channel holds more, which keeps its width so that no paint is rounded, or a stroke of this session began on
+    ///     the canvas, whose undo holds the pixels it painted over, which keeps the width it has until it is opened
+    ///     again. A Worker widens a channel to it, exactly. Call after <see cref="Check" />, which reads the canvas.
+    /// </summary>
+    /// <param name="paint">The canvas, beside the stack.</param>
+    /// <param name="usage">The channel.</param>
+    /// <param name="asked">The width the set asks.</param>
+    public PaintTexelFormat Format(string paint, string usage, PaintTexelFormat asked) {
+        var held = formats.GetValueOrDefault((paint, usage));
+        return PaintTexelFormats.Holds(held, asked) || stroked.Contains(paint) ? held : asked;
+    }
+
     /// <summary>
     ///     The size a stroke paints a canvas at, which is the set's, or refuses a stroke a Worker could not begin. A
     ///     canvas larger than its set is painted at its own size (#19), so the detail it holds stays: a stroke on the
@@ -118,6 +135,9 @@ public sealed class StackCanvasSides(string folder) {
             } else if (entry.Width > 0) {
                 sides[entry.Paint] = (entry.Width, entry.Height);
                 stroked.Add(entry.Paint);
+                formats[(entry.Paint, entry.Usage)] = Enum.TryParse<PaintTexelFormat>(entry.Format, out var format)
+                    ? format
+                    : PaintTexelFormat.Rgba8;
             } else {
                 sides.TryAdd(entry.Paint, (width, height));
             }
@@ -141,6 +161,10 @@ public sealed class StackCanvasSides(string folder) {
         try {
             using var stream = SharedFile.OpenRead(file);
             var canvas = PaintCanvas.Read(stream);
+            foreach (var usage in canvas.Channels) {
+                formats[(paint, usage)] = canvas.Channel(usage).Format;
+            }
+
             return sides[paint] = (canvas.Width, canvas.Height);
         } catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) {
             return null;

@@ -157,7 +157,8 @@ public static class StackDocuments {
         StackNodeKinds.Sources(),
         Terms.InStack(Enum.GetNames<LayerMaskLane>()),
         Terms.InTags(Enum.GetNames<LayerTag>()),
-        Terms.Kinds()
+        Terms.Kinds(),
+        Terms.InStack(Enum.GetNames<PaintTexelFormat>())
     );
 
     /// <summary>The stack a new file starts as: a base, and somewhere to paint.</summary>

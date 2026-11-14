@@ -83,7 +83,7 @@ function stack(overrides: Partial<StackState> = {}): StackState {
     revision: 1,
     sequence: 3,
     history: { canUndo: false, canRedo: false, dirty: false },
-    channels: [{ usage: 'baseColor', default: [0, 0, 0, 1] }],
+    channels: [{ usage: 'baseColor', default: [0, 0, 0, 1], format: 'Rgba8' }],
     layers: [layer('base', 'fill'), layer('paint', 'paint')],
     previews: [],
     settled: 0,
@@ -1019,8 +1019,8 @@ describe('PaintStore', () => {
           ? Response.json(
               stack({
                 channels: [
-                  { usage: 'baseColor', default: [0, 0, 0, 1] },
-                  { usage: 'roughness', default: [0.5, 0.5, 0.5, 1] }
+                  { usage: 'baseColor', default: [0, 0, 0, 1], format: 'Rgba8' },
+                  { usage: 'roughness', default: [0.5, 0.5, 0.5, 1], format: 'Rgba8' }
                 ]
               })
             )
@@ -1264,8 +1264,8 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
             ...state,
             model: 'crate.glb',
             channels: [
-              { usage: 'baseColor', default: [0, 0, 0, 1] },
-              { usage: 'roughness', default: [0.5, 0.5, 0.5, 1] }
+              { usage: 'baseColor', default: [0, 0, 0, 1], format: 'Rgba8' },
+              { usage: 'roughness', default: [0.5, 0.5, 0.5, 1], format: 'Rgba8' }
             ]
           }
         : state

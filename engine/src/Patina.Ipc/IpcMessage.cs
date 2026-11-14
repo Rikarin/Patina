@@ -210,7 +210,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 19;
+    public const int ProtocolVersion = 20;
 
     public string Type { get; set; } = string.Empty;
 
@@ -674,6 +674,11 @@ public sealed record StackLoad(
 /// </param>
 /// <param name="KeepOutside">Whether the stroke is kept to where that quick mask is not painted instead.</param>
 /// <param name="Carry">With <paramref name="From" />, the UV sets the copy is carried between (#210), or null.</param>
+/// <param name="Format">
+///     How wide the texels are that the stroke paints its channel at (#19), a <c>PaintTexelFormat</c>'s name, or null
+///     for eight bits a lane. A channel narrower is widened first, exactly; one wider keeps its width.
+/// </param>
+/// <param name="Lanes">The colour in full, four numbers, for a wide channel, or null to read the packed colour.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -701,7 +706,9 @@ public sealed record StackPaintPart(
     bool Through = false,
     string? Keep = null,
     bool KeepOutside = false,
-    StackCarry? Carry = null
+    StackCarry? Carry = null,
+    string? Format = null,
+    IReadOnlyList<float>? Lanes = null
 );
 
 /// <summary>

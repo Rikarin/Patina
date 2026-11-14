@@ -296,6 +296,8 @@ from .stack_command_stack_remove_layer import StackCommandStackRemoveLayer
 from .stack_command_stack_remove_layer_op import StackCommandStackRemoveLayerOp
 from .stack_command_stack_remove_mask_layer import StackCommandStackRemoveMaskLayer
 from .stack_command_stack_remove_mask_layer_op import StackCommandStackRemoveMaskLayerOp
+from .stack_command_stack_set_channel_format import StackCommandStackSetChannelFormat
+from .stack_command_stack_set_channel_format_op import StackCommandStackSetChannelFormatOp
 from .stack_command_stack_set_height_normal import StackCommandStackSetHeightNormal
 from .stack_command_stack_set_height_normal_op import StackCommandStackSetHeightNormalOp
 from .stack_command_stack_set_instance import StackCommandStackSetInstance
@@ -721,6 +723,8 @@ __all__ = (
     "StackCommandStackRemoveLayerOp",
     "StackCommandStackRemoveMaskLayer",
     "StackCommandStackRemoveMaskLayerOp",
+    "StackCommandStackSetChannelFormat",
+    "StackCommandStackSetChannelFormatOp",
     "StackCommandStackSetHeightNormal",
     "StackCommandStackSetHeightNormalOp",
     "StackCommandStackSetInstance",

@@ -42,6 +42,8 @@ sealed partial class StackHost {
                 canvas = Resized(file, part.Paint, canvas, side);
             }
 
+            canvas = Widened(file, canvas, part);
+
             // Before anything reads it. A file a stroke starts is new, or left by strokes that can never stand again.
             if (part.Start is { } start) {
                 canvas.Channel(part.Usage).Fill(start);
@@ -68,7 +70,7 @@ sealed partial class StackHost {
                     stencil: StrokeSources.Stencil(part.Stencil, Picture),
                     resume: StrokeShapes.Resume(part),
                     keep: Keep(part, canvas.Width, canvas.Height)
-                ),
+                ) { Colour = Lanes(part) },
                 part.Curve is "free" or "fill" ? null : new()
             ) { Fill = part.Curve == "fill", Outline = part.Outline };
             known[part.Id] = stroke;
@@ -148,6 +150,47 @@ sealed partial class StackHost {
             stale = true;
             return enlarged;
         }
+
+        /// <summary>
+        ///     A canvas whose channel the stroke paints at its width (#19): a channel narrower is widened, exactly, into a
+        ///     new canvas sharing the other channels, as <see cref="Resized" /> enlarges one, and a new channel is made at
+        ///     it. One wider keeps its width, so no paint is rounded. The Server asks to widen only a canvas no stroke of
+        ///     this session began on, since a stroke's undo holds the image it painted over.
+        /// </summary>
+        /// <exception cref="IpcException">A canvas a stroke of this session began on was asked to widen.</exception>
+        PaintCanvas Widened(string file, PaintCanvas canvas, StackPaintPart part) {
+            if (!Enum.TryParse<PaintTexelFormat>(part.Format, out var asked) || asked == PaintTexelFormat.Rgba8) {
+                return canvas;
+            }
+
+            if (!canvas.Has(part.Usage)) {
+                canvas.Channel(part.Usage, asked);
+                return canvas;
+            }
+
+            if (PaintTexelFormats.Holds(canvas.Channel(part.Usage).Format, asked)) {
+                return canvas;
+            }
+
+            if (stroked.Contains(file)) {
+                throw new IpcException(
+                    $"'{part.Paint}' was painted earlier in this session at another depth. Save, close and open the "
+                    + "document again to paint it at this one."
+                );
+            }
+
+            var widened = canvas.Formatted(part.Usage, asked);
+            canvases.Adopt(file, widened);
+            // The plan holds the narrower channel's texture, which the wider one's tiles do not fit.
+            stale = true;
+            return widened;
+        }
+
+        /// <summary>The colour a stroke paints, in full when the Server sent it so, else as packed.</summary>
+        static Vector4 Lanes(StackPaintPart part) =>
+            part.Lanes is [var red, var green, var blue, var alpha]
+                ? new(red, green, blue, alpha)
+                : PaintImage.Unpack(part.Colour);
 
         /// <summary>
         ///     The canvas a journal entry paints or makes, as it was when the entry was first done. A blank this

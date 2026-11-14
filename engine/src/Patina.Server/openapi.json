@@ -17309,7 +17309,8 @@
       "StackChannel": {
         "required": [
           "usage",
-          "default"
+          "default",
+          "format"
         ],
         "type": "object",
         "properties": {
@@ -17324,6 +17325,11 @@
               "format": "float"
             },
             "description": "What it starts as."
+          },
+          "format": {
+            "type": "string",
+            "description": "How wide the texels are that a stroke paints it at (#19): one of the vocabulary\u0027s formats, Rgba8 unless the set\nsays more.",
+            "default": "Rgba8"
           }
         },
         "description": "A channel a stack writes."
@@ -17523,6 +17529,9 @@
             "$ref": "#/components/schemas/StackCommandStackRemoveChannel"
           },
           {
+            "$ref": "#/components/schemas/StackCommandStackSetChannelFormat"
+          },
+          {
             "$ref": "#/components/schemas/StackCommandStackSetSeed"
           },
           {
@@ -17581,6 +17590,7 @@
             "addChannel": "#/components/schemas/StackCommandStackAddChannel",
             "nestLayer": "#/components/schemas/StackCommandStackNestLayer",
             "removeChannel": "#/components/schemas/StackCommandStackRemoveChannel",
+            "setChannelFormat": "#/components/schemas/StackCommandStackSetChannelFormat",
             "setSeed": "#/components/schemas/StackCommandStackSetSeed",
             "duplicateLayers": "#/components/schemas/StackCommandStackDuplicateLayers",
             "pasteLayers": "#/components/schemas/StackCommandStackPasteLayers",
@@ -18069,6 +18079,31 @@
           }
         },
         "description": "Removes an entry from a layer\u0027s mask stack."
+      },
+      "StackCommandStackSetChannelFormat": {
+        "required": [
+          "usage",
+          "format",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "setChannelFormat"
+            ],
+            "type": "string"
+          },
+          "usage": {
+            "type": "string",
+            "description": "Which channel, one the set has."
+          },
+          "format": {
+            "type": "string",
+            "description": "One of the vocabulary\u0027s formats."
+          }
+        },
+        "description": "How wide the texels are that strokes paint a channel at (#19): eight bits a lane, or sixteen or thirty-two bit\nfloats, which keep what eight bits round away, for a height above all. One undo step, \u003Ci\u003EChannel depth\u003C/i\u003E. A\nlayer painted before is widened, exactly, by its next stroke, unless a stroke of the session already painted it,\nwhich holds the pixels it painted over; one wider than the set asks keeps its width, so paint is never rounded."
       },
       "StackCommandStackSetHeightNormal": {
         "required": [
@@ -21248,6 +21283,16 @@
               "$ref": "#/components/schemas/StackTerm"
             },
             "description": "The kinds a graph\u0027s ports and parameters take: Number for Float, and the rest."
+          },
+          "formats": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "How wide a channel\u0027s painted texels can be (#19): 8-bit, and 16-bit and 32-bit float."
           }
         },
         "description": "The words a stack\u0027s fields take, each with its label, so that a client holds no list of its own."

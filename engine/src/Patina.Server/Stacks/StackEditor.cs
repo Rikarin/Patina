@@ -562,6 +562,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         // A larger canvas is painted at its own size (#19): a stroke in the 2D view is carried onto its texels, and a
         // brush sized in texels keeps its size on the model.
         var (painted, by) = StackCanvasSides.Carried(stroke, width, Document.BaseWidth);
+        var format = layer is null ? PaintTexelFormat.Rgba8 : canvasSides.Format(paint, Channel(stroke), Asked(stroke));
 
         // A quick mask nothing has painted keeps nothing back, rather than everything.
         var kept = stroke.QuickMask is StackQuickMasks.Inside or StackQuickMasks.Outside
@@ -571,6 +572,8 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
                 SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set, Layered(stroke.Source)),
                 Width = width,
                 Height = height,
+                Format = format == PaintTexelFormat.Rgba8 ? null : format.ToString(),
+                Lanes = format == PaintTexelFormat.Rgba8 ? null : [..stroke.Colour],
                 StampScale = by,
                 // Only a stroke on the mesh has faces to keep to; one in the 2D view reaches the whole layout.
                 Isolation = stroke.View is null ? null : Isolation,
@@ -579,6 +582,10 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             }
         );
     }
+
+    /// <summary>The width the set asks a stroke's channel to be painted at (#19): a mask's is eight bits a lane.</summary>
+    PaintTexelFormat Asked(StackStroke stroke) =>
+        Set.Channels.Find(channel => channel.Usage == Channel(stroke))?.Format ?? PaintTexelFormat.Rgba8;
 
     /// <summary>The canvas a stroke on a layer paints, and what it starts as if the stroke makes it.</summary>
     (string Paint, uint? Start) Canvas(

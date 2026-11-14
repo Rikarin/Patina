@@ -276,7 +276,14 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                     revision,
                     Log.Sequence,
                     editor.History,
-                    [..set.Channels.Select(static channel => new StackChannel(channel.Usage, channel.Default))],
+                    [
+                        ..set.Channels.Select(static channel => new StackChannel(
+                                channel.Usage,
+                                channel.Default,
+                                channel.Format.ToString()
+                            )
+                        )
+                    ],
                     StackDocuments.Layers(set.Layers),
                     [..previews.Values],
                     evaluation,
@@ -631,7 +638,9 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                         entry.Through,
                         entry.Keep,
                         entry.KeepOutside,
-                        entry.Carry
+                        entry.Carry,
+                        entry.Format,
+                        entry.Lanes
                     )
                 );
                 sent[entry.Id] = (entry.Stamps.Count, entry.Open);
