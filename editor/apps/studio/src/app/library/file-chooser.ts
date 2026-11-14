@@ -26,7 +26,9 @@ export class FileChooser {
     if (bridge && !(await this.libraryHas(request))) {
       const file = await (request.kind === 'mesh'
         ? bridge.openMesh(this.status.meshes())
-        : bridge.openImage(this.status.pictures()));
+        : request.kind === 'folder'
+          ? bridge.openFolder()
+          : bridge.openImage(this.status.pictures()));
       return file ? { machine: file } : null;
     }
 
@@ -38,7 +40,24 @@ export class FileChooser {
    * where it keeps one. Null when none was chosen.
    */
   async path(request: PickRequest): Promise<string | null> {
-    const choice = await this.choose(request);
+    return this.onServer(await this.choose(request));
+  }
+
+  /**
+   * A folder to write into, such as an export's or a bake's, as a path on the Server's machine: this machine's own
+   * dialog on the desktop, and the library's folders elsewhere, where no dialog could see the Server's disk (#4). Null
+   * when none was chosen.
+   */
+  async folder(title: string, project: string | null = null): Promise<string | null> {
+    const bridge = desktop();
+    if (bridge) {
+      return bridge.openFolder();
+    }
+
+    return this.onServer(await this.picker.pick({ kind: 'folder', title, project }));
+  }
+
+  private onServer(choice: FileChoice | null): string | null {
     if (!choice) {
       return null;
     }

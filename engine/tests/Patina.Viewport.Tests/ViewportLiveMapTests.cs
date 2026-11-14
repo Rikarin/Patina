@@ -146,6 +146,44 @@ public sealed class ViewportLiveMapTests : IDisposable {
     }
 
     /// <summary>
+    ///     A quick mask is red over the model where it is painted and nowhere else (#127), and taken off leaves the
+    ///     picture as it was. On Linux CI the e2e that paints one saw no red (#274); this says whether the renderer
+    ///     draws it there. ⚠ On a brightly lit model the tint is faint, since it is laid on before the tone curve: a
+    ///     square near white comes out about (227, 209, 208) where it is painted, red lower than unmasked and under
+    ///     twenty levels over the mean of green and blue, so red is what green and blue lost and not a level of red.
+    /// </summary>
+    [Fact]
+    public void A_quick_mask_is_red_where_it_is_painted() {
+        using var renderer = Open();
+        renderer.OpenMesh(Square("square.glb", Vector3.Zero, 1f));
+        var plain = Render(renderer, Near);
+
+        // White on the left half of the map, nothing on the right.
+        var white = Picture(static (x, _) => x < Map / 2 ? (byte.MaxValue, byte.MaxValue, byte.MaxValue) : default);
+        renderer.SetLive(ViewportSlot.QuickMask, Map, Map, white);
+        var masked = Render(renderer, Near);
+
+        static int Red(byte[] pixels, int from, int to) {
+            var count = 0;
+            for (var y = 0; y < Height; y++) {
+                for (var x = from; x < to; x++) {
+                    var at = (y * Width + x) * 4;
+                    count += pixels[at] * 2 > pixels[at + 1] + pixels[at + 2] + 20 ? 1 : 0;
+                }
+            }
+
+            return count;
+        }
+
+        Assert.Equal(0, Red(plain, 0, Width));
+        Assert.True(Red(masked, 0, Width / 2) > 1000, $"Only {Red(masked, 0, Width / 2)} pixels are red on the left.");
+        Assert.True(Red(masked, Width / 2 + 8, Width) < 50, "The quick mask is red where it is not painted.");
+
+        renderer.ClearLive(ViewportSlot.QuickMask);
+        Assert.Equal(plain, Render(renderer, Near));
+    }
+
+    /// <summary>
     ///     A camera's axes are worked out away from the matrix that draws, so they are held to the picture: a small
     ///     square off to one side, above the middle, must be where the arithmetic says. A flip of either axis fails,
     ///     and so does an orthographic view drawn through any lens but the one a stroke is told.

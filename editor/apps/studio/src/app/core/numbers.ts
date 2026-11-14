@@ -55,6 +55,16 @@ export function milliseconds(value: number): string {
   return `${Math.round(value).toString()} ms`;
 }
 
+/** A short time, as a GPU's: hundredths of a millisecond below one, tenths below ten, then whole. */
+export function brief(value: number): string {
+  if (value < 0.01) {
+    return '< 0.01 ms';
+  }
+
+  const places = value < 1 ? 2 : value < 10 ? 1 : 0;
+  return `${value.toFixed(places)} ms`;
+}
+
 /** An exposure in photographic stops, signed. */
 export function stops(value: number): string {
   return `${value > 0 ? '+' : ''}${value.toFixed(1)} stops`;

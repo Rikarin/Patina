@@ -92,11 +92,12 @@ sealed class WorkerLoop(
                 IpcTypes.ViewportCamera => viewport.SetCamera(request),
                 IpcTypes.ViewportDisplay => viewport.SetDisplay(request),
                 IpcTypes.ViewportRender => viewport.Render(request),
-                IpcTypes.ViewportPick or IpcTypes.ViewportCast => viewport.Locate(request),
+                IpcTypes.ViewportPick or IpcTypes.ViewportCast or IpcTypes.ViewportMarquee => viewport.Locate(request),
                 IpcTypes.ViewportBakePreview => BakePreviewHost.Show(request, viewport.Live),
                 IpcTypes.GraphLoad
                     or IpcTypes.GraphEvaluate
                     or IpcTypes.GraphImage
+                    or IpcTypes.GraphHistogram
                     or IpcTypes.GraphClose
                     or IpcTypes.StackLoad
                     or IpcTypes.StackSync
@@ -271,6 +272,7 @@ sealed class WorkerLoop(
             IpcTypes.GraphLoad => graphs.Load(request),
             IpcTypes.GraphEvaluate => graphs.Evaluate(request),
             IpcTypes.GraphImage => graphs.Image(request),
+            IpcTypes.GraphHistogram => graphs.Histogram(request),
             IpcTypes.GraphClose => graphs.Close(request),
             IpcTypes.StackLoad => stacks.Load(request),
             IpcTypes.StackSync => stacks.Sync(request),

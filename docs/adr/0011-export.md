@@ -267,6 +267,12 @@ Two tests stand in for the engines until someone opens the files in them:
   mips) with a parser written from Microsoft's `DDS_HEADER` and `DDS_HEADER_DXT10` and Khronos's KTX 2.0 layout, and checks the
   DXGI and Vulkan format numbers, the level count and each level's size. That covers the BC6H and 16-bit and float DDS no outside
   tool had read, as far as their layout goes; it does not decode the blocks.
+- _2026-11-14 (#46):_ an outside decoder read the blocks. Pillow 12.3, whose BCn decoder is its own C code, decoded DDS files the
+  exporter wrote from 64² gradients: BC4 and BC5 within 0.006 of the source, BC7 within 0.018, BC1 and BC3 within 0.041, and
+  BC6H texel for texel as Vixen's own decoder reads it, within Pillow's narrowing to 8 bits. Pillow takes no sRGB DXGI number, so
+  BC1 and BC3 were read with theirs moved to the UNORM twin, which is the same blocks. It reads no half, float or 16-bit plain
+  DDS (DXGI 10, 2 and 11), so those still have only their layout checked. This was run once by hand, since CI has no Pillow: it
+  is evidence that the files decode as the encoder meant on the CPU, and not on a GPU.
 
 What only a person with the engine can check, one import per engine, recorded here when done:
 

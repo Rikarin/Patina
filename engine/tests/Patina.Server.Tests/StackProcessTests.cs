@@ -305,6 +305,7 @@ public sealed partial class StackProcessTests : IDisposable {
         var live = await EditAsync(state.Id, deadline.Token, Across("two", view, 200, 620, 420, true));
         var repaired = await EvaluatedAsync(socket, live.Revision, deadline.Token);
         Assert.True(repaired.Repaired > 0, "The stroke ran whole, so this never reached the viewport as tiles.");
+        Assert.False(repaired.Compiled, "A stroke on the mesh compiled.");
         var closed = await EditAsync(state.Id, deadline.Token, Across("two", view, 620, 200, 200, false));
         await EvaluatedAsync(socket, closed.Revision, deadline.Token);
 

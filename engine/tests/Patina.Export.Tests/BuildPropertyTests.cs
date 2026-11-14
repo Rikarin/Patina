@@ -173,7 +173,14 @@ public sealed class BuildPropertyTests {
                     var report = Build(library, second, "second").GetAwaiter().GetResult();
 
                     var reports = BuildJournal.ReadProjects(report.Folder, 0, 100);
-                    var touched = reports.Items.Select(static p => ProjectId.From(p.Id)).ToHashSet();
+                    // A fresh project is in the report too (#280), as fresh, and only what was not fresh was touched.
+                    var touched = reports.Items
+                        .Where(static p => p.Outputs.Any(static o => o.Status != BuildStatuses.Fresh)
+                            || p.Exports.Any(static e => e.Status != BuildStatuses.Fresh)
+                        )
+                        .Select(static p => ProjectId.From(p.Id))
+                        .ToHashSet();
+                    Assert.Equal(after.Count, reports.Total);
                     Assert.True(moved.SetEquals(touched), $"moved {moved.Count}, touched {touched.Count}");
                     Assert.Equal(moved.Select(id => after[id]).Distinct().Count(), second.Outputs.Count);
 

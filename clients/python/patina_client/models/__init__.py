@@ -4,6 +4,7 @@ from .asset_impact import AssetImpact
 from .asset_page import AssetPage
 from .asset_summary import AssetSummary
 from .autosave_preferences import AutosavePreferences
+from .bake_border_options import BakeBorderOptions
 from .bake_colour_options import BakeColourOptions
 from .bake_curvature_options import BakeCurvatureOptions
 from .bake_edge_options import BakeEdgeOptions
@@ -146,6 +147,7 @@ from .graph_event_page import GraphEventPage
 from .graph_extract_request import GraphExtractRequest
 from .graph_extraction import GraphExtraction
 from .graph_group_state import GraphGroupState
+from .graph_histogram import GraphHistogram
 from .graph_history_state import GraphHistoryState
 from .graph_image import GraphImage
 from .graph_image_request import GraphImageRequest
@@ -157,6 +159,7 @@ from .graph_node_position import GraphNodePosition
 from .graph_node_state import GraphNodeState
 from .graph_node_state_texts import GraphNodeStateTexts
 from .graph_node_state_values import GraphNodeStateValues
+from .graph_node_time import GraphNodeTime
 from .graph_node_type import GraphNodeType
 from .graph_open_request import GraphOpenRequest
 from .graph_port_definition import GraphPortDefinition
@@ -273,6 +276,8 @@ from .stack_command_stack_add_mask_layer import StackCommandStackAddMaskLayer
 from .stack_command_stack_add_mask_layer_op import StackCommandStackAddMaskLayerOp
 from .stack_command_stack_apply_mask import StackCommandStackApplyMask
 from .stack_command_stack_apply_mask_op import StackCommandStackApplyMaskOp
+from .stack_command_stack_carry_paint import StackCommandStackCarryPaint
+from .stack_command_stack_carry_paint_op import StackCommandStackCarryPaintOp
 from .stack_command_stack_duplicate_layers import StackCommandStackDuplicateLayers
 from .stack_command_stack_duplicate_layers_op import StackCommandStackDuplicateLayersOp
 from .stack_command_stack_flatten_layer import StackCommandStackFlattenLayer
@@ -406,6 +411,8 @@ from .viewport_graph_request import ViewportGraphRequest
 from .viewport_highlight import ViewportHighlight
 from .viewport_isolation import ViewportIsolation
 from .viewport_map_paths import ViewportMapPaths
+from .viewport_marquee import ViewportMarquee
+from .viewport_marquee_request import ViewportMarqueeRequest
 from .viewport_mesh_request import ViewportMeshRequest
 from .viewport_node_shown import ViewportNodeShown
 from .viewport_pick import ViewportPick
@@ -422,6 +429,7 @@ __all__ = (
     "AssetPage",
     "AssetSummary",
     "AutosavePreferences",
+    "BakeBorderOptions",
     "BakeColourOptions",
     "BakeCurvatureOptions",
     "BakedMapFile",
@@ -564,6 +572,7 @@ __all__ = (
     "GraphExtraction",
     "GraphExtractRequest",
     "GraphGroupState",
+    "GraphHistogram",
     "GraphHistoryState",
     "GraphImage",
     "GraphImageRequest",
@@ -575,6 +584,7 @@ __all__ = (
     "GraphNodeState",
     "GraphNodeStateTexts",
     "GraphNodeStateValues",
+    "GraphNodeTime",
     "GraphNodeType",
     "GraphOpenRequest",
     "GraphPortDefinition",
@@ -691,6 +701,8 @@ __all__ = (
     "StackCommandStackAddMaskLayerOp",
     "StackCommandStackApplyMask",
     "StackCommandStackApplyMaskOp",
+    "StackCommandStackCarryPaint",
+    "StackCommandStackCarryPaintOp",
     "StackCommandStackDuplicateLayers",
     "StackCommandStackDuplicateLayersOp",
     "StackCommandStackFlattenLayer",
@@ -824,6 +836,8 @@ __all__ = (
     "ViewportHighlight",
     "ViewportIsolation",
     "ViewportMapPaths",
+    "ViewportMarquee",
+    "ViewportMarqueeRequest",
     "ViewportMeshRequest",
     "ViewportNodeShown",
     "ViewportPick",

@@ -1,49 +1,24 @@
 /** A channel of a picture, or `rgba` for the picture as it is. */
 export type PictureChannel = 'rgba' | 'r' | 'g' | 'b' | 'a';
 
-/** How many pixels fall on each of the 256 levels, per channel. */
+/**
+ * How much of a picture falls on each of 256 levels, per channel: counts or shares, since a chart scales to its peak.
+ * Whoever has the picture counts it; the Server does for a graph's node, on the GPU at full size.
+ */
 export interface Histogram {
-  r: Uint32Array;
-  g: Uint32Array;
-  b: Uint32Array;
+  r: readonly number[];
+  g: readonly number[];
+  b: readonly number[];
   /** Rec. 709 weights on the stored values. */
-  luma: Uint32Array;
+  luma: readonly number[];
 }
 
-const Levels = 256;
 const BytesPerPixel = 4;
-const RedWeight = 0.2126;
-const GreenWeight = 0.7152;
-const BlueWeight = 0.0722;
 
-function count(levels: Uint32Array, level: number): void {
-  levels[level] = (levels[level] ?? 0) + 1;
-}
-
-/** Counts the levels of RGBA bytes. */
-export function computeHistogram(pixels: Uint8ClampedArray): Histogram {
-  const histogram: Histogram = {
-    r: new Uint32Array(Levels),
-    g: new Uint32Array(Levels),
-    b: new Uint32Array(Levels),
-    luma: new Uint32Array(Levels)
-  };
-  for (let at = 0; at + BytesPerPixel <= pixels.length; at += BytesPerPixel) {
-    const red = pixels[at] ?? 0;
-    const green = pixels[at + 1] ?? 0;
-    const blue = pixels[at + 2] ?? 0;
-    count(histogram.r, red);
-    count(histogram.g, green);
-    count(histogram.b, blue);
-    count(histogram.luma, Math.round(RedWeight * red + GreenWeight * green + BlueWeight * blue));
-  }
-
-  return histogram;
-}
-
-/** The busiest level across the colour channels, which is what a chart scales to. */
+/** The busiest level across the colour channels, which is what a chart scales to. Nothing at all is not a division. */
 export function peakOf(histogram: Histogram): number {
-  return Math.max(1, ...histogram.r, ...histogram.g, ...histogram.b);
+  const peak = Math.max(0, ...histogram.r, ...histogram.g, ...histogram.b);
+  return peak > 0 ? peak : 1;
 }
 
 const Lanes: Record<Exclude<PictureChannel, 'rgba'>, number> = { r: 0, g: 1, b: 2, a: 3 };

@@ -1,0 +1,42 @@
+version: 1
+name: Water Line
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: position } }
+  - { id: 2, type: Source/Volume Noise, x: -960, y: 220, values: { Octaves: [3] }, texts: { Basis: Gradient, '=Scale': '6f', '=Seed': seed } }
+  - id: 3
+    type: Filters/Pixel Processor
+    x: -320
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(saturate((1f - smoothstep(x - y * 0.5f - 0.001f, x, a.y + (b.x - 0.5f) * 0.04f)) * w + smoothstep(x - z - 0.002f, x, a.y + (b.x - 0.5f) * 0.04f) - smoothstep(x, x + z + 0.002f, a.y + (b.x - 0.5f) * 0.04f)), 0f, 0f, 1f)'
+      '=X': 'level'
+      '=Y': 'fade'
+      '=Z': 'mark'
+      '=W': 'wetness'
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Position }
+  - { fromNode: 1, fromPort: Out, toNode: 3, toPort: A }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: B }
+  - { fromNode: 3, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'White in the tide mark where standing water stopped, and wetness below it, fading down from the line.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Where water stood against the model: everything below a level damp, and a darker tide mark along the line.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: level, label: Level, default: '0.3', summary: 'How high the water stood, as a share of the model''s height.', kind: Float, minimum: 0, maximum: 1, group: Water }
+  - { name: fade, label: Fade, default: '0.2', summary: 'How far below the line the wetness fades in.', kind: Float, minimum: 0, maximum: 1, group: Water }
+  - { name: mark, label: Mark, default: '0.02', summary: 'How wide the tide mark is, as a share of the model''s height.', kind: Float, minimum: 0, maximum: 0.2, group: Water }
+  - { name: wetness, label: Wetness, default: '0.5', summary: 'How strongly the ground below the line shows, against the mark.', kind: Float, minimum: 0, maximum: 1, group: Water }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the wobble along the line. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Water }

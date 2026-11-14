@@ -20,12 +20,12 @@ T = TypeVar("T", bound="LibraryFile")
 
 @_attrs_define
 class LibraryFile:
-    """ A file the library holds, for a client to pick from where a native dialog cannot see (#4).
+    """ A file or a folder the library holds, to pick from where a native dialog cannot see (#4).
 
         Attributes:
             path (str): Its path below the library.
-            name (str): Its file's name.
-            project (str): The project it is in, below `projects/`.
+            name (str): Its file's or folder's name.
+            project (str): The project it is in, below `projects/`, or empty for one in no project.
      """
 
     path: str

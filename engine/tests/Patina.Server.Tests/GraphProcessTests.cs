@@ -15,7 +15,7 @@ namespace Patina.Server.Tests;
 /// <summary>
 ///     The evaluation path as a client sees it: the real Server and Worker, and events over the real WebSocket.
 /// </summary>
-public sealed class GraphProcessTests : IDisposable {
+public sealed partial class GraphProcessTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-graph-");
     readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
     readonly List<Process> started = [];

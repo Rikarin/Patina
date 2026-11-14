@@ -179,6 +179,71 @@ public sealed class ModelMaterialsTests : IDisposable {
         Assert.Contains(materials[1].Warnings, static w => w.Contains("0.25", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    ///     A placed picture's sampler goes with its placement (#280): before, every placement repeated. A wrap that
+    ///     differs by axis is one the graph's node cannot draw, so it repeats and says so.
+    /// </summary>
+    [Fact]
+    public void A_placed_pictures_sampler_says_how_its_placement_wraps() {
+        var path = Gltf(Glowing);
+        File.WriteAllText(
+            path,
+            File.ReadAllText(path)
+                .Replace(
+                    "\"textures\": [{ \"source\": 0 },",
+                    "\"samplers\": [{ \"wrapS\": 33648, \"wrapT\": 33648 }, { \"wrapS\": 33071 }], "
+                    + "\"textures\": [{ \"source\": 0, \"sampler\": 0 },",
+                    StringComparison.Ordinal
+                )
+        );
+
+        var glow = ModelMaterials.Read(path, Path.Combine(folder.FullName, "pictures"))[0];
+
+        Assert.Equal("Mirror", glow.Slots.Single(static s => s.Usage == "baseColor").Placement!.Tiling);
+        Assert.DoesNotContain(glow.Warnings, static w => w.Contains("wraps", StringComparison.Ordinal));
+
+        File.WriteAllText(
+            path,
+            File.ReadAllText(path).Replace("\"sampler\": 0", "\"sampler\": 1", StringComparison.Ordinal)
+        );
+        var mixed = ModelMaterials.Read(path, Path.Combine(folder.FullName, "pictures"))[0];
+        Assert.Equal("Wrap", mixed.Slots.Single(static s => s.Usage == "baseColor").Placement!.Tiling);
+        Assert.Contains(
+            mixed.Warnings,
+            static w => w.Contains("wraps Clamp across and Wrap down", StringComparison.Ordinal)
+        );
+    }
+
+    /// <summary>
+    ///     An OBJ's <c>d</c> and <c>map_d</c> are its opacity map (#280): its own picture read in red, times the
+    ///     factor. Before, only glTF's alpha said anything of opacity, so a see-through OBJ came in opaque.
+    /// </summary>
+    [Fact]
+    public void An_objs_dissolve_and_its_picture_are_its_opacity() {
+        File.WriteAllBytes(Path.Combine(folder.FullName, "mask.png"), Convert.FromBase64String(Png()));
+        File.WriteAllText(
+            Path.Combine(folder.FullName, "quad.mtl"),
+            "newmtl Glass\nKd 1 1 1\nd 0.5\nmap_d mask.png\nnewmtl Faded\nKd 1 0 0\nd 0.25\n"
+        );
+        var path = Path.Combine(folder.FullName, "quad.obj");
+        File.WriteAllText(
+            path,
+            "mtllib quad.mtl\nv 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\n"
+            + "usemtl Glass\nf 1/1 2/2 3/3\nusemtl Faded\nf 1/1 3/3 4/4\n"
+        );
+
+        var materials = ModelMaterials.Read(path, Path.Combine(folder.FullName, "pictures"))
+            .ToDictionary(static m => m.Name);
+
+        var glass = materials["Glass"].Slots.Single(static s => s.Usage == "opacity");
+        Assert.Equal(
+            (Path.Combine(folder.FullName, "mask.png"), 0, 0.5f),
+            (glass.Texture, glass.Lane, Round(glass.Value[0]))
+        );
+        var faded = materials["Faded"].Slots.Single(static s => s.Usage == "opacity");
+        Assert.Equal((null, 0.25f), (faded.Texture, Round(faded.Value[0])));
+    }
+
     static float Round(float value) => MathF.Round(value, 4);
 
     const string ExportNormal = "normal";

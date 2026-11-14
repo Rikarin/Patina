@@ -189,7 +189,7 @@ public static class BakePreviewShapes {
             var request = new BakeRequest {
                 High = preview.High, Low = preview.Low, Output = string.Empty, Options = preview.Options
             };
-            var settings = MeshMapBakeRun.Settings(request, high, low, cage, 1);
+            var settings = BakeRequestSettings.Of(request, high, low, cage, 1);
             shell = MapBaker.Reach(high.Mesh, low.Mesh, settings);
             // The skew leans rays inside a face, which the corners cannot show: Vixen's rays from inside, if any lean.
             var divisions = Faces(low.Mesh).Count() > FewTriangles ? 3 : 4;
@@ -341,8 +341,8 @@ public static class BakePreviewShapes {
         FlatModel high,
         FlatModel low
     ) {
-        var lowSuffixes = MeshMapBakeRun.Suffixes(rays.LowSuffix);
-        var highSuffixes = MeshMapBakeRun.Suffixes(rays.HighSuffix);
+        var lowSuffixes = BakeRequestSettings.Suffixes(rays.LowSuffix);
+        var highSuffixes = BakeRequestSettings.Suffixes(rays.HighSuffix);
         var lowFaces = Count(low.Parts, lowSuffixes);
         var highFaces = Count(high.Parts, highSuffixes);
         Dictionary<string, Vector4> colours = new(StringComparer.Ordinal);

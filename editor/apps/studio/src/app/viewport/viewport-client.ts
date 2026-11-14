@@ -11,8 +11,10 @@ import type {
 import { unwrap } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { messageOf } from '../core/messages';
+import { Preferences } from '../core/preferences';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
+import { displayStart } from './display-start';
 import {
   type FrameTransport,
   type FrameTransportFactory,
@@ -99,6 +101,7 @@ export class ViewportClient {
   private readonly bakes = inject(BakeStore);
   private readonly projects = inject(ProjectStore);
   private readonly isolation = inject(IsolationStore);
+  private readonly preferences = inject(Preferences);
   private transport: FrameTransport | null = null;
   /** The project whose display is on the viewport, which a change is kept in. */
   private adopted: string | null = null;
@@ -146,8 +149,12 @@ export class ViewportClient {
     effect(() => {
       const target = jump.target();
       if (target) {
-        untracked(() => this.go(target.to.view ?? null, target.to.camera ?? null));
+        untracked(() => this.go(target.to.view ?? null, target.to.camera ?? null, target.to.picture ?? null));
       }
+    });
+    effect(() => {
+      const display = this.display();
+      jump.shownPicture.set(display.view === 'picture' ? (display.picture ?? null) : null);
     });
     // A project opens its viewport as it was left, once its contents have been read. Only a change of project puts
     // it back, not a save.
@@ -167,9 +174,14 @@ export class ViewportClient {
     this.keepLater();
   }
 
-  /** Shows a view and looks through a camera, for another pane: either left out stays as it is. */
-  private go(view: string | null, camera: ViewportCameraState | null): void {
-    if (view !== null && view !== this.display().view) {
+  /**
+   * Shows a view and looks through a camera, for another pane: either left out stays as it is. A picture is shown
+   * again even when it is the one on view, since its file may have been written again.
+   */
+  private go(view: string | null, camera: ViewportCameraState | null, picture: string | null): void {
+    if (picture !== null) {
+      this.setDisplay({ view: 'picture', picture });
+    } else if (view !== null && view !== this.display().view) {
       this.setDisplay({ view, picture: null });
     }
 
@@ -235,7 +247,7 @@ export class ViewportClient {
 
     this.keepNow();
     this.adopted = project;
-    const kept = this.projects.current()?.viewport ?? DefaultDisplay;
+    const kept = this.projects.current()?.viewport ?? displayStart(DefaultDisplay, this.preferences.viewportStart());
     this.display.set(kept);
     this.sendDisplay(kept);
   }

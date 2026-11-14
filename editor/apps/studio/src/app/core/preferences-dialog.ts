@@ -172,6 +172,28 @@ const MostKept = 20;
               />
               <span class="text-foreground-muted text-xs">rolled away from you, the camera moves out</span>
             </label>
+            <div class="flex items-center gap-3" data-testid="preferences-viewport-start">
+              <span class="w-36 shrink-0">A new project's display</span>
+              <span class="readout min-w-0 flex-1 truncate text-xs">
+                {{ preferences.viewportStart() ? 'Your own' : 'Patina’s' }}
+              </span>
+              @if (preferences.viewportStart()) {
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  data-testid="preferences-viewport-start-reset"
+                  (click)="preferences.set({ viewportStart: null })"
+                >
+                  Use Patina’s
+                </button>
+              }
+            </div>
+            <p class="text-foreground-muted text-xs">
+              Make Default in the viewport's Display keeps its light, background, grid and finish for every project that
+              has kept none of its own.
+            </p>
           </section>
 
           <section class="flex flex-col gap-2">

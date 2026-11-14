@@ -13,7 +13,7 @@ namespace Patina.Worker;
 ///     Worker starts empty and the Server tells it the mesh and the camera again, so this holds nothing that cannot be
 ///     rebuilt. The device opens on the first command, so a Worker on a machine with no Vulkan still answers health.
 /// </summary>
-sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
+sealed partial class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     ViewportRenderer? renderer;
     ViewportLook? look;
     string? lookPath;
@@ -66,32 +66,18 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
     public IpcMessage Pick(IpcMessage request) {
         var pick = request.Pick ?? throw new IpcException("viewport.pick says nothing.");
         var shelf = meshes.Of(pick.Mesh);
-        var orbit = Orbit(pick.Camera);
-        var bounds = shelf.Geometry.Bounds;
-        var (right, up, forward) = orbit.Axes();
-        var view = new PaintView(
-            orbit.Eye(bounds, (float)pick.Width / Math.Max(pick.Height, 1)),
-            right,
-            up,
-            forward,
-            orbit.Lens,
-            pick.Width,
-            pick.Height
-        );
+        var view = Look(pick, shelf);
         var wire = new StackView(
             Numbers(view.Eye),
-            Numbers(right),
-            Numbers(up),
-            Numbers(forward),
+            Numbers(view.Right),
+            Numbers(view.Up),
+            Numbers(view.Forward),
             view.VerticalFieldOfView,
             view.Width,
             view.Height
         );
         var ray = view.RayAt(new((float)(pick.X * pick.Width), (float)(pick.Y * pick.Height)));
-        var isolated = isolatedParts.Length > 0 || isolatedMaterials.Length > 0;
-        var (through, triangles) = isolated
-            ? meshes.Shown(pick.Mesh, isolatedParts, isolatedMaterials)
-            : (shelf.Projection, null);
+        var (through, triangles) = Through(pick.Mesh, shelf);
         var found = through.TryHit(ray, out var hit);
         var triangle = Original(triangles, found ? hit.Triangle : -1);
         // ⚠ The projection lays every material out in the first UV set; a set in another reads its place there (#210).
@@ -121,9 +107,15 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         };
     }
 
-    /// <summary>A question about where things are on the mesh, which reads no device: a pick or a cast.</summary>
+    /// <summary>
+    ///     A question about where things are on the mesh, which reads no device: a pick, a cast or a marquee.
+    /// </summary>
     public IpcMessage Locate(IpcMessage request) =>
-        request.Type == IpcTypes.ViewportCast ? Cast(request) : Pick(request);
+        request.Type switch {
+            IpcTypes.ViewportCast => Cast(request),
+            IpcTypes.ViewportMarquee => Marquee(request),
+            _ => Pick(request)
+        };
 
     /// <summary>
     ///     Where rays along one direction first meet the mesh (#263), through what the viewport draws as a pick is: the
@@ -141,10 +133,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         }
 
         direction = Vector3.Normalize(direction);
-        var shelf = meshes.Of(cast.Mesh);
-        var (through, _) = isolatedParts.Length > 0 || isolatedMaterials.Length > 0
-            ? meshes.Shown(cast.Mesh, isolatedParts, isolatedMaterials)
-            : (shelf.Projection, null);
+        var (through, _) = Through(cast.Mesh, meshes.Of(cast.Mesh));
         var hits = new ViewportCastHit[cast.Origins.Count / 3];
         for (var at = 0; at < hits.Length; at++) {
             var origin = new Vector3(cast.Origins[at * 3], cast.Origins[at * 3 + 1], cast.Origins[at * 3 + 2]);

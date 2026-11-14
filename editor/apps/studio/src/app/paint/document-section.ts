@@ -4,6 +4,7 @@ import { XuiButtonImports } from '@xui/button';
 import { XuiMenuImports } from '@xui/menu';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
+import { XuiSwitchImports } from '@xui/switch';
 import { labelIn } from '../core/labels';
 import { count } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
@@ -43,7 +44,7 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
  */
 @Component({
   selector: 'ptn-document-section',
-  imports: [XuiButtonImports, XuiMenuImports, XuiSegmentedControlImports, XuiSelectImports],
+  imports: [XuiButtonImports, XuiMenuImports, XuiSegmentedControlImports, XuiSelectImports, XuiSwitchImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-1.5', role: 'group', 'aria-label': 'Document', 'data-testid': 'paint-document' },
   template: `
@@ -123,6 +124,15 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
               [itemText]="uvSetName"
               [value]="state.uvSet"
               (valueChange)="setUvSet($event)"
+            />
+          </dd>
+          <dt class="text-foreground-muted" [title]="carryHint">Paint stays</dt>
+          <dd [title]="carryHint">
+            <xui-switch
+              aria-label="Paint stays where it is on the model"
+              data-testid="texture-set-carry-paint"
+              [checked]="carryPaint()"
+              (checkedChange)="carryPaint.set($event)"
             />
           </dd>
         }
@@ -283,6 +293,11 @@ export class DocumentSection {
     'Changing it rewrites no paint: a layer painted at another size is sampled at this one, and grows to it, exactly, ' +
     'the next time it is painted.';
   protected readonly uvSetHint = 'Which of the mesh’s UV sets this texture set is painted, baked and shown in.';
+  /** Whether a new UV set carries the paint into its layout (#210), which the session remembers and no file does. */
+  protected readonly carryPaint = signal(true);
+  protected readonly carryHint =
+    'On, choosing another UV set carries what is painted into its layout, so the paint stays where it is on the ' +
+    'model. Off, the paint keeps its place on the map and lands wherever the new layout puts that.';
   protected readonly heightNormalHint =
     'A height channel lights the surface through the normal. Smooth blurs it a texel first.';
 
@@ -394,9 +409,16 @@ export class DocumentSection {
   }
 
   protected setUvSet(uvSet: number | null): void {
-    if (uvSet !== null && uvSet !== this.store.state()?.uvSet) {
-      void this.store.edit({ op: 'setSettings', uvSet });
+    const state = this.store.state();
+    if (uvSet === null || !state || uvSet === state.uvSet) {
+      return;
     }
+
+    // One undo step: the set's new UV set, and its paint carried into that layout when it stays on the model (#210). A
+    // set with nothing painted carries nothing.
+    void (this.carryPaint()
+      ? this.store.edit({ op: 'setSettings', uvSet }, { op: 'carryPaint', fromUvSet: state.uvSet })
+      : this.store.edit({ op: 'setSettings', uvSet }));
   }
 
   /** Says how the bake reaches the set's normal or occlusion, one undo step like every set setting. */

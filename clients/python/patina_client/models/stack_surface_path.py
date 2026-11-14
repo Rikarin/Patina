@@ -39,6 +39,12 @@ class StackSurfacePath:
                 picture's own shape at the path's width. Default: 0.0.
             angle (float): How far a face may turn from the path's normal and still take it, in radians, 0 to π. Default:
                 1.3.
+            spacing (float): For a stroke, how far apart its stamps are as a share of the path's full width, 0 to 16: zero
+                is one unbroken
+                band, anything above it a row of round stamps never closer than a tenth of the width. A ribbon takes none.
+                Default: 0.0.
+            jitter (float): How far each stamp moves at random, 0 to 1: that share of the width to the side and of half the
+                spacing along. Default: 0.0.
             box (list[float] | None | Unset): The box the mesh's `position` bake is normalised in, as a decal's is.
      """
 
@@ -48,6 +54,8 @@ class StackSurfacePath:
     ribbon: bool = False
     repeat: float = 0.0
     angle: float = 1.3
+    spacing: float = 0.0
+    jitter: float = 0.0
     box: list[float] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -74,6 +82,10 @@ class StackSurfacePath:
 
         angle = self.angle
 
+        spacing = self.spacing
+
+        jitter = self.jitter
+
         box: list[float] | None | Unset
         if isinstance(self.box, Unset):
             box = UNSET
@@ -94,6 +106,8 @@ class StackSurfacePath:
             "ribbon": ribbon,
             "repeat": repeat,
             "angle": angle,
+            "spacing": spacing,
+            "jitter": jitter,
         })
         if box is not UNSET:
             field_dict["box"] = box
@@ -126,6 +140,10 @@ class StackSurfacePath:
 
         angle = d.pop("angle")
 
+        spacing = d.pop("spacing")
+
+        jitter = d.pop("jitter")
+
         def _parse_box(data: object) -> list[float] | None | Unset:
             if data is None:
                 return data
@@ -151,6 +169,8 @@ class StackSurfacePath:
             ribbon=ribbon,
             repeat=repeat,
             angle=angle,
+            spacing=spacing,
+            jitter=jitter,
             box=box,
         )
 

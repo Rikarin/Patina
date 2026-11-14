@@ -26,7 +26,7 @@ const DrawnAtOnce = 4;
 const ThumbnailSide = 160;
 
 /**
- * Choose a Picture, or a Mesh: what the library's projects hold, the project in front's first, found by name (#4). The
+ * Choose a Picture, a Mesh or a Folder: what the library's projects hold, the project in front's first, found by name (#4). The
  * Server lists them, so a Server on another machine can be picked from too; From a File… opens this machine's dialog,
  * where there is one, and the Server brings what is chosen into the project.
  */
@@ -81,7 +81,7 @@ const ThumbnailSide = 160;
                       }
                     </span>
                   }
-                  <span class="min-w-0 flex-1 truncate">{{ file.name }}</span>
+                  <span class="min-w-0 flex-1 truncate">{{ shown(file) }}</span>
                 </button>
               }
             } @empty {
@@ -90,7 +90,11 @@ const ThumbnailSide = 160;
                   class="flex-1"
                   [title]="search() ? 'Nothing by that name' : 'The library has none yet'"
                   [description]="
-                    canPick ? 'From a File… brings one in from this computer.' : 'Import one into a project first.'
+                    canPick
+                      ? fromLabel() + ' brings one in from this computer.'
+                      : request()?.kind === 'folder'
+                        ? 'Make a project first.'
+                        : 'Import one into a project first.'
                   "
                 />
               }
@@ -105,7 +109,7 @@ const ThumbnailSide = 160;
         <xui-dialog-footer>
           @if (canPick) {
             <button type="button" xuiButton variant="ghost" data-testid="pick-file-machine" (click)="fromMachine()">
-              From a File…
+              {{ fromLabel() }}
             </button>
           }
           <span class="flex-1"></span>
@@ -148,7 +152,7 @@ export class PickFileDialog {
     const own = this.request()?.project ?? null;
     const groups = new Map<string, LibraryFile[]>();
     for (const file of this.files()) {
-      const said = `${file.name} ${file.project}`.toLocaleLowerCase();
+      const said = `${file.path} ${file.project}`.toLocaleLowerCase();
       if (words.every(word => said.includes(word))) {
         groups.set(file.project, [...(groups.get(file.project) ?? []), file]);
       }
@@ -156,7 +160,7 @@ export class PickFileDialog {
 
     return [...groups].map(([project, files]) => ({
       project,
-      label: project === own ? 'This project' : (project.split('/').pop() ?? project),
+      label: project === own ? 'This project' : project ? (project.split('/').pop() ?? project) : 'Library',
       files
     }));
   });
@@ -167,6 +171,24 @@ export class PickFileDialog {
       untracked(() => void this.open(request));
     });
     inject(DestroyRef).onDestroy(() => this.forget());
+  }
+
+  /** What the button that opens this machine's dialog says. */
+  protected readonly fromLabel = computed(() =>
+    this.request()?.kind === 'folder' ? 'From a Folder…' : 'From a File…'
+  );
+
+  /**
+   * What a row says: a file's name, or a folder's path inside its project, or inside the library for one in no
+   * project, so that two folders of one name are told apart.
+   */
+  protected shown(file: LibraryFile): string {
+    if (this.request()?.kind !== 'folder') {
+      return file.name;
+    }
+
+    const top = file.project ? `projects/${file.project}` : '';
+    return file.path === top ? file.name : top ? file.path.slice(top.length + 1) : file.path;
   }
 
   protected text(event: Event): string {
@@ -190,7 +212,9 @@ export class PickFileDialog {
     const kind = this.request()?.kind;
     const file = await (kind === 'mesh'
       ? bridge?.openMesh(this.status.meshes())
-      : bridge?.openImage(this.status.pictures()));
+      : kind === 'folder'
+        ? bridge?.openFolder()
+        : bridge?.openImage(this.status.pictures()));
     if (file) {
       this.picker.answer({ machine: file });
     }

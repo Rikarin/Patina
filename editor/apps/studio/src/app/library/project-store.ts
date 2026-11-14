@@ -972,15 +972,36 @@ export class ProjectStore {
     }
   }
 
-  /** Saves a document with unsaved edits, brought to the front to do it. False if that could not be done. */
+  /**
+   * Saves a document with unsaved edits, brought to the front to do it. False if that could not be done. A tab can say
+   * it is clean a moment after an edit, and the Server then refused the close with a failure that did not say why
+   * (#284), so the Server is asked as well.
+   */
   private async saveFirst(path: string): Promise<boolean> {
     const tab = this.mutableTabs().find(held => held.path === path);
-    if (!tab?.dirty) {
+    if (!tab || !(tab.dirty || (await this.unsavedOnServer(tab)))) {
       return true;
     }
 
     await this.activate(path);
     return this.saveActive();
+  }
+
+  /** Whether the Server holds edits of a tab's document that its file does not. The tab's own word when it cannot say. */
+  private async unsavedOnServer(tab: DocumentTab): Promise<boolean> {
+    const id =
+      tab.session ?? (await (isGraph(tab) ? this.graph.sessionOpened(tab.path) : this.paint.sessionOpened(tab.path)));
+    if (id === null) {
+      return tab.dirty;
+    }
+
+    try {
+      const client = await this.library.api();
+      const open = isGraph(tab) ? (await client.GET('/api/v1/graphs')).data : (await client.GET('/api/v1/stacks')).data;
+      return open?.find(session => session.id === id)?.dirty ?? tab.dirty;
+    } catch {
+      return tab.dirty;
+    }
   }
 
   /** Puts the question off: nothing is decided, so the work stays and the next open asks again. */

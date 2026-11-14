@@ -73,6 +73,13 @@ public sealed record StackPathPoint(IReadOnlyList<float> Position, IReadOnlyList
 /// </param>
 /// <param name="Angle">How far a face may turn from the path's normal and still take it, in radians, 0 to π.</param>
 /// <param name="Box">The box the mesh's <c>position</c> bake is normalised in, as a decal's is.</param>
+/// <param name="Spacing">
+///     For a stroke, how far apart its stamps are as a share of the path's full width, 0 to 16: zero is one unbroken
+///     band, anything above it a row of round stamps never closer than a tenth of the width. A ribbon takes none.
+/// </param>
+/// <param name="Jitter">
+///     How far each stamp moves at random, 0 to 1: that share of the width to the side and of half the spacing along.
+/// </param>
 public sealed record StackSurfacePath(
     IReadOnlyList<StackPathPoint> Points,
     float Radius,
@@ -80,6 +87,8 @@ public sealed record StackSurfacePath(
     bool Ribbon = false,
     float Repeat = 0f,
     float Angle = 1.3f,
-    IReadOnlyList<float>? Box = null
+    IReadOnlyList<float>? Box = null,
+    float Spacing = 0f,
+    float Jitter = 0f
 );
 #pragma warning restore SK7005

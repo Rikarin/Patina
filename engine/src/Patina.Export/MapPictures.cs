@@ -74,6 +74,10 @@ public static class MapPictures {
             return TiffReader.Decode(data);
         }
 
+        if (kind == ".webp") {
+            return WebPReader.Decode(data);
+        }
+
         if (kind == ".png") {
             var (width, height, channels, samples) = PngCodec.Decode16(data);
             var values = new float[samples.Length];

@@ -35,3 +35,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0035](0035-snapshots.md): accepted: a snapshot is a list beside the document and bytes kept by revision under `.revisions/`, not a Git commit, and it goes back only into a closed document.
 - [0034](0034-3d-mouse.md): accepted: a 3D mouse is read as plain HID through WebHID, with no vendor SDK, and moves the viewport's camera as a drag does.
 - [0037](0037-quick-mask.md): accepted: a quick mask is a journaled canvas the session holds, kept to in the atlas, and never saved.
+- [0038](0038-graph-measurements.md): accepted: a picture's histogram is counted on the GPU at full size and sent as numbers, and a node's cost is the GPU time of its operations, kept per node.

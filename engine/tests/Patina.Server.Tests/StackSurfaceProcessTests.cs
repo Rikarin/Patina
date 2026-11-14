@@ -111,10 +111,25 @@ public sealed partial class StackProcessTests {
         var thick = await CountAsync(state.Id, "thick", Reddish, deadline.Token);
         Assert.True(thick > thin * 2, $"A path three times as wide covered {thick} texels against {thin}.");
 
+        // Stamps two widths apart leave gaps along the path (#130), and a spacing past the widest is refused.
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(badge, Path: Through(size * 0.03f) with { Spacing = 2f, Jitter = 0.5f })
+        );
+        var stamped = await CountAsync(state.Id, "stamped", Reddish, deadline.Token);
+        Assert.InRange(stamped, 1, thick * 3 / 4);
+        await RefusedAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(badge, Path: Through(size * 0.03f) with { Spacing = 17f })
+        );
+
         // And the document holds the path as points, which is what the Server sends back.
         var kept = (await StateAsync(state.Id, deadline.Token)).Layers.Single(layer => layer.Id == badge);
         Assert.Equal("Path", kept.Projection);
         Assert.Equal(3, kept.Path!.Points.Count);
+        Assert.Equal((2f, 0.5f), (kept.Path.Spacing, kept.Path.Jitter));
         Assert.NotNull(kept.Decal);
     }
 

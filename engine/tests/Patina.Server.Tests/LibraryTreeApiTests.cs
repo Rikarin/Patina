@@ -284,7 +284,7 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
         await using (new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)) {
             kept = await client.PutAsJsonAsync(
                 "/api/v1/library/project/export",
-                new ProjectExportRequest("crate", new ProjectExportSettings { Preset = "godot" }),
+                new ProjectExportRequest("crate", new() { Preset = "godot" }),
                 Token
             );
         }
@@ -641,7 +641,7 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
     [InlineData("model.blend")]
     [InlineData("scene.usd")]
     [InlineData("notes.txt")]
-    [InlineData("height.webp")]
+    [InlineData("height.jxl")]
     public async Task An_import_nothing_can_read_is_refused_and_copies_nothing(string name) {
         await MakeCrateAsync();
         var file = Path.Combine(files.FullName, name);

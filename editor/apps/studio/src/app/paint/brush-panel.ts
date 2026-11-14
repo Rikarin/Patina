@@ -214,7 +214,7 @@ const PreviewQuiet = 200;
           <span class="text-foreground-muted min-w-0 flex-1 truncate text-xs">Colors · Alt-click a shelf material</span>
         }
       </div>
-      @if (store.material()) {
+      @if (store.material() && (!store.material()?.layered || store.projectsMaterial())) {
         <div class="flex items-center gap-2 ps-[4.5rem]" data-testid="paint-material-placement">
           @if (store.projectsMaterial()) {
             <span
@@ -243,19 +243,21 @@ const PreviewQuiet = 200;
               (valueChange)="$event && store.materialProjection.set($event)"
             />
           }
-          <xui-slider
-            class="w-24 shrink-0"
-            labelStepSize="0"
-            aria-label="Material scale"
-            data-testid="paint-material-scale"
-            title="How many times the material repeats"
-            [max]="16"
-            [min]="0.25"
-            [stepSize]="0.25"
-            [value]="store.materialScale()"
-            (valueChange)="store.materialScale.set($event)"
-          />
-          <span class="readout w-10 shrink-0 text-end text-xs">{{ store.materialScale() }}×</span>
+          @if (!store.material()?.layered) {
+            <xui-slider
+              class="w-24 shrink-0"
+              labelStepSize="0"
+              aria-label="Material scale"
+              data-testid="paint-material-scale"
+              title="How many times the material repeats"
+              [max]="16"
+              [min]="0.25"
+              [stepSize]="0.25"
+              [value]="store.materialScale()"
+              (valueChange)="store.materialScale.set($event)"
+            />
+            <span class="readout w-10 shrink-0 text-end text-xs">{{ store.materialScale() }}×</span>
+          }
         </div>
       }
     }

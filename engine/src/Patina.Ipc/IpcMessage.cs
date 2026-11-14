@@ -58,6 +58,12 @@ public static class IpcTypes {
     public const string ViewportCast = "viewport.cast";
 
     /// <summary>
+    ///     Server to Worker: the named meshes that show inside the rectangle from <see cref="IpcMessage.Pick" /> to its
+    ///     second corner; answers with <see cref="IpcMessage.Marqueed" />. It reads the mesh and no device (#110).
+    /// </summary>
+    public const string ViewportMarquee = "viewport.marquee";
+
+    /// <summary>
     ///     Server to Worker: from now on the viewport wears the stack <see cref="IpcMessage.Following" />, or nothing
     ///     when that is null. The maps go from the stack's evaluation to the viewport inside the Worker.
     /// </summary>
@@ -77,6 +83,12 @@ public static class IpcTypes {
     ///     <see cref="IpcMessage.GraphFullImage" />.
     /// </summary>
     public const string GraphImage = "graph.image";
+
+    /// <summary>
+    ///     Server to Worker: count one node's picture, at the size the graph computes it, into a histogram per channel;
+    ///     answers with <see cref="IpcMessage.GraphLevels" />.
+    /// </summary>
+    public const string GraphHistogram = "graph.histogram";
 
     /// <summary>Server to Worker: forget the graph named by <see cref="IpcMessage.GraphClose" />.</summary>
     public const string GraphClose = "graph.close";
@@ -198,7 +210,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 18;
+    public const int ProtocolVersion = 19;
 
     public string Type { get; set; } = string.Empty;
 
@@ -234,6 +246,9 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to viewport.pick.</summary>
     public ViewportPick? Picked { get; set; }
+
+    /// <summary>The reply to viewport.marquee.</summary>
+    public ViewportMarquee? Marqueed { get; set; }
 
     /// <summary>viewport.cast: the rays and the mesh.</summary>
     public ViewportCastAsk? Cast { get; set; }
@@ -282,6 +297,12 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to graph.image.</summary>
     public GraphFullImage? GraphFullImage { get; set; }
+
+    /// <summary>graph.histogram: which picture.</summary>
+    public GraphHistogramAsk? GraphHistogram { get; set; }
+
+    /// <summary>The reply to graph.histogram.</summary>
+    public GraphLevels? GraphLevels { get; set; }
 
     /// <summary>The reply to graph.evaluate.</summary>
     public GraphResult? GraphResult { get; set; }
@@ -454,101 +475,6 @@ public sealed record WorkerHealth(double UptimeSeconds, long WorkingSetBytes, do
 /// <param name="Maps">The values no physical material has, each with its share and its first texel.</param>
 public sealed record StackMeasured(int Width, int Height, LayoutMeasures? Layout, IReadOnlyList<MapMeasure> Maps);
 
-/// <summary>A picture on a disk the Worker can read, and the hash of what is in it.</summary>
-public sealed record ViewportMapFile(string Path, string Hash);
-
-/// <summary>The pictures laid over the open mesh's materials. A null slot keeps the material's own.</summary>
-public sealed record ViewportMapSet(
-    ViewportMapFile? BaseColor = null,
-    ViewportMapFile? Normal = null,
-    ViewportMapFile? Roughness = null,
-    ViewportMapFile? Metallic = null,
-    ViewportMapFile? Occlusion = null,
-    ViewportMapFile? Emissive = null,
-    ViewportMapFile? Opacity = null
-) {
-    /// <summary>Whether normals here point green down, as a graph's do.</summary>
-    public bool GreenDown { get; init; }
-}
-
-/// <summary>
-///     How frames are lit, shown and finished, with the files it names hashed: the viewing table, and the picture the
-///     picture view shows.
-/// </summary>
-/// <param name="Display">The settings as a client gave them.</param>
-/// <param name="Look">The <c>.cube</c> table, or null.</param>
-/// <param name="Picture">The picture, or null.</param>
-/// <param name="Isolation">The parts and materials drawn alone, or null for the whole model.</param>
-/// <param name="TexelDensity">
-///     The texel density the texel density view measures against, in texels per unit of the model, from the project of
-///     the stack worn; zero for none.
-/// </param>
-/// <param name="Resolution">The side of a map for a material whose own size cannot be read, in texels.</param>
-/// <param name="Highlight">What is marked on the model, or null for nothing.</param>
-/// <param name="Symmetry">The symmetry whose mirror is drawn where it meets the model, or null for none.</param>
-public sealed record ViewportDisplaySet(
-    ViewportDisplay Display,
-    ViewportMapFile? Look,
-    ViewportMapFile? Picture,
-    ViewportIsolation? Isolation = null,
-    double TexelDensity = 0,
-    int Resolution = 2048,
-    ViewportHighlight? Highlight = null,
-    StackSymmetry? Symmetry = null
-);
-
-/// <summary>
-///     An orbit around the model and the lens it looks through: radians, a distance in framings, a pan in bounding
-///     radii. The lens comes from the display settings, so a pick sees what the picture shows.
-/// </summary>
-public sealed record ViewportCamera(
-    double Yaw,
-    double Pitch,
-    double Distance,
-    double PanX = 0,
-    double PanY = 0,
-    double PanZ = 0,
-    double FieldOfView = 0.7,
-    bool Orthographic = false
-);
-
-/// <summary>
-///     One frame to render, and the slot of the shared-memory file to write it to: RGBA, tightly packed, top row first.
-///     The Server owns the file; the Worker maps it, and can map it again.
-/// </summary>
-public sealed record ViewportRender(int Width, int Height, string SharedMemory, long Offset, long Capacity);
-
-/// <summary>A position on the viewport's picture to find on the mesh.</summary>
-/// <param name="X">Across, 0 to 1.</param>
-/// <param name="Y">Down, 0 to 1.</param>
-/// <param name="Camera">The camera.</param>
-/// <param name="Width">The picture's width in the units the reply's view is in.</param>
-/// <param name="Height">Its height.</param>
-/// <param name="Mesh">The mesh. Only its file is read, so this answers where there is no Vulkan.</param>
-/// <param name="UvSets">
-///     The coordinate set each worn material is laid out in, by name, where it is not the first (#210): the place on
-///     the map a pick says is in its texture set's own layout, which Find Layer, the color picker and the clone source
-///     read. Null reads every material in the first.
-/// </param>
-public sealed record ViewportPickAsk(
-    double X,
-    double Y,
-    ViewportCamera Camera,
-    int Width,
-    int Height,
-    string Mesh,
-    IReadOnlyDictionary<string, int>? UvSets = null
-);
-
-/// <summary>Rays along one direction to meet the mesh with (#263).</summary>
-/// <param name="Origins">Where each ray starts, in the mesh's own space: three numbers to a ray.</param>
-/// <param name="Direction">The way every ray goes: three numbers.</param>
-/// <param name="Mesh">The mesh. Only its file is read, as a pick's is.</param>
-public sealed record ViewportCastAsk(IReadOnlyList<float> Origins, IReadOnlyList<float> Direction, string Mesh);
-
-/// <summary>A frame that is now in shared memory.</summary>
-public sealed record ViewportFrame(int Width, int Height, double RenderMilliseconds);
-
 /// <summary>
 ///     A graph for the Worker to hold. It is a copy: the Server has the document, and sends it again after a crash.
 /// </summary>
@@ -619,6 +545,33 @@ public sealed record GraphImageAsk(string Session, int Node, string Port, string
 
 /// <summary>A full-size picture that is now in the cache. The pixels are not in the message.</summary>
 public sealed record GraphFullImage(string Hash, int Width, int Height);
+
+/// <summary>Asks for the histogram of one picture of a loaded graph, at the size the graph computes it.</summary>
+/// <param name="Session">The graph.</param>
+/// <param name="Node">The node.</param>
+/// <param name="Port">Its output port, or the usage of an Output node.</param>
+public sealed record GraphHistogramAsk(string Session, int Node, string Port);
+
+/// <summary>
+///     A picture's histogram: per channel, 256 shares of its texels summing to one, bin <c>b</c> holding the values
+///     <c>v</c> with <c>floor(256 v) = b</c>, clamped. Numbers about a picture, not its pixels.
+/// </summary>
+/// <param name="Width">The picture's width, as counted.</param>
+/// <param name="Height">Its height.</param>
+/// <param name="Red">The red channel's shares.</param>
+/// <param name="Green">The green channel's.</param>
+/// <param name="Blue">The blue channel's.</param>
+/// <param name="Alpha">The alpha channel's.</param>
+/// <param name="Luma">Rec. 709 luma's, from the stored red, green and blue.</param>
+public sealed record GraphLevels(
+    int Width,
+    int Height,
+    IReadOnlyList<float> Red,
+    IReadOnlyList<float> Green,
+    IReadOnlyList<float> Blue,
+    IReadOnlyList<float> Alpha,
+    IReadOnlyList<float> Luma
+);
 
 /// <summary>What a <see cref="MaterialThumbnailAsk" /> holds.</summary>
 public static class MaterialThumbnailKinds {
@@ -720,6 +673,7 @@ public sealed record StackLoad(
 ///     through (#127), or null.
 /// </param>
 /// <param name="KeepOutside">Whether the stroke is kept to where that quick mask is not painted instead.</param>
+/// <param name="Carry">With <paramref name="From" />, the UV sets the copy is carried between (#210), or null.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -746,8 +700,18 @@ public sealed record StackPaintPart(
     bool Outline = false,
     bool Through = false,
     string? Keep = null,
-    bool KeepOutside = false
+    bool KeepOutside = false,
+    StackCarry? Carry = null
 );
+
+/// <summary>
+///     With <see cref="StackPaintPart.From" />, the layouts a copy is carried between (#210): the canvas it copies is
+///     laid out in one of the mesh's UV sets, and the copy in another, each texel reading the place on the surface it
+///     covers.
+/// </summary>
+/// <param name="FromUvSet">The UV set the canvas copied is laid out in.</param>
+/// <param name="ToUvSet">The UV set the copy is laid out in.</param>
+public sealed record StackCarry(int FromUvSet, int ToUvSet);
 
 /// <summary>What a flattened group's canvas is made of.</summary>
 /// <param name="Document">The stack as text, as it stood when the group was flattened.</param>
@@ -907,50 +871,11 @@ public sealed record MaterialReadAsk(string File, string Folder);
 /// <param name="Mips">Whether a KTX2 or DDS file carries a mip chain.</param>
 public sealed record StackFileAsk(string Format, string Compression, string Quality, bool Mips);
 
-/// <summary>Where a preview lives in the cache, for the Worker that writes it and the Server that serves it.</summary>
-public static class GraphPreviewFiles {
-    public const string Extension = ".png";
-
-    /// <summary>What a drawing of lines is kept as, such as a UV layout.</summary>
-    public const string Drawing = ".svg";
-
-    public static string PathOf(string folder, string hash, string extension = Extension) =>
-        Path.Combine(folder, hash[..2], string.Concat(hash, extension));
-
-    /// <summary>
-    ///     Writes a file under its hash: whoever reads it sees all of it or no file. A file already there is the same
-    ///     bytes, since the name is their hash, so it is kept and never replaced.
-    /// </summary>
-    /// <remarks>
-    ///     ⚠ Never moved over (#250). On Windows a rename onto a file fails with "Access to the path is denied" while
-    ///     anyone has that file open, and two nodes with one picture reach here at once under one hash, while the
-    ///     Server may be serving it. One of them wins, and the others' pictures are already there.
-    /// </remarks>
-    /// <param name="folder">The preview cache.</param>
-    /// <param name="hash">The digest of <paramref name="bytes" />.</param>
-    /// <param name="bytes">What the file holds.</param>
-    /// <param name="extension">What kind of file it is.</param>
-    public static void Store(string folder, string hash, byte[] bytes, string extension = Extension) {
-        var path = PathOf(folder, hash, extension);
-        if (File.Exists(path)) {
-            return;
-        }
-
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-
-        // A name of its own, for the writers that reach here together.
-        var temporary = $"{path}.{Guid.NewGuid():N}.tmp";
-        File.WriteAllBytes(temporary, bytes);
-        try {
-            File.Move(temporary, path);
-        } catch (Exception e) when (e is IOException or UnauthorizedAccessException && File.Exists(path)) {
-            File.Delete(temporary);
-        }
-    }
-}
-
 /// <summary>A preview that is now in the cache. The pixels are not in the message.</summary>
 public sealed record GraphResultPreview(int Node, string Port, string Hash, int Width, int Height);
+
+/// <summary>How long one node's operations took on the GPU in an evaluation that ran them.</summary>
+public sealed record GraphResultTime(int Node, double Milliseconds);
 
 /// <summary>A compiler diagnostic.</summary>
 public sealed record GraphResultProblem(string Id, string Message, string Severity, int Node, string Port);
@@ -963,6 +888,10 @@ public sealed record GraphResultProblem(string Id, string Message, string Severi
 /// <param name="Milliseconds">The time in the Worker.</param>
 /// <param name="Previews">Every node's preview.</param>
 /// <param name="Problems">Everything the compiler reported.</param>
+/// <param name="Times">
+///     Each node and how long its operations took on the GPU when they ran, those the result cache answered included,
+///     with the time their results took when they were made.
+/// </param>
 public sealed record GraphResult(
     bool Compiled,
     bool Evaluated,
@@ -970,7 +899,8 @@ public sealed record GraphResult(
     int Reused,
     double Milliseconds,
     IReadOnlyList<GraphResultPreview> Previews,
-    IReadOnlyList<GraphResultProblem> Problems
+    IReadOnlyList<GraphResultProblem> Problems,
+    IReadOnlyList<GraphResultTime> Times
 );
 
 [JsonSourceGenerationOptions(

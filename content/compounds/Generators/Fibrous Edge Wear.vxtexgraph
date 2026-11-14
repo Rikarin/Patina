@@ -1,0 +1,75 @@
+version: 1
+name: Fibrous Edge Wear
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: curvature } }
+  - { id: 2, type: Filters/Blur HQ, x: -960, y: 0, texts: { '=Sigma': '1f + reach * 4f' } }
+  - { id: 3, type: Colour/Histogram Equalise, x: -640, y: 0 }
+  - id: 4
+    type: Colour/Levels
+    x: -320
+    y: 0
+    values: { Input White: [1] }
+    texts:
+      '=Input Black': '0.95f - reach * 0.35f'
+  - { id: 5, type: Colour/Levels, x: -320, y: 160, values: { Input Black: [0.501], Input White: [0.504] } }
+  - { id: 6, type: Colour/Blend, x: 0, y: 0, texts: { Mode: Multiply } }
+  - { id: 7, type: Source/Mesh Map, x: -1280, y: 360, texts: { Map: position } }
+  - id: 8
+    type: Colour/Channel Mix
+    x: -960
+    y: 360
+    texts:
+      '=Green from Green': '0.15f - stretch * 0.13f'
+  - id: 9
+    type: Source/Volume Noise
+    x: -640
+    y: 360
+    values: { Octaves: [4], Gain: [0.55] }
+    texts:
+      Basis: Gradient
+      Profile: Ridged
+      '=Scale': '24f + fineness * 96f'
+      '=Seed': seed
+  - id: 10
+    type: Filters/Pixel Processor
+    x: 320
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(smoothstep(0.5f - y, 0.5f + y, a.x * (0.3f + x * 0.9f) + b.x * 0.6f - 0.1f), 0f, 0f, 1f)'
+      '=X': amount
+      '=Y': '0.005f + softness * 0.08f'
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 2, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 6, toPort: Background }
+  - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Foreground }
+  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: Input }
+  - { fromNode: 8, fromPort: Out, toNode: 9, toPort: Position }
+  - { fromNode: 6, fromPort: Out, toNode: 10, toPort: A }
+  - { fromNode: 9, fromPort: Out, toNode: 10, toPort: B }
+  - { fromNode: 10, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'Wear along the convex edges that frays into long fibres, as a coat worn through to woven glass or cloth beneath. White is the wear.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Edge wear with a fibrous breakup: the convex edges rubbed through, the rim torn into strands that run up and down the model.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.5', summary: 'How much of the edges is worn through.', kind: Float, minimum: 0, maximum: 1, group: Wear }
+  - { name: reach, label: Reach, default: '0.4', summary: 'How far from the edges the wear spreads across the faces.', kind: Float, minimum: 0, maximum: 1, group: Wear }
+  - { name: softness, label: Softness, default: '0.1', summary: 'How soft the worn rim is. Nought is a clean break.', kind: Float, minimum: 0, maximum: 1, group: Wear }
+  - { name: fineness, label: Fineness, default: '0.5', summary: 'How fine the fibres are.', kind: Float, minimum: 0, maximum: 1, group: Fibres }
+  - { name: stretch, label: Stretch, default: '0.7', summary: 'How long the fibres run up and down the model. Nought is a grain with no direction.', kind: Float, minimum: 0, maximum: 1, group: Fibres }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the fibres. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Fibres }

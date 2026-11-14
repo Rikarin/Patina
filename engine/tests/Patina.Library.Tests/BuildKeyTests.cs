@@ -35,12 +35,12 @@ public sealed class BuildKeyTests {
     [Fact]
     public void A_key_is_stable_across_releases_of_this_code() {
         // Keys name files on farms and other machines, so a change here is a rebuild of every library. Do it on
-        // purpose.
+        // purpose: the last was OutputKeys.Generation, 2 (#281).
         var asset = new AssetId(Guid.Parse("0190a000-0000-7000-8000-000000000001"));
         var project = Project(AssetReference.Floating(asset));
 
         Assert.Equal(
-            "1a999457917d38753c3da229b22c8d1a6f17debbdfc7e26911cd71264318d86c",
+            "f7c3c4bd09d20ff91fbe626581761d55b5338ca857e0edd4a9a1a0d2802d3269",
             Key(project, new AssetNode(asset, Bytes, []))?.Hex
         );
     }

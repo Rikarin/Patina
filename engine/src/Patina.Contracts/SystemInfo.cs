@@ -90,7 +90,7 @@ public static class MeshFormats {
 /// </summary>
 public static class PictureFormats {
     public static IReadOnlyList<string> Pictures { get; } =
-        [".png", ".jpg", ".jpeg", ".tga", ".bmp", ".psd", ".gif", ".exr", ".hdr", ".tif", ".tiff"];
+        [".png", ".jpg", ".jpeg", ".tga", ".bmp", ".psd", ".gif", ".exr", ".hdr", ".tif", ".tiff", ".webp"];
 
     public static IReadOnlyList<string> Environments { get; } = [".hdr", ".exr"];
 

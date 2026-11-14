@@ -670,16 +670,7 @@ static class ProjectFiles {
         }
 
         List<LibraryFile> found = [];
-        var inOrder = Directory.EnumerateFiles(
-                projects,
-                LibraryLayout.ProjectFile,
-                new EnumerationOptions { RecurseSubdirectories = true }
-            )
-            .Select(file => Path.GetRelativePath(projects, Path.GetDirectoryName(file)!).Replace('\\', '/'))
-            .Where(static project => !project.Split('/').Any(static part => part.StartsWith('.')))
-            .OrderBy(project => project == first ? 0 : 1)
-            .ThenBy(static project => project, StringComparer.OrdinalIgnoreCase);
-        foreach (var project in inOrder) {
+        foreach (var project in InOrder(projects, first)) {
             var full = Path.Combine(projects, project);
             foreach (var below in Files(full)) {
                 if (!wanted(below) || Nested(full, below)) {
@@ -696,6 +687,21 @@ static class ProjectFiles {
 
         return (found, false);
     }
+
+    /// <summary>
+    ///     The projects below <paramref name="projects" />, none hidden, by their paths below it:
+    ///     <paramref name="first" /> first, then the rest by name.
+    /// </summary>
+    internal static IEnumerable<string> InOrder(string projects, string? first) =>
+        Directory.EnumerateFiles(
+                projects,
+                LibraryLayout.ProjectFile,
+                new EnumerationOptions { RecurseSubdirectories = true }
+            )
+            .Select(file => Path.GetRelativePath(projects, Path.GetDirectoryName(file)!).Replace('\\', '/'))
+            .Where(static project => !project.Split('/').Any(static part => part.StartsWith('.')))
+            .OrderBy(project => project == first ? 0 : 1)
+            .ThenBy(static project => project, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     ///     Whether a file below a project is another project's, or hidden, which is not the project's to offer.

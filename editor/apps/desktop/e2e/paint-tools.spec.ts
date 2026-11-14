@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
-import { answerOpen, leave, newLibrary, newProject, pick } from './projects';
+import { answerOpen, leave, newLibrary, newProject, pick, serverPicture } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -50,6 +50,59 @@ async function box() {
 
 async function shot(): Promise<string> {
   return (await canvas().screenshot({ scale: 'css' })).toString('base64');
+}
+
+/** How many pixels of a PNG given as base64 are reddish: red over the mean of green and blue by ten levels. */
+async function red(png: string): Promise<number> {
+  return window.evaluate(async data => {
+    const bytes = Uint8Array.from(atob(data), character => character.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const surface = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const context = surface.getContext('2d');
+    if (!context) {
+      throw new Error('No 2D context.');
+    }
+
+    context.drawImage(bitmap, 0, 0);
+    const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height).data;
+    let count = 0;
+    for (let at = 0; at < pixels.length; at += 4) {
+      const [r, g, b] = [pixels[at] ?? 0, pixels[at + 1] ?? 0, pixels[at + 2] ?? 0];
+      count += 2 * r - g - b > 20 ? 1 : 0;
+    }
+
+    return count;
+  }, png);
+}
+
+/** How many pixels grew redder than they were: red over the mean of green and blue, up by more than ten levels. */
+async function reddened(before: string, after: string): Promise<number> {
+  return window.evaluate(
+    async ({ first, second }) => {
+      const load = async (data: string) => {
+        const bytes = Uint8Array.from(atob(data), character => character.charCodeAt(0));
+        const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+        const surface = new OffscreenCanvas(bitmap.width, bitmap.height);
+        const context = surface.getContext('2d');
+        if (!context) {
+          throw new Error('No 2D context.');
+        }
+
+        context.drawImage(bitmap, 0, 0);
+        return context.getImageData(0, 0, bitmap.width, bitmap.height).data;
+      };
+      const [one, two] = [await load(first), await load(second)];
+      const redness = (pixels: Uint8ClampedArray, at: number) =>
+        2 * (pixels[at] ?? 0) - (pixels[at + 1] ?? 0) - (pixels[at + 2] ?? 0);
+      let count = 0;
+      for (let at = 0; at < one.length; at += 4) {
+        count += redness(two, at) - redness(one, at) > 20 ? 1 : 0;
+      }
+
+      return count;
+    },
+    { first: before, second: after }
+  );
 }
 
 /** How many pixels moved by more than `step` levels of red. */
@@ -333,8 +386,19 @@ test('the quick mask shows red where it is painted, and a stroke after it reache
   await expect(button).toHaveAttribute('data-quick-mask', 'paint');
   const blank = await shot();
   await drag(0.38, 0.45, 0.62, 0.45);
-  // Red over the model where the quick mask is painted, and the layer left alone.
-  await expect.poll(async () => changed(blank, await shot()), { timeout: 60_000 }).toBeGreaterThan(300);
+  // Red over the model where the quick mask is painted, and the layer left alone. ⚠ Red as green and blue lost, not as
+  // more red: the tint goes on before the tone curve, so on a brightly lit model red barely moves or even falls, and a
+  // count of red that moved by 24 levels found nothing on Linux CI (#274).
+  try {
+    await expect.poll(async () => reddened(blank, await shot()), { timeout: 60_000 }).toBeGreaterThan(300);
+  } catch (failure) {
+    // Whether the Worker drew the quick mask and the app lost it, or the Worker never drew it (#274).
+    const drawn = await red(await serverPicture(window, join(shots, 'quick-mask-painted-server.png')));
+    throw new Error(`${String(failure)}\nThe Server's own picture of the viewport has ${drawn} red pixels.`, {
+      cause: failure
+    });
+  }
+
   await settled();
   await window.screenshot({ path: join(shots, 'quick-mask-painted.png') });
 

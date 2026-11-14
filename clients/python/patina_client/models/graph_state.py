@@ -21,6 +21,7 @@ if TYPE_CHECKING:
   from ..models.graph_info_state import GraphInfoState
   from ..models.graph_interface_port import GraphInterfacePort
   from ..models.graph_node_state import GraphNodeState
+  from ..models.graph_node_time import GraphNodeTime
   from ..models.graph_preset_state import GraphPresetState
   from ..models.graph_preview import GraphPreview
   from ..models.graph_selection import GraphSelection
@@ -65,6 +66,7 @@ class GraphState:
             selection (GraphSelection): The nodes chosen in a graph session, and the one kept on view whatever is chosen. A
                 session has one selection,
                 whichever client made it last, so a client that follows it, such as the viewport, needs no editor (#244).
+            times (list[GraphNodeTime]): The newest GPU time of each node an evaluation has timed.
             evaluation (GraphEvaluation | None | Unset):
      """
 
@@ -88,6 +90,7 @@ class GraphState:
     read_only: bool
     info: GraphInfoState
     selection: GraphSelection
+    times: list[GraphNodeTime]
     evaluation: GraphEvaluation | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -105,6 +108,7 @@ class GraphState:
         from ..models.graph_info_state import GraphInfoState # noqa: PLC0415
         from ..models.graph_interface_port import GraphInterfacePort # noqa: PLC0415
         from ..models.graph_node_state import GraphNodeState # noqa: PLC0415
+        from ..models.graph_node_time import GraphNodeTime # noqa: PLC0415
         from ..models.graph_preset_state import GraphPresetState # noqa: PLC0415
         from ..models.graph_preview import GraphPreview # noqa: PLC0415
         from ..models.graph_selection import GraphSelection # noqa: PLC0415
@@ -195,6 +199,13 @@ class GraphState:
 
         selection = self.selection.to_dict()
 
+        times = []
+        for times_item_data in self.times:
+            times_item = times_item_data.to_dict()
+            times.append(times_item)
+
+
+
         evaluation: dict[str, Any] | None | Unset
         if isinstance(self.evaluation, Unset):
             evaluation = UNSET
@@ -227,6 +238,7 @@ class GraphState:
             "readOnly": read_only,
             "info": info,
             "selection": selection,
+            "times": times,
         })
         if evaluation is not UNSET:
             field_dict["evaluation"] = evaluation
@@ -246,6 +258,7 @@ class GraphState:
         from ..models.graph_info_state import GraphInfoState # noqa: PLC0415
         from ..models.graph_interface_port import GraphInterfacePort # noqa: PLC0415
         from ..models.graph_node_state import GraphNodeState # noqa: PLC0415
+        from ..models.graph_node_time import GraphNodeTime # noqa: PLC0415
         from ..models.graph_preset_state import GraphPresetState # noqa: PLC0415
         from ..models.graph_preview import GraphPreview # noqa: PLC0415
         from ..models.graph_selection import GraphSelection # noqa: PLC0415
@@ -376,6 +389,16 @@ class GraphState:
 
 
 
+        times = []
+        _times = d.pop("times")
+        for times_item_data in (_times):
+            times_item = GraphNodeTime.from_dict(times_item_data)
+
+
+
+            times.append(times_item)
+
+
         def _parse_evaluation(data: object) -> GraphEvaluation | None | Unset:
             if data is None:
                 return data
@@ -417,6 +440,7 @@ class GraphState:
             read_only=read_only,
             info=info,
             selection=selection,
+            times=times,
             evaluation=evaluation,
         )
 

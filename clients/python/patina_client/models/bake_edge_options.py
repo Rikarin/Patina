@@ -23,6 +23,8 @@ class BakeEdgeOptions:
     """ Which edges the edges map marks, and the band it draws along them (#148).
 
         Attributes:
+            mesh (str): Whose edges are marked: `high`, the high mesh's, where the rays land; or `low`, the low mesh's, at
+                the texel, so its hard edges show even under a high mesh with none (#278).
             edges (str): `hard`, the edges the high mesh's own normals split, or `angle`, every edge whose faces meet at
                             double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are
                 its edges.
@@ -33,6 +35,7 @@ class BakeEdgeOptions:
                 a smoothstep; or `chamfer`, white all the way across.
      """
 
+    mesh: str
     edges: str
     width: float
     angle: float
@@ -44,6 +47,8 @@ class BakeEdgeOptions:
 
 
     def to_dict(self) -> dict[str, Any]:
+        mesh = self.mesh
+
         edges = self.edges
 
         width = self.width
@@ -56,6 +61,7 @@ class BakeEdgeOptions:
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
+            "mesh": mesh,
             "edges": edges,
             "width": width,
             "angle": angle,
@@ -69,6 +75,8 @@ class BakeEdgeOptions:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
+        mesh = d.pop("mesh")
+
         edges = d.pop("edges")
 
         width = d.pop("width")
@@ -78,6 +86,7 @@ class BakeEdgeOptions:
         profile = d.pop("profile")
 
         bake_edge_options = cls(
+            mesh=mesh,
             edges=edges,
             width=width,
             angle=angle,

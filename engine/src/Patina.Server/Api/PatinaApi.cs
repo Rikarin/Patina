@@ -91,6 +91,15 @@ static class PatinaApi {
             .WithSummary("What is under a position in the viewport, and the camera a stroke there carries.")
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+        api.MapPost("/viewport/marquee", MarqueeAsync)
+            .WithName("MarqueeInViewport")
+            .WithTags(ViewportTag)
+            .WithSummary(
+                "The named meshes that show inside a rectangle in the viewport, which a layer kept to some meshes "
+                + "takes or leaves (#110)."
+            )
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
         api.MapPost("/viewport/cast", CastAsync)
             .WithName("CastInViewport")
             .WithTags(ViewportTag)
@@ -147,6 +156,20 @@ static class PatinaApi {
     ) {
         try {
             return TypedResults.Ok(await session.PickAsync(request, cancellationToken));
+        } catch (Patina.Ipc.IpcException e) {
+            return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
+        } catch (Exception e) when (e is IOException or TimeoutException) {
+            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    static async Task<Results<Ok<ViewportMarquee>, ProblemHttpResult>> MarqueeAsync(
+        ViewportMarqueeRequest request,
+        ViewportSession session,
+        CancellationToken cancellationToken
+    ) {
+        try {
+            return TypedResults.Ok(await session.MarqueeAsync(request, cancellationToken));
         } catch (Patina.Ipc.IpcException e) {
             return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
         } catch (Exception e) when (e is IOException or TimeoutException) {

@@ -53,6 +53,46 @@ public sealed partial class LibraryTreeApiTests {
     }
 
     /// <summary>
+    ///     The folders a client can write an export or a bake into are listed for one that cannot see the disk of the
+    ///     Server: every project's and those in it, the asked project's first, then the exports folder's; a hidden
+    ///     folder and a project inside a project are not (#4).
+    /// </summary>
+    [Fact]
+    public async Task The_library_lists_the_folders_a_client_can_write_into() {
+        await MakeCrateAsync();
+        using var barrel = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Barrel", Kind: "layered-material"),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.Created, barrel.StatusCode);
+        foreach (var folder in new[] {
+                     "projects/crate/out/maps", "projects/crate/.paint-backup", "projects/barrel/Pictures",
+                     "exports/crate"
+                 }) {
+            Directory.CreateDirectory(Path.Combine(server.Library, folder));
+        }
+
+        var listed = await client.GetFromJsonAsync<LibraryFileList>(
+            "/api/v1/library/files?kind=folder&project=crate",
+            Token
+        );
+
+        Assert.Equal(
+            [
+                new("projects/crate", "crate", "crate"), new("projects/crate/out", "out", "crate"),
+                new("projects/crate/out/maps", "maps", "crate"), new("projects/barrel", "barrel", "barrel"),
+                new("projects/barrel/Pictures", "Pictures", "barrel"),
+                new("projects/shared-assets", "shared-assets", "shared-assets"),
+                new("exports", "exports", string.Empty),
+                new LibraryFile("exports/crate", "crate", string.Empty)
+            ],
+            listed!.Files
+        );
+        Assert.False(listed.More);
+    }
+
+    /// <summary>
     ///     A picture another project holds comes into this one as a copy, by its path below the library; one already in
     ///     the project stays where it is, and a path that climbs out of the library is refused (#4).
     /// </summary>
@@ -184,5 +224,32 @@ public sealed partial class LibraryTreeApiTests {
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, served.StatusCode);
         Assert.Contains("picture-unreadable", await served.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    ///     A texturing project made at a size bakes at that size until someone says otherwise (#144), where every
+    ///     project baked at 2048 whatever it was made at; one made at the default size keeps nothing in its file.
+    /// </summary>
+    [Fact]
+    public async Task A_project_bakes_at_the_size_it_was_made_at() {
+        var mesh = Path.Combine(files.FullName, "crate.glb");
+        File.WriteAllText(mesh, "mesh");
+
+        foreach (var (name, side) in new[] { ("Small", 1024), ("Large", 4096), ("Plain", 2048) }) {
+            using var created = await client.PostAsJsonAsync(
+                "/api/v1/library/projects",
+                new ProjectCreateRequest(name, Mesh: mesh, Resolution: side),
+                Token
+            );
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        }
+
+        async Task<int> BakeSide(string path) =>
+            (await client.GetFromJsonAsync<ProjectContents>($"/api/v1/library/project?path={path}", Token))!
+            .Bake.Options.Resolution;
+
+        Assert.Equal((1024, 4096, 2048), (await BakeSide("small"), await BakeSide("large"), await BakeSide("plain")));
+        var plain = await File.ReadAllTextAsync(Path.Combine(server.Library, "projects/plain/project.yaml"), Token);
+        Assert.DoesNotContain("bake", plain, StringComparison.Ordinal);
     }
 }

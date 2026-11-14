@@ -749,8 +749,27 @@ public sealed partial class StackProcessTests {
 
         static IReadOnlyList<float> Colour(string material) => material == "Body" ? Rust : [0.1f, 0.3f, 0.9f, 1f];
 
+        // The preset's file list names each set's own tile before anything is built (#281).
+        using var source = JsonDocument.Parse(
+            await http.GetStringAsync("/api/v1/export/presets/tiles", deadline.Token)
+        );
+        using var checkedPreset = await http.PostAsJsonAsync(
+            "/api/v1/export/presets/check",
+            new { preset = source.RootElement.GetProperty("document"), project },
+            deadline.Token
+        );
+        using var check = JsonDocument.Parse(await checkedPreset.Content.ReadAsStringAsync(deadline.Token));
+        Assert.Equal(
+            ["Body.1001_u1_v1.png", "Strap.1002_u2_v1.png"],
+            check.RootElement.GetProperty("files")
+                .EnumerateArray()
+                .Select(static file => file.GetProperty("name").GetString())
+                .Order()
+        );
+
         foreach (var (path, material) in documents) {
             var state = await OpenAsync(path, deadline.Token);
+            Assert.Equal(material == "Body" ? 1001 : 1002, state.Udim);
             using var socket = await FollowAsync(instance, state, deadline.Token);
             var evaluation = await EvaluatedAsync(socket, state.Revision, deadline.Token);
             Assert.DoesNotContain(

@@ -254,6 +254,57 @@
         }
       }
     },
+    "/api/v1/viewport/marquee": {
+      "post": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "The named meshes that show inside a rectangle in the viewport, which a layer kept to some meshes takes or leaves (#110).",
+        "operationId": "MarqueeInViewport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportMarqueeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportMarquee"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/cast": {
       "post": {
         "tags": [
@@ -2947,7 +2998,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "The pictures or meshes the library\u0027s projects hold, a project\u0027s own first: what a client offers to pick from, where a dialog of its own machine cannot see this one\u0027s disk.",
+        "summary": "The pictures, meshes or folders the library\u0027s projects hold, a project\u0027s own first: what a client offers to pick from, where a dialog of its own machine cannot see this one\u0027s disk. Folders are those a client can write into: every project\u0027s and the ones in it, then the exports folder\u0027s.",
         "operationId": "ListLibraryFiles",
         "parameters": [
           {
@@ -6044,6 +6095,77 @@
         }
       }
     },
+    "/api/v1/graphs/{id}/histogram": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Counts a node\u0027s picture, at the size the graph computes it, into a histogram per channel on the GPU: 256 shares of its texels for red, green, blue, alpha and luma.",
+        "operationId": "ReadGraphHistogram",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphImageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphHistogram"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/graphs/{id}/mesh-maps": {
       "put": {
         "tags": [
@@ -9053,6 +9175,20 @@
         },
         "description": "How unsaved work is kept. It goes to the library\u0027s cache, never over a document."
       },
+      "BakeBorderOptions": {
+        "required": [
+          "width"
+        ],
+        "type": "object",
+        "properties": {
+          "width": {
+            "type": "number",
+            "description": "How far inside its UV island a texel reads white, as a share of the texture: black on the island\u0027s border,\nrising evenly to white this far in.",
+            "format": "double"
+          }
+        },
+        "description": "The borders map\u0027s width (#121)."
+      },
       "BakeColourOptions": {
         "required": [
           "source",
@@ -9130,6 +9266,7 @@
       },
       "BakeEdgeOptions": {
         "required": [
+          "mesh",
           "edges",
           "width",
           "angle",
@@ -9137,6 +9274,10 @@
         ],
         "type": "object",
         "properties": {
+          "mesh": {
+            "type": "string",
+            "description": "Whose edges are marked: \u0060high\u0060, the high mesh\u0027s, where the rays land; or \u0060low\u0060, the low mesh\u0027s, at\nthe texel, so its hard edges show even under a high mesh with none (#278)."
+          },
           "edges": {
             "type": "string",
             "description": "\u0060hard\u0060, the edges the high mesh\u0027s own normals split, or \u0060angle\u0060, every edge whose faces meet at\n            double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges."
@@ -9264,6 +9405,7 @@
           "format",
           "supersampling",
           "gutter",
+          "diffusion",
           "maps",
           "space",
           "rays",
@@ -9273,6 +9415,7 @@
           "thickness",
           "curvature",
           "edges",
+          "borders",
           "id",
           "rounding",
           "colour"
@@ -9313,6 +9456,10 @@
             "description": "How many texels of dilation surround each chart.",
             "format": "int32"
           },
+          "diffusion": {
+            "type": "boolean",
+            "description": "Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the\nsmallest mipmaps keep the maps\u0027 own values rather than fading to the empty texture\u0027s (#148). Labels, the ID\nand UV Islands maps, and UV Borders keep their background."
+          },
           "maps": {
             "type": "array",
             "items": {
@@ -9352,6 +9499,10 @@
             "description": "Which edges the edges map marks, how wide and in what profile.",
             "$ref": "#/components/schemas/BakeEdgeOptions"
           },
+          "borders": {
+            "description": "How far inside a UV island the borders map turns white.",
+            "$ref": "#/components/schemas/BakeBorderOptions"
+          },
           "id": {
             "description": "What the ID map labels and how it colours them.",
             "$ref": "#/components/schemas/BakeIdOptions"
@@ -9363,6 +9514,13 @@
           "colour": {
             "description": "Where the colour map\u0027s colour comes from.",
             "$ref": "#/components/schemas/BakeColourOptions"
+          },
+          "tileable": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether the maps repeat without a seam (#212): a high-poly patch baked onto a flat low patch, the high mesh\nlaid again on each side of the low mesh\u0027s box so a ray near an edge meets what lies beyond it when the\nmaterial repeats. Null or false bakes the high meshes once, as they are."
           }
         },
         "description": "How a bake runs, with no meshes in it: what a project keeps between bakes and every client sends. Each map\u0027s\nown settings are a part of their own."
@@ -12978,7 +13136,8 @@
           "reused",
           "milliseconds",
           "previews",
-          "diagnostics"
+          "diagnostics",
+          "times"
         ],
         "type": "object",
         "properties": {
@@ -13026,6 +13185,13 @@
               "string"
             ],
             "description": "Why it did not finish, or null. \u0022No Vulkan\u0022 means the Worker has no GPU."
+          },
+          "times": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeTime"
+            },
+            "description": "How long each node\u0027s operations took on the GPU when they ran. One answered from the result cache has the time\nits result took when it was made, for a graph or a thumbnail, and is left out when that was never timed."
           }
         },
         "description": "What one evaluation did."
@@ -13237,6 +13403,82 @@
           }
         },
         "description": "A frame round some nodes. It holds no geometry: a client draws it from where its nodes are."
+      },
+      "GraphHistogram": {
+        "required": [
+          "node",
+          "port",
+          "width",
+          "height",
+          "red",
+          "green",
+          "blue",
+          "alpha",
+          "luma"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "integer",
+            "description": "The node.",
+            "format": "int32"
+          },
+          "port": {
+            "type": "string",
+            "description": "Its output port, or the usage of an Output node."
+          },
+          "width": {
+            "type": "integer",
+            "description": "The picture\u0027s width as counted, which is the size the graph computes it.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height.",
+            "format": "int32"
+          },
+          "red": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The red channel\u0027s shares."
+          },
+          "green": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The green channel\u0027s."
+          },
+          "blue": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The blue channel\u0027s."
+          },
+          "alpha": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The alpha channel\u0027s."
+          },
+          "luma": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Rec. 709 luma\u0027s, weighted from the stored red, green and blue."
+          }
+        },
+        "description": "A node\u0027s picture counted into a histogram per channel, on the GPU, at the size the graph computes it. Each list\nis 256 shares of the picture\u0027s texels, summing to one: bin \u0060b\u0060 holds the values \u0060v\u0060 with\n\u0060floor(256 v) = b\u0060, clamped, so a value of one shares the top bin. Numbers about the picture, not its\npixels."
       },
       "GraphHistoryState": {
         "required": [
@@ -13514,6 +13756,26 @@
           }
         },
         "description": "A node as a document holds it."
+      },
+      "GraphNodeTime": {
+        "required": [
+          "node",
+          "milliseconds"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "integer",
+            "description": "The node. A compound\u0027s inner operations are its own.",
+            "format": "int32"
+          },
+          "milliseconds": {
+            "type": "number",
+            "description": "The sum of its operations\u0027 times, each from the GPU timestamp after the operation before it. Operations overlap\non a GPU, so these rank where a graph spends its time rather than time each node exactly.",
+            "format": "double"
+          }
+        },
+        "description": "How long one node\u0027s operations took on the GPU, the last time an evaluation ran them."
       },
       "GraphNodeType": {
         "required": [
@@ -13892,7 +14154,8 @@
           "settled",
           "readOnly",
           "info",
-          "selection"
+          "selection",
+          "times"
         ],
         "type": "object",
         "properties": {
@@ -14019,6 +14282,13 @@
           "selection": {
             "description": "The nodes chosen in it, as the last client to say so chose them.",
             "$ref": "#/components/schemas/GraphSelection"
+          },
+          "times": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeTime"
+            },
+            "description": "The newest GPU time of each node an evaluation has timed."
           }
         },
         "description": "The reply to \u0060GET /api/v1/graphs/{id}\u0060: the whole document as the Server holds it."
@@ -14365,14 +14635,14 @@
           },
           "name": {
             "type": "string",
-            "description": "Its file\u0027s name."
+            "description": "Its file\u0027s or folder\u0027s name."
           },
           "project": {
             "type": "string",
-            "description": "The project it is in, below \u0060projects/\u0060."
+            "description": "The project it is in, below \u0060projects/\u0060, or empty for one in no project."
           }
         },
-        "description": "A file the library holds, for a client to pick from where a native dialog cannot see (#4)."
+        "description": "A file or a folder the library holds, to pick from where a native dialog cannot see (#4)."
       },
       "LibraryFileList": {
         "required": [
@@ -15417,7 +15687,7 @@
           },
           "touched": {
             "type": "string",
-            "description": "Which builds touched it: both, before or after. A build that leaves a project alone writes nothing of it, so a\nproject only one build touched has its files listed as that build left them."
+            "description": "Which builds have it: both, before or after. A build reports every project it selects, one it finds fresh as\nfresh with the digests of the files already there, so a project only one build has was not in the other at\nall, and has its files listed as that build left them."
           },
           "outputs": {
             "type": "array",
@@ -17274,6 +17544,9 @@
             "$ref": "#/components/schemas/StackCommandStackSetSettings"
           },
           {
+            "$ref": "#/components/schemas/StackCommandStackCarryPaint"
+          },
+          {
             "$ref": "#/components/schemas/StackCommandStackAddMaskLayer"
           },
           {
@@ -17315,6 +17588,7 @@
             "unflattenLayer": "#/components/schemas/StackCommandStackUnflattenLayer",
             "setHeightNormal": "#/components/schemas/StackCommandStackSetHeightNormal",
             "setSettings": "#/components/schemas/StackCommandStackSetSettings",
+            "carryPaint": "#/components/schemas/StackCommandStackCarryPaint",
             "addMaskLayer": "#/components/schemas/StackCommandStackAddMaskLayer",
             "removeMaskLayer": "#/components/schemas/StackCommandStackRemoveMaskLayer",
             "moveMaskLayer": "#/components/schemas/StackCommandStackMoveMaskLayer",
@@ -17532,6 +17806,27 @@
           }
         },
         "description": "Gives a layer a smart mask from the shelf (#135). Merged, it narrows the mask the layer has: the smart mask\u0027s\nbase multiplies over it as one more entry, its entries follow, and its effects run after the layer\u0027s own. Not\nmerged, it replaces the mask."
+      },
+      "StackCommandStackCarryPaint": {
+        "required": [
+          "fromUvSet",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "carryPaint"
+            ],
+            "type": "string"
+          },
+          "fromUvSet": {
+            "type": "integer",
+            "description": "The UV set the paint is laid out in now, by its number; 0 is the first.",
+            "format": "int32"
+          }
+        },
+        "description": "Carries every canvas of the texture set from the layout of another of the mesh\u0027s UV sets onto the one it is laid\nout in now, as one undo step (#210): each texel takes what was painted at its place on the surface. Sent after a\nStackSetSettings that changes the UV set, in the same batch, it keeps the paint where it was on\nthe model; on its own it projects paint laid out in another UV set onto this one. Every canvas becomes a new\none, so an undo gives the old ones back untouched. A surface the other layout leaves out reads as nothing."
       },
       "StackCommandStackDuplicateLayers": {
         "required": [
@@ -20303,7 +20598,8 @@
           "heightNormal",
           "uvSet",
           "bakedNormal",
-          "bakedOcclusion"
+          "bakedOcclusion",
+          "udim"
         ],
         "type": "object",
         "properties": {
@@ -20449,6 +20745,12 @@
                 "$ref": "#/components/schemas/StackPace"
               }
             ]
+          },
+          "udim": {
+            "type": "integer",
+            "description": "The UDIM tile its layout sits on in its UV set (#281), which its exported files are named by: 1001 for a set on\nthe first tile, on no mesh, or reaching several, which its problems say.",
+            "format": "int32",
+            "default": 1001
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."
@@ -20461,7 +20763,7 @@
         "properties": {
           "kind": {
             "type": "string",
-            "description": "\u0060smudge\u0060 drags what the canvas holds along the stroke, with the brush\u0027s flow; \u0060clone\u0060 copies the\n            stack\u0027s composite from Offset away, as it stood when the stroke began; \u0060material\u0060 lays\n            what Graph makes in the stroke\u0027s channel; \u0060picture\u0060 projects\n            Picture."
+            "description": "\u0060smudge\u0060 drags what the canvas holds along the stroke, with the brush\u0027s flow; \u0060clone\u0060 copies the\n            stack\u0027s composite from Offset away, as it stood when the stroke began; \u0060material\u0060 lays\n            what Graph or Layered makes in the stroke\u0027s channel; \u0060picture\u0060\n            projects Picture."
           },
           "graph": {
             "type": [
@@ -20527,6 +20829,13 @@
                 "$ref": "#/components/schemas/StackFrame"
               }
             ]
+          },
+          "layered": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For a material, instead of Graph: a layered material, as the shelf names it in\nstring MaterialInfo.Source (#125). Its layers composite on the stroke\u0027s texture set, reading its mesh\nmaps, and the stroke lays what they make, each layer where its own projection puts it; so it takes no\nProjection, axis or Placement of its own."
           }
         },
         "description": "Where a stroke\u0027s colour comes from, when it is not one colour."
@@ -20572,7 +20881,9 @@
           "hardness",
           "ribbon",
           "repeat",
-          "angle"
+          "angle",
+          "spacing",
+          "jitter"
         ],
         "type": "object",
         "properties": {
@@ -20621,6 +20932,18 @@
               "format": "float"
             },
             "description": "The box the mesh\u0027s \u0060position\u0060 bake is normalised in, as a decal\u0027s is."
+          },
+          "spacing": {
+            "type": "number",
+            "description": "For a stroke, how far apart its stamps are as a share of the path\u0027s full width, 0 to 16: zero is one unbroken\nband, anything above it a row of round stamps never closer than a tenth of the width. A ribbon takes none.",
+            "format": "float",
+            "default": 0
+          },
+          "jitter": {
+            "type": "number",
+            "description": "How far each stamp moves at random, 0 to 1: that share of the width to the side and of half the spacing along.",
+            "format": "float",
+            "default": 0
           }
         },
         "description": "A curve on the model that a fill with the \u0060Path\u0060 projection is laid along (#130, #131): the points stay in\nthe stack, so they can be moved after the stroke is seen, and the stroke follows. It passes through each point."
@@ -21792,6 +22115,81 @@
           }
         },
         "description": "Pictures to lay over the mesh\u0027s own materials, on every part. Each is a path on the Server\u0027s machine, and a slot\nleft null keeps what the material asks for. A filled slot replaces the material\u0027s factor too, so what shows\nis the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or\nthree grey ones both work. PNG, JPEG and EXR are read, base colour as sRGB and the rest as linear."
+      },
+      "ViewportMarquee": {
+        "required": [
+          "parts"
+        ],
+        "type": "object",
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Their names."
+          }
+        },
+        "description": "The named meshes a marquee reached (#110), by name in ordinal order; none when the model names none."
+      },
+      "ViewportMarqueeRequest": {
+        "required": [
+          "x",
+          "y",
+          "toX",
+          "toY"
+        ],
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "One corner, across the picture, 0 to 1.",
+            "format": "double"
+          },
+          "y": {
+            "type": "number",
+            "description": "That corner, down it, 0 to 1.",
+            "format": "double"
+          },
+          "toX": {
+            "type": "number",
+            "description": "The opposite corner, across.",
+            "format": "double"
+          },
+          "toY": {
+            "type": "number",
+            "description": "The opposite corner, down.",
+            "format": "double"
+          },
+          "camera": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The camera to look through, or null for the viewport\u0027s.",
+                "$ref": "#/components/schemas/ViewportCameraState"
+              }
+            ]
+          },
+          "width": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The picture\u0027s width, or null for the viewport\u0027s.",
+            "format": "int32"
+          },
+          "height": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Its height.",
+            "format": "int32"
+          }
+        },
+        "description": "Asks which named meshes show inside a rectangle on the viewport\u0027s picture (#110): a marquee, which takes every\nmesh it reaches into a layer\u0027s meshes, or out of them. Through what the viewport draws, as a pick is, so a mesh\nhidden behind another or isolated away is not reached."
       },
       "ViewportMeshRequest": {
         "required": [

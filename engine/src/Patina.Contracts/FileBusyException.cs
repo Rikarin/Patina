@@ -15,7 +15,9 @@ public sealed class FileBusyException : IOException {
     /// <param name="message">What is busy, as a person reads it.</param>
     /// <param name="path">The file or folder that is in use.</param>
     /// <param name="inner">The last refusal of the move.</param>
-    public FileBusyException(string message, string path, Exception inner) : base(message, inner) => Path = path;
+    public FileBusyException(string message, string path, Exception inner) : base(message, inner) {
+        Path = path;
+    }
 
     /// <summary>The refusal of a move of <paramref name="path" /> that its holder never let go of.</summary>
     /// <param name="path">The file or folder that is in use.</param>

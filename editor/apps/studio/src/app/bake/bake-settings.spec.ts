@@ -18,6 +18,7 @@ const defaults: ProjectBakeSettings = {
     format: 'png16',
     supersampling: 1,
     gutter: 4,
+    diffusion: false,
     maps: ['normal', 'height', 'ao'],
     space: 'tangent',
     rays: {
@@ -47,7 +48,8 @@ const defaults: ProjectBakeSettings = {
     },
     thickness: { normalised: true },
     curvature: { range: 'auto', radius: 0.01 },
-    edges: { edges: 'hard', width: 0.01, angle: 30, profile: 'even' },
+    edges: { edges: 'hard', width: 0.01, angle: 30, profile: 'even', mesh: 'high' },
+    borders: { width: 0.02 },
     position: { range: 'box' },
     id: { source: 'auto', palette: 'random' },
     rounding: { enabled: false, width: 0.01, edges: 'angle', angle: 30, profile: 'even' },

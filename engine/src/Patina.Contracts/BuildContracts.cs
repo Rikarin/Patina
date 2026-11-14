@@ -470,6 +470,12 @@ public sealed record ExportDelivery(string Key, IReadOnlyList<string> Files) {
     ///     exported.
     /// </summary>
     public IReadOnlyDictionary<string, string>? Sets { get; init; }
+
+    /// <summary>
+    ///     Each file's SHA-256 as it was delivered, by file, so that a later build that finds the export fresh can
+    ///     report its files' digests without reading them again (#280). Null in a delivery from before they were kept.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Digests { get; init; }
 }
 
 /// <summary>One output for whatever builds it: everything by full path, so that it needs no library.</summary>

@@ -443,6 +443,10 @@ public sealed record StackEvaluation(
 ///     of another shape than the set's Width by Height (#262). Either way its maps need baking again.
 /// </param>
 /// <param name="Pace">How it is evaluated while it is edited: paused or not, and at what size (#208).</param>
+/// <param name="Udim">
+///     The UDIM tile its layout sits on in its UV set (#281), which its exported files are named by: 1001 for a set on
+///     the first tile, on no mesh, or reaching several, which its problems say.
+/// </param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -467,7 +471,8 @@ public sealed record StackState(
     string BakedNormal = "Combine",
     string BakedOcclusion = "Combine",
     string? BakeStale = null,
-    StackPace? Pace = null
+    StackPace? Pace = null,
+    int Udim = 1001
 );
 #pragma warning restore SK7005
 
@@ -513,7 +518,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackFlattenLayer), "flattenLayer"),
  JsonDerivedType(typeof(StackUnflattenLayer), "unflattenLayer")]
 [JsonDerivedType(typeof(StackSetHeightNormal), "setHeightNormal")]
-[JsonDerivedType(typeof(StackSetSettings), "setSettings")]
+[JsonDerivedType(typeof(StackSetSettings), "setSettings"), JsonDerivedType(typeof(StackCarryPaint), "carryPaint")]
 [JsonDerivedType(typeof(StackAddMaskLayer), "addMaskLayer")]
 [JsonDerivedType(typeof(StackRemoveMaskLayer), "removeMaskLayer"),
  JsonDerivedType(typeof(StackMoveMaskLayer), "moveMaskLayer")]

@@ -23,18 +23,12 @@ public static class SetMerge {
             return null;
         }
 
-        var unlaid = sets.Where(static set => !set.Maps.ContainsKey(ExportMaps.Coverage)).ToList();
-        if (unlaid.Count > 0) {
-            warnings.Add(
-                "The texture sets were written one by one and not merged: "
-                + string.Join(", ", unlaid.Select(static set => set.Name))
-                + " is on no mesh, so nothing says where its texels go."
-            );
+        if (Unlaid(sets, warnings)) {
             return null;
         }
 
         // ⚠ Each set's layout is read moved home onto 1001, so sets on two tiles would land on one another (#20).
-        var tiles = sets.Select(static set => set.Udim).Distinct().Order().ToList();
+        var tiles = TilesOf(sets);
         if (tiles.Count > 1) {
             warnings.Add(
                 "The texture sets were written one by one and not merged: they lie on UDIM tiles "
@@ -44,6 +38,82 @@ public static class SetMerge {
             return null;
         }
 
+        return Atlas(sets, tiles[0], warnings);
+    }
+
+    /// <summary>
+    ///     The sets merged into one set of files per UDIM tile they lie on (#281), each of no name and carrying its
+    ///     tile, or null when they cannot be: fewer than two, one on no mesh, or sets on several tiles whose files the
+    ///     preset would give one name, since a name with neither <c>{udim}</c> nor <c>{tile}</c> is the same on every
+    ///     tile.
+    /// </summary>
+    /// <param name="sets">The sets, the one that wins an overlap first.</param>
+    /// <param name="namedByTile">Whether every file the preset writes names its tile.</param>
+    /// <param name="warnings">Told why the sets were not merged, or what overlapped.</param>
+    public static IReadOnlyList<ExportSet>? PerTile(
+        IReadOnlyList<ExportSet> sets,
+        bool namedByTile,
+        ICollection<string> warnings
+    ) {
+        ArgumentNullException.ThrowIfNull(sets);
+        ArgumentNullException.ThrowIfNull(warnings);
+        var tiles = TilesOf(sets);
+        if (tiles.Count < 2) {
+            return Merge(sets, warnings) is { } one ? [one] : null;
+        }
+
+        if (!namedByTile) {
+            warnings.Add(
+                "The texture sets were written one by one and not merged: they lie on UDIM tiles "
+                + string.Join(", ", tiles)
+                + ", and the preset's file names would be the same on every tile. Put {udim} or {tile} in each "
+                + "file's name to merge them into one set of files per tile."
+            );
+            return null;
+        }
+
+        if (Unlaid(sets, warnings)) {
+            return null;
+        }
+
+        return [
+            ..tiles.Select(tile => sets.Where(set => set.Udim == tile).ToList())
+                .Select(group => group.Count == 1
+                        ? group[0] with { Name = string.Empty }
+                        : Atlas(group, group[0].Udim, warnings)
+                )
+        ];
+    }
+
+    /// <summary>Whether a file's name template names the UDIM tile, so the files of two tiles are never one.</summary>
+    /// <param name="template">The template.</param>
+    public static bool NamesTile(string template) {
+        ArgumentNullException.ThrowIfNull(template);
+        return template.Contains("{udim}", StringComparison.Ordinal)
+            || template.Contains("{tile}", StringComparison.Ordinal);
+    }
+
+    /// <summary>Each tile the sets lie on, lowest first.</summary>
+    static List<int> TilesOf(IReadOnlyList<ExportSet> sets) =>
+        [..sets.Select(static set => set.Udim).Distinct().Order()];
+
+    /// <summary>Whether a set has no layout on a mesh to say where its texels go, which is then said.</summary>
+    static bool Unlaid(IReadOnlyList<ExportSet> sets, ICollection<string> warnings) {
+        var unlaid = sets.Where(static set => !set.Maps.ContainsKey(ExportMaps.Coverage)).ToList();
+        if (unlaid.Count == 0) {
+            return false;
+        }
+
+        warnings.Add(
+            "The texture sets were written one by one and not merged: "
+            + string.Join(", ", unlaid.Select(static set => set.Name))
+            + " is on no mesh, so nothing says where its texels go."
+        );
+        return true;
+    }
+
+    /// <summary>Sets on one tile as one atlas of no name, which carries the tile.</summary>
+    static ExportSet Atlas(IReadOnlyList<ExportSet> sets, int tile, ICollection<string> warnings) {
         var pictures = sets.SelectMany(static (ExportSet set) => set.Maps.Values).ToList();
         var width = pictures.Max(static (MapPicture map) => map.Image.Width);
         var height = pictures.Max(static (MapPicture map) => map.Image.Height);
@@ -69,7 +139,7 @@ public static class SetMerge {
         }
 
         maps[ExportMaps.Coverage] = new(ExportMaps.Coverage, new(width, height, 1, covered), GreenAxis.Up);
-        return new(string.Empty, maps) { Udim = tiles[0] };
+        return new(string.Empty, maps) { Udim = tile };
     }
 
     /// <summary>Which set each texel is written from, or -1 where no layout covers it.</summary>

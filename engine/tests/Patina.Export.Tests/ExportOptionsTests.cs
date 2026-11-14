@@ -199,6 +199,7 @@ public sealed class ExportOptionsTests : IDisposable {
     [InlineData(ExportFormats.Tiff8)]
     [InlineData(ExportFormats.Tiff16)]
     [InlineData(ExportFormats.Tiff32)]
+    [InlineData(ExportFormats.WebP)]
     public void A_new_format_reads_back_as_the_picture_it_was(string format) {
         var maps = new Dictionary<string, MapPicture> { ["roughness"] = Halves("roughness", 0.2f, 0.8f) };
         var preset = Read(WithTexture(format, "linear", "[roughness]"));

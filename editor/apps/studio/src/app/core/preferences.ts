@@ -11,6 +11,8 @@ export type CameraSpeed = 'slow' | 'normal' | 'fast';
 export const CameraSpeeds: Readonly<Record<CameraSpeed, number>> = { slow: 0.5, normal: 1, fast: 2 };
 /** How the graph draws a wire: xUI's routings. */
 export type WireStyle = 'bezier' | 'smoothstep' | 'straight';
+/** A viewport display a person made their own, by setting: what the Server's display settings are called. */
+export type DisplayStart = Readonly<Record<string, string | number | boolean | null>>;
 
 /**
  * The person's settings for this app, wherever they work: not a library's or a project's. The desktop app keeps them
@@ -38,6 +40,8 @@ export interface PreferenceValues {
   graphSnap: boolean;
   /** Whether a node's card lists what was changed on it, under its title. */
   graphParameters: boolean;
+  /** Whether a node's card shows how long it took on the GPU the last time it ran. */
+  graphTimings: boolean;
   /** How the graph draws its wires. */
   graphWires: WireStyle;
   /** Node types starred in the Nodes list, by path, which the palette offers first. */
@@ -51,6 +55,50 @@ export interface PreferenceValues {
   favouriteMaterials: readonly string[];
   /** Documents brought to the front last, newest first, in every library, which Start offers again. */
   recentDocuments: readonly RecentDocument[];
+  /**
+   * How the viewport opens in a project that kept no display of its own, such as its light, background and grid, or
+   * null for Patina's (#189).
+   */
+  viewportStart: DisplayStart | null;
+  /** Searches of the shelf kept to come back to (#203), in the order they were kept. */
+  shelfSearches: readonly ShelfSearch[];
+}
+
+/** A search of the shelf kept to come back to: its words, its type and its origin, `all` for any. */
+export interface ShelfSearch {
+  search: string;
+  role: string;
+  origin: string;
+}
+
+/** How many searches the shelf keeps. */
+export const ShelfSearchLimit = 32;
+
+/** Kept searches as a file holds them: each whole, each once, as many as it may keep. */
+function shelfSearchesOf(value: unknown): readonly ShelfSearch[] {
+  const read: ShelfSearch[] = [];
+  for (const item of Array.isArray(value) ? (value as unknown[]) : []) {
+    const { search, role, origin } = (typeof item === 'object' && item !== null ? item : {}) as Record<string, unknown>;
+    if (typeof search !== 'string' || typeof role !== 'string' || typeof origin !== 'string' || !role || !origin) {
+      continue;
+    }
+
+    const kept = { search: search.trim(), role, origin };
+    if (!read.some(held => sameSearch(held, kept))) {
+      read.push(kept);
+    }
+  }
+
+  return read.slice(0, ShelfSearchLimit);
+}
+
+/** Whether two searches of the shelf find the same: the same words, whatever their case, type and origin. */
+export function sameSearch(a: ShelfSearch, b: ShelfSearch): boolean {
+  return (
+    a.search.trim().toLocaleLowerCase() === b.search.trim().toLocaleLowerCase() &&
+    a.role === b.role &&
+    a.origin === b.origin
+  );
 }
 
 /** A document someone worked on, by where it is in its library. */
@@ -101,11 +149,14 @@ export const DefaultPreferences: PreferenceValues = {
   invertZoom: false,
   graphSnap: false,
   graphParameters: false,
+  graphTimings: false,
   graphWires: 'bezier',
   favouriteNodes: [],
   recentNodes: [],
   favouriteMaterials: [],
-  recentDocuments: []
+  recentDocuments: [],
+  viewportStart: null,
+  shelfSearches: []
 };
 
 /** How many node types each list keeps, so a hand-edited file cannot grow the palette without end. */
@@ -116,7 +167,9 @@ const StorageKey = 'patina.preferences';
 const DarkQuery = '(prefers-color-scheme: dark)';
 
 const Choices: {
-  [K in Exclude<keyof PreferenceValues, ListPreference | 'recentDocuments'>]: readonly PreferenceValues[K][];
+  [
+    K in Exclude<keyof PreferenceValues, ListPreference | 'recentDocuments' | 'viewportStart' | 'shelfSearches'>
+  ]: readonly PreferenceValues[K][];
 } = {
   theme: ['dark', 'light', 'system'],
   libraryView: ['list', 'grid'],
@@ -128,6 +181,7 @@ const Choices: {
   invertZoom: [false, true],
   graphSnap: [false, true],
   graphParameters: [false, true],
+  graphTimings: [false, true],
   graphWires: ['bezier', 'smoothstep', 'straight']
 };
 
@@ -136,6 +190,18 @@ function listOf(value: unknown, limit: number): readonly string[] {
   return Array.isArray(value)
     ? [...new Set(value.filter((item): item is string => typeof item === 'string' && item.length > 0))].slice(0, limit)
     : [];
+}
+
+/** A display made one's own as a file holds it: its settings of plain values, or null for none. */
+function displayStartOf(value: unknown): DisplayStart | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  const plain = Object.entries(value as Record<string, unknown>).filter(
+    ([, setting]) => setting === null || ['string', 'number', 'boolean'].includes(typeof setting)
+  );
+  return plain.length > 0 ? (Object.fromEntries(plain) as DisplayStart) : null;
 }
 
 /** Preferences as read from a file a person may have edited: anything unknown or out of range is the default. */
@@ -155,6 +221,8 @@ export function readPreferences(value: unknown): PreferenceValues {
   }
 
   read.recentDocuments = recentDocumentsOf(held['recentDocuments']);
+  read.viewportStart = displayStartOf(held['viewportStart']);
+  read.shelfSearches = shelfSearchesOf(held['shelfSearches']);
 
   return read;
 }
@@ -179,11 +247,14 @@ export class Preferences {
   readonly zoomScale = computed(() => CameraSpeeds[this.values().zoomSpeed] * (this.values().invertZoom ? -1 : 1));
   readonly graphSnap = computed(() => this.values().graphSnap);
   readonly graphParameters = computed(() => this.values().graphParameters);
+  readonly graphTimings = computed(() => this.values().graphTimings);
   readonly graphWires = computed(() => this.values().graphWires);
   readonly favouriteNodes = computed(() => this.values().favouriteNodes);
   readonly recentNodes = computed(() => this.values().recentNodes);
   readonly favouriteMaterials = computed(() => this.values().favouriteMaterials);
   readonly recentDocuments = computed(() => this.values().recentDocuments);
+  readonly viewportStart = computed(() => this.values().viewportStart);
+  readonly shelfSearches = computed(() => this.values().shelfSearches);
   /** Whether the app is dark now: the theme chosen, or the system's for `system`. */
   readonly dark = computed(() => {
     const theme = this.theme();

@@ -149,7 +149,8 @@ static class CompoundBench {
     /// <remarks>
     ///     Curvature is flat at a half, with a soft convex band and a soft concave one at 0.53 and 0.47 and one texel
     ///     at the top of the range, as a bake scaled by its sharpest texel reads. The top half faces up and the rest
-    ///     sideways; the bottom quarter is sheltered; position climbs up the picture; the id map is two parts.
+    ///     sideways; the bottom quarter is sheltered; position climbs up the picture; the id map is two parts; and the
+    ///     model thickens from left to right.
     /// </remarks>
     static byte[] Map(string usage) {
         var texels = new byte[Side * Side * 4];
@@ -162,6 +163,7 @@ static class CompoundBench {
                     "world" => y < Upward ? (0.5, 1.0, 0.5) : (1.0, 0.5, 0.5),
                     "position" => (x / (double)Side, 1.0 - y / (double)Side, 0.5),
                     "id" => x < Side / 2 ? (1.0, 0.0, 0.0) : (0.0, 0.0, 1.0),
+                    "thickness" => Grey(x / (double)Side),
                     "normal" or "bent" => (0.5, 0.5, 1.0),
                     _ => Grey(0.5)
                 };

@@ -312,6 +312,8 @@ test('painted work asks before the project is left', async () => {
   // Closing it is the moment that asks.
   await window.getByTestId('document-tab').filter({ hasText: 'Second' }).getByTestId('document-tab-close').click();
   await expect(window.getByTestId('project-leaving')).toBeVisible();
+  // The save waits for the GPU to reach the stroke, behind both documents' evaluations: on CI's software GPU that
+  // outlasted the Server's 30 s patience, and the save failed with the GPU still at work (#274, #275).
   await window.getByTestId('project-save').click();
-  await expect(window.getByTestId('paint-project')).toHaveText('First', { timeout: 30_000 });
+  await expect(window.getByTestId('paint-project')).toHaveText('First', { timeout: 60_000 });
 });

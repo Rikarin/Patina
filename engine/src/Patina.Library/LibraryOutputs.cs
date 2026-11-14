@@ -24,6 +24,12 @@ public sealed record OutputSelection(AssetId? Asset = null, IReadOnlyList<Projec
     /// </summary>
     public GraphSizes? Sizes { get; init; }
 
+    /// <summary>
+    ///     The sides a project's graphs are computed at when <see cref="Sizes" /> names none, by project path: what its
+    ///     presets' own size asks (#280). Null, or null for a project, for each graph's own size.
+    /// </summary>
+    public Func<string, GraphSizes?>? SizesFor { get; init; }
+
     /// <summary>Whether this is the whole library.</summary>
     public bool IsEverything => Asset is null && Projects is not { Count: > 0 } && Documents is not { Count: > 0 };
 }
@@ -156,13 +162,14 @@ sealed class LibraryOutputs(string root, IndexDatabase database, LibraryQueries 
             return null; // changed since the rescan; the next build sees it
         }
 
+        var sizes = selection.Sizes ?? selection.SizesFor?.Invoke(path);
         return new(
             project.Id,
             project.Name,
             path,
             [
                 ..ProjectOutputs.Of(project, LibraryLayout.Full(root, location), selection.Documents)
-                    .Select(output => selection.Sizes?.Apply(output) ?? output)
+                    .Select(output => sizes?.Apply(output) ?? output)
                     .Select(output => Scan(output, project, location, selection.Asset, graph, paths, hashes))
             ]
         );
