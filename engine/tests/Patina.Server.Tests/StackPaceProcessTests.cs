@@ -18,7 +18,7 @@ public sealed partial class StackProcessTests {
         await EvaluatedAsync(socket, first.Revision, deadline.Token);
         var before = await PixelsAsync(state.Id, false, deadline.Token);
 
-        Assert.Equal(new(true, 1), await PaceAsync(state.Id, new(Paused: true), deadline.Token));
+        Assert.Equal(new(true, 1), await PaceAsync(state.Id, new(true), deadline.Token));
         await EditAsync(state.Id, deadline.Token, new StackAddLayer("fill", "Top", Tint));
         var edited = await PaintAsync(state.Id, "b", Line(600, 700, 30), false, deadline.Token);
 
@@ -34,7 +34,7 @@ public sealed partial class StackProcessTests {
         var exported = await ExportAsync(state.Id, Path.Combine(folder.FullName, "paused"), deadline.Token);
         Assert.All(exported, map => Assert.Equal(map.Digest, Digest(read, map.Usage)));
 
-        await PaceAsync(state.Id, new(Paused: false), deadline.Token);
+        await PaceAsync(state.Id, new(false), deadline.Token);
         var latest = await StateAsync(state.Id, deadline.Token);
         await EvaluatedAsync(socket, latest.Revision, deadline.Token);
         Assert.False((await StateAsync(state.Id, deadline.Token)).Pace!.Paused);
@@ -72,7 +72,7 @@ public sealed partial class StackProcessTests {
 
         using var refused = await http.PutAsJsonAsync(
             $"/api/v1/stacks/{state.Id}/pace",
-            new StackPaceChange(Proxy: 3),
+            new(Proxy: 3),
             ContractsJsonContext.Default.StackPaceChange,
             deadline.Token
         );
