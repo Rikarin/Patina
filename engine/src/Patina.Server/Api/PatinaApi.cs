@@ -149,31 +149,29 @@ static class PatinaApi {
         app.MapJobSocket();
     }
 
-    static async Task<Results<Ok<ViewportPick>, ProblemHttpResult>> PickAsync(
+    static Task<Results<Ok<ViewportPick>, ProblemHttpResult>> PickAsync(
         ViewportPickRequest request,
         ViewportSession session,
         CancellationToken cancellationToken
-    ) {
-        try {
-            return TypedResults.Ok(await session.PickAsync(request, cancellationToken));
-        } catch (ViewportNoMeshException e) {
-            return Refusals.Problem(e.Message, StatusCodes.Status409Conflict, Refusals.ViewportNoMesh);
-        } catch (Patina.Ipc.IpcException e) {
-            return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
-        } catch (Exception e) when (e is IOException or TimeoutException) {
-            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
-        }
-    }
+    ) =>
+        AskedAsync(session.PickAsync(request, cancellationToken));
 
-    static async Task<Results<Ok<ViewportMarquee>, ProblemHttpResult>> MarqueeAsync(
+    static Task<Results<Ok<ViewportMarquee>, ProblemHttpResult>> MarqueeAsync(
         ViewportMarqueeRequest request,
         ViewportSession session,
         CancellationToken cancellationToken
-    ) {
+    ) =>
+        AskedAsync(session.MarqueeAsync(request, cancellationToken));
+
+    /// <summary>
+    ///     The answer to a question about the viewport's mesh, or why there is none: no mesh is the Server's own
+    ///     check, the rest the GPU engine's.
+    /// </summary>
+    static async Task<Results<Ok<T>, ProblemHttpResult>> AskedAsync<T>(Task<T> asking) {
         try {
-            return TypedResults.Ok(await session.MarqueeAsync(request, cancellationToken));
+            return TypedResults.Ok(await asking);
         } catch (ViewportNoMeshException e) {
-            return Refusals.Problem(e.Message, StatusCodes.Status409Conflict, Refusals.ViewportNoMesh);
+            return Refusals.Of(e);
         } catch (Patina.Ipc.IpcException e) {
             return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
         } catch (Exception e) when (e is IOException or TimeoutException) {
@@ -204,7 +202,7 @@ static class PatinaApi {
         try {
             return TypedResults.Ok(await session.CastAsync(request, cancellationToken));
         } catch (ViewportNoMeshException e) {
-            return Refusals.Problem(e.Message, StatusCodes.Status409Conflict, Refusals.ViewportNoMesh);
+            return Refusals.Of(e);
         } catch (Patina.Ipc.IpcException e) {
             return Refusals.Problem(
                 e.Message,

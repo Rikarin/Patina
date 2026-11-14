@@ -130,7 +130,7 @@ static class ViewportMapEndpoints {
     }
 
     /// <summary>A file a request named that is not there, by its name: where it was is the asker's.</summary>
-    static ProblemHttpResult FileMissing(string file) => Refusals.NoFile(file, Missing);
+    static ProblemHttpResult FileMissing(string file) => Refusals.NoFile(file);
 
     static async Task<Results<Ok<ViewportState>, ProblemHttpResult>> SetDisplayAsync(
         ViewportDisplay request,
@@ -199,7 +199,7 @@ static class ViewportMapEndpoints {
         try {
             return TypedResults.Ok(await session.ScreenshotAsync(request, cancellationToken));
         } catch (ViewportNoMeshException e) {
-            return Refusals.Problem(e.Message, StatusCodes.Status409Conflict, Refusals.ViewportNoMesh);
+            return Refusals.Of(e);
         } catch (IpcException e) {
             return Refusals.OfEngine(e, Refused);
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {

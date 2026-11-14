@@ -74,7 +74,7 @@ public sealed class RequestRefusalTests {
 
     [Theory]
     [InlineData(@"Access to the path 'C:\Users\Ann\Library\T_Crate.png' is denied.", "'T_Crate.png'")]
-    [InlineData("Could not find a part of the path \"/home/ann/library/out/\".", "\"out\"")]
+    [InlineData("""Could not find a part of the path "/home/ann/library/out/".""", "out")]
     [InlineData(@"The share '\\studio\library\crate.ptstack' is busy.", "'crate.ptstack'")]
     public void A_reason_names_a_file_without_where_it_is(string sentence, string named) {
         var reason = Refusals.Reason(sentence)["reason"];

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Patina.Server.Viewport;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
@@ -9,7 +10,9 @@ namespace Patina.Server.Api;
 ///     longer kept. Each has a code, so a client says it in its own words and never shows a path or an id (#198).
 /// </summary>
 public static partial class Refusals {
-    /// <summary>A page of a list with a negative offset, or a limit past what one page holds. Values: <c>most</c>.</summary>
+    /// <summary>
+    ///     A page of a list with a negative offset, or a limit past what one page holds. Values: <c>most</c>.
+    /// </summary>
     public const string PageRefused = "page-refused";
 
     /// <summary>A page of a list asked for outside its bounds: 400.</summary>
@@ -114,7 +117,9 @@ public static partial class Refusals {
     /// </summary>
     public const string BakeRefused = "bake-refused";
 
-    /// <summary>A bake shown on the mesh, or a map of one, that its job has not finished yet. Values: <c>id</c>.</summary>
+    /// <summary>
+    ///     A bake shown on the mesh, or a map of one, that its job has not finished yet. Values: <c>id</c>.
+    /// </summary>
     public const string JobUnfinished = "job-unfinished";
 
     /// <summary>
@@ -141,9 +146,14 @@ public static partial class Refusals {
     public const string NodeUnevaluated = "node-unevaluated";
 
     /// <summary>
-    ///     A question about the viewport's mesh, or a picture of it, when it has none (<see cref="Viewport.ViewportNoMeshException" />).
+    ///     A question about the viewport's mesh, or a picture of it, when it has none
+    ///     (<see cref="ViewportNoMeshException" />).
     /// </summary>
     public const string ViewportNoMesh = "viewport-no-mesh";
+
+    /// <summary>A question or a picture of a viewport with no mesh: the Server's own check, 409.</summary>
+    public static ProblemHttpResult Of(ViewportNoMeshException none) =>
+        Problem(none.Message, StatusCodes.Status409Conflict, ViewportNoMesh);
 
     /// <summary>A preference out of range. Values: <c>reason</c>, the Server's own sentence.</summary>
     public const string PreferenceRefused = "preference-refused";
