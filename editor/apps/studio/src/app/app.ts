@@ -30,6 +30,7 @@ import { FileConflictDialog } from './core/file-conflict-dialog';
 import { FilePicker } from './core/file-picker';
 import { Links } from './core/help-links';
 import { HistoryPane } from './core/history-pane';
+import { KeyHelper } from './core/key-helper';
 import { percent } from './core/numbers';
 import { PreferencesDialog } from './core/preferences-dialog';
 import { ShortcutsDialog } from './core/shortcuts-dialog';
@@ -90,6 +91,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     HistoryPane,
     PreferencesDialog,
     LibrarySettingsDialog,
+    KeyHelper,
     ShortcutsDialog,
     ImageMaterialPane,
     Inspector,
@@ -556,6 +558,10 @@ import { ViewportPane } from './viewport/viewport-pane';
       <ptn-shortcuts [(open)]="keys" />
     }
 
+    @defer (when helping()) {
+      <ptn-key-helper [(open)]="helping" />
+    }
+
     @defer (when preferencesOpen()) {
       <ptn-preferences [(open)]="preferencesOpen" />
     }
@@ -679,6 +685,7 @@ export class App {
   });
   private readonly destroyRef = inject(DestroyRef);
   protected readonly keys = signal(false);
+  protected readonly helping = signal(false);
   protected readonly preferencesOpen = signal(false);
   protected readonly librarySettingsOpen = signal(false);
   protected readonly diagnosing = signal(false);
@@ -875,6 +882,7 @@ export class App {
     });
     handle('showActivity', { checked: () => this.activity.open(), run: () => this.activity.toggle() });
     handle('shortcuts', { run: () => this.keys.set(true) });
+    handle('keyHelper', { run: () => this.helping.update(shown => !shown) });
     handle('preferences', { run: () => this.preferencesOpen.set(true) });
     handle('librarySettings', { run: () => this.librarySettingsOpen.set(true) });
     handle('diagnostics', { run: () => this.diagnosing.set(true) });

@@ -66,6 +66,8 @@ make it.
 
 - Help > Keyboard Shortcuts… lists every command with its keys, and lets you change them. A button's tooltip names its
   key, where it has one.
+- Help > Key Helper, or F1, shows over the app every key that works now, for what is in front, and how to move the view.
+  F1 again, Escape or a click puts it away.
 - Help > Diagnostics… shows what the engine behind the app is doing, and restarts it.
 - Help > Report a Problem… opens a new issue, where a problem or an idea is welcome.
 - Help > About Patina says which version you have and the licences it and its parts come under.

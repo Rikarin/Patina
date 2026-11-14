@@ -298,6 +298,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Preferences has a Viewport camera section: how fast a drag orbits and the wheel or a zoom drag zooms (Slow, Normal or Fast), and Invert the wheel, which zooms out when the wheel is rolled away.
 - Library Settings…, in the File menu (#192): the open library's name, folder, counts, texel density, channels, export presets and shader, which no view showed. Check Library reads every project and material and lists what is wrong or out of date by kind, errors first, as `patina library check` does; Prune takes out of the cache the built objects, bakes and reports nothing has used for the days chosen, 30 by default, as `patina cache prune` does, and is refused while a bake or build is waiting or running. Each says what it found or freed in Activity too. Through the API `POST /api/v1/library/check` and `POST /api/v1/library/cache/prune`, which work while the Server holds the library, where the CLI needs it to itself.
 - Clean, in Library Settings (#162): removes the copies of paint each project keeps in `.paint-backup` whenever a new UV layout moves it, and says how much room that freed. Through the API `POST /api/v1/library/clean`.
+- The key helper (#190): Help > Key Helper, or F1, shows over the app every key that would do something now, by section and as you have set them, so it changes with what is in front, and how to move the view while a model shows. F1 again, Escape or a click outside it puts it away.
 
 ### Fixed
 

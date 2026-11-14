@@ -401,6 +401,13 @@ export const CommandTable: readonly CommandSpec[] = [
     hint: 'A guide to Patina, from a library to an export, in the browser'
   },
   { id: 'shortcuts', label: 'Keyboard Shortcuts…', section: 'Help', keys: ['Mod+/'] },
+  {
+    id: 'keyHelper',
+    label: 'Key Helper',
+    section: 'Help',
+    keys: ['F1'],
+    hint: 'Shows over the app every key that works now'
+  },
   { id: 'diagnostics', label: 'Diagnostics…', section: 'Help' },
   { id: 'reportProblem', label: 'Report a Problem…', section: 'Help' },
   { id: 'about', label: 'About Patina', section: 'Help', hint: 'The version, the licences, and whose your work is' }
@@ -592,7 +599,10 @@ export const MenuBar: readonly {
       { native: 'windowItems' }
     ]
   },
-  { label: 'Help', items: ['documentation', 'shortcuts', '-', 'diagnostics', 'reportProblem', '-', 'about'] }
+  {
+    label: 'Help',
+    items: ['documentation', 'shortcuts', 'keyHelper', '-', 'diagnostics', 'reportProblem', '-', 'about']
+  }
 ];
 
 /** What has focus when a control answers a key itself: a list or tree, the graph canvas, or a text field. */
