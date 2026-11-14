@@ -40,8 +40,8 @@ class StackMaskLayer:
             opacity (float): How much of it composites, 0 to 1. Default: 1.0.
             enabled (bool): Whether it composites at all. Default: True.
             lane (str): Which lane of its picture it reads: Red, Green, Blue or Alpha. Default: 'Red'.
-            output (str): Which picture of a generator entry that writes several it reads, or empty for its only one.
-                Default: ''.
+            output (str): Which picture of a generator entry that writes several it reads, or empty for its one. Default:
+                ''.
             anchor (None | StackAnchorRef | Unset):
             parameters (None | StackMaskLayerParametersType1 | Unset): What a generator entry's knobs are set to, as text.
             inputs (None | StackMaskLayerInputsType1 | Unset): The image inputs of a generator entry that anchor points

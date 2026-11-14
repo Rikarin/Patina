@@ -7775,7 +7775,7 @@ export interface components {
        */
       lane: string;
       /**
-       * @description Which picture of a generator entry that writes several it reads, or empty for its only one.
+       * @description Which picture of a generator entry that writes several it reads, or empty for its one.
        * @default
        */
       output: string;
