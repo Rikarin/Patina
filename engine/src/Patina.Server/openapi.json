@@ -9283,6 +9283,7 @@
           "format",
           "supersampling",
           "gutter",
+          "diffusion",
           "maps",
           "space",
           "rays",
@@ -9332,6 +9333,10 @@
             "type": "integer",
             "description": "How many texels of dilation surround each chart.",
             "format": "int32"
+          },
+          "diffusion": {
+            "type": "boolean",
+            "description": "Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the\nsmallest mipmaps keep the maps\u0027 own values rather than fading to the empty texture\u0027s (#148). Labels, the ID\nand UV Islands maps, and UV Borders keep their background."
           },
           "maps": {
             "type": "array",

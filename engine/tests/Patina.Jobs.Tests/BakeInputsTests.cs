@@ -94,6 +94,7 @@ public sealed class BakeInputsTests : IDisposable {
     [InlineData("colour-source")]
     [InlineData("edges-mesh")]
     [InlineData("borders-width")]
+    [InlineData("diffusion")]
     public void Each_setting_is_in_the_key(string setting) {
         var request = Request();
         var changed = With(
@@ -131,6 +132,7 @@ public sealed class BakeInputsTests : IDisposable {
                 "colour-source" => options with { Colour = options.Colour with { Source = "material" } },
                 "edges-mesh" => options with { Edges = options.Edges with { Mesh = "low" } },
                 "borders-width" => options with { Borders = new() { Width = 0.1 } },
+                "diffusion" => options with { Diffusion = true },
                 _ => options with { Id = options.Id with { Palette = "grey" } }
             }
         );

@@ -87,6 +87,13 @@ public sealed record BakeOptions {
     public int Gutter { get; set; } = 4;
 
     /// <summary>
+    ///     Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the
+    ///     smallest mipmaps keep the maps' own values rather than fading to the empty texture's (#148). Labels, the ID
+    ///     and UV Islands maps, and UV Borders keep their background.
+    /// </summary>
+    public bool Diffusion { get; set; }
+
+    /// <summary>
     ///     Which maps to write: <c>normal</c>, <c>height</c>, <c>ao</c>, <c>bent</c>, <c>curvature</c>,
     ///     <c>thickness</c>, <c>position</c>, <c>world</c>, <c>id</c>, <c>colour</c>, <c>opacity</c> (where a ray
     ///     found the high mesh), <c>edges</c> (a band along its sharp or hard edges) and <c>islands</c> (a color per UV

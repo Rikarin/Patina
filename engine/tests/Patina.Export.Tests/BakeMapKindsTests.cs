@@ -138,6 +138,32 @@ public sealed class BakeMapKindsTests : IDisposable {
     }
 
     /// <summary>
+    ///     Fill past the dilation leaves every charted texel as it was and fills the rest of the texture, which a bake
+    ///     without it leaves as background (#148).
+    /// </summary>
+    [Fact]
+    public void Diffusion_fills_the_texture_past_the_charts_and_leaves_them_as_they_were() {
+        Bake("plain", static options => options with { Maps = ["position", "islands"] });
+        Bake("diffused", static options => options with { Maps = ["position", "islands"], Diffusion = true });
+        var islands = Picture("plain", "islands");
+        var plain = Picture("plain", "position").Pixels;
+        var diffused = Picture("diffused", "position").Pixels;
+        var (same, changed) = (0, 0);
+
+        for (var at = 0; at < plain.Length; at += 4) {
+            if (islands.Pixels[at] + islands.Pixels[at + 1] + islands.Pixels[at + 2] > 0) {
+                Assert.Equal(plain[at], diffused[at]);
+                same++;
+            } else {
+                changed += plain[at] != diffused[at] || plain[at + 3] != diffused[at + 3] ? 1 : 0;
+            }
+        }
+
+        Assert.True(same > 0);
+        Assert.True(changed > 0, "Nothing past the charts changed.");
+    }
+
+    /// <summary>
     ///     A chamfered band is white all the way across, so its edges map holds no grey; an even one ramps down through
     ///     the greys. The rounded normal turns differently too.
     /// </summary>

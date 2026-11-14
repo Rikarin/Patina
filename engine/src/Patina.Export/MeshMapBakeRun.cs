@@ -262,6 +262,7 @@ public static class MeshMapBakeRun {
             Resolution = options.Resolution,
             Height = options.Rows,
             Gutter = options.Gutter,
+            Diffusion = options.Diffusion,
             Space = options.Space == "object" ? BakeSpace.Object : BakeSpace.Tangent,
             Units = rays.Units == "absolute" ? BakeUnits.Absolute : BakeUnits.Relative,
             SearchRadius = (float)rays.Front,

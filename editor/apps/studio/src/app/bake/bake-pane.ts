@@ -423,6 +423,18 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
             </div>
             <label
               class="flex items-center justify-between gap-2 text-sm"
+              title="Fills the rest of the texture past the dilation with a smooth blend of the maps around it, so the smallest mipmaps keep their values. ID, UV Islands and UV Borders keep their background."
+            >
+              Fill past the dilation
+              <xui-switch
+                aria-label="Fill past the dilation"
+                data-testid="bake-diffusion"
+                [checked]="options.diffusion"
+                (checkedChange)="set({ diffusion: $event })"
+              />
+            </label>
+            <label
+              class="flex items-center justify-between gap-2 text-sm"
               title="A texture set wider than it is tall bakes at its own shape at this width, so a wide set and a square one bake together without stretching."
             >
               Follow each set’s shape

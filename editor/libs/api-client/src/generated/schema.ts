@@ -2649,6 +2649,12 @@ export interface components {
        */
       gutter: number;
       /**
+       * @description Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the
+       *     smallest mipmaps keep the maps' own values rather than fading to the empty texture's (#148). Labels, the ID
+       *     and UV Islands maps, and UV Borders keep their background.
+       */
+      diffusion: boolean;
+      /**
        * @description Which maps to write: `normal`, `height`, `ao`, `bent`, `curvature`,
        *     `thickness`, `position`, `world`, `id`, `colour`, `opacity` (where a ray
        *     found the high mesh), `edges` (a band along its sharp or hard edges) and `islands` (a color per UV
