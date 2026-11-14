@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { chooseIn } from '../core/select-testing';
 import { learnChannels } from '../core/labels';
+import { chooseIn } from '../core/select-testing';
 import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
