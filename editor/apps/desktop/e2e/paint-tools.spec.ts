@@ -353,6 +353,36 @@ test('the brush panel pictures the brush, and the picker takes back every channe
   await window.screenshot({ path: join(shots, 'picker-every-channel.png') });
 });
 
+test('the bar over the viewport holds the tool in hand’s settings, the brush’s own (#201)', async () => {
+  await openOnMesh();
+  const bar = window.getByTestId('tool-settings-bar');
+  await expect(bar).toHaveAttribute('data-tool', 'brush');
+  await expect(window.getByTestId('tool-settings-size-readout')).toHaveText(
+    (await window.getByTestId('paint-size-readout').textContent()) ?? ''
+  );
+
+  // A smaller brush from the bar is the brush Properties shows.
+  const size = window.getByTestId('tool-settings-size').getByRole('slider');
+  await size.focus();
+  await size.press('Home');
+  await expect(window.getByTestId('tool-settings-size-readout')).toHaveText('1 px');
+  await expect(window.getByTestId('paint-size-readout')).toHaveText('1 px');
+
+  // Opacity from the bar too, which Properties' slider follows.
+  const opacity = window.getByTestId('tool-settings-opacity').getByRole('slider');
+  await opacity.focus();
+  await opacity.press('Home');
+  await expect(window.getByTestId('paint-opacity').getByRole('slider')).toHaveAttribute('aria-valuenow', '0');
+
+  // The fill has its own choices in place of a stroke's.
+  await window.getByTestId('tool-strip-fill').click();
+  await expect(bar).toHaveAttribute('data-tool', 'fill');
+  await expect(window.getByTestId('tool-settings-size')).toHaveCount(0);
+  await expect(window.getByTestId('tool-settings-fill-mode')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'tool-settings-fill.png') });
+  expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
+});
+
 test('a smudge drags paint along, and a clone copies it from its source', async () => {
   await openOnMesh();
   await colour('#e01810');
