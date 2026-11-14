@@ -15084,7 +15084,7 @@
               "null",
               "integer"
             ],
-            "description": "One Bitmap node to point at the file, whatever it reads now, or null for every one that reads\n            From (#292).",
+            "description": "One Bitmap node to point at the file, whatever it reads now, or null for every one that reads\nFrom (#292).",
             "format": "int32"
           }
         },

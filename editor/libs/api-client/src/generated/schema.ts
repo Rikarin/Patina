@@ -5147,7 +5147,7 @@ export interface components {
       /**
        * Format: int32
        * @description One Bitmap node to point at the file, whatever it reads now, or null for every one that reads
-       *                 From (#292).
+       *     From (#292).
        */
       node?: null | number;
     };

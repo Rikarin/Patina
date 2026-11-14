@@ -29,7 +29,7 @@ class GraphRelinkRequest:
             to (str): The file to read instead: absolute, or below the library.
             node (int | None | Unset): One Bitmap node to point at the file, whatever it reads now, or null for every one
                 that reads
-                            From (#292).
+                From (#292).
      """
 
     from_: str
