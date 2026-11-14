@@ -15,7 +15,7 @@ public sealed class WorkerLinkTests {
     /// </summary>
     [Fact]
     public async Task A_closed_connection_is_never_offered_to_the_next_asker() {
-        var socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
+        var socketPath = Patina.Testing.TempFolders.NewSocket();
         var options = new ServerOptions { Worker = { SocketPath = socketPath } };
         using var link = new WorkerLink(Options.Create(options), NullLogger<WorkerLink>.Instance);
         await link.StartAsync(Token);

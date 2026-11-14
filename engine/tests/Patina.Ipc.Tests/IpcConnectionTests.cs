@@ -1,7 +1,7 @@
 namespace Patina.Ipc.Tests;
 
 public sealed class IpcConnectionTests : IDisposable {
-    readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
+    readonly string socketPath = Patina.Testing.TempFolders.NewSocket();
 
     CancellationToken Token => TestContext.Current.CancellationToken;
 

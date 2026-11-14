@@ -11,7 +11,7 @@ public sealed class ServerFixture : WebApplicationFactory<Program> {
 
     public string Library => Directory.CreateDirectory(Path.Combine(scratch.FullName, "Game.ptlib")).FullName;
 
-    public string SocketPath { get; } = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
+    public string SocketPath { get; } = Patina.Testing.TempFolders.NewSocket();
 
     /// <summary>The preferences file this Server keeps, in its own folder.</summary>
     public string PreferencesFile => Path.Combine(scratch.FullName, "preferences.json");

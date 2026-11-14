@@ -17,7 +17,7 @@ namespace Patina.Server.Tests;
 /// </summary>
 public sealed partial class GraphProcessTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-graph-");
-    readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
+    readonly string socketPath = Patina.Testing.TempFolders.NewSocket();
     readonly List<Process> started = [];
     readonly HttpClient http = new();
 

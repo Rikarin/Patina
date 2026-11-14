@@ -15,7 +15,7 @@ public sealed class BuildProcessTests : IDisposable {
     const int Projects = 3;
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-build-");
-    readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
+    readonly string socketPath = Patina.Testing.TempFolders.NewSocket();
     readonly List<Process> started = [];
     readonly HttpClient http = new();
     readonly HttpClient restarted = new();
