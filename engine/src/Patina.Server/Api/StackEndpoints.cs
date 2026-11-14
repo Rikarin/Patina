@@ -426,10 +426,10 @@ static class StackEndpoints {
             try {
                 var connection = await worker.ConnectionAsync(cancellationToken);
                 var reply = await connection.SendAsync(
-                    new() { Type = IpcTypes.BakeIdColours, IdColoursAsk = new(folder, u, v) },
+                    new() { Type = IpcTypes.BakeIdColours, Picture = new(IdColours: new(folder, u, v)) },
                     cancellationToken
                 );
-                colours = reply.IdColours;
+                colours = reply.Pictured?.IdColours;
             } catch (Exception e) when (e is IpcException or IOException) {
                 return Refusals.OfEngine(e, StatusCodes.Status502BadGateway);
             }

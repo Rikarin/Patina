@@ -165,23 +165,17 @@ public static class IpcTypes {
     public const string MaterialRead = "material.read";
 
     /// <summary>
-    ///     Server to Worker: decode the picture <see cref="IpcMessage.PictureRead" /> names, and write a PNG of it
-    ///     where it says (#293). The Server decodes no picture: a decoder is a parser of a file anybody made. Uses no
-    ///     device, and is answered beside the queue; answered in <see cref="IpcMessage.PictureReadEnd" />.
+    ///     Server to Worker: decode the picture <see cref="PictureAsk.Read" /> names, and write a PNG of it where it
+    ///     says (#293). The Server decodes no picture: a decoder is a parser of a file anybody made. Like the two
+    ///     below, it is asked in <see cref="IpcMessage.Picture" />, answered in <see cref="IpcMessage.Pictured" />,
+    ///     uses no device and is answered beside the queue.
     /// </summary>
     public const string PictureRead = "picture.read";
 
-    /// <summary>
-    ///     Server to Worker: list the colours of a bake's ID map (<see cref="IpcMessage.IdColoursAsk" />), answered in
-    ///     <see cref="IpcMessage.IdColours" />. Uses no device, and is answered beside the queue (#293).
-    /// </summary>
+    /// <summary>Server to Worker: list the colours of a bake's ID map (<see cref="PictureAsk.IdColours" />).</summary>
     public const string BakeIdColours = "bake.id-colours";
 
-    /// <summary>
-    ///     Server to Worker: make a compression preview from a plan (<see cref="IpcMessage.CompressionStep" />) into
-    ///     the cache, answered in <see cref="IpcMessage.CompressionPreview" />. Uses no device, so it is answered beside
-    ///     the queue (#293).
-    /// </summary>
+    /// <summary>Server to Worker: make a planned compression preview (<see cref="PictureAsk.Compression" />).</summary>
     public const string ExportCompress = "export.compress";
 
     /// <summary>Renders each fill of a stack alone, small.</summary>
@@ -411,20 +405,11 @@ public sealed class IpcMessage {
     /// <summary>A model's materials as maps, in the answer to <see cref="IpcTypes.MaterialRead" />.</summary>
     public IReadOnlyList<ImportedMaterial>? MaterialsRead { get; set; }
 
-    public PictureReadAsk? PictureRead { get; set; }
+    /// <summary>What a picture request asks: <see cref="IpcTypes.PictureRead" /> and the two after it.</summary>
+    public PictureAsk? Picture { get; set; }
 
-    /// <summary>How a picture read, in the answer to <see cref="IpcTypes.PictureRead" />.</summary>
-    public PictureReadEnd? PictureReadEnd { get; set; }
-
-    public IdColoursAsk? IdColoursAsk { get; set; }
-
-    /// <summary>A bake's ID colours, answering <see cref="IpcTypes.BakeIdColours" />; null for no ID map.</summary>
-    public StackIdColours? IdColours { get; set; }
-
-    public CompressionStep? CompressionStep { get; set; }
-
-    /// <summary>What a compression preview measured, in the answer to <see cref="IpcTypes.ExportCompress" />.</summary>
-    public CompressionPreviewInfo? CompressionPreview { get; set; }
+    /// <summary>What a picture request answers.</summary>
+    public PictureAnswer? Pictured { get; set; }
 
     /// <summary>The model's other texture sets, worn along with <see cref="Following" />.</summary>
     public IReadOnlyList<string>? FollowingAlso { get; set; }

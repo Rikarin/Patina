@@ -1,6 +1,6 @@
 // Compiled into every test project (tests/Directory.Build.props), so each sweeps what earlier runs left (#294).
 
-[assembly: Xunit.AssemblyFixture(typeof(Patina.Testing.TempSweep))]
+[assembly: AssemblyFixture(typeof(Patina.Testing.TempSweep))]
 
 namespace Patina.Testing;
 
@@ -53,5 +53,7 @@ static class TempFolders {
 
 /// <summary>Once per test run: removes what runs over a day ago left, which no run still going can be using.</summary>
 sealed class TempSweep {
-    public TempSweep() => TempFolders.Sweep(TimeSpan.FromDays(1));
+    public TempSweep() {
+        TempFolders.Sweep(TimeSpan.FromDays(1));
+    }
 }

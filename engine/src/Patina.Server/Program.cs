@@ -50,7 +50,8 @@ if (library is not null) {
 
     CacheSweep.Leftovers(library);
 } else {
-    JobRunner.ClearScratch(false);
+    // ⚠ Beside the start, never before it: a machine can hold hundreds of them, and the app waits for the Server.
+    _ = Task.Run(static () => JobRunner.ClearScratch(false));
 }
 
 // A library's Server is found through the discovery file, so it needs a token to publish and a port of its own: each

@@ -127,7 +127,7 @@ public static class ExportPreviews {
     }
 
     /// <summary>Makes a planned preview: decodes the set's maps, compresses the region and writes its files.</summary>
-    /// <exception cref="BuildRefusedException">A file the preset does not write, or one the set cannot have.</exception>
+    /// <exception cref="BuildRefusedException">A file the preset does not write, or the set cannot have.</exception>
     public static CompressionPreviewInfo Run(CompressionStep step, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(step);
         var request = step.Request;

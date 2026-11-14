@@ -59,6 +59,10 @@ static class OpenApiSchemas {
     }
 
     static bool Plain(Type type) =>
-        type == typeof(string) || type == typeof(bool) || type == typeof(int) || type == typeof(double)
-        || type == typeof(float) || type == typeof(long);
+        type == typeof(string)
+        || type == typeof(bool)
+        || type == typeof(int)
+        || type == typeof(double)
+        || type == typeof(float)
+        || type == typeof(long);
 }

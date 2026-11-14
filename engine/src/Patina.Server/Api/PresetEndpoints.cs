@@ -91,10 +91,10 @@ static class PresetEndpoints {
 
             var connection = await worker.ConnectionAsync(cancellationToken);
             var reply = await connection.SendAsync(
-                new() { Type = IpcTypes.ExportCompress, CompressionStep = step },
+                new() { Type = IpcTypes.ExportCompress, Picture = new(Compression: step) },
                 cancellationToken
             );
-            return reply.CompressionPreview is { } made
+            return reply.Pictured?.Compression is { } made
                 ? TypedResults.Ok(made)
                 : Refusals.Problem(
                     "The GPU engine made no preview.",

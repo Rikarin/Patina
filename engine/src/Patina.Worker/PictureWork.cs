@@ -11,32 +11,17 @@ namespace Patina.Worker;
 /// </summary>
 static class PictureWork {
     public static IpcMessage Answer(IpcMessage request, CancellationToken cancellationToken) =>
-        request.Type switch {
-            IpcTypes.PictureRead => Read(request),
-            IpcTypes.BakeIdColours => IdColoursOf(request),
-            _ => Compress(request, cancellationToken)
-        };
+        new() { Type = IpcTypes.Ok, Id = request.Id, Pictured = Answered(request, cancellationToken) };
 
-    static IpcMessage Read(IpcMessage request) {
-        var ask = request.PictureRead ?? throw new IpcException("picture.read names no picture.");
-        return new() {
-            Type = IpcTypes.Ok,
-            Id = request.Id,
-            PictureReadEnd = new(PictureReads.Read(ask.File, ask.Preview, ask.Side))
+    static PictureAnswer Answered(IpcMessage request, CancellationToken cancellationToken) =>
+        (request.Type, request.Picture) switch {
+            (IpcTypes.PictureRead, { Read: { } read }) => new(PictureReads.Read(read.File, read.Preview, read.Side)),
+            (IpcTypes.BakeIdColours, { IdColours: { } bake }) => new(
+                IdColours: IdColours.Read(bake.Folder, bake.U, bake.V)
+            ),
+            (IpcTypes.ExportCompress, { Compression: { } step }) => new(
+                Compression: ExportPreviews.Known(step) ?? ExportPreviews.Run(step, cancellationToken)
+            ),
+            _ => throw new IpcException($"{request.Type} names nothing to decode.")
         };
-    }
-
-    static IpcMessage IdColoursOf(IpcMessage request) {
-        var ask = request.IdColoursAsk ?? throw new IpcException("bake.id-colours names no bake.");
-        return new() { Type = IpcTypes.Ok, Id = request.Id, IdColours = IdColours.Read(ask.Folder, ask.U, ask.V) };
-    }
-
-    static IpcMessage Compress(IpcMessage request, CancellationToken cancellationToken) {
-        var step = request.CompressionStep ?? throw new IpcException("export.compress plans nothing.");
-        return new() {
-            Type = IpcTypes.Ok,
-            Id = request.Id,
-            CompressionPreview = ExportPreviews.Known(step) ?? ExportPreviews.Run(step, cancellationToken)
-        };
-    }
 }

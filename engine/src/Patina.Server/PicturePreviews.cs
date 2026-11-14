@@ -95,7 +95,7 @@ public sealed class PicturePreviews(LibraryHost host, WorkerLink worker) {
         IpcMessage reply;
         try {
             reply = await connection.SendAsync(
-                new() { Type = IpcTypes.PictureRead, PictureRead = ask },
+                new() { Type = IpcTypes.PictureRead, Picture = new(ask) },
                 cancellationToken
             );
         } catch (IOException e) {
@@ -105,7 +105,7 @@ public sealed class PicturePreviews(LibraryHost host, WorkerLink worker) {
             throw new PictureUnreadableException(said, e);
         }
 
-        if (reply.PictureReadEnd?.Unreadable is { } unreadable) {
+        if (reply.Pictured?.Unreadable is { } unreadable) {
             throw new PictureUnreadableException(unreadable);
         }
     }

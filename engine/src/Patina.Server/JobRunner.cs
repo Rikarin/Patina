@@ -85,6 +85,8 @@ public sealed class JobRunner : BackgroundService {
             return false;
         } catch (InvalidOperationException) {
             return false;
+        } catch (System.ComponentModel.Win32Exception) {
+            return true; // another user's process, which may be a Server: left alone
         }
     }
 

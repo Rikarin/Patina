@@ -32,9 +32,7 @@ sealed class PictureWorker : IAsyncDisposable {
         PictureWorker worker = new(stream, dies ?? (static _ => false));
         worker.connection.Start();
         await worker.connection.SendAsync(
-            new() {
-                Type = IpcTypes.Hello, Worker = new(IpcMessage.ProtocolVersion, "test", Environment.ProcessId)
-            },
+            new() { Type = IpcTypes.Hello, Worker = new(IpcMessage.ProtocolVersion, "test", Environment.ProcessId) },
             cancellationToken
         );
         return worker;
@@ -44,7 +42,7 @@ sealed class PictureWorker : IAsyncDisposable {
     public int Reads { get; private set; }
 
     IpcMessage Answer(IpcMessage request) {
-        if (request is not { Type: IpcTypes.PictureRead, PictureRead: { } ask }) {
+        if (request is not { Type: IpcTypes.PictureRead, Picture.Read: { } ask }) {
             return request.Type == IpcTypes.Health
                 ? IpcMessage.Ok(request.Id)
                 : IpcMessage.Fail(request.Id, $"A picture Worker does not answer '{request.Type}'.");
@@ -57,9 +55,7 @@ sealed class PictureWorker : IAsyncDisposable {
         }
 
         return new() {
-            Type = IpcTypes.Ok,
-            Id = request.Id,
-            PictureReadEnd = new(PictureReads.Read(ask.File, ask.Preview, ask.Side))
+            Type = IpcTypes.Ok, Id = request.Id, Pictured = new(PictureReads.Read(ask.File, ask.Preview, ask.Side))
         };
     }
 
