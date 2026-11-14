@@ -25,6 +25,7 @@ import { jobStateName, labelIn, termName } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { percent } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
+import { FileChooser } from '../library/file-chooser';
 import { LibrarySelection } from '../library/library-selection';
 import { ProjectStore } from '../library/project-store';
 import { PaintStore } from '../paint/paint-store';
@@ -730,6 +731,7 @@ export class ExportPane implements OnInit {
   protected readonly project = inject(ProjectStore);
   private readonly selection = inject(LibrarySelection);
   private readonly status = inject(SystemStatus);
+  private readonly chooser = inject(FileChooser);
   private readonly injector = inject(Injector);
 
   /** The scope chosen by hand, which holds until it stops being possible. */
@@ -1136,7 +1138,7 @@ export class ExportPane implements OnInit {
   }
 
   protected async chooseFolder(): Promise<void> {
-    const folder = await desktop()?.openFolder();
+    const folder = await this.chooser.folder('Choose an Output Folder', this.project.current()?.path ?? null);
     if (folder) {
       this.change({ folder });
     }
@@ -1151,7 +1153,7 @@ export class ExportPane implements OnInit {
    * screen shows or in another format (#47).
    */
   protected async exportStack(id: string): Promise<void> {
-    const folder = await desktop()?.openFolder();
+    const folder = await this.chooser.folder('Export to a Folder', this.project.current()?.path ?? null);
     const format = this.stackFormat();
     if (folder) {
       await this.attempt(() => this.store.exportStack(id, folder, format === this.onScreen ? null : format));

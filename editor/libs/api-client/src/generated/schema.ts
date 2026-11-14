@@ -822,7 +822,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The pictures or meshes the library's projects hold, a project's own first: what a client offers to pick from, where a dialog of its own machine cannot see this one's disk. */
+    /** The pictures, meshes or folders the library's projects hold, a project's own first: what a client offers to pick from, where a dialog of its own machine cannot see this one's disk. Folders are those a client can write into: every project's and the ones in it, then the exports folder's. */
     get: operations['ListLibraryFiles'];
     put?: never;
     post?: never;
@@ -4857,13 +4857,13 @@ export interface components {
       /** @description What an export of the whole library is set to now. */
       export: components['schemas']['ProjectExportSettings'];
     };
-    /** @description A file the library holds, for a client to pick from where a native dialog cannot see (#4). */
+    /** @description A file or a folder the library holds, to pick from where a native dialog cannot see (#4). */
     LibraryFile: {
       /** @description Its path below the library. */
       path: string;
-      /** @description Its file's name. */
+      /** @description Its file's or folder's name. */
       name: string;
-      /** @description The project it is in, below `projects/`. */
+      /** @description The project it is in, below `projects/`, or empty for one in no project. */
       project: string;
     };
     /** @description The answer to `GET /api/v1/library/files`. */

@@ -15,8 +15,9 @@ static class LibraryFileEndpoints {
         library.MapGet("/files", ListFiles)
             .Described(
                 "ListLibraryFiles",
-                "The pictures or meshes the library's projects hold, a project's own first: what a client offers to "
-                + "pick from, where a dialog of its own machine cannot see this one's disk."
+                "The pictures, meshes or folders the library's projects hold, a project's own first: what a client "
+                + "offers to pick from, where a dialog of its own machine cannot see this one's disk. Folders are "
+                + "those a client can write into: every project's and the ones in it, then the exports folder's."
             );
 
         library.MapGet("/picture", GetPicture)
@@ -59,8 +60,18 @@ static class LibraryFileEndpoints {
     /// <summary>How many files a list of the library's holds at most, which a person can still look through.</summary>
     const int MaxListedFiles = 1000;
 
-    /// <summary>The pictures or the meshes the library holds, by kind: <c>picture</c> or <c>mesh</c>.</summary>
+    /// <summary>
+    ///     The pictures, the meshes or the folders the library holds, by kind: <c>picture</c>, <c>mesh</c> or
+    ///     <c>folder</c>.
+    /// </summary>
     static Results<Ok<LibraryFileList>, ProblemHttpResult> ListFiles(LibraryHost host, string kind, string? project) {
+        if (kind == "folder") {
+            return LibraryTreeEndpoints.Guarded(
+                host,
+                library => TypedResults.Ok(library.Folders(project, MaxListedFiles))
+            );
+        }
+
         Func<string, bool>? wanted = kind switch {
             "picture" => PictureFormats.IsPicture,
             "mesh" => MeshFormats.IsMesh,
@@ -68,7 +79,7 @@ static class LibraryFileEndpoints {
         };
         return wanted is null
             ? Refusals.Problem(
-                $"'{kind}' is no kind of file the library lists: picture or mesh.",
+                $"'{kind}' is no kind of file the library lists: picture, mesh or folder.",
                 StatusCodes.Status400BadRequest,
                 Refusals.FileKindUnknown,
                 new Dictionary<string, string> { ["kind"] = kind }

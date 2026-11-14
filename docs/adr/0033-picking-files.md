@@ -30,7 +30,11 @@ references and a browse route.
   upload, which no route takes yet.
 - Meshes followed in wave 11: New Project, Project Settings and the Bake dialog choose a mesh through `FileChooser`, which opens
   Choose a Mesh the same way. A bake and a project's mesh read a path on the Server's machine, so a mesh or a picture the library
-  holds is given as the library's path joined to its own; the Server copies a project's mesh in as it did one from the disk. Only
-  the bake's output folder is still typed outside the desktop app, as the list holds no folders.
+  holds is given as the library's path joined to its own; the Server copies a project's mesh in as it did one from the disk.
+- Folders followed in wave 14: `kind=folder` lists the folders a client can write into, every project's and those in it, the asked
+  project's first, then the exports folder's, leaving out hidden ones and projects inside projects. The Bake dialog's output folder,
+  Export's output folder, Export Painted Work and Export Alone choose one through `FileChooser.folder`: the desktop's own folder
+  dialog, which sees the whole machine, and Choose a Folder from this list anywhere else, so nothing is typed outside the desktop
+  app either. A folder outside the library is still out of reach of a client on another computer, by design.
 - The list is read from the folders each time, as the project's own contents are; a library of many thousands of pictures would want
   it from the index instead.

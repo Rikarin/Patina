@@ -2947,7 +2947,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "The pictures or meshes the library\u0027s projects hold, a project\u0027s own first: what a client offers to pick from, where a dialog of its own machine cannot see this one\u0027s disk.",
+        "summary": "The pictures, meshes or folders the library\u0027s projects hold, a project\u0027s own first: what a client offers to pick from, where a dialog of its own machine cannot see this one\u0027s disk. Folders are those a client can write into: every project\u0027s and the ones in it, then the exports folder\u0027s.",
         "operationId": "ListLibraryFiles",
         "parameters": [
           {
@@ -14365,14 +14365,14 @@
           },
           "name": {
             "type": "string",
-            "description": "Its file\u0027s name."
+            "description": "Its file\u0027s or folder\u0027s name."
           },
           "project": {
             "type": "string",
-            "description": "The project it is in, below \u0060projects/\u0060."
+            "description": "The project it is in, below \u0060projects/\u0060, or empty for one in no project."
           }
         },
-        "description": "A file the library holds, for a client to pick from where a native dialog cannot see (#4)."
+        "description": "A file or a folder the library holds, to pick from where a native dialog cannot see (#4)."
       },
       "LibraryFileList": {
         "required": [

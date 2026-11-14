@@ -244,6 +244,15 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         return new(files, more);
     }
 
+    /// <summary>
+    ///     The folders a client can choose to write into: every project's and those in it, the project at
+    ///     <paramref name="first" />'s first, then the exports folder's (#4).
+    /// </summary>
+    public LibraryFileList Folders(string? first, int limit) {
+        var (folders, more) = PickableFolders.List(RootPath, first, limit);
+        return new(folders, more);
+    }
+
     /// <summary>The file a new document of a project would have.</summary>
     /// <exception cref="ProjectExistsException">It is taken.</exception>
     /// <exception cref="ProjectRefusedException">The name cannot name a file.</exception>

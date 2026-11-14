@@ -53,6 +53,46 @@ public sealed partial class LibraryTreeApiTests {
     }
 
     /// <summary>
+    ///     The folders a client can write an export or a bake into are listed for one that cannot see the disk of the
+    ///     Server: every project's and those in it, the asked project's first, then the exports folder's; a hidden
+    ///     folder and a project inside a project are not (#4).
+    /// </summary>
+    [Fact]
+    public async Task The_library_lists_the_folders_a_client_can_write_into() {
+        await MakeCrateAsync();
+        using var barrel = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Barrel", Kind: "layered-material"),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.Created, barrel.StatusCode);
+        foreach (var folder in new[] {
+                     "projects/crate/out/maps", "projects/crate/.paint-backup", "projects/barrel/Pictures",
+                     "exports/crate"
+                 }) {
+            Directory.CreateDirectory(Path.Combine(server.Library, folder));
+        }
+
+        var listed = await client.GetFromJsonAsync<LibraryFileList>(
+            "/api/v1/library/files?kind=folder&project=crate",
+            Token
+        );
+
+        Assert.Equal(
+            [
+                new("projects/crate", "crate", "crate"), new("projects/crate/out", "out", "crate"),
+                new("projects/crate/out/maps", "maps", "crate"), new("projects/barrel", "barrel", "barrel"),
+                new("projects/barrel/Pictures", "Pictures", "barrel"),
+                new("projects/shared-assets", "shared-assets", "shared-assets"),
+                new("exports", "exports", string.Empty),
+                new LibraryFile("exports/crate", "crate", string.Empty)
+            ],
+            listed!.Files
+        );
+        Assert.False(listed.More);
+    }
+
+    /// <summary>
     ///     A picture another project holds comes into this one as a copy, by its path below the library; one already in
     ///     the project stays where it is, and a path that climbs out of the library is refused (#4).
     /// </summary>
