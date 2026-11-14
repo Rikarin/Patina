@@ -368,6 +368,14 @@ public static class Refusals {
     /// <summary>A file the system would not let the Server write or read, with its sentence as the reason.</summary>
     public static ProblemHttpResult Unwritable(Exception failure, int status) =>
         Problem(failure.Message, status, FileUnwritable, Reason(failure.Message));
+    /// <summary>
+    ///     A document written by a newer build of Patina, at a format this build does not read whole (#162). Values:
+    ///     <c>written</c>, the file's format, and <c>reads</c>, the newest this build reads.
+    /// </summary>
+    public const string DocumentNewer = "document-newer";
+
+    /// <summary>A stack proxy that is not 1, 2, 4 or 8 (#208). Values: <c>proxy</c>.</summary>
+    public const string ProxyRefused = "stack-proxy-refused";
 
     /// <summary>A snapshot of a document with unsaved edits, which its file does not hold yet (#209).</summary>
     public const string SnapshotUnsaved = "snapshot-unsaved";

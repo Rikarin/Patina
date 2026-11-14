@@ -171,6 +171,16 @@ public sealed class LibraryCareApiTests : IAsyncLifetime {
 
         // An hour's interval has not passed, so only the idle wait can have kept it.
         Assert.Equal(kept, Recovery.Count(server.Library, file) > 0);
+
+        // Every client hears it, once the autosave is whole (#192).
+        var heard = false;
+        while (kept && !heard && DateTime.UtcNow < deadline.AddSeconds(4)) {
+            var events = await client.EventsAsync(state.Id, state.Sequence, Token);
+            heard = events.Events.Any(static e => e.Kind == GraphEventKind.Autosaved);
+            await Task.Delay(heard ? 0 : 100, Token);
+        }
+
+        Assert.Equal(kept, heard);
     }
 
     [Fact]

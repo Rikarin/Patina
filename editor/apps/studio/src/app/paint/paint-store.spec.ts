@@ -523,6 +523,42 @@ describe('PaintStore', () => {
     expect(stackSummary({ revision: 2, settled: 2, evaluation: { ...evaluation, ran: 0 } })).toBe('Up to date');
     const stopped = { ...evaluation, problems: [{ layer: 'a', severity: 'Error', message: 'No.' }] };
     expect(stackSummary({ revision: 2, settled: 2, evaluation: stopped })).toBe('Not evaluated');
+    const paused = { paused: true, proxy: 1 };
+    expect(stackSummary({ revision: 3, settled: 2, evaluation, pace: paused })).toBe('Paused, with edits waiting');
+    expect(stackSummary({ revision: 2, settled: 2, evaluation, pace: paused })).toBe('Paused');
+  });
+
+  it('pauses, chooses a proxy, and hears another client do either (#208)', async () => {
+    const { store, sockets, server, posts } = setup();
+    let pace = { paused: false, proxy: 1 };
+    const sent: unknown[] = [];
+    server.reply = (method, path) => {
+      if (method === 'PUT' && path.endsWith('/pace')) {
+        return Promise.resolve(Response.json((pace = { paused: true, proxy: 4 })));
+      }
+
+      return method === 'GET' && path === '/api/v1/stacks/s1' ? Response.json(stack({ pace })) : null;
+    };
+    await store.open('/a/Crate.vxlayers', false);
+    expect(store.pace()).toEqual({ paused: false, proxy: 1 });
+
+    await store.setPace({ paused: true });
+    sent.push(posts.at(-1));
+    expect(sent).toEqual(['/api/v1/stacks/s1/pace']);
+    expect(store.pace()).toEqual({ paused: true, proxy: 4 });
+    expect(store.evaluated()).toMatch(/^Paused/u);
+
+    pace = { paused: false, proxy: 2 };
+    const hear = sockets[0]?.onmessage as unknown as (event: MessageEvent) => void;
+    hear({
+      data: JSON.stringify({
+        sequence: 5,
+        kind: 'paced',
+        revision: 1,
+        history: { canUndo: false, canRedo: false, dirty: false }
+      })
+    } as MessageEvent);
+    await vi.waitFor(() => expect(store.pace()).toEqual({ paused: false, proxy: 2 }));
   });
 
   it('says it lost the engine while its socket is down, and is live again once it reopens (#192)', async () => {

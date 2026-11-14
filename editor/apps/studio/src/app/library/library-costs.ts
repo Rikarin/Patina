@@ -106,6 +106,8 @@ export class LibraryCostsView {
   protected readonly over = signal<readonly DocumentCost[]>([]);
   protected readonly overTotal = signal(0);
   protected readonly size = bytes;
+  /** Whether the Server has a library, as a boolean, so that each poll of it does not read the costs again. */
+  private readonly ready = computed(() => this.store.state().kind === 'ready');
 
   /** Each folder on the way to the one shown, for going back up. */
   protected readonly steps = computed(() => {
@@ -119,7 +121,10 @@ export class LibraryCostsView {
     effect(() => {
       const folder = this.folder();
       const budget = this.budget();
-      untracked(() => void this.read(folder, budget));
+      // ⚠ Only once there is a library: with none, every start asked and logged two 404s (#192).
+      if (this.ready()) {
+        untracked(() => void this.read(folder, budget));
+      }
     });
   }
 

@@ -426,6 +426,10 @@ public sealed class GraphSession(
     /// <inheritdoc />
     protected override GraphEvent Resync() => new(Log.Sequence, GraphEventKind.Resync, revision, editor.History);
 
+    /// <inheritdoc />
+    protected override GraphEvent Noted(GraphEventKind kind, string? label) =>
+        new(Log.Sequence + 1, kind, revision, editor.History, label);
+
     static string Hash(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 
     void Take(NodeTypeRegistry registry) {

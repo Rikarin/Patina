@@ -46,8 +46,7 @@ public sealed class Autosave(
             foreach (var graph in graphs.All) {
                 open.Add(graph.Path);
                 if (Due(graph.Path, graph.Summary.Revision, graph.Summary.Dirty, now, settings)) {
-                    var generation = gate.Begin(library, graph.Path);
-                    Finished(graph.Path, gate.Finish(library, graph.Path, generation, mark, graph.Text, settings.Keep));
+                    Keep(graph, library, mark, settings.Keep);
                 }
             }
 
@@ -59,6 +58,14 @@ public sealed class Autosave(
             }
 
             Forget(open);
+        }
+    }
+
+    /// <summary>A graph is its text, so it is kept here with no Worker, and its followers hear that it was.</summary>
+    void Keep(GraphSession graph, string library, long mark, int keep) {
+        var generation = gate.Begin(library, graph.Path);
+        if (Finished(graph.Path, gate.Finish(library, graph.Path, generation, mark, graph.Text, keep))) {
+            graph.Autosaved(null);
         }
     }
 
@@ -75,9 +82,12 @@ public sealed class Autosave(
         try {
             generation = gate.Begin(library, stack.Path);
             await evaluator.KeepAsync(stack, generation, cancellationToken);
-            Finished(stack.Path, gate.Finish(library, stack.Path, generation, mark, stack.Text, keep));
+            if (Finished(stack.Path, gate.Finish(library, stack.Path, generation, mark, stack.Text, keep))) {
+                stack.Autosaved(null);
+            }
         } catch (Exception e) when (e is IOException or TimeoutException or Patina.Ipc.IpcException) {
             ServerLog.AutosaveFailed(logger, stack.Path, e.Message);
+            stack.Autosaved(e.Message);
             if (generation is not null) {
                 Abandon(stack.Path, library, generation, mark);
             }
@@ -87,10 +97,13 @@ public sealed class Autosave(
     /// <summary>
     ///     An autosave a save let go of as it landed is not one kept: edits after that save are kept when next due.
     /// </summary>
-    void Finished(string path, bool kept) {
+    /// <returns>Whether it was kept, which its followers hear.</returns>
+    bool Finished(string path, bool kept) {
         if (!kept && watched.TryGetValue(path, out var watch)) {
             watch.Kept = long.MinValue;
         }
+
+        return kept;
     }
 
     /// <summary>What a Worker that failed left of an autosave of a document since let go goes too.</summary>

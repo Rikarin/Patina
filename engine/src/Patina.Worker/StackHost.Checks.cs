@@ -15,7 +15,9 @@ sealed partial class StackHost {
     public IpcMessage Check(IpcMessage request) {
         var session = request.StackCheck ?? throw new IpcException("stack.check names no stack.");
         var stack = Find(session);
-        var problems = stack.Prepare();
+
+        // As an export would write them, whatever the proxy (#208).
+        var problems = stack.Prepare(true);
         if (problems.Count > 0 || stack.Run.Plan is null) {
             throw new IpcException(string.Join(' ', problems));
         }

@@ -75,6 +75,9 @@ const Words: Readonly<Record<string, string>> = {
   'file-changed':
     'The file changed outside Patina after it was opened. Save again to write over that change, or open the file again to keep it.',
   'file-unwritable': 'Patina couldn’t write or read the file there. {reason}'
+  'document-newer':
+    'This document was saved by a newer version of Patina, so it isn’t opened here: saving it would lose what is new. Open it in that version or a later one.',
+  'stack-proxy-refused': 'Choose Full, Half, Quarter or Eighth size.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };

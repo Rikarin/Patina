@@ -140,7 +140,8 @@ public sealed class StackEvaluator(
 
     /// <summary>Waits until the Worker's pixels are what the journal says, which a save and a read both need.</summary>
     static async Task ReachedAsync(StackSession session, CancellationToken cancellationToken) {
-        session.Evaluate();
+        // ⚠ A paused stack evaluates for whoever waits here, or a save would wait for a resume that may never come.
+        using var reading = session.Reading();
         using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         patience.CancelAfter(WorkerPatience);
         try {
@@ -400,7 +401,7 @@ public sealed class StackEvaluator(
                 ? 0
                 : PreviewSide;
         var reply = await connection.SendAsync(
-            new() { Type = IpcTypes.StackEvaluate, StackEvaluate = new(session.Id, side, store.Root) },
+            new() { Type = IpcTypes.StackEvaluate, StackEvaluate = new(session.Id, side, store.Root, work.Proxy) },
             cancellationToken
         );
         session.Publish(work, reply.StackResult!);

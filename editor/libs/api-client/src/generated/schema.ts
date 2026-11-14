@@ -1745,6 +1745,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/pace': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Pauses or resumes a stack's evaluation, or sets the proxy its picture is composited at while it is edited. Every client hears a paced event. Saving, exporting and checking always evaluate it whole. */
+    put: operations['PaceStack'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks': {
     parameters: {
       query?: never;
@@ -4253,6 +4270,9 @@ export interface components {
       | 'typesChanged'
       | 'closed'
       | 'selected'
+      | 'autosaved'
+      | 'autosaveFailed'
+      | 'paced'
       | 'resync';
     /** @description The events after a number, for a client that does not hold a WebSocket or has missed some. */
     GraphEventPage: {
@@ -7278,6 +7298,35 @@ export interface components {
       /** @description A `.vxlayers` file, absolute or relative to the library. */
       path: string;
     };
+    /**
+     * @description How a stack is evaluated while it is edited, which is the session's and never the file's (#208). Saving,
+     *     exporting, checking and reading pixels always evaluate it whole, at full size, paused or not.
+     */
+    StackPace: {
+      /**
+       * @description Whether edits wait to be evaluated, so that a big stack can be set up without paying for each step. Resuming
+       *     evaluates everything at once.
+       * @default false
+       */
+      paused: boolean;
+      /**
+       * Format: int32
+       * @description What the stack's width and height are divided by for the viewport and previews while it is edited: 1, 2, 4
+       *     or 8. Painted pixels stay at full size; only what they are composited into is smaller.
+       * @default 1
+       */
+      proxy: number;
+    };
+    /** @description A change to how a stack is evaluated while it is edited (#208). What is left out stays as it is. */
+    StackPaceChange: {
+      /** @description Whether edits wait to be evaluated. */
+      paused?: null | boolean;
+      /**
+       * Format: int32
+       * @description What the stack's sides are divided by: 1, 2, 4 or 8.
+       */
+      proxy?: null | number;
+    };
     /** @description A channel a stroke touched. */
     StackPainted: {
       /** @description The layer. */
@@ -7572,6 +7621,7 @@ export interface components {
        *     of another shape than the set's Width by Height (#262). Either way its maps need baking again.
        */
       bakeStale?: null | string;
+      pace?: null | components['schemas']['StackPace'];
     };
     /** @description Where a stroke's colour comes from, when it is not one colour. */
     StackStrokeSource: {
@@ -13890,6 +13940,50 @@ export interface operations {
       };
       /** @description Service Unavailable */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PaceStack: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackPaceChange'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackPace'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
         headers: {
           [name: string]: unknown;
         };
