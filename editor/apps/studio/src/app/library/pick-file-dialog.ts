@@ -12,6 +12,7 @@ import { type LibraryFile, unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
+import { XuiFileInputImports } from '@xui/file-input';
 import { XuiInputImports } from '@xui/input';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { desktop } from '../core/desktop';
@@ -33,7 +34,14 @@ const ThumbnailSide = 160;
  */
 @Component({
   selector: 'ptn-pick-file',
-  imports: [XuiButtonImports, XuiCalloutImports, XuiDialogImports, XuiInputImports, XuiNonIdealStateImports],
+  imports: [
+    XuiButtonImports,
+    XuiCalloutImports,
+    XuiDialogImports,
+    XuiFileInputImports,
+    XuiInputImports,
+    XuiNonIdealStateImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <xui-dialog
@@ -113,25 +121,16 @@ const ThumbnailSide = 160;
               {{ fromLabel() }}
             </button>
           } @else if (canSend()) {
-            <button
-              type="button"
-              xuiButton
-              variant="ghost"
+            <!-- The native input's change bubbles out of xUI's file input, which needs no form around it. -->
+            <xui-file-input
+              size="sm"
+              aria-label="Send a file from this computer"
+              buttonText="From This Computer…"
               data-testid="pick-file-send"
               title="Sends a file of this computer to the library, where the engine reads it"
-              [disabled]="sending() !== null"
-              (click)="sendInput.click()"
-            >
-              {{ sending() === null ? 'From This Computer…' : 'Sending ' + sending() + '…' }}
-            </button>
-            <input
-              #sendInput
-              class="hidden"
-              type="file"
-              tabindex="-1"
-              aria-hidden="true"
-              data-testid="pick-file-send-input"
               [accept]="accepted()"
+              [disabled]="sending() !== null"
+              [text]="sending() === null ? 'Or send one of yours' : 'Sending ' + sending() + '…'"
               (change)="send($event)"
             />
           }

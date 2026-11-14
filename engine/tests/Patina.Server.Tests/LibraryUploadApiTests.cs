@@ -1,6 +1,5 @@
 using Patina.Contracts;
 using System.Net;
-using System.Net.Http.Headers;
 
 namespace Patina.Server.Tests;
 
@@ -8,7 +7,7 @@ namespace Patina.Server.Tests;
 public sealed partial class LibraryTreeApiTests {
     async Task<HttpResponseMessage> UploadAsync(string name, byte[] bytes) {
         using var body = new ByteArrayContent(bytes);
-        body.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        body.Headers.ContentType = new("application/octet-stream");
         return await client.PostAsync($"/api/v1/library/uploads?name={Uri.EscapeDataString(name)}", body, Token);
     }
 
