@@ -5,9 +5,9 @@ using Patina.Server.Stacks;
 namespace Patina.Server.Api;
 
 /// <summary>
-///     The node types a layer stack names beyond the vocabulary's lists: the generators of the project's own (#298), and
-///     pictures of any type (#290), each drawn as a graph's palette draws it, so a layer's generator list can show what
-///     each one makes.
+///     The node types a layer stack names beyond the vocabulary's lists: the project's own generators (#298), and
+///     pictures of any type (#290), each drawn as a graph's palette draws it, so a layer's generator list can show
+///     what each one makes.
 /// </summary>
 static class StackNodePictures {
     public static void MapStackNodePictures(this RouteGroupBuilder stacks) {

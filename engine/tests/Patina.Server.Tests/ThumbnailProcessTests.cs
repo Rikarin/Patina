@@ -96,8 +96,13 @@ public sealed partial class StackProcessTests {
         var listed = await http.GetFromJsonAsync<JsonElement>("/api/v1/library/materials", deadline.Token);
         var compounds = listed.GetProperty("items")
             .EnumerateArray()
-            .Where(static item => item.GetProperty("source").GetString()!.StartsWith("compound:", StringComparison.Ordinal))
+            .Where(static item => item.GetProperty("source").GetString()!.StartsWith(
+                    "compound:",
+                    StringComparison.Ordinal
+                )
+            )
             .ToList();
+
         // A noise draws from nothing; a generator reads a bake, which a shelf has not got, and shows its name.
         string SourceOf(string role, string prefix) =>
             compounds.Select(static item => item.GetProperty("source").GetString()!)
@@ -106,6 +111,7 @@ public sealed partial class StackProcessTests {
                         && item.GetProperty("role").GetString() == role
                     )
                 );
+
         string[] sources = [
             SourceOf("mask", "compound:Noise/"), SourceOf("filter", "compound:"), "compound:Nowhere/Nothing"
         ];

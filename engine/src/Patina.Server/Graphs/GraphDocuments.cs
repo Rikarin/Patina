@@ -18,8 +18,8 @@ public static class GraphDocuments {
 
     /// <summary>
     ///     How a graph is written: a key whose value is the default is left out (#298), so a node that follows its
-    ///     inputs' size and is not bypassed is its type, its place and what it was given, and a diff shows what a person
-    ///     set. A key left out reads back as the default, so the same document still gives the same bytes.
+    ///     inputs' size and is not bypassed is its type, its place and what it was given, and a diff shows what a
+    ///     person set. A key left out reads back as the default, so the same document still gives the same bytes.
     /// </summary>
     static readonly YamlSerializerOptions Written = new(OmitDefaults: true);
 

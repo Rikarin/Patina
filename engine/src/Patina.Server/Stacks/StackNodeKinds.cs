@@ -26,8 +26,8 @@ public static class StackNodeKinds {
     public static IReadOnlyList<StackFilterKind> Sources() => Kinds(IsSource);
 
     /// <summary>
-    ///     The generators of a stack's project's own (#298): its compounds an image input can read as a generator, which
-    ///     no shared list holds, a multi-result one with its results.
+    ///     A stack's project's own generators (#298): its compounds an image input can read as a generator, which no
+    ///     shared list holds, a multi-result one with its results.
     /// </summary>
     /// <param name="folder">The folder of the stack, whose compounds folder holds them.</param>
     public static IReadOnlyList<StackFilterKind> OwnSources(string? folder) {

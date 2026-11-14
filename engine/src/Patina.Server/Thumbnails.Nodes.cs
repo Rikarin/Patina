@@ -105,7 +105,11 @@ public sealed partial class Thumbnails {
     ///     A graph of one node at its defaults, its first picture output drawn small. A type with no picture output,
     ///     such as an Output or a number, has nothing to draw.
     /// </summary>
-    (string Key, MaterialThumbnailAsk Ask)? OfNode(NodePictureScope scope, NodeTypeDefinition type, int side = NodeSide) {
+    (string Key, MaterialThumbnailAsk Ask)? OfNode(
+        NodePictureScope scope,
+        NodeTypeDefinition type,
+        int side = NodeSide
+    ) {
         if (type.Ports.FirstOrDefault(static port => port.Direction == PortDirection.Output && IsPicture(port.Kind))
             is not { } output) {
             return null;
