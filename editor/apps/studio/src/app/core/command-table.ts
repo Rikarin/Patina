@@ -65,6 +65,12 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'closeDocument', label: 'Close Document', section: 'File', keys: ['Mod+W'] },
   { id: 'closeProject', label: 'Close Project', section: 'File' },
   { id: 'showBin', label: 'Bin…', section: 'File', hint: 'What was deleted, to restore or delete for good' },
+  {
+    id: 'librarySettings',
+    label: 'Library Settings…',
+    section: 'File',
+    hint: 'The library’s settings, Check Library, and tidying its cache'
+  },
 
   { id: 'undo', label: 'Undo', section: 'Edit', keys: ['Mod+Z'] },
   { id: 'redo', label: 'Redo', section: 'Edit', keys: ['Mod+Shift+Z', 'Mod+Y'] },
@@ -434,6 +440,7 @@ export const MenuBar: readonly {
       'newLibrary',
       'openLibrary',
       { native: 'recent' },
+      'librarySettings',
       '-',
       'import',
       'importMaterials',

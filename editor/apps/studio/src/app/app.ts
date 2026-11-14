@@ -58,6 +58,7 @@ import { NodeLibrary } from './graph/node-library';
 import { TextureView } from './graph/texture-view';
 import { LibraryActions } from './library/library-actions';
 import { LibraryPane } from './library/library-pane';
+import { LibrarySettingsDialog } from './library/library-settings-dialog';
 import { LibraryTreeStore } from './library/library-tree-store';
 import { MeshReloadDialog } from './library/mesh-reload-dialog';
 import { PickFileDialog } from './library/pick-file-dialog';
@@ -88,6 +89,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     GraphPane,
     HistoryPane,
     PreferencesDialog,
+    LibrarySettingsDialog,
     ShortcutsDialog,
     ImageMaterialPane,
     Inspector,
@@ -558,6 +560,10 @@ import { ViewportPane } from './viewport/viewport-pane';
       <ptn-preferences [(open)]="preferencesOpen" />
     }
 
+    @defer (when librarySettingsOpen()) {
+      <ptn-library-settings [(open)]="librarySettingsOpen" />
+    }
+
     <xui-dialog size="sm" title="Save As" [open]="project.savingAs()" (openChange)="project.savingAs.set($event)">
       <form (submit)="saveAs($event, saveName.value)">
         <xui-dialog-body>
@@ -674,6 +680,7 @@ export class App {
   private readonly destroyRef = inject(DestroyRef);
   protected readonly keys = signal(false);
   protected readonly preferencesOpen = signal(false);
+  protected readonly librarySettingsOpen = signal(false);
   protected readonly diagnosing = signal(false);
   protected readonly about = signal(false);
   protected readonly picker = inject(FilePicker);
@@ -869,6 +876,7 @@ export class App {
     handle('showActivity', { checked: () => this.activity.open(), run: () => this.activity.toggle() });
     handle('shortcuts', { run: () => this.keys.set(true) });
     handle('preferences', { run: () => this.preferencesOpen.set(true) });
+    handle('librarySettings', { run: () => this.librarySettingsOpen.set(true) });
     handle('diagnostics', { run: () => this.diagnosing.set(true) });
     handle('documentation', { run: () => globalThis.open(Links.documentation, '_blank') });
     handle('reportProblem', { run: () => globalThis.open(Links.issues, '_blank') });

@@ -26,6 +26,7 @@ static class LibraryEndpoints {
 
         api.MapLibraryTreeApi();
         api.MapLibraryCareApi();
+        api.MapLibraryHealthApi();
         api.MapPreferenceApi();
 
         library.MapGet("/projects", GetProjects)
