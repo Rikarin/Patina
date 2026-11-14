@@ -159,6 +159,39 @@ public sealed class StackEditorPropertyTests {
     }
 
     /// <summary>
+    ///     A set says what it is for in the file only once somebody writes it, and how deep each channel is painted
+    ///     (#141, #19), each one undo step; a channel it does not have is refused by code.
+    /// </summary>
+    [Fact]
+    public void A_set_says_what_it_is_for_and_how_deep_each_channel_is() {
+        var session = new StackSession("/tmp/Described.vxlayers", StackDocuments.Text(Sample()), static () => { });
+        var usage = session.State.Channels[0].Usage;
+        Assert.Equal(("", "Rgba8"), (session.State.Description, session.State.Channels[0].Format));
+        Assert.DoesNotContain("description:", session.Text, StringComparison.Ordinal);
+
+        session.Apply(new([new StackSetSettings(Description: "  Rust in the seams.\nKeep the decals sharp.  ")]));
+        session.Apply(new([new StackSetChannelFormat(usage, "Rgba16Float")]));
+
+        Assert.Equal("Rust in the seams.\nKeep the decals sharp.", session.State.Description);
+        Assert.Equal("Rgba16Float", session.State.Channels[0].Format);
+        Assert.Equal("Channel depth", session.Steps.Done[^1].Label);
+        Assert.Contains("format: Rgba16Float", session.Text, StringComparison.Ordinal);
+
+        session.Apply(new([new StackSetSettings(Description: "")]));
+        Assert.Equal("", session.State.Description);
+        Assert.DoesNotContain("description:", session.Text, StringComparison.Ordinal);
+
+        session.Undo();
+        session.Undo();
+        Assert.Equal(("Rust in the seams.\nKeep the decals sharp.", "Rgba8"), (session.State.Description,
+            session.State.Channels[0].Format));
+        var refused = Assert.Throws<StackEditRefusedException>(() =>
+            session.Apply(new([new StackSetChannelFormat("nothing", "Rgba16Float")]))
+        );
+        Assert.Equal(Refusals.ChannelMissing, refused.Code);
+    }
+
+    /// <summary>
     ///     A stack's history is a list with labels, and a jump through it is one event that lands where single steps
     ///     would.
     /// </summary>

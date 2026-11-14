@@ -453,6 +453,7 @@ public sealed record StackEvaluation(
 ///     The UDIM tile its layout sits on in its UV set (#281), which its exported files are named by: 1001 for a set on
 ///     the first tile, on no mesh, or reaching several, which its problems say.
 /// </param>
+/// <param name="Description">What the set is for, in a person's words (#141), or empty.</param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -478,7 +479,8 @@ public sealed record StackState(
     string BakedOcclusion = "Combine",
     string? BakeStale = null,
     StackPace? Pace = null,
-    int Udim = 1001
+    int Udim = 1001,
+    string Description = ""
 );
 #pragma warning restore SK7005
 

@@ -142,7 +142,8 @@ static class StackSetEdits {
             UvSet = uvSet,
             HeightNormal = settings.HeightNormal is { } method ? Method(method) : set.HeightNormal,
             BakedNormal = settings.BakedNormal is { } normal ? Mix(normal) : set.BakedNormal,
-            BakedOcclusion = settings.BakedOcclusion is { } occlusion ? Mix(occlusion) : set.BakedOcclusion
+            BakedOcclusion = settings.BakedOcclusion is { } occlusion ? Mix(occlusion) : set.BakedOcclusion,
+            Description = settings.Description?.Trim() ?? set.Description
         };
         return document with {
             BaseWidth = width,

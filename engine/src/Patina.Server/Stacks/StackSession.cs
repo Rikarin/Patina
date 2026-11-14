@@ -297,7 +297,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                     set.BakedNormal.ToString(),
                     set.BakedOcclusion.ToString(),
                     null,
-                    pace
+                    pace,
+                    Description: set.Description
                 );
             }
 

@@ -33,6 +33,7 @@ async function render(channels: readonly string[] = ['baseColor', 'roughness'], 
       heightNormal: 'Smooth',
       bakedNormal: 'Combine',
       bakedOcclusion: 'Combine',
+      description: 'Painted metal',
       meshMaps,
       channels: channels.map(usage => ({ usage, format: usage === 'height' ? 'Rgba16Float' : 'Rgba8' }))
     }),
@@ -190,6 +191,21 @@ describe('DocumentSection', () => {
     paint.channel.set('height');
     await fixture.whenStable();
     expect(pressed()).toBe('16-bit float');
+  });
+
+  it('writes what the texture set is for as a set setting, only when it changed (#141)', async () => {
+    const { element, edit } = await render();
+    const description = element.querySelector<HTMLTextAreaElement>('[data-testid=texture-set-description]');
+    expect(description?.value).toBe('Painted metal');
+
+    description?.dispatchEvent(new Event('change'));
+    expect(edit).not.toHaveBeenCalled();
+
+    if (description) {
+      description.value = '  Rust in the seams  ';
+    }
+    description?.dispatchEvent(new Event('change'));
+    expect(edit).toHaveBeenCalledWith({ op: 'setSettings', description: 'Rust in the seams' });
   });
 
   it('offers how the bake shades the set only once there is one', async () => {

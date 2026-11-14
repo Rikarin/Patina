@@ -18608,6 +18608,13 @@
               "string"
             ],
             "description": "How the bake\u0027s ambient occlusion reaches the set\u0027s: \u0060Combine\u0060, multiplied with what is painted;\n\u0060Replace\u0060; or \u0060Off\u0060."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What the set is for, in a person\u0027s words (#141), which nothing evaluates or exports. Empty takes it away."
           }
         },
         "description": "Changes the texture set\u0027s settings, any of them, as one undo step. What is left out stays as it is. Together\nwith its channels and its name these are the set\u0027s settings, and the stack file is the one place they live."
@@ -20634,7 +20641,8 @@
           "uvSet",
           "bakedNormal",
           "bakedOcclusion",
-          "udim"
+          "udim",
+          "description"
         ],
         "type": "object",
         "properties": {
@@ -20786,6 +20794,11 @@
             "description": "The UDIM tile its layout sits on in its UV set (#281), which its exported files are named by: 1001 for a set on\nthe first tile, on no mesh, or reaching several, which its problems say.",
             "format": "int32",
             "default": 1001
+          },
+          "description": {
+            "type": "string",
+            "description": "What the set is for, in a person\u0027s words (#141), or empty.",
+            "default": ""
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."

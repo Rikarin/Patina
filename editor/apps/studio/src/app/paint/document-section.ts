@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { type MeshFacts, unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { XuiInputImports } from '@xui/input';
 import { XuiMenuImports } from '@xui/menu';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
@@ -44,7 +45,14 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
  */
 @Component({
   selector: 'ptn-document-section',
-  imports: [XuiButtonImports, XuiMenuImports, XuiSegmentedControlImports, XuiSelectImports, XuiSwitchImports],
+  imports: [
+    XuiButtonImports,
+    XuiInputImports,
+    XuiMenuImports,
+    XuiSegmentedControlImports,
+    XuiSelectImports,
+    XuiSwitchImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-1.5', role: 'group', 'aria-label': 'Document', 'data-testid': 'paint-document' },
   template: `
@@ -251,6 +259,19 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
       @if (applied(); as said) {
         <p class="text-foreground-muted text-xs" role="status" data-testid="paint-applied-channels">{{ said }}</p>
       }
+
+      <div class="flex flex-col gap-1">
+        <span class="text-foreground-muted text-xs">Description</span>
+        <textarea
+          class="h-14 w-full"
+          xuiInput
+          aria-label="Texture set description"
+          data-testid="texture-set-description"
+          title="What this texture set is for, in your words. Nothing is evaluated or exported from it."
+          [value]="state.description"
+          (change)="describe($event)"
+        ></textarea>
+      </div>
     }
 
     <ng-template #channelMenu>
@@ -462,6 +483,14 @@ export class DocumentSection {
     const occlusion = mix.bakedOcclusion ?? null;
     if (state && ((normal && normal !== state.bakedNormal) || (occlusion && occlusion !== state.bakedOcclusion))) {
       void this.store.edit({ op: 'setSettings', bakedNormal: normal, bakedOcclusion: occlusion });
+    }
+  }
+
+  /** Writes what the set is for, one undo step, when it changed. */
+  protected describe(event: Event): void {
+    const description = (event.target as HTMLTextAreaElement).value.trim();
+    if (description !== this.store.state()?.description) {
+      void this.store.edit({ op: 'setSettings', description });
     }
   }
 

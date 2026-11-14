@@ -6750,6 +6750,8 @@ export interface components {
        *     `Replace`; or `Off`.
        */
       bakedOcclusion?: null | string;
+      /** @description What the set is for, in a person's words (#141), which nothing evaluates or exports. Empty takes it away. */
+      description?: null | string;
     };
     /**
      * @description Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
@@ -7846,6 +7848,11 @@ export interface components {
        * @default 1001
        */
       udim: number;
+      /**
+       * @description What the set is for, in a person's words (#141), or empty.
+       * @default
+       */
+      description: string;
     };
     /** @description Where a stroke's colour comes from, when it is not one colour. */
     StackStrokeSource: {
