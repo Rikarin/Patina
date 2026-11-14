@@ -223,9 +223,9 @@ public sealed class AssetGraph {
 public static class OutputKeys {
     /// <summary>
     ///     Which generation of what an output builds to its key is of (#281). A tool's version moves only with the
-    ///     product's, so a change to what a build object holds, such as the UDIM tile wave 13 put in its manifest, would
-    ///     otherwise leave objects built before it in the cache, read as though they held it. Raise this with any such
-    ///     change: every output then builds once more.
+    ///     product's, so a change to what a build object holds, such as the UDIM tile wave 13 put in its manifest,
+    ///     would otherwise leave objects built before it in the cache, read as though they held it. Raise this with
+    ///     any such change: every output then builds once more.
     /// </summary>
     public const int Generation = 2;
 

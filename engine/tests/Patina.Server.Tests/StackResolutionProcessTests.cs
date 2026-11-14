@@ -62,8 +62,8 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     A stroke a Worker could not paint for its canvas's size is refused before it begins, so it never stands and
-    ///     the stack still evaluates with nothing to undo (#241): a canvas larger than its set and of another shape, and
-    ///     one a stroke of the session began on before the set grew.
+    ///     the stack still evaluates with nothing to undo (#241): a canvas larger than its set and of another shape,
+    ///     and one a stroke of the session began on before the set grew.
     /// </summary>
     [Fact]
     public async Task A_stroke_refused_for_its_canvas_size_never_stands() {
@@ -212,7 +212,7 @@ public sealed partial class StackProcessTests {
         await EditAsync(state.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 2));
 
         var before = await PixelsAsync(state.Id, false, deadline.Token);
-        var flat = new StackStroke("flat", "paint", "baseColor", new(10f, 0.3f), Red, Line(300, 300, 5), Open: true);
+        var flat = new StackStroke("flat", "paint", "baseColor", new(10f, 0.3f), Red, Line(300, 300, 5), true);
         await EditAsync(state.Id, deadline.Token, flat);
         await EditAsync(state.Id, deadline.Token, flat with { Stamps = Line(330, 300, 5), Open = false });
 

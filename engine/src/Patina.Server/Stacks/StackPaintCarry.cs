@@ -20,10 +20,29 @@ sealed class StackPaintCarry(StackEditor editor, string set) {
     /// <summary>Each canvas carried, and the new canvas it becomes.</summary>
     public List<(string From, string To)> Canvases { get; } = [];
 
-    /// <summary>Carries the set's paint, as one step with the batch it is in.</summary>
-    /// <returns>The layouts the Worker carries each canvas between, or null when the set has no canvas.</returns>
-    /// <exception cref="StackEditRefusedException">There is no mesh, or the paint is in this layout already.</exception>
-    public StackCarry? Run(StackCarryPaint carry, Action<IAuthoringCommand> run) {
+    /// <summary>
+    ///     Carries the set's paint, as one step with the batch it is in: the document names the new canvases, and the
+    ///     journal says what the Worker makes each of. A set with no canvas carries nothing.
+    /// </summary>
+    /// <param name="carry">The command.</param>
+    /// <param name="run">Runs the document's change.</param>
+    /// <param name="journal">The step's entries, which a copy for each canvas joins.</param>
+    /// <exception cref="StackEditRefusedException">There is no mesh, or the paint is in this layout.</exception>
+    public void Run(StackCarryPaint carry, Action<IAuthoringCommand> run, List<StackJournalEntry> journal) {
+        if (Layouts(carry, run) is not { } layouts) {
+            return;
+        }
+
+        var size = (editor.Document.BaseWidth, editor.Document.BaseHeight);
+        foreach (var (from, to) in Canvases) {
+            journal.Add(
+                StackJournalEntry.CarriedCopy(editor.TakeEntry(), (to, from), editor.Document.Model, size, layouts)
+            );
+        }
+    }
+
+    /// <summary>The document's change, and the layouts the Worker carries the canvases between, or null.</summary>
+    StackCarry? Layouts(StackCarryPaint carry, Action<IAuthoringCommand> run) {
         if (editor.Document.Model.Trim().Length == 0) {
             throw new StackEditRefusedException("This document has no mesh to paint on.", Api.Refusals.NoMesh);
         }

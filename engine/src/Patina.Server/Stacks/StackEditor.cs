@@ -228,7 +228,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         }
 
         foreach (var (entry, part) in parts) {
-            entry.Stamps.AddRange(entry.StampScale is { } by ? StackStrokeScale.Stamps(part.Stamps, by) : part.Stamps);
+            entry.Extend(part.Stamps);
             entry.Open = part.Open;
         }
 
@@ -544,8 +544,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             : canvasSides.Check(layer.Name, paint, Document.BaseWidth, Document.BaseHeight);
         // A larger canvas is painted at its own size (#19): a stroke in the 2D view is carried onto its texels, and a
         // brush sized in texels keeps its size on the model.
-        var by = StackStrokeScale.By(width, Document.BaseWidth);
-        var painted = StackStrokeScale.At(stroke, by);
+        var (painted, by) = StackCanvasSides.Carried(stroke, width, Document.BaseWidth);
 
         // A quick mask nothing has painted keeps nothing back, rather than everything.
         var kept = stroke.QuickMask is StackQuickMasks.Inside or StackQuickMasks.Outside
@@ -555,7 +554,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
                 SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set),
                 Width = width,
                 Height = height,
-                StampScale = StackStrokeScale.OfStamps(stroke, by),
+                StampScale = by,
                 // Only a stroke on the mesh has faces to keep to; one in the 2D view reaches the whole layout.
                 Isolation = stroke.View is null ? null : Isolation,
                 Keep = kept ? QuickMask.Paint : null,
@@ -898,17 +897,11 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     }
 
     /// <summary>The set's paint carried from another UV set's layout onto its own (#210).</summary>
-    void Carry(StackCarryPaint carry, UndoStep step, string set, Action<IAuthoringCommand> run) {
-        StackPaintCarry carried = new(this, set);
-        if (carried.Run(carry, run) is not { } layouts) {
-            return;
-        }
+    void Carry(StackCarryPaint carry, UndoStep step, string set, Action<IAuthoringCommand> run) =>
+        new StackPaintCarry(this, set).Run(carry, run, step.Strokes);
 
-        foreach (var (from, to) in carried.Canvases) {
-            var size = (Document.BaseWidth, Document.BaseHeight);
-            step.Strokes.Add(StackJournalEntry.CarriedCopy(nextEntry++, (to, from), Document.Model, size, layouts));
-        }
-    }
+    /// <summary>The number the next entry of the journal takes.</summary>
+    internal long TakeEntry() => nextEntry++;
 
     internal void Journal(StackLayerCopies copies, UndoStep step) {
         foreach (var (from, to) in copies.Canvases) {

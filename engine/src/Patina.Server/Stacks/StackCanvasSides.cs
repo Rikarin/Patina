@@ -69,6 +69,18 @@ public sealed class StackCanvasSides(string folder) {
         return (width, height);
     }
 
+    /// <summary>
+    ///     A stroke as it paints a canvas <paramref name="width" /> wide (#19), and what the stamps of the rest of its
+    ///     drag are multiplied by, which only a stroke in the 2D view needs (<see cref="StackStrokeScale" />).
+    /// </summary>
+    /// <param name="stroke">The stroke as sent.</param>
+    /// <param name="width">The width it paints at, from <see cref="Check" />.</param>
+    /// <param name="set">The set's width.</param>
+    public static (StackStroke Stroke, float? Stamps) Carried(StackStroke stroke, int width, int set) {
+        var by = StackStrokeScale.By(width, set);
+        return (StackStrokeScale.At(stroke, by), StackStrokeScale.OfStamps(stroke, by));
+    }
+
     /// <summary>Takes in what the entries of a step that now stands did to their canvases.</summary>
     /// <param name="entries">The step's strokes, copies and captures.</param>
     /// <param name="width">The set's width, which a copy or a capture is made at.</param>

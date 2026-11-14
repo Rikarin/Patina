@@ -75,6 +75,11 @@ public sealed class StackJournalEntry(
     /// </summary>
     public float? StampScale { get; init; }
 
+    /// <summary>Adds the next part of the drag's stamps, carried onto the canvas as the first part was (#19).</summary>
+    /// <param name="stamps">Where the brush went since the last part, as sent.</param>
+    public void Extend(IReadOnlyList<StackStamp> stamps) =>
+        Stamps.AddRange(StampScale is { } by ? StackStrokeScale.Stamps(stamps, by) : stamps);
+
     /// <summary>
     ///     With <see cref="From" />, the UV sets a copy is carried between (#210), or null for a copy laid out as what
     ///     it copies.

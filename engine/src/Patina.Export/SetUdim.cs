@@ -42,7 +42,9 @@ public static class SetUdim {
         return udim;
     }
 
-    /// <summary>The set's own material's tile, or else the whole mesh's. A mesh that will not read is said elsewhere.</summary>
+    /// <summary>
+    ///     The set's own material's tile, or else the whole mesh's. A mesh that will not read is said elsewhere.
+    /// </summary>
     static int Read(string file, string? set, int uvSet) =>
         (string.IsNullOrEmpty(set) ? null : Placed(file, set, uvSet)) ?? Placed(file, null, uvSet) ?? OneTile.First;
 

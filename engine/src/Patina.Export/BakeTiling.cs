@@ -4,9 +4,10 @@ using Vixen.Interchange;
 namespace Patina.Export;
 
 /// <summary>
-///     A tileable bake (#212): a high-poly patch baked onto a flat low patch so that the maps repeat without a seam. The
-///     high meshes are laid again on each of the eight sides of the patch, one patch's width or depth away, so a ray or
-///     an occlusion ray near an edge meets what lies beyond it when the material repeats, as it will on the model.
+///     A tileable bake (#212): a high-poly patch baked onto a flat low patch so that the maps repeat without a seam.
+///     The high meshes are laid again on each of the eight sides of the patch, one patch's width or depth away, so a
+///     ray or an occlusion ray near an edge meets what lies beyond it when the material repeats, as it will on the
+///     model.
 /// </summary>
 /// <remarks>
 ///     ⚠ <b>The patch is the low mesh's box, along its two widest sides.</b> A high patch that spills past it is laid
@@ -20,17 +21,16 @@ public static class BakeTiling {
     public static IReadOnlyList<ReadModel> Around(IReadOnlyList<ReadModel> files, BoundingBox patch) {
         ArgumentNullException.ThrowIfNull(files);
         var (across, along) = Sides(patch.Maximum - patch.Minimum);
-        List<ReadModel> laid = [..files];
+        List<Vector3> shifts = [];
         for (var row = -1; row <= 1; row++) {
             for (var column = -1; column <= 1; column++) {
                 if (row != 0 || column != 0) {
-                    var shift = across * column + along * row;
-                    laid.AddRange(files.Select(file => Moved(file, shift)));
+                    shifts.Add(across * column + along * row);
                 }
             }
         }
 
-        return laid;
+        return [..files, ..shifts.SelectMany(shift => files.Select(file => Moved(file, shift)))];
     }
 
     /// <summary>The patch's two widest sides, each as the step from one repeat to the next.</summary>

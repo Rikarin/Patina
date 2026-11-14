@@ -179,8 +179,8 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     Paint carried from UV set 1 into UV set 2 with the move (#210): painted all over in the first layout, where
-    ///     the triangle is half the square, it lands in the second's small triangle in the middle of the map and nowhere
-    ///     else, as an evaluation from nothing shows it too; the canvas it was on stays as it was, for an undo.
+    ///     the triangle is half the square, it lands in the second's small triangle in the middle of the map and
+    ///     nowhere else, as an evaluation from nothing shows it too; the canvas it was on stays as it was, for an undo.
     /// </summary>
     [Fact]
     public async Task Paint_carried_into_the_second_uv_set_lands_in_its_layout() {
@@ -213,7 +213,7 @@ public sealed partial class StackProcessTests {
         await SaveAsync(state.Id, deadline.Token);
         Assert.Equal(held, File.ReadAllBytes(painted));
         var carried = Directory.EnumerateFiles(projectFolder, "*.vxpaint").Single(file => file != painted);
-        using var read = new MemoryStream(await File.ReadAllBytesAsync(carried, deadline.Token));
+        await using var read = new MemoryStream(await File.ReadAllBytesAsync(carried, deadline.Token));
         var canvas = PaintCanvas.Read(read);
 
         var image = canvas.Channel("baseColor");

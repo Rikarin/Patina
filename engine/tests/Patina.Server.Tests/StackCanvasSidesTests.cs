@@ -73,7 +73,7 @@ public sealed class StackCanvasSidesTests : IDisposable {
 
         Assert.Equal(16f, scaled.Brush.Radius);
         Assert.Equal(0.2f, scaled.Brush.Spacing);
-        Assert.Equal(new StackStamp(21f, 40f, 0.5f), Assert.Single(scaled.Stamps));
+        Assert.Equal(new(21f, 40f, 0.5f), Assert.Single(scaled.Stamps));
         Assert.Equal([60f, 80f], scaled.Stencil!.Centre);
         Assert.Equal(4f, scaled.Stencil.Scale);
         Assert.Equal([8f, 12f], scaled.Resume!);

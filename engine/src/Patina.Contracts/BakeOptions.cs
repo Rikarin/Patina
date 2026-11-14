@@ -129,7 +129,7 @@ public sealed record BakeOptions {
     public BakeColourOptions Colour { get; set; } = new();
 
     /// <summary>
-    ///     Whether the maps repeat without a seam (#212): a high-poly patch baked onto a flat low patch, the high meshes
+    ///     Whether the maps repeat without a seam (#212): a high-poly patch baked onto a flat low patch, the high mesh
     ///     laid again on each side of the low mesh's box so a ray near an edge meets what lies beyond it when the
     ///     material repeats. Null or false bakes the high meshes once, as they are.
     /// </summary>

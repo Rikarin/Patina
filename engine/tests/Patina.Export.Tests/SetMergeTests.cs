@@ -228,7 +228,7 @@ public sealed class SetMergeTests : IDisposable {
         );
     }
 
-    /// <summary>A file name without the tile is one file for two tiles, so the sets stay apart and it says how.</summary>
+    /// <summary>A name without the tile is one file for two tiles, so the sets stay apart and it says how.</summary>
     [Fact]
     public void Sets_on_two_tiles_stay_apart_when_a_file_does_not_name_the_tile() {
         List<string> warnings = [];

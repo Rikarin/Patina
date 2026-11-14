@@ -55,6 +55,9 @@ class StackState:
                 0.
             baked_normal (str): How the bake's normal reaches the set: `Combine`, `Replace`, `Off`. Default: 'Combine'.
             baked_occlusion (str): How its occlusion does: `Combine`, `Replace`, `Off`. Default: 'Combine'.
+            udim (int): The UDIM tile its layout sits on in its UV set (#281), which its exported files are named by: 1001
+                for a set on
+                the first tile, on no mesh, or reaching several, which its problems say. Default: 1001.
             evaluation (None | StackEvaluation | Unset):
             mesh_maps (None | str | Unset): The bake its generators read, or null.
             anchors (list[StackAnchor] | None | Unset): The anchor points its set publishes, by name, and who reads each.
@@ -84,6 +87,7 @@ class StackState:
     uv_set: int = 0
     baked_normal: str = 'Combine'
     baked_occlusion: str = 'Combine'
+    udim: int = 1001
     evaluation: None | StackEvaluation | Unset = UNSET
     mesh_maps: None | str | Unset = UNSET
     anchors: list[StackAnchor] | None | Unset = UNSET
@@ -156,6 +160,8 @@ class StackState:
 
         baked_occlusion = self.baked_occlusion
 
+        udim = self.udim
+
         evaluation: dict[str, Any] | None | Unset
         if isinstance(self.evaluation, Unset):
             evaluation = UNSET
@@ -220,6 +226,7 @@ class StackState:
             "uvSet": uv_set,
             "bakedNormal": baked_normal,
             "bakedOcclusion": baked_occlusion,
+            "udim": udim,
         })
         if evaluation is not UNSET:
             field_dict["evaluation"] = evaluation
@@ -310,6 +317,8 @@ class StackState:
         baked_normal = d.pop("bakedNormal")
 
         baked_occlusion = d.pop("bakedOcclusion")
+
+        udim = d.pop("udim")
 
         def _parse_evaluation(data: object) -> None | StackEvaluation | Unset:
             if data is None:
@@ -416,6 +425,7 @@ class StackState:
             uv_set=uv_set,
             baked_normal=baked_normal,
             baked_occlusion=baked_occlusion,
+            udim=udim,
             evaluation=evaluation,
             mesh_maps=mesh_maps,
             anchors=anchors,

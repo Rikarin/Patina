@@ -1,5 +1,4 @@
 using Patina.Contracts;
-using Patina.Ipc;
 using Patina.Server.Api;
 using Patina.Server.Stacks;
 using Vixen.Texturing.Layers;
@@ -7,7 +6,7 @@ using Vixen.Texturing.Layers;
 namespace Patina.Server.Tests;
 
 /// <summary>
-///     Paint carried from one of a mesh's UV sets onto the one a texture set is laid out in (#210): every canvas becomes
+///     Paint carried from one of a mesh's UV sets onto the one a texture set is laid out in (#210): each canvas becomes
 ///     a new one the Worker lays out again, so an undo names the old ones, which nothing touched.
 /// </summary>
 public sealed class StackPaintCarryTests {
@@ -37,7 +36,7 @@ public sealed class StackPaintCarryTests {
             [(before.Paint, after.Paint), (before.Mask.Paint, after.Mask.Paint)],
             carried.Select(static entry => (entry.From!, entry.Paint))
         );
-        Assert.All(carried, static entry => Assert.Equal(new StackCarry(0, 1), entry.Carry));
+        Assert.All(carried, static entry => Assert.Equal(new(0, 1), entry.Carry));
         Assert.All(carried, static entry => Assert.Equal((64, 64), (entry.Width, entry.Height)));
 
         editor.Undo();
