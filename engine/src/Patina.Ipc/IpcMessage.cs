@@ -90,6 +90,12 @@ public static class IpcTypes {
     /// </summary>
     public const string GraphHistogram = "graph.histogram";
 
+    /// <summary>
+    ///     Server to Worker: one texel of one node's picture, as the graph stored it (#184); answers with
+    ///     <see cref="IpcMessage.GraphSampled" />.
+    /// </summary>
+    public const string GraphSample = "graph.sample";
+
     /// <summary>Server to Worker: forget the graph named by <see cref="IpcMessage.GraphClose" />.</summary>
     public const string GraphClose = "graph.close";
 
@@ -261,7 +267,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 21;
+    public const int ProtocolVersion = 22;
 
     public string Type { get; set; } = string.Empty;
 
@@ -363,6 +369,12 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to graph.histogram.</summary>
     public GraphLevels? GraphLevels { get; set; }
+
+    /// <summary>graph.sample: which picture, and where on it.</summary>
+    public GraphSampleAsk? GraphSample { get; set; }
+
+    /// <summary>The reply to graph.sample.</summary>
+    public GraphSampled? GraphSampled { get; set; }
 
     /// <summary>The reply to graph.evaluate.</summary>
     public GraphResult? GraphResult { get; set; }

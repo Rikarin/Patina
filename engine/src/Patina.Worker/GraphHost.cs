@@ -99,6 +99,26 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         };
     }
 
+    /// <summary>
+    ///     One texel of one picture as the graph stored it, from the plan the last evaluation ran (#184). The result
+    ///     cache usually holds the picture, so only the read runs.
+    /// </summary>
+    public IpcMessage Sample(IpcMessage request) {
+        var ask = request.GraphSample ?? throw new IpcException("graph.sample says nothing to read.");
+        var graph = Find(ask.Session);
+        var (plan, image) = Picture(graph, ask.Node, ask.Port);
+        var size = plan.SizeOf(image);
+        var x = Math.Clamp((int)(ask.U * size.X), 0, size.X - 1);
+        var y = Math.Clamp((int)(ask.V * size.Y), 0, size.Y - 1);
+        using var bake = gpu.Evaluator.EvaluateIncremental(GraphPreviews.Full(plan, image), graph.Uploads!.Externals);
+        var format = bake.Plan.Images[image].Format;
+        var texel = bake.ReadTexels(image, [new(x, y, 1, 1)])[0];
+        return new() {
+            Type = IpcTypes.Ok,
+            GraphSampled = new(x, y, size.X, size.Y, format.ToString(), StackSampling.Stored(texel, format))
+        };
+    }
+
     /// <summary>The plan the last evaluation ran and the image one node's port wrote in it.</summary>
     static (TexturePlan Plan, int Image) Picture(Loaded graph, int node, string port) {
         if (graph.Plan is not { } plan) {

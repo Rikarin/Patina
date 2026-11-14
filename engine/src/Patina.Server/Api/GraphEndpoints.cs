@@ -82,6 +82,7 @@ static class GraphEndpoints {
                 Refused
             );
         graphs.MapGraphRelink();
+        graphs.MapGraphSample();
         graphs.MapPost("/{id}/undo", Undo)
             .Describe("UndoGraph", "Takes back the newest batch, whichever client sent it.", Missing, Conflict);
         graphs.MapPost("/{id}/redo", Redo)
@@ -476,7 +477,7 @@ static class GraphEndpoints {
     ///     Asks the Worker something about an open graph: a refusal from the engine is a conflict, and a Worker that
     ///     cannot be reached is unavailable.
     /// </summary>
-    static async Task<Results<Ok<T>, ProblemHttpResult>> OnEngine<T>(
+    internal static async Task<Results<Ok<T>, ProblemHttpResult>> OnEngine<T>(
         string id,
         GraphSessions sessions,
         Func<GraphSession, Task<T>> ask

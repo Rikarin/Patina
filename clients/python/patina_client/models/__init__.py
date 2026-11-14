@@ -172,6 +172,8 @@ from .graph_preset_state import GraphPresetState
 from .graph_preset_state_values import GraphPresetStateValues
 from .graph_preview import GraphPreview
 from .graph_relink_request import GraphRelinkRequest
+from .graph_sample import GraphSample
+from .graph_sample_request import GraphSampleRequest
 from .graph_selection import GraphSelection
 from .graph_setting_condition import GraphSettingCondition
 from .graph_setting_definition import GraphSettingDefinition
@@ -623,6 +625,8 @@ __all__ = (
     "GraphPresetStateValues",
     "GraphPreview",
     "GraphRelinkRequest",
+    "GraphSample",
+    "GraphSampleRequest",
     "GraphSelection",
     "GraphSettingCondition",
     "GraphSettingDefinition",

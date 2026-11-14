@@ -1625,6 +1625,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/graphs/{id}/sample': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reads one texel of a node's picture, at the size the graph computes it, as the graph stored it: its lanes at the precision of its format and unclamped. */
+    post: operations['SampleGraphPicture'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/graphs/{id}/undo': {
     parameters: {
       query?: never;
@@ -5078,6 +5095,66 @@ export interface components {
       from: string;
       /** @description The file to read instead: absolute, or below the library. */
       to: string;
+    };
+    /**
+     * @description One texel of a node's picture as the graph stored it, at the size the graph computes it: its numbers at the
+     *     precision of its format, unclamped, where a preview's PNG holds eight bits of each lane between 0 and 1.
+     */
+    GraphSample: {
+      /**
+       * Format: int32
+       * @description The node.
+       */
+      node: number;
+      /** @description Its output port, or the usage of an Output node. */
+      port: string;
+      /**
+       * Format: int32
+       * @description The texel's column.
+       */
+      x: number;
+      /**
+       * Format: int32
+       * @description Its row, from the top.
+       */
+      y: number;
+      /**
+       * Format: int32
+       * @description The picture's width, which is the size the graph computes it.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height.
+       */
+      height: number;
+      /**
+       * @description How the picture is stored: `R8`, `Rg8`, `Rgba8`, `R16Float`, `Rgba16Float`,
+       *     `R32Float` or `Rgba32Float`.
+       */
+      format: string;
+      /** @description The texel's lanes as stored: one for a grey, two for a normal's, four for a colour. */
+      values: number[];
+    };
+    /** @description The body of `POST /api/v1/graphs/{id}/sample`: a place on one node's picture (#184). */
+    GraphSampleRequest: {
+      /**
+       * Format: int32
+       * @description The node.
+       */
+      node: number;
+      /** @description Its output port, or the usage of an Output node. */
+      port: string;
+      /**
+       * Format: double
+       * @description Across the picture, 0 at its left edge and 1 at its right.
+       */
+      u: number;
+      /**
+       * Format: double
+       * @description Down it, 0 at its top and 1 at its bottom.
+       */
+      v: number;
     };
     /**
      * @description The nodes chosen in a graph session, and the one kept on view whatever is chosen. A session has one selection,
@@ -14623,6 +14700,59 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SampleGraphPicture: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphSampleRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphSample'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown;
         };

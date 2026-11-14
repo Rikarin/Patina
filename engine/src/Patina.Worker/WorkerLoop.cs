@@ -117,6 +117,7 @@ sealed class WorkerLoop(
                     or IpcTypes.GraphEvaluate
                     or IpcTypes.GraphImage
                     or IpcTypes.GraphHistogram
+                    or IpcTypes.GraphSample
                     or IpcTypes.GraphClose
                     or IpcTypes.StackLoad
                     or IpcTypes.StackSync
@@ -314,6 +315,7 @@ sealed class WorkerLoop(
             IpcTypes.GraphEvaluate => graphs.Evaluate(request),
             IpcTypes.GraphImage => graphs.Image(request),
             IpcTypes.GraphHistogram => graphs.Histogram(request),
+            IpcTypes.GraphSample => graphs.Sample(request),
             IpcTypes.GraphClose => graphs.Close(request),
             IpcTypes.StackLoad => stacks.Load(request),
             IpcTypes.StackSync => stacks.Sync(request),
