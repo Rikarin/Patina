@@ -152,7 +152,7 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
         }
 
         if (source.StartsWith(ShelfCompounds.Prefix, StringComparison.Ordinal)) {
-            return null; // a shipped compound shows its name: most read a bake or a picture a shelf has not got
+            return ShelfCompounds.NodeOf(source) is { } node ? OfCompound(library, node) : null;
         }
 
         if (source.StartsWith(MaterialShelf.ShippedPrefix, StringComparison.Ordinal)) {

@@ -82,6 +82,43 @@ public sealed partial class StackProcessTests {
         Assert.NotEqual(first[0], (await ThumbnailsAsync([graph], deadline.Token))[0]);
     }
 
+    /// <summary>
+    ///     A shipped compound on the shelf has a picture at the shelf's size (#298): a noise as it makes itself, a
+    ///     filter over the standard noise, and two compounds are two pictures. A source the shelf does not offer has
+    ///     none.
+    /// </summary>
+    [Fact]
+    public async Task Shipped_compounds_on_the_shelf_have_pictures() {
+        using var deadline = Deadline(240);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var (_, unused) = await StartAsync("Unused.vxlayers", deadline.Token);
+        await PixelsAsync(unused.Id, false, deadline.Token);
+        var listed = await http.GetFromJsonAsync<JsonElement>("/api/v1/library/materials", deadline.Token);
+        var compounds = listed.GetProperty("items")
+            .EnumerateArray()
+            .Where(static item => item.GetProperty("source").GetString()!.StartsWith("compound:", StringComparison.Ordinal))
+            .ToList();
+        // A noise draws from nothing; a generator reads a bake, which a shelf has not got, and shows its name.
+        string SourceOf(string role, string prefix) =>
+            compounds.Select(static item => item.GetProperty("source").GetString()!)
+                .First(source => source.StartsWith(prefix, StringComparison.Ordinal)
+                    && compounds.Any(item => item.GetProperty("source").GetString() == source
+                        && item.GetProperty("role").GetString() == role
+                    )
+                );
+        string[] sources = [
+            SourceOf("mask", "compound:Noise/"), SourceOf("filter", "compound:"), "compound:Nowhere/Nothing"
+        ];
+
+        var drawn = await ThumbnailsAsync(sources, deadline.Token);
+
+        Assert.All(drawn[..2], static hash => Assert.Matches("^[0-9a-f]{64}$", hash));
+        Assert.NotEqual(drawn[0], drawn[1]);
+        Assert.Null(drawn[2]);
+        Assert.Equal((256, 256), await PictureSizeAsync(drawn[0]!, deadline.Token));
+        Assert.Equal(drawn, await ThumbnailsAsync(sources, deadline.Token));
+    }
+
     async Task<string?[]> ThumbnailsAsync(IReadOnlyList<string> sources, CancellationToken token) {
         using var reply = await http.PostAsJsonAsync("/api/v1/library/thumbnails", new { sources }, token);
         var text = await reply.Content.ReadAsStringAsync(token);
