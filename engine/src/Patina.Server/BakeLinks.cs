@@ -27,6 +27,15 @@ public sealed class BakeLinks(LibraryHost host, StackSessions stacks, GraphSessi
             document = null; // the project could not be read: a set reading this folder already still follows it
         }
 
+        LinkAll(document, output);
+    }
+
+    /// <summary>Points the open document maps were brought in for at their folder (#144), as a bake's are.</summary>
+    /// <param name="document">The texturing document's file.</param>
+    /// <param name="folder">The bake's folder.</param>
+    public void Imported(string document, string folder) => LinkAll(document, Folder(folder));
+
+    void LinkAll(string? document, string output) {
         var sets = stacks.All.Where(stack =>
             string.Equals(stack.Path, document, StringComparison.Ordinal) || Same(stack.MeshMaps, output)
         );

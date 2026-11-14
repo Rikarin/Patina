@@ -168,6 +168,28 @@ describe('BakeStore', () => {
     await expect(store.start(bake as never)).rejects.toThrow(/not a format/);
   });
 
+  it('brings in a map baked elsewhere as the document’s, and passes on a refusal (#144)', async () => {
+    const bodies: unknown[] = [];
+    const { store } = setup({
+      ...empty,
+      'POST library/project/bake/import': request => {
+        void request.json().then(body => bodies.push(body));
+        return bodies.length === 0
+          ? Response.json({ folder: 'projects/crate/bakes/maps/Box' })
+          : Response.json({ detail: 'no PNG' }, { status: 400 });
+      }
+    });
+    await settled();
+
+    await store.importMap('crate', 'd1', 'normal', 'C:/maps/box_normal.png', 'tangent');
+    await settled();
+
+    expect(bodies).toEqual([
+      { project: 'crate', document: 'd1', maps: [{ map: 'normal', file: 'C:/maps/box_normal.png' }], space: 'tangent' }
+    ]);
+    await expect(store.importMap('crate', 'd1', 'ao', 'C:/maps/notes.txt', 'tangent')).rejects.toBeTruthy();
+  });
+
   it('hides a map by dropping its picture', async () => {
     URL.createObjectURL = vi.fn(() => 'blob:map');
     URL.revokeObjectURL = vi.fn();

@@ -4562,6 +4562,67 @@
         }
       }
     },
+    "/api/v1/library/project/bake/import": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings maps baked in another program in as a texturing document\u0027s bake: each PNG is copied where the document\u0027s own bake goes and replaces the map of its name there, and the document, open or not, reads them as a bake of its mesh, UV set and material as they stand. A normal map\u0027s green runs up.",
+        "operationId": "ImportProjectBake",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BakeImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BakeImported"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/snapshots": {
       "get": {
         "tags": [
@@ -10139,6 +10200,70 @@
           }
         },
         "description": "What an ID map labels, and how it colours the labels."
+      },
+      "BakeImported": {
+        "required": [
+          "folder"
+        ],
+        "type": "object",
+        "properties": {
+          "folder": {
+            "type": "string",
+            "description": "The bake\u0027s folder, below the library."
+          }
+        },
+        "description": "Where maps brought in now are, which the document reads its bake from."
+      },
+      "BakeImportMap": {
+        "required": [
+          "map",
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "map": {
+            "type": "string",
+            "description": "One of the maps a bake makes, such as \u0060normal\u0060, \u0060ao\u0060 or \u0060curvature\u0060."
+          },
+          "file": {
+            "type": "string",
+            "description": "The PNG, absolute or below the library. A normal map\u0027s green runs up the picture, as Patina\u0027s bakes do."
+          }
+        },
+        "description": "One map brought in."
+      },
+      "BakeImportRequest": {
+        "required": [
+          "project",
+          "document",
+          "maps",
+          "space"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "document": {
+            "type": "string",
+            "description": "The texturing document, by its id, whose texture set the maps are of.",
+            "format": "uuid"
+          },
+          "maps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BakeImportMap"
+            },
+            "description": "Each map and the PNG of it, on the Server\u0027s machine."
+          },
+          "space": {
+            "type": "string",
+            "description": "Whether the normal is in \u0060tangent\u0060 or \u0060object\u0060 space, as a bake\u0027s options say.",
+            "default": "tangent"
+          }
+        },
+        "description": "Maps baked in another program, brought in as a texturing document\u0027s bake (#144): the body of\n\u0060POST /api/v1/library/project/bake/import\u0060."
       },
       "BakeOcclusionOptions": {
         "required": [
