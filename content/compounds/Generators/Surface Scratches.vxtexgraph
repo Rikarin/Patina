@@ -1,0 +1,39 @@
+version: 1
+name: Surface Scratches
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: position } }
+  - { id: 2, type: Source/Mesh Map, x: -1280, y: 220, texts: { Map: world } }
+  - { id: 3, type: Patterns/Scratches, x: -1280, y: -220, texts: { '=Count': '32f + amount * 160f' } }
+  - { id: 4, type: Space/Triplanar, x: -640, y: 0, texts: { '=Scale': scale, '=Rotation': 'seed * 0.7f' } }
+  - id: 5
+    type: Colour/Levels
+    x: -320
+    y: 0
+    texts:
+      '=Input White': '1f - contrast * 0.8f'
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 1, fromPort: Out, toNode: 4, toPort: Position }
+  - { fromNode: 2, fromPort: Out, toNode: 4, toPort: Normal }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'White in each scratch, laid on the model from three sides so they run on across seams and do not stretch.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Fine straight scratches over the whole model, projected from three sides by where it is rather than by its layout.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: amount, label: Amount, default: '0.4', summary: 'How many scratches there are.', kind: Float, minimum: 0, maximum: 1, group: Scratches }
+  - { name: contrast, label: Contrast, default: '0.4', summary: 'How bright the faint scratches show against the deep ones.', kind: Float, minimum: 0, maximum: 1, group: Scratches }
+  - { name: scale, label: Scale, default: '2', summary: 'How many times the scratches repeat across the model.', kind: Float, minimum: 0.25, maximum: 16, group: Scratches }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the scratches, turned. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Scratches }

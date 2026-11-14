@@ -1,0 +1,41 @@
+version: 1
+name: Splashes
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -1280, y: 0, texts: { Map: position } }
+  - { id: 2, type: Source/Volume Noise, x: -960, y: 0, values: { Octaves: [1] }, texts: { Basis: Worley, '=Scale': scale, '=Seed': seed } }
+  - { id: 3, type: Source/Volume Noise, x: -960, y: 220, values: { Octaves: [3] }, texts: { Basis: Gradient, '=Scale': '3f', '=Seed': seed } }
+  - id: 4
+    type: Filters/Pixel Processor
+    x: -320
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(1f - smoothstep(x * (0.4f + b.x), x * (0.4f + b.x) + 0.01f + y * 0.15f, a.x), 0f, 0f, 1f)'
+      '=X': 'size'
+      '=Y': 'softness'
+  - { id: 99, type: Sub-graph/Output, x: 640, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Position }
+  - { fromNode: 1, fromPort: Out, toNode: 3, toPort: Position }
+  - { fromNode: 2, fromPort: Out, toNode: 4, toPort: A }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: B }
+  - { fromNode: 4, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'White in each splash, round and of varied sizes, placed in the model''s space so they run across seams.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'Round splashes of paint, mud or water scattered over the model by where it is, not by its layout.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: size, label: Size, default: '0.25', summary: 'How large the splashes are, against the space between them.', kind: Float, minimum: 0, maximum: 1, group: Splashes }
+  - { name: softness, label: Softness, default: '0.2', summary: 'How soft their edges are.', kind: Float, minimum: 0, maximum: 1, group: Splashes }
+  - { name: scale, label: Scale, default: '8', summary: 'How many splashes run across the model.', kind: Float, minimum: 1, maximum: 64, group: Splashes }
+  - { name: seed, label: Seed, default: '0', summary: 'Another draw of the splashes. Every whole number is a different pattern.', kind: Int, minimum: 0, maximum: 100, group: Splashes }

@@ -1,0 +1,28 @@
+version: 1
+name: Grunge 11
+nodes:
+  - { id: 1, type: Source/Noise, x: 0, y: 0, values: { Octaves: [1] }, texts: { Basis: Worley, '=Scale': '24f + scale * 40f' } }
+  - { id: 2, type: Source/Noise, x: 0, y: 300, values: { Octaves: [4], Gain: [0.5] }, texts: { Basis: Gradient, '=Scale': '5f' } }
+  - id: 10
+    type: Filters/Pixel Processor
+    x: 900
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4((1f - smoothstep(0.08f, 0.09f + (1f - y) * 0.06f, a.x)) * smoothstep(1f - x, 1.15f - x, b.x), 0f, 0f, 1f)'
+      '=X': '0.25f + amount * 0.6f'
+      '=Y': contrast
+  - { id: 99, type: Sub-graph/Output, x: 1200, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 10, toPort: A }
+  - { fromNode: 2, fromPort: Out, toNode: 10, toPort: B }
+  - { fromNode: 10, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'Tiny round pinholes, scattered in clusters, as in cast metal or porous plastic. White is a hole.' }
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - { name: scale, label: Scale, default: '0.5', summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: amount, label: Amount, default: '0.5', summary: 'How much of the surface the grunge covers.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: contrast, label: Contrast, default: '0.5', summary: 'How hard its edges are: low is soft and faint, high is crisp.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
