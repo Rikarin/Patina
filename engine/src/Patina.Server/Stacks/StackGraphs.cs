@@ -120,9 +120,11 @@ static class StackGraphs {
         return build;
     }
 
-    /// <summary>The file a new graph goes into, and its name: the one asked for, or the first numbered one free.</summary>
+    /// <summary>
+    ///     The file a new graph goes into, and its name: the one asked for, or the first free one numbered.
+    /// </summary>
     static (string File, string Name) NewFile(OpenLibrary library, string project, string name) {
-        for (var number = 1; ; number++) {
+        for (var number = 1;; number++) {
             var candidate = number == 1 ? name : $"{name} {number.ToString(CultureInfo.InvariantCulture)}";
             try {
                 return (library.NewDocumentFile(project, candidate, LibraryLayout.GraphExtension), candidate);

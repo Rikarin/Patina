@@ -60,9 +60,9 @@ public sealed class StackGraphApiTests : IAsyncLifetime {
     }
 
     /// <summary>
-    ///     The graph is a new document of the stack's project, beside it, that opens as a graph: one Output per channel,
-    ///     the stack's size and seed, held at its edges as a stack is, and a comment saying it goes one way. The stack
-    ///     is not touched, and a second graph of the same name gets a number.
+    ///     The graph is a new document of the stack's project, beside it, that opens as a graph: one Output per
+    ///     channel, the stack's size and seed, held at its edges as a stack is, and a comment saying the layers stay.
+    ///     The stack is not touched, and a second graph of the same name gets a number.
     /// </summary>
     [Fact]
     public async Task A_stack_becomes_a_graph_document_beside_it() {

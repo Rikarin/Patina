@@ -176,11 +176,14 @@ public sealed class GraphPictures {
     }
 
     /// <summary>
-    ///     One channel of a painted canvas, as a layer stack names it and a graph opened from one keeps naming it (#205):
-    ///     the file beside the graph, as it was last saved. A layer never painted has no file yet, and it and a channel
-    ///     never painted are clear, as they are in the stack; the missing file is stamped, so its first save is noticed.
+    ///     One channel of a painted canvas, as a layer stack names it and a graph written from one keeps naming it
+    ///     (#205): the file beside the graph, as it was last saved. A layer never painted has no file yet, and it and
+    ///     a channel never painted are clear, as in the stack; the missing file is stamped, so its first save is
+    ///     noticed.
     /// </summary>
-    /// <exception cref="InvalidDataException">The reference is malformed or reaches outside the graph's folder.</exception>
+    /// <exception cref="InvalidDataException">
+    ///     The reference is malformed or reaches outside the graph's folder.
+    /// </exception>
     (PictureStamp Stamp, Decoded Picture) ReadPaint(string reference, IReadOnlyList<string> roots) {
         if (!PaintReference.TryParse(reference, out var relative, out var usage) || roots.Count == 0) {
             throw new InvalidDataException("it does not name both a painted file and one of its channels");

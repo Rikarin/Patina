@@ -47,7 +47,10 @@ public sealed class GraphPaintTests : IDisposable {
             var filled = new GraphPictures().Fill(uploads, plan, owed, [folder], null);
 
             Assert.Empty(filled.Refusals);
-            Assert.Contains(filled.Stamps, static stamp => stamp.Path.EndsWith("Paint.vxpaint", StringComparison.Ordinal));
+            Assert.Contains(
+                filled.Stamps,
+                static stamp => stamp.Path.EndsWith("Paint.vxpaint", StringComparison.Ordinal)
+            );
 
             using TexturePlanEvaluator evaluator = new(device);
             using var bake = evaluator.Evaluate(plan, uploads.Externals);

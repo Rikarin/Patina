@@ -179,7 +179,9 @@ public static partial class Refusals {
     /// <summary>A stack's graph asked of a stack in no project, which has nowhere to put it.</summary>
     public const string StackGraphNoProject = "stack-graph-no-project";
 
-    /// <summary>A stack a layer of which cannot become part of a graph. Values: <c>reason</c>, the layers' own words.</summary>
+    /// <summary>
+    ///     A stack a layer of which cannot become part of a graph. Values: <c>reason</c>, the layers' own words.
+    /// </summary>
     public const string StackGraphRefused = "stack-graph-refused";
 
     /// <summary>A sentence with each quoted full path in it cut to the file's name, quotes kept.</summary>

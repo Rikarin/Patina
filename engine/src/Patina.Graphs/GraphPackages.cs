@@ -255,7 +255,13 @@ public static class GraphPackages {
             if (PaintReference.Claims(reference)) {
                 Pictures[reference] = new(reference, string.Empty);
                 Dependencies.Add(
-                    new("picture", reference, null, "It is a layer's painted pixels, which a package cannot carry.", into)
+                    new(
+                        "picture",
+                        reference,
+                        null,
+                        "It is a layer's painted pixels, which a package cannot carry.",
+                        into
+                    )
                 );
                 return;
             }
