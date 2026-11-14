@@ -44,8 +44,9 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
     public Func<string, bool>? Aside { get; init; }
 
     /// <summary>
-    ///     Which queued requests go ahead of the rest of the queue, in their own order: they still wait for the one being
-    ///     answered, never for everything sent before them. For what a person watches, such as the viewport's frames.
+    ///     Which queued requests go ahead of the rest of the queue, in their own order: they still wait for the one
+    ///     being answered, never for everything sent before them. For what a person watches, such as the viewport's
+    ///     frames.
     /// </summary>
     public Func<string, bool>? Urgent { get; init; }
 
@@ -114,21 +115,7 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
     async Task ReadLoopAsync(CancellationToken cancellationToken) {
         try {
             while (await IpcFraming.ReadAsync(stream, cancellationToken).ConfigureAwait(false) is { } message) {
-                if (message.Type is IpcTypes.Ok or IpcTypes.Error) {
-                    if (pending.TryGetValue(message.Id, out var reply)) {
-                        reply.TrySetResult(message);
-                    }
-                } else if (Aside?.Invoke(message.Type) == true) {
-                    _ = Task.Run(() => AnswerAsideAsync(message, cancellationToken), CancellationToken.None);
-                } else if (Immediate is { } immediate && !immediate(message.Type)) {
-                    (Urgent?.Invoke(message.Type) == true ? ahead : queued).Writer.TryWrite(message);
-                } else {
-                    await WriteAsync(
-                            await AnswerAsync(message, cancellationToken).ConfigureAwait(false),
-                            cancellationToken
-                        )
-                        .ConfigureAwait(false);
-                }
+                await RouteAsync(message, cancellationToken).ConfigureAwait(false);
             }
         } catch (Exception e) when (e is IOException
                                         or SocketException
@@ -144,6 +131,25 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
             foreach (var reply in pending.Values) {
                 reply.TrySetException(new IOException("The IPC peer has disconnected."));
             }
+        }
+    }
+
+    /// <summary>
+    ///     Where a message read goes: a reply to its caller, a request aside, to the queue (urgent ones ahead), or
+    ///     answered here.
+    /// </summary>
+    async Task RouteAsync(IpcMessage message, CancellationToken cancellationToken) {
+        if (message.Type is IpcTypes.Ok or IpcTypes.Error) {
+            if (pending.TryGetValue(message.Id, out var reply)) {
+                reply.TrySetResult(message);
+            }
+        } else if (Aside?.Invoke(message.Type) == true) {
+            _ = Task.Run(() => AnswerAsideAsync(message, cancellationToken), CancellationToken.None);
+        } else if (Immediate is { } immediate && !immediate(message.Type)) {
+            (Urgent?.Invoke(message.Type) == true ? ahead : queued).Writer.TryWrite(message);
+        } else {
+            await WriteAsync(await AnswerAsync(message, cancellationToken).ConfigureAwait(false), cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 

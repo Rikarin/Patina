@@ -1,7 +1,6 @@
 using Patina.Contracts;
 using Patina.Library;
 using System.Collections.Concurrent;
-using Vixen.Geometry;
 using Vixen.Interchange;
 
 namespace Patina.Export;

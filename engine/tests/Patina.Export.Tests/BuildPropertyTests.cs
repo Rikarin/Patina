@@ -131,13 +131,13 @@ public sealed class BuildPropertyTests {
         );
         return await new BuildPipeline(library, executor, ToolCatalog.Default, MeshFileReads.Instance)
             .RunAsync(
-            journal,
-            new(),
-            null,
-            null,
-            TimeProvider.System,
-            Token
-        );
+                journal,
+                new(),
+                null,
+                null,
+                TimeProvider.System,
+                Token
+            );
     }
 
     static Dictionary<ProjectId, string?> Keys(OpenLibrary library) =>
@@ -273,14 +273,14 @@ public sealed class BuildPropertyTests {
         while (report is null) {
             try {
                 report = await new BuildPipeline(library, executor, ToolCatalog.Default, MeshFileReads.Instance)
-            .RunAsync(
-                    new(folder, "crashing", DateTimeOffset.UnixEpoch),
-                    new(),
-                    null,
-                    null,
-                    TimeProvider.System,
-                    Token
-                );
+                    .RunAsync(
+                        new(folder, "crashing", DateTimeOffset.UnixEpoch),
+                        new(),
+                        null,
+                        null,
+                        TimeProvider.System,
+                        Token
+                    );
             } catch (BuildExecutorLostException) {
                 lost++;
             }
@@ -302,14 +302,14 @@ public sealed class BuildPropertyTests {
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             new BuildPipeline(library, executor, ToolCatalog.Default, MeshFileReads.Instance)
-            .RunAsync(
-                new(folder, "stopped", DateTimeOffset.UnixEpoch),
-                new(),
-                null,
-                null,
-                TimeProvider.System,
-                stop.Token
-            )
+                .RunAsync(
+                    new(folder, "stopped", DateTimeOffset.UnixEpoch),
+                    new(),
+                    null,
+                    null,
+                    TimeProvider.System,
+                    stop.Token
+                )
         );
 
         var report = BuildJournal.ReadLibrary(folder);

@@ -6,8 +6,8 @@ namespace Patina.Server;
 
 /// <summary>
 ///     What the Worker read of each mesh file's texture sets, kept until the file's bytes change (#285). The Server
-///     never parses a mesh (plan §3.1): a bad file may crash the native parser, and that must take down the Worker, which
-///     can die at any time, never the Server, which holds every session.
+///     never parses a mesh (plan §3.1): a bad file may crash the native parser, and that must take down the Worker,
+///     which can die at any time, never the Server, which holds every session.
 /// </summary>
 /// <remarks>
 ///     <para>
@@ -43,8 +43,11 @@ public sealed class MeshSetCache(WorkerLink worker) : IMeshSetReads {
     /// <param name="file">The mesh file.</param>
     /// <param name="connecting">How long to wait for a Worker when none is connected.</param>
     /// <param name="cancellationToken">Ends the wait.</param>
-    public async Task<MeshSetsRead> ReadAsync(string file, TimeSpan connecting, CancellationToken cancellationToken) =>
-        await Start(file, connecting).WaitAsync(cancellationToken) ?? MeshSetsRead.None;
+    public async Task<MeshSetsRead> ReadAsync(string file, TimeSpan connecting, CancellationToken cancellationToken) {
+        var entry = Start(file, connecting);
+        await entry.Finished.Task.WaitAsync(cancellationToken);
+        return entry.Read ?? MeshSetsRead.None;
+    }
 
     MeshSetRead? Find(string file, string? material, int uvSet) {
         var name = material ?? string.Empty;
@@ -53,40 +56,38 @@ public sealed class MeshSetCache(WorkerLink worker) : IMeshSetReads {
 
     /// <summary>What is known of a file, waiting for a Worker that is reading it, but not for one to come.</summary>
     MeshSetsRead Known(string file) {
-        var read = Start(file, TimeSpan.Zero);
-        return read.Wait(Patience) ? read.Result ?? MeshSetsRead.None : MeshSetsRead.None;
+        var entry = Start(file, TimeSpan.Zero);
+        return entry.Done.Wait(Patience) ? entry.Read ?? MeshSetsRead.None : MeshSetsRead.None;
     }
 
     /// <summary>The read of the file as it is now: the one kept, the one under way, or a new one.</summary>
-    Task<MeshSetsRead?> Start(string file, TimeSpan connecting) {
+    Entry Start(string file, TimeSpan connecting) {
         var full = Path.GetFullPath(file);
         FileInfo info = new(full);
         if (!info.Exists) {
-            return Task.FromResult<MeshSetsRead?>(MeshSetsRead.None);
+            return Entry.Nothing;
         }
 
         Stamp stamp = new(info.Length, info.LastWriteTimeUtc);
         lock (entries) {
-            if (entries.TryGetValue(full, out var known) && !Lost(known.Read)) {
+            if (entries.TryGetValue(full, out var known) && !known.Lost) {
                 if (known.Stamp == stamp) {
-                    return known.Read;
+                    return known;
                 }
 
                 // Written again with the same bytes, as an exporter does: what was read of them still holds.
                 if (Digest(full) is { } digest && digest == known.Digest) {
-                    entries[full] = known with { Stamp = stamp };
-                    return known.Read;
+                    known.Stamp = stamp;
+                    return known;
                 }
             }
 
-            var read = FetchAsync(full, connecting);
-            entries[full] = new(stamp, Digest(full), read);
-            return read;
+            Entry entry = new(stamp, Digest(full));
+            entries[full] = entry;
+            _ = FetchAsync(entry, full, connecting);
+            return entry;
         }
     }
-
-    /// <summary>A read no Worker came for, which is not kept.</summary>
-    static bool Lost(Task<MeshSetsRead?> read) => read.IsCompleted && read.Result is null;
 
     static string? Digest(string file) {
         try {
@@ -96,8 +97,16 @@ public sealed class MeshSetCache(WorkerLink worker) : IMeshSetReads {
         }
     }
 
-    /// <summary>Asks the Worker; null when no Worker came, which is not kept.</summary>
-    async Task<MeshSetsRead?> FetchAsync(string file, TimeSpan connecting) {
+    /// <summary>Asks the Worker; nothing when no Worker came, which is not kept.</summary>
+    async Task FetchAsync(Entry entry, string file, TimeSpan connecting) {
+        try {
+            entry.Read = await AskAsync(file, connecting);
+        } finally {
+            entry.Finish();
+        }
+    }
+
+    async Task<MeshSetsRead?> AskAsync(string file, TimeSpan connecting) {
         IpcConnection connection;
         using (CancellationTokenSource waiting = new(connecting)) {
             try {
@@ -108,7 +117,10 @@ public sealed class MeshSetCache(WorkerLink worker) : IMeshSetReads {
         }
 
         try {
-            var reply = await connection.SendAsync(new() { Type = IpcTypes.MeshSets, MeshFile = file });
+            var reply = await connection.SendAsync(
+                new() { Type = IpcTypes.MeshSets, MeshFile = file },
+                CancellationToken.None
+            );
             return reply.MeshSets ?? MeshSetsRead.None;
         } catch (Exception e) when (e is IpcException or IOException) {
             return MeshSetsRead.None; // it will not read, or it took the Worker down: either way, not again
@@ -117,5 +129,36 @@ public sealed class MeshSetCache(WorkerLink worker) : IMeshSetReads {
 
     readonly record struct Stamp(long Length, DateTime Written);
 
-    readonly record struct Entry(Stamp Stamp, string? Digest, Task<MeshSetsRead?> Read);
+    /// <summary>One file's read: kept, under way, or lost because no Worker came.</summary>
+    sealed class Entry(Stamp stamp, string? digest) {
+        /// <summary>What a file that is not there has, at once.</summary>
+        public static Entry Nothing { get; } = Ended(MeshSetsRead.None);
+
+        public Stamp Stamp { get; set; } = stamp;
+
+        public string? Digest { get; } = digest;
+
+        /// <summary>What the Worker read, or null while it reads and when no Worker came.</summary>
+        public MeshSetsRead? Read { get; set; }
+
+        /// <summary>Set once the read has ended, for a question that cannot wait on its own.</summary>
+        public ManualResetEventSlim Done { get; } = new();
+
+        /// <summary>Completes once the read has ended, for one that can.</summary>
+        public TaskCompletionSource Finished { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>Whether it ended with nothing because no Worker came, which is asked again.</summary>
+        public bool Lost => Done.IsSet && Read is null;
+
+        public void Finish() {
+            Done.Set();
+            Finished.TrySetResult();
+        }
+
+        static Entry Ended(MeshSetsRead read) {
+            Entry entry = new(default, null) { Read = read };
+            entry.Finish();
+            return entry;
+        }
+    }
 }

@@ -30,7 +30,10 @@ sealed class MethodReach : IDisposable {
     MethodReach(string folder, Func<string, string, bool> forbidden) {
         this.forbidden = forbidden;
         var ours = Directory.EnumerateFiles(folder, "*.dll")
-            .Where(static file => Path.GetFileName(file).StartsWith("patina", StringComparison.OrdinalIgnoreCase));
+            .Where(static file => Path.GetFileName(file) is var name
+                && (name.StartsWith("Patina.", StringComparison.Ordinal)
+                    || name.StartsWith("patina-", StringComparison.Ordinal))
+            );
         foreach (var file in ours) {
             var module = Module.Open(file);
             modules[module.Name] = module;
@@ -80,17 +83,19 @@ sealed class MethodReach : IDisposable {
     void Companions(Method method) {
         var reader = method.Module.Reader;
         var type = reader.GetTypeDefinition(method.Definition.GetDeclaringType());
-        foreach (var handle in type.GetMethods()) {
-            if (reader.StringComparer.Equals(reader.GetMethodDefinition(handle).Name, ".cctor")) {
-                Reach(new(method.Module, handle), method);
-            }
+        var constructors = type.GetMethods()
+            .Where(handle => reader.StringComparer.Equals(reader.GetMethodDefinition(handle).Name, ".cctor"));
+        foreach (var handle in constructors) {
+            Reach(method with { Handle = handle }, method);
         }
 
         var prefix = $"<{reader.GetString(method.Definition.Name)}>";
-        foreach (var nested in type.GetNestedTypes()) {
-            if (reader.GetString(reader.GetTypeDefinition(nested).Name).StartsWith(prefix, StringComparison.Ordinal)) {
-                ReachAll(method.Module, nested, method, static _ => true);
-            }
+        var bodies = type.GetNestedTypes()
+            .Where(nested => reader.GetString(reader.GetTypeDefinition(nested).Name)
+                .StartsWith(prefix, StringComparison.Ordinal)
+            );
+        foreach (var nested in bodies) {
+            ReachAll(method.Module, nested, method, static _ => true);
         }
 
         if (reader.StringComparer.Equals(method.Definition.Name, ".ctor")) {
@@ -101,10 +106,11 @@ sealed class MethodReach : IDisposable {
     static bool Virtual(MethodDefinition method) => (method.Attributes & MethodAttributes.Virtual) != 0;
 
     void ReachAll(Module module, TypeDefinitionHandle type, Method by, Func<MethodDefinition, bool> which) {
-        foreach (var handle in module.Reader.GetTypeDefinition(type).GetMethods()) {
-            if (which(module.Reader.GetMethodDefinition(handle))) {
-                Reach(new(module, handle), by);
-            }
+        var chosen = module.Reader.GetTypeDefinition(type)
+            .GetMethods()
+            .Where(handle => which(module.Reader.GetMethodDefinition(handle)));
+        foreach (var handle in chosen) {
+            Reach(new(module, handle), by);
         }
     }
 
@@ -142,7 +148,7 @@ sealed class MethodReach : IDisposable {
         var reader = by.Module.Reader;
         switch (handle.Kind) {
             case HandleKind.MethodDefinition:
-                Reach(new(by.Module, (MethodDefinitionHandle)handle), by);
+                Reach(by with { Handle = (MethodDefinitionHandle)handle }, by);
                 break;
             case HandleKind.MethodSpecification:
                 Called(by, reader.GetMethodSpecification((MethodSpecificationHandle)handle).Method);
@@ -235,8 +241,7 @@ sealed class MethodReach : IDisposable {
         public MetadataReader Reader { get; }
         public string Name { get; }
 
-        public static Module Open(string file) =>
-            new(new(ImmutableArray.Create(File.ReadAllBytes(file))));
+        public static Module Open(string file) => new(new(ImmutableArray.Create(File.ReadAllBytes(file))));
 
         public TypeDefinitionHandle? Type(string fullName) =>
             types.TryGetValue(fullName, out var handle) ? handle : null;

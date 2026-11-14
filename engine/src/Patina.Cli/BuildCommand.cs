@@ -68,14 +68,14 @@ static class BuildCommand {
                 DateTimeOffset.UtcNow
             );
             var report = await new BuildPipeline(library, executor, ToolCatalog.Default, MeshFileReads.Instance)
-            .RunAsync(
-                journal,
-                request,
-                null,
-                null,
-                TimeProvider.System,
-                stop.Token
-            );
+                .RunAsync(
+                    journal,
+                    request,
+                    null,
+                    null,
+                    TimeProvider.System,
+                    stop.Token
+                );
             Console.WriteLine(
                 FormattableString.Invariant($"{report.Projects} projects touched: {report.Built} built, ")
                 + FormattableString.Invariant($"{report.Reused} reused, {report.Fresh} fresh, ")

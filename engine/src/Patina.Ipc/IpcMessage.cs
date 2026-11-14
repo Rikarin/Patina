@@ -107,8 +107,9 @@ public static class IpcTypes {
 
     /// <summary>
     ///     Server to Worker, answered at once: stop the evaluation <see cref="IpcMessage.StackSupersede" /> names,
-    ///     at the next of its parts (#275, ADR 0040). Its strokes stay in the canvases; only the picture is not finished, and
-    ///     its answer says <see cref="IpcMessage.Superseded" />. One that has ended, or not begun, is left alone.
+    ///     at the next of its parts (#275, ADR 0040). Its strokes stay in the canvases; only the picture is not
+    ///     finished, and its answer says <see cref="IpcMessage.Superseded" />. One that has ended, or not begun, is
+    ///     left alone.
     /// </summary>
     public const string StackSupersede = "stack.supersede";
 

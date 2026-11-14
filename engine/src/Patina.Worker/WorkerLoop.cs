@@ -121,16 +121,8 @@ sealed class WorkerLoop(
                     or IpcTypes.StackClose
                     or IpcTypes.MaterialThumbnail
                     or IpcTypes.ViewportStack => OnDevice(request),
-                IpcTypes.MeshUnwrap => Unwrap(request),
-                IpcTypes.MeshMovePaint => MovePaint(request),
-                IpcTypes.MeshSameLayout => SameLayout(request),
-                IpcTypes.MeshMaterials => Materials(request),
-                IpcTypes.MeshParts => Parts(request),
-                IpcTypes.MeshFacts => Facts(request),
-                IpcTypes.MeshSets => Sets(request),
                 IpcTypes.MaterialRead => ReadMaterials(request),
-                IpcTypes.MeshPartMask => PartMask(request),
-                IpcTypes.MeshUvWire => UvWires.Answer(request),
+                _ when request.Type.StartsWith("mesh.", StringComparison.Ordinal) => Mesh(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),
                 IpcTypes.StackSupersede => stacks.Supersede(request),
@@ -139,6 +131,21 @@ sealed class WorkerLoop(
                 _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
             }
         );
+
+    /// <summary>What reads or rewrites a mesh file: none of it uses the device.</summary>
+    IpcMessage Mesh(IpcMessage request) =>
+        request.Type switch {
+            IpcTypes.MeshUnwrap => Unwrap(request),
+            IpcTypes.MeshMovePaint => MovePaint(request),
+            IpcTypes.MeshSameLayout => SameLayout(request),
+            IpcTypes.MeshMaterials => Materials(request),
+            IpcTypes.MeshParts => Parts(request),
+            IpcTypes.MeshFacts => Facts(request),
+            IpcTypes.MeshSets => Sets(request),
+            IpcTypes.MeshPartMask => PartMask(request),
+            IpcTypes.MeshUvWire => UvWires.Answer(request),
+            _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
+        };
 
     /// <summary>Uses no device, but this link waits for it: nothing else can be asked while a mesh is cut.</summary>
     static IpcMessage Unwrap(IpcMessage request) {
