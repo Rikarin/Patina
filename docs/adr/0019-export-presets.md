@@ -20,8 +20,9 @@ id only some projects have exports those and leaves the rest alone. A file that 
 Files are the truth. The editor sends a document, the Server writes the YAML, reads it back through the same reader as a
 hand-written file, and keeps it only if that reads it (`ExportPresetWriter`): the editor can make nothing a person could
 not write. A hand-written file's comments survive too where they stand above something the writer writes again
-(`PresetComments`): the block at the top, a top-level field's, and a texture's, found again by its `file`; a comment
-inside a texture or after a value is lost. Every field survives, and a property test
+(`PresetComments`): the block at the top, a top-level field's, a texture's, found again by its `file`, and a field's
+inside a texture, found again by the texture's `file` and the field's key (#155); a comment after a value, or above a
+field the edit leaves out, is lost. Every field survives, and a property test
 holds that every factory preset comes back from the editor as it was. Removing a preset deletes its file.
 
 ## The language

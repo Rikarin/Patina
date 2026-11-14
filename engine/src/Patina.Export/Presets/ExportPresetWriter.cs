@@ -13,8 +13,8 @@ namespace Patina.Export.Presets;
 ///     A preset as a document a client edits, and back to the file (ADR 0019). The file is the truth: a document is
 ///     written as the language spells it, read back by <see cref="ExportPresetReader" />, and kept only if that reads
 ///     it, so the editor can make nothing a hand-written file could not say. A hand-written file's comments above
-///     its fields and textures survive an edit in the editor (<see cref="PresetComments" />); one inside a texture
-///     does not.
+///     its fields, its textures and the fields inside a texture survive an edit in the editor
+///     (<see cref="PresetComments" />).
 /// </summary>
 public static partial class ExportPresetWriter {
     const string Header =
