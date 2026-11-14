@@ -156,8 +156,9 @@ public sealed partial class StackProcessTests {
             deadline.Token
         );
 
-        // Back to 512: the second paste now holds 1024, larger than the set, resumed or not.
-        await EditAsync(small.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 2));
+        // Down to 512 by 256: the second paste now holds 1024 square, larger than the set and of another shape, resumed
+        // or not. Of the set's shape it would be painted at its own size (#19).
+        await EditAsync(small.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 4));
         await RefusedAsync(
             small.Id,
             "stroke-canvas-larger",
