@@ -35,6 +35,6 @@ Vixen's `ModelReader` inside the Server.
 
 ## Not yet
 
-- Pictures still decode in the Server for previews and import (`MapPictures`). Plan §3.1 lists image codecs with the
-  Worker too, and the same guard could name `Vixen.Interchange`'s decoders once they move.
+- ~~Pictures still decode in the Server for previews and import (`MapPictures`).~~ Done in ADR 0041 (#293), with the
+  same guard naming Vixen's decoders.
 - `GET /library/mesh` asks the Worker every time; it could answer from the same cache.

@@ -164,6 +164,25 @@ public static class IpcTypes {
     /// </summary>
     public const string MaterialRead = "material.read";
 
+    /// <summary>
+    ///     Server to Worker: decode the picture <see cref="IpcMessage.PictureRead" /> names, and write a PNG of it where
+    ///     it says (#293). The Server decodes no picture: a decoder is a parser of a file anybody made. Uses no device,
+    ///     and is answered beside the queue; answered in <see cref="IpcMessage.PictureReadEnd" />.
+    /// </summary>
+    public const string PictureRead = "picture.read";
+
+    /// <summary>
+    ///     Server to Worker: list the colours of a bake's ID map (<see cref="IpcMessage.IdColoursAsk" />), answered in
+    ///     <see cref="IpcMessage.IdColours" />. Uses no device, and is answered beside the queue (#293).
+    /// </summary>
+    public const string BakeIdColours = "bake.id-colours";
+
+    /// <summary>
+    ///     Server to Worker: make a compression preview from a plan (<see cref="IpcMessage.CompressionStep" />) into
+    ///     the cache, answered in <see cref="IpcMessage.CompressionPreview" />. Uses no device; beside the queue (#293).
+    /// </summary>
+    public const string ExportCompress = "export.compress";
+
     /// <summary>Renders each fill of a stack alone, small.</summary>
     public const string StackThumbnails = "stack.thumbnails";
 
@@ -226,7 +245,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 20;
+    public const int ProtocolVersion = 21;
 
     public string Type { get; set; } = string.Empty;
 
@@ -390,6 +409,21 @@ public sealed class IpcMessage {
 
     /// <summary>A model's materials as maps, in the answer to <see cref="IpcTypes.MaterialRead" />.</summary>
     public IReadOnlyList<ImportedMaterial>? MaterialsRead { get; set; }
+
+    public PictureReadAsk? PictureRead { get; set; }
+
+    /// <summary>How a picture read, in the answer to <see cref="IpcTypes.PictureRead" />.</summary>
+    public PictureReadEnd? PictureReadEnd { get; set; }
+
+    public IdColoursAsk? IdColoursAsk { get; set; }
+
+    /// <summary>A bake's ID colours, in the answer to <see cref="IpcTypes.BakeIdColours" />; null for no ID map.</summary>
+    public StackIdColours? IdColours { get; set; }
+
+    public CompressionStep? CompressionStep { get; set; }
+
+    /// <summary>What a compression preview measured, in the answer to <see cref="IpcTypes.ExportCompress" />.</summary>
+    public CompressionPreviewInfo? CompressionPreview { get; set; }
 
     /// <summary>The model's other texture sets, worn along with <see cref="Following" />.</summary>
     public IReadOnlyList<string>? FollowingAlso { get; set; }

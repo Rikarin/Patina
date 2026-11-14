@@ -12,6 +12,7 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
     readonly ServerFixture server = new();
     readonly DirectoryInfo files = Directory.CreateTempSubdirectory("patina-tree-");
     HttpClient client = null!;
+    PictureWorker pictures = null!;
 
     CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -23,10 +24,12 @@ public sealed partial class LibraryTreeApiTests : IAsyncLifetime {
         }
 
         client = server.AuthorisedClient();
-        await Task.CompletedTask;
+        // The Server decodes no picture (#293): what a test brings in or shows, this reads.
+        pictures = await PictureWorker.ConnectAsync(server.SocketPath, Token);
     }
 
     public async ValueTask DisposeAsync() {
+        await pictures.DisposeAsync();
         client.Dispose();
         await server.DisposeAsync();
         files.Delete(true);

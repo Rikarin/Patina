@@ -38,3 +38,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0038](0038-graph-measurements.md): accepted: a picture's histogram is counted on the GPU at full size and sent as numbers, and a node's cost is the GPU time of its operations, kept per node.
 - [0039](0039-server-reads-no-mesh.md): accepted: the Server reads no mesh; the Worker reads each file's texture sets once, beside its queue, and the Server keeps the answer until the file changes.
 - [0040](0040-superseded-evaluations.md): accepted: an evaluation a save waits behind is stopped between parts of its run, and nothing it began is trusted.
+- [0041](0041-server-decodes-no-picture.md): accepted: the Server decodes no picture; the Worker reads a library picture, a bake's ID colours and a compression preview beside its queue, and a picture that took a Worker down is not asked about again.

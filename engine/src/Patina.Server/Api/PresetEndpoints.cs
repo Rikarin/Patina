@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Export.Builds;
 using Patina.Export.Presets;
+using Patina.Ipc;
 using Patina.Library;
 
 namespace Patina.Server.Api;
@@ -60,9 +61,14 @@ static class PresetEndpoints {
     /// <summary>One at a time: a preview is a moment of every core, and a second waits for the first.</summary>
     static readonly SemaphoreSlim Compressing = new(1, 1);
 
+    /// <summary>
+    ///     The Server plans a preview, and the Worker decodes the maps and makes it: the Server decodes no picture
+    ///     (#293).
+    /// </summary>
     static async Task<Results<Ok<CompressionPreviewInfo>, ProblemHttpResult>> CompressAsync(
         CompressionPreviewRequest request,
         LibraryHost host,
+        WorkerLink worker,
         CancellationToken cancellationToken
     ) {
         if (host.Library is not { } library) {
@@ -75,12 +81,29 @@ static class PresetEndpoints {
 
         await Compressing.WaitAsync(cancellationToken);
         try {
-            return TypedResults.Ok(
-                await Task.Run(
-                    () => ExportPreviews.Make(library, request, ToolCatalog.Default, cancellationToken),
-                    cancellationToken
-                )
+            var step = await Task.Run(
+                () => ExportPreviews.Plan(library, request, ToolCatalog.Default, cancellationToken),
+                cancellationToken
             );
+            if (ExportPreviews.Known(step) is { } known) {
+                return TypedResults.Ok(known);
+            }
+
+            var connection = await worker.ConnectionAsync(cancellationToken);
+            var reply = await connection.SendAsync(
+                new() { Type = IpcTypes.ExportCompress, CompressionStep = step },
+                cancellationToken
+            );
+            return reply.CompressionPreview is { } made
+                ? TypedResults.Ok(made)
+                : Refusals.Problem(
+                    "The GPU engine made no preview.",
+                    StatusCodes.Status502BadGateway,
+                    Refusals.EngineUnavailable
+                );
+        } catch (IpcException e) {
+            // A file the preset does not write here, or one the set cannot have: the Worker's own sentence.
+            return Refusals.BadBuild(e);
         } catch (ExportUnbuiltException e) {
             return Refusals.Problem(
                 e.Message,

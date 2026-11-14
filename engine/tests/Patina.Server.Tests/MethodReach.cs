@@ -22,12 +22,12 @@ sealed class MethodReach : IDisposable {
     readonly Dictionary<Method, HashSet<Method>> callers = [];
     readonly Queue<Method> waiting = new();
     readonly SortedSet<(string Called, Method By)> found = new(FoundOrder.Instance);
-    readonly Func<string, string, bool> forbidden;
+    readonly Func<string, string, string, bool> forbidden;
 
     /// <summary>Loads every assembly of Patina's in <paramref name="folder" />.</summary>
     /// <param name="folder">Where the assemblies are.</param>
-    /// <param name="forbidden">Whether a call to an assembly's type, by full name, is one to report.</param>
-    MethodReach(string folder, Func<string, string, bool> forbidden) {
+    /// <param name="forbidden">Whether a call to an assembly's type, by full name, and member is one to report.</param>
+    MethodReach(string folder, Func<string, string, string, bool> forbidden) {
         this.forbidden = forbidden;
         var ours = Directory.EnumerateFiles(folder, "*.dll")
             .Where(static file => Path.GetFileName(file) is var name
@@ -47,7 +47,7 @@ sealed class MethodReach : IDisposable {
     public static IReadOnlyList<string> Forbidden(
         string folder,
         string assembly,
-        Func<string, string, bool> forbidden
+        Func<string, string, string, bool> forbidden
     ) {
         using MethodReach reach = new(folder, forbidden);
         var root = reach.modules[assembly];
@@ -164,7 +164,7 @@ sealed class MethodReach : IDisposable {
     }
 
     void Named(Method by, string assembly, string type, string name) {
-        if (forbidden(assembly, type)) {
+        if (forbidden(assembly, type, name)) {
             found.Add(($"{type}.{name}", by));
             return;
         }

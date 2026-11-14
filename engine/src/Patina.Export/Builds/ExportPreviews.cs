@@ -33,10 +33,26 @@ public static class ExportPreviews {
     public static string FolderOf(string root, string id) =>
         Path.Combine(LibraryLayout.PreviewsPath(root), "compression", id);
 
-    /// <summary>Makes a preview, or reads the one made before from the same things.</summary>
+    /// <summary>Makes a preview, or reads the one made before from the same things, in this process.</summary>
     /// <exception cref="ExportUnbuiltException">The project's maps are not built.</exception>
     /// <exception cref="BuildRefusedException">A preset, file or set not there, or a change refused.</exception>
     public static CompressionPreviewInfo Make(
+        OpenLibrary library,
+        CompressionPreviewRequest request,
+        ToolCatalog tools,
+        CancellationToken cancellationToken
+    ) {
+        var step = Plan(library, request, tools, cancellationToken);
+        return Known(step) ?? Run(step, cancellationToken);
+    }
+
+    /// <summary>
+    ///     What a preview is made from, decoding no map (#293): the Server plans it and a Worker makes it. The sources
+    ///     are the chosen set's alone, so making it decodes no other set's maps.
+    /// </summary>
+    /// <exception cref="ExportUnbuiltException">The project's maps are not built.</exception>
+    /// <exception cref="BuildRefusedException">A preset or set not there, or a change refused.</exception>
+    public static CompressionStep Plan(
         OpenLibrary library,
         CompressionPreviewRequest request,
         ToolCatalog tools,
@@ -64,23 +80,55 @@ public static class ExportPreviews {
             )
         )
             .Hex[..32];
-        var folder = FolderOf(library.RootPath, id);
-        var known = Path.Combine(folder, Measured);
-        if (File.Exists(known)) {
-            return JsonSerializer.Deserialize(
-                SharedFile.ReadAllBytes(known),
-                ExportJsonContext.Default.CompressionPreviewInfo
-            )!;
+        var sources = BuildPipeline.SourcesOf(new(library.RootPath), project);
+        var set = SetOf(sources, request.Set);
+        var preset = presets.Find(request.Project, request.Preset);
+        try {
+            _ = ExportOverrides.Apply(preset, request.Options);
+        } catch (ExportPresetException e) {
+            throw new BuildRefusedException(e.Message, e);
         }
 
-        var sets = ExportSteps.SetsOf(BuildPipeline.SourcesOf(new(library.RootPath), project));
-        var set = request.Set is { } named
-            ? sets.Find(s => s.Name == named)
-            ?? throw new BuildRefusedException($"There is no texture set '{named}'.")
-            : sets[0];
+        return new(
+            new(
+                ExportPresetCatalog.TextOf(preset),
+                [..sources.Where(s => s.Set.Length == 0 || s.Set == set)],
+                FolderOf(library.RootPath, id),
+                request.Options
+            ),
+            id,
+            request with { Set = set }
+        );
+    }
+
+    /// <summary>The set asked for, or the first: as <see cref="ExportSteps.SetsOf" /> names them.</summary>
+    static string SetOf(IReadOnlyList<ExportSource> sources, string? asked) {
+        List<string> names = [
+            ..sources.Select(static s => s.Set).Where(static s => s.Length > 0).Distinct().DefaultIfEmpty(string.Empty)
+        ];
+        return asked is null || names.Contains(asked, StringComparer.Ordinal)
+            ? asked ?? names[0]
+            : throw new BuildRefusedException($"There is no texture set '{asked}'.");
+    }
+
+    /// <summary>The preview made before from the same things, or null.</summary>
+    public static CompressionPreviewInfo? Known(CompressionStep step) {
+        ArgumentNullException.ThrowIfNull(step);
+        var known = Path.Combine(step.Export.Folder, Measured);
+        return File.Exists(known)
+            ? JsonSerializer.Deserialize(SharedFile.ReadAllBytes(known), ExportJsonContext.Default.CompressionPreviewInfo)
+            : null;
+    }
+
+    /// <summary>Makes a planned preview: decodes the set's maps, compresses the region and writes its files.</summary>
+    /// <exception cref="BuildRefusedException">A file the preset does not write, or one this set cannot have.</exception>
+    public static CompressionPreviewInfo Run(CompressionStep step, CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(step);
+        var request = step.Request;
+        var set = ExportSteps.SetsOf(step.Export.Sources)[0];
         ExportPreset preset;
         try {
-            preset = ExportOverrides.Apply(presets.Find(request.Project, request.Preset), request.Options)
+            preset = ExportOverrides.Apply(ExportPresetReader.Read(step.Export.Preset, "the preset"), request.Options)
                 .For(set.Name);
         } catch (ExportPresetException e) {
             throw new BuildRefusedException(e.Message, e);
@@ -109,7 +157,7 @@ public static class ExportPreviews {
         var gain = largest <= 0 ? 1 : Math.Clamp(Math.Pow(2, Math.Floor(Math.Log2(1 / largest))), 1, 256);
         var (x, y, width, height) = region.Region;
         var info = new CompressionPreviewInfo(
-            id,
+            step.Id,
             texture.Format,
             texture.Compression,
             Math.Clamp(request.Level, 0, region.Levels - 1),
@@ -130,6 +178,13 @@ public static class ExportPreviews {
             )
         };
 
+        Write(step.Export.Folder, region, info);
+        return info;
+    }
+
+    /// <summary>Writes a preview's three PNGs and what was measured, all at once.</summary>
+    static void Write(string folder, CompressionRegion region, CompressionPreviewInfo info) {
+        var gain = info.Gain;
         var part = $"{folder}.{Guid.NewGuid():N}.part";
         Directory.CreateDirectory(part);
         File.WriteAllBytes(Path.Combine(part, "source.png"), CompressionPreview.Png(region.Source));
@@ -143,7 +198,6 @@ public static class ExportPreviews {
             JsonSerializer.SerializeToUtf8Bytes(info, ExportJsonContext.Default.CompressionPreviewInfo)
         );
         BuildObjects.Publish(part, folder);
-        return info;
     }
 
     /// <summary>A preview's picture, or null when there is no such preview or picture.</summary>
