@@ -7,6 +7,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Clear Uploads, in Library Settings under Tidy (#297): the files sent from another computer that nothing in the library names any more, saved or open, go to the bin as one entry, which Restore puts back; Library Settings says how many there are and the room they take. A project whose mesh came from an upload names it, and one sent in the last hour counts as in use. Through the API `GET /api/v1/library/uploads/unused` and `POST /api/v1/library/uploads/clear`.
+- The Worker's warnings and errors are in the Log (#297), as `Worker: …` lines from the engine, so a person sees why the Worker lost its device or its link from any app attached to the engine. A line said while the Worker had no engine waits for the next.
+
 - From This Computer…, in Choose a Picture and Choose a Mesh outside the desktop app (#4): a client of an engine on another computer sends a picture or a mesh of its own, and it is used as one chosen on the engine's machine is, for a layer, a mask, a project's mesh or a bake. Through the API `POST /api/v1/library/uploads?name=` takes the file as the body and answers with its path on the engine's machine, which every route that takes a file there takes. Files are kept in the library's `uploads` folder, the same file once; a name that is no picture or mesh is refused with `upload-kind`, and a file over 4 GiB with `upload-too-large` (ADR 0041).
 - Make Default, in the Bake dialog (#189): every project made after it bakes with those options, whichever app attached to the engine makes it, and a texturing project still at the size it is made at. Preferences says what new projects bake with, and Use Patina's goes back. Through the API `bake` in `PUT /api/v1/preferences`, refused with `preference-refused` when no bake could use the options.
 - A bar of the tool's settings over the viewport while a texturing document is painted (#201): the size, flow and opacity of a stroke, its color or a mask's grey, the fill's mode and selection, and the picker's Every channel, so the settings a painter changes stroke by stroke sit by the strokes. They are the brush's own, so Properties' Brush section shows the same values and keeps the rest.
@@ -350,6 +353,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Start lists the projects worked on lately in the open library as their own list (#162), each once and as recent as its newest document, beside the recent documents.
 
 ### Fixed
+
+- Choosing another folder for autosaves, or going back to the cache, moves the autosaves kept in the folder before (#297), every library's: they were left there, and never offered again.
+- Clean reads only the files changed since it last ran (#297): it read every document and mesh of the library, up to 64 MB each, every time. The library's index keeps what each file names. Clean, emptying the bin and Restore now wait for any other change to the library's files, and it for them.
+- The engine and each test run sweep the socket files that ended processes left in the temp folder for over a day (#297).
 
 - A refusal names a file by its name alone on every system (#198): a Server on Linux or macOS left the folders of a Windows path in the sentence and the file's name, since it split a path only at `/`.
 - Export no longer shows the last export's Done and report while the next one is being started (#153): they go as soon as Export is pressed, so a second export from the dialog is never read as finished before it has begun.

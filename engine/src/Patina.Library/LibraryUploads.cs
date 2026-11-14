@@ -73,6 +73,9 @@ public static class LibraryUploads {
             if (!File.Exists(kept)) {
                 Directory.CreateDirectory(Path.GetDirectoryName(kept)!);
                 SharedFile.MoveOver(partial, kept);
+            } else {
+                // Sent again: just sent, so a clearing of uploads nothing names leaves it for its sender to use (#297).
+                File.SetLastWriteTimeUtc(kept, DateTime.UtcNow);
             }
 
             return kept;

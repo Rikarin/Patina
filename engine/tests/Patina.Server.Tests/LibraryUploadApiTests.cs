@@ -61,6 +61,36 @@ public sealed partial class LibraryTreeApiTests {
         Assert.Equal(["small.png"], kept.Select(Path.GetFileName));
     }
 
+    /// <summary>
+    ///     An upload nothing names any more is listed and cleared into the bin (#297); one a project's file names
+    ///     stays, and so does one sent within the hour, which its sender may be about to use.
+    /// </summary>
+    [Fact]
+    public async Task Uploads_nothing_names_are_listed_and_cleared() {
+        using var crate = await UploadAsync("crate.glb", [.."crate"u8]);
+        using var scan = await UploadAsync("scan.png", [.."scan"u8]);
+        using var fresh = await UploadAsync("fresh.png", [.."fresh"u8]);
+        var mesh = (await crate.Content.ReadFromJsonAsync<UploadedFile>(Token))!.Path;
+        var picture = (await scan.Content.ReadFromJsonAsync<UploadedFile>(Token))!.Path;
+        using var created = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Crate", Mesh: mesh),
+            Token
+        );
+        // The project's mesh names its upload as where it came from, which keeps the upload.
+        created.EnsureSuccessStatusCode();
+        File.SetLastWriteTimeUtc(mesh, DateTime.UtcNow.AddDays(-1));
+        File.SetLastWriteTimeUtc(picture, DateTime.UtcNow.AddDays(-1));
+
+        var unused = await client.GetFromJsonAsync<UnusedUploadList>("/api/v1/library/uploads/unused", Token);
+        using var cleared = await client.PostAsync("/api/v1/library/uploads/clear", null, Token);
+
+        Assert.Equal(["scan.png"], unused!.Files.Select(static file => Path.GetFileName(file.Path)));
+        Assert.Equal(1, (await cleared.Content.ReadFromJsonAsync<UploadsCleared>(Token))!.Count);
+        Assert.False(File.Exists(picture));
+        Assert.True(File.Exists(mesh));
+    }
+
     /// <summary>A name that is no picture or mesh, or is more than a file's name, is refused with a code.</summary>
     [Theory]
     [InlineData("notes.txt")]

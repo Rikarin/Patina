@@ -232,7 +232,7 @@ public static class Recovery {
     /// <summary>The library a folder of a chosen place keeps autosaves for, while that library is still there.</summary>
     static string? LibraryOf(string library, string from, string? open) {
         var marker = Path.Combine(library, LibraryMarker);
-        var root = File.Exists(marker) ? File.ReadAllText(marker).Trim()
+        var root = File.Exists(marker) ? SharedFile.ReadAllText(marker).Trim()
             : open is not null && SamePlace(Away(from, open), library) ? open
             : null;
         return root is not null && File.Exists(Path.Combine(root, LibraryLayout.LibraryFile)) ? root : null;

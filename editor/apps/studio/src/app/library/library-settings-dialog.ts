@@ -14,6 +14,7 @@ import { LibraryStore } from './library-store';
 type LibraryHealth = components['schemas']['LibraryHealth'];
 type CacheInfo = components['schemas']['CacheInfo'];
 type ExportPresetInfo = components['schemas']['ExportPresetInfo'];
+type UnusedUploadList = components['schemas']['UnusedUploadList'];
 
 /** What each kind of finding is called, as `patina library check` names them in its report. */
 const FindingWords: Readonly<Record<string, string>> = {
@@ -32,14 +33,18 @@ const FindingWords: Readonly<Record<string, string>> = {
   UnusedRevision: 'Kept versions nothing uses'
 };
 
+/** What the dialog may be busy with. */
+type Work = 'check' | 'prune' | 'clean' | 'uploads' | 'settings';
+
 /** How long a built object may go unused before Prune takes it, by default, as `patina cache prune` does. */
 const PruneDays = 30;
 
 /**
  * Library Settings (#192): the open library's settings, which no other view shows, and the care it takes. Check Library
  * reads every project and material and says what is wrong, as `patina library check` does; Prune takes built objects
- * nothing has used for a while out of the cache; Clean takes away the copies of paint a new UV layout moved (#162).
- * Each runs in the Server, which holds the library, and says what it did in Activity too.
+ * nothing has used for a while out of the cache; Clean takes away the copies of paint a new UV layout moved (#162);
+ * Clear Uploads moves the files sent from another computer that nothing uses any more to the bin (#297). Each runs in
+ * the Server, which holds the library, and says what it did in Activity too.
  */
 @Component({
   selector: 'ptn-library-settings',
@@ -220,6 +225,33 @@ const PruneDays = 30;
                   {{ busy() === 'clean' ? 'Cleaning…' : 'Clean' }}
                 </button>
               </div>
+              <div class="flex items-center gap-3" data-testid="library-settings-uploads">
+                <span class="text-foreground-muted min-w-0 flex-1 text-xs">
+                  Files sent from another computer are kept in the library’s uploads.
+                  @if (uploads(); as unused) {
+                    @if (unused.files.length === 0) {
+                      Every one is in use.
+                    } @else {
+                      <span data-testid="library-settings-uploads-unused">
+                        {{ count(unused.files.length) }} nothing uses any more,
+                        <span class="readout">{{ bytes(unused.bytes) }}</span
+                        >.
+                      </span>
+                    }
+                  }
+                  Clear Uploads moves those nothing uses to the bin.
+                </span>
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  data-testid="library-settings-clear-uploads"
+                  [disabled]="busy() !== null || (uploads()?.files?.length ?? 0) === 0"
+                  (click)="clearUploads()"
+                >
+                  {{ busy() === 'uploads' ? 'Clearing…' : 'Clear Uploads' }}
+                </button>
+              </div>
               @if (tidied(); as said) {
                 <p class="text-foreground-muted text-xs" data-testid="library-settings-tidied">{{ said }}</p>
               }
@@ -255,7 +287,8 @@ export class LibrarySettingsDialog {
   protected readonly health = signal<LibraryHealth | null>(null);
   protected readonly cache = signal<CacheInfo | null>(null);
   protected readonly days = signal(PruneDays);
-  protected readonly busy = signal<'check' | 'prune' | 'clean' | 'settings' | null>(null);
+  protected readonly busy = signal<Work | null>(null);
+  protected readonly uploads = signal<UnusedUploadList | null>(null);
   protected readonly presets = signal<readonly ExportPresetInfo[]>([]);
   protected readonly tidied = signal<string | null>(null);
   protected readonly failure = signal<string | null>(null);
@@ -270,6 +303,7 @@ export class LibrarySettingsDialog {
         untracked(() => {
           void this.readCache();
           void this.readPresets();
+          void this.readUploads();
         });
       }
     });
@@ -330,6 +364,19 @@ export class LibrarySettingsDialog {
     });
   }
 
+  /** Moves the files sent from another computer that nothing uses any more to the bin (#297). */
+  async clearUploads(): Promise<void> {
+    await this.run('uploads', async client => {
+      const done = unwrap(await client.POST('/api/v1/library/uploads/clear'));
+      this.say(
+        done.count === 0
+          ? 'Every upload is in use.'
+          : `Moved ${count(done.count)} uploads nothing uses to the bin, ${bytes(done.bytes)}.`
+      );
+      await this.readUploads();
+    });
+  }
+
   /** Renames the library, as its file has it: the folder keeps its name. */
   protected rename(event: Event): void {
     const name = (event.target as HTMLInputElement).value.trim();
@@ -373,7 +420,7 @@ export class LibrarySettingsDialog {
   }
 
   private async run(
-    what: 'check' | 'prune' | 'clean' | 'settings',
+    what: Work,
     act: (client: Awaited<ReturnType<LibraryStore['api']>>) => Promise<void>
   ): Promise<void> {
     this.busy.set(what);
@@ -393,6 +440,15 @@ export class LibrarySettingsDialog {
       this.presets.set(unwrap(await client.GET('/api/v1/export/presets', { params: { query: {} } })).presets);
     } catch {
       this.presets.set([]); // the targets are still listed by id
+    }
+  }
+
+  private async readUploads(): Promise<void> {
+    try {
+      const client = await this.library.api();
+      this.uploads.set(unwrap(await client.GET('/api/v1/library/uploads/unused')));
+    } catch {
+      this.uploads.set(null); // Clear Uploads still says what it moved
     }
   }
 

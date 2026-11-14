@@ -1486,6 +1486,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/uploads/unused': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The files sent from another computer that no file of the library and no open document names any more, with the room they take. One sent in the last hour counts as used. Changes nothing. */
+    get: operations['GetUnusedUploads'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/uploads/clear': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into the bin as one entry, which Restore puts back. */
+    post: operations['ClearUploads'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/graphs': {
     parameters: {
       query?: never;
@@ -8814,6 +8848,26 @@ export interface components {
        */
       sources: string[];
     };
+    /** @description A file of the library and the room it takes. */
+    UnusedFile: {
+      /** @description Its path below the library, with forward slashes. */
+      path: string;
+      /**
+       * Format: int64
+       * @description Its size.
+       */
+      bytes: number;
+    };
+    /** @description What `GET /api/v1/library/uploads/unused` answers (#297). */
+    UnusedUploadList: {
+      /** @description The files sent from another computer that nothing names, in order of their path. */
+      files: components['schemas']['UnusedFile'][];
+      /**
+       * Format: int64
+       * @description The room they take.
+       */
+      bytes: number;
+    };
     /** @description How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own. */
     UnwrapOptions: {
       /**
@@ -8900,6 +8954,21 @@ export interface components {
        *     brought into a project, a bake's high mesh.
        */
       path: string;
+    };
+    /** @description What `POST /api/v1/library/uploads/clear` took away (#297). */
+    UploadsCleared: {
+      /**
+       * Format: int32
+       * @description How many uploads nothing named went to the bin.
+       */
+      count: number;
+      /**
+       * Format: int64
+       * @description The room those take, which emptying the bin frees.
+       */
+      bytes: number;
+      /** @description The bin's entry that holds them, for a Restore, or null when none went. */
+      bin?: null | string;
     };
     /**
      * @description A bake's setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,
@@ -14186,6 +14255,100 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['LibraryCleaned'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetUnusedUploads: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UnusedUploadList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ClearUploads: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UploadsCleared'];
         };
       };
       /** @description Bad Request */

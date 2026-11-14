@@ -12,7 +12,7 @@ sealed class IndexDatabase : IDisposable {
     ///     Raise this whenever the tables change or the scanner would read an unchanged file differently, such as
     ///     when a document gains a migration: the rescan skips unchanged files, so only a rebuild would notice.
     /// </summary>
-    const int Version = 3;
+    const int Version = 4;
 
     const int NotADatabase = 26;
     const int Corrupt = 11;
@@ -94,6 +94,14 @@ sealed class IndexDatabase : IDisposable {
                               mtime INTEGER NOT NULL,
                               scanned INTEGER NOT NULL,
                               hash TEXT NOT NULL
+                          ) WITHOUT ROWID;
+
+                          CREATE TABLE named_file(
+                              path TEXT PRIMARY KEY,
+                              size INTEGER NOT NULL,
+                              mtime INTEGER NOT NULL,
+                              scanned INTEGER NOT NULL,
+                              names TEXT
                           ) WITHOUT ROWID;
 
                           CREATE VIRTUAL TABLE project_search USING fts5(

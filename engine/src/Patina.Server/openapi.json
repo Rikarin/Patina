@@ -5818,6 +5818,108 @@
         }
       }
     },
+    "/api/v1/library/uploads/unused": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The files sent from another computer that no file of the library and no open document names any more, with the room they take. One sent in the last hour counts as used. Changes nothing.",
+        "operationId": "GetUnusedUploads",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnusedUploadList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/uploads/clear": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into the bin as one entry, which Restore puts back.",
+        "operationId": "ClearUploads",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadsCleared"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/graphs": {
       "get": {
         "tags": [
@@ -22930,6 +23032,47 @@
         },
         "description": "The body of \u0060POST /api/v1/library/thumbnails\u0060. A thumbnail service for every client and every list: the\nLibrary\u0027s grid, the shelf, and anything after them."
       },
+      "UnusedFile": {
+        "required": [
+          "path",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its path below the library, with forward slashes."
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "Its size.",
+            "format": "int64"
+          }
+        },
+        "description": "A file of the library and the room it takes."
+      },
+      "UnusedUploadList": {
+        "required": [
+          "files",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnusedFile"
+            },
+            "description": "The files sent from another computer that nothing names, in order of their path."
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The room they take.",
+            "format": "int64"
+          }
+        },
+        "description": "What \u0060GET /api/v1/library/uploads/unused\u0060 answers (#297)."
+      },
       "UnwrapOptions": {
         "required": [
           "resolution",
@@ -23062,6 +23205,33 @@
           }
         },
         "description": "A file a client sent from its own computer, now on the Server\u0027s machine (#4)."
+      },
+      "UploadsCleared": {
+        "required": [
+          "count",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "How many uploads nothing named went to the bin.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The room those take, which emptying the bin frees.",
+            "format": "int64"
+          },
+          "bin": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The bin\u0027s entry that holds them, for a Restore, or null when none went."
+          }
+        },
+        "description": "What \u0060POST /api/v1/library/uploads/clear\u0060 took away (#297)."
       },
       "ViewportBakePreview": {
         "required": [
