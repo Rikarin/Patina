@@ -7181,6 +7181,77 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/graph": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Writes the graph the stack\u0027s shown texture set stands for into its project, as a new graph document beside it. The stack is left as it is, and nothing keeps the two in step.",
+        "operationId": "WriteStackGraph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackGraphRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackGraphMade"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/instances": {
       "get": {
         "tags": [
@@ -20914,6 +20985,45 @@
           }
         },
         "description": "Where something fixed on a stroke\u0027s picture stands: moved, scaled, turned and perhaps tiled."
+      },
+      "StackGraphMade": {
+        "required": [
+          "path",
+          "name",
+          "problems"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The graph document, below the library, as a project lists it."
+          },
+          "name": {
+            "type": "string",
+            "description": "The name it was given, with a number when the one asked for was taken."
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What the stack had to say as it became a graph, each said once, such as a layer left out because it has\nnothing to show: the graph has the rest."
+          }
+        },
+        "description": "What writing a stack\u0027s graph made."
+      },
+      "StackGraphRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What the graph is called. A name the project already has gets a number after it."
+          }
+        },
+        "description": "Writes the graph a layer stack stands for into its project, beside it, as a new graph document (#205). The stack\nis left as it is: the graph is a copy to take further, and nothing keeps the two in step."
       },
       "StackIdColour": {
         "required": [

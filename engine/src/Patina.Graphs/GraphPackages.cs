@@ -5,6 +5,7 @@ using Vixen.Core.Yaml;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 using Vixen.TextureGraph.Drawing;
+using Vixen.Texturing.Painting;
 
 namespace Patina.Graphs;
 
@@ -247,6 +248,21 @@ public static class GraphPackages {
             if (reference.Length == 0
                 || reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)
                 || Pictures.ContainsKey(reference)) {
+                return;
+            }
+
+            // A graph written from a layer stack reads its paint layers' files (#205), which are no picture to copy.
+            if (PaintReference.Claims(reference)) {
+                Pictures[reference] = new(reference, string.Empty);
+                Dependencies.Add(
+                    new(
+                        "picture",
+                        reference,
+                        null,
+                        "It is a layer's painted pixels, which a package cannot carry.",
+                        into
+                    )
+                );
                 return;
             }
 

@@ -8,6 +8,7 @@ using Vixen.Interchange;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 using Vixen.TextureGraph.Drawing;
+using Vixen.Texturing.Painting;
 
 namespace Patina.Graphs;
 
@@ -37,6 +38,9 @@ public sealed class GraphPictures {
     ///     seen. The caller is told, and says so.
     /// </summary>
     static readonly byte[] NoBake = [128, 128, 128, 255];
+
+    /// <summary>What an unpainted layer or channel reads as: nothing, as in the stack.</summary>
+    static readonly Decoded Clear = new(1, 1, [0, 0, 0, 0], TextureFormat.Rgba8);
 
     readonly Dictionary<PictureStamp, Decoded> decoded = [];
     long held;
@@ -84,6 +88,8 @@ public sealed class GraphPictures {
 
                 if (reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)) {
                     (stamp, picture) = ReadMeshMap(reference[MeshMapScheme.Length..], meshMaps);
+                } else if (PaintReference.Claims(reference)) {
+                    (stamp, picture) = ReadPaint(reference, roots);
                 } else {
                     stamp = StampOf(Locate(reference, roots));
                     picture = Read(stamp);
@@ -167,6 +173,53 @@ public sealed class GraphPictures {
         // ⚠ At the depth it was baked, as half-floats: read at eight bits, a position map held 256 places across the
         // model and a volume noise finer than that drew stairs.
         return (stamp, Keep(stamp, Widened(BakedMapPicture.ReadDeep(found.Path, found.Map, found.Format))));
+    }
+
+    /// <summary>
+    ///     One channel of a painted canvas, as a layer stack names it and a graph written from one keeps naming it
+    ///     (#205): the file beside the graph, as it was last saved. A layer never painted has no file yet, and it and
+    ///     a channel never painted are clear, as in the stack; the missing file is stamped, so its first save is
+    ///     noticed.
+    /// </summary>
+    /// <exception cref="InvalidDataException">
+    ///     The reference is malformed or reaches outside the graph's folder.
+    /// </exception>
+    (PictureStamp Stamp, Decoded Picture) ReadPaint(string reference, IReadOnlyList<string> roots) {
+        if (!PaintReference.TryParse(reference, out var relative, out var usage) || roots.Count == 0) {
+            throw new InvalidDataException("it does not name both a painted file and one of its channels");
+        }
+
+        // Beside the graph alone, as a stack's paint is beside the stack.
+        var file = Path.GetFullPath(Path.Combine(roots[0], relative));
+        if (!Inside(roots[0], file)) {
+            throw new InvalidDataException("a painted file is read from beside the graph, and this is elsewhere");
+        }
+
+        var stamp = StampOf(file);
+        // One file holds a picture per channel, so each channel is kept under its own name.
+        var key = stamp with { Path = $"{stamp.Path}|{usage}" };
+        if (decoded.TryGetValue(key, out var known)) {
+            return (stamp, known);
+        }
+
+        if (stamp.Length < 0) {
+            return (stamp, Clear);
+        }
+
+        PaintCanvas canvas;
+        using (var stream = SharedFile.OpenRead(stamp.Path)) {
+            canvas = PaintCanvas.Read(stream);
+        }
+
+        if (!canvas.Has(usage)) {
+            return (stamp, Clear);
+        }
+
+        var image = canvas.Channel(usage);
+        var format = image.Format == PaintTexelFormat.Rgba8
+            ? TextureFormat.Rgba8
+            : PaintTexelFormats.Texture(image.Format);
+        return (stamp, Keep(key, new(image.Width, image.Height, image.ToTexels(), format)));
     }
 
     static PictureStamp StampOf(string path) {

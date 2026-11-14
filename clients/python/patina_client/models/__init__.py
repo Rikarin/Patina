@@ -360,6 +360,8 @@ from .stack_filter_kind import StackFilterKind
 from .stack_find_request import StackFindRequest
 from .stack_found import StackFound
 from .stack_frame import StackFrame
+from .stack_graph_made import StackGraphMade
+from .stack_graph_request import StackGraphRequest
 from .stack_id_colour import StackIdColour
 from .stack_id_colours import StackIdColours
 from .stack_input import StackInput
@@ -813,6 +815,8 @@ __all__ = (
     "StackFindRequest",
     "StackFound",
     "StackFrame",
+    "StackGraphMade",
+    "StackGraphRequest",
     "StackIdColour",
     "StackIdColours",
     "StackInput",
