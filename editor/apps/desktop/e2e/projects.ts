@@ -1,5 +1,5 @@
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
 /** Answers the system's next save dialog, which a test cannot click. */
@@ -174,6 +174,28 @@ export async function leave(app: ElectronApplication): Promise<void> {
 }
 
 /**
+ * The Server's own picture of the viewport, drawn by the Worker and written to `path` as a PNG, read back as base64: what
+ * the frames carry before the app shows them, so a test that misses a colour on screen can say which side lost it (#274).
+ */
+export async function serverPicture(window: Page, path: string): Promise<string> {
+  const { baseUrl, token } = await window.evaluate(() =>
+    (
+      globalThis as unknown as { patina: { connection(): Promise<{ baseUrl: string; token: string }> } }
+    ).patina.connection()
+  );
+  const response = await fetch(`${baseUrl}/api/v1/viewport/screenshot`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path })
+  });
+  if (!response.ok) {
+    throw new Error(`The Server took no picture of the viewport: ${response.status} ${await response.text()}`);
+  }
+
+  return readFileSync(path).toString('base64');
+}
+
+/**
  * Attaches what the engine's processes last said to a test that failed, as `engine-logs`, which CI uploads with the
  * rest of its results: on a runner that is the only way to see a cause the app's window does not show (#274).
  */
@@ -185,17 +207,12 @@ async function keepLogs(app: ElectronApplication): Promise<void> {
 
   const logs = await app
     .windows()[0]
-    ?.evaluate(() =>
-      (globalThis as unknown as { patina: { logs(): Promise<Record<string, string[]>> } }).patina.logs()
-    )
+    ?.evaluate(() => (globalThis as unknown as { patina: { logs(): Promise<Record<string, string[]>> } }).patina.logs())
     .catch(() => undefined); // a window that has gone has nothing to say
   if (logs) {
     const body = Object.entries(logs)
-      .map(([name, lines]) => [`== ${name}`, ...lines].join('
-'))
-      .join('
-
-');
+      .map(([name, lines]) => [`== ${name}`, ...lines].join('\n'))
+      .join('\n\n');
     await info.attach('engine-logs', { body, contentType: 'text/plain' });
   }
 }

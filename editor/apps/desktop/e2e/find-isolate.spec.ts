@@ -9,7 +9,7 @@ import {
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject } from './projects';
+import { leave, newLibrary, newProject, serverPicture } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
@@ -100,15 +100,23 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
     .poll(async () => Number(await viewport.getAttribute('data-frames')), { timeout: 30_000 })
     .toBeGreaterThan(0);
 
-  /** How many pixels of the composited canvas are a quad's pale grey, which the sky never is; or marked orange. */
+  /**
+   * How many pixels of the composited canvas are a quad's pale grey, which the sky never is; or marked orange. ⚠ The wash
+   * is light: a pale quad washed is about (205, 180, 155), red only 50 over blue, so "50 over" passed on Windows by a hair
+   * and failed on Linux CI's software GPU with none counted (#274). Unmarked grey is within 5 everywhere.
+   */
   const quads = async (marked = false): Promise<number> => {
     const box = await viewport.boundingBox();
     if (!box) {
       throw new Error('The viewport has no box.');
     }
 
-    const png = (await window.screenshot({ clip: box })).toString('base64');
-    return window.evaluate(
+    return count((await window.screenshot({ clip: box })).toString('base64'), marked);
+  };
+
+  /** The same count of a PNG given as base64. */
+  const count = (png: string, marked: boolean): Promise<number> =>
+    window.evaluate(
       async ({ data, orange }) => {
         const image = new Image();
         image.src = `data:image/png;base64,${data}`;
@@ -124,14 +132,13 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
         let pale = 0;
         for (let i = 0; i < pixels.length; i += 4) {
           const [r, g, b] = [pixels[i] ?? 0, pixels[i + 1] ?? 0, pixels[i + 2] ?? 0];
-          pale += (orange ? r > 140 && r > b + 50 : r > 140 && g > 140 && b > 140) ? 1 : 0;
+          pale += (orange ? r > 120 && r > b + 25 : r > 140 && g > 140 && b > 140) ? 1 : 0;
         }
 
         return pale;
       },
       { data: png, orange: marked }
     );
-  };
 
   await expect.poll(quads, { timeout: 30_000 }).toBeGreaterThan(1_000);
   const whole = await quads();
@@ -144,9 +151,18 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
   let frames = Number(await viewport.getAttribute('data-frames'));
   await window.getByTestId('texture-set-wood').hover();
   await drawn(viewport, 'highlight', ['wood'], frames);
-  await expect
-    .poll(() => quads(true), { timeout: 30_000, message: 'The mark on wood is drawn orange' })
-    .toBeGreaterThan(unmarked + 1_000);
+  try {
+    await expect
+      .poll(() => quads(true), { timeout: 30_000, message: 'The mark on wood is drawn orange' })
+      .toBeGreaterThan(unmarked + 1_000);
+  } catch (failure) {
+    // Whether the Worker drew the mark and the app lost it, or the Worker never drew it.
+    const drawn = await count(await serverPicture(window, join(shots, 'isolate-0-wood-marked-server.png')), true);
+    throw new Error(`${String(failure)}\nThe Server's own picture of the viewport has ${drawn} orange pixels.`, {
+      cause: failure
+    });
+  }
+
   await viewport.screenshot({ path: join(shots, 'isolate-0-wood-marked.png') });
   frames = Number(await viewport.getAttribute('data-frames'));
   await viewport.hover();
