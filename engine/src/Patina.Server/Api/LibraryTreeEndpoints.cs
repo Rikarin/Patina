@@ -4,6 +4,7 @@ using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
 using Patina.Server.Viewport;
+using System.Globalization;
 
 namespace Patina.Server.Api;
 
@@ -158,9 +159,11 @@ static class LibraryTreeEndpoints {
     public static ProblemHttpResult? BadResolution(int? resolution) =>
         resolution is null or (>= MinResolution and <= TextureSizes.Largest)
             ? null
-            : TypedResults.Problem(
-                $"A resolution is {MinResolution} to {TextureSizes.Largest}.",
-                statusCode: StatusCodes.Status400BadRequest
+            : Refusals.BadSize(
+                "A size",
+                MinResolution.ToString(CultureInfo.InvariantCulture),
+                TextureSizes.Largest.ToString(CultureInfo.InvariantCulture),
+                StatusCodes.Status400BadRequest
             );
 
     /// <summary>Names a route, says what it does, and what it can answer other than success.</summary>

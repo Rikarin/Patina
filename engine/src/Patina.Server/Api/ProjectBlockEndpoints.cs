@@ -158,7 +158,7 @@ static class ProjectBlockEndpoints {
         Action<OpenLibrary> keep
     ) =>
         problem is not null
-            ? TypedResults.Problem(problem, statusCode: StatusCodes.Status400BadRequest)
+            ? Refusals.BadSettings(problem, StatusCodes.Status400BadRequest)
             : LibraryTreeEndpoints.Guarded(
                 host,
                 library => {

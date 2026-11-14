@@ -269,9 +269,12 @@ static class GraphEndpoints {
 
         if (!TryFilter(takes, PortDirection.Input, out var input)
             || !TryFilter(gives, PortDirection.Output, out var output)) {
-            return TypedResults.Problem(
-                $"'{takes ?? gives}' does not name a port kind.",
-                statusCode: StatusCodes.Status422UnprocessableEntity
+            var named = $"'{takes ?? gives}' does not name a port kind.";
+            return Refusals.Problem(
+                named,
+                StatusCodes.Status422UnprocessableEntity,
+                Refusals.RequestInvalid,
+                Refusals.Reason(named)
             );
         }
 
@@ -389,7 +392,12 @@ static class GraphEndpoints {
 
         return walk(session) is { } result
             ? TypedResults.Ok(result)
-            : TypedResults.Problem($"There is nothing to {name}.", statusCode: StatusCodes.Status409Conflict);
+            : Refusals.Problem(
+                $"There is nothing to {name}.",
+                StatusCodes.Status409Conflict,
+                Refusals.HistoryEmpty,
+                new Dictionary<string, string> { ["what"] = name }
+            );
     }
 
     static Results<Ok<GraphEditResult>, ProblemHttpResult> Save(
@@ -506,10 +514,7 @@ static class GraphEndpoints {
         HttpContext context
     ) {
         if (store.Find(hash) is not { } path) {
-            return TypedResults.Problem(
-                $"There is no preview '{hash}'. Evaluating the graph again writes it.",
-                statusCode: StatusCodes.Status404NotFound
-            );
+            return Refusals.NoPreview($"There is no preview '{hash}'. Evaluating the graph again writes it.");
         }
 
         context.Response.Headers.CacheControl = "private, max-age=31536000, immutable";

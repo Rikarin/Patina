@@ -156,6 +156,8 @@ static class PatinaApi {
     ) {
         try {
             return TypedResults.Ok(await session.PickAsync(request, cancellationToken));
+        } catch (ViewportNoMeshException e) {
+            return Refusals.Problem(e.Message, StatusCodes.Status409Conflict, Refusals.ViewportNoMesh);
         } catch (Patina.Ipc.IpcException e) {
             return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
         } catch (Exception e) when (e is IOException or TimeoutException) {
@@ -170,6 +172,8 @@ static class PatinaApi {
     ) {
         try {
             return TypedResults.Ok(await session.MarqueeAsync(request, cancellationToken));
+        } catch (ViewportNoMeshException e) {
+            return Refusals.Problem(e.Message, StatusCodes.Status409Conflict, Refusals.ViewportNoMesh);
         } catch (Patina.Ipc.IpcException e) {
             return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
         } catch (Exception e) when (e is IOException or TimeoutException) {
@@ -199,6 +203,8 @@ static class PatinaApi {
 
         try {
             return TypedResults.Ok(await session.CastAsync(request, cancellationToken));
+        } catch (ViewportNoMeshException e) {
+            return Refusals.Problem(e.Message, StatusCodes.Status409Conflict, Refusals.ViewportNoMesh);
         } catch (Patina.Ipc.IpcException e) {
             return Refusals.Problem(
                 e.Message,
@@ -232,10 +238,7 @@ static class PatinaApi {
         // A material has no mesh of its own, and is seen on a shape instead.
         var file = stack.ModelFile ?? PreviewShape.File(identity.Library, session.State.Display.Shape);
         if (!File.Exists(file)) {
-            return TypedResults.Problem(
-                $"There is no file at '{stack.ModelFile}'.",
-                statusCode: StatusCodes.Status422UnprocessableEntity
-            );
+            return Refusals.NoFile(stack.ModelFile ?? file, StatusCodes.Status422UnprocessableEntity);
         }
 
         // A model's other texture sets are worn with it, or the rest of it would show nothing while one is painted.
@@ -279,10 +282,7 @@ static class PatinaApi {
 
     static Results<Ok<ViewportState>, ProblemHttpResult> SetMesh(ViewportMeshRequest request, ViewportSession session) {
         if (!File.Exists(request.Path)) {
-            return TypedResults.Problem(
-                $"There is no file at '{request.Path}'.",
-                statusCode: StatusCodes.Status404NotFound
-            );
+            return Refusals.NoFile(request.Path);
         }
 
         session.SetMesh(request.Path);
