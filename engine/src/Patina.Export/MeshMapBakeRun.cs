@@ -310,6 +310,7 @@ public static class MeshMapBakeRun {
             Rounding = BakeEdgeSettings.Rounding(options.Rounding),
             EdgeMap = BakeEdgeSettings.Marked(options.Edges),
             EdgeMapOf = options.Edges.Mesh == "low" ? BakeMesh.Target : BakeMesh.Source,
+            BorderWidth = (float)options.Borders.Width,
             Parts = rays.MatchByName
                 ? BakeParts.ByName(high.Parts, low.Parts, Suffixes(rays.HighSuffix), Suffixes(rays.LowSuffix))
                 : null,
@@ -335,6 +336,7 @@ public static class MeshMapBakeRun {
                 "opacity" => MeshMaps.Opacity,
                 "edges" => MeshMaps.Edges,
                 "islands" => MeshMaps.Islands,
+                "borders" => MeshMaps.Borders,
                 _ => MeshMaps.None
             };
         }

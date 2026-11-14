@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import type {
+  BakeBorderOptions,
   BakeColourOptions,
   BakeCurvatureOptions,
   BakeEdgeOptions,
@@ -53,7 +54,11 @@ const Maps: readonly { name: string; about: string }[] = [
     about: 'White where a ray found the high mesh and black where it found none, for cards and cut-outs.'
   },
   { name: 'edges', about: 'A band along the sharp or hard edges, white on the edge, for wear that follows them.' },
-  { name: 'islands', about: 'A flat color per UV island of the low mesh, for a variation per island.' }
+  { name: 'islands', about: 'A flat color per UV island of the low mesh, for a variation per island.' },
+  {
+    name: 'borders',
+    about: 'Black on the border of each UV island of the low mesh and white inside it, to fade a pattern before a seam.'
+  }
 ];
 const RoundedEdges = [
   { value: 'angle', label: 'By angle' },
@@ -988,6 +993,25 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   the whole band.
                 </p>
               }
+              @case ('borders') {
+                <div class="flex items-center justify-between gap-2 text-sm">
+                  <span>Width, % of the texture</span>
+                  <xui-numeric-input
+                    size="sm"
+                    aria-label="Border width"
+                    data-testid="bake-borders-width"
+                    [max]="100"
+                    [min]="0.1"
+                    [stepSize]="0.5"
+                    [value]="toPercent(options.borders.width, 1)"
+                    (valueChange)="setBorders({ width: fromPercent($event ?? 2) })"
+                  />
+                </div>
+                <p class="text-foreground-muted text-xs">
+                  How far inside an island the map turns white. It measures along the UV layout, so a seam fades the
+                  same on every island.
+                </p>
+              }
               @case ('thickness') {
                 <label class="flex items-center justify-between gap-2 text-sm">
                   Normalise, so the thickest point is white
@@ -1425,6 +1449,10 @@ export class BakePane {
 
   protected setCurvature(change: Partial<BakeCurvatureOptions>): void {
     this.settings.set(options => ({ ...options, curvature: { ...options.curvature, ...change } }));
+  }
+
+  protected setBorders(change: Partial<BakeBorderOptions>): void {
+    this.settings.set(options => ({ ...options, borders: { ...options.borders, ...change } }));
   }
 
   protected setEdges(change: Partial<BakeEdgeOptions>): void {

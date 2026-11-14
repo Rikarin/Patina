@@ -56,7 +56,7 @@ public sealed record BakeOptions {
     /// <summary>Every map a bake can write, in the order they are reported.</summary>
     public static IReadOnlyList<string> AllMaps { get; } = [
         "normal", "height", "ao", "bent", "curvature", "thickness", "position", "world", "id", "colour", "opacity",
-        "edges", "islands"
+        "edges", "islands", "borders"
     ];
 
     /// <summary>The atlas's width, in texels, and its height too unless <see cref="Rows" /> says otherwise.</summary>
@@ -119,6 +119,9 @@ public sealed record BakeOptions {
     /// <summary>Which edges the edges map marks, how wide and in what profile.</summary>
     public BakeEdgeOptions Edges { get; set; } = new();
 
+    /// <summary>How far inside a UV island the borders map turns white.</summary>
+    public BakeBorderOptions Borders { get; set; } = new();
+
     /// <summary>What the ID map labels and how it colours them.</summary>
     public BakeIdOptions Id { get; set; } = new();
 
@@ -177,6 +180,7 @@ public sealed record BakeOptions {
             ?? Rounding.Problem()
             ?? Curvature.Problem()
             ?? Edges.Problem()
+            ?? Borders.Problem()
             ?? Colour.Problem(Maps.Contains("colour", StringComparer.Ordinal));
     }
 }

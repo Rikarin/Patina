@@ -2465,6 +2465,15 @@ export interface components {
        */
       keep: number;
     };
+    /** @description The borders map's width (#121). */
+    BakeBorderOptions: {
+      /**
+       * Format: double
+       * @description How far inside its UV island a texel reads white, as a share of the texture: black on the island's border,
+       *     rising evenly to white this far in.
+       */
+      width: number;
+    };
     /** @description Where a colour map's colour comes from. */
     BakeColourOptions: {
       /**
@@ -2662,6 +2671,8 @@ export interface components {
       curvature: components['schemas']['BakeCurvatureOptions'];
       /** @description Which edges the edges map marks, how wide and in what profile. */
       edges: components['schemas']['BakeEdgeOptions'];
+      /** @description How far inside a UV island the borders map turns white. */
+      borders: components['schemas']['BakeBorderOptions'];
       /** @description What the ID map labels and how it colours them. */
       id: components['schemas']['BakeIdOptions'];
       /** @description Edges baked round into the normal, with no high poly to give them a bevel. */

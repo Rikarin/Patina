@@ -26,6 +26,19 @@ public sealed record BakeCurvatureOptions {
         : null;
 }
 
+/// <summary>The borders map's width (#121).</summary>
+public sealed record BakeBorderOptions {
+    /// <summary>
+    ///     How far inside its UV island a texel reads white, as a share of the texture: black on the island's border,
+    ///     rising evenly to white this far in.
+    /// </summary>
+    public double Width { get; set; } = 0.02;
+
+    /// <summary>What is wrong, or null.</summary>
+    public string? Problem() =>
+        Width is > 0 and <= 1 ? null : "The borders map's width is more than nothing and at most the whole texture.";
+}
+
 /// <summary>Which edges the edges map marks, and the band it draws along them (#148).</summary>
 public sealed record BakeEdgeOptions {
     /// <summary>The words <see cref="Profile" /> and a rounded edge's profile take.</summary>

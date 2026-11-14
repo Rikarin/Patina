@@ -111,6 +111,33 @@ public sealed class BakeMapKindsTests : IDisposable {
     }
 
     /// <summary>
+    ///     The borders map is black on each UV island's border and white a width inside it, so it is black off the
+    ///     islands, white somewhere inside them and grey between; a wider width reaches white later (#121).
+    /// </summary>
+    [Fact]
+    public void The_borders_map_is_black_on_an_islands_border_and_white_inside() {
+        static Func<BakeOptions, BakeOptions> With(double width) =>
+            options => options with { Maps = ["borders", "islands"], Borders = new() { Width = width } };
+
+        var manifest = Bake("narrow", With(0.02));
+        Bake("wide", With(0.2));
+        var islands = Picture("narrow", "islands");
+        var narrow = Covered(Picture("narrow", "borders"), islands);
+        var wide = Covered(Picture("wide", "borders"), islands);
+        var outside = Picture("narrow", "borders").Pixels.Where((_, at) =>
+            at % 4 == 0 && islands.Pixels[at] + islands.Pixels[at + 1] + islands.Pixels[at + 2] == 0
+        );
+
+        Assert.Equal(["islands", "borders"], manifest.Result.Maps.Select(static map => map.Map).ToArray());
+        Assert.Contains(narrow, static value => value == 0);
+        Assert.Contains(narrow, static value => value == 255);
+        Assert.Contains(narrow, static value => value is > 20 and < 235);
+        Assert.True(wide.Sum(static value => (long)value) < narrow.Sum(static value => (long)value));
+        Assert.All(outside, static value => Assert.Equal(0, value));
+        Assert.Contains("borders", new BakeOptions { Borders = new() { Width = 0 } }.Problem());
+    }
+
+    /// <summary>
     ///     A chamfered band is white all the way across, so its edges map holds no grey; an even one ramps down through
     ///     the greys. The rounded normal turns differently too.
     /// </summary>

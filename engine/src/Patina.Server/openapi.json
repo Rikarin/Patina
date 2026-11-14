@@ -9053,6 +9053,20 @@
         },
         "description": "How unsaved work is kept. It goes to the library\u0027s cache, never over a document."
       },
+      "BakeBorderOptions": {
+        "required": [
+          "width"
+        ],
+        "type": "object",
+        "properties": {
+          "width": {
+            "type": "number",
+            "description": "How far inside its UV island a texel reads white, as a share of the texture: black on the island\u0027s border,\nrising evenly to white this far in.",
+            "format": "double"
+          }
+        },
+        "description": "The borders map\u0027s width (#121)."
+      },
       "BakeColourOptions": {
         "required": [
           "source",
@@ -9278,6 +9292,7 @@
           "thickness",
           "curvature",
           "edges",
+          "borders",
           "id",
           "rounding",
           "colour"
@@ -9356,6 +9371,10 @@
           "edges": {
             "description": "Which edges the edges map marks, how wide and in what profile.",
             "$ref": "#/components/schemas/BakeEdgeOptions"
+          },
+          "borders": {
+            "description": "How far inside a UV island the borders map turns white.",
+            "$ref": "#/components/schemas/BakeBorderOptions"
           },
           "id": {
             "description": "What the ID map labels and how it colours them.",

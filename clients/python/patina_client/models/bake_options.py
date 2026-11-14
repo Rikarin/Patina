@@ -12,6 +12,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.bake_border_options import BakeBorderOptions
   from ..models.bake_colour_options import BakeColourOptions
   from ..models.bake_curvature_options import BakeCurvatureOptions
   from ..models.bake_edge_options import BakeEdgeOptions
@@ -54,6 +55,7 @@ class BakeOptions:
             thickness (BakeThicknessOptions): The thickness map's own settings.
             curvature (BakeCurvatureOptions): The curvature map's stored range (#148).
             edges (BakeEdgeOptions): Which edges the edges map marks, and the band it draws along them (#148).
+            borders (BakeBorderOptions): The borders map's width (#121).
             id (BakeIdOptions): What an ID map labels, and how it colours the labels.
             rounding (BakeRoundingOptions): Edges baked round into the normal map, the bevel a hard-surface model was not
                 modelled with.
@@ -82,6 +84,7 @@ class BakeOptions:
     thickness: BakeThicknessOptions
     curvature: BakeCurvatureOptions
     edges: BakeEdgeOptions
+    borders: BakeBorderOptions
     id: BakeIdOptions
     rounding: BakeRoundingOptions
     colour: BakeColourOptions
@@ -94,6 +97,7 @@ class BakeOptions:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.bake_border_options import BakeBorderOptions # noqa: PLC0415
         from ..models.bake_colour_options import BakeColourOptions # noqa: PLC0415
         from ..models.bake_curvature_options import BakeCurvatureOptions # noqa: PLC0415
         from ..models.bake_edge_options import BakeEdgeOptions # noqa: PLC0415
@@ -132,6 +136,8 @@ class BakeOptions:
 
         edges = self.edges.to_dict()
 
+        borders = self.borders.to_dict()
+
         id = self.id.to_dict()
 
         rounding = self.rounding.to_dict()
@@ -167,6 +173,7 @@ class BakeOptions:
             "thickness": thickness,
             "curvature": curvature,
             "edges": edges,
+            "borders": borders,
             "id": id,
             "rounding": rounding,
             "colour": colour,
@@ -182,6 +189,7 @@ class BakeOptions:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.bake_border_options import BakeBorderOptions # noqa: PLC0415
         from ..models.bake_colour_options import BakeColourOptions # noqa: PLC0415
         from ..models.bake_curvature_options import BakeCurvatureOptions # noqa: PLC0415
         from ..models.bake_edge_options import BakeEdgeOptions # noqa: PLC0415
@@ -241,6 +249,11 @@ class BakeOptions:
 
 
 
+        borders = BakeBorderOptions.from_dict(d.pop("borders"))
+
+
+
+
         id = BakeIdOptions.from_dict(d.pop("id"))
 
 
@@ -290,6 +303,7 @@ class BakeOptions:
             thickness=thickness,
             curvature=curvature,
             edges=edges,
+            borders=borders,
             id=id,
             rounding=rounding,
             colour=colour,
