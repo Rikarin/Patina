@@ -126,6 +126,15 @@ static class GraphEndpoints {
                 Conflict,
                 Unavailable
             );
+        graphs.MapPost("/{id}/histogram", ReadHistogram)
+            .Describe(
+                "ReadGraphHistogram",
+                "Counts a node's picture, at the size the graph computes it, into a histogram per channel on the GPU: "
+                + "256 shares of its texels for red, green, blue, alpha and luma.",
+                Missing,
+                Conflict,
+                Unavailable
+            );
         graphs.MapPut("/{id}/mesh-maps", UseMeshMaps)
             .Describe(
                 "SetGraphMeshMaps",
@@ -425,6 +434,39 @@ static class GraphEndpoints {
         try {
             var image = await evaluator.ImageAsync(session, request.Node, request.Port, cancellationToken);
             return TypedResults.Ok(new GraphImage(image.Hash, image.Width, image.Height));
+        } catch (IpcException e) {
+            return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
+        } catch (Exception e) when (e is IOException or TimeoutException) {
+            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    static async Task<Results<Ok<GraphHistogram>, ProblemHttpResult>> ReadHistogram(
+        string id,
+        GraphImageRequest request,
+        GraphSessions sessions,
+        GraphEvaluator evaluator,
+        CancellationToken cancellationToken
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        try {
+            var levels = await evaluator.HistogramAsync(session, request.Node, request.Port, cancellationToken);
+            return TypedResults.Ok(
+                new GraphHistogram(
+                    request.Node,
+                    request.Port,
+                    levels.Width,
+                    levels.Height,
+                    levels.Red,
+                    levels.Green,
+                    levels.Blue,
+                    levels.Alpha,
+                    levels.Luma
+                )
+            );
         } catch (IpcException e) {
             return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
         } catch (Exception e) when (e is IOException or TimeoutException) {

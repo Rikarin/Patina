@@ -40,6 +40,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(IReadOnlyList<StackTerm>))]
 [JsonSerializable(typeof(GraphImageRequest))]
 [JsonSerializable(typeof(GraphImage))]
+[JsonSerializable(typeof(GraphHistogram))]
 [JsonSerializable(typeof(GraphCreateRequest))]
 [JsonSerializable(typeof(GraphCreated))]
 [JsonSerializable(typeof(ViewportPick), TypeInfoPropertyName = nameof(ViewportPick))]

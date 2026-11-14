@@ -47,15 +47,36 @@ public sealed class GraphEvaluator(
         string port,
         CancellationToken cancellationToken
     ) {
+        var reply = await AskAsync(
+            new() { Type = IpcTypes.GraphImage, GraphImage = new(session.Id, node, port, store.Root) },
+            cancellationToken
+        );
+        return reply.GraphFullImage!;
+    }
+
+    /// <summary>Has the Worker count a node's picture, at full size, into a histogram per channel (#172).</summary>
+    /// <exception cref="IpcException">The Worker holds no such picture.</exception>
+    /// <exception cref="TimeoutException">No Worker came, or it did not answer.</exception>
+    public async Task<GraphLevels> HistogramAsync(
+        GraphSession session,
+        int node,
+        string port,
+        CancellationToken cancellationToken
+    ) {
+        var reply = await AskAsync(
+            new() { Type = IpcTypes.GraphHistogram, GraphHistogram = new(session.Id, node, port) },
+            cancellationToken
+        );
+        return reply.GraphLevels!;
+    }
+
+    /// <summary>Sends one question to the Worker, waiting a while for one to come.</summary>
+    async Task<IpcMessage> AskAsync(IpcMessage request, CancellationToken cancellationToken) {
         using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         patience.CancelAfter(WorkerPatience);
         try {
             var connection = await worker.ConnectionAsync(patience.Token);
-            var reply = await connection.SendAsync(
-                new() { Type = IpcTypes.GraphImage, GraphImage = new(session.Id, node, port, store.Root) },
-                cancellationToken
-            );
-            return reply.GraphFullImage!;
+            return await connection.SendAsync(request, cancellationToken);
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
             throw new RendererMissingException();
         }

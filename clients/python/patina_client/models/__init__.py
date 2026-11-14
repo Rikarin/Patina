@@ -146,6 +146,7 @@ from .graph_event_page import GraphEventPage
 from .graph_extract_request import GraphExtractRequest
 from .graph_extraction import GraphExtraction
 from .graph_group_state import GraphGroupState
+from .graph_histogram import GraphHistogram
 from .graph_history_state import GraphHistoryState
 from .graph_image import GraphImage
 from .graph_image_request import GraphImageRequest
@@ -157,6 +158,7 @@ from .graph_node_position import GraphNodePosition
 from .graph_node_state import GraphNodeState
 from .graph_node_state_texts import GraphNodeStateTexts
 from .graph_node_state_values import GraphNodeStateValues
+from .graph_node_time import GraphNodeTime
 from .graph_node_type import GraphNodeType
 from .graph_open_request import GraphOpenRequest
 from .graph_port_definition import GraphPortDefinition
@@ -564,6 +566,7 @@ __all__ = (
     "GraphExtraction",
     "GraphExtractRequest",
     "GraphGroupState",
+    "GraphHistogram",
     "GraphHistoryState",
     "GraphImage",
     "GraphImageRequest",
@@ -575,6 +578,7 @@ __all__ = (
     "GraphNodeState",
     "GraphNodeStateTexts",
     "GraphNodeStateValues",
+    "GraphNodeTime",
     "GraphNodeType",
     "GraphOpenRequest",
     "GraphPortDefinition",

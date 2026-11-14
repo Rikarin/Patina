@@ -251,6 +251,10 @@ public sealed record HistoryJump(long? Step);
 /// <param name="Previews">The previews that differ from the last evaluation's. All of them are in the state.</param>
 /// <param name="Diagnostics">Everything the compiler reported.</param>
 /// <param name="Error">Why it did not finish, or null. "No Vulkan" means the Worker has no GPU.</param>
+/// <param name="Times">
+///     How long each node whose operations ran took on the GPU. A node answered from the result cache keeps its time
+///     from before, which the state holds.
+/// </param>
 public sealed record GraphEvaluation(
     long Revision,
     bool Compiled,
@@ -259,7 +263,8 @@ public sealed record GraphEvaluation(
     double Milliseconds,
     IReadOnlyList<GraphPreview> Previews,
     IReadOnlyList<GraphDiagnostic> Diagnostics,
-    string? Error
+    string? Error,
+    IReadOnlyList<GraphNodeTime> Times
 );
 
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
@@ -290,6 +295,7 @@ public sealed record GraphEvaluation(
 /// </param>
 /// <param name="Info">What it says about itself: a description, an author, tags and a physical size.</param>
 /// <param name="Selection">The nodes chosen in it, as the last client to say so chose them.</param>
+/// <param name="Times">The newest GPU time of each node an evaluation has timed.</param>
 public sealed record GraphState(
     string Id,
     string Path,
@@ -311,7 +317,8 @@ public sealed record GraphState(
     long Settled,
     bool ReadOnly,
     GraphInfoState Info,
-    GraphSelection Selection
+    GraphSelection Selection,
+    IReadOnlyList<GraphNodeTime> Times
 );
 #pragma warning restore SK7005
 
@@ -683,6 +690,40 @@ public sealed record GraphImageRequest(int Node, string Port);
 /// <param name="Width">The PNG's size in pixels.</param>
 /// <param name="Height">The PNG's size in pixels.</param>
 public sealed record GraphImage(string Hash, int Width, int Height);
+
+/// <summary>
+///     A node's picture counted into a histogram per channel, on the GPU, at the size the graph computes it. Each list
+///     is 256 shares of the picture's texels, summing to one: bin <c>b</c> holds the values <c>v</c> with
+///     <c>floor(256 v) = b</c>, clamped, so a value of one shares the top bin. Numbers about the picture, not its pixels.
+/// </summary>
+/// <param name="Node">The node.</param>
+/// <param name="Port">Its output port, or the usage of an Output node.</param>
+/// <param name="Width">The picture's width as counted, which is the size the graph computes it.</param>
+/// <param name="Height">Its height.</param>
+/// <param name="Red">The red channel's shares.</param>
+/// <param name="Green">The green channel's.</param>
+/// <param name="Blue">The blue channel's.</param>
+/// <param name="Alpha">The alpha channel's.</param>
+/// <param name="Luma">Rec. 709 luma's, weighted from the stored red, green and blue.</param>
+public sealed record GraphHistogram(
+    int Node,
+    string Port,
+    int Width,
+    int Height,
+    IReadOnlyList<float> Red,
+    IReadOnlyList<float> Green,
+    IReadOnlyList<float> Blue,
+    IReadOnlyList<float> Alpha,
+    IReadOnlyList<float> Luma
+);
+
+/// <summary>How long one node's operations took on the GPU, the last time an evaluation ran them.</summary>
+/// <param name="Node">The node. A compound's inner operations are its own.</param>
+/// <param name="Milliseconds">
+///     The sum of its operations' times, each from the GPU timestamp after the operation before it. Operations overlap on
+///     a GPU, so these rank where a graph spends its time rather than time each node exactly.
+/// </param>
+public sealed record GraphNodeTime(int Node, double Milliseconds);
 
 /// <summary>The body of <c>POST /api/v1/library/graphs</c>.</summary>
 /// <param name="Name">The graph's name. The Server makes its file name from it.</param>
