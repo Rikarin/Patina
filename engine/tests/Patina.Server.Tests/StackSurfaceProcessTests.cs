@@ -119,8 +119,8 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
-    ///     Rays cast along the surface's own normal from in front of a picked place meet the housing there, and one cast
-    ///     away from it meets nothing (#263): a decal's surface is measured along its facing, not the camera's rays.
+    ///     Rays cast along the surface's own normal from in front of a picked place meet the housing there, and one
+    ///     cast away from it meets nothing (#263): a decal's surface is measured along its facing, not camera rays.
     /// </summary>
     async Task CastsMeetTheHousingAsync(ViewportPick middle, float size, CancellationToken token) {
         var at = middle.Position!;
@@ -135,10 +135,17 @@ public sealed partial class StackProcessTests {
         Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync(token));
         var cast = (await response.Content.ReadFromJsonAsync(ContractsJsonContext.Default.ViewportCast, token))!;
         Assert.Equal(2, cast.Hits.Count);
-        Assert.All(cast.Hits, hit => {
-            Assert.True(hit.Found, "A ray along the surface's normal should meet it.");
-            Assert.InRange(MathF.Sqrt(hit.Position!.Select((lane, axis) => MathF.Pow(lane - at[axis], 2)).Sum()), 0f, size * 0.001f);
-        });
+        Assert.All(
+            cast.Hits,
+            hit => {
+                Assert.True(hit.Found, "A ray along the surface's normal should meet it.");
+                Assert.InRange(
+                    MathF.Sqrt(hit.Position!.Select((lane, axis) => MathF.Pow(lane - at[axis], 2)).Sum()),
+                    0f,
+                    size * 0.001f
+                );
+            }
+        );
 
         using var away = await http.PostAsJsonAsync(
             "/api/v1/viewport/cast",
@@ -159,10 +166,13 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>A warp grid <paramref name="side" /> points square whose points are where they are.</summary>
-    static float[] Unwarped(int side) => [
-        ..Enumerable.Range(0, side * side)
-            .SelectMany(point => new[] { point % side / (float)(side - 1), point / side / (float)(side - 1) })
-    ];
+    static float[] Unwarped(int side) {
+        float last = side - 1;
+        return [
+            ..Enumerable.Range(0, side)
+                .SelectMany(row => Enumerable.Range(0, side).SelectMany(column => new[] { column / last, row / last }))
+        ];
+    }
 
     async Task<ViewportPick> PickAsync(double x, double y, CancellationToken token) {
         using var response = await http.PostAsJsonAsync(

@@ -215,17 +215,16 @@ sealed class LibraryCheck(string root, LibraryDocumentState document, IndexDatab
             }
         }
 
-        foreach (var file in new DirectoryInfo(kept).EnumerateFiles("*", SearchOption.AllDirectories)) {
-            if (!named.Contains(file.Name)) {
-                findings.Add(
-                    new(
-                        FindingKind.UnusedRevision,
-                        LibraryLayout.Relative(root, file.FullName),
-                        $"{file.Length} bytes no snapshot or pin names"
-                    )
-                );
-            }
-        }
+        var unnamed = new DirectoryInfo(kept).EnumerateFiles("*", SearchOption.AllDirectories)
+            .Where(file => !named.Contains(file.Name));
+        findings.AddRange(
+            unnamed.Select(file => new Finding(
+                    FindingKind.UnusedRevision,
+                    LibraryLayout.Relative(root, file.FullName),
+                    $"{file.Length} bytes no snapshot or pin names"
+                )
+            )
+        );
     }
 
     internal static AssetGraph LoadGraph(SqliteConnection connection) {

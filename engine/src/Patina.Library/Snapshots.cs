@@ -219,7 +219,7 @@ public static class Snapshots {
         return named;
     }
 
-    /// <summary>Every snapshot list below a folder, passing by what holds none: kept bytes, the cache and Git.</summary>
+    /// <summary>Every snapshot list below a folder, passing what holds none: kept bytes, the cache and Git.</summary>
     static IEnumerable<string> ListsBelow(string folder) {
         foreach (var child in Directory.EnumerateDirectories(folder)) {
             var name = Path.GetFileName(child);

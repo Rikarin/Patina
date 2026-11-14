@@ -20712,7 +20712,7 @@
               "type": "number",
               "format": "float"
             },
-            "description": "Where each ray starts: three numbers to a ray, at most int ViewportCastRequest.MaximumRays rays."
+            "description": "Where each ray starts: three numbers to a ray, at most 1024 rays."
           },
           "direction": {
             "type": "array",

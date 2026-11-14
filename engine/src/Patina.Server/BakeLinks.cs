@@ -27,16 +27,15 @@ public sealed class BakeLinks(LibraryHost host, StackSessions stacks, GraphSessi
             document = null; // the project could not be read: a set reading this folder already still follows it
         }
 
-        foreach (var stack in stacks.All) {
-            if (string.Equals(stack.Path, document, StringComparison.Ordinal) || Same(stack.MeshMaps, output)) {
-                Link(stack.UseMeshMaps, output);
-            }
+        var sets = stacks.All.Where(stack =>
+            string.Equals(stack.Path, document, StringComparison.Ordinal) || Same(stack.MeshMaps, output)
+        );
+        foreach (var stack in sets) {
+            Link(stack.UseMeshMaps, output);
         }
 
-        foreach (var graph in graphs.All) {
-            if (Same(graph.MeshMaps, output)) {
-                Link(graph.UseMeshMaps, output);
-            }
+        foreach (var graph in graphs.All.Where(graph => Same(graph.MeshMaps, output))) {
+            Link(graph.UseMeshMaps, output);
         }
     }
 

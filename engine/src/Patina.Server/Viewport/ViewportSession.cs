@@ -751,21 +751,17 @@ public sealed class ViewportSession(
         return reply.Picked!;
     }
 
-    /// <summary>Where rays along one direction meet the open mesh, through the Worker, in one round trip (#263).</summary>
-    /// <exception cref="IOException">The Worker went.</exception>
-    /// <exception cref="IpcException">No mesh is open, or it cannot be read.</exception>
-    /// <exception cref="RendererMissingException">No Worker came in time.</exception>
+    /// <summary>Where rays along one direction meet the open mesh, through the Worker, at once (#263).</summary>
     public async Task<ViewportCast> CastAsync(ViewportCastRequest request, CancellationToken cancellationToken) {
         string path;
         lock (changing) {
             path = mesh ?? throw new IpcException("Open a mesh first: there is nothing to cast at.");
         }
 
-        var reply = await AskWorkerAsync(
-            new() { Type = IpcTypes.ViewportCast, Cast = new(request.Origins, request.Direction, path) },
-            cancellationToken
-        );
-        return reply.Casted!;
+        var cast = new IpcMessage {
+            Type = IpcTypes.ViewportCast, Cast = new(request.Origins, request.Direction, path)
+        };
+        return (await AskWorkerAsync(cast, cancellationToken)).Casted!;
     }
 
     /// <summary>A question for the Worker that reads the mesh and no device: a pick or a cast.</summary>

@@ -85,7 +85,9 @@ public sealed class SnapshotTests : IDisposable {
         Assert.Equal(Stack, File.ReadAllText(Document));
     }
 
-    /// <summary>A forgotten snapshot's bytes are listed by the check and purged on request, and nothing named goes (#270).</summary>
+    /// <summary>
+    ///     A forgotten snapshot's bytes are listed by the check and purged on request, and nothing named goes (#270).
+    /// </summary>
     [Fact]
     public void Bytes_no_snapshot_names_any_more_are_checked_and_purged_and_the_named_ones_stay() {
         Write(Document, Stack);

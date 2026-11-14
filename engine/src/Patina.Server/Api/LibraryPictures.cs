@@ -9,7 +9,7 @@ namespace Patina.Server.Api;
 ///     decode off the request's thread, and only once for a picture's content (#269).
 /// </summary>
 static class LibraryPictures {
-    /// <summary>A picture as a PNG a client shows, at most so large, or the refusal of one that does not read.</summary>
+    /// <summary>A picture as a PNG a client shows, at most so large, or the refusal of one that won't read.</summary>
     public static async Task<Results<PhysicalFileHttpResult, ProblemHttpResult>> PreviewAsync(
         PicturePreviews previews,
         string file,

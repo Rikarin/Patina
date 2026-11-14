@@ -95,8 +95,8 @@ static class PatinaApi {
             .WithName("CastInViewport")
             .WithTags(ViewportTag)
             .WithSummary(
-                "Where rays along one direction meet the open mesh in its own space, such as a decal's surface measured "
-                + "along the decal's facing (#263)."
+                "Where rays along one direction meet the open mesh in its own space, such as a decal's surface "
+                + "measured along the decal's facing (#263)."
             )
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status409Conflict)

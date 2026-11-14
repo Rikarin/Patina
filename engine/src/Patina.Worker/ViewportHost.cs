@@ -121,6 +121,10 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         };
     }
 
+    /// <summary>A question about where things are on the mesh, which reads no device: a pick or a cast.</summary>
+    public IpcMessage Locate(IpcMessage request) =>
+        request.Type == IpcTypes.ViewportCast ? Cast(request) : Pick(request);
+
     /// <summary>
     ///     Where rays along one direction first meet the mesh (#263), through what the viewport draws as a pick is: the
     ///     surface under a decal measured along the decal's own facing, wherever the camera looks from.

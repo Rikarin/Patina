@@ -7854,7 +7854,7 @@ export interface components {
      *     (#263): a decal's surface measured along the decal's own direction, wherever the camera is, in one round trip.
      */
     ViewportCastRequest: {
-      /** @description Where each ray starts: three numbers to a ray, at most int ViewportCastRequest.MaximumRays rays. */
+      /** @description Where each ray starts: three numbers to a ray, at most 1024 rays. */
       origins: number[];
       /** @description The way every ray goes: three numbers, not all zero. */
       direction: number[];

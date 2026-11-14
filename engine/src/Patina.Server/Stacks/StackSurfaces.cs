@@ -92,7 +92,7 @@ static class StackSurfaces {
         };
     }
 
-    /// <summary>Whether so many numbers are none, or a square grid of points 2 to the finest on a side (#263).</summary>
+    /// <summary>Whether so many numbers are none, or a square grid 2 to the finest points on a side (#263).</summary>
     static bool IsWarpGrid(int count) =>
         count == 0 || Enumerable.Range(2, StackDecal.MaximumWarpSide - 1).Any(side => side * side * 2 == count);
 

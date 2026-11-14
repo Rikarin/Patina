@@ -25,8 +25,7 @@ class ViewportCastRequest:
     (#263): a decal's surface measured along the decal's own direction, wherever the camera is, in one round trip.
 
         Attributes:
-            origins (list[float]): Where each ray starts: three numbers to a ray, at most int
-                ViewportCastRequest.MaximumRays rays.
+            origins (list[float]): Where each ray starts: three numbers to a ray, at most 1024 rays.
             direction (list[float]): The way every ray goes: three numbers, not all zero.
      """
 

@@ -295,7 +295,7 @@ public sealed record ViewportPick(
 ///     Asks where rays along one direction meet the open mesh, in its own space and through what the viewport draws
 ///     (#263): a decal's surface measured along the decal's own direction, wherever the camera is, in one round trip.
 /// </summary>
-/// <param name="Origins">Where each ray starts: three numbers to a ray, at most <see cref="MaximumRays" /> rays.</param>
+/// <param name="Origins">Where each ray starts: three numbers to a ray, at most 1024 rays.</param>
 /// <param name="Direction">The way every ray goes: three numbers, not all zero.</param>
 public sealed record ViewportCastRequest(IReadOnlyList<float> Origins, IReadOnlyList<float> Direction) {
     /// <summary>How many rays one request casts at most.</summary>

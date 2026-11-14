@@ -21,8 +21,8 @@ static class ViewportMarks {
     static readonly Vector4 Edge = new(1f, 0.55f, 0.1f, 1f);
 
     /// <summary>
-    ///     The most marked triangles washed (#271). A denser part is washed one triangle in so many, evenly, which reads
-    ///     the same on screen; its outline is drawn whole. Each washed triangle uploads 84 bytes.
+    ///     The most marked triangles washed (#271). A denser part is washed one triangle in so many, evenly, which
+    ///     reads the same on screen; its outline is drawn whole. Each washed triangle uploads 84 bytes.
     /// </summary>
     public const int MostWashed = 250_000;
 
