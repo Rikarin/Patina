@@ -154,6 +154,43 @@ public sealed class LibraryCareApiTests : IAsyncLifetime {
         );
     }
 
+    /// <summary>
+    ///     A budget for the cache is kept with the person's preferences, and one too small to hold a bake is refused
+    ///     (#189); held to it, the cache loses what was built longest ago, but not while a job could need it.
+    /// </summary>
+    [Fact]
+    public async Task The_cache_is_held_to_the_budget_the_person_sets() {
+        using var small = await client.PutAsJsonAsync(
+            "/api/v1/preferences",
+            new ServerPreferences(new()) { CacheBudget = 1 << 20 },
+            Token
+        );
+        Assert.Equal(HttpStatusCode.BadRequest, small.StatusCode);
+        Assert.Contains("preference-refused", await small.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+        var budget = server.Services.GetRequiredService<CacheBudget>();
+        Assert.Null(budget.KeepOnce());
+
+        using var set = await client.PutAsJsonAsync(
+            "/api/v1/preferences",
+            new ServerPreferences(new()) { CacheBudget = Preferences.LeastCacheBudget },
+            Token
+        );
+        set.EnsureSuccessStatusCode();
+        var objects = LibraryLayout.ObjectsPath(server.Library);
+        Directory.CreateDirectory(objects);
+        var built = Path.Combine(objects, "large.bin");
+        await using (var file = File.Create(built)) {
+            file.SetLength(Preferences.LeastCacheBudget + 1);
+        }
+
+        Assert.Equal(1, budget.KeepOnce()?.Removed);
+        Assert.False(File.Exists(built));
+        Assert.Equal(
+            Preferences.LeastCacheBudget,
+            (await client.GetFromJsonAsync<ServerPreferences>("/api/v1/preferences", Token))!.CacheBudget
+        );
+    }
+
     [Theory]
     [InlineData(1, true)]
     [InlineData(0, false)]

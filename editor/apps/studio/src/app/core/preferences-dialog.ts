@@ -19,6 +19,11 @@ import { Preferences } from './preferences';
 type AutosavePreferences = components['schemas']['AutosavePreferences'];
 type CacheInfo = components['schemas']['CacheInfo'];
 
+/** A gigabyte as the app counts room, in bytes. */
+const Gigabyte = 1024 * 1024 * 1024;
+/** The least the engine holds a cache to, in gigabytes: a quarter, 256 MB. */
+const LeastBudget = 0.25;
+
 const Themes: readonly XuiSegmentedOption<Theme>[] = [
   { value: 'dark', label: 'Dark' },
   { value: 'light', label: 'Light' },
@@ -366,6 +371,40 @@ const MostKept = 20;
                 {{ cacheFailure() ?? 'No library is open, so there is no cache to show.' }}
               </p>
             }
+            @if (engine.held()) {
+              <div class="flex items-center gap-3">
+                <span class="min-w-0 flex-1 text-xs">Each library’s cache takes at most</span>
+                <xui-numeric-input
+                  class="w-24"
+                  size="sm"
+                  aria-label="Most room for each library's cache, in gigabytes"
+                  data-testid="preferences-cache-budget"
+                  [min]="leastBudget"
+                  [stepSize]="1"
+                  [value]="budget()"
+                  (valueChange)="saveBudget($event)"
+                />
+                <span class="text-foreground-muted text-xs">GB</span>
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  data-testid="preferences-cache-unlimited"
+                  [disabled]="budget() === null"
+                  (click)="saveBudget(null)"
+                >
+                  No Limit
+                </button>
+              </div>
+              <p class="text-foreground-muted text-xs" data-testid="preferences-cache-budget-said">
+                {{
+                  budget() === null
+                    ? 'The cache grows as it needs to. Prune, in Library Settings, takes out what is old.'
+                    : 'Over it, what was built longest ago goes while nothing is building, and is built again when needed.'
+                }}
+              </p>
+            }
           </section>
         </div>
       </xui-dialog-body>
@@ -399,6 +438,12 @@ export class PreferencesDialog {
   protected readonly autosave = this.engine.autosave;
   protected readonly autosaveFailure = this.engine.failure;
   protected readonly cache = signal<CacheInfo | null>(null);
+  /** The most room each library's cache may take, in gigabytes, or null for no limit (#189). */
+  protected readonly budget = computed(() => {
+    const held = this.engine.held()?.cacheBudget;
+    return held === null || held === undefined ? null : held / Gigabyte;
+  });
+  protected readonly leastBudget = LeastBudget;
   protected readonly cacheFailure = signal<string | null>(null);
 
   constructor() {
@@ -445,6 +490,14 @@ export class PreferencesDialog {
     }
 
     await this.engine.change({ autosave: { ...held, ...change } });
+  }
+
+  /** Holds each library's cache to so many gigabytes, or lets it grow for null (#189). */
+  protected async saveBudget(gigabytes: number | null): Promise<void> {
+    const cacheBudget = gigabytes === null ? null : Math.round(Math.max(LeastBudget, gigabytes) * Gigabyte);
+    if (cacheBudget !== (this.engine.held()?.cacheBudget ?? null)) {
+      await this.engine.change({ cacheBudget });
+    }
   }
 
   /** What a new project bakes with, in a few words. */

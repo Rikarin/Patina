@@ -76,9 +76,15 @@ var watch = new DeviceWatch();
 using var stacks = new StackHost(gpu, viewport, meshes, watch);
 using var bakes = new BakeHost();
 using var builds = new BuildHost(gpu);
+var report = new WorkerReport(Console.Out);
+// What ends the Worker unasked is said to the Server as it goes, as far as there is time to (#297).
+AppDomain.CurrentDomain.UnhandledException += (_, e) => {
+    _ = report.FailAsync($"patina-worker stopped: {(e.ExceptionObject as Exception)?.Message ?? e.ExceptionObject}");
+    report.SentAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
+};
 await new WorkerLoop(viewport, graphs, stacks, bakes, builds, gpu, watch, meshes).RunAsync(
     socketPath,
-    Console.Out,
+    report,
     stop.Token
 );
 return 0;

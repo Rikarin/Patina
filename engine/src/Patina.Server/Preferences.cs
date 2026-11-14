@@ -18,6 +18,9 @@ public sealed class Preferences {
     /// <summary>The most autosaves of one document kept.</summary>
     public const int MostKept = 20;
 
+    /// <summary>The least room a cache may be held to: less would take away what a single bake makes.</summary>
+    public const long LeastCacheBudget = 256L << 20;
+
     readonly string file;
     readonly int? autosaveOverride;
     readonly Lock gate = new();
@@ -81,6 +84,13 @@ public sealed class Preferences {
     /// <summary>Every setting in range, and bake options a bake can use.</summary>
     static void Check(ServerPreferences preferences) {
         Check(preferences.Autosave);
+        if (preferences.CacheBudget is < LeastCacheBudget) {
+            throw new ArgumentException(
+                $"A cache may be held to {LeastCacheBudget >> 20} MiB or more.",
+                nameof(preferences)
+            );
+        }
+
         if (preferences.Bake?.Problem() is { } problem) {
             throw new ArgumentException(problem, nameof(preferences));
         }

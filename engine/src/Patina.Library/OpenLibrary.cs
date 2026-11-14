@@ -31,7 +31,11 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         queries = new(database);
         costs = new(database);
         scanner = new(root, database);
+        Care = new(root, database, createGate, () => Interlocked.Increment(ref unscannedWrites));
     }
+
+    /// <summary>The library's bin and Clean, under the same write lock as every change here (#297).</summary>
+    public LibraryCare Care { get; }
 
     public LibraryId Id => Document.Id;
 
@@ -418,30 +422,6 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     /// <exception cref="FileNotFoundException">The project or document is not there.</exception>
     public BinItem TrashDocument(string path, AssetId document) =>
         Write(() => ProjectFiles.TrashDocument(RootPath, path, document));
-
-    /// <summary>What the bin holds.</summary>
-    public BinList Bin() => LibraryBin.List(RootPath);
-
-    /// <summary>Puts something back from the bin.</summary>
-    /// <returns>Where it is now, below the library.</returns>
-    /// <exception cref="FileNotFoundException">The bin holds no such thing.</exception>
-    /// <exception cref="ProjectRefusedException">It cannot go back where it was.</exception>
-    public string Restore(string id) => Write(() => ProjectFiles.Restore(RootPath, id));
-
-    /// <summary>Deletes one thing in the bin for good.</summary>
-    /// <exception cref="FileNotFoundException">The bin holds no such thing.</exception>
-    public void DeleteFromBin(string id) {
-        lock (createGate) {
-            LibraryBin.Delete(RootPath, id);
-        }
-    }
-
-    /// <summary>Deletes everything in the bin for good.</summary>
-    public int EmptyBin() {
-        lock (createGate) {
-            return LibraryBin.Empty(RootPath);
-        }
-    }
 
     /// <summary>Gives a document a new display name.</summary>
     /// <exception cref="FileNotFoundException">The project or document is not there.</exception>

@@ -49,13 +49,15 @@ public static class LibraryUploads {
     /// <param name="name">The file's name, which <see cref="Takes" /> said yes to.</param>
     /// <param name="content">What is in it, read to its end.</param>
     /// <param name="cancellationToken">Stops reading; nothing is kept.</param>
+    /// <param name="most">The largest file taken, <see cref="MostBytes" /> unless a test lowers it.</param>
     /// <exception cref="ArgumentException">The name is not one a file can be kept under.</exception>
-    /// <exception cref="UploadTooLargeException">It is over <see cref="MostBytes" />; nothing is kept.</exception>
+    /// <exception cref="UploadTooLargeException">It is over <paramref name="most" />; nothing is kept.</exception>
     public static async Task<string> KeepAsync(
         string root,
         string name,
         Stream content,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        long most = MostBytes
     ) {
         ArgumentNullException.ThrowIfNull(content);
         if (!Takes(name)) {
@@ -66,11 +68,14 @@ public static class LibraryUploads {
         Directory.CreateDirectory(folder);
         var partial = Path.Combine(folder, $".partial-{Guid.NewGuid():N}");
         try {
-            var digest = await WriteAsync(partial, content, cancellationToken);
+            var digest = await WriteAsync(partial, content, most, cancellationToken);
             var kept = Path.Combine(folder, digest[..DigestDigits], name);
             if (!File.Exists(kept)) {
                 Directory.CreateDirectory(Path.GetDirectoryName(kept)!);
                 SharedFile.MoveOver(partial, kept);
+            } else {
+                // Sent again: just sent, so a clearing of uploads nothing names leaves it for its sender to use (#297).
+                File.SetLastWriteTimeUtc(kept, DateTime.UtcNow);
             }
 
             return kept;
@@ -80,7 +85,7 @@ public static class LibraryUploads {
     }
 
     /// <summary>Writes what a stream holds to a new file, and answers with its digest in hex.</summary>
-    static async Task<string> WriteAsync(string file, Stream content, CancellationToken cancellationToken) {
+    static async Task<string> WriteAsync(string file, Stream content, long most, CancellationToken cancellationToken) {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         var buffer = ArrayPool<byte>.Shared.Rent(1 << 16);
         try {
@@ -96,7 +101,7 @@ public static class LibraryUploads {
             int read;
             while ((read = await content.ReadAsync(buffer, cancellationToken)) > 0) {
                 total += read;
-                if (total > MostBytes) {
+                if (total > most) {
                     throw new UploadTooLargeException();
                 }
 

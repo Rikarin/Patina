@@ -39,14 +39,21 @@ const presets = [
   { id: 'godot', name: 'Godot' }
 ];
 
+const noUploads = { files: [], bytes: 0 };
+
 async function render(
   post: (path: string, init?: unknown) => Promise<unknown>,
-  put: (path: string, init: { body: Record<string, unknown> }) => Promise<unknown> = () => ok(info)
+  put: (path: string, init: { body: Record<string, unknown> }) => Promise<unknown> = () => ok(info),
+  unusedUploads: () => unknown = () => noUploads
 ) {
   const POST = vi.fn(post);
   const PUT = vi.fn(put);
   const GET = vi.fn((path: string) =>
-    path === '/api/v1/export/presets' ? ok({ presets }) : ok({ path: 'C:\\Art\\Game.ptlib\\.ptcache', bytes: 2048 })
+    path === '/api/v1/export/presets'
+      ? ok({ presets })
+      : path === '/api/v1/library/uploads/unused'
+        ? ok(unusedUploads())
+        : ok({ path: 'C:\\Art\\Game.ptlib\\.ptcache', bytes: 2048 })
   );
   const report = vi.fn();
   const state = signal<{ kind: 'ready'; info: typeof info }>({ kind: 'ready', info });
@@ -197,6 +204,31 @@ describe('LibrarySettingsDialog', () => {
     expect(byId('library-settings-tidied')?.textContent.trim()).toBe(
       'Removed 1 copies of moved paint, 1.0 KB. Moved 3 pictures nothing uses to the bin, 2.0 KB.'
     );
+  });
+
+  it('clears the uploads nothing uses into the bin, and reads them again (#297)', async () => {
+    let unused: unknown = { files: [{ path: 'uploads/ab/scan.png', bytes: 2048 }], bytes: 2048 };
+    const { fixture, POST } = await render(
+      () => ok({ count: 1, bytes: 2048, bin: 'b2' }),
+      undefined,
+      () => unused
+    );
+    await new Promise(resolve => setTimeout(resolve)); // the uploads are read once the dialog is open
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(byId('library-settings-uploads-unused')?.textContent).toContain('1 nothing uses any more');
+
+    unused = noUploads;
+    byId('library-settings-clear-uploads')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(POST).toHaveBeenCalledWith('/api/v1/library/uploads/clear');
+    expect(byId('library-settings-tidied')?.textContent.trim()).toBe(
+      'Moved 1 uploads nothing uses to the bin, 2.0 KB.'
+    );
+    expect(byId('library-settings-uploads-unused')).toBeNull();
+    expect((byId('library-settings-clear-uploads') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('says why when the engine refuses', async () => {

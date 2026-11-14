@@ -23,7 +23,7 @@ public sealed class ViewportProcessTests : IDisposable {
         Path.GetFullPath(Path.Combine(Engine.Root, "..", "content", "fixtures", "viewport-test.glb"));
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-viewport-");
-    readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
+    readonly string socketPath = Patina.Testing.TempFolders.NewSocket();
     readonly List<Process> started = [];
     readonly ConcurrentQueue<string> output = new();
 

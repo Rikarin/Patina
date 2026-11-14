@@ -45,3 +45,19 @@ public sealed record LibraryTidied(int Removed, long Bytes);
 /// <param name="PictureBytes">The room those take, which emptying the bin frees.</param>
 /// <param name="Bin">The bin's entry that holds those pictures, for a Restore, or null when none went.</param>
 public sealed record LibraryCleaned(int Removed, long Bytes, int Pictures, long PictureBytes, string? Bin);
+
+/// <summary>A file of the library and the room it takes.</summary>
+/// <param name="Path">Its path below the library, with forward slashes.</param>
+/// <param name="Bytes">Its size.</param>
+public sealed record UnusedFile(string Path, long Bytes);
+
+/// <summary>What <c>GET /api/v1/library/uploads/unused</c> answers (#297).</summary>
+/// <param name="Files">The files sent from another computer that nothing names, in order of their path.</param>
+/// <param name="Bytes">The room they take.</param>
+public sealed record UnusedUploadList(IReadOnlyList<UnusedFile> Files, long Bytes);
+
+/// <summary>What <c>POST /api/v1/library/uploads/clear</c> took away (#297).</summary>
+/// <param name="Count">How many uploads nothing named went to the bin.</param>
+/// <param name="Bytes">The room those take, which emptying the bin frees.</param>
+/// <param name="Bin">The bin's entry that holds them, for a Restore, or null when none went.</param>
+public sealed record UploadsCleared(int Count, long Bytes, string? Bin);

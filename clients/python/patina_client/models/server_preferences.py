@@ -32,10 +32,14 @@ class ServerPreferences:
             autosave (AutosavePreferences): How unsaved work is kept. It goes to the library's cache unless a folder is
                 chosen, never over a document.
             bake (BakeOptions | None | Unset):
+            cache_budget (int | None | Unset): The most room each library's cache may take, in bytes, or null for no limit
+                (#189). Over it, the built
+                objects, bakes and reports used longest ago go, as Prune takes them, while nothing is building.
      """
 
     autosave: AutosavePreferences
     bake: BakeOptions | None | Unset = UNSET
+    cache_budget: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -55,6 +59,12 @@ class ServerPreferences:
         else:
             bake = self.bake
 
+        cache_budget: int | None | Unset
+        if isinstance(self.cache_budget, Unset):
+            cache_budget = UNSET
+        else:
+            cache_budget = self.cache_budget
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -63,6 +73,8 @@ class ServerPreferences:
         })
         if bake is not UNSET:
             field_dict["bake"] = bake
+        if cache_budget is not UNSET:
+            field_dict["cacheBudget"] = cache_budget
 
         return field_dict
 
@@ -98,9 +110,20 @@ class ServerPreferences:
         bake = _parse_bake(d.pop("bake", UNSET))
 
 
+        def _parse_cache_budget(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        cache_budget = _parse_cache_budget(d.pop("cacheBudget", UNSET))
+
+
         server_preferences = cls(
             autosave=autosave,
             bake=bake,
+            cache_budget=cache_budget,
         )
 
 

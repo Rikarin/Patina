@@ -62,6 +62,18 @@ public sealed class AutosaveGate(Func<string, string?>? away = null) {
         }
     }
 
+    /// <summary>
+    ///     Moves the autosaves kept in a place chosen before to where they go now (#297), all but those being written.
+    /// </summary>
+    /// <param name="from">The place chosen before.</param>
+    /// <param name="to">The place chosen now, or null for each library's cache.</param>
+    /// <param name="open">The library open now, if any.</param>
+    public int Move(string from, string? to, string? open) {
+        lock (gate) {
+            return Recovery.Move(from, to, open, writing);
+        }
+    }
+
     void ForgetHeld(string root, string file) {
         count++;
         forgotten[Recovery.Folder(root, file)] = count;

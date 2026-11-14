@@ -44,6 +44,18 @@ static class LibraryHealthEndpoints {
                 + "and moves the pictures in projects that no document reads, saved or open, into the bin as one "
                 + "entry."
             );
+        library.MapGet("/uploads/unused", UnusedUploads)
+            .Described(
+                "GetUnusedUploads",
+                "The files sent from another computer that no file of the library and no open document names any "
+                + "more, with the room they take. One sent in the last hour counts as used. Changes nothing."
+            );
+        library.MapPost("/uploads/clear", ClearUploads)
+            .Described(
+                "ClearUploads",
+                "Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, "
+                + "into the bin as one entry, which Restore puts back."
+            );
     }
 
     static async Task<Results<Ok<LibraryHealth>, ProblemHttpResult>> CheckAsync(
@@ -143,19 +155,44 @@ static class LibraryHealthEndpoints {
         LibraryTreeEndpoints.Guarded(
             host,
             library => {
-                var (folders, bytes) = PaintBackups.Remove(library.RootPath);
-                Dictionary<string, string> open = new(StringComparer.Ordinal);
-                foreach (var stack in stacks.All) {
-                    open[stack.Path] = stack.Text;
-                }
-
-                foreach (var graph in graphs.All) {
-                    open[graph.Path] = graph.Text;
-                }
-
                 // As the copies of moved paint go: from the folders alone, which the next rescan finds as they are.
-                var (item, pictures, pictureBytes) = UnusedPictures.Bin(library.RootPath, open);
-                return TypedResults.Ok(new LibraryCleaned(folders, bytes, pictures, pictureBytes, item?.Id));
+                return TypedResults.Ok(library.Care.Clean(Open(stacks, graphs)));
             }
         );
+
+    /// <summary>The uploads nothing names, saved or open (#297).</summary>
+    static Results<Ok<UnusedUploadList>, ProblemHttpResult> UnusedUploads(
+        LibraryHost host,
+        StackSessions stacks,
+        GraphSessions graphs
+    ) =>
+        LibraryTreeEndpoints.Guarded(
+            host,
+            library => TypedResults.Ok(library.Care.UnusedUploads(Open(stacks, graphs)))
+        );
+
+    /// <summary>Moves the uploads nothing names into the bin (#297).</summary>
+    static Results<Ok<UploadsCleared>, ProblemHttpResult> ClearUploads(
+        LibraryHost host,
+        StackSessions stacks,
+        GraphSessions graphs
+    ) =>
+        LibraryTreeEndpoints.Guarded(
+            host,
+            library => TypedResults.Ok(library.Care.ClearUploads(Open(stacks, graphs)))
+        );
+
+    /// <summary>What every open document holds now, saved or not, by its file.</summary>
+    static Dictionary<string, string> Open(StackSessions stacks, GraphSessions graphs) {
+        Dictionary<string, string> open = new(StringComparer.Ordinal);
+        foreach (var stack in stacks.All) {
+            open[stack.Path] = stack.Text;
+        }
+
+        foreach (var graph in graphs.All) {
+            open[graph.Path] = graph.Text;
+        }
+
+        return open;
+    }
 }

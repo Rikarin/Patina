@@ -24,15 +24,15 @@ sealed class WorkerLoop(
 
     /// <summary>
     ///     Keeps a link to the Server, reconnecting when it drops. <paramref name="log" /> gets one line per link,
-    ///     which the desktop app's supervision reads.
+    ///     which the desktop app's supervision reads, and the Server gets its warnings and errors.
     /// </summary>
-    public async Task RunAsync(string socketPath, TextWriter log, CancellationToken cancellationToken) {
+    public async Task RunAsync(string socketPath, WorkerReport log, CancellationToken cancellationToken) {
         _ = WatchAsync(log, cancellationToken);
         while (!cancellationToken.IsCancellationRequested) {
             try {
                 await RunLinkAsync(socketPath, log, cancellationToken);
             } catch (Exception e) when (e is IOException or IpcException or System.Net.Sockets.SocketException) {
-                await log.WriteLineAsync($"patina-worker: {e.Message}", CancellationToken.None);
+                await log.WarnAsync($"patina-worker: {e.Message}", CancellationToken.None);
             } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 return;
             }
@@ -45,15 +45,15 @@ sealed class WorkerLoop(
         }
     }
 
-    async Task WatchAsync(TextWriter log, CancellationToken cancellationToken) {
+    async Task WatchAsync(WorkerReport log, CancellationToken cancellationToken) {
         try {
-            await watch.WatchAsync(log, cancellationToken);
+            await watch.WatchAsync(log.Failures, cancellationToken);
         } catch (OperationCanceledException) {
             // Stopping.
         }
     }
 
-    async Task RunLinkAsync(string socketPath, TextWriter log, CancellationToken cancellationToken) {
+    async Task RunLinkAsync(string socketPath, WorkerReport log, CancellationToken cancellationToken) {
         var stream = await IpcSocket.ConnectAsync(socketPath, ConnectTimeout, cancellationToken);
         IpcConnection? connection = null;
         connection = new(stream, (request, token) => AnswerAsync(connection!, request, token)) {
@@ -81,14 +81,13 @@ sealed class WorkerLoop(
                 },
                 cancellationToken
             );
-            await log.WriteLineAsync(
-                $"patina-worker {ProductInfo.Version} connected to {socketPath}",
-                cancellationToken
-            );
+            await log.SayAsync($"patina-worker {ProductInfo.Version} connected to {socketPath}", cancellationToken);
+            log.Linked(connection);
             try {
                 await connection.Closed.WaitAsync(cancellationToken);
-                await log.WriteLineAsync("patina-worker: the Server disconnected", cancellationToken);
+                await log.SayAsync("patina-worker: the Server disconnected", cancellationToken);
             } finally {
+                log.Unlinked();
                 bakes.LinkLost();
                 builds.LinkLost();
                 // ⚠ The stacks were the lost Server's: the next one opens its documents again under new ids, and one

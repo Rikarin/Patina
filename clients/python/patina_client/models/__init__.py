@@ -430,10 +430,13 @@ from .tag_page import TagPage
 from .thumbnail import Thumbnail
 from .thumbnail_list import ThumbnailList
 from .thumbnail_request import ThumbnailRequest
+from .unused_file import UnusedFile
+from .unused_upload_list import UnusedUploadList
 from .unwrap_options import UnwrapOptions
 from .unwrap_report import UnwrapReport
 from .unwrap_set import UnwrapSet
 from .uploaded_file import UploadedFile
+from .uploads_cleared import UploadsCleared
 from .viewport_bake_preview import ViewportBakePreview
 from .viewport_bake_request import ViewportBakeRequest
 from .viewport_camera_state import ViewportCameraState
@@ -890,10 +893,13 @@ __all__ = (
     "Thumbnail",
     "ThumbnailList",
     "ThumbnailRequest",
+    "UnusedFile",
+    "UnusedUploadList",
     "UnwrapOptions",
     "UnwrapReport",
     "UnwrapSet",
     "UploadedFile",
+    "UploadsCleared",
     "ViewportBakePreview",
     "ViewportBakeRequest",
     "ViewportCameraState",

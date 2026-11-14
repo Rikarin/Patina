@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Sockets;
 
 namespace Patina.Ipc;
@@ -36,6 +37,7 @@ public static class IpcSocket {
     /// </summary>
     public static Socket Listen(string socketPath) {
         File.Delete(socketPath);
+        SweepAbandoned(Path.GetDirectoryName(Path.GetFullPath(socketPath))!, TimeSpan.FromDays(1));
         var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
         try {
             socket.Bind(new UnixDomainSocketEndPoint(socketPath));
@@ -44,6 +46,51 @@ public static class IpcSocket {
         } catch {
             socket.Dispose();
             throw;
+        }
+    }
+
+    /// <summary>
+    ///     Removes the sockets that processes now gone left in a folder (#297): each named <c>patina-</c> and the id of
+    ///     the process that chose it, as the desktop app and a Server name theirs, and older than
+    ///     <paramref name="age" />. A process that ends without cleaning up, killed or crashed, leaves its file behind.
+    /// </summary>
+    /// <returns>How many went.</returns>
+    public static int SweepAbandoned(string folder, TimeSpan age) {
+        if (!Directory.Exists(folder)) {
+            return 0;
+        }
+
+        var cutoff = DateTime.UtcNow - age;
+        var removed = 0;
+        foreach (var socket in new DirectoryInfo(folder).EnumerateFiles("patina-*.sock")) {
+            var id = Path.GetFileNameWithoutExtension(socket.Name)["patina-".Length..];
+            if (socket.LastWriteTimeUtc >= cutoff
+                || id.Length is 0 or > 10
+                || !id.All(char.IsAsciiDigit)
+                || Running(int.Parse(id, System.Globalization.CultureInfo.InvariantCulture))) {
+                continue;
+            }
+
+            try {
+                socket.Delete();
+                removed++;
+            } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+                // Held, or not ours to remove: the next start tries again.
+            }
+        }
+
+        return removed;
+    }
+
+    /// <summary>Whether a process of that id runs, which may be another that took a finished one's id.</summary>
+    static bool Running(int id) {
+        try {
+            using var process = Process.GetProcessById(id);
+            return !process.HasExited;
+        } catch (Exception e) when (e is ArgumentException or InvalidOperationException) {
+            return false;
+        } catch (System.ComponentModel.Win32Exception) {
+            return true; // there, but not ours to look at
         }
     }
 }

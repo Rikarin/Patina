@@ -38,6 +38,45 @@ public sealed partial class AutosaveGateTests : IDisposable {
     }
 
     /// <summary>
+    ///     Choosing another place for autosaves strands none (#297): those kept in the place before move to the new
+    ///     one, and with no place chosen, back to each library's cache, a library other than the open one too. The one
+    ///     being written stays where its Worker writes it.
+    /// </summary>
+    [Fact]
+    public void Autosaves_follow_the_place_they_are_kept_in() {
+        var first = Library("First");
+        var second = Library("Second");
+        var before = Path.Combine(folder.FullName, "before");
+        var after = Path.Combine(folder.FullName, "after");
+        var place = before;
+        var gate = new AutosaveGate(root => Recovery.Away(place, root));
+        var crate = Path.Combine(first, "projects", "crate", "crate.vxlayers");
+        var barrel = Path.Combine(second, "projects", "barrel", "barrel.vxlayers");
+        Assert.True(gate.Finish(first, crate, gate.Begin(first, crate), gate.Mark(), "crate", 3));
+        Assert.True(gate.Finish(second, barrel, gate.Begin(second, barrel), gate.Mark(), "barrel", 3));
+        var writing = gate.Begin(first, crate);
+
+        place = after;
+        Assert.Equal(2, gate.Move(before, after, first));
+
+        Assert.Equal(1, Recovery.Count(first, crate, Recovery.Away(after, first)));
+        Assert.Equal(1, Recovery.Count(second, barrel, Recovery.Away(after, second)));
+        Assert.True(Directory.Exists(writing));
+
+        Assert.Equal(2, gate.Move(after, null, null));
+
+        Assert.Equal(1, Recovery.Count(first, crate));
+        Assert.Equal(1, Recovery.Count(second, barrel));
+        Assert.False(Directory.Exists(Recovery.Away(after, second)));
+    }
+
+    string Library(string name) {
+        var root = Directory.CreateDirectory(Path.Combine(folder.FullName, name)).FullName;
+        File.WriteAllText(Path.Combine(root, LibraryLayout.LibraryFile), "schema: 1\n");
+        return root;
+    }
+
+    /// <summary>
     ///     Only the gate lets go of autosaves (#239). A letting go anywhere else can delete one a Worker is still
     ///     writing, or let one begun before it land after it; it is easy to copy, so a new one fails here. Recovery
     ///     itself only declares it.

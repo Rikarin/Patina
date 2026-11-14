@@ -14,6 +14,9 @@ public static partial class IpcTypes {
     /// <summary>Server to Worker: answers with <see cref="IpcMessage.Health" />.</summary>
     public const string Health = "health";
 
+    /// <summary>Worker to Server: a warning or an error it logged (<see cref="IpcMessage.Log" />).</summary>
+    public const string WorkerLog = "worker.log";
+
     /// <summary>Server to Worker: read the mesh at <see cref="IpcMessage.Mesh" />.</summary>
     public const string ViewportOpen = "viewport.open";
 
@@ -253,6 +256,9 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to health.</summary>
     public WorkerHealth? Health { get; set; }
+
+    /// <summary>worker.log: what the Worker logged.</summary>
+    public WorkerLogLine? Log { get; set; }
 
     /// <summary>bake.start: what to bake and where it goes.</summary>
     public StackLoad? StackLoad { get; set; }

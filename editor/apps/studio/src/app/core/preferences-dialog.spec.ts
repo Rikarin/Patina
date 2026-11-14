@@ -7,8 +7,8 @@ import { PreferencesDialog } from './preferences-dialog';
 const autosave = { intervalSeconds: 60, idleSeconds: 5, keep: 3, folder: null as string | null };
 
 async function render(chosen: string | null) {
-  const PUT = vi.fn((_path: string, init: { body: { autosave: typeof autosave } }) =>
-    Promise.resolve({ data: { autosave: init.body.autosave }, response: { ok: true } })
+  const PUT = vi.fn((_path: string, init: { body: { autosave: typeof autosave; cacheBudget?: number | null } }) =>
+    Promise.resolve({ data: init.body, response: { ok: true } })
   );
   const GET = vi.fn((path: string) =>
     Promise.resolve(
@@ -59,6 +59,32 @@ describe('PreferencesDialog', () => {
       expect(byId('preferences-autosave-folder')?.textContent.trim()).toBe("The library's cache");
     });
     expect(PUT).toHaveBeenLastCalledWith('/api/v1/preferences', { body: { autosave } });
+  });
+
+  it('holds each library’s cache to a budget, and lets it grow again (#189)', async () => {
+    const { fixture, PUT } = await render(null);
+    expect((byId('preferences-cache-unlimited') as HTMLButtonElement).disabled).toBe(true);
+
+    const input = byId('preferences-cache-budget')?.querySelector('input') as HTMLInputElement;
+    input.value = '20';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('change'));
+    input.dispatchEvent(new Event('blur'));
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(PUT).toHaveBeenLastCalledWith('/api/v1/preferences', {
+        body: { autosave, cacheBudget: 20 * 1024 * 1024 * 1024 }
+      });
+    });
+
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect((byId('preferences-cache-unlimited') as HTMLButtonElement).disabled).toBe(false);
+    });
+    byId('preferences-cache-unlimited')?.click();
+    await vi.waitFor(() =>
+      expect(PUT).toHaveBeenLastCalledWith('/api/v1/preferences', { body: { autosave, cacheBudget: null } })
+    );
   });
 
   it('changes nothing when no folder is chosen', async () => {

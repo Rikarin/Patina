@@ -93,6 +93,12 @@ public sealed record ServerPreferences(AutosavePreferences Autosave) {
     ///     project still bakes at the size it is made at.
     /// </summary>
     public BakeOptions? Bake { get; init; }
+
+    /// <summary>
+    ///     The most room each library's cache may take, in bytes, or null for no limit (#189). Over it, the built
+    ///     objects, bakes and reports used longest ago go, as Prune takes them, while nothing is building.
+    /// </summary>
+    public long? CacheBudget { get; init; }
 }
 
 /// <summary>
@@ -108,7 +114,7 @@ public sealed record AutosavePreferences(int IntervalSeconds = 60, int IdleSecon
     /// <summary>
     ///     The full path of a folder autosaves go to instead of each library's cache, a folder per library inside it,
     ///     or null for the cache (#162). Autosaves the cache kept before one was chosen are still offered and let go
-    ///     of; those in a folder chosen earlier stay there and are not.
+    ///     of, and those in a folder chosen earlier move to the folder chosen now, or to each library's cache (#297).
     /// </summary>
     public string? Folder { get; init; }
 }
