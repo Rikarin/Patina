@@ -1,10 +1,10 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
-import { answerOpen, leave, newLibrary, newProject, pick, serverPicture } from './projects';
+import { answerOpen, leave, newLibrary, newProject, pick, removeScratch, serverPicture } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -34,7 +34,7 @@ test.beforeEach(async () => {
 
 test.afterEach(async () => {
   await leave(app);
-  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+  removeScratch(scratch);
 });
 
 const canvas = () => window.getByRole('application', { name: 'Viewport' });
@@ -351,6 +351,36 @@ test('the brush panel pictures the brush, and the picker takes back every channe
   await expect(window.getByTestId('paint-also-roughness')).toBeChecked();
   expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
   await window.screenshot({ path: join(shots, 'picker-every-channel.png') });
+});
+
+test('the bar over the viewport holds the tool in hand’s settings, the brush’s own (#201)', async () => {
+  await openOnMesh();
+  const bar = window.getByTestId('tool-settings-bar');
+  await expect(bar).toHaveAttribute('data-tool', 'brush');
+  await expect(window.getByTestId('tool-settings-size-readout')).toHaveText(
+    (await window.getByTestId('paint-size-readout').textContent()) ?? ''
+  );
+
+  // A smaller brush from the bar is the brush Properties shows.
+  const size = window.getByTestId('tool-settings-size').getByRole('slider');
+  await size.focus();
+  await size.press('Home');
+  await expect(window.getByTestId('tool-settings-size-readout')).toHaveText('1 px');
+  await expect(window.getByTestId('paint-size-readout')).toHaveText('1 px');
+
+  // Opacity from the bar too, which Properties' slider follows.
+  const opacity = window.getByTestId('tool-settings-opacity').getByRole('slider');
+  await opacity.focus();
+  await opacity.press('Home');
+  await expect(window.getByTestId('paint-opacity').getByRole('slider')).toHaveAttribute('aria-valuenow', '0');
+
+  // The fill has its own choices in place of a stroke's.
+  await window.getByTestId('tool-strip-fill').click();
+  await expect(bar).toHaveAttribute('data-tool', 'fill');
+  await expect(window.getByTestId('tool-settings-size')).toHaveCount(0);
+  await expect(window.getByTestId('tool-settings-fill-mode')).toBeVisible();
+  await window.screenshot({ path: join(shots, 'tool-settings-fill.png') });
+  expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
 });
 
 test('a smudge drags paint along, and a clone copies it from its source', async () => {

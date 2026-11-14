@@ -1,4 +1,4 @@
-import type { StackSymmetry, StackView } from '@patina/api-client';
+import type { StackSurfaceSymmetry, StackSymmetry, StackView } from '@patina/api-client';
 
 type Point = readonly [number, number, number];
 
@@ -68,6 +68,93 @@ function symmetryCentre(symmetry: StackSymmetry, bounds: readonly number[], axis
   const radius = Math.hypot(...most.map((high, at) => high - (least[at] ?? 0))) / 2;
   const centre = symmetry.centre === 'origin' ? [0, 0, 0] : middle;
   return centre.map((value, at) => value + (at === axis && symmetry.kind !== 'radial' ? symmetry.offset * radius : 0));
+}
+
+/** The unit cube, which is a decal's or a path's box when it was placed with none. */
+const UnitBox = [0, 0, 0, 1, 1, 1] as const;
+
+/**
+ * A brush's symmetry as a decal or a path keeps it (#132): the plane's normal or the line's direction, and a point on
+ * it, in the model's units, worked out from the model's box as the Worker works out a stroke's. Kept as numbers, so the
+ * copies stay where they are in every texture set and when the brush's symmetry changes later.
+ *
+ * @param bounds The model's box, as the decal or the path was placed with it; empty is the unit cube.
+ */
+export function surfaceSymmetry(
+  symmetry: StackSymmetry,
+  bounds: readonly number[] | null | undefined
+): StackSurfaceSymmetry {
+  const axis = Axes[symmetry.axis] ?? 0;
+  const box = bounds?.length === 6 ? bounds : UnitBox;
+  const direction = [0, 0, 0];
+  direction[axis] = 1;
+  const radial = symmetry.kind === 'radial';
+  return {
+    kind: radial ? 'radial' : 'mirror',
+    axis: direction,
+    through: symmetryCentre(symmetry, box, axis),
+    count: radial ? Math.max(2, Math.min(64, Math.round(symmetry.count))) : 2
+  };
+}
+
+/** One copy a decal's or a path's symmetry makes: where it moves a point, and where it turns a direction. */
+export interface SurfaceCopy {
+  point(at: readonly number[]): number[];
+  direction(towards: readonly number[]): number[];
+}
+
+/**
+ * The copies a decal's or a path's symmetry makes, the original left out: a mirror's reflection, or a radial symmetry's
+ * turns about its line, as Vixen's `PaintSymmetryGroup` makes them and the stack compiles them. None for an axis with no
+ * length.
+ */
+export function surfaceCopies(symmetry: StackSurfaceSymmetry): SurfaceCopy[] {
+  const length = Math.hypot(...symmetry.axis);
+  if (!(length > 1e-6)) {
+    return [];
+  }
+
+  const unit = [0, 1, 2].map(lane => (symmetry.axis[lane] ?? 0) / length);
+  const through = [0, 1, 2].map(lane => symmetry.through[lane] ?? 0);
+  const dot = (a: readonly number[], b: readonly number[]) =>
+    [0, 1, 2].reduce((sum, i) => sum + (a[i] ?? 0) * (b[i] ?? 0), 0);
+  const moved = (direction: (towards: readonly number[]) => number[]): SurfaceCopy => ({
+    direction,
+    point: at => {
+      const turned = direction([0, 1, 2].map(lane => (at[lane] ?? 0) - (through[lane] ?? 0)));
+      return [0, 1, 2].map(lane => (turned[lane] ?? 0) + (through[lane] ?? 0));
+    }
+  });
+
+  if (symmetry.kind !== 'radial') {
+    return [
+      moved(towards => {
+        const along = 2 * dot(unit, towards);
+        return [
+          (towards[0] ?? 0) - along * (unit[0] ?? 0),
+          (towards[1] ?? 0) - along * (unit[1] ?? 0),
+          (towards[2] ?? 0) - along * (unit[2] ?? 0)
+        ];
+      })
+    ];
+  }
+
+  const count = Math.max(2, Math.min(64, Math.round(symmetry.count)));
+  return Array.from({ length: count - 1 }, (_, at) => {
+    const angle = (2 * Math.PI * (at + 1)) / count;
+    const [cos, sin] = [Math.cos(angle), Math.sin(angle)];
+    // Rodrigues: a direction keeps its part along the line and turns the rest.
+    return moved(towards => {
+      const [x, y, z] = [towards[0] ?? 0, towards[1] ?? 0, towards[2] ?? 0];
+      const [u, v, w] = [unit[0] ?? 0, unit[1] ?? 0, unit[2] ?? 0];
+      const kept = (u * x + v * y + w * z) * (1 - cos);
+      return [
+        x * cos + (v * z - w * y) * sin + u * kept,
+        y * cos + (w * x - u * z) * sin + v * kept,
+        z * cos + (u * y - v * x) * sin + w * kept
+      ];
+    });
+  });
 }
 
 /**

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, model, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, model, signal, untracked } from '@angular/core';
 import { type components, unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
@@ -6,11 +6,13 @@ import { XuiDialogImports } from '@xui/dialog';
 import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSwitchImports } from '@xui/switch';
+import { FileChooser } from '../library/file-chooser';
 import { LibraryStore } from '../library/library-store';
 import { Commands } from './commands';
 import { desktop } from './desktop';
+import { EnginePreferences } from './engine-preferences';
 import { messageOf } from './messages';
-import { bytes } from './numbers';
+import { bytes, count } from './numbers';
 import type { CameraSpeed, LibraryTabChoice, LibraryViewChoice, ShelfViewChoice, Theme } from './preferences';
 import { Preferences } from './preferences';
 
@@ -200,7 +202,14 @@ const MostKept = 20;
             <h3 class="section-label">Keys</h3>
             <div class="flex items-center gap-3">
               <span class="text-foreground-muted min-w-0 flex-1 text-xs">Every key, and presets from other apps.</span>
-              <button type="button" xuiButton size="sm" data-testid="preferences-keys" (click)="showKeys()">
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="preferences-keys"
+                (click)="showKeys()"
+              >
                 {{ commands.label('shortcuts') }}
               </button>
             </div>
@@ -209,8 +218,9 @@ const MostKept = 20;
           <section class="flex flex-col gap-2" data-testid="preferences-autosave">
             <h3 class="section-label">Autosave</h3>
             <p class="text-foreground-muted text-xs">
-              The engine keeps open, unsaved work in the library's cache, never over a document, and offers it back
-              after a crash or a restart. These settings are the engine's, so every app attached to it uses them.
+              The engine keeps open, unsaved work in the library's cache or a folder you choose, never over a document,
+              and offers it back after a crash or a restart. These settings are the engine's, so every app attached to
+              it uses them.
             </p>
             @if (autosave(); as held) {
               <label class="flex items-center gap-3">
@@ -268,6 +278,38 @@ const MostKept = 20;
                   />
                   <span class="text-foreground-muted text-xs">autosaves of each document</span>
                 </label>
+                <div class="flex items-center gap-3">
+                  <span class="w-36 shrink-0">Kept in</span>
+                  <span
+                    class="min-w-0 flex-1 truncate text-xs select-text"
+                    data-testid="preferences-autosave-folder"
+                    [title]="held.folder ?? ''"
+                  >
+                    {{ held.folder ?? "The library's cache" }}
+                  </span>
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    data-testid="preferences-autosave-choose"
+                    (click)="chooseAutosaveFolder()"
+                  >
+                    Choose…
+                  </button>
+                  @if (held.folder) {
+                    <button
+                      type="button"
+                      xuiButton
+                      size="sm"
+                      variant="ghost"
+                      data-testid="preferences-autosave-cache"
+                      title="Keeps new autosaves in each library's cache again"
+                      (click)="saveAutosave({ folder: null })"
+                    >
+                      Use the Cache
+                    </button>
+                  }
+                </div>
               }
             } @else if (!autosaveFailure()) {
               <p class="text-foreground-muted text-xs">Asking the engine…</p>
@@ -275,6 +317,32 @@ const MostKept = 20;
             @if (autosaveFailure(); as reason) {
               <xui-callout color="error" compact data-testid="preferences-autosave-failure">{{ reason }}</xui-callout>
             }
+          </section>
+
+          <section class="flex flex-col gap-2" data-testid="preferences-bake">
+            <h3 class="section-label">Bake</h3>
+            <div class="flex items-center gap-3">
+              <span class="w-36 shrink-0">New projects bake with</span>
+              <span class="readout min-w-0 flex-1 truncate" data-testid="preferences-bake-default">{{
+                bakeDefault()
+              }}</span>
+              @if (engine.bake()) {
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  data-testid="preferences-bake-reset"
+                  (click)="engine.makeBakeDefault(null)"
+                >
+                  Use Patina’s
+                </button>
+              }
+            </div>
+            <p class="text-foreground-muted text-xs">
+              Make Default in the Bake dialog keeps its options for every project made after it, by any app attached to
+              the engine. A texturing project still bakes at the size it is made at.
+            </p>
           </section>
 
           <section class="flex flex-col gap-2" data-testid="preferences-cache">
@@ -314,6 +382,7 @@ export class PreferencesDialog {
   protected readonly preferences = inject(Preferences);
   protected readonly commands = inject(Commands);
   private readonly library = inject(LibraryStore);
+  private readonly chooser = inject(FileChooser);
 
   protected readonly themes = Themes;
   protected readonly libraryViews = LibraryViews;
@@ -326,8 +395,9 @@ export class PreferencesDialog {
   protected readonly Math = Math;
   protected readonly canReveal = desktop() !== undefined;
 
-  protected readonly autosave = signal<AutosavePreferences | null>(null);
-  protected readonly autosaveFailure = signal<string | null>(null);
+  protected readonly engine = inject(EnginePreferences);
+  protected readonly autosave = this.engine.autosave;
+  protected readonly autosaveFailure = this.engine.failure;
   protected readonly cache = signal<CacheInfo | null>(null);
   protected readonly cacheFailure = signal<string | null>(null);
 
@@ -356,6 +426,17 @@ export class PreferencesDialog {
     void desktop()?.reveal(path);
   }
 
+  /**
+   * Asks for a folder for autosaves to go to (#162), on the engine's machine: each library gets a folder of its own in
+   * it. Autosaves already in the cache are still offered.
+   */
+  protected async chooseAutosaveFolder(): Promise<void> {
+    const folder = await this.chooser.folder('Choose a folder for autosaves');
+    if (folder) {
+      await this.saveAutosave({ folder });
+    }
+  }
+
   /** Changes autosave on the Server, which keeps it in the person's preferences file. */
   protected async saveAutosave(change: Partial<AutosavePreferences>): Promise<void> {
     const held = this.autosave();
@@ -363,28 +444,23 @@ export class PreferencesDialog {
       return;
     }
 
-    const next = { ...held, ...change };
-    this.autosave.set(next);
-    try {
-      const client = await this.library.api();
-      const saved = unwrap(await client.PUT('/api/v1/preferences', { body: { autosave: next } }));
-      this.autosave.set(saved.autosave);
-      this.autosaveFailure.set(null);
-    } catch (failure) {
-      this.autosave.set(held);
-      this.autosaveFailure.set(messageOf(failure));
-    }
+    await this.engine.change({ autosave: { ...held, ...change } });
   }
 
-  private async read(): Promise<void> {
-    const client = await this.library.api();
-    try {
-      this.autosave.set(unwrap(await client.GET('/api/v1/preferences')).autosave);
-      this.autosaveFailure.set(null);
-    } catch (failure) {
-      this.autosaveFailure.set(messageOf(failure));
+  /** What a new project bakes with, in a few words. */
+  protected readonly bakeDefault = computed(() => {
+    const bake = this.engine.bake();
+    if (!bake) {
+      return 'Patina’s own';
     }
 
+    const maps = bake.maps.length === 1 ? '1 map' : `${count(bake.maps.length)} maps`;
+    return `Yours: ${count(bake.resolution)} texels, ${maps}`;
+  });
+
+  private async read(): Promise<void> {
+    await this.engine.read();
+    const client = await this.library.api();
     try {
       this.cache.set(unwrap(await client.GET('/api/v1/library/cache')));
       this.cacheFailure.set(null);

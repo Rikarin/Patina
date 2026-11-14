@@ -12,6 +12,7 @@ import { GraphInspector, Inspector, keptLanes } from './graph-inspector';
 import { GraphSelection, GraphSettings, freeParameterName } from './graph-settings';
 import { GraphStore } from './graph-store';
 import { node } from './graph-testing';
+import { type NodeSize, sizeOf } from './node-size';
 
 const tintType: GraphNodeType = {
   path: 'Colour/Tint',
@@ -177,6 +178,46 @@ describe('a number port from the Inspector', () => {
     found('wired-Scale')?.querySelector('button')?.click();
 
     expect(store.disconnect).toHaveBeenCalledWith(1, 'Scale');
+  });
+});
+
+describe("a node's size", () => {
+  function render(type: string, level?: number | null) {
+    const store = { ...fakeStore(), setLevel: vi.fn() };
+    TestBed.configureTestingModule({ providers: [{ provide: GraphStore, useValue: store }] });
+    const fixture = TestBed.createComponent(GraphInspector);
+    fixture.componentRef.setInput('node', { ...node(1), type, level });
+    fixture.detectChanges();
+    const holder = fixture.debugElement.queryAll(By.css('[data-testid=node-size]'))[0];
+    const select = holder
+      ? (holder.query(By.directive(XuiSelect)).componentInstance as XuiSelect<NodeSize>)
+      : undefined;
+    return { store, select };
+  }
+
+  it('follows the inputs when the node says nothing', () => {
+    expect(render(tintType.path).select?.value()?.level).toBeNull();
+  });
+
+  it('shows a level the node holds', () => {
+    expect(render(tintType.path, 1).select?.value()?.label).toBe("Half the graph's");
+  });
+
+  it('sets the level through the store, and nothing for the size it already has', () => {
+    const { store, select } = render(tintType.path, 0);
+
+    select?.value.set(sizeOf(0));
+    select?.value.set(sizeOf(-1));
+    select?.value.set(sizeOf(null));
+
+    expect(store.setLevel.mock.calls).toEqual([
+      [[1], -1],
+      [[1], null]
+    ]);
+  });
+
+  it('is not offered on an Output, whose map is the graph size', () => {
+    expect(render('Output/Output').select).toBeUndefined();
   });
 });
 

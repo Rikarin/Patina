@@ -18,6 +18,9 @@ public static class LibraryBin {
     /// <summary>What a deleted document is.</summary>
     public const string DocumentKind = "document";
 
+    /// <summary>Pictures nothing read, which a Clean took out of their projects together (#162).</summary>
+    public const string PicturesKind = "pictures";
+
     const string RecordFile = "bin.yaml";
     const string FilesFolder = "files";
     const string KindKey = "kind";
@@ -94,6 +97,37 @@ public static class LibraryBin {
         LibraryFiles.Replace(Path.Combine(entry, LibraryLayout.ProjectFile), DocumentCodec.Write(project));
         Write(entry, item);
         return item;
+    }
+
+    /// <summary>
+    ///     Moves pictures into the bin as one entry, each below <c>files/</c> at its path below the library, so a
+    ///     restore puts every one back where it was.
+    /// </summary>
+    /// <param name="root">The library.</param>
+    /// <param name="pictures">The pictures, as paths below the library with forward slashes.</param>
+    /// <returns>The entry, and the room the pictures moved take.</returns>
+    public static (BinItem Item, long Bytes) PutPictures(string root, IReadOnlyList<string> pictures) {
+        ArgumentNullException.ThrowIfNull(pictures);
+        var name = pictures.Count == 1
+            ? Path.GetFileName(pictures[0])
+            : string.Create(CultureInfo.InvariantCulture, $"{pictures.Count} pictures nothing used");
+        var (entry, item) = Open(root, PicturesKind, name, LibraryLayout.ProjectsFolder);
+        var into = Path.Combine(entry, FilesFolder);
+        var bytes = 0L;
+        foreach (var picture in pictures) {
+            var from = LibraryLayout.Beside(root, picture);
+            if (!File.Exists(from)) {
+                continue;
+            }
+
+            var to = LibraryLayout.Beside(into, picture);
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            bytes += new FileInfo(from).Length;
+            File.Move(from, to);
+        }
+
+        Write(entry, item);
+        return (item, bytes);
     }
 
     /// <summary>An entry of the bin and its folder, for putting it back.</summary>

@@ -87,7 +87,7 @@ public static class Terms {
 
     /// <summary>What a polygon fill calls how much of a mesh a click takes, where a capital is not enough.</summary>
     static readonly Dictionary<string, string> InFills = new(StringComparer.Ordinal) {
-        ["part"] = "Mesh Part", ["shell"] = "UV Shell"
+        ["part"] = "Mesh Part", ["shell"] = "UV Shell", ["loop"] = "Face Loop"
     };
 
     /// <summary>What a symmetry's plane or axis passes through.</summary>
@@ -104,6 +104,11 @@ public static class Terms {
     public static string Label(string value) {
         if (Named.TryGetValue(value, out var named)) {
             return named;
+        }
+
+        // A user channel (#141), user0 to user7, is User 0 to User 7.
+        if (Vixen.Texturing.Layers.ChannelAsset.IsUser(value)) {
+            return $"User {value[4..]}";
         }
 
         var name = value[(value.LastIndexOf('/') + 1)..];

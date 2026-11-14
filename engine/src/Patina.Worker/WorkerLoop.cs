@@ -62,7 +62,11 @@ sealed class WorkerLoop(
                 or IpcTypes.BakeCancel
                 or IpcTypes.BuildCancel
                 or IpcTypes.StackSupersede,
-            Aside = static type => type is IpcTypes.MeshSets,
+            Aside = static type => type
+                is IpcTypes.MeshSets
+                or IpcTypes.PictureRead
+                or IpcTypes.BakeIdColours
+                or IpcTypes.ExportCompress,
             // ⚠ A frame waits for the request being answered, never behind every evaluation and thumbnail sent before
             // it: on a software GPU those queue for minutes, and the viewport stopped answering a change (#274).
             Urgent = static type => type.StartsWith("viewport.", StringComparison.Ordinal)
@@ -128,6 +132,10 @@ sealed class WorkerLoop(
                     or IpcTypes.MaterialThumbnail
                     or IpcTypes.ViewportStack => OnDevice(request),
                 IpcTypes.MaterialRead => ReadMaterials(request),
+                IpcTypes.PictureRead or IpcTypes.BakeIdColours or IpcTypes.ExportCompress => PictureWork.Answer(
+                    request,
+                    cancellationToken
+                ),
                 _ when request.Type.StartsWith("mesh.", StringComparison.Ordinal) => Mesh(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),

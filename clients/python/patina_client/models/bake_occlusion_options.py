@@ -23,28 +23,30 @@ class BakeOcclusionOptions:
     """ The occlusion rays, which ambient occlusion, the bent normal and thickness share.
 
         Attributes:
-            rays (int): How many rays a texel's occlusion is estimated with.
-            distance (float): How far an occluder counts, in the rays' units.
-            spread (float): The half-angle of the cone the rays fill, in degrees: 90 is the hemisphere.
-            falloff (str): How an occluder counts for less further away: `none`, `linear` or `smooth`.
-            distribution (str): How the rays are spread: `cosine` or `uniform`.
-            minimum (float): How near an occluder may be and not count, in the rays' units.
-            ignore_backfaces (bool): Whether a ray passes through the back of a face.
-            within_part (bool): Whether only the texel's own part occludes it, when parts are matched by name.
-            ground_plane (bool): Whether a floor under the high mesh occludes too. Y is up.
-            ground_offset (float): How far above the high mesh's lowest point the floor is, in the rays' units.
+            rays (int): How many rays a texel's occlusion is estimated with. Default: 64.
+            distance (float): How far an occluder counts, in the rays' units. Default: 0.5.
+            spread (float): The half-angle of the cone the rays fill, in degrees: 90 is the hemisphere. Default: 90.0.
+            falloff (str): How an occluder counts for less further away: `none`, `linear` or `smooth`. Default: 'none'.
+            distribution (str): How the rays are spread: `cosine` or `uniform`. Default: 'cosine'.
+            minimum (float): How near an occluder may be and not count, in the rays' units. Default: 0.0.
+            ignore_backfaces (bool): Whether a ray passes through the back of a face. Default: False.
+            within_part (bool): Whether only the texel's own part occludes it, when parts are matched by name. Default:
+                False.
+            ground_plane (bool): Whether a floor under the high mesh occludes too. Y is up. Default: False.
+            ground_offset (float): How far above the high mesh's lowest point the floor is, in the rays' units. Default:
+                0.0.
      """
 
-    rays: int
-    distance: float
-    spread: float
-    falloff: str
-    distribution: str
-    minimum: float
-    ignore_backfaces: bool
-    within_part: bool
-    ground_plane: bool
-    ground_offset: float
+    rays: int = 64
+    distance: float = 0.5
+    spread: float = 90.0
+    falloff: str = 'none'
+    distribution: str = 'cosine'
+    minimum: float = 0.0
+    ignore_backfaces: bool = False
+    within_part: bool = False
+    ground_plane: bool = False
+    ground_offset: float = 0.0
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

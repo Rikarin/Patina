@@ -26,6 +26,16 @@ export function jobSocketUrl(connection: Connection, since: number): string {
   return url.href;
 }
 
+/**
+ * What a bake of a project is onto: the project by its path below `projects/`, the document whose mesh it bakes by
+ * its path below the library, and a folder on the Server's machine instead of the project's own.
+ */
+export interface BakePlanQuery {
+  project: string;
+  document?: string;
+  output?: string;
+}
+
 /** A map of a finished bake on screen. */
 export interface ShownMap {
   job: string;
@@ -113,6 +123,15 @@ export class BakeStore {
     }
 
     return job;
+  }
+
+  /**
+   * The bakes a project's own settings ask for, as the Server works them out from its file: the same requests
+   * `patina bake-maps --project` sends, so no client builds them itself (plan §8). Throws the Server's refusal.
+   */
+  async plan(query: BakePlanQuery): Promise<BakeRequest[]> {
+    const client = await this.api();
+    return unwrap(await client.GET('/api/v1/library/project/bake/plan', { params: { query } })).requests;
   }
 
   /**

@@ -35,6 +35,7 @@ import { StrokeGesture } from '../paint/stroke-gesture';
 import { isPicture, pictureName } from '../paint/surface-frame';
 import { SurfaceGuide } from '../paint/surface-guide';
 import { project as onPicture, symmetryCopies, symmetryGuide } from '../paint/symmetry-guide';
+import { ToolSettingsBar } from '../paint/tool-settings-bar';
 import { ToolStrip } from '../paint/tool-strip';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
@@ -121,6 +122,7 @@ const PickFile = '…';
     XuiSelectImports,
     ViewportDisplayPanel,
     ToolStrip,
+    ToolSettingsBar,
     ScreenPictureOverlay,
     SurfaceGuide,
     BrushRing
@@ -265,6 +267,9 @@ const PickFile = '…';
         </span>
       }
     </div>
+    @if (paint.worn() && project.active()?.kind === 'texturing') {
+      <ptn-tool-settings-bar />
+    }
     <div #host class="well relative min-h-0 flex-1 overflow-hidden">
       <canvas
         #canvas

@@ -50,6 +50,7 @@ static class PatinaApi {
             .WithName("GetSystem")
             .WithTags("System")
             .WithSummary("The Server's version, its library, the machine it runs on and the state of its Worker.");
+        api.MapLogApi();
         api.MapLibraryApi();
 
         api.MapGet("/viewport", static (ViewportSession session) => TypedResults.Ok(session.State))
@@ -226,7 +227,7 @@ static class PatinaApi {
     ) {
         if (stacks.Find(request.Stack) is not { } stack) {
             return Refusals.Problem(
-                $"There is no open stack '{request.Stack}'.",
+                $"There is no open document '{request.Stack}'.",
                 StatusCodes.Status404NotFound,
                 Refusals.StackNotOpen,
                 new Dictionary<string, string> { ["id"] = request.Stack }

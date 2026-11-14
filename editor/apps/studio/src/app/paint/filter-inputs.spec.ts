@@ -23,8 +23,21 @@ const clouds: StackFilterKind = {
   inputs: []
 };
 
+/** A project's own generator that writes two results, which the Server describes when asked (#120). */
+const edges: StackFilterKind = {
+  node: 'Edges',
+  name: 'Edges',
+  category: 'Compounds',
+  summary: '',
+  ports: [],
+  settings: [],
+  inputs: [],
+  outputs: ['Mask', 'Edge']
+};
+
 function render(mask = false, inputs: FilterSources = {}, kind: Pick<StackFilterKind, 'inputs'> = warp) {
   const store = {
+    kindOf: (node: string | undefined) => [clouds, edges].find(known => known.node === node) ?? null,
     vocabulary: signal({
       inputs: ['Beneath', 'Anchor', 'Generator', 'Texture', 'Bake'].map(value => ({
         value,
@@ -95,12 +108,29 @@ describe('a filter input slot', () => {
   });
 
   it('sends the generator’s own fields with the rest of what it reads, and clears a slot back to its default', async () => {
-    const held: StackInput = { source: 'Generator', channel: '', generator: 'Noise/Clouds', asset: '', map: '' };
+    const held: StackInput = {
+      source: 'Generator',
+      channel: '',
+      generator: 'Noise/Clouds',
+      asset: '',
+      map: '',
+      output: ''
+    };
     const { element, emitted, pick } = render(false, { Warp: held, Input: { ...held, source: 'Beneath' } });
     const scale = element.querySelector('[data-testid="in-Warp-Scale"]');
     expect(scale).not.toBeNull();
 
     await pick('Warp', 'Choose what it reads');
     expect(Object.keys(emitted.at(-1) ?? {})).toEqual(['Input']);
+  });
+
+  it('asks which result a generator of several reads, and offers no choice for one of one', async () => {
+    const held: StackInput = { source: 'Generator', channel: '', generator: 'Edges', asset: '', map: '', output: '' };
+    const { fixture, element, emitted } = render(false, { Warp: held, Input: { ...held, generator: 'Noise/Clouds' } });
+    expect(element.querySelector('[data-testid="in-Input-result"]')).toBeNull();
+    expect(element.querySelector('[data-testid="in-Warp-result"]')?.textContent).toContain('Choose a result');
+
+    await chooseIn(fixture, element, 'in-Warp-result', 'Edge');
+    expect(emitted.at(-1)?.['Warp']).toMatchObject({ generator: 'Edges', output: 'Edge' });
   });
 });

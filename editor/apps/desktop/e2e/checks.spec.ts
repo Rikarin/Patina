@@ -1,8 +1,8 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject } from './projects';
+import { leave, newLibrary, newProject, removeScratch } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const mesh = resolve(__dirname, '../../../../content/fixtures/viewport-test.glb');
@@ -27,7 +27,7 @@ test.beforeEach(async () => {
 
 test.afterEach(async () => {
   await leave(app);
-  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+  removeScratch(scratch);
 });
 
 /** How many pixels of the viewport's picture are clearly blue, as the window composites them. */
@@ -84,6 +84,10 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
   await window.getByTestId('checks-run').click();
   await expect(window.getByTestId('checks-density')).toHaveText(/\d+ per unit/u, { timeout: 120_000 });
   await expect(window.getByTestId('checks-memory')).toHaveText(/ MB with /u);
+
+  // Each file the export writes is listed with its size and the memory it takes.
+  await window.getByTestId('checks-files').locator('summary').click();
+  await expect(window.getByTestId('checks-file').first()).toHaveText(/\.\w+\s*\d+ × \d+\s*[\d.]+ MB/u);
 
   // A density far past what the set has is one it falls short of, and the problem shows it on the mesh.
   await window.getByTestId('checks-limits').locator('summary').click();

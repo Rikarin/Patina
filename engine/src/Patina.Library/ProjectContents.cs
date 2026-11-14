@@ -456,6 +456,12 @@ static class ProjectFiles {
     public static string Restore(string root, string id) {
         var (item, entry) = LibraryBin.Find(root, id);
         var files = LibraryBin.FilesOf(entry);
+        if (item.Kind == LibraryBin.PicturesKind) {
+            RestorePictures(root, item, files);
+            LibraryBin.Forget(entry);
+            return item.From;
+        }
+
         var below = item.From[(LibraryLayout.ProjectsFolder.Length + 1)..];
         if (item.Kind == LibraryBin.ProjectKind) {
             var path = FreeFolder(root, below);
@@ -493,6 +499,43 @@ static class ProjectFiles {
         LibraryFiles.WriteProject(root, project, document with { Documents = [..document.Documents, kept] });
         LibraryBin.Forget(entry);
         return item.From;
+    }
+
+    /// <summary>
+    ///     Puts pictures a Clean took back where they were, each below the library at its path in the entry. None moves
+    ///     unless all can: a file in a picture's place, or its project gone, refuses the lot.
+    /// </summary>
+    /// <exception cref="ProjectRefusedException">One cannot come back.</exception>
+    static void RestorePictures(string root, BinItem item, string files) {
+        var moving = Directory.Exists(files)
+            ? Directory.EnumerateFiles(files, "*", SearchOption.AllDirectories)
+                .Select(file => Path.GetRelativePath(files, file).Replace('\\', '/'))
+                .ToList()
+            : [];
+        foreach (var picture in moving) {
+            var to = LibraryLayout.Beside(root, picture);
+            if (File.Exists(to)) {
+                throw new ProjectRefusedException(
+                    $"'{picture}' is in the library now, so '{item.Name}' cannot come back."
+                );
+            }
+
+            var at = picture.IndexOf($"/{PictureFolder}/", StringComparison.Ordinal);
+            var folder = at > LibraryLayout.ProjectsFolder.Length
+                ? picture[(LibraryLayout.ProjectsFolder.Length + 1)..at]
+                : string.Empty;
+            if (folder.Length == 0 || !File.Exists(LibraryFiles.ProjectFile(root, folder))) {
+                throw new ProjectRefusedException(
+                    $"'{picture}' belonged to the project '{folder}', which is gone. Restore the project first."
+                );
+            }
+        }
+
+        foreach (var picture in moving) {
+            var to = LibraryLayout.Beside(root, picture);
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            File.Move(LibraryLayout.Beside(files, picture), to);
+        }
     }
 
     /// <summary>A free folder below <c>projects/</c>: the one asked for, or one beside it with a number.</summary>

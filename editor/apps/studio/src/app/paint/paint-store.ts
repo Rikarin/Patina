@@ -36,13 +36,14 @@ import {
   unwrap
 } from '@patina/api-client';
 import { type AutosaveNote, autosaveNote } from '../core/autosave-note';
-import { learnTerms } from '../core/labels';
+import { learnChannels, learnTerms } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { milliseconds, toRadians } from '../core/numbers';
 import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
+import { NodePictures } from '../graph/node-pictures';
 import { type PartCombine, combinedParts } from './mesh-selection';
 import {
   type Vector,
@@ -124,7 +125,7 @@ export function sameColour(left: readonly number[], right: readonly number[]): b
 }
 
 /** How much of the mesh a click of the fill tool takes: the Server's words (`StackBrushes.Fills`). */
-export type FillMode = 'triangle' | 'polygon' | 'part' | 'shell';
+export type FillMode = 'triangle' | 'polygon' | 'part' | 'shell' | 'loop';
 
 /**
  * How the fill tool chooses (#129): the piece under each click, or every piece inside a rectangle or a lasso drawn on
@@ -361,6 +362,11 @@ export class PaintStore {
   readonly partCombine = signal<Exclude<PartCombine, 'toggle'>>('replace');
   /** Whether the fill tool takes what is under a click, or what a rectangle or a lasso holds. */
   readonly fillShape = signal<FillShape>('click');
+  /**
+   * How the fill tool chooses as it stands: a face loop runs across the edge nearest a click (#129), so it takes clicks
+   * whatever {@link fillShape} says.
+   */
+  readonly fillChooses = computed<FillShape>(() => (this.fillMode() === 'loop' ? 'click' : this.fillShape()));
   /** Whether a rectangle or a lasso in the viewport also fills what the camera cannot see inside it. */
   readonly fillThrough = signal(false);
   /** Where the clone tool reads from, or null until one is set. */
@@ -971,6 +977,8 @@ export class PaintStore {
     this.link.set('live');
     this.notice.set(null);
     this.state.set(null);
+    learnChannels([]);
+    this.nodePictures.forget();
     this.worn.set(false);
     this.picture.set(null);
     clearTimeout(this.thumbnailWait);
@@ -1447,6 +1455,8 @@ export class PaintStore {
     try {
       const client = await this.api();
       unwrap(await client.PUT('/api/v1/stacks/{id}/mesh-maps', { params: { path: { id } }, body: { folder } }));
+      // A generator's picture is drawn from the bake, so another bake is another picture.
+      this.nodePictures.forget();
       await this.refresh();
     } catch (failure) {
       this.failure.set(messageOf(failure));
@@ -2140,6 +2150,7 @@ export class PaintStore {
 
   private adopt(state: StackState): void {
     this.state.set(state);
+    learnChannels(state.channels);
     this.sequence = state.sequence;
     this.channel.update(channel =>
       state.channels.some(c => c.usage === channel) ? channel : (state.channels[0]?.usage ?? channel)
@@ -2188,6 +2199,31 @@ export class PaintStore {
       void this.load(preview.hash);
     }
   }
+
+  /**
+   * Small pictures of the node types the layer panel's lists name, such as each generator drawn from this stack's mesh
+   * maps (#290). A picture is a nicety: with no Worker or no bake a generator keeps its name alone.
+   */
+  readonly nodePictures = new NodePictures({
+    draw: async types => {
+      const id = this.state()?.id;
+      if (!id) {
+        return null;
+      }
+
+      const client = await this.api();
+      const { data } = await client.POST('/api/v1/stacks/{id}/node-types/thumbnails', {
+        params: { path: { id } },
+        body: { sources: [...types] }
+      });
+      return data?.items ?? null;
+    },
+    fetch: async hash =>
+      (await (await this.api()).GET('/api/v1/previews/{hash}', { params: { path: { hash } }, parseAs: 'blob' })).data ??
+      null,
+    url: blob => URL.createObjectURL(blob),
+    revoke: url => URL.revokeObjectURL(url)
+  });
 
   /** The fills drawn alone, once the stack has been quiet for a moment. */
   readonly thumbnails = signal<ReadonlyMap<string, string>>(new Map());
@@ -2292,13 +2328,28 @@ export class PaintStore {
     }
   }
 
+  /**
+   * The stack as the Server has it now. ⚠ A reply older than one taken already is dropped (#274): the Server takes its
+   * picture of the stack first and then waits, as for the Worker's first read of the mesh, so the replies to several
+   * edits can come back in any order, and on Linux CI's slow GPU the first edit's state arrived last and undid the
+   * rest on screen.
+   */
   private async refresh(): Promise<void> {
     const id = this.state()?.id;
     if (id) {
+      const asked = ++this.refreshesAsked;
       const client = await this.api();
-      this.adopt(unwrap(await client.GET('/api/v1/stacks/{id}', { params: { path: { id } } })));
+      const state = unwrap(await client.GET('/api/v1/stacks/{id}', { params: { path: { id } } }));
+      if (asked > this.refreshTaken) {
+        this.refreshTaken = asked;
+        this.adopt(state);
+      }
     }
   }
+
+  /** How many refreshes were asked for, and the newest whose reply was taken. */
+  private refreshesAsked = 0;
+  private refreshTaken = 0;
 
   private async follow(): Promise<void> {
     const id = this.state()?.id;

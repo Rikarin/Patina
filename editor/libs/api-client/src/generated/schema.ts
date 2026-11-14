@@ -21,6 +21,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/log': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The lines the Server logged after a number, the oldest first: Patina's own from information up, the framework's from warnings up. Only the latest thousand are kept; ask after the page's next number to follow along. */
+    get: operations['GetServerLog'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/preferences': {
     parameters: {
       query?: never;
@@ -645,6 +662,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/settings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps the library's name and the texel density new projects start from in library.yaml. GET /library reads them back; the export presets have routes of their own. */
+    put: operations['SetLibrarySettings'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/export': {
     parameters: {
       query?: never;
@@ -900,6 +934,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/uploads': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Keeps a picture or a mesh a client sent from its own computer in the library's uploads folder, and answers with its path on the Server's machine, which a project's mesh, a picture brought into a project and a bake's high mesh take. The same file sent again is kept once. */
+    post: operations['UploadLibraryFile'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/document': {
     parameters: {
       query?: never;
@@ -1132,7 +1183,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The bakes a project's own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh. */
+    /** The bakes a project's own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh; output puts the maps in a folder of the Server's machine instead of the project's; set, once per texture set, bakes those instead of the ones the project ticks. */
     get: operations['GetProjectBakePlan'];
     put?: never;
     post?: never;
@@ -1427,7 +1478,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it. */
+    /** Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it, and moves the pictures in projects that no document reads, saved or open, into the bin as one entry. */
     post: operations['CleanLibrary'];
     delete?: never;
     options?: never;
@@ -1961,6 +2012,23 @@ export interface paths {
     /** Pauses or resumes a stack's evaluation, or sets the proxy its picture is composited at while it is edited. Every client hears a paced event. Saving, exporting and checking always evaluate it whole. */
     put: operations['PaceStack'];
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/node-types/thumbnails': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Pictures of node types this stack can name, such as its generators, each at its defaults with a noise on its picture inputs, by hash under /previews, as a graph's palette draws them. A generator is drawn from the stack's mesh maps, so it shows what it makes on this mesh. A type with no picture, or none this stack knows, has none. */
+    post: operations['GetStackNodeTypeThumbnails'];
     delete?: never;
     options?: never;
     head?: never;
@@ -2613,7 +2681,7 @@ export interface components {
        */
       usageCount: number;
     };
-    /** @description How unsaved work is kept. It goes to the library's cache, never over a document. */
+    /** @description How unsaved work is kept. It goes to the library's cache unless a folder is chosen, never over a document. */
     AutosavePreferences: {
       /**
        * Format: int32
@@ -2634,6 +2702,12 @@ export interface components {
        * @default 3
        */
       keep: number;
+      /**
+       * @description The full path of a folder autosaves go to instead of each library's cache, a folder per library inside it,
+       *     or null for the cache (#162). Autosaves the cache kept before one was chosen are still offered and let go
+       *     of; those in a folder chosen earlier stay there and are not.
+       */
+      folder?: null | string;
     };
     /** @description The borders map's width (#121). */
     BakeBorderOptions: {
@@ -2641,6 +2715,7 @@ export interface components {
        * Format: double
        * @description How far inside its UV island a texel reads white, as a share of the texture: black on the island's border,
        *     rising evenly to white this far in.
+       * @default 0.02
        */
       width: number;
     };
@@ -2650,22 +2725,35 @@ export interface components {
        * @description `auto`: the high mesh's vertex colours, else its materials. `vertex-colour`; `material`, each
        *                 material's base colour and base colour picture; or `texture`, the picture at string BakeColourOptions.Texture
        *                 read at the high mesh's own coordinates, which moves any map from one UV layout to another.
+       * @default auto
        */
       source: string;
-      /** @description For `texture`: the picture to carry across, as a path on the Server's machine. */
+      /**
+       * @description For `texture`: the picture to carry across, as a path on the Server's machine.
+       * @default
+       */
       texture: string;
     };
-    /** @description The curvature map's stored range (#148). */
+    /** @description The curvature map's source and stored range (#148). */
     BakeCurvatureOptions: {
+      /**
+       * @description Where the bends come from: `mesh`, the high mesh's own faces where each ray lands; or
+       *     `normal-map`, the bends of the baked normal map, which is the high mesh's detail over the low mesh,
+       *     down to its smallest grooves, and none of the low mesh's own shape.
+       * @default mesh
+       */
+      source: string;
       /**
        * @description `auto`, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or
        *                 `custom`, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a crease, so every
        *                 bake made with it agrees.
+       * @default auto
        */
       range: string;
       /**
        * Format: double
        * @description For `custom`: the radius of the tightest bend the map tells apart, in the rays' units.
+       * @default 0.01
        */
       radius: number;
     };
@@ -2697,26 +2785,31 @@ export interface components {
       /**
        * @description Whose edges are marked: `high`, the high mesh's, where the rays land; or `low`, the low mesh's, at
        *     the texel, so its hard edges show even under a high mesh with none (#278).
+       * @default high
        */
       mesh: string;
       /**
        * @description `hard`, the edges the high mesh's own normals split, or `angle`, every edge whose faces meet at
        *                 double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges.
+       * @default hard
        */
       edges: string;
       /**
        * Format: double
        * @description How far either side of an edge the band reaches, in the rays' units.
+       * @default 0.01
        */
       width: number;
       /**
        * Format: double
        * @description For `angle`: the least angle between two faces that is an edge, in degrees.
+       * @default 30
        */
       angle: number;
       /**
        * @description How the band falls from white on the edge to black at its side: `even`, a straight ramp; `smooth`,
        *     a smoothstep; or `chamfer`, white all the way across.
+       * @default even
        */
       profile: string;
     };
@@ -2725,11 +2818,13 @@ export interface components {
       /**
        * @description `measured`, the largest height found; `rays`, the longer ray distance; or `custom`,
        *                 double BakeHeightOptions.Scale. The last two are the same for every bake made with them, so their maps agree.
+       * @default measured
        */
       range: string;
       /**
        * Format: double
        * @description The range for `custom`, in the rays' units.
+       * @default 0.05
        */
       scale: number;
     };
@@ -2739,9 +2834,13 @@ export interface components {
        * @description `auto`: vertex colours, else materials when there are several, else connected shells. Or one of
        *                 `material`, `material-colour` (each material's base colour), `vertex-colour`, `mesh`
        *                 (each named part) and `shell`.
+       * @default auto
        */
       source: string;
-      /** @description How labels become colours: `random`, `hue` or `grey`. Colours stay colours. */
+      /**
+       * @description How labels become colours: `random`, `hue` or `grey`. Colours stay colours.
+       * @default random
+       */
       palette: string;
     };
     /** @description The occlusion rays, which ambient occlusion, the bent normal and thickness share. */
@@ -2749,36 +2848,56 @@ export interface components {
       /**
        * Format: int32
        * @description How many rays a texel's occlusion is estimated with.
+       * @default 64
        */
       rays: number;
       /**
        * Format: double
        * @description How far an occluder counts, in the rays' units.
+       * @default 0.5
        */
       distance: number;
       /**
        * Format: double
        * @description The half-angle of the cone the rays fill, in degrees: 90 is the hemisphere.
+       * @default 90
        */
       spread: number;
-      /** @description How an occluder counts for less further away: `none`, `linear` or `smooth`. */
+      /**
+       * @description How an occluder counts for less further away: `none`, `linear` or `smooth`.
+       * @default none
+       */
       falloff: string;
-      /** @description How the rays are spread: `cosine` or `uniform`. */
+      /**
+       * @description How the rays are spread: `cosine` or `uniform`.
+       * @default cosine
+       */
       distribution: string;
       /**
        * Format: double
        * @description How near an occluder may be and not count, in the rays' units.
+       * @default 0
        */
       minimum: number;
-      /** @description Whether a ray passes through the back of a face. */
+      /**
+       * @description Whether a ray passes through the back of a face.
+       * @default false
+       */
       ignoreBackfaces: boolean;
-      /** @description Whether only the texel's own part occludes it, when parts are matched by name. */
+      /**
+       * @description Whether only the texel's own part occludes it, when parts are matched by name.
+       * @default false
+       */
       withinPart: boolean;
-      /** @description Whether a floor under the high mesh occludes too. Y is up. */
+      /**
+       * @description Whether a floor under the high mesh occludes too. Y is up.
+       * @default false
+       */
       groundPlane: boolean;
       /**
        * Format: double
        * @description How far above the high mesh's lowest point the floor is, in the rays' units.
+       * @default 0
        */
       groundOffset: number;
     };
@@ -2790,6 +2909,7 @@ export interface components {
       /**
        * Format: int32
        * @description The atlas's width, in texels, and its height too unless int? BakeOptions.Rows says otherwise.
+       * @default 2048
        */
       resolution: number;
       /**
@@ -2806,22 +2926,28 @@ export interface components {
        *     this out.
        */
       followSetShape?: null | boolean;
-      /** @description `png8`, `png16`, `exr16` or `exr32`. */
+      /**
+       * @description `png8`, `png16`, `exr16` or `exr32`.
+       * @default png16
+       */
       format: string;
       /**
        * Format: int32
        * @description How many samples along each side of a texel.
+       * @default 1
        */
       supersampling: number;
       /**
        * Format: int32
        * @description How many texels of dilation surround each chart.
+       * @default 4
        */
       gutter: number;
       /**
        * @description Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the
        *     smallest mipmaps keep the maps' own values rather than fading to the empty texture's (#148). Labels, the ID
        *     and UV Islands maps, and UV Borders keep their background.
+       * @default false
        */
       diffusion: boolean;
       /**
@@ -2831,7 +2957,10 @@ export interface components {
        *     island of the low mesh). The default is what a project's masks read.
        */
       maps: string[];
-      /** @description The frame of the normal and bent normal maps: `tangent` or `object`. */
+      /**
+       * @description The frame of the normal and bent normal maps: `tangent` or `object`.
+       * @default tangent
+       */
       space: string;
       /** @description How far the rays look and what they may strike, which every map rests on. */
       rays: components['schemas']['BakeRayOptions'];
@@ -2868,6 +2997,7 @@ export interface components {
        * @description `box`, each axis across the mesh's bounding box, so each channel is used whole and shapes stretch;
        *                 `cube`, every axis across the box's longest side, so distances agree; `sphere`, across the sphere
        *                 round the box, centred on its middle; or `none`, the point in model units, which only EXR keeps.
+       * @default box
        */
       range: string;
     };
@@ -2907,42 +3037,63 @@ export interface components {
       /**
        * Format: double
        * @description How far a ray looks outward, in front of the low mesh.
+       * @default 0.05
        */
       front: number;
       /**
        * Format: double
        * @description How far a ray looks inward, behind the low mesh, or past it from a cage.
+       * @default 0.05
        */
       rear: number;
       /**
        * @description What the distances here and in BakeOcclusionOptions are in: `relative`, fractions of the
        *     high mesh's bounding-box diagonal, or `absolute`, the model's own units.
+       * @default relative
        */
       units: string;
-      /** @description Whether a ray passes through a high face turned away from the low mesh's facing. */
+      /**
+       * @description Whether a ray passes through a high face turned away from the low mesh's facing.
+       * @default false
+       */
       ignoreBackfaces: boolean;
       /**
        * @description Whether, with no cage file, the rays start on the low mesh pushed out by the front distance and take the
        *     first surface they meet, as from a cage, rather than the nearer surface either way (#148).
+       * @default false
        */
       automaticCage: boolean;
       /**
        * Format: double
        * @description How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.
+       * @default 0
        */
       skew: number;
-      /** @description A grey image saying where to apply the skew, or empty for everywhere. */
+      /**
+       * @description A grey image saying where to apply the skew, or empty for everywhere.
+       * @default
+       */
       skewMap: string;
       /**
        * @description A grey image correcting how far the rays reach over the atlas, or empty for as set: mid grey leaves them,
        *     black pulls them onto the low mesh and white sends them twice as far, front, rear and cage alike.
+       * @default
        */
       distanceMap: string;
-      /** @description Whether a part of the low mesh only strikes the high part of the same name. */
+      /**
+       * @description Whether a part of the low mesh only strikes the high part of the same name.
+       * @default false
+       */
       matchByName: boolean;
-      /** @description What a low part's name ends in, which matching by name takes off. */
+      /**
+       * @description What a low part's name ends in, which matching by name takes off.
+       * @default _low
+       */
       lowSuffix: string;
-      /** @description What a high part's name ends in, which matching by name takes off. */
+      /**
+       * @description What a high part's name ends in, which matching by name takes off.
+       * @default _high
+       */
       highSuffix: string;
     };
     /**
@@ -2996,32 +3147,42 @@ export interface components {
     };
     /** @description Edges baked round into the normal map, the bevel a hard-surface model was not modelled with. */
     BakeRoundingOptions: {
-      /** @description Whether edges are rounded at all. */
+      /**
+       * @description Whether edges are rounded at all.
+       * @default false
+       */
       enabled: boolean;
       /**
        * Format: double
        * @description How far either side of an edge the bevel reaches, in the rays' units.
+       * @default 0.01
        */
       width: number;
       /**
        * @description Which edges: `angle`, every edge whose faces meet at double BakeRoundingOptions.Angle or more, or `hard`, the
        *     edges the mesh's own normals split, which is the nearest a mesh file has to an edge weight.
+       * @default angle
        */
       edges: string;
       /**
        * Format: double
        * @description For `angle`: the least angle between two faces that is an edge, in degrees.
+       * @default 30
        */
       angle: number;
       /**
        * @description How the normal turns across the bevel: `even`, a round fillet; `smooth`, flat at the bevel's side
        *     and turning fastest near the edge; or `chamfer`, one flat face at the halfway angle.
+       * @default even
        */
       profile: string;
     };
     /** @description The thickness map's own settings. */
     BakeThicknessOptions: {
-      /** @description Whether the map is divided by its largest value, so the thickest texel reads white. */
+      /**
+       * @description Whether the map is divided by its largest value, so the thickest texel reads white.
+       * @default true
+       */
       normalised: boolean;
     };
     /** @description What emptying the bin deleted. */
@@ -3036,7 +3197,10 @@ export interface components {
     BinItem: {
       /** @description The entry, which the bin routes take. */
       id: string;
-      /** @description `project` or `document`. */
+      /**
+       * @description `project`, `document`, or `pictures` for those a Clean found nothing read, each going back to
+       *                 its own place in `projects`.
+       */
       kind: string;
       /** @description Its display name when it was deleted. */
       name: string;
@@ -3267,6 +3431,32 @@ export interface components {
        * @description How long a built object or report may go untouched before it goes, 0 or more.
        */
       days: number;
+    };
+    /** @description One file an export writes for a texture set, and what it takes on a GPU (#159). */
+    CheckFile: {
+      /** @description Its name as the export writes it, with its extension. */
+      file: string;
+      /** @description Its format, one of the export formats. */
+      format: string;
+      /** @description What its blocks hold, or `none`. */
+      compression: string;
+      /**
+       * Format: int32
+       * @description Its width, in texels, as it is written.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height.
+       */
+      height: number;
+      /** @description Whether it carries a mip chain. */
+      mips: boolean;
+      /**
+       * Format: int64
+       * @description The GPU memory it takes, its mips included.
+       */
+      bytes: number;
     };
     /** @description One problem a texture set has before it is exported. */
     CheckProblem: {
@@ -3920,6 +4110,7 @@ export interface components {
       | components['schemas']['GraphCommandGraphSetValue']
       | components['schemas']['GraphCommandGraphSetText']
       | components['schemas']['GraphCommandGraphSetSetting']
+      | components['schemas']['GraphCommandGraphSetLevel']
       | components['schemas']['GraphCommandGraphAddParameter']
       | components['schemas']['GraphCommandGraphSetParameter']
       | components['schemas']['GraphCommandGraphRemoveParameter']
@@ -4217,6 +4408,21 @@ export interface components {
        * @description Its height, the same way. The two are set together.
        */
       physicalHeight?: null | number;
+    };
+    /**
+     * @description Sets the size nodes are computed at, relative to their graph's; see GraphNodeState. A radius
+     *     stays the same part of the picture at any level, because it is counted in the graph's base.
+     */
+    GraphCommandGraphSetLevel: {
+      /** @enum {string} */
+      op: 'setLevel';
+      /** @description The nodes. */
+      nodes: number[];
+      /**
+       * Format: int32
+       * @description From -2 (four times the graph's size) to 4 (a sixteenth of it), or null to follow the inputs.
+       */
+      level?: null | number;
     };
     /** @description Replaces a parameter where it stands. Dragging its default sends this on every step. */
     GraphCommandGraphSetParameter: {
@@ -4753,6 +4959,12 @@ export interface components {
        * @default false
        */
       bypassed: boolean;
+      /**
+       * Format: int32
+       * @description The size it is computed at, in halvings of its graph's size: 1 is half the width and height, -1 twice them, 0
+       *     the graph's own. Null follows the finest image arriving at it. On a compound it applies to every node inside.
+       */
+      level?: null | number;
     };
     /** @description How long one node's operations took on the GPU, the last time an evaluation ran them. */
     GraphNodeTime: {
@@ -5105,6 +5317,31 @@ export interface components {
        */
       version: number;
     };
+    /** @description What `POST /api/v1/library/clean` took away (#162). */
+    LibraryCleaned: {
+      /**
+       * Format: int32
+       * @description How many folders of copies of moved paint were deleted.
+       */
+      removed: number;
+      /**
+       * Format: int64
+       * @description The room those freed on disk.
+       */
+      bytes: number;
+      /**
+       * Format: int32
+       * @description How many pictures nothing read went to the bin.
+       */
+      pictures: number;
+      /**
+       * Format: int64
+       * @description The room those take, which emptying the bin frees.
+       */
+      pictureBytes: number;
+      /** @description The bin's entry that holds those pictures, for a Restore, or null when none went. */
+      bin?: null | string;
+    };
     /**
      * @description What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A
      *     document's cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for
@@ -5316,6 +5553,16 @@ export interface components {
       nothing?: null | string;
       /** @description What a running build is on, for a person: a project and an output or a preset. */
       current?: null | string;
+    };
+    /** @description The body of `PUT /api/v1/library/settings` (#192). */
+    LibrarySettingsRequest: {
+      /** @description The library's display name, 1 to 200 characters. Its folder keeps its name. */
+      name: string;
+      /**
+       * Format: double
+       * @description The texel density new projects start from, in texels per metre, above zero.
+       */
+      texelDensity: number;
     };
     /** @description The body of `PUT /api/v1/library/export/targets` (#207). */
     LibraryTargetsRequest: {
@@ -5661,7 +5908,10 @@ export interface components {
       sets: string[];
       /** @description Detailed meshes after the mesh's own, in order, as paths on the Server's machine. */
       high: string[];
-      /** @description A cage, as a path on the Server's machine, or empty for none. */
+      /**
+       * @description A cage, as a path on the Server's machine, or empty for none.
+       * @default
+       */
       cage: string;
     };
     /**
@@ -5672,22 +5922,26 @@ export interface components {
       /**
        * Format: double
        * @description The most GPU memory one texture set's exported files may take, in mebibytes, or zero for no limit.
+       * @default 0
        */
       memoryBudget: number;
       /**
        * Format: int32
        * @description The longest side a texture set's maps may have, in texels, or zero for no limit.
+       * @default 0
        */
       maxSize: number;
       /**
        * Format: double
        * @description The texel density the sets are held to, in texels per unit of the model (a metre in glTF), or zero for the
        *     library's.
+       * @default 0
        */
       texelDensity: number;
       /**
        * Format: double
        * @description How far a set's density may stray from it before it is flagged, as a share: 0.25 is a quarter.
+       * @default 0.25
        */
       densityTolerance: number;
     };
@@ -6218,6 +6472,37 @@ export interface components {
       /** @description The folder below `projects/` to make it in, or null for the top. */
       folder?: null | string;
     };
+    /** @description One line of what the Server said, as `GET /api/v1/log` gives it (#192). */
+    ServerLogEntry: {
+      /**
+       * Format: int64
+       * @description Its number, rising by one from the Server's start.
+       */
+      sequence: number;
+      /**
+       * Format: date-time
+       * @description When it was said.
+       */
+      at: string;
+      /** @description `information`, `warning`, `error` or `critical`. */
+      level: string;
+      /** @description The part of the Server that said it, such as `Patina.Server.Autosave`. */
+      source: string;
+      /** @description What it said, and the exception's message after it when there was one. */
+      text: string;
+    };
+    /** @description The lines of the Server's log after a number, the oldest first (#192). */
+    ServerLogPage: {
+      /** @description The lines, at most int ServerLogPage.Most. */
+      entries: components['schemas']['ServerLogEntry'][];
+      /**
+       * Format: int64
+       * @description The number to ask after next: the last line's, or the one asked after when none came.
+       */
+      next: number;
+      /** @description Whether lines after the one asked after are gone, as only the latest are kept. */
+      dropped: boolean;
+    };
     /**
      * @description The Server's settings that belong to the person and not to a library or project, kept in a plain file beside
      *     the discovery file, which anyone can read and edit.
@@ -6225,6 +6510,7 @@ export interface components {
     ServerPreferences: {
       /** @description How unsaved work is kept. */
       autosave: components['schemas']['AutosavePreferences'];
+      bake?: null | components['schemas']['BakeOptions'];
     };
     /** @description Puts a document back as a snapshot holds it, or forgets a snapshot. */
     SnapshotRequest: {
@@ -6487,6 +6773,10 @@ export interface components {
        * @default Rgba8
        */
       format: string;
+      /** @description What a person named a user channel (#141), such as Dirt; empty for the usage's own label. */
+      name: string;
+      /** @description Whether a user channel holds a color rather than one number (#141); false for any other. */
+      colour: boolean;
     };
     /** @description What Apply Channels to All Sets did, one entry for each other texture set of the model. */
     StackChannelsApplied: {
@@ -6552,6 +6842,8 @@ export interface components {
        *     first.
        */
       problems: components['schemas']['CheckProblem'][];
+      /** @description Each file the export writes for the set, with the GPU memory it takes. */
+      files: components['schemas']['CheckFile'][];
     };
     /** @description Layers copied out of a stack, which a StackPasteLayers names. */
     StackClip: {
@@ -6582,6 +6874,7 @@ export interface components {
       | components['schemas']['StackCommandStackNestLayer']
       | components['schemas']['StackCommandStackRemoveChannel']
       | components['schemas']['StackCommandStackSetChannelFormat']
+      | components['schemas']['StackCommandStackSetUserChannel']
       | components['schemas']['StackCommandStackSetSeed']
       | components['schemas']['StackCommandStackDuplicateLayers']
       | components['schemas']['StackCommandStackPasteLayers']
@@ -6980,6 +7273,11 @@ export interface components {
       inputs?: null | {
         [key: string]: components['schemas']['StackAnchorRef'];
       };
+      /**
+       * @description Which picture of a generator entry that writes several it reads, or empty for its only one. Another generator
+       *     starts from empty.
+       */
+      output?: null | string;
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {
@@ -7038,6 +7336,21 @@ export interface components {
       description?: null | string;
     };
     /**
+     * @description Names a user channel and says whether it holds a color (#141), as one undo step, <i>User channel</i>. A user
+     *     channel, `user0` to `user7`, means nothing to the material: its name is what a person reads, and its
+     *     usage stays what a preset and a graph name it by. What is left out stays as it is.
+     */
+    StackCommandStackSetUserChannel: {
+      /** @enum {string} */
+      op: 'setUserChannel';
+      /** @description Which channel, a user channel the set has. */
+      usage: string;
+      /** @description What it is called; empty for its usage's own label. */
+      name?: null | string;
+      /** @description Whether it holds a color, painted and chosen as one, rather than one number. */
+      colour?: null | boolean;
+    };
+    /**
      * @description Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
      *     Stroke and they make one undo step, ended by one with Open false.
      */
@@ -7085,7 +7398,8 @@ export interface components {
       stencil?: null | components['schemas']['StackPicture'];
       /**
        * @description With the fill curve, how much of the mesh a click takes: `triangle`, `polygon` (the flat polygon it
-       *     is part of), `part` (the named mesh it belongs to) or `shell` (its UV island). It needs a mesh.
+       *     is part of), `part` (the named mesh it belongs to), `shell` (its UV island) or `loop` (the
+       *     loop of quads through it, across its edge nearest the click, which takes no outline). It needs a mesh.
        */
       fill?: null | string;
       /**
@@ -7202,6 +7516,7 @@ export interface components {
        *     such as round a cylinder. Null or empty bends nothing.
        */
       warp?: null | number[];
+      symmetry?: null | components['schemas']['StackSurfaceSymmetry'];
     };
     /** @description What an edit changed, so that a client need not read the whole stack again. */
     StackDelta: {
@@ -7358,6 +7673,11 @@ export interface components {
       settings: components['schemas']['GraphSettingDefinition'][];
       /** @description The images it reads, its subject first. Empty for a generator. */
       inputs?: null | components['schemas']['StackFilterInput'][];
+      /**
+       * @description The pictures it writes, by name, when it writes more than one, so a generator read for one picture is told which
+       *     (#120); null when it writes one.
+       */
+      outputs?: null | string[];
     };
     /** @description Asks which layer is on top at a place on a stack's map, as a click on the mesh or the map finds it. */
     StackFindRequest: {
@@ -7452,6 +7772,11 @@ export interface components {
        * @default
        */
       map: string;
+      /**
+       * @description Which picture of a generator that writes several is read, or empty for its only one.
+       * @default
+       */
+      output: string;
     };
     /** @description An instance layer and the layer it stands for, across two texture sets of one model (#108). */
     StackInstanceLink: {
@@ -7656,6 +7981,12 @@ export interface components {
        * @default 0
        */
       outside: number;
+      /**
+       * @description Which picture of a generator that writes several is the mask, by its name in the generator's Outputs, or empty
+       *     for its only one. Another generator starts from empty.
+       * @default
+       */
+      output: string;
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {
@@ -7753,6 +8084,11 @@ export interface components {
        * @default Red
        */
       lane: string;
+      /**
+       * @description Which picture of a generator entry that writes several it reads, or empty for its one.
+       * @default
+       */
+      output: string;
     };
     /** @description Chooses the bake a stack's generators and bake masks read. */
     StackMeshMapsRequest: {
@@ -8239,6 +8575,34 @@ export interface components {
        * @default 0
        */
       jitter: number;
+      symmetry?: null | components['schemas']['StackSurfaceSymmetry'];
+      /**
+       * @description For a stroke in stamps, the brush alpha each stamp takes the shape of, one of the vocabulary's `alphas`,
+       *     turned with the path. Null, empty or `Round` is a round stamp.
+       */
+      alpha?: null | string;
+    };
+    /**
+     * @description How a decal or a path copies itself over the model (#132): mirrored through a plane, or turned round a line,
+     *     as a stroke's symmetry copies a stroke. The plane or the line is a place on the model, in its own units, so it
+     *     is the same in every texture set.
+     */
+    StackSurfaceSymmetry: {
+      /** @description The plane's normal, or the line's direction: three numbers, any length but none. */
+      axis: number[];
+      /** @description A point on the plane or the line, in the model's units: three numbers. */
+      through: number[];
+      /**
+       * @description `mirror` through a plane, or `radial` round a line.
+       * @default mirror
+       */
+      kind: string;
+      /**
+       * Format: int32
+       * @description How many a radial symmetry makes, the original among them: 2 to 64.
+       * @default 2
+       */
+      count: number;
     };
     /**
      * @description How a stroke on a mesh copies itself: through a plane, or round an axis. The plane or the axis passes through
@@ -8367,6 +8731,8 @@ export interface components {
       /** @description How wide a channel's painted texels can be (#19): 8-bit, and 16-bit and 32-bit float. */
       formats?: null | components['schemas']['StackTerm'][];
     };
+    /** Format: binary */
+    Stream: string;
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {
       /** @description The Server's release version. */
@@ -8453,32 +8819,38 @@ export interface components {
       /**
        * Format: int32
        * @description The atlas side the margin is counted against, in texels. A map of another size only rescales it.
+       * @default 2048
        */
       resolution: number;
       /**
        * Format: int32
        * @description The empty texels between two islands.
+       * @default 4
        */
       margin: number;
       /**
        * @description How islands are packed: `boxes` by their bounding boxes, `outlines` by their shapes, and
        *     `groups` by their shapes after joining nearly square neighbours.
+       * @default outlines
        */
       quality: string;
       /**
        * Format: int32
        * @description How many ways an island may be turned: 1 never, 2 a half turn, 4 every quarter turn.
+       * @default 4
        */
       rotations: number;
       /**
        * Format: double
        * @description Texels per world unit every island is scaled to, or zero for each island at its own scale.
+       * @default 0
        */
       texelDensity: number;
       /**
        * @description What happens when the islands do not fit at that density: `shrink` scales them all down, and
        *     `refuse` stops and says so. Spilling into a second UDIM tile is not offered while a texture set
        *     paints one tile.
+       * @default shrink
        */
       overflow: string;
     };
@@ -8521,6 +8893,14 @@ export interface components {
       /** @description What a person should know: an island split, a rescale. */
       warnings: string[];
     };
+    /** @description A file a client sent from its own computer, now on the Server's machine (#4). */
+    UploadedFile: {
+      /**
+       * @description Its full path on the Server's machine, which anything that takes a file there takes: a project's mesh, a picture
+       *     brought into a project, a bake's high mesh.
+       */
+      path: string;
+    };
     /**
      * @description A bake's setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,
      *     and what of it to draw. Paths on the Server's machine, as in a bake request.
@@ -8528,7 +8908,10 @@ export interface components {
     ViewportBakePreview: {
       /** @description The detailed meshes, in order. */
       high: string[];
-      /** @description The mesh baked onto, or empty to take the preview off. */
+      /**
+       * @description The mesh baked onto, or empty to take the preview off.
+       * @default
+       */
       low: string;
       /** @description A cage, or null for the ray distances. */
       cage?: null | string;
@@ -8536,27 +8919,42 @@ export interface components {
       material?: null | string;
       /** @description The options the bake would run with: its distances, units, cage correction and matching. */
       options: components['schemas']['BakeOptions'];
-      /** @description Whether to draw where the rays start and how far they reach: the cage or the ray distances. */
+      /**
+       * @description Whether to draw where the rays start and how far they reach: the cage or the ray distances.
+       * @default true
+       */
       reach: boolean;
-      /** @description Whether to draw the high meshes, see-through. */
+      /**
+       * @description Whether to draw the high meshes, see-through.
+       * @default true
+       */
       highMesh: boolean;
-      /** @description Whether to colour the parts by which matched which, when parts are matched by name. */
+      /**
+       * @description Whether to colour the parts by which matched which, when parts are matched by name.
+       * @default true
+       */
       matches: boolean;
       /**
        * @description Whether to draw the low mesh's hard edges that have no UV seam, where a tangent-space normal map shows a
        *     line.
+       * @default true
        */
       seams: boolean;
-      /** @description Whether the model is drawn in a plain grey while the preview shows, so its colours read. */
+      /**
+       * @description Whether the model is drawn in a plain grey while the preview shows, so its colours read.
+       * @default true
+       */
       neutral: boolean;
       /**
        * Format: double
        * @description How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays.
+       * @default 0.12
        */
       shellOpacity: number;
       /**
        * Format: double
        * @description How opaque the high mesh is, 0 to 1, in its parts' colours or plain.
+       * @default 0.25
        */
       highOpacity: number;
     };
@@ -9144,6 +9542,28 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['SystemInfo'];
+        };
+      };
+    };
+  };
+  GetServerLog: {
+    parameters: {
+      query?: {
+        after?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ServerLogPage'];
         };
       };
     };
@@ -10962,6 +11382,57 @@ export interface operations {
       };
     };
   };
+  SetLibrarySettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LibrarySettingsRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryInfo'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   SetLibraryExport: {
     parameters: {
       query?: never;
@@ -11716,6 +12187,68 @@ export interface operations {
       };
       /** @description Conflict */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  UploadLibraryFile: {
+    parameters: {
+      query: {
+        name: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/octet-stream': components['schemas']['Stream'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UploadedFile'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Payload Too Large */
+      413: {
         headers: {
           [name: string]: unknown;
         };
@@ -12589,6 +13122,8 @@ export interface operations {
       query: {
         project: string;
         document?: string;
+        output?: string;
+        set?: string[];
       };
       header?: never;
       path?: never;
@@ -13650,7 +14185,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['LibraryTidied'];
+          'application/json': components['schemas']['LibraryCleaned'];
         };
       };
       /** @description Bad Request */
@@ -15150,6 +15685,50 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackNodeTypeThumbnails: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ThumbnailRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ThumbnailList'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown;
         };

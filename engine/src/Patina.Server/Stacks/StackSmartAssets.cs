@@ -153,6 +153,7 @@ static class StackSmartAssets {
                     GeneratorValues = carried.GeneratorValues,
                     GeneratorTexts = carried.GeneratorTexts,
                     GeneratorInputs = carried.GeneratorInputs,
+                    GeneratorOutput = carried.GeneratorOutput,
                     Map = carried.Map,
                     Lane = carried.Lane,
                     Blend = LayerBlendMode.Multiply

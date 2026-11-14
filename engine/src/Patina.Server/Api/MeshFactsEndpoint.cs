@@ -5,7 +5,10 @@ using Patina.Library;
 
 namespace Patina.Server.Api;
 
-/// <summary>What a mesh is (#146), which the Worker reads, since Assimp is a native parser that may crash.</summary>
+/// <summary>
+///     What a mesh is (#146), which the Worker reads, since Assimp is a native parser that may crash, and the Server
+///     keeps until the file's bytes change (#292).
+/// </summary>
 static class MeshFactsEndpoint {
     /// <summary>
     ///     The facts of a mesh file: one below the library, as a project lists it, or any file on this machine, so a
@@ -13,7 +16,7 @@ static class MeshFactsEndpoint {
     /// </summary>
     public static async Task<Results<Ok<MeshFacts>, ProblemHttpResult>> GetAsync(
         LibraryHost host,
-        WorkerLink worker,
+        MeshFactsCache meshes,
         string path,
         CancellationToken cancellationToken
     ) {
@@ -31,12 +34,7 @@ static class MeshFactsEndpoint {
         }
 
         try {
-            var connection = await worker.ConnectionAsync(cancellationToken);
-            var reply = await connection.SendAsync(
-                new() { Type = IpcTypes.MeshFacts, MeshFile = file },
-                cancellationToken
-            );
-            return reply.Facts is { } facts
+            return await meshes.GetAsync(file, cancellationToken) is { } facts
                 ? TypedResults.Ok(facts)
                 : Refusals.Problem(
                     "The GPU engine said nothing about the mesh.",

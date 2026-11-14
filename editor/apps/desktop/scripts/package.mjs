@@ -140,4 +140,8 @@ const unpacked = () => {
   execFileSync(join(release, image), ['--appimage-extract'], { cwd: release, stdio: 'ignore' });
   return join(release, 'squashfs-root/resources/engine/patina-worker');
 };
-execFileSync(unpacked(), ['--check-natives', '--packaged'], { stdio: 'inherit' });
+// ⚠ On macOS the package also draws a frame through the Vulkan it carries (#48): a device that opens and compiles no
+// shader would show nothing. The macOS runner opens one through the package's MoltenVK; Windows and Linux runners
+// have no GPU here.
+const render = process.platform === 'darwin' ? ['--render'] : [];
+execFileSync(unpacked(), ['--check-natives', '--packaged', ...render], { stdio: 'inherit' });

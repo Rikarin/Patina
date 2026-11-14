@@ -6,8 +6,12 @@ namespace Patina.Server;
 ///     Where autosave and letting its work go meet. A save, a discard or an answer to an offer lets go of a document's
 ///     autosaves through here, and an autosave begun before that can never finish after it: one in flight while the
 ///     edits are thrown away would otherwise land a moment later and offer back what was refused (#162).
+///     Autosaves go where the person chose (#162), which <paramref name="away" /> says for each library, or to its
+///     cache.
 /// </summary>
-public sealed class AutosaveGate {
+/// <param name="away">The folder outside the cache that a library's autosaves go to, or null for its cache.</param>
+public sealed class AutosaveGate(Func<string, string?>? away = null) {
+    readonly Func<string, string?> place = away ?? (static _ => null);
     readonly Lock gate = new();
 
     /// <summary>When each document's autosaves were last let go, by their folder, as a count of lettings go.</summary>
@@ -24,7 +28,7 @@ public sealed class AutosaveGate {
     /// </summary>
     public string Begin(string root, string file) {
         lock (gate) {
-            var generation = Recovery.Begin(root, file);
+            var generation = Recovery.Begin(root, file, place(root));
             writing.Add(generation);
             return generation;
         }
@@ -47,10 +51,13 @@ public sealed class AutosaveGate {
         }
     }
 
+    /// <summary>When a document was autosaved last, if that is later than its last save.</summary>
+    public DateTimeOffset? Newer(string root, string file) => Recovery.Newer(root, file, place(root));
+
     /// <summary>Puts a document's newest autosave in place of its file, then lets go of its autosaves.</summary>
     public void Restore(string root, string file) {
         lock (gate) {
-            Recovery.Restore(root, file);
+            Recovery.Restore(root, file, place(root));
             ForgetHeld(root, file);
         }
     }
@@ -59,7 +66,7 @@ public sealed class AutosaveGate {
         count++;
         forgotten[Recovery.Folder(root, file)] = count;
         // ⚠ Not the autosave being written: deleting its folder under the Worker fails the save that asked.
-        Recovery.Clear(root, file, writing);
+        Recovery.Clear(root, file, writing, place(root));
     }
 
     /// <summary>
@@ -75,7 +82,7 @@ public sealed class AutosaveGate {
             }
 
             Recovery.Finish(generation, text);
-            Recovery.Trim(root, file, keep);
+            Recovery.Trim(root, file, keep, place(root));
             return true;
         }
     }

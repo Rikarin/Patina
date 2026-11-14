@@ -29,10 +29,14 @@ class StackChannel:
             format_ (str): How wide the texels are that a stroke paints it at (#19): one of the vocabulary's formats, Rgba8
                 unless the set
                 says more. Default: 'Rgba8'.
+            name (str): What a person named a user channel (#141), such as Dirt; empty for the usage's own label.
+            colour (bool): Whether a user channel holds a color rather than one number (#141); false for any other.
      """
 
     usage: str
     default: list[float]
+    name: str
+    colour: bool
     format_: str = 'Rgba8'
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -49,6 +53,10 @@ class StackChannel:
 
         format_ = self.format_
 
+        name = self.name
+
+        colour = self.colour
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -56,6 +64,8 @@ class StackChannel:
             "usage": usage,
             "default": default,
             "format": format_,
+            "name": name,
+            "colour": colour,
         })
 
         return field_dict
@@ -72,10 +82,16 @@ class StackChannel:
 
         format_ = d.pop("format")
 
+        name = d.pop("name")
+
+        colour = d.pop("colour")
+
         stack_channel = cls(
             usage=usage,
             default=default,
             format_=format_,
+            name=name,
+            colour=colour,
         )
 
 

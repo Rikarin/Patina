@@ -49,6 +49,9 @@ if (library is not null) {
     }
 
     CacheSweep.Leftovers(library);
+} else {
+    // ⚠ Beside the start, never before it: a machine can hold hundreds of them, and the app waits for the Server.
+    _ = Task.Run(static () => JobRunner.ClearScratch(false));
 }
 
 // A library's Server is found through the discovery file, so it needs a token to publish and a port of its own: each
@@ -60,8 +63,13 @@ var token = builder.Configuration["Patina:Token"] is { Length: > 0 } configured 
 Access.RequireTokenBeyondLoopback(urls, token);
 builder.WebHost.UseUrls(urls);
 // The hosting log's "Request starting/finished" lines carry the query string, and a WebSocket presents the access token
-// there (?access_token=, Api/Access.cs). Only its warnings are kept.
-builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
+// there (?access_token=, Api/Access.cs). Only its warnings are kept, and only ASP.NET Core's warnings at all: a line
+// per request for every endpoint filled the desktop app's log of the Server and hid what went wrong (#294).
+builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
+// The latest lines, for any client's log pane (#192).
+var ring = new LogRing();
+builder.Logging.AddProvider(ring);
+builder.Services.AddSingleton(ring);
 builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection("Patina"));
 builder.Services.ConfigureHttpJsonOptions(static o => {
         o.SerializerOptions.TypeInfoResolverChain.Insert(0, ContractsJsonContext.Default);
@@ -88,6 +96,7 @@ builder.Services.AddOpenApi(static o => {
 builder.Services.AddSingleton(new ServerIdentity(library, token));
 builder.Services.AddSingleton<WorkerLink>();
 builder.Services.AddSingleton<MeshSetCache>();
+builder.Services.AddSingleton(static s => new MeshFactsCache(s.GetRequiredService<WorkerLink>()));
 builder.Services.AddHostedService(static s => s.GetRequiredService<WorkerLink>());
 builder.Services.AddSingleton<LibraryHost>();
 builder.Services.AddHostedService(static s => s.GetRequiredService<LibraryHost>());
@@ -100,7 +109,9 @@ builder.Services.AddSingleton<Holders>();
 builder.Services.AddSingleton<PreviewStore>();
 builder.Services.AddSingleton<Thumbnails>();
 builder.Services.AddSingleton<Preferences>();
-builder.Services.AddSingleton<AutosaveGate>();
+builder.Services.AddSingleton(static services =>
+    new AutosaveGate(services.GetRequiredService<Preferences>().AutosaveAway)
+);
 builder.Services.AddSingleton<GraphEvaluator>();
 builder.Services.AddHostedService(static services => services.GetRequiredService<GraphEvaluator>());
 builder.Services.AddHostedService<GraphFollower>();
@@ -154,6 +165,10 @@ app.MapOpenApi();
 app.MapPatinaApi();
 
 app.Run();
+if (library is null) {
+    JobRunner.ClearScratch(true);
+}
+
 return Environment.ExitCode;
 
 /// <summary>Entry point, public for integration tests.</summary>

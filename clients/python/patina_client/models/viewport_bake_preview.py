@@ -29,33 +29,37 @@ class ViewportBakePreview:
 
         Attributes:
             high (list[str]): The detailed meshes, in order.
-            low (str): The mesh baked onto, or empty to take the preview off.
+            low (str): The mesh baked onto, or empty to take the preview off. Default: ''.
             options (BakeOptions): How a bake runs, with no meshes in it: what a project keeps between bakes and every
                 client sends. Each map's
                 own settings are a part of their own.
             reach (bool): Whether to draw where the rays start and how far they reach: the cage or the ray distances.
-            high_mesh (bool): Whether to draw the high meshes, see-through.
-            matches (bool): Whether to colour the parts by which matched which, when parts are matched by name.
+                Default: True.
+            high_mesh (bool): Whether to draw the high meshes, see-through. Default: True.
+            matches (bool): Whether to colour the parts by which matched which, when parts are matched by name. Default:
+                True.
             seams (bool): Whether to draw the low mesh's hard edges that have no UV seam, where a tangent-space normal map
                 shows a
-                line.
+                line. Default: True.
             neutral (bool): Whether the model is drawn in a plain grey while the preview shows, so its colours read.
-            shell_opacity (float): How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays.
-            high_opacity (float): How opaque the high mesh is, 0 to 1, in its parts' colours or plain.
+                Default: True.
+            shell_opacity (float): How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays. Default:
+                0.12.
+            high_opacity (float): How opaque the high mesh is, 0 to 1, in its parts' colours or plain. Default: 0.25.
             cage (None | str | Unset): A cage, or null for the ray distances.
             material (None | str | Unset): The texture set of the low mesh, or null for the whole mesh.
      """
 
     high: list[str]
-    low: str
     options: BakeOptions
-    reach: bool
-    high_mesh: bool
-    matches: bool
-    seams: bool
-    neutral: bool
-    shell_opacity: float
-    high_opacity: float
+    low: str = ''
+    reach: bool = True
+    high_mesh: bool = True
+    matches: bool = True
+    seams: bool = True
+    neutral: bool = True
+    shell_opacity: float = 0.12
+    high_opacity: float = 0.25
     cage: None | str | Unset = UNSET
     material: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)

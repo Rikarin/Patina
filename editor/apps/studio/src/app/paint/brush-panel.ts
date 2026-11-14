@@ -14,7 +14,7 @@ import { degrees, percent, times, toDegrees, toRadians } from '../core/numbers';
 import { ProjectStore } from '../library/project-store';
 import { LibraryThumbnails } from '../library/thumbnails';
 import { BrushPresets } from './brush-presets';
-import { maximumRadius } from './paint-commands';
+import { SizeSteps, radiusAt, sizeMeaning, sizePosition, sizeShown } from './brush-size';
 import { type BrushSettings, type FillMode, type FillShape, PaintStore } from './paint-store';
 import { FillModes, FillShapes, PaintToolIcons, PaintTools } from './paint-tools';
 
@@ -53,9 +53,6 @@ const Sliders: readonly { key: NumberSetting; label: string; max: number; min?: 
   // How far a face may turn from the camera and still take paint: 90° paints all it looks at.
   { key: 'facing', label: 'Face angle', max: 90, shown: 'angle' }
 ];
-
-/** The size slider's positions, which run on a log scale so a small brush is as easy to set as a big one. */
-const SizeSteps = 1000;
 
 /** How long the brush rests before its picture is drawn, so a slider being dragged asks once at the end. */
 const PreviewQuiet = 200;
@@ -131,24 +128,30 @@ const PreviewQuiet = 200;
             (valueChange)="store.fillMode.set(fillMode($event))"
           />
         </div>
-        <div class="flex items-center gap-2">
-          <span
-            class="text-foreground-muted w-16 shrink-0 text-xs"
-            title="Whether a click fills what is under it, or a drag fills everything a rectangle or a lasso holds"
-            >Selects</span
+        @if (store.fillMode() === 'loop') {
+          <span class="text-foreground-muted ps-[4.5rem] text-xs" data-testid="paint-fill-loop"
+            >Click near an edge: the loop runs across it, through the quads each side</span
           >
-          <xui-select
-            class="min-w-0 flex-1"
-            aria-label="Fill selection"
-            data-testid="paint-fill-shape"
-            [filterable]="false"
-            [itemText]="fillShapeName"
-            [items]="fillShapeValues"
-            [value]="store.fillShape()"
-            (valueChange)="store.fillShape.set(fillShape($event))"
-          />
-        </div>
-        @if (store.fillShape() !== 'click') {
+        } @else {
+          <div class="flex items-center gap-2">
+            <span
+              class="text-foreground-muted w-16 shrink-0 text-xs"
+              title="Whether a click fills what is under it, or a drag fills everything a rectangle or a lasso holds"
+              >Selects</span
+            >
+            <xui-select
+              class="min-w-0 flex-1"
+              aria-label="Fill selection"
+              data-testid="paint-fill-shape"
+              [filterable]="false"
+              [itemText]="fillShapeName"
+              [items]="fillShapeValues"
+              [value]="store.fillShape()"
+              (valueChange)="store.fillShape.set(fillShape($event))"
+            />
+          </div>
+        }
+        @if (store.fillChooses() !== 'click') {
           <span
             class="flex items-center gap-1 ps-[4.5rem] text-xs"
             title="Also fills what the viewport cannot see inside the outline: the far side, and what is hidden behind"
@@ -827,35 +830,16 @@ export class BrushPanel {
 
   /** A size in its space's own words: pixels of the screen, texels of the map, or a share of the model. */
   protected sizeShown(value: number): string {
-    switch (this.store.brush().sizeSpace) {
-      case 'texture':
-        return `${Math.round(value)} tx`;
-      case 'model':
-        return percent(value / 1000, 1);
-      default:
-        return `${Math.round(value)} px`;
-    }
+    return sizeShown(this.store.brush().sizeSpace, value);
   }
 
   /** What a size is, which depends on what it is measured in. */
-  protected readonly sizeMeans = computed(() => {
-    switch (this.store.brush().sizeSpace) {
-      case 'texture':
-        return 'The radius of the brush in texels of the map, the same at any zoom, measured where a stroke starts.';
-      case 'model':
-        return 'The radius of the brush as a share of the model’s size, the same at any zoom and on any part of it.';
-      default:
-        return 'The radius of the brush in pixels of the screen, the same under the pointer at any zoom.';
-    }
-  });
+  protected readonly sizeMeans = computed(() => sizeMeaning(this.store.brush().sizeSpace));
 
-  protected readonly sizePosition = computed(() =>
-    Math.round((Math.log(Math.max(1, this.store.radius())) / Math.log(maximumRadius(this.store))) * SizeSteps)
-  );
+  protected readonly sizePosition = computed(() => sizePosition(this.store));
 
   protected setSize(position: number): void {
-    const most = maximumRadius(this.store);
-    this.store.radius.set(Math.max(1, Math.round(Math.exp((position / SizeSteps) * Math.log(most)))));
+    this.store.radius.set(radiusAt(this.store, position));
   }
 
   protected inDegrees(radians: number): number {

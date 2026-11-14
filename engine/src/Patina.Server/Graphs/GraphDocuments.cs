@@ -76,7 +76,7 @@ public static class GraphDocuments {
         };
 
     public static GraphNodeState State(GraphNodeAsset node) =>
-        new(node.Id, node.Type, node.X, node.Y, node.Values, node.Texts, node.Bypassed);
+        new(node.Id, node.Type, node.X, node.Y, node.Values, node.Texts, node.Bypassed, node.Level);
 
     public static GraphEdgeState State(GraphEdgeAsset edge) =>
         new(edge.FromNode, edge.FromPort, edge.ToNode, edge.ToPort);
@@ -219,10 +219,12 @@ public static class GraphDocuments {
         List<GraphValue> values = [];
         for (var i = 0; i < now.Nodes.Length; i++) {
             var (was, node) = (told.Nodes[i], now.Nodes[i]);
-            // Switching a node off changes the graph the compiler walks, so it is never a number.
+            // Switching a node off changes the graph the compiler walks, and a level the images it allocates, so
+            // neither is ever a number.
             if (was.Id != node.Id
                 || !string.Equals(was.Type, node.Type, StringComparison.Ordinal)
                 || was.Bypassed != node.Bypassed
+                || was.Level != node.Level
                 || LostAText(was, node)) {
                 return null;
             }
@@ -289,6 +291,7 @@ public static class GraphDocuments {
     static bool SameNode(GraphNodeAsset a, GraphNodeAsset b) =>
         string.Equals(a.Type, b.Type, StringComparison.Ordinal)
         && a.Bypassed == b.Bypassed
+        && a.Level == b.Level
         && a.X.Equals(b.X)
         && a.Y.Equals(b.Y)
         && SameTexts(a.Texts, b.Texts)

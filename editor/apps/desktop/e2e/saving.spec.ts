@@ -1,8 +1,17 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { appendFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen, colouredGlb, leave, newestGeneration, newLibrary, newProject, wholeAutosaves } from './projects';
+import {
+  answerOpen,
+  colouredGlb,
+  leave,
+  newestGeneration,
+  newLibrary,
+  newProject,
+  removeScratch,
+  wholeAutosaves
+} from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const softwareWebGl = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
@@ -101,7 +110,7 @@ test.beforeEach(() => {
 
 test.afterEach(async () => {
   await leave(app);
-  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+  removeScratch(scratch);
 });
 
 test("Don't Save on a stack throws the edits away, and they stay gone", async () => {

@@ -3,6 +3,7 @@ using Patina.Export.Builds;
 using Patina.Ipc;
 using Patina.Jobs;
 using Patina.Library;
+using System.Diagnostics;
 
 namespace Patina.Server;
 
@@ -48,8 +49,45 @@ public sealed class JobRunner : BackgroundService {
             return (LibraryLayout.JobsPath(library), LibraryLayout.BakesPath(library));
         }
 
-        var scratch = Path.Combine(Path.GetTempPath(), $"patina-jobs-{Environment.ProcessId}");
+        var scratch = ScratchOf(Environment.ProcessId);
         return (Path.Combine(scratch, "jobs"), Path.Combine(scratch, "bakes"));
+    }
+
+    const string ScratchPrefix = "patina-jobs-";
+
+    static string ScratchOf(int process) => Path.Combine(Path.GetTempPath(), ScratchPrefix + process);
+
+    /// <summary>
+    ///     Removes what a Server with no library kept its jobs in (#294): every one whose Server is gone, and with
+    ///     <paramref name="own" /> this one's, once it stops. Nothing in it outlives its Server, and each run left one.
+    /// </summary>
+    public static void ClearScratch(bool own) {
+        var mine = Environment.ProcessId;
+        foreach (var folder in Directory.EnumerateDirectories(Path.GetTempPath(), ScratchPrefix + "*")) {
+            if (!int.TryParse(Path.GetFileName(folder).AsSpan(ScratchPrefix.Length), out var process)
+                || (process == mine ? !own : Running(process))) {
+                continue;
+            }
+
+            try {
+                Directory.Delete(folder, true);
+            } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+                // Still held: the next Server clears it.
+            }
+        }
+    }
+
+    static bool Running(int process) {
+        try {
+            using var found = Process.GetProcessById(process);
+            return !found.HasExited;
+        } catch (ArgumentException) {
+            return false;
+        } catch (InvalidOperationException) {
+            return false;
+        } catch (System.ComponentModel.Win32Exception) {
+            return true; // another user's process, which may be a Server: left alone
+        }
     }
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken) =>

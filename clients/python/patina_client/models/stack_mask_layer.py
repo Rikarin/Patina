@@ -40,6 +40,8 @@ class StackMaskLayer:
             opacity (float): How much of it composites, 0 to 1. Default: 1.0.
             enabled (bool): Whether it composites at all. Default: True.
             lane (str): Which lane of its picture it reads: Red, Green, Blue or Alpha. Default: 'Red'.
+            output (str): Which picture of a generator entry that writes several it reads, or empty for its one. Default:
+                ''.
             anchor (None | StackAnchorRef | Unset):
             parameters (None | StackMaskLayerParametersType1 | Unset): What a generator entry's knobs are set to, as text.
             inputs (None | StackMaskLayerInputsType1 | Unset): The image inputs of a generator entry that anchor points
@@ -56,6 +58,7 @@ class StackMaskLayer:
     opacity: float = 1.0
     enabled: bool = True
     lane: str = 'Red'
+    output: str = ''
     anchor: None | StackAnchorRef | Unset = UNSET
     parameters: None | StackMaskLayerParametersType1 | Unset = UNSET
     inputs: None | StackMaskLayerInputsType1 | Unset = UNSET
@@ -88,6 +91,8 @@ class StackMaskLayer:
         enabled = self.enabled
 
         lane = self.lane
+
+        output = self.output
 
         anchor: dict[str, Any] | None | Unset
         if isinstance(self.anchor, Unset):
@@ -127,6 +132,7 @@ class StackMaskLayer:
             "opacity": opacity,
             "enabled": enabled,
             "lane": lane,
+            "output": output,
         })
         if anchor is not UNSET:
             field_dict["anchor"] = anchor
@@ -164,6 +170,8 @@ class StackMaskLayer:
         enabled = d.pop("enabled")
 
         lane = d.pop("lane")
+
+        output = d.pop("output")
 
         def _parse_anchor(data: object) -> None | StackAnchorRef | Unset:
             if data is None:
@@ -236,6 +244,7 @@ class StackMaskLayer:
             opacity=opacity,
             enabled=enabled,
             lane=lane,
+            output=output,
             anchor=anchor,
             parameters=parameters,
             inputs=inputs,

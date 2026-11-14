@@ -1,8 +1,9 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { removeScratch } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -26,7 +27,7 @@ test.beforeEach(async () => {
 
 test.afterEach(async () => {
   await app.close();
-  rmSync(scratch, { recursive: true, force: true });
+  removeScratch(scratch);
 });
 
 test('a preset is chosen, its impact shown, and the report names what was written', async () => {

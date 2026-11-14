@@ -1,5 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { learnChannels } from '../core/labels';
+import { chooseIn } from '../core/select-testing';
 import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
@@ -177,20 +179,15 @@ describe('DocumentSection', () => {
 
   it('paints the channel being painted at another depth, one step (#19)', async () => {
     const { element, edit, fixture, paint } = await render(['baseColor', 'height']);
-    const depth = () => element.querySelector('[data-testid=paint-channel-depth]');
-    const pressed = () => depth()?.querySelector('[aria-pressed=true], [aria-checked=true]')?.textContent.trim();
-    expect(pressed()).toBe('8-bit');
+    const shown = () => element.querySelector('[data-testid=paint-channel-depth] button')?.textContent.trim();
+    expect(shown()).toContain('8-bit');
 
-    const wide = [...(depth()?.querySelectorAll('button') ?? [])].find(
-      button => button.textContent.trim() === '16-bit float'
-    );
-    wide?.click();
-    await fixture.whenStable();
+    await chooseIn(fixture, element, 'paint-channel-depth', '16-bit float');
     expect(edit).toHaveBeenCalledWith({ op: 'setChannelFormat', usage: 'baseColor', format: 'Rgba16Float' });
 
     paint.channel.set('height');
     await fixture.whenStable();
-    expect(pressed()).toBe('16-bit float');
+    expect(shown()).toContain('16-bit float');
   });
 
   it('writes what the texture set is for as a set setting, only when it changed (#141)', async () => {
@@ -206,6 +203,39 @@ describe('DocumentSection', () => {
     }
     description?.dispatchEvent(new Event('change'));
     expect(edit).toHaveBeenCalledWith({ op: 'setSettings', description: 'Rust in the seams' });
+  });
+
+  it('names a user channel and marks it as a color, each only when it changed, and names it by that (#141)', async () => {
+    const { element, edit, fixture, paint } = await render();
+    expect(element.querySelector('[data-testid=paint-user-channel-name]')).toBeNull();
+
+    paint.state.set({
+      ...paint.state(),
+      channels: [...paint.state().channels, { usage: 'user2', format: 'Rgba8', name: 'Wetness', colour: false }]
+    } as never);
+    learnChannels([{ usage: 'user2', name: 'Wetness' }]);
+    paint.channel.set('user2');
+    await fixture.whenStable();
+    const name = element.querySelector<HTMLInputElement>('[data-testid=paint-user-channel-name]');
+    expect(name?.value).toBe('Wetness');
+    expect(element.querySelector('[data-testid=paint-channel-user2]')?.textContent.trim()).toBe('Wetness');
+
+    name?.dispatchEvent(new Event('change'));
+    expect(edit).not.toHaveBeenCalled();
+    if (name) {
+      name.value = ' Dirt ';
+    }
+    name?.dispatchEvent(new Event('change'));
+    expect(edit).toHaveBeenCalledWith({ op: 'setUserChannel', usage: 'user2', name: 'Dirt' });
+
+    element
+      .querySelector<HTMLElement>(
+        '[data-testid=paint-user-channel-colour] button, [data-testid=paint-user-channel-colour]'
+      )
+      ?.click();
+    await fixture.whenStable();
+    expect(edit).toHaveBeenCalledWith({ op: 'setUserChannel', usage: 'user2', colour: true });
+    learnChannels([]);
   });
 
   it('offers how the bake shades the set only once there is one', async () => {

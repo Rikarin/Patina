@@ -152,6 +152,35 @@ public sealed class ExportOptionsTests : IDisposable {
         Assert.Equal(right, written.Samples[Side - 1], 3);
     }
 
+    /// <summary>
+    ///     A texture set's own padding (#141) fills its layout as it asks, and every other set keeps the export's: here
+    ///     the head's empty half takes its island's value and the body's keeps what the stack left there.
+    /// </summary>
+    [Fact]
+    public void A_set_with_padding_of_its_own_is_padded_and_the_others_take_the_exports() {
+        var preset = ExportOverrides.Apply(
+            Read(WithTexture(ExportFormats.Png16, "linear", "[roughness]")),
+            new() { PerSet = [new("Head") { Padding = new("infinite", 0, []) }] }
+        );
+
+        static Dictionary<string, MapPicture> Maps() =>
+            new() { ["roughness"] = Halves("roughness", 0.25f, 0.75f), [ExportMaps.Coverage] = LeftHalf() };
+
+        ExportSet[] sets = [new("Body", Maps()), new("Head", Maps())];
+
+        var manifest = ExportRun.Run(preset, sets, Path("object"), null, Token);
+
+        var right = manifest.Files.Select(file => MapPictures.ReadFile(
+                    System.IO.Path.Combine(Path("object"), file.File)
+                )
+                .Samples[Side - 1]
+            )
+            .ToList();
+        Assert.Equal(2, right.Count);
+        Assert.Equal(0.75f, right[0], 3);
+        Assert.Equal(0.25f, right[1], 3);
+    }
+
     [Fact]
     public void A_file_is_written_at_the_size_asked_for_with_the_filter_asked_for() {
         var maps = new Dictionary<string, MapPicture> { ["roughness"] = Halves("roughness", 0f, 1f) };

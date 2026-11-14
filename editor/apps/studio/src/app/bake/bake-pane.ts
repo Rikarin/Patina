@@ -20,6 +20,7 @@ import { XuiSegmentedControlImports } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { EnginePreferences, sameOptions } from '../core/engine-preferences';
 import type { PickKind } from '../core/file-picker';
 import { imageFormatName, jobStateName, termName } from '../core/labels';
 import { messageOf } from '../core/messages';
@@ -71,6 +72,10 @@ const Profiles = [
   { value: 'even', label: 'Round' },
   { value: 'smooth', label: 'Smooth' },
   { value: 'chamfer', label: 'Chamfer' }
+];
+const CurvatureSources = [
+  { value: 'mesh', label: 'Mesh' },
+  { value: 'normal-map', label: 'Normal map' }
 ];
 const CurvatureRanges = [
   { value: 'auto', label: 'Automatic' },
@@ -374,6 +379,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                       : 'Each texture set bakes at its own shape. Turn off Follow each set’s shape to choose a height.'
                   "
                   [disabled]="options.followSetShape !== false"
+                  [placeholder]="options.followSetShape !== false ? 'Each set’s own' : rowsName('')"
                   [itemText]="rowsName"
                   [items]="rowChoices()"
                   [value]="String(options.rows ?? '')"
@@ -932,6 +938,22 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               }
               @case ('curvature') {
                 <div class="flex items-center justify-between gap-2 text-sm">
+                  From
+                  <xui-segmented-control
+                    size="sm"
+                    aria-label="Curvature from"
+                    data-testid="bake-curvature-source"
+                    [options]="curvatureSources"
+                    [value]="options.curvature.source"
+                    (valueChange)="setCurvature({ source: $event ?? options.curvature.source })"
+                  />
+                </div>
+                <p class="text-foreground-muted text-xs">
+                  Mesh reads the bends of the high poly mesh’s faces. Normal map reads the bends the baked normal map
+                  carries: the high poly detail over the low poly mesh, down to its finest grooves, without the low poly
+                  mesh’s own shape.
+                </p>
+                <div class="flex items-center justify-between gap-2 text-sm">
                   Range
                   <xui-segmented-control
                     size="sm"
@@ -1280,6 +1302,18 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
         type="button"
         xuiButton
         class="ms-auto"
+        size="sm"
+        variant="ghost"
+        data-testid="bake-make-default"
+        title="Every project made from now on bakes with these options, in any app attached to the engine. Preferences can go back to Patina's."
+        [disabled]="!settings.options() || isDefault()"
+        (click)="makeDefault()"
+      >
+        {{ isDefault() ? 'Default' : 'Make Default' }}
+      </button>
+      <button
+        type="button"
+        xuiButton
         color="primary"
         size="sm"
         data-testid="bake-start"
@@ -1298,6 +1332,22 @@ export class BakePane {
   private readonly chooser = inject(FileChooser);
   private readonly status = inject(SystemStatus);
   protected readonly graph = inject(GraphStore);
+  private readonly engine = inject(EnginePreferences);
+
+  /** Whether these options are already the ones a new project bakes with. */
+  protected readonly isDefault = computed(() => {
+    const options = this.settings.options();
+    const preferred = this.engine.bake();
+    return options !== null && preferred !== null && sameOptions(options, preferred);
+  });
+
+  /** Makes these options the ones every project made from now on bakes with (#189). */
+  protected async makeDefault(): Promise<void> {
+    const options = this.settings.options();
+    if (options) {
+      await this.engine.makeBakeDefault(options);
+    }
+  }
   protected readonly Math = Math;
   protected readonly String = String;
   protected readonly Number = Number;
@@ -1329,6 +1379,7 @@ export class BakePane {
   protected readonly edgeMeshes = EdgeMeshes;
   protected readonly profiles = Profiles;
   protected readonly curvatureRanges = CurvatureRanges;
+  protected readonly curvatureSources = CurvatureSources;
   protected readonly colourSources = ColourSources;
   protected readonly colourSourceName = (value: string) => ColourSourceNames[value] ?? value;
   protected readonly previewParts = PreviewParts;
@@ -1346,6 +1397,7 @@ export class BakePane {
 
   constructor() {
     void this.settings.readPreview();
+    void this.engine.read();
   }
 
   protected readonly section = signal<Section>('common');

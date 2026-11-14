@@ -94,6 +94,8 @@ static class LibraryTreeEndpoints {
 
         library.MapLibraryFiles();
 
+        library.MapUploads();
+
         library.MapPatch("/project/document", SetDocumentMesh)
             .Described("SetDocumentMesh", "Puts a texturing document on another mesh of its project.");
 

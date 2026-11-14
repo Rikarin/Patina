@@ -19,7 +19,13 @@ public sealed record StackCreateRequest(string Path, int Width, int Height);
 ///     How wide the texels are that a stroke paints it at (#19): one of the vocabulary's formats, Rgba8 unless the set
 ///     says more.
 /// </param>
-public sealed record StackChannel(string Usage, IReadOnlyList<float> Default, string Format = "Rgba8");
+public sealed record StackChannel(string Usage, IReadOnlyList<float> Default, string Format = "Rgba8") {
+    /// <summary>What a person named a user channel (#141), such as Dirt; empty for the usage's own label.</summary>
+    public string Name { get; init; } = string.Empty;
+
+    /// <summary>Whether a user channel holds a color rather than one number (#141); false for any other.</summary>
+    public bool Colour { get; init; }
+}
 
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
 #pragma warning disable SK7005
@@ -169,6 +175,10 @@ public sealed record StackAnchorUse(string Layer, string Where, string Channel);
 /// </param>
 /// <param name="Inside">With colours, what the mask is where they are: its output value, 0 to 1.</param>
 /// <param name="Outside">With colours, what the mask is everywhere else: its background, 0 to 1.</param>
+/// <param name="Output">
+///     Which picture of a generator that writes several is the mask, by its name in the generator's Outputs, or empty
+///     for its only one. Another generator starts from empty.
+/// </param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
@@ -187,7 +197,8 @@ public sealed record StackMask(
     string Lane = "Red",
     bool Enabled = true,
     float Inside = 1f,
-    float Outside = 0f
+    float Outside = 0f,
+    string Output = ""
 );
 
 /// <summary>
@@ -207,6 +218,7 @@ public sealed record StackMask(
 /// <param name="Opacity">How much of it composites, 0 to 1.</param>
 /// <param name="Enabled">Whether it composites at all.</param>
 /// <param name="Lane">Which lane of its picture it reads: Red, Green, Blue or Alpha.</param>
+/// <param name="Output">Which picture of a generator entry that writes several it reads, or empty for its one.</param>
 public sealed record StackMaskLayer(
     string Source,
     float Value = 1f,
@@ -220,7 +232,8 @@ public sealed record StackMaskLayer(
     string Blend = "Copy",
     float Opacity = 1f,
     bool Enabled = true,
-    string Lane = "Red"
+    string Lane = "Red",
+    string Output = ""
 );
 
 /// <summary>One step run on a mask.</summary>
@@ -264,6 +277,10 @@ public sealed record StackIdColours(IReadOnlyList<StackIdColour> Colours, IReadO
 /// <param name="Ports">Its numbers, each saying what it is and what it starts as. Never an image it reads.</param>
 /// <param name="Settings">What it takes as text.</param>
 /// <param name="Inputs">The images it reads, its subject first. Empty for a generator.</param>
+/// <param name="Outputs">
+///     The pictures it writes, by name, when it writes more than one, so a generator read for one picture is told which
+///     (#120); null when it writes one.
+/// </param>
 public sealed record StackFilterKind(
     string Node,
     string Name,
@@ -271,7 +288,8 @@ public sealed record StackFilterKind(
     string Summary,
     IReadOnlyList<GraphPortDefinition> Ports,
     IReadOnlyList<GraphSettingDefinition> Settings,
-    IReadOnlyList<StackFilterInput>? Inputs = null
+    IReadOnlyList<StackFilterInput>? Inputs = null,
+    IReadOnlyList<string>? Outputs = null
 );
 
 /// <summary>One image a filter reads, as Properties offers a slot for it.</summary>
@@ -294,6 +312,7 @@ public sealed record StackFilterInput(string Port, string Summary, bool Subject,
 /// <param name="Parameters">The generator's settings, by name.</param>
 /// <param name="Asset">The image read, for Texture.</param>
 /// <param name="Map">The mesh map read, for Bake.</param>
+/// <param name="Output">Which picture of a generator that writes several is read, or empty for its only one.</param>
 public sealed record StackInput(
     string Source,
     string Channel = "",
@@ -302,7 +321,8 @@ public sealed record StackInput(
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
     IReadOnlyDictionary<string, string>? Parameters = null,
     string Asset = "",
-    string Map = ""
+    string Map = "",
+    string Output = ""
 );
 
 /// <summary>A word a stack's field takes, and what a person calls it.</summary>
@@ -522,6 +542,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackAddChannel), "addChannel"), JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
 [JsonDerivedType(typeof(StackRemoveChannel), "removeChannel")]
 [JsonDerivedType(typeof(StackSetChannelFormat), "setChannelFormat")]
+[JsonDerivedType(typeof(StackSetUserChannel), "setUserChannel")]
 [JsonDerivedType(typeof(StackSetSeed), "setSeed"), JsonDerivedType(typeof(StackDuplicateLayers), "duplicateLayers")]
 [JsonDerivedType(typeof(StackPasteLayers), "pasteLayers")]
 [JsonDerivedType(typeof(StackFlattenLayer), "flattenLayer"),
@@ -682,6 +703,16 @@ public sealed record StackRemoveChannel(string Usage) : StackCommand;
 public sealed record StackSetChannelFormat(string Usage, string Format) : StackCommand;
 
 /// <summary>
+///     Names a user channel and says whether it holds a color (#141), as one undo step, <i>User channel</i>. A user
+///     channel, <c>user0</c> to <c>user7</c>, means nothing to the material: its name is what a person reads, and its
+///     usage stays what a preset and a graph name it by. What is left out stays as it is.
+/// </summary>
+/// <param name="Usage">Which channel, a user channel the set has.</param>
+/// <param name="Name">What it is called; empty for its usage's own label.</param>
+/// <param name="Colour">Whether it holds a color, painted and chosen as one, rather than one number.</param>
+public sealed record StackSetUserChannel(string Usage, string? Name = null, bool? Colour = null) : StackCommand;
+
+/// <summary>
 ///     Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:
 ///     a stroke on the copy leaves the original alone.
 /// </summary>
@@ -781,6 +812,10 @@ public sealed record StackMoveMaskLayer(string Layer, int Index, int Delta) : St
 ///     The image inputs of a generator entry that anchor points feed, by port, replacing all of them. Another
 ///     generator starts with none.
 /// </param>
+/// <param name="Output">
+///     Which picture of a generator entry that writes several it reads, or empty for its only one. Another generator
+///     starts from empty.
+/// </param>
 public sealed record StackSetMaskLayer(
     string Layer,
     int Index,
@@ -795,7 +830,8 @@ public sealed record StackSetMaskLayer(
     float? Opacity = null,
     bool? Enabled = null,
     string? Lane = null,
-    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null
+    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null,
+    string? Output = null
 ) : StackCommand;
 #pragma warning restore SK7005
 

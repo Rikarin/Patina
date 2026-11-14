@@ -48,11 +48,7 @@ public sealed partial class BakeProcessTests : IDisposable {
         http.Dispose();
         restarted.Dispose();
         File.Delete(socketPath);
-        try {
-            folder.Delete(true);
-        } catch (IOException) {
-            // A Worker's last write can land while the folder is going, and a temp folder left behind is no failure.
-        }
+        Patina.Testing.TempFolders.Delete(folder.FullName);
     }
 
     Process Start(string dll, params string[] arguments) {
@@ -433,6 +429,18 @@ public sealed partial class BakeProcessTests : IDisposable {
 
         pixels.EnsureSuccessStatusCode();
         Assert.True(File.Exists($"{stack.Path}.bake"));
+
+        // The layer panel's list of generators shows each drawn from this stack's bake (#290), where a document with
+        // no bake has no picture of one.
+        using var pictured = await http.PostAsJsonAsync(
+            $"/api/v1/stacks/{stack.Id}/node-types/thumbnails",
+            new { sources = new[] { "Generators/Dirt" } },
+            deadline.Token
+        );
+        var text = await pictured.Content.ReadAsStringAsync(deadline.Token);
+        Assert.True(pictured.IsSuccessStatusCode, text);
+        var item = Assert.Single(JsonElement.Parse(text).GetProperty("items").EnumerateArray().ToList());
+        Assert.Matches("^[0-9a-f]{64}$", item.GetProperty("hash").GetString());
     }
 
     /// <summary>The farm's path: mesh maps, cage and skew map with no Server and no Worker, file to file.</summary>

@@ -12,12 +12,14 @@ import { type LibraryFile, unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
+import { XuiFileInputImports } from '@xui/file-input';
 import { XuiInputImports } from '@xui/input';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { desktop } from '../core/desktop';
 import { FilePicker, type PickRequest } from '../core/file-picker';
 import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
+import { FileChooser } from './file-chooser';
 import { LibraryStore } from './library-store';
 
 /** How many pictures are drawn at once, so that a long list fills in from the top without asking for all of it. */
@@ -32,7 +34,14 @@ const ThumbnailSide = 160;
  */
 @Component({
   selector: 'ptn-pick-file',
-  imports: [XuiButtonImports, XuiCalloutImports, XuiDialogImports, XuiInputImports, XuiNonIdealStateImports],
+  imports: [
+    XuiButtonImports,
+    XuiCalloutImports,
+    XuiDialogImports,
+    XuiFileInputImports,
+    XuiInputImports,
+    XuiNonIdealStateImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <xui-dialog
@@ -111,6 +120,19 @@ const ThumbnailSide = 160;
             <button type="button" xuiButton variant="ghost" data-testid="pick-file-machine" (click)="fromMachine()">
               {{ fromLabel() }}
             </button>
+          } @else if (canSend()) {
+            <!-- The native input's change bubbles out of xUI's file input, which needs no form around it. -->
+            <xui-file-input
+              size="sm"
+              aria-label="Send a file from this computer"
+              buttonText="From This Computer…"
+              data-testid="pick-file-send"
+              title="Sends a file of this computer to the library, where the engine reads it"
+              [accept]="accepted()"
+              [disabled]="sending() !== null"
+              [text]="sending() === null ? 'Or send one of yours' : 'Sending ' + sending() + '…'"
+              (change)="send($event)"
+            />
           }
           <span class="flex-1"></span>
           <button type="button" xuiButton variant="ghost" (click)="cancel()">Cancel</button>
@@ -134,6 +156,21 @@ export class PickFileDialog {
   private readonly library = inject(LibraryStore);
   private readonly status = inject(SystemStatus);
   protected readonly canPick = desktop() !== undefined;
+  private readonly chooser = inject(FileChooser);
+
+  /** A picture or a mesh is sent from this computer where no dialog of its own could reach the Server's disk (#4). */
+  protected readonly canSend = computed(() => {
+    const kind = this.request()?.kind;
+    return kind === 'picture' || kind === 'mesh';
+  });
+
+  /** The name of the file being sent, or null. */
+  protected readonly sending = signal<string | null>(null);
+
+  /** What this computer's dialog offers: the pictures or the meshes Patina reads. */
+  protected readonly accepted = computed(() =>
+    ((this.request()?.kind === 'mesh' ? this.status.meshes() : this.status.pictures()) ?? []).join(',')
+  );
 
   protected readonly request = signal<PickRequest | null>(null);
   protected readonly files = signal<readonly LibraryFile[]>([]);
@@ -204,6 +241,29 @@ export class PickFileDialog {
   protected cancel(): void {
     if (this.picker.request()) {
       this.picker.answer(null);
+    }
+  }
+
+  /** Sends the file chosen on this computer, and answers with it once the Server has it. */
+  protected async send(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) {
+      return;
+    }
+
+    this.sending.set(file.name);
+    this.failure.set(null);
+    try {
+      const path = await this.chooser.send(file, file.name);
+      if (this.picker.request()) {
+        this.picker.answer({ machine: path });
+      }
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    } finally {
+      this.sending.set(null);
     }
   }
 

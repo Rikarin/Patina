@@ -5,6 +5,7 @@ import {
   GeometrySide,
   Unwarped,
   decalChannel,
+  decalCopies,
   decalFrame,
   decalOutline,
   extendedPath,
@@ -14,6 +15,8 @@ import {
   halfwayAlong,
   isPicture,
   isWarped,
+  movedDecal,
+  movedPath,
   onDecal,
   onDecalPlane,
   pictureName,
@@ -24,7 +27,7 @@ import {
   warpGrid,
   warpSide
 } from './surface-frame';
-import { project } from './symmetry-guide';
+import { project, surfaceCopies, surfaceSymmetry } from './symmetry-guide';
 
 /** A camera on the z axis, two units out, looking back at the origin. */
 const view: StackView = {
@@ -252,5 +255,56 @@ describe('Warp to Geometry (#134)', () => {
     expect(underDecal(decal, [0.2, 0, 0.05], [0, 0, 1])).toBe(true);
     expect(underDecal(decal, [0.2, 0, 0.5], [0, 0, 1])).toBe(false);
     expect(underDecal(decal, [0.2, 0, 0], [0, 0, -1])).toBe(false);
+  });
+});
+
+describe('symmetry for a decal or a path (#132)', () => {
+  const box = [-1, -1, -1, 3, 1, 1];
+
+  it('keeps the brush symmetry as a plane through the model, in its units, as the Worker puts a stroke', () => {
+    const mirror = surfaceSymmetry({ kind: 'mirror', axis: 'x', centre: 'model', offset: 0, count: 2 }, box);
+    const moved = surfaceSymmetry({ kind: 'mirror', axis: 'y', centre: 'origin', offset: 0.5, count: 2 }, box);
+    const radial = surfaceSymmetry({ kind: 'radial', axis: 'z', centre: 'model', offset: 0.5, count: 6 }, []);
+
+    expect(mirror).toEqual({ kind: 'mirror', axis: [1, 0, 0], through: [1, 0, 0], count: 2 });
+    // Half the bounding radius, the box's diagonal being √24, moves the plane along y from the origin.
+    close(moved.through, [0, Math.sqrt(24) / 4, 0]);
+    // No box is the unit cube, and a radial symmetry's line is not moved along itself.
+    expect(radial).toEqual({ kind: 'radial', axis: [0, 0, 1], through: [0.5, 0.5, 0.5], count: 6 });
+  });
+
+  it('mirrors a decal through its plane: the centre as a point, the facing as a direction', () => {
+    const placed = { ...decal, centre: [0.25, 0.5, 0], facing: [1, 0, 1] };
+    const [copy, ...more] = surfaceCopies({ kind: 'mirror', axis: [2, 0, 0], through: [1, 0, 0], count: 2 });
+    const mirrored = movedDecal(placed, must(copy));
+
+    expect(more).toHaveLength(0);
+    close(mirrored.centre, [1.75, 0.5, 0]);
+    close(mirrored.facing, [-1, 0, 1]);
+    close(mirrored.up, placed.up);
+  });
+
+  it('turns a path round its line, each point to its quarter, and draws each copy that is in front of the eye', () => {
+    const path = {
+      points: [{ position: [0.5, 0, 0], normal: [0, 0, 1], pressure: 1 }],
+      radius: 0.01,
+      hardness: 1,
+      ribbon: false,
+      repeat: 0,
+      angle: 1.3,
+      spacing: 0,
+      jitter: 0,
+      symmetry: { kind: 'radial', axis: [0, 0, 1], through: [0, 0, 0], count: 4 }
+    };
+    const copies = surfaceCopies(path.symmetry);
+    const ends = copies.map(copy => movedPath(path, copy).points[0]?.position ?? []);
+
+    expect(copies).toHaveLength(3);
+    close(must(ends[0]), [0, 0.5, 0]);
+    close(must(ends[1]), [-0.5, 0, 0]);
+    close(must(ends[2]), [0, -0.5, 0]);
+    expect(surfaceCopies({ ...path.symmetry, axis: [0, 0, 0] })).toHaveLength(0);
+    expect(decalCopies({ ...decal, symmetry: path.symmetry }, view)).toHaveLength(3);
+    expect(decalCopies(decal, view)).toHaveLength(0);
   });
 });

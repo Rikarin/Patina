@@ -1,8 +1,8 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject } from './projects';
+import { leave, newLibrary, newProject, removeScratch } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
@@ -25,7 +25,7 @@ test.beforeEach(async () => {
 
 test.afterEach(async () => {
   await leave(app);
-  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+  removeScratch(scratch);
 });
 
 /** Two quads side by side, red and blue by the material library beside them in a folder of its own. */
@@ -71,6 +71,33 @@ test('a mesh says what it is, and a texture set changes its size in Properties',
   await expect(window.getByTestId('mesh-facts-material')).toHaveCount(2);
   await expect(window.getByTestId('mesh-facts-units')).toContainText('does not say');
   await window.getByTestId('project-settings').screenshot({ path: join(shots, 'sets-3-mesh-facts.png') });
+});
+
+test('a user channel is added, named and painted as a color, and the engine evaluates it (#141)', async () => {
+  test.setTimeout(180_000);
+  await newProject(app, window, 'Users', twoColouredQuads());
+  await expect(window.getByTestId('texture-set-settings')).toBeVisible({ timeout: 60_000 });
+
+  await window.getByTestId('paint-add-channel').click();
+  await window.getByTestId('paint-add-channel-user2').click();
+  const channel = window.getByTestId('paint-channel-user2');
+  await expect(channel).toHaveText('User 2', { timeout: 30_000 });
+  await channel.click();
+
+  const name = window.getByTestId('paint-user-channel-name');
+  await name.fill('Wetness');
+  await name.press('Enter');
+  await name.blur();
+  await expect(channel).toHaveText('Wetness', { timeout: 30_000 });
+  await expect(window.getByTestId('app-undo')).toHaveAttribute('aria-label', 'Undo User channel');
+  await window.getByTestId('paint-user-channel-colour').click();
+  await expect(window.getByTestId('paint-user-channel-colour')).toHaveAttribute('aria-checked', 'true', {
+    timeout: 30_000
+  });
+
+  // The engine compiles and evaluates the set with the user channel, so the open set says nothing is wrong with it.
+  await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 60_000 });
+  await window.getByTestId('paint-document').screenshot({ path: join(shots, 'sets-5-user-channel.png') });
 });
 
 test('the 2D view of a set that is not square is the set’s shape, and reads and fits as one', async () => {

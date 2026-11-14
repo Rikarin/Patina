@@ -24,22 +24,22 @@ class BakeEdgeOptions:
 
         Attributes:
             mesh (str): Whose edges are marked: `high`, the high mesh's, where the rays land; or `low`, the low mesh's, at
-                the texel, so its hard edges show even under a high mesh with none (#278).
+                the texel, so its hard edges show even under a high mesh with none (#278). Default: 'high'.
             edges (str): `hard`, the edges the high mesh's own normals split, or `angle`, every edge whose faces meet at
                             double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are
-                its edges.
-            width (float): How far either side of an edge the band reaches, in the rays' units.
-            angle (float): For `angle`: the least angle between two faces that is an edge, in degrees.
+                its edges. Default: 'hard'.
+            width (float): How far either side of an edge the band reaches, in the rays' units. Default: 0.01.
+            angle (float): For `angle`: the least angle between two faces that is an edge, in degrees. Default: 30.0.
             profile (str): How the band falls from white on the edge to black at its side: `even`, a straight ramp;
                 `smooth`,
-                a smoothstep; or `chamfer`, white all the way across.
+                a smoothstep; or `chamfer`, white all the way across. Default: 'even'.
      """
 
-    mesh: str
-    edges: str
-    width: float
-    angle: float
-    profile: str
+    mesh: str = 'high'
+    edges: str = 'hard'
+    width: float = 0.01
+    angle: float = 30.0
+    profile: str = 'even'
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

@@ -31,6 +31,38 @@
         }
       }
     },
+    "/api/v1/log": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "The lines the Server logged after a number, the oldest first: Patina\u0027s own from information up, the framework\u0027s from warnings up. Only the latest thousand are kept; ask after the page\u0027s next number to follow along.",
+        "operationId": "GetServerLog",
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerLogPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/preferences": {
       "get": {
         "tags": [
@@ -2315,6 +2347,67 @@
         }
       }
     },
+    "/api/v1/library/settings": {
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps the library\u0027s name and the texel density new projects start from in library.yaml. GET /library reads them back; the export presets have routes of their own.",
+        "operationId": "SetLibrarySettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibrarySettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/export": {
       "put": {
         "tags": [
@@ -3235,6 +3328,87 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/uploads": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps a picture or a mesh a client sent from its own computer in the library\u0027s uploads folder, and answers with its path on the Server\u0027s machine, which a project\u0027s mesh, a picture brought into a project and a bake\u0027s high mesh take. The same file sent again is kept once.",
+        "operationId": "UploadLibraryFile",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "$ref": "#/components/schemas/Stream"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedFile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -4308,7 +4482,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "The bakes a project\u0027s own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh.",
+        "summary": "The bakes a project\u0027s own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh; output puts the maps in a folder of the Server\u0027s machine instead of the project\u0027s; set, once per texture set, bakes those instead of the ones the project ticks.",
         "operationId": "GetProjectBakePlan",
         "parameters": [
           {
@@ -4324,6 +4498,23 @@
             "in": "query",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "output",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "set",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           }
         ],
@@ -5581,7 +5772,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it.",
+        "summary": "Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it, and moves the pictures in projects that no document reads, saved or open, into the bin as one entry.",
         "operationId": "CleanLibrary",
         "responses": {
           "200": {
@@ -5589,7 +5780,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LibraryTidied"
+                  "$ref": "#/components/schemas/LibraryCleaned"
                 }
               }
             }
@@ -7627,6 +7818,67 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/node-types/thumbnails": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Pictures of node types this stack can name, such as its generators, each at its defaults with a noise on its picture inputs, by hash under /previews, as a graph\u0027s palette draws them. A generator is drawn from the stack\u0027s mesh maps, so it shows what it makes on this mesh. A type with no picture, or none this stack knows, has none.",
+        "operationId": "GetStackNodeTypeThumbnails",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThumbnailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThumbnailList"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks": {
       "get": {
         "tags": [
@@ -9645,9 +9897,16 @@
             "description": "How many autosaves of a document are kept, the latest first. Restoring takes the latest.",
             "format": "int32",
             "default": 3
+          },
+          "folder": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The full path of a folder autosaves go to instead of each library\u0027s cache, a folder per library inside it,\nor null for the cache (#162). Autosaves the cache kept before one was chosen are still offered and let go\nof; those in a folder chosen earlier stay there and are not."
           }
         },
-        "description": "How unsaved work is kept. It goes to the library\u0027s cache, never over a document."
+        "description": "How unsaved work is kept. It goes to the library\u0027s cache unless a folder is chosen, never over a document."
       },
       "BakeBorderOptions": {
         "required": [
@@ -9658,7 +9917,8 @@
           "width": {
             "type": "number",
             "description": "How far inside its UV island a texel reads white, as a share of the texture: black on the island\u0027s border,\nrising evenly to white this far in.",
-            "format": "double"
+            "format": "double",
+            "default": 0.02
           }
         },
         "description": "The borders map\u0027s width (#121)."
@@ -9672,33 +9932,43 @@
         "properties": {
           "source": {
             "type": "string",
-            "description": "\u0060auto\u0060: the high mesh\u0027s vertex colours, else its materials. \u0060vertex-colour\u0060; \u0060material\u0060, each\n            material\u0027s base colour and base colour picture; or \u0060texture\u0060, the picture at string BakeColourOptions.Texture\n            read at the high mesh\u0027s own coordinates, which moves any map from one UV layout to another."
+            "description": "\u0060auto\u0060: the high mesh\u0027s vertex colours, else its materials. \u0060vertex-colour\u0060; \u0060material\u0060, each\n            material\u0027s base colour and base colour picture; or \u0060texture\u0060, the picture at string BakeColourOptions.Texture\n            read at the high mesh\u0027s own coordinates, which moves any map from one UV layout to another.",
+            "default": "auto"
           },
           "texture": {
             "type": "string",
-            "description": "For \u0060texture\u0060: the picture to carry across, as a path on the Server\u0027s machine."
+            "description": "For \u0060texture\u0060: the picture to carry across, as a path on the Server\u0027s machine.",
+            "default": ""
           }
         },
         "description": "Where a colour map\u0027s colour comes from."
       },
       "BakeCurvatureOptions": {
         "required": [
+          "source",
           "range",
           "radius"
         ],
         "type": "object",
         "properties": {
+          "source": {
+            "type": "string",
+            "description": "Where the bends come from: \u0060mesh\u0060, the high mesh\u0027s own faces where each ray lands; or\n\u0060normal-map\u0060, the bends of the baked normal map, which is the high mesh\u0027s detail over the low mesh,\ndown to its smallest grooves, and none of the low mesh\u0027s own shape.",
+            "default": "mesh"
+          },
           "range": {
             "type": "string",
-            "description": "\u0060auto\u0060, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or\n            \u0060custom\u0060, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a crease, so every\n            bake made with it agrees."
+            "description": "\u0060auto\u0060, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or\n            \u0060custom\u0060, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a crease, so every\n            bake made with it agrees.",
+            "default": "auto"
           },
           "radius": {
             "type": "number",
             "description": "For \u0060custom\u0060: the radius of the tightest bend the map tells apart, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0.01
           }
         },
-        "description": "The curvature map\u0027s stored range (#148)."
+        "description": "The curvature map\u0027s source and stored range (#148)."
       },
       "BakedMapFile": {
         "required": [
@@ -9750,25 +10020,30 @@
         "properties": {
           "mesh": {
             "type": "string",
-            "description": "Whose edges are marked: \u0060high\u0060, the high mesh\u0027s, where the rays land; or \u0060low\u0060, the low mesh\u0027s, at\nthe texel, so its hard edges show even under a high mesh with none (#278)."
+            "description": "Whose edges are marked: \u0060high\u0060, the high mesh\u0027s, where the rays land; or \u0060low\u0060, the low mesh\u0027s, at\nthe texel, so its hard edges show even under a high mesh with none (#278).",
+            "default": "high"
           },
           "edges": {
             "type": "string",
-            "description": "\u0060hard\u0060, the edges the high mesh\u0027s own normals split, or \u0060angle\u0060, every edge whose faces meet at\n            double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges."
+            "description": "\u0060hard\u0060, the edges the high mesh\u0027s own normals split, or \u0060angle\u0060, every edge whose faces meet at\n            double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges.",
+            "default": "hard"
           },
           "width": {
             "type": "number",
             "description": "How far either side of an edge the band reaches, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0.01
           },
           "angle": {
             "type": "number",
             "description": "For \u0060angle\u0060: the least angle between two faces that is an edge, in degrees.",
-            "format": "double"
+            "format": "double",
+            "default": 30
           },
           "profile": {
             "type": "string",
-            "description": "How the band falls from white on the edge to black at its side: \u0060even\u0060, a straight ramp; \u0060smooth\u0060,\na smoothstep; or \u0060chamfer\u0060, white all the way across."
+            "description": "How the band falls from white on the edge to black at its side: \u0060even\u0060, a straight ramp; \u0060smooth\u0060,\na smoothstep; or \u0060chamfer\u0060, white all the way across.",
+            "default": "even"
           }
         },
         "description": "Which edges the edges map marks, and the band it draws along them (#148)."
@@ -9782,12 +10057,14 @@
         "properties": {
           "range": {
             "type": "string",
-            "description": "\u0060measured\u0060, the largest height found; \u0060rays\u0060, the longer ray distance; or \u0060custom\u0060,\n            double BakeHeightOptions.Scale. The last two are the same for every bake made with them, so their maps agree."
+            "description": "\u0060measured\u0060, the largest height found; \u0060rays\u0060, the longer ray distance; or \u0060custom\u0060,\n            double BakeHeightOptions.Scale. The last two are the same for every bake made with them, so their maps agree.",
+            "default": "measured"
           },
           "scale": {
             "type": "number",
             "description": "The range for \u0060custom\u0060, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0.05
           }
         },
         "description": "The height map\u0027s stored range."
@@ -9801,11 +10078,13 @@
         "properties": {
           "source": {
             "type": "string",
-            "description": "\u0060auto\u0060: vertex colours, else materials when there are several, else connected shells. Or one of\n            \u0060material\u0060, \u0060material-colour\u0060 (each material\u0027s base colour), \u0060vertex-colour\u0060, \u0060mesh\u0060\n            (each named part) and \u0060shell\u0060."
+            "description": "\u0060auto\u0060: vertex colours, else materials when there are several, else connected shells. Or one of\n            \u0060material\u0060, \u0060material-colour\u0060 (each material\u0027s base colour), \u0060vertex-colour\u0060, \u0060mesh\u0060\n            (each named part) and \u0060shell\u0060.",
+            "default": "auto"
           },
           "palette": {
             "type": "string",
-            "description": "How labels become colours: \u0060random\u0060, \u0060hue\u0060 or \u0060grey\u0060. Colours stay colours."
+            "description": "How labels become colours: \u0060random\u0060, \u0060hue\u0060 or \u0060grey\u0060. Colours stay colours.",
+            "default": "random"
           }
         },
         "description": "What an ID map labels, and how it colours the labels."
@@ -9828,47 +10107,57 @@
           "rays": {
             "type": "integer",
             "description": "How many rays a texel\u0027s occlusion is estimated with.",
-            "format": "int32"
+            "format": "int32",
+            "default": 64
           },
           "distance": {
             "type": "number",
             "description": "How far an occluder counts, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0.5
           },
           "spread": {
             "type": "number",
             "description": "The half-angle of the cone the rays fill, in degrees: 90 is the hemisphere.",
-            "format": "double"
+            "format": "double",
+            "default": 90
           },
           "falloff": {
             "type": "string",
-            "description": "How an occluder counts for less further away: \u0060none\u0060, \u0060linear\u0060 or \u0060smooth\u0060."
+            "description": "How an occluder counts for less further away: \u0060none\u0060, \u0060linear\u0060 or \u0060smooth\u0060.",
+            "default": "none"
           },
           "distribution": {
             "type": "string",
-            "description": "How the rays are spread: \u0060cosine\u0060 or \u0060uniform\u0060."
+            "description": "How the rays are spread: \u0060cosine\u0060 or \u0060uniform\u0060.",
+            "default": "cosine"
           },
           "minimum": {
             "type": "number",
             "description": "How near an occluder may be and not count, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0
           },
           "ignoreBackfaces": {
             "type": "boolean",
-            "description": "Whether a ray passes through the back of a face."
+            "description": "Whether a ray passes through the back of a face.",
+            "default": false
           },
           "withinPart": {
             "type": "boolean",
-            "description": "Whether only the texel\u0027s own part occludes it, when parts are matched by name."
+            "description": "Whether only the texel\u0027s own part occludes it, when parts are matched by name.",
+            "default": false
           },
           "groundPlane": {
             "type": "boolean",
-            "description": "Whether a floor under the high mesh occludes too. Y is up."
+            "description": "Whether a floor under the high mesh occludes too. Y is up.",
+            "default": false
           },
           "groundOffset": {
             "type": "number",
             "description": "How far above the high mesh\u0027s lowest point the floor is, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0
           }
         },
         "description": "The occlusion rays, which ambient occlusion, the bent normal and thickness share."
@@ -9899,7 +10188,8 @@
           "resolution": {
             "type": "integer",
             "description": "The atlas\u0027s width, in texels, and its height too unless int? BakeOptions.Rows says otherwise.",
-            "format": "int32"
+            "format": "int32",
+            "default": 2048
           },
           "rows": {
             "type": [
@@ -9918,21 +10208,25 @@
           },
           "format": {
             "type": "string",
-            "description": "\u0060png8\u0060, \u0060png16\u0060, \u0060exr16\u0060 or \u0060exr32\u0060."
+            "description": "\u0060png8\u0060, \u0060png16\u0060, \u0060exr16\u0060 or \u0060exr32\u0060.",
+            "default": "png16"
           },
           "supersampling": {
             "type": "integer",
             "description": "How many samples along each side of a texel.",
-            "format": "int32"
+            "format": "int32",
+            "default": 1
           },
           "gutter": {
             "type": "integer",
             "description": "How many texels of dilation surround each chart.",
-            "format": "int32"
+            "format": "int32",
+            "default": 4
           },
           "diffusion": {
             "type": "boolean",
-            "description": "Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the\nsmallest mipmaps keep the maps\u0027 own values rather than fading to the empty texture\u0027s (#148). Labels, the ID\nand UV Islands maps, and UV Borders keep their background."
+            "description": "Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the\nsmallest mipmaps keep the maps\u0027 own values rather than fading to the empty texture\u0027s (#148). Labels, the ID\nand UV Islands maps, and UV Borders keep their background.",
+            "default": false
           },
           "maps": {
             "type": "array",
@@ -9943,7 +10237,8 @@
           },
           "space": {
             "type": "string",
-            "description": "The frame of the normal and bent normal maps: \u0060tangent\u0060 or \u0060object\u0060."
+            "description": "The frame of the normal and bent normal maps: \u0060tangent\u0060 or \u0060object\u0060.",
+            "default": "tangent"
           },
           "rays": {
             "description": "How far the rays look and what they may strike, which every map rests on.",
@@ -10007,7 +10302,8 @@
         "properties": {
           "range": {
             "type": "string",
-            "description": "\u0060box\u0060, each axis across the mesh\u0027s bounding box, so each channel is used whole and shapes stretch;\n            \u0060cube\u0060, every axis across the box\u0027s longest side, so distances agree; \u0060sphere\u0060, across the sphere\n            round the box, centred on its middle; or \u0060none\u0060, the point in model units, which only EXR keeps."
+            "description": "\u0060box\u0060, each axis across the mesh\u0027s bounding box, so each channel is used whole and shapes stretch;\n            \u0060cube\u0060, every axis across the box\u0027s longest side, so distances agree; \u0060sphere\u0060, across the sphere\n            round the box, centred on its middle; or \u0060none\u0060, the point in model units, which only EXR keeps.",
+            "default": "box"
           }
         },
         "description": "How the position map turns a point on the high poly mesh into a value (#148)."
@@ -10096,49 +10392,60 @@
           "front": {
             "type": "number",
             "description": "How far a ray looks outward, in front of the low mesh.",
-            "format": "double"
+            "format": "double",
+            "default": 0.05
           },
           "rear": {
             "type": "number",
             "description": "How far a ray looks inward, behind the low mesh, or past it from a cage.",
-            "format": "double"
+            "format": "double",
+            "default": 0.05
           },
           "units": {
             "type": "string",
-            "description": "What the distances here and in BakeOcclusionOptions are in: \u0060relative\u0060, fractions of the\nhigh mesh\u0027s bounding-box diagonal, or \u0060absolute\u0060, the model\u0027s own units."
+            "description": "What the distances here and in BakeOcclusionOptions are in: \u0060relative\u0060, fractions of the\nhigh mesh\u0027s bounding-box diagonal, or \u0060absolute\u0060, the model\u0027s own units.",
+            "default": "relative"
           },
           "ignoreBackfaces": {
             "type": "boolean",
-            "description": "Whether a ray passes through a high face turned away from the low mesh\u0027s facing."
+            "description": "Whether a ray passes through a high face turned away from the low mesh\u0027s facing.",
+            "default": false
           },
           "automaticCage": {
             "type": "boolean",
-            "description": "Whether, with no cage file, the rays start on the low mesh pushed out by the front distance and take the\nfirst surface they meet, as from a cage, rather than the nearer surface either way (#148)."
+            "description": "Whether, with no cage file, the rays start on the low mesh pushed out by the front distance and take the\nfirst surface they meet, as from a cage, rather than the nearer surface either way (#148).",
+            "default": false
           },
           "skew": {
             "type": "number",
             "description": "How far rays lean from the smoothed direction towards the low mesh\u0027s own normal, 0 to 1.",
-            "format": "double"
+            "format": "double",
+            "default": 0
           },
           "skewMap": {
             "type": "string",
-            "description": "A grey image saying where to apply the skew, or empty for everywhere."
+            "description": "A grey image saying where to apply the skew, or empty for everywhere.",
+            "default": ""
           },
           "distanceMap": {
             "type": "string",
-            "description": "A grey image correcting how far the rays reach over the atlas, or empty for as set: mid grey leaves them,\nblack pulls them onto the low mesh and white sends them twice as far, front, rear and cage alike."
+            "description": "A grey image correcting how far the rays reach over the atlas, or empty for as set: mid grey leaves them,\nblack pulls them onto the low mesh and white sends them twice as far, front, rear and cage alike.",
+            "default": ""
           },
           "matchByName": {
             "type": "boolean",
-            "description": "Whether a part of the low mesh only strikes the high part of the same name."
+            "description": "Whether a part of the low mesh only strikes the high part of the same name.",
+            "default": false
           },
           "lowSuffix": {
             "type": "string",
-            "description": "What a low part\u0027s name ends in, which matching by name takes off."
+            "description": "What a low part\u0027s name ends in, which matching by name takes off.",
+            "default": "_low"
           },
           "highSuffix": {
             "type": "string",
-            "description": "What a high part\u0027s name ends in, which matching by name takes off."
+            "description": "What a high part\u0027s name ends in, which matching by name takes off.",
+            "default": "_high"
           }
         },
         "description": "How far a bake\u0027s rays look from the low mesh, and what they may strike."
@@ -10264,25 +10571,30 @@
         "properties": {
           "enabled": {
             "type": "boolean",
-            "description": "Whether edges are rounded at all."
+            "description": "Whether edges are rounded at all.",
+            "default": false
           },
           "width": {
             "type": "number",
             "description": "How far either side of an edge the bevel reaches, in the rays\u0027 units.",
-            "format": "double"
+            "format": "double",
+            "default": 0.01
           },
           "edges": {
             "type": "string",
-            "description": "Which edges: \u0060angle\u0060, every edge whose faces meet at double BakeRoundingOptions.Angle or more, or \u0060hard\u0060, the\nedges the mesh\u0027s own normals split, which is the nearest a mesh file has to an edge weight."
+            "description": "Which edges: \u0060angle\u0060, every edge whose faces meet at double BakeRoundingOptions.Angle or more, or \u0060hard\u0060, the\nedges the mesh\u0027s own normals split, which is the nearest a mesh file has to an edge weight.",
+            "default": "angle"
           },
           "angle": {
             "type": "number",
             "description": "For \u0060angle\u0060: the least angle between two faces that is an edge, in degrees.",
-            "format": "double"
+            "format": "double",
+            "default": 30
           },
           "profile": {
             "type": "string",
-            "description": "How the normal turns across the bevel: \u0060even\u0060, a round fillet; \u0060smooth\u0060, flat at the bevel\u0027s side\nand turning fastest near the edge; or \u0060chamfer\u0060, one flat face at the halfway angle."
+            "description": "How the normal turns across the bevel: \u0060even\u0060, a round fillet; \u0060smooth\u0060, flat at the bevel\u0027s side\nand turning fastest near the edge; or \u0060chamfer\u0060, one flat face at the halfway angle.",
+            "default": "even"
           }
         },
         "description": "Edges baked round into the normal map, the bevel a hard-surface model was not modelled with."
@@ -10295,7 +10607,8 @@
         "properties": {
           "normalised": {
             "type": "boolean",
-            "description": "Whether the map is divided by its largest value, so the thickest texel reads white."
+            "description": "Whether the map is divided by its largest value, so the thickest texel reads white.",
+            "default": true
           }
         },
         "description": "The thickness map\u0027s own settings."
@@ -10330,7 +10643,7 @@
           },
           "kind": {
             "type": "string",
-            "description": "\u0060project\u0060 or \u0060document\u0060."
+            "description": "\u0060project\u0060, \u0060document\u0060, or \u0060pictures\u0060 for those a Clean found nothing read, each going back to\n            its own place in \u0060projects\u0060."
           },
           "name": {
             "type": "string",
@@ -10776,6 +11089,52 @@
           }
         },
         "description": "The body of \u0060POST /api/v1/library/cache/prune\u0060."
+      },
+      "CheckFile": {
+        "required": [
+          "file",
+          "format",
+          "compression",
+          "width",
+          "height",
+          "mips",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Its name as the export writes it, with its extension."
+          },
+          "format": {
+            "type": "string",
+            "description": "Its format, one of the export formats."
+          },
+          "compression": {
+            "type": "string",
+            "description": "What its blocks hold, or \u0060none\u0060."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Its width, in texels, as it is written.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height.",
+            "format": "int32"
+          },
+          "mips": {
+            "type": "boolean",
+            "description": "Whether it carries a mip chain."
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The GPU memory it takes, its mips included.",
+            "format": "int64"
+          }
+        },
+        "description": "One file an export writes for a texture set, and what it takes on a GPU (#159)."
       },
       "CheckProblem": {
         "required": [
@@ -12297,6 +12656,9 @@
             "$ref": "#/components/schemas/GraphCommandGraphSetSetting"
           },
           {
+            "$ref": "#/components/schemas/GraphCommandGraphSetLevel"
+          },
+          {
             "$ref": "#/components/schemas/GraphCommandGraphAddParameter"
           },
           {
@@ -12364,6 +12726,7 @@
             "setValue": "#/components/schemas/GraphCommandGraphSetValue",
             "setText": "#/components/schemas/GraphCommandGraphSetText",
             "setSetting": "#/components/schemas/GraphCommandGraphSetSetting",
+            "setLevel": "#/components/schemas/GraphCommandGraphSetLevel",
             "addParameter": "#/components/schemas/GraphCommandGraphAddParameter",
             "setParameter": "#/components/schemas/GraphCommandGraphSetParameter",
             "removeParameter": "#/components/schemas/GraphCommandGraphRemoveParameter",
@@ -13062,6 +13425,38 @@
           }
         },
         "description": "Changes what the graph says about itself: anything left null stays as it is."
+      },
+      "GraphCommandGraphSetLevel": {
+        "required": [
+          "nodes",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "setLevel"
+            ],
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "The nodes."
+          },
+          "level": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "From -2 (four times the graph\u0027s size) to 4 (a sixteenth of it), or null to follow the inputs.",
+            "format": "int32"
+          }
+        },
+        "description": "Sets the size nodes are computed at, relative to their graph\u0027s; see GraphNodeState. A radius\nstays the same part of the picture at any level, because it is counted in the graph\u0027s base."
       },
       "GraphCommandGraphSetParameter": {
         "required": [
@@ -14246,6 +14641,14 @@
             "type": "boolean",
             "description": "True when it is switched off: what feeds its first input of an output\u0027s kind passes straight through, and a\nnode with no such input passes nothing.",
             "default": false
+          },
+          "level": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The size it is computed at, in halvings of its graph\u0027s size: 1 is half the width and height, -1 twice them, 0\nthe graph\u0027s own. Null follows the finest image arriving at it. On a compound it applies to every node inside.",
+            "format": "int32"
           }
         },
         "description": "A node as a document holds it."
@@ -15086,6 +15489,45 @@
         },
         "description": "A piece of work the Server owns, which outlives the Worker running it and the Server itself."
       },
+      "LibraryCleaned": {
+        "required": [
+          "removed",
+          "bytes",
+          "pictures",
+          "pictureBytes"
+        ],
+        "type": "object",
+        "properties": {
+          "removed": {
+            "type": "integer",
+            "description": "How many folders of copies of moved paint were deleted.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The room those freed on disk.",
+            "format": "int64"
+          },
+          "pictures": {
+            "type": "integer",
+            "description": "How many pictures nothing read went to the bin.",
+            "format": "int32"
+          },
+          "pictureBytes": {
+            "type": "integer",
+            "description": "The room those take, which emptying the bin frees.",
+            "format": "int64"
+          },
+          "bin": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The bin\u0027s entry that holds those pictures, for a Restore, or null when none went."
+          }
+        },
+        "description": "What \u0060POST /api/v1/library/clean\u0060 took away (#162)."
+      },
       "LibraryCosts": {
         "required": [
           "folder",
@@ -15503,6 +15945,25 @@
           }
         },
         "description": "What a whole build did."
+      },
+      "LibrarySettingsRequest": {
+        "required": [
+          "name",
+          "texelDensity"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The library\u0027s display name, 1 to 200 characters. Its folder keeps its name."
+          },
+          "texelDensity": {
+            "type": "number",
+            "description": "The texel density new projects start from, in texels per metre, above zero.",
+            "format": "double"
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/library/settings\u0060 (#192)."
       },
       "LibraryTargetsRequest": {
         "required": [
@@ -16320,7 +16781,8 @@
           },
           "cage": {
             "type": "string",
-            "description": "A cage, as a path on the Server\u0027s machine, or empty for none."
+            "description": "A cage, as a path on the Server\u0027s machine, or empty for none.",
+            "default": ""
           }
         },
         "description": "What a project keeps about baking, in its own file: the options, which texture sets to bake, and the files\nbeyond the project\u0027s mesh that a bake reads."
@@ -16337,22 +16799,26 @@
           "memoryBudget": {
             "type": "number",
             "description": "The most GPU memory one texture set\u0027s exported files may take, in mebibytes, or zero for no limit.",
-            "format": "double"
+            "format": "double",
+            "default": 0
           },
           "maxSize": {
             "type": "integer",
             "description": "The longest side a texture set\u0027s maps may have, in texels, or zero for no limit.",
-            "format": "int32"
+            "format": "int32",
+            "default": 0
           },
           "texelDensity": {
             "type": "number",
             "description": "The texel density the sets are held to, in texels per unit of the model (a metre in glTF), or zero for the\nlibrary\u0027s.",
-            "format": "double"
+            "format": "double",
+            "default": 0
           },
           "densityTolerance": {
             "type": "number",
             "description": "How far a set\u0027s density may stray from it before it is flagged, as a share: 0.25 is a quarter.",
-            "format": "double"
+            "format": "double",
+            "default": 0.25
           }
         },
         "description": "What a project holds its texture sets to before they are exported (#159), kept in its \u0060project.yaml\u0060. A\nzero is no limit, and a texel density of zero is the library\u0027s."
@@ -17600,6 +18066,68 @@
         },
         "description": "Makes a project from a sample."
       },
+      "ServerLogEntry": {
+        "required": [
+          "sequence",
+          "at",
+          "level",
+          "source",
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "description": "Its number, rising by one from the Server\u0027s start.",
+            "format": "int64"
+          },
+          "at": {
+            "type": "string",
+            "description": "When it was said.",
+            "format": "date-time"
+          },
+          "level": {
+            "type": "string",
+            "description": "\u0060information\u0060, \u0060warning\u0060, \u0060error\u0060 or \u0060critical\u0060."
+          },
+          "source": {
+            "type": "string",
+            "description": "The part of the Server that said it, such as \u0060Patina.Server.Autosave\u0060."
+          },
+          "text": {
+            "type": "string",
+            "description": "What it said, and the exception\u0027s message after it when there was one."
+          }
+        },
+        "description": "One line of what the Server said, as \u0060GET /api/v1/log\u0060 gives it (#192)."
+      },
+      "ServerLogPage": {
+        "required": [
+          "entries",
+          "next",
+          "dropped"
+        ],
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerLogEntry"
+            },
+            "description": "The lines, at most int ServerLogPage.Most."
+          },
+          "next": {
+            "type": "integer",
+            "description": "The number to ask after next: the last line\u0027s, or the one asked after when none came.",
+            "format": "int64"
+          },
+          "dropped": {
+            "type": "boolean",
+            "description": "Whether lines after the one asked after are gone, as only the latest are kept."
+          }
+        },
+        "description": "The lines of the Server\u0027s log after a number, the oldest first (#192)."
+      },
       "ServerPreferences": {
         "required": [
           "autosave"
@@ -17609,6 +18137,17 @@
           "autosave": {
             "description": "How unsaved work is kept.",
             "$ref": "#/components/schemas/AutosavePreferences"
+          },
+          "bake": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "How a new project bakes until it is told otherwise (#189), or null for Patina\u0027s own options. A texturing\nproject still bakes at the size it is made at.",
+                "$ref": "#/components/schemas/BakeOptions"
+              }
+            ]
           }
         },
         "description": "The Server\u0027s settings that belong to the person and not to a library or project, kept in a plain file beside\nthe discovery file, which anyone can read and edit."
@@ -18030,7 +18569,9 @@
         "required": [
           "usage",
           "default",
-          "format"
+          "format",
+          "name",
+          "colour"
         ],
         "type": "object",
         "properties": {
@@ -18050,6 +18591,14 @@
             "type": "string",
             "description": "How wide the texels are that a stroke paints it at (#19): one of the vocabulary\u0027s formats, Rgba8 unless the set\nsays more.",
             "default": "Rgba8"
+          },
+          "name": {
+            "type": "string",
+            "description": "What a person named a user channel (#141), such as Dirt; empty for the usage\u0027s own label."
+          },
+          "colour": {
+            "type": "boolean",
+            "description": "Whether a user channel holds a color rather than one number (#141); false for any other."
           }
         },
         "description": "A channel a stack writes."
@@ -18119,7 +18668,8 @@
           "memoryBytes",
           "memoryBudget",
           "preset",
-          "problems"
+          "problems",
+          "files"
         ],
         "type": "object",
         "properties": {
@@ -18171,6 +18721,13 @@
               "$ref": "#/components/schemas/CheckProblem"
             },
             "description": "What is wrong, in the order of IReadOnlyList\u0026lt;string\u0026gt; CheckCodes.All, which puts the project\u0027s limits, the errors,\nfirst."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckFile"
+            },
+            "description": "Each file the export writes for the set, with the GPU memory it takes."
           }
         },
         "description": "The reply to \u0060GET /api/v1/stacks/{id}/checks\u0060: one texture set measured against its project."
@@ -18252,6 +18809,9 @@
             "$ref": "#/components/schemas/StackCommandStackSetChannelFormat"
           },
           {
+            "$ref": "#/components/schemas/StackCommandStackSetUserChannel"
+          },
+          {
             "$ref": "#/components/schemas/StackCommandStackSetSeed"
           },
           {
@@ -18314,6 +18874,7 @@
             "nestLayer": "#/components/schemas/StackCommandStackNestLayer",
             "removeChannel": "#/components/schemas/StackCommandStackRemoveChannel",
             "setChannelFormat": "#/components/schemas/StackCommandStackSetChannelFormat",
+            "setUserChannel": "#/components/schemas/StackCommandStackSetUserChannel",
             "setSeed": "#/components/schemas/StackCommandStackSetSeed",
             "duplicateLayers": "#/components/schemas/StackCommandStackDuplicateLayers",
             "pasteLayers": "#/components/schemas/StackCommandStackPasteLayers",
@@ -19257,6 +19818,13 @@
               "$ref": "#/components/schemas/StackAnchorRef"
             },
             "description": "The image inputs of a generator entry that anchor points feed, by port, replacing all of them. Another\ngenerator starts with none."
+          },
+          "output": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Which picture of a generator entry that writes several it reads, or empty for its only one. Another generator\nstarts from empty."
           }
         },
         "description": "Changes an entry of a layer\u0027s mask stack. What is null stays."
@@ -19368,6 +19936,40 @@
           }
         },
         "description": "Changes the texture set\u0027s settings, any of them, as one undo step. What is left out stays as it is. Together\nwith its channels and its name these are the set\u0027s settings, and the stack file is the one place they live."
+      },
+      "StackCommandStackSetUserChannel": {
+        "required": [
+          "usage",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "setUserChannel"
+            ],
+            "type": "string"
+          },
+          "usage": {
+            "type": "string",
+            "description": "Which channel, a user channel the set has."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What it is called; empty for its usage\u0027s own label."
+          },
+          "colour": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether it holds a color, painted and chosen as one, rather than one number."
+          }
+        },
+        "description": "Names a user channel and says whether it holds a color (#141), as one undo step, \u003Ci\u003EUser channel\u003C/i\u003E. A user\nchannel, \u0060user0\u0060 to \u0060user7\u0060, means nothing to the material: its name is what a person reads, and its\nusage stays what a preset and a graph name it by. What is left out stays as it is."
       },
       "StackCommandStackStroke": {
         "required": [
@@ -19495,7 +20097,7 @@
               "null",
               "string"
             ],
-            "description": "With the fill curve, how much of the mesh a click takes: \u0060triangle\u0060, \u0060polygon\u0060 (the flat polygon it\nis part of), \u0060part\u0060 (the named mesh it belongs to) or \u0060shell\u0060 (its UV island). It needs a mesh."
+            "description": "With the fill curve, how much of the mesh a click takes: \u0060triangle\u0060, \u0060polygon\u0060 (the flat polygon it\nis part of), \u0060part\u0060 (the named mesh it belongs to), \u0060shell\u0060 (its UV island) or \u0060loop\u0060 (the\nloop of quads through it, across its edge nearest the click, which takes no outline). It needs a mesh."
           },
           "resume": {
             "type": [
@@ -19670,6 +20272,17 @@
               "format": "float"
             },
             "description": "A warp (#134, #263): where each point of a square grid over the picture lands on the decal\u0027s square, row by row\nfrom the top left, two numbers 0 to 1 across and down to a point: eighteen for 3 by 3, fifty for 5 by 5, up to\nint StackDecal.MaximumWarpSide points on a side. A finer grid follows a surface that turns away on both sides,\nsuch as round a cylinder. Null or empty bends nothing."
+          },
+          "symmetry": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The copies the decal makes of itself (#132), or null for the decal alone.",
+                "$ref": "#/components/schemas/StackSurfaceSymmetry"
+              }
+            ]
           }
         },
         "description": "A decal (#133): a picture projected through a box placed on the model, kept in the stack as numbers, so it can\nbe moved, scaled and turned again. Every length is in the model\u0027s own units, the ones\n\u0060POST /viewport/pick\u0060 answers in."
@@ -20026,6 +20639,16 @@
               "$ref": "#/components/schemas/StackFilterInput"
             },
             "description": "The images it reads, its subject first. Empty for a generator."
+          },
+          "outputs": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "The pictures it writes, by name, when it writes more than one, so a generator read for one picture is told which\n(#120); null when it writes one."
           }
         },
         "description": "An adjustment a filter layer or a mask can run, or a generator an input can read: any node or shipped compound\na stack can use there. A project\u0027s own compounds reach a stack from the shelf."
@@ -20156,7 +20779,8 @@
           "channel",
           "generator",
           "asset",
-          "map"
+          "map",
+          "output"
         ],
         "type": "object",
         "properties": {
@@ -20217,6 +20841,11 @@
           "map": {
             "type": "string",
             "description": "The mesh map read, for Bake.",
+            "default": ""
+          },
+          "output": {
+            "type": "string",
+            "description": "Which picture of a generator that writes several is read, or empty for its only one.",
             "default": ""
           }
         },
@@ -20528,7 +21157,8 @@
           "lane",
           "enabled",
           "inside",
-          "outside"
+          "outside",
+          "output"
         ],
         "type": "object",
         "properties": {
@@ -20665,6 +21295,11 @@
             "description": "With colours, what the mask is everywhere else: its background, 0 to 1.",
             "format": "float",
             "default": 0
+          },
+          "output": {
+            "type": "string",
+            "description": "Which picture of a generator that writes several is the mask, by its name in the generator\u0027s Outputs, or empty\nfor its only one. Another generator starts from empty.",
+            "default": ""
           }
         },
         "description": "What decides where a layer shows."
@@ -20746,7 +21381,8 @@
           "blend",
           "opacity",
           "enabled",
-          "lane"
+          "lane",
+          "output"
         ],
         "type": "object",
         "properties": {
@@ -20831,6 +21467,11 @@
             "type": "string",
             "description": "Which lane of its picture it reads: Red, Green, Blue or Alpha.",
             "default": "Red"
+          },
+          "output": {
+            "type": "string",
+            "description": "Which picture of a generator entry that writes several it reads, or empty for its one.",
+            "default": ""
           }
         },
         "description": "One entry of a mask\u0027s own stack: a source, composited over the base and the entries beneath it with its own\nblend and opacity. Paint over a generator is a Paint entry over a Generator base."
@@ -21742,9 +22383,66 @@
             "description": "How far each stamp moves at random, 0 to 1: that share of the width to the side and of half the spacing along.",
             "format": "float",
             "default": 0
+          },
+          "symmetry": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The copies the path makes of itself (#132), or null for the path alone.",
+                "$ref": "#/components/schemas/StackSurfaceSymmetry"
+              }
+            ]
+          },
+          "alpha": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For a stroke in stamps, the brush alpha each stamp takes the shape of, one of the vocabulary\u0027s \u0060alphas\u0060,\nturned with the path. Null, empty or \u0060Round\u0060 is a round stamp."
           }
         },
         "description": "A curve on the model that a fill with the \u0060Path\u0060 projection is laid along (#130, #131): the points stay in\nthe stack, so they can be moved after the stroke is seen, and the stroke follows. It passes through each point."
+      },
+      "StackSurfaceSymmetry": {
+        "required": [
+          "axis",
+          "through",
+          "kind",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "axis": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The plane\u0027s normal, or the line\u0027s direction: three numbers, any length but none."
+          },
+          "through": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "A point on the plane or the line, in the model\u0027s units: three numbers."
+          },
+          "kind": {
+            "type": "string",
+            "description": "\u0060mirror\u0060 through a plane, or \u0060radial\u0060 round a line.",
+            "default": "mirror"
+          },
+          "count": {
+            "type": "integer",
+            "description": "How many a radial symmetry makes, the original among them: 2 to 64.",
+            "format": "int32",
+            "default": 2
+          }
+        },
+        "description": "How a decal or a path copies itself over the model (#132): mirrored through a plane, or turned round a line,\nas a stroke\u0027s symmetry copies a stroke. The plane or the line is a place on the model, in its own units, so it\nis the same in every texture set."
       },
       "StackSymmetry": {
         "required": [
@@ -22060,6 +22758,10 @@
         },
         "description": "The words a stack\u0027s fields take, each with its label, so that a client holds no list of its own."
       },
+      "Stream": {
+        "type": "string",
+        "format": "binary"
+      },
       "SystemInfo": {
         "required": [
           "version",
@@ -22242,30 +22944,36 @@
           "resolution": {
             "type": "integer",
             "description": "The atlas side the margin is counted against, in texels. A map of another size only rescales it.",
-            "format": "int32"
+            "format": "int32",
+            "default": 2048
           },
           "margin": {
             "type": "integer",
             "description": "The empty texels between two islands.",
-            "format": "int32"
+            "format": "int32",
+            "default": 4
           },
           "quality": {
             "type": "string",
-            "description": "How islands are packed: \u0060boxes\u0060 by their bounding boxes, \u0060outlines\u0060 by their shapes, and\n\u0060groups\u0060 by their shapes after joining nearly square neighbours."
+            "description": "How islands are packed: \u0060boxes\u0060 by their bounding boxes, \u0060outlines\u0060 by their shapes, and\n\u0060groups\u0060 by their shapes after joining nearly square neighbours.",
+            "default": "outlines"
           },
           "rotations": {
             "type": "integer",
             "description": "How many ways an island may be turned: 1 never, 2 a half turn, 4 every quarter turn.",
-            "format": "int32"
+            "format": "int32",
+            "default": 4
           },
           "texelDensity": {
             "type": "number",
             "description": "Texels per world unit every island is scaled to, or zero for each island at its own scale.",
-            "format": "double"
+            "format": "double",
+            "default": 0
           },
           "overflow": {
             "type": "string",
-            "description": "What happens when the islands do not fit at that density: \u0060shrink\u0060 scales them all down, and\n\u0060refuse\u0060 stops and says so. Spilling into a second UDIM tile is not offered while a texture set\npaints one tile."
+            "description": "What happens when the islands do not fit at that density: \u0060shrink\u0060 scales them all down, and\n\u0060refuse\u0060 stops and says so. Spilling into a second UDIM tile is not offered while a texture set\npaints one tile.",
+            "default": "shrink"
           }
         },
         "description": "How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own."
@@ -22342,6 +23050,19 @@
         },
         "description": "What one texture set\u0027s unwrap came to."
       },
+      "UploadedFile": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its full path on the Server\u0027s machine, which anything that takes a file there takes: a project\u0027s mesh, a picture\nbrought into a project, a bake\u0027s high mesh."
+          }
+        },
+        "description": "A file a client sent from its own computer, now on the Server\u0027s machine (#4)."
+      },
       "ViewportBakePreview": {
         "required": [
           "high",
@@ -22366,7 +23087,8 @@
           },
           "low": {
             "type": "string",
-            "description": "The mesh baked onto, or empty to take the preview off."
+            "description": "The mesh baked onto, or empty to take the preview off.",
+            "default": ""
           },
           "cage": {
             "type": [
@@ -22388,33 +23110,40 @@
           },
           "reach": {
             "type": "boolean",
-            "description": "Whether to draw where the rays start and how far they reach: the cage or the ray distances."
+            "description": "Whether to draw where the rays start and how far they reach: the cage or the ray distances.",
+            "default": true
           },
           "highMesh": {
             "type": "boolean",
-            "description": "Whether to draw the high meshes, see-through."
+            "description": "Whether to draw the high meshes, see-through.",
+            "default": true
           },
           "matches": {
             "type": "boolean",
-            "description": "Whether to colour the parts by which matched which, when parts are matched by name."
+            "description": "Whether to colour the parts by which matched which, when parts are matched by name.",
+            "default": true
           },
           "seams": {
             "type": "boolean",
-            "description": "Whether to draw the low mesh\u0027s hard edges that have no UV seam, where a tangent-space normal map shows a\nline."
+            "description": "Whether to draw the low mesh\u0027s hard edges that have no UV seam, where a tangent-space normal map shows a\nline.",
+            "default": true
           },
           "neutral": {
             "type": "boolean",
-            "description": "Whether the model is drawn in a plain grey while the preview shows, so its colours read."
+            "description": "Whether the model is drawn in a plain grey while the preview shows, so its colours read.",
+            "default": true
           },
           "shellOpacity": {
             "type": "number",
             "description": "How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays.",
-            "format": "double"
+            "format": "double",
+            "default": 0.12
           },
           "highOpacity": {
             "type": "number",
             "description": "How opaque the high mesh is, 0 to 1, in its parts\u0027 colours or plain.",
-            "format": "double"
+            "format": "double",
+            "default": 0.25
           }
         },
         "description": "A bake\u0027s setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,\nand what of it to draw. Paths on the Server\u0027s machine, as in a bake request."

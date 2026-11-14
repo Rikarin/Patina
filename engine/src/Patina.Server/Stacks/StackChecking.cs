@@ -89,10 +89,17 @@ public static class StackChecking {
         var (width, height) = (measured.Width, measured.Height);
         var target = TargetDensity(project, libraryDensity);
         var density = measured.Layout is { } layout ? LayoutCheck.Density(layout, Math.Max(width, height)) : 0;
-        var bytes = preset is null ? 0 : Memory(preset, project?.Export, state, width, height);
+        var naming = new NamingValues(project?.Name ?? state.Name, preset?.Id ?? string.Empty, state.Set);
+        var written = preset is null ? null : Written(preset, project?.Export).For(state.Set);
+        var files = written is null ? [] : ExportFileChecking.Files(written, naming, Maps(state), width, height);
+        var bytes = files.Sum(static file => file.Bytes);
         var budget = (long)(settings.MemoryBudget * 1024 * 1024);
         List<CheckProblem> problems = [..Limits(settings, name, (width, height), (bytes, budget), preset)];
-        problems.AddRange(Missing(preset, project, state, name));
+        if (written is not null) {
+            problems.AddRange(Missing(written, naming, state, name));
+            problems.AddRange(ExportFileChecking.Judge(written, naming, Maps(state)));
+        }
+
         if (state.BakeStale is { } stale) {
             problems.Add(Stale(stale, state.UvSet, name));
         }
@@ -115,7 +122,8 @@ public static class StackChecking {
             bytes,
             budget,
             preset?.Name ?? string.Empty,
-            problems
+            problems,
+            files
         );
     }
 
@@ -212,20 +220,9 @@ public static class StackChecking {
     ) {
         ArgumentNullException.ThrowIfNull(preset);
         ArgumentNullException.ThrowIfNull(state);
-        var maps = Maps(state);
         var written = Written(preset, export).For(state.Set);
-        double total = 0;
-        foreach (var texture in written.Textures) {
-            var reads = texture.Maps.ToArray();
-            if (reads.Length > 0 && !reads.Any(maps.Contains)) {
-                continue;
-            }
-
-            var (across, down) = ExportMemory.Sized(written, texture, width, height);
-            total += ExportMemory.Bytes(texture, across, down);
-        }
-
-        return (long)Math.Ceiling(total);
+        var naming = new NamingValues(state.Name, preset.Id, state.Set);
+        return ExportFileChecking.Files(written, naming, Maps(state), width, height).Sum(static file => file.Bytes);
     }
 
     /// <summary>
@@ -240,7 +237,10 @@ public static class StackChecking {
         }
     }
 
-    /// <summary>The maps a set makes. One with a height channel makes a normal whether or not it says so.</summary>
+    /// <summary>
+    ///     The maps a set makes. One with a height channel makes a normal whether or not it says so, and one with
+    ///     metal-roughness maps makes the specular-glossiness maps the export works out from them.
+    /// </summary>
     static HashSet<string> Maps(StackState state) {
         HashSet<string> maps = [..state.Channels.Select(static channel => channel.Usage)];
         if (maps.Contains("height")) {
@@ -257,6 +257,15 @@ public static class StackChecking {
             maps.Add("occlusion");
         }
 
+        // The export works out specular, diffuse and glossiness from the metal-roughness maps (DerivedMaps).
+        if (maps.Contains(ExportMaps.Roughness)) {
+            maps.Add(ExportMaps.Glossiness);
+        }
+
+        if (maps.Contains(ExportMaps.BaseColor) || maps.Contains(ExportMaps.Metalness)) {
+            maps.UnionWith([ExportMaps.Specular, ExportMaps.Diffuse]);
+        }
+
         return maps;
     }
 
@@ -265,35 +274,22 @@ public static class StackChecking {
     ///     named as the export would write it and the map as the app calls it, never a template or a stored value
     ///     (#198).
     /// </summary>
-    static IEnumerable<CheckProblem> Missing(
-        ExportPreset? preset,
-        ProjectContents? project,
-        StackState state,
-        string name
-    ) {
-        if (preset is null) {
-            yield break;
-        }
-
+    static IEnumerable<CheckProblem> Missing(ExportPreset written, NamingValues naming, StackState state, string name) {
         var maps = Maps(state);
-        var naming = new NamingValues(project?.Name ?? state.Name, preset.Id, state.Set);
         HashSet<string> said = new(StringComparer.Ordinal);
-        foreach (var texture in Written(preset, project?.Export).Textures) {
-            var reads = texture.Maps.ToArray();
-            if (!reads.Any(maps.Contains)) {
+        foreach (var (texture, file) in ExportFileChecking.Writes(written, naming, maps)) {
+            if (!texture.Maps.Any(maps.Contains)) {
                 continue;
             }
 
-            var file = NamingTemplate.Resolve(texture.File, naming, string.Empty)
-                .Replace(Path.DirectorySeparatorChar, '/');
-            foreach (var map in reads.Where(map => !maps.Contains(map) && said.Add(map))) {
+            foreach (var map in texture.Maps.Where(map => !maps.Contains(map) && said.Add(map))) {
                 var channel = Terms.Label(map);
                 yield return Problem(
                     CheckCodes.ChannelMissing,
                     Warning,
-                    $"{preset.Name} reads {channel} into {file}, and {name} has no {channel} channel, so a default "
+                    $"{written.Name} reads {channel} into {file}, and {name} has no {channel} channel, so a default "
                     + "fills it.",
-                    new() { ["map"] = map, ["channel"] = channel, ["preset"] = preset.Name, ["file"] = file },
+                    new() { ["map"] = map, ["channel"] = channel, ["preset"] = written.Name, ["file"] = file },
                     new(Setting: "export.preset")
                 );
             }

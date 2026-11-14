@@ -7,10 +7,10 @@ import {
   type Page
 } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { ending, leave, pick } from './projects';
+import { ending, leave, pick, removeScratch } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -41,7 +41,7 @@ test.beforeEach(async () => {
 test.afterEach(async () => {
   // A test may leave edits unsaved, and quitting would then wait for an answer nobody gives.
   await leave(app);
-  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+  removeScratch(scratch);
 });
 
 const nodes = () => window.getByTestId('graph-node');

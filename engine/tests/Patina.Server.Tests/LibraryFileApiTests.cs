@@ -210,6 +210,50 @@ public sealed partial class LibraryTreeApiTests {
         Assert.Single(Directory.EnumerateFiles(kept, "*.read"));
     }
 
+    /// <summary>
+    ///     A picture that took the Worker down is refused from then on and never handed to the next Worker, which it
+    ///     would take down too (#293); the next Worker still reads the others.
+    /// </summary>
+    [Fact]
+    public async Task A_picture_that_took_the_Worker_down_is_not_asked_about_again() {
+        await MakeCrateAsync();
+        var shared = Directory.CreateDirectory(Path.Combine(server.Library, "shared"));
+        await File.WriteAllBytesAsync(
+            Path.Combine(shared.FullName, "bomb.exr"),
+            ExrCodec.Encode(new(4, 4, 1, new float[16])),
+            Token
+        );
+        await File.WriteAllBytesAsync(
+            Path.Combine(shared.FullName, "fine.exr"),
+            ExrCodec.Encode(new(2, 2, 1, new float[4])),
+            Token
+        );
+        await pictures.DisposeAsync();
+        pictures = await PictureWorker.ConnectAsync(
+            server.SocketPath,
+            Token,
+            static file => file.EndsWith("bomb.exr", StringComparison.Ordinal)
+        );
+
+        using var first = await client.GetAsync("/api/v1/library/picture?path=shared/bomb.exr", Token);
+        await pictures.DisposeAsync();
+        pictures = await PictureWorker.ConnectAsync(server.SocketPath, Token);
+        using var again = await client.GetAsync("/api/v1/library/picture?path=shared/bomb.exr", Token);
+        using var fine = await client.GetAsync("/api/v1/library/picture?path=shared/fine.exr", Token);
+
+        foreach (var refused in new[] { first, again }) {
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+            Assert.Contains(
+                "picture-unreadable",
+                await refused.Content.ReadAsStringAsync(Token),
+                StringComparison.Ordinal
+            );
+        }
+
+        Assert.Equal(HttpStatusCode.OK, fine.StatusCode);
+        Assert.Equal(1, pictures.Reads);
+    }
+
     /// <summary>A broken picture already in the library is refused by name when a client asks to see it.</summary>
     [Fact]
     public async Task A_broken_picture_in_the_library_is_refused_when_shown() {
@@ -251,5 +295,36 @@ public sealed partial class LibraryTreeApiTests {
         Assert.Equal((1024, 4096, 2048), (await BakeSide("small"), await BakeSide("large"), await BakeSide("plain")));
         var plain = await File.ReadAllTextAsync(Path.Combine(server.Library, "projects/plain/project.yaml"), Token);
         Assert.DoesNotContain("bake", plain, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    ///     A new project bakes with the options the person made their default (#189), a texturing one still at the size
+    ///     it was made at, and options no bake could use are refused rather than kept.
+    /// </summary>
+    [Fact]
+    public async Task A_new_project_bakes_with_the_default_options() {
+        var mesh = Path.Combine(files.FullName, "crate.glb");
+        File.WriteAllText(mesh, "mesh");
+        var preferred = new BakeOptions { Resolution = 512, Supersampling = 4, Maps = ["normal", "ao"] };
+        (await client.PutAsJsonAsync("/api/v1/preferences", new ServerPreferences(new()) { Bake = preferred }, Token))
+            .EnsureSuccessStatusCode();
+        var unusable = new ServerPreferences(new()) { Bake = new() { Maps = [] } };
+        using var refused = await client.PutAsJsonAsync("/api/v1/preferences", unusable, Token);
+
+        foreach (var request in new[] {
+                     new ProjectCreateRequest("Crate", Mesh: mesh, Resolution: 1024), new ProjectCreateRequest("Empty")
+                 }) {
+            (await client.PostAsJsonAsync("/api/v1/library/projects", request, Token)).EnsureSuccessStatusCode();
+        }
+
+        async Task<BakeOptions> OptionsOf(string path) =>
+            (await client.GetFromJsonAsync<ProjectContents>($"/api/v1/library/project?path={path}", Token))!
+            .Bake.Options;
+
+        var (crate, empty) = (await OptionsOf("crate"), await OptionsOf("empty"));
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal((1024, 4), (crate.Resolution, crate.Supersampling));
+        Assert.Equal(["normal", "ao"], crate.Maps);
+        Assert.Equal((512, 4), (empty.Resolution, empty.Supersampling));
     }
 }

@@ -201,6 +201,51 @@ public sealed class LibraryFolderTests : IDisposable {
         Assert.Null(Recovery.Newer(root, file));
     }
 
+    /// <summary>
+    ///     A folder chosen for autosaves takes the new ones, and those the cache kept before the choice are still
+    ///     counted, restored and let go of (#162): choosing a folder must not lose the safety net already there.
+    /// </summary>
+    [Fact]
+    public void Autosaves_kept_before_a_folder_was_chosen_still_count_after() {
+        var file = Path.Combine(root, "crate.vxtexgraph");
+        File.WriteAllText(file, "saved");
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddMinutes(-5));
+        var away = Recovery.Away(Path.Combine(root, "elsewhere"), root);
+        Recovery.Keep(root, file, "in the cache");
+        Recovery.Keep(root, file, "away", away);
+
+        Assert.Equal(2, Recovery.Count(root, file, away));
+        Assert.Single(Directory.GetDirectories(Recovery.Folder(root, file, away)));
+        Assert.NotEqual(Recovery.Away(Path.Combine(root, "elsewhere"), root + "-twin"), away);
+        Recovery.Trim(root, file, 1, away);
+        Assert.Equal(0, Recovery.Count(root, file));
+        Recovery.Restore(root, file, away);
+        Assert.Equal("away", File.ReadAllText(file));
+
+        Recovery.Keep(root, file, "in the cache again");
+        Recovery.Clear(root, file, new HashSet<string>(), away);
+        Assert.Equal(0, Recovery.Count(root, file, away));
+    }
+
+    /// <summary>
+    ///     A picture an open document names keeps, though no saved file names it yet: a layer just given a picture
+    ///     would otherwise lose it to Clean before its first save (#162).
+    /// </summary>
+    [Fact]
+    public void A_picture_only_an_open_document_names_is_used() {
+        var crate = Path.Combine(root, LibraryLayout.ProjectsFolder, "crate");
+        Directory.CreateDirectory(Path.Combine(crate, "pictures"));
+        File.WriteAllText(Path.Combine(crate, LibraryLayout.ProjectFile), "name: Crate");
+        File.WriteAllBytes(Path.Combine(crate, "pictures", "rust.png"), [1, 2, 3]);
+        var stack = Path.Combine(crate, "crate.vxlayers");
+        File.WriteAllText(stack, "layers: []");
+
+        Assert.Equal(["projects/crate/pictures/rust.png"], UnusedPictures.Find(root, new Dictionary<string, string>()));
+        Assert.Empty(
+            UnusedPictures.Find(root, new Dictionary<string, string> { [stack] = """image: pictures\rust.png""" })
+        );
+    }
+
     [Fact]
     public void Autosave_keeps_the_last_few_and_restores_the_newest_whole_one() {
         var file = Path.Combine(root, "crate.vxtexgraph");
@@ -329,9 +374,9 @@ public sealed class LibraryFolderTests : IDisposable {
     [Fact]
     public void One_mesh_goes_under_every_texturing_document_and_auto_unwrap_is_remembered() {
         var made = library.CreateProject(new("Crate"));
-        var folder = Directory.CreateTempSubdirectory("patina-mesh-");
-        var first = Path.Combine(folder.FullName, "first.glb");
-        var second = Path.Combine(folder.FullName, "second.glb");
+        var outside = folder.CreateSubdirectory("meshes");
+        var first = Path.Combine(outside.FullName, "first.glb");
+        var second = Path.Combine(outside.FullName, "second.glb");
         File.WriteAllText(first, "mesh");
         File.WriteAllText(second, "mesh");
         var before = library.AddMesh(made.Path, first, null);
@@ -457,7 +502,7 @@ public sealed class LibraryFolderTests : IDisposable {
     [Fact]
     public void A_project_remembers_how_it_unwraps_and_what_an_unwrap_came_to() {
         var made = library.CreateProject(new("Ball"));
-        var scratch = Directory.CreateTempSubdirectory("patina-unwrap-");
+        var scratch = folder.CreateSubdirectory("unwrap");
         var plain = Path.Combine(scratch.FullName, "ball.obj");
         var unwrapped = Path.Combine(scratch.FullName, "ball_unwrapped.glb");
         File.WriteAllText(plain, "mesh");

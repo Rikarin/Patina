@@ -8,6 +8,9 @@ namespace Patina.Viewport;
 ///     installed app: <c>patina-worker --check-natives</c> (ADR 0010).
 /// </summary>
 public static class NativeCheck {
+    /// <summary>A triangle with a UV layout, as an OBJ.</summary>
+    const string Triangle = "v -0.5 -0.5 0\nv 0.5 -0.5 0\nv 0 0.5 0\nvt 0 0\nvt 1 0\nvt 0 1\nf 1/1 2/2 3/3\n";
+
     /// <summary>
     ///     Reads a triangle and fails unless the application's own Assimp answered, since a library found on the
     ///     machine would pass here and be missing on the next one. Vulkan is reported and does not fail it: a Worker
@@ -38,6 +41,42 @@ public static class NativeCheck {
 
         output.WriteLine($"vulkan: {VulkanDevice.LibraryPath ?? "nothing loaded"} is not the application's own copy");
         return 1;
+    }
+
+    /// <summary>
+    ///     Draws a triangle in the viewport's renderer and fails unless a picture came back (#48): a device that opens
+    ///     but compiles no shader, as a Vulkan on Metal could, would pass the checks above and show nothing. For a
+    ///     machine that has a device, such as the macOS package job, whose runner opens one through the package's own
+    ///     MoltenVK.
+    /// </summary>
+    /// <param name="output">Where the report goes.</param>
+    /// <returns>The exit code: 0 when a frame of more than one colour came back.</returns>
+    public static int Render(TextWriter output) {
+        ArgumentNullException.ThrowIfNull(output);
+        var folder = Directory.CreateTempSubdirectory("patina-check-");
+        try {
+            if (!ViewportRenderer.TryCreate(new(folder.FullName), out var renderer, out var refusal)) {
+                output.WriteLine($"render: no renderer: {refusal}");
+                return 1;
+            }
+
+            using (renderer) {
+                var mesh = Path.Combine(folder.FullName, "triangle.obj");
+                File.WriteAllText(mesh, Triangle);
+                renderer!.OpenMesh(mesh);
+                const int Side = 64;
+                var pixels = new byte[ViewportRenderer.FrameBytes(Side, Side)];
+                renderer.Render(OrbitCamera.Default, Side, Side, pixels);
+                var colours = Enumerable.Range(0, Side * Side)
+                    .Select(at => BitConverter.ToInt32(pixels, at * 4))
+                    .Distinct()
+                    .Count();
+                output.WriteLine($"render: {Side} x {Side}, {colours} colours");
+                return colours > 1 ? 0 : 1;
+            }
+        } finally {
+            folder.Delete(true);
+        }
     }
 
     /// <summary>Whether the Vulkan that loaded is the one the package carries, where it carries one.</summary>

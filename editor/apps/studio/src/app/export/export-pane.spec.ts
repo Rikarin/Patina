@@ -195,6 +195,26 @@ describe('ExportPane', () => {
     expect(text('export-report-built')).toEqual(['1']);
   });
 
+  it('names the build its progress follows, so the next export’s Done is never read as the last one’s', async () => {
+    const ids = ['b1', 'b2'];
+    const { fixture, store, hear } = setup({
+      'POST builds': () => Response.json({ ...build, id: ids.shift() }, { status: 202 })
+    });
+    const progress = () =>
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('[data-testid="export-progress"]')
+        ?.getAttribute('data-build');
+    await store.start({ presets: ['unreal'] });
+    hear({ ...build, state: 'done', progress: 1 });
+    await settled(fixture);
+    expect(progress()).toBe('b1');
+
+    // Until the page draws again the last build's Done is still there, under the last build's id.
+    await store.start({ presets: ['unreal'] });
+    await settled(fixture);
+    expect(progress()).toBe('b2');
+  });
+
   it('stays quiet when a build refused at the start has no report', async () => {
     const { fixture, text, store, hear } = setup({
       'GET builds/b1/report': () => Response.json({ detail: 'no report' }, { status: 404 })
@@ -517,6 +537,9 @@ describe('ExportPane settings', () => {
 
     expect(text('export-set').map(row => row.slice(0, 4))).toEqual(['Body', 'Head']);
     expect((fixture.nativeElement as HTMLElement).querySelectorAll('[data-testid="export-set-size"]')).toHaveLength(2);
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('[data-testid="export-set-padding"]')).toHaveLength(
+      2
+    );
   });
 
   it('turns kept compression and a set’s own size back into the dialog’s, losing nothing', () => {
@@ -529,6 +552,23 @@ describe('ExportPane settings', () => {
     };
 
     expect(settingsOf(storedOf(settings), unreal as never)).toEqual(settings);
+  });
+
+  it('turns a set’s own padding back into the dialog’s, keeping a set that changes only its padding (#141)', () => {
+    const settings = {
+      ...settingsFor(unreal),
+      padding: 'colour',
+      colour: [0, 0, 1, 1],
+      perSet: { Head: { size: null, padding: { mode: 'diffusion', distance: 4 } }, Body: { size: 512 } }
+    };
+
+    const stored = storedOf(settings);
+
+    expect(stored.perSet).toEqual([
+      { set: 'Head', padding: { mode: 'diffusion', distance: 4, colour: [] } },
+      { set: 'Body', size: 512 }
+    ]);
+    expect(settingsOf(stored, unreal as never)).toEqual(settings);
   });
 
   it('turns kept settings back into the dialog’s, and the dialog’s into kept ones, losing nothing', () => {
@@ -622,6 +662,28 @@ describe('requestFor', () => {
     const chosen = { ...settings, perSet: { Head: { size: 512 } } };
     expect(requestFor({ ...chosen, merge: true }, unreal, { projects: ['p'] }).options).toEqual({ merge: true });
     expect(requestFor(chosen, unreal, { projects: ['p'] }).options).toEqual({ perSet: [{ set: 'Head', size: 512 }] });
+  });
+
+  it('sends a set’s own padding with the export’s color, and none of it while the sets are merged (#141)', () => {
+    const chosen = {
+      ...settings,
+      colour: [1, 0, 0, 1],
+      perSet: {
+        Head: { size: null, padding: { mode: 'colour', distance: 8 } },
+        Body: { size: null, padding: { mode: 'infinite', distance: 8 } }
+      }
+    };
+
+    expect(requestFor(chosen, unreal, { projects: ['p'] }).options).toEqual({
+      perSet: [
+        { set: 'Head', padding: { mode: 'colour', distance: 8, colour: [1, 0, 0, 1] } },
+        { set: 'Body', padding: { mode: 'infinite', distance: 0, colour: [] } }
+      ]
+    });
+    expect(requestFor({ ...chosen, merge: true }, unreal, { projects: ['p'] }).options).toEqual({ merge: true });
+    expect(requestFor(chosen, unreal, { projects: ['p'], sets: ['Body'] }).options?.perSet).toEqual([
+      { set: 'Body', padding: { mode: 'infinite', distance: 0, colour: [] } }
+    ]);
   });
 
   it('names a document the project does not export as it is, and no sets, so it exports on its own (#153)', () => {

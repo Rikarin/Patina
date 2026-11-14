@@ -32,6 +32,9 @@ static class StackSetEdits {
             case StackSetChannelFormat format:
                 run(ChannelFormat(editor, format.Usage, format.Format));
                 return true;
+            case StackSetUserChannel user:
+                run(UserChannel(editor, user));
+                return true;
             default:
                 return false;
         }
@@ -113,6 +116,40 @@ static class StackSetEdits {
         return editor.Replaced(
             editor.Document with { Sets = [..editor.Document.Sets.Select(set => set == chosen ? changed : set)] },
             "Channel depth"
+        );
+    }
+
+    /// <summary>The set with a user channel named, or marked as holding a color, as asked (#141).</summary>
+    static IAuthoringCommand UserChannel(StackEditor editor, StackSetUserChannel user) {
+        var chosen = editor.Set;
+        var named = new Dictionary<string, string> { ["channel"] = StackDocuments.ChannelName(user.Usage) };
+        if (chosen.Channels.Find(channel => channel.Usage == user.Usage) is not { } held) {
+            throw new StackEditRefusedException(
+                $"This document has no channel '{user.Usage}'.",
+                Api.Refusals.ChannelMissing,
+                named
+            );
+        }
+
+        if (!ChannelAsset.IsUser(user.Usage)) {
+            throw new StackEditRefusedException(
+                $"'{user.Usage}' is no user channel: its usage says what it is, so it takes no name or color flag.",
+                Api.Refusals.ChannelNotUser,
+                named
+            );
+        }
+
+        var changed = chosen with {
+            Channels = [
+                ..chosen.Channels.Select(channel => channel == held
+                        ? channel with { Name = user.Name?.Trim() ?? held.Name, Colour = user.Colour ?? held.Colour }
+                        : channel
+                )
+            ]
+        };
+        return editor.Replaced(
+            editor.Document with { Sets = [..editor.Document.Sets.Select(set => set == chosen ? changed : set)] },
+            "User channel"
         );
     }
 

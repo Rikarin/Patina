@@ -17,6 +17,10 @@ public sealed record GraphOpenRequest(string Path);
 ///     True when it is switched off: what feeds its first input of an output's kind passes straight through, and a
 ///     node with no such input passes nothing.
 /// </param>
+/// <param name="Level">
+///     The size it is computed at, in halvings of its graph's size: 1 is half the width and height, -1 twice them, 0
+///     the graph's own. Null follows the finest image arriving at it. On a compound it applies to every node inside.
+/// </param>
 public sealed record GraphNodeState(
     int Id,
     string Type,
@@ -24,7 +28,8 @@ public sealed record GraphNodeState(
     float Y,
     IReadOnlyDictionary<string, float[]> Values,
     IReadOnlyDictionary<string, string> Texts,
-    bool Bypassed = false
+    bool Bypassed = false,
+    int? Level = null
 );
 
 /// <summary>One wire, from an output to an input.</summary>
@@ -345,6 +350,7 @@ public sealed record GraphSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(GraphSetValue), "setValue")]
 [JsonDerivedType(typeof(GraphSetText), "setText")]
 [JsonDerivedType(typeof(GraphSetSetting), "setSetting")]
+[JsonDerivedType(typeof(GraphSetLevel), "setLevel")]
 // Here and not first: SK7020 honours no suppression, and reads an unbroken list of twenty attributes as a clone.
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "op")]
 [JsonDerivedType(typeof(GraphAddParameter), "addParameter")]
@@ -390,6 +396,16 @@ public sealed record GraphRemoveNodes(IReadOnlyList<int> Nodes, bool Relink = fa
 ///     <see cref="GraphNodeState" />.
 /// </summary>
 public sealed record GraphSetBypass(IReadOnlyList<int> Nodes, bool Bypassed) : GraphCommand;
+
+/// <summary>
+///     Sets the size nodes are computed at, relative to their graph's; see <see cref="GraphNodeState" />. A radius
+///     stays the same part of the picture at any level, because it is counted in the graph's base.
+/// </summary>
+/// <param name="Nodes">The nodes.</param>
+/// <param name="Level">
+///     From -2 (four times the graph's size) to 4 (a sixteenth of it), or null to follow the inputs.
+/// </param>
+public sealed record GraphSetLevel(IReadOnlyList<int> Nodes, int? Level) : GraphCommand;
 
 /// <summary>Lays nodes out in columns, left to right in the order data flows, with Vixen's layout.</summary>
 /// <param name="Nodes">

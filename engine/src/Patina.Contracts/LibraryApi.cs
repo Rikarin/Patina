@@ -315,6 +315,11 @@ public sealed record ProjectExportRequest(string Project, ProjectExportSettings 
 /// <param name="Export">What an export of the whole library is set to now.</param>
 public sealed record LibraryExportRequest(ProjectExportSettings Export);
 
+/// <summary>The body of <c>PUT /api/v1/library/settings</c> (#192).</summary>
+/// <param name="Name">The library's display name, 1 to 200 characters. Its folder keeps its name.</param>
+/// <param name="TexelDensity">The texel density new projects start from, in texels per metre, above zero.</param>
+public sealed record LibrarySettingsRequest(string Name, double TexelDensity);
+
 /// <summary>The body of <c>PUT /api/v1/library/export/preset</c>.</summary>
 /// <param name="Preset">
 ///     The id of the preset a project's export starts from when it has kept none, or null for the Starter glTF preset.
@@ -401,6 +406,13 @@ public sealed record LibraryFileList(IReadOnlyList<LibraryFile> Files, bool More
 /// <summary>A picture a project now holds.</summary>
 /// <param name="Path">Its path below the library, which a layer or a mask reads.</param>
 public sealed record ProjectPicture(string Path);
+
+/// <summary>A file a client sent from its own computer, now on the Server's machine (#4).</summary>
+/// <param name="Path">
+///     Its full path on the Server's machine, which anything that takes a file there takes: a project's mesh, a picture
+///     brought into a project, a bake's high mesh.
+/// </param>
+public sealed record UploadedFile(string Path);
 
 /// <summary>The body of <c>PATCH /api/v1/library/project/document</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>

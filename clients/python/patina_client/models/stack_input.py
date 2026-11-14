@@ -34,6 +34,7 @@ class StackInput:
             generator (str): The node or compound read, for Generator: Source/Noise, Noise/Clouds. Default: ''.
             asset (str): The image read, for Texture. Default: ''.
             map_ (str): The mesh map read, for Bake. Default: ''.
+            output (str): Which picture of a generator that writes several is read, or empty for its only one. Default: ''.
             anchor (None | StackAnchorRef | Unset):
             values (None | StackInputValuesType1 | Unset): The generator's numbers, by port.
             parameters (None | StackInputParametersType1 | Unset): The generator's settings, by name.
@@ -44,6 +45,7 @@ class StackInput:
     generator: str = ''
     asset: str = ''
     map_: str = ''
+    output: str = ''
     anchor: None | StackAnchorRef | Unset = UNSET
     values: None | StackInputValuesType1 | Unset = UNSET
     parameters: None | StackInputParametersType1 | Unset = UNSET
@@ -66,6 +68,8 @@ class StackInput:
         asset = self.asset
 
         map_ = self.map_
+
+        output = self.output
 
         anchor: dict[str, Any] | None | Unset
         if isinstance(self.anchor, Unset):
@@ -100,6 +104,7 @@ class StackInput:
             "generator": generator,
             "asset": asset,
             "map": map_,
+            "output": output,
         })
         if anchor is not UNSET:
             field_dict["anchor"] = anchor
@@ -127,6 +132,8 @@ class StackInput:
         asset = d.pop("asset")
 
         map_ = d.pop("map")
+
+        output = d.pop("output")
 
         def _parse_anchor(data: object) -> None | StackAnchorRef | Unset:
             if data is None:
@@ -194,6 +201,7 @@ class StackInput:
             generator=generator,
             asset=asset,
             map_=map_,
+            output=output,
             anchor=anchor,
             values=values,
             parameters=parameters,

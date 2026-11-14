@@ -39,25 +39,26 @@ class BakeOptions:
 
         Attributes:
             resolution (int): The atlas's width, in texels, and its height too unless int? BakeOptions.Rows says otherwise.
-            format_ (str): `png8`, `png16`, `exr16` or `exr32`.
-            supersampling (int): How many samples along each side of a texel.
-            gutter (int): How many texels of dilation surround each chart.
+                Default: 2048.
+            format_ (str): `png8`, `png16`, `exr16` or `exr32`. Default: 'png16'.
+            supersampling (int): How many samples along each side of a texel. Default: 1.
+            gutter (int): How many texels of dilation surround each chart. Default: 4.
             diffusion (bool): Whether the texels past the dilation are filled too, each a smooth blend of the charts around
                 it, so the
                 smallest mipmaps keep the maps' own values rather than fading to the empty texture's (#148). Labels, the ID
-                and UV Islands maps, and UV Borders keep their background.
+                and UV Islands maps, and UV Borders keep their background. Default: False.
             maps (list[str]): Which maps to write: `normal`, `height`, `ao`, `bent`, `curvature`,
                 `thickness`, `position`, `world`, `id`, `colour`, `opacity` (where a ray
                 found the high mesh), `edges` (a band along its sharp or hard edges) and `islands` (a color per UV
                 island of the low mesh). The default is what a project's masks read.
-            space (str): The frame of the normal and bent normal maps: `tangent` or `object`.
+            space (str): The frame of the normal and bent normal maps: `tangent` or `object`. Default: 'tangent'.
             rays (BakeRayOptions): How far a bake's rays look from the low mesh, and what they may strike.
             height (BakeHeightOptions): The height map's stored range.
             position (BakePositionOptions): How the position map turns a point on the high poly mesh into a value (#148).
             occlusion (BakeOcclusionOptions): The occlusion rays, which ambient occlusion, the bent normal and thickness
                 share.
             thickness (BakeThicknessOptions): The thickness map's own settings.
-            curvature (BakeCurvatureOptions): The curvature map's stored range (#148).
+            curvature (BakeCurvatureOptions): The curvature map's source and stored range (#148).
             edges (BakeEdgeOptions): Which edges the edges map marks, and the band it draws along them (#148).
             borders (BakeBorderOptions): The borders map's width (#121).
             id (BakeIdOptions): What an ID map labels, and how it colours the labels.
@@ -79,13 +80,7 @@ class BakeOptions:
                 material repeats. Null or false bakes the high meshes once, as they are.
      """
 
-    resolution: int
-    format_: str
-    supersampling: int
-    gutter: int
-    diffusion: bool
     maps: list[str]
-    space: str
     rays: BakeRayOptions
     height: BakeHeightOptions
     position: BakePositionOptions
@@ -97,6 +92,12 @@ class BakeOptions:
     id: BakeIdOptions
     rounding: BakeRoundingOptions
     colour: BakeColourOptions
+    resolution: int = 2048
+    format_: str = 'png16'
+    supersampling: int = 1
+    gutter: int = 4
+    diffusion: bool = False
+    space: str = 'tangent'
     rows: int | None | Unset = UNSET
     follow_set_shape: bool | None | Unset = UNSET
     tileable: bool | None | Unset = UNSET

@@ -539,6 +539,16 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     public void SetExportTargets(IReadOnlyList<string> presets) =>
         Keep(kept => kept with { ExportTargets = [..presets.Distinct(StringComparer.Ordinal)] });
 
+    /// <summary>
+    ///     Keeps the library's name and the texel density new projects start from, in <c>library.yaml</c> (#192). The
+    ///     folder keeps its name: a name is a label, and nothing that refers to the library reads it.
+    /// </summary>
+    /// <exception cref="ProjectRefusedException">The name or the density cannot be kept.</exception>
+    public void SetSettings(string name, double texelDensity) {
+        var kept = NewProjects.LibrarySettings(name, texelDensity);
+        Keep(document => document with { Name = kept, TexelDensity = texelDensity });
+    }
+
     /// <summary>Changes <c>library.yaml</c>, and reads it back as the library's settings.</summary>
     void Keep(Func<LibraryDocument, LibraryDocument> change) {
         lock (documentGate) {

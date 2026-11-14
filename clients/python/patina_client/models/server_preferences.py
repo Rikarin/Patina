@@ -8,10 +8,12 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
   from ..models.autosave_preferences import AutosavePreferences
+  from ..models.bake_options import BakeOptions
 
 
 
@@ -27,10 +29,13 @@ class ServerPreferences:
     the discovery file, which anyone can read and edit.
 
         Attributes:
-            autosave (AutosavePreferences): How unsaved work is kept. It goes to the library's cache, never over a document.
+            autosave (AutosavePreferences): How unsaved work is kept. It goes to the library's cache unless a folder is
+                chosen, never over a document.
+            bake (BakeOptions | None | Unset):
      """
 
     autosave: AutosavePreferences
+    bake: BakeOptions | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -39,7 +44,16 @@ class ServerPreferences:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.autosave_preferences import AutosavePreferences # noqa: PLC0415
+        from ..models.bake_options import BakeOptions # noqa: PLC0415
         autosave = self.autosave.to_dict()
+
+        bake: dict[str, Any] | None | Unset
+        if isinstance(self.bake, Unset):
+            bake = UNSET
+        elif isinstance(self.bake, BakeOptions):
+            bake = self.bake.to_dict()
+        else:
+            bake = self.bake
 
 
         field_dict: dict[str, Any] = {}
@@ -47,6 +61,8 @@ class ServerPreferences:
         field_dict.update({
             "autosave": autosave,
         })
+        if bake is not UNSET:
+            field_dict["bake"] = bake
 
         return field_dict
 
@@ -55,14 +71,36 @@ class ServerPreferences:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.autosave_preferences import AutosavePreferences # noqa: PLC0415
+        from ..models.bake_options import BakeOptions # noqa: PLC0415
         d = dict(src_dict)
         autosave = AutosavePreferences.from_dict(d.pop("autosave"))
 
 
 
 
+        def _parse_bake(data: object) -> BakeOptions | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                bake_type_1 = BakeOptions.from_dict(data)
+
+
+
+                return bake_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(BakeOptions | None | Unset, data)
+
+        bake = _parse_bake(d.pop("bake", UNSET))
+
+
         server_preferences = cls(
             autosave=autosave,
+            bake=bake,
         )
 
 

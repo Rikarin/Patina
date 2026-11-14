@@ -131,6 +131,18 @@ describe('check words', () => {
     ).toBe('Takes 12 MB of GPU memory as Unreal writes it, over the budget of 8.0 MB.');
   });
 
+  it('names the file a packing, space, compression or mips problem is in (#159)', () => {
+    expect(checkWords('packing-mixed', { file: 'T_Crate_D', color: 'Base Color', data: 'Roughness' }, '')).toBe(
+      'T_Crate_D packs Base Color with Roughness, so one of them is held in the other’s encoding.'
+    );
+    expect(checkWords('compression-normal', { file: 'Crate_N', compression: 'BC1 (RGB)' }, '')).toMatch(
+      /^Crate_N holds a normal in BC1 \(RGB\) blocks/u
+    );
+    for (const code of ['space-data-srgb', 'space-color-linear', 'mips-missing']) {
+      expect(checkWords(code, { file: 'Crate_N', channel: 'Normal' }, 'server')).toMatch(/^Crate_N /u);
+    }
+  });
+
   it('falls back to the Server’s sentence for a code it does not know', () => {
     expect(checkWords('something-new', { share: '1' }, 'The Server’s own sentence.')).toBe(
       'The Server’s own sentence.'

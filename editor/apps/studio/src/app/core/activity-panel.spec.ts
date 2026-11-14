@@ -14,13 +14,27 @@ const summary = (id: string, name: string, dirty = false) => ({
   dirty
 });
 
+const log = [
+  { sequence: 1, at: '2026-11-14T10:00:00Z', level: 'information', source: 'Patina.Server.Autosave', text: 'Kept it' },
+  { sequence: 2, at: '2026-11-14T10:00:01Z', level: 'error', source: 'Patina.Server.Jobs', text: 'The bake failed' }
+];
+
 async function render() {
   const deleted: string[] = [];
   const graphs = [summary('g1', 'Rust'), summary('g2', 'Moss', true)];
   const client = {
-    GET: vi.fn((route: string) =>
+    GET: vi.fn((route: string, options?: { params: { query: { after: number } } }) =>
       Promise.resolve({
-        data: route === '/api/v1/graphs' ? graphs : [summary('s1', 'Crate')],
+        data:
+          route === '/api/v1/log'
+            ? {
+                entries: log.filter(line => line.sequence > (options?.params.query.after ?? 0)),
+                next: log.length,
+                dropped: false
+              }
+            : route === '/api/v1/graphs'
+              ? graphs
+              : [summary('s1', 'Crate')],
         response: new Response()
       })
     ),
@@ -68,6 +82,27 @@ describe('ActivityPanel', () => {
     });
     expect(deleted).toEqual(['g1']);
     expect(activity.notices()[0]?.text).toBe('Rust closed in the engine.');
+  });
+
+  it('shows what the engine said in its Log, and only its problems when asked (#192)', async () => {
+    const { element, fixture, activity } = await render();
+
+    activity.showLog();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(element.querySelectorAll('[data-testid=activity-log-line]')).toHaveLength(2);
+    });
+    const lines = [...element.querySelectorAll('[data-testid=activity-log-line]')];
+    expect(lines[0]?.textContent).toContain('Autosave: Kept it');
+    expect(lines[1]?.getAttribute('data-level')).toBe('error');
+
+    element.querySelector<HTMLElement>('[data-testid=activity-log-problems]')?.click();
+    fixture.detectChanges();
+    expect(element.querySelectorAll('[data-testid=activity-log-line]')).toHaveLength(1);
+
+    activity.view.set('activity');
+    fixture.detectChanges();
+    expect(element.querySelector('[data-testid=activity-log]')).toBeNull();
   });
 
   it('says there is nothing yet rather than showing empty lists', async () => {

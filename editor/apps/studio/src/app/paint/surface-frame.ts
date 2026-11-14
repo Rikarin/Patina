@@ -1,5 +1,5 @@
 import type { StackDecal, StackPathPoint, StackSurfacePath, StackView, ViewportPick } from '@patina/api-client';
-import { project } from './symmetry-guide';
+import { type SurfaceCopy, project, surfaceCopies } from './symmetry-guide';
 
 export type Vector = readonly [number, number, number];
 
@@ -343,4 +343,40 @@ export function onDecalPlane(decal: StackDecal, view: StackView, x: number, y: n
 /** A path's points on a picture, or null for any behind the eye. */
 export function pathOutline(path: StackSurfacePath, view: StackView): ([number, number] | null)[] {
   return path.points.map(point => project(view, vector(point.position)));
+}
+
+/** A decal moved by one of its symmetry's copies: its centre as a point, its facing and its up as directions. */
+export function movedDecal(decal: StackDecal, copy: SurfaceCopy): StackDecal {
+  return {
+    ...decal,
+    centre: copy.point(decal.centre),
+    facing: copy.direction(decal.facing),
+    up: copy.direction(decal.up)
+  };
+}
+
+/** A path moved by one of its symmetry's copies: each point's place as a point, its normal as a direction. */
+export function movedPath(path: StackSurfacePath, copy: SurfaceCopy): StackSurfacePath {
+  return {
+    ...path,
+    points: path.points.map(point => ({
+      ...point,
+      position: copy.point(point.position),
+      normal: copy.direction(point.normal)
+    }))
+  };
+}
+
+/** Where a decal's symmetry copies it, each copy's square on a picture; a copy behind the eye is left out (#132). */
+export function decalCopies(decal: StackDecal, view: StackView): Quad[] {
+  return (decal.symmetry ? surfaceCopies(decal.symmetry) : [])
+    .map(copy => decalOutline(movedDecal(decal, copy), view))
+    .filter(outline => outline !== null);
+}
+
+/** Where a path's symmetry copies it, each copy's points on a picture, those behind the eye left out (#132). */
+export function pathCopies(path: StackSurfacePath, view: StackView): [number, number][][] {
+  return (path.symmetry ? surfaceCopies(path.symmetry) : []).map(copy =>
+    pathOutline(movedPath(path, copy), view).filter(point => point !== null)
+  );
 }

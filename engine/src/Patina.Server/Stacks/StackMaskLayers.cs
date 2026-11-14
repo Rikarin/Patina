@@ -34,7 +34,8 @@ static class StackMaskLayers {
                     entry.Blend.ToString(),
                     entry.Opacity,
                     entry.Enabled,
-                    entry.Lane.ToString()
+                    entry.Lane.ToString(),
+                    entry.GeneratorOutput
                 )
             )
     ];
@@ -119,6 +120,7 @@ static class StackMaskLayers {
                 Generator = mask.Generator,
                 GeneratorTexts = GeneratorKnobs(held, mask),
                 GeneratorInputs = GeneratorFeeds(held, mask),
+                GeneratorOutput = GeneratorOutput(held, mask),
                 Map = mask.Map,
                 Lane = StackEditor.Parsed(mask.Lane, held.Lane, "lane"),
                 Effects = StackDocuments.WithSelection(held.Effects, mask),
@@ -131,6 +133,13 @@ static class StackMaskLayers {
         StackDocuments.References(mask.Inputs) is { } chosen ? chosen
         : mask.Generator != held.Generator ? []
         : held.GeneratorInputs;
+
+    /// <summary>
+    ///     Another generator has other pictures, so the one read from the last does not follow, unless it was named
+    ///     with the new generator.
+    /// </summary>
+    static string GeneratorOutput(MaskAsset held, StackMask mask) =>
+        mask.Generator != held.Generator && mask.Output == held.GeneratorOutput ? string.Empty : mask.Output;
 
     /// <summary>Another generator has other knobs, so what was set for the last one does not follow.</summary>
     static Dictionary<string, string> GeneratorKnobs(MaskAsset held, StackMask mask) =>

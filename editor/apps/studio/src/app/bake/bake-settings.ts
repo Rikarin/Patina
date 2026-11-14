@@ -2,7 +2,6 @@ import { DestroyRef, Injectable, computed, effect, inject, linkedSignal, signal,
 import type {
   BakeOptions,
   BakePreviewState,
-  BakeRequest,
   ProjectBakeSettings,
   ProjectMeshInfo,
   ViewportBakePreview
@@ -10,7 +9,7 @@ import type {
 import { messageOf, refusalWords } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
-import { BakeStore } from './bake-store';
+import { type BakePlanQuery, BakeStore } from './bake-store';
 
 /** How long an edit waits for the next before the project's file is written. */
 const SaveDelayMs = 400;
@@ -25,8 +24,9 @@ export interface BakeSet {
 
 /**
  * How the open project bakes. The project's file holds it (files are the truth), so this is a copy that writes back a
- * moment after each edit; closing the dialog, restarting or opening the project in another client keeps it. Building
- * the requests is here too, so the dialog's Bake and a Quick Bake without the dialog send the same thing.
+ * moment after each edit; closing the dialog, restarting or opening the project in another client keeps it. The
+ * requests come from the Server, which works them out from that file as `patina bake-maps --project` does, so the
+ * dialog's Bake, a Quick Bake without the dialog and a script all send the same thing.
  */
 @Injectable({ providedIn: 'root' })
 export class BakeSettings {
@@ -336,30 +336,24 @@ export class BakeSettings {
     await write;
   }
 
-  /** One request per texture set to bake, or one for the whole mesh when it has none. */
-  requests(): BakeRequest[] {
-    const settings = this.settings();
+  /**
+   * What the Server is asked to plan a bake of: the open project, onto the mesh of the document in front when it is on
+   * one (a layered material is on none, so the project's own mesh is baked), into the folder chosen for this session.
+   */
+  readonly planQuery = computed<BakePlanQuery | null>(() => {
     const contents = this.project.current();
-    const library = this.library();
-    if (!settings || !contents || !library || this.low() === '') {
-      return [];
+    if (!contents) {
+      return null;
     }
 
-    const chosen = this.sets().length > 0 ? this.chosen().map(set => set.material) : [null];
-    const chosenOutput = this.output().trim();
-    return chosen.map(material => {
-      const folder = chosenOutput || `${library}/${contents.bakeFolder}/maps`;
-      return {
-        high: this.high(),
-        low: this.low(),
-        output: material && this.sets().length > 0 ? `${folder}/${material}` : folder,
-        cage: settings.cage.trim() || null,
-        material,
-        name: null,
-        options: settings.options
-      };
-    });
-  }
+    const document = this.project.mesh() ? this.project.document()?.path : undefined;
+    const output = this.output().trim();
+    return {
+      project: contents.path,
+      ...(document ? { document } : {}),
+      ...(output ? { output } : {})
+    };
+  });
 
   /** Why the Server refused the last bake, or null. */
   readonly refused = signal<string | null>(null);
@@ -369,7 +363,15 @@ export class BakeSettings {
     this.refused.set(null);
     try {
       await this.flush();
-      await this.bakes.startAll(this.requests());
+      // A bake is planned from the project's file, so settings that file did not take would bake something else.
+      const failure = this.failure();
+      const query = this.planQuery();
+      if (failure !== null || query === null) {
+        this.refused.set(failure ?? 'Open a project to bake its mesh.');
+        return false;
+      }
+
+      await this.bakes.startAll(await this.bakes.plan(query));
       return true;
     } catch (error) {
       this.refused.set(messageOf(error));

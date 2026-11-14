@@ -151,6 +151,10 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             return OfGraph(source, text, Path.Combine(library.RootPath, source[StarterPrefix.Length..]), null, []);
         }
 
+        if (source.StartsWith(ShelfCompounds.Prefix, StringComparison.Ordinal)) {
+            return null; // a shipped compound shows its name: most read a bake or a picture a shelf has not got
+        }
+
         if (source.StartsWith(MaterialShelf.ShippedPrefix, StringComparison.Ordinal)) {
             return OfStack(source, library.RootPath, Path.Combine(library.RootPath, LibraryLayout.ProjectsFolder));
         }

@@ -307,7 +307,8 @@ public static class StackDocuments {
                 ?? [],
             Texts = input.Parameters?.ToDictionary(StringComparer.Ordinal) ?? [],
             Asset = input.Asset,
-            Map = input.Map
+            Map = input.Map,
+            Output = input.Output
         };
 
     static Dictionary<string, StackInput>? Wire(Dictionary<string, LayerInputAsset> inputs) =>
@@ -329,7 +330,8 @@ public static class StackDocuments {
                         ),
                     pair.Value.Texts.Count == 0 ? null : pair.Value.Texts,
                     pair.Value.Asset,
-                    pair.Value.Map
+                    pair.Value.Map,
+                    pair.Value.Output
                 ),
                 StringComparer.Ordinal
             );
@@ -541,7 +543,8 @@ public static class StackDocuments {
                 layer.Mask.Lane.ToString(),
                 layer.Mask.Enabled,
                 Selection(layer.Mask)?.Values.GetValueOrDefault(SelectInside)?[0] ?? 1f,
-                Selection(layer.Mask)?.Values.GetValueOrDefault(SelectOutside)?[0] ?? 0f
+                Selection(layer.Mask)?.Values.GetValueOrDefault(SelectOutside)?[0] ?? 0f,
+                layer.Mask.GeneratorOutput
             ),
             layer.PlanarAxis.ToString(),
             new(

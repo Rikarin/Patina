@@ -1,7 +1,8 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { removeScratch } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 
@@ -20,7 +21,7 @@ test.beforeEach(async () => {
 
 test.afterEach(async () => {
   await app.close();
-  rmSync(scratch, { recursive: true, force: true });
+  removeScratch(scratch);
 });
 
 test('a start with no library asks nothing the engine refuses (#192)', async () => {

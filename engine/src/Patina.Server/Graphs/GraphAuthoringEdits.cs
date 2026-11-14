@@ -2,6 +2,7 @@ using Patina.Contracts;
 using Vixen.Authoring;
 using Vixen.Core.Mathematics;
 using Vixen.NodeGraph;
+using Vixen.TextureGraph;
 
 namespace Patina.Server.Graphs;
 
@@ -26,6 +27,7 @@ sealed class GraphAuthoringEdits(NodeGraphModel graph, GraphParameterEdits param
         command switch {
             GraphRemoveNodes { Relink: true } remove => BuildRelink(remove, refs),
             GraphSetBypass bypass => BuildBypass(bypass, refs),
+            GraphSetLevel level => BuildLevel(level, refs),
             GraphArrange arrange => BuildArrange(arrange, refs),
             GraphSavePreset save => parameters.SavePreset(save),
             GraphRemovePreset remove => parameters.RemovePreset(remove),
@@ -96,6 +98,33 @@ sealed class GraphAuthoringEdits(NodeGraphModel graph, GraphParameterEdits param
         return new(nodes, bypass.Bypassed);
     }
 
+    /// <summary>Sets the size nodes are computed at. A boundary, a dot or an Output has none of its own.</summary>
+    SetLevelCommand BuildLevel(GraphSetLevel set, Dictionary<int, int> refs) {
+        if (set.Nodes.Count == 0) {
+            throw new GraphEditRefusedException("Sizing nothing is not an edit.");
+        }
+
+        if (set.Level is < TextureGraphCompiler.FinestNodeLevel or > TextureGraphCompiler.CoarsestNodeLevel) {
+            throw new GraphEditRefusedException(
+                "A node is computed from four times its graph's size to a sixteenth of it, "
+                + "or at the size of its inputs."
+            );
+        }
+
+        GraphNode[] nodes = [..set.Nodes.Distinct().Select(node => editor.Find(node, refs))];
+        if (nodes.FirstOrDefault(static node => SubGraphs.IsBoundary(node.Type)
+                || Reroutes.IsReroute(node.Type)
+                || node.Type.StartsWith(OutputPrefix, StringComparison.Ordinal)
+            ) is { } fixture) {
+            throw new GraphEditRefusedException($"{fixture.Type} has no size of its own: it takes the graph's.");
+        }
+
+        return new(nodes, set.Level);
+    }
+
+    /// <summary>The category of the nodes that write a graph's maps, which are always the graph's size.</summary>
+    const string OutputPrefix = "Output/";
+
     /// <summary>
     ///     Vixen's layered layout, over the whole graph or over a block of nodes that keeps its top-left corner. The
     ///     sizes are Patina's cards: wider than Vixen's, and a preview square under the title.
@@ -150,6 +179,25 @@ sealed class SetBypassCommand(GraphNode[] nodes, bool bypassed) : IAuthoringComm
     public void Undo(ICommandContext context) {
         for (var i = 0; i < nodes.Length; i++) {
             nodes[i].Bypassed = previous[i];
+        }
+    }
+}
+
+/// <summary>Sets the size nodes are computed at, remembering what each was.</summary>
+sealed class SetLevelCommand(GraphNode[] nodes, int? level) : IAuthoringCommand {
+    readonly int?[] previous = [..nodes.Select(static node => node.Level)];
+
+    public string Name => "Set Size";
+
+    public void Do(ICommandContext context) {
+        foreach (var node in nodes) {
+            node.Level = level;
+        }
+    }
+
+    public void Undo(ICommandContext context) {
+        for (var i = 0; i < nodes.Length; i++) {
+            nodes[i].Level = previous[i];
         }
     }
 }

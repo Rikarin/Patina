@@ -1,6 +1,7 @@
 """What a Blender add-on does, with no Blender and nothing of the editor: attach, send a mesh, apply a material, bake,
 change a parameter, receive updated textures (plan §8). Every call goes through the generated client, and every result is
 a file or a hash. A step that needs a GPU skips where the Worker has no Vulkan, which is how Windows CI runs this."""
+import io
 import pathlib
 import time
 
@@ -27,6 +28,7 @@ from patina_client.api.library import (
     get_project_contents,
     publish_package,
     set_project_settings,
+    upload_library_file,
 )
 from patina_client.api.stacks import apply_stack_commands, export_stack, get_stack, open_stack
 from patina_client.api.system import get_system
@@ -85,7 +87,7 @@ from patina_client.models import (
     ViewportNodeShown,
 )
 
-from patina_client.types import Unset
+from patina_client.types import File, Unset
 
 DEADLINE = 180
 HSL_NODE = 4
@@ -222,7 +224,7 @@ def test_a_blender_shaped_session(session) -> None:
                 ),
                 thickness=BakeThicknessOptions(normalised=True),
                 id=BakeIdOptions(source="auto", palette="random"),
-                curvature=BakeCurvatureOptions(range_="auto", radius=0.01),
+                curvature=BakeCurvatureOptions(source="mesh", range_="auto", radius=0.01),
                 edges=BakeEdgeOptions(mesh="high", edges="hard", width=0.01, angle=30.0, profile="even"),
                 borders=BakeBorderOptions(width=0.02),
                 rounding=BakeRoundingOptions(enabled=False, width=0.01, edges="angle", angle=30.0, profile="even"),
@@ -459,3 +461,40 @@ def test_a_document_on_a_mesh_from_an_add_on(session) -> None:
         raise AssertionError(written.content.decode())
     assert [pixels.usage for pixels in written.parsed] == ["mask"]
     assert pathlib.Path(written.parsed[0].file).is_file()
+
+
+def test_a_mesh_sent_from_another_computer(session) -> None:
+    """An add-on on another computer than the Server's sends its mesh as bytes, and makes a project on it by the path
+    the Server answers with (#4): nothing reads the add-on's own disk."""
+    client = attach(session)
+    low = session.meshes / "housing_low.glb"
+
+    sent = upload_library_file.sync(
+        client=client,
+        name="housing_low.glb",
+        body=File(payload=io.BytesIO(low.read_bytes()), file_name="housing_low.glb"),
+    )
+    assert pathlib.Path(sent.path).read_bytes() == low.read_bytes()
+    assert pathlib.Path(sent.path).parent.parent.name == "uploads"
+
+    refused = upload_library_file.sync_detailed(
+        client=client, name="notes.txt", body=File(payload=io.BytesIO(b"words"), file_name="notes.txt")
+    )
+    assert refused.status_code.value == 400
+    assert "upload-kind" in refused.content.decode()
+
+    create_project.sync(
+        client=client,
+        body=ProjectCreateRequest(
+            name="Sent",
+            folder=None,
+            tags=None,
+            mesh=sent.path,
+            resolution=256,
+            kind="texturing",
+            image=None,
+            high=None,
+        ),
+    )
+    contents = get_project_contents.sync(client=client, path="sent")
+    assert [mesh.path.split("/")[-1] for mesh in contents.meshes] == ["housing_low.glb"]

@@ -36,6 +36,7 @@ if TYPE_CHECKING:
   from ..models.stack_command_stack_set_model import StackCommandStackSetModel
   from ..models.stack_command_stack_set_seed import StackCommandStackSetSeed
   from ..models.stack_command_stack_set_settings import StackCommandStackSetSettings
+  from ..models.stack_command_stack_set_user_channel import StackCommandStackSetUserChannel
   from ..models.stack_command_stack_stroke import StackCommandStackStroke
   from ..models.stack_command_stack_unflatten_layer import StackCommandStackUnflattenLayer
 
@@ -59,12 +60,13 @@ class StackCommandBatch:
                 StackCommandStackPasteLayers | StackCommandStackRemoveChannel | StackCommandStackRemoveLayer |
                 StackCommandStackRemoveMaskLayer | StackCommandStackSetChannelFormat | StackCommandStackSetHeightNormal |
                 StackCommandStackSetInstance | StackCommandStackSetLayer | StackCommandStackSetMaskLayer |
-                StackCommandStackSetModel | StackCommandStackSetSeed | StackCommandStackSetSettings | StackCommandStackStroke |
-                StackCommandStackUnflattenLayer]): The edits, in order.
+                StackCommandStackSetModel | StackCommandStackSetSeed | StackCommandStackSetSettings |
+                StackCommandStackSetUserChannel | StackCommandStackStroke | StackCommandStackUnflattenLayer]): The edits, in
+                order.
             label (None | str | Unset): What the undo step says.
      """
 
-    commands: list[StackCommandStackAddChannel | StackCommandStackAddInstance | StackCommandStackAddLayer | StackCommandStackAddMaskLayer | StackCommandStackApplyMask | StackCommandStackCarryPaint | StackCommandStackDuplicateLayers | StackCommandStackFlattenLayer | StackCommandStackKeepQuickMask | StackCommandStackMoveLayer | StackCommandStackMoveMaskLayer | StackCommandStackNestLayer | StackCommandStackPasteLayers | StackCommandStackRemoveChannel | StackCommandStackRemoveLayer | StackCommandStackRemoveMaskLayer | StackCommandStackSetChannelFormat | StackCommandStackSetHeightNormal | StackCommandStackSetInstance | StackCommandStackSetLayer | StackCommandStackSetMaskLayer | StackCommandStackSetModel | StackCommandStackSetSeed | StackCommandStackSetSettings | StackCommandStackStroke | StackCommandStackUnflattenLayer]
+    commands: list[StackCommandStackAddChannel | StackCommandStackAddInstance | StackCommandStackAddLayer | StackCommandStackAddMaskLayer | StackCommandStackApplyMask | StackCommandStackCarryPaint | StackCommandStackDuplicateLayers | StackCommandStackFlattenLayer | StackCommandStackKeepQuickMask | StackCommandStackMoveLayer | StackCommandStackMoveMaskLayer | StackCommandStackNestLayer | StackCommandStackPasteLayers | StackCommandStackRemoveChannel | StackCommandStackRemoveLayer | StackCommandStackRemoveMaskLayer | StackCommandStackSetChannelFormat | StackCommandStackSetHeightNormal | StackCommandStackSetInstance | StackCommandStackSetLayer | StackCommandStackSetMaskLayer | StackCommandStackSetModel | StackCommandStackSetSeed | StackCommandStackSetSettings | StackCommandStackSetUserChannel | StackCommandStackStroke | StackCommandStackUnflattenLayer]
     label: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -97,6 +99,7 @@ class StackCommandBatch:
         from ..models.stack_command_stack_set_model import StackCommandStackSetModel # noqa: PLC0415
         from ..models.stack_command_stack_set_seed import StackCommandStackSetSeed # noqa: PLC0415
         from ..models.stack_command_stack_set_settings import StackCommandStackSetSettings # noqa: PLC0415
+        from ..models.stack_command_stack_set_user_channel import StackCommandStackSetUserChannel # noqa: PLC0415
         from ..models.stack_command_stack_stroke import StackCommandStackStroke # noqa: PLC0415
         from ..models.stack_command_stack_unflatten_layer import StackCommandStackUnflattenLayer # noqa: PLC0415
         commands = []
@@ -121,6 +124,8 @@ class StackCommandBatch:
             elif isinstance(commands_item_data, StackCommandStackRemoveChannel):
                 commands_item = commands_item_data.to_dict()
             elif isinstance(commands_item_data, StackCommandStackSetChannelFormat):
+                commands_item = commands_item_data.to_dict()
+            elif isinstance(commands_item_data, StackCommandStackSetUserChannel):
                 commands_item = commands_item_data.to_dict()
             elif isinstance(commands_item_data, StackCommandStackSetSeed):
                 commands_item = commands_item_data.to_dict()
@@ -204,13 +209,14 @@ class StackCommandBatch:
         from ..models.stack_command_stack_set_model import StackCommandStackSetModel # noqa: PLC0415
         from ..models.stack_command_stack_set_seed import StackCommandStackSetSeed # noqa: PLC0415
         from ..models.stack_command_stack_set_settings import StackCommandStackSetSettings # noqa: PLC0415
+        from ..models.stack_command_stack_set_user_channel import StackCommandStackSetUserChannel # noqa: PLC0415
         from ..models.stack_command_stack_stroke import StackCommandStackStroke # noqa: PLC0415
         from ..models.stack_command_stack_unflatten_layer import StackCommandStackUnflattenLayer # noqa: PLC0415
         d = dict(src_dict)
         commands = []
         _commands = d.pop("commands")
         for commands_item_data in (_commands):
-            def _parse_commands_item(data: object) -> StackCommandStackAddChannel | StackCommandStackAddInstance | StackCommandStackAddLayer | StackCommandStackAddMaskLayer | StackCommandStackApplyMask | StackCommandStackCarryPaint | StackCommandStackDuplicateLayers | StackCommandStackFlattenLayer | StackCommandStackKeepQuickMask | StackCommandStackMoveLayer | StackCommandStackMoveMaskLayer | StackCommandStackNestLayer | StackCommandStackPasteLayers | StackCommandStackRemoveChannel | StackCommandStackRemoveLayer | StackCommandStackRemoveMaskLayer | StackCommandStackSetChannelFormat | StackCommandStackSetHeightNormal | StackCommandStackSetInstance | StackCommandStackSetLayer | StackCommandStackSetMaskLayer | StackCommandStackSetModel | StackCommandStackSetSeed | StackCommandStackSetSettings | StackCommandStackStroke | StackCommandStackUnflattenLayer:
+            def _parse_commands_item(data: object) -> StackCommandStackAddChannel | StackCommandStackAddInstance | StackCommandStackAddLayer | StackCommandStackAddMaskLayer | StackCommandStackApplyMask | StackCommandStackCarryPaint | StackCommandStackDuplicateLayers | StackCommandStackFlattenLayer | StackCommandStackKeepQuickMask | StackCommandStackMoveLayer | StackCommandStackMoveMaskLayer | StackCommandStackNestLayer | StackCommandStackPasteLayers | StackCommandStackRemoveChannel | StackCommandStackRemoveLayer | StackCommandStackRemoveMaskLayer | StackCommandStackSetChannelFormat | StackCommandStackSetHeightNormal | StackCommandStackSetInstance | StackCommandStackSetLayer | StackCommandStackSetMaskLayer | StackCommandStackSetModel | StackCommandStackSetSeed | StackCommandStackSetSettings | StackCommandStackSetUserChannel | StackCommandStackStroke | StackCommandStackUnflattenLayer:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
@@ -314,7 +320,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_10 = StackCommandStackSetSeed.from_dict(data)
+                    componentsschemas_stack_command_type_10 = StackCommandStackSetUserChannel.from_dict(data)
 
 
 
@@ -324,7 +330,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_11 = StackCommandStackDuplicateLayers.from_dict(data)
+                    componentsschemas_stack_command_type_11 = StackCommandStackSetSeed.from_dict(data)
 
 
 
@@ -334,7 +340,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_12 = StackCommandStackPasteLayers.from_dict(data)
+                    componentsschemas_stack_command_type_12 = StackCommandStackDuplicateLayers.from_dict(data)
 
 
 
@@ -344,7 +350,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_13 = StackCommandStackFlattenLayer.from_dict(data)
+                    componentsschemas_stack_command_type_13 = StackCommandStackPasteLayers.from_dict(data)
 
 
 
@@ -354,7 +360,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_14 = StackCommandStackUnflattenLayer.from_dict(data)
+                    componentsschemas_stack_command_type_14 = StackCommandStackFlattenLayer.from_dict(data)
 
 
 
@@ -364,7 +370,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_15 = StackCommandStackSetHeightNormal.from_dict(data)
+                    componentsschemas_stack_command_type_15 = StackCommandStackUnflattenLayer.from_dict(data)
 
 
 
@@ -374,7 +380,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_16 = StackCommandStackSetSettings.from_dict(data)
+                    componentsschemas_stack_command_type_16 = StackCommandStackSetHeightNormal.from_dict(data)
 
 
 
@@ -384,7 +390,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_17 = StackCommandStackCarryPaint.from_dict(data)
+                    componentsschemas_stack_command_type_17 = StackCommandStackSetSettings.from_dict(data)
 
 
 
@@ -394,7 +400,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_18 = StackCommandStackAddMaskLayer.from_dict(data)
+                    componentsschemas_stack_command_type_18 = StackCommandStackCarryPaint.from_dict(data)
 
 
 
@@ -404,7 +410,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_19 = StackCommandStackRemoveMaskLayer.from_dict(data)
+                    componentsschemas_stack_command_type_19 = StackCommandStackAddMaskLayer.from_dict(data)
 
 
 
@@ -414,7 +420,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_20 = StackCommandStackMoveMaskLayer.from_dict(data)
+                    componentsschemas_stack_command_type_20 = StackCommandStackRemoveMaskLayer.from_dict(data)
 
 
 
@@ -424,7 +430,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_21 = StackCommandStackSetMaskLayer.from_dict(data)
+                    componentsschemas_stack_command_type_21 = StackCommandStackMoveMaskLayer.from_dict(data)
 
 
 
@@ -434,7 +440,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_22 = StackCommandStackAddInstance.from_dict(data)
+                    componentsschemas_stack_command_type_22 = StackCommandStackSetMaskLayer.from_dict(data)
 
 
 
@@ -444,7 +450,7 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_23 = StackCommandStackSetInstance.from_dict(data)
+                    componentsschemas_stack_command_type_23 = StackCommandStackAddInstance.from_dict(data)
 
 
 
@@ -454,20 +460,30 @@ class StackCommandBatch:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    componentsschemas_stack_command_type_24 = StackCommandStackApplyMask.from_dict(data)
+                    componentsschemas_stack_command_type_24 = StackCommandStackSetInstance.from_dict(data)
 
 
 
                     return componentsschemas_stack_command_type_24
                 except (TypeError, ValueError, AttributeError, KeyError):
                     pass
+                try:
+                    if not isinstance(data, dict):
+                        raise TypeError()
+                    componentsschemas_stack_command_type_25 = StackCommandStackApplyMask.from_dict(data)
+
+
+
+                    return componentsschemas_stack_command_type_25
+                except (TypeError, ValueError, AttributeError, KeyError):
+                    pass
                 if not isinstance(data, dict):
                     raise TypeError()
-                componentsschemas_stack_command_type_25 = StackCommandStackKeepQuickMask.from_dict(data)
+                componentsschemas_stack_command_type_26 = StackCommandStackKeepQuickMask.from_dict(data)
 
 
 
-                return componentsschemas_stack_command_type_25
+                return componentsschemas_stack_command_type_26
 
             commands_item = _parse_commands_item(commands_item_data)
 

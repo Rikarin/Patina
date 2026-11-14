@@ -14,8 +14,10 @@ import { ViewportClient } from '../viewport/viewport-client';
 import { PaintStore } from './paint-store';
 import {
   type Quad,
+  decalCopies,
   decalOutline,
   onDecalPlane,
+  pathCopies,
   pathOutline,
   pathPoint,
   turned,
@@ -49,6 +51,24 @@ const Settle = 120;
   template: `
     @if (look(); as view) {
       <svg class="absolute inset-0 size-full" aria-hidden="true">
+        @for (corners of copyOutlines(); track $index) {
+          <polygon
+            class="fill-amber-300/5 stroke-amber-300/60"
+            stroke-width="1"
+            stroke-dasharray="4 3"
+            data-testid="surface-decal-copy"
+            [attr.points]="points(corners)"
+          />
+        }
+        @for (line of copyLines(); track $index) {
+          <polyline
+            class="fill-none stroke-amber-300/60"
+            stroke-width="1"
+            stroke-dasharray="2 3"
+            data-testid="surface-path-copy"
+            [attr.points]="line"
+          />
+        }
         @if (decalShown(); as decal) {
           @if (outline(); as corners) {
             <polygon
@@ -195,6 +215,22 @@ export class SurfaceGuide {
     const decal = this.decalShown();
     const view = this.look();
     return decal && view ? decalOutline(decal, view) : null;
+  });
+
+  /** Where the decal's symmetry copies it (#132), dashed, so the copies can be seen while the decal is moved. */
+  protected readonly copyOutlines = computed(() => {
+    const decal = this.decalShown();
+    const view = this.look();
+    return decal && view ? decalCopies(decal, view) : [];
+  });
+
+  /** Where the path's symmetry copies it (#132), dashed and without handles: a copy follows its path. */
+  protected readonly copyLines = computed(() => {
+    const path = this.pathShown();
+    const view = this.look();
+    return path && view
+      ? pathCopies(path, view).map(line => line.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '))
+      : [];
   });
 
   protected readonly grid = computed(() => {

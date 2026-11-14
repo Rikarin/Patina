@@ -26,9 +26,10 @@ class BakePositionOptions:
             range_ (str): `box`, each axis across the mesh's bounding box, so each channel is used whole and shapes stretch;
                             `cube`, every axis across the box's longest side, so distances agree; `sphere`, across the sphere
                             round the box, centred on its middle; or `none`, the point in model units, which only EXR keeps.
+                Default: 'box'.
      """
 
-    range_: str
+    range_: str = 'box'
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

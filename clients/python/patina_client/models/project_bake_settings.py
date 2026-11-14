@@ -32,13 +32,13 @@ class ProjectBakeSettings:
                 own settings are a part of their own.
             sets (list[str]): The texture sets a bake makes maps for, by material; empty is all of them.
             high (list[str]): Detailed meshes after the mesh's own, in order, as paths on the Server's machine.
-            cage (str): A cage, as a path on the Server's machine, or empty for none.
+            cage (str): A cage, as a path on the Server's machine, or empty for none. Default: ''.
      """
 
     options: BakeOptions
     sets: list[str]
     high: list[str]
-    cage: str
+    cage: str = ''
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

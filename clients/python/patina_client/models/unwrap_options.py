@@ -24,24 +24,25 @@ class UnwrapOptions:
 
         Attributes:
             resolution (int): The atlas side the margin is counted against, in texels. A map of another size only rescales
-                it.
-            margin (int): The empty texels between two islands.
+                it. Default: 2048.
+            margin (int): The empty texels between two islands. Default: 4.
             quality (str): How islands are packed: `boxes` by their bounding boxes, `outlines` by their shapes, and
-                `groups` by their shapes after joining nearly square neighbours.
-            rotations (int): How many ways an island may be turned: 1 never, 2 a half turn, 4 every quarter turn.
+                `groups` by their shapes after joining nearly square neighbours. Default: 'outlines'.
+            rotations (int): How many ways an island may be turned: 1 never, 2 a half turn, 4 every quarter turn. Default:
+                4.
             texel_density (float): Texels per world unit every island is scaled to, or zero for each island at its own
-                scale.
+                scale. Default: 0.0.
             overflow (str): What happens when the islands do not fit at that density: `shrink` scales them all down, and
                 `refuse` stops and says so. Spilling into a second UDIM tile is not offered while a texture set
-                paints one tile.
+                paints one tile. Default: 'shrink'.
      """
 
-    resolution: int
-    margin: int
-    quality: str
-    rotations: int
-    texel_density: float
-    overflow: str
+    resolution: int = 2048
+    margin: int = 4
+    quality: str = 'outlines'
+    rotations: int = 4
+    texel_density: float = 0.0
+    overflow: str = 'shrink'
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 

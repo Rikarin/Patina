@@ -37,3 +37,11 @@ public sealed record CachePruneRequest(int Days);
 /// <param name="Removed">How many entries or folders went.</param>
 /// <param name="Bytes">The room that freed on disk.</param>
 public sealed record LibraryTidied(int Removed, long Bytes);
+
+/// <summary>What <c>POST /api/v1/library/clean</c> took away (#162).</summary>
+/// <param name="Removed">How many folders of copies of moved paint were deleted.</param>
+/// <param name="Bytes">The room those freed on disk.</param>
+/// <param name="Pictures">How many pictures nothing read went to the bin.</param>
+/// <param name="PictureBytes">The room those take, which emptying the bin frees.</param>
+/// <param name="Bin">The bin's entry that holds those pictures, for a Restore, or null when none went.</param>
+public sealed record LibraryCleaned(int Removed, long Bytes, int Pictures, long PictureBytes, string? Bin);

@@ -1,8 +1,8 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject, pick } from './projects';
+import { leave, newLibrary, newProject, pick, removeScratch } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
@@ -30,7 +30,7 @@ test.beforeEach(async () => {
 
 test.afterEach(async () => {
   await leave(app);
-  rmSync(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+  removeScratch(scratch);
 });
 
 /** A graph with a noise wired to its Output, so it has a picture. */
@@ -155,6 +155,49 @@ test('a document deleted from the tree waits in the bin, and Empty Bin deletes i
   await window.getByTestId('bin-empty-confirm').click();
   await expect(window.getByTestId('bin')).toContainText('The bin is empty');
   expect(bin()).toHaveLength(0);
+});
+
+/** Runs a command as the menu does. */
+const command = (name: string) =>
+  app.evaluate(({ BrowserWindow }, sent) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', sent);
+  }, name);
+
+/** One grey pixel. */
+const Pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGP4DwABAQEAG7buVgAAAABJRU5ErkJggg==';
+
+test('Library Settings renames the library, Clean bins a picture nothing uses, and the Log shows the engine (#162, #192)', async () => {
+  test.setTimeout(120_000);
+  await newLibrary(app, window, library);
+  await newProject(app, window, 'Crate', undefined, 'graph');
+  const pictures = join(library, 'projects', 'crate', 'pictures');
+  mkdirSync(pictures, { recursive: true });
+  writeFileSync(join(pictures, 'stray.png'), Buffer.from(Pixel, 'base64'));
+
+  await command('librarySettings');
+  const name = window.getByTestId('library-settings-name');
+  await expect(name).toHaveValue('Game');
+  await name.fill('Ember');
+  await name.press('Enter');
+  await expect.poll(() => readFileSync(join(library, 'library.yaml'), 'utf8')).toContain('Ember');
+  await expect(window.getByTestId('library-settings-failure')).toHaveCount(0);
+
+  await window.getByTestId('library-settings-clean').click();
+  await expect(window.getByTestId('library-settings-tidied')).toContainText('Moved 1 pictures nothing uses to the bin');
+  expect(existsSync(join(pictures, 'stray.png'))).toBe(false);
+  await window.getByTestId('library-settings-done').click();
+
+  await window.getByTestId('library-bin').click();
+  await expect(window.getByTestId('bin-item')).toContainText('Pictures nothing used');
+  await window.getByTestId('bin-restore').click();
+  await expect(window.getByTestId('bin')).toContainText('The bin is empty');
+  await window.keyboard.press('Escape');
+  expect(existsSync(join(pictures, 'stray.png'))).toBe(true);
+
+  await command('showLog');
+  await expect(window.getByTestId('activity-log')).toBeVisible();
+  await expect(window.getByTestId('activity-log-failure')).toHaveCount(0);
+  await window.screenshot({ path: join(shots, 'activity-log.png') });
 });
 
 /** What in the Library is wider than its room and lets it scroll, with how much wider. */

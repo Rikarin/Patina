@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
-import type { CheckProblem, ProjectCheckSettings, StackChecks } from '@patina/api-client';
+import type { CheckFile, CheckProblem, ProjectCheckSettings, StackChecks } from '@patina/api-client';
 import { unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiInputImports } from '@xui/input';
@@ -88,6 +88,20 @@ const Limits: readonly Limit[] = [
           <dt class="text-foreground-muted">GPU memory</dt>
           <dd class="readout" data-testid="checks-memory">{{ memory(checks) }}</dd>
         </dl>
+        @if (checks.files.length > 0) {
+          <details class="shrink-0 px-2 pb-1 text-xs" data-testid="checks-files">
+            <summary class="text-foreground-muted cursor-pointer">Memory by file</summary>
+            <ul class="mt-1" aria-label="Memory by file">
+              @for (file of checks.files; track file.file) {
+                <li class="flex items-baseline gap-2" data-testid="checks-file" [title]="held(file)">
+                  <span class="min-w-0 flex-1 truncate">{{ file.file }}</span>
+                  <span class="text-foreground-muted readout">{{ file.width }} × {{ file.height }}</span>
+                  <span class="readout w-16 text-right">{{ size(file.bytes) }}</span>
+                </li>
+              }
+            </ul>
+          </details>
+        }
         <ol class="min-h-0 flex-1 overflow-y-auto py-1" aria-label="Problems" data-testid="checks-list">
           @for (problem of checks.problems; track $index) {
             <li>
@@ -257,6 +271,16 @@ export class ChecksPane {
   protected memory(checks: StackChecks): string {
     const budget = checks.memoryBudget > 0 ? ` of ${bytes(checks.memoryBudget)}` : '';
     return `${bytes(checks.memoryBytes)}${budget} with ${checks.preset}`;
+  }
+
+  protected size(count: number): string {
+    return bytes(count);
+  }
+
+  /** How a file is held on a GPU, for its tooltip: its compression, and whether it carries mips. */
+  protected held(file: CheckFile): string {
+    const blocks = file.compression === 'none' ? 'Uncompressed' : `Compressed ${file.compression.toUpperCase()}`;
+    return `${blocks}, ${file.mips ? 'with mips' : 'no mips'}`;
   }
 
   protected shownLimit(limit: Limit): number {

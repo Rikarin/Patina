@@ -31,7 +31,10 @@ public sealed record ProjectReference(Guid Asset, bool Pinned, string? Revision)
 
 /// <summary>Something in the library's bin, which can be put back or deleted for good.</summary>
 /// <param name="Id">The entry, which the bin routes take.</param>
-/// <param name="Kind"><c>project</c> or <c>document</c>.</param>
+/// <param name="Kind">
+///     <c>project</c>, <c>document</c>, or <c>pictures</c> for those a Clean found nothing read, each going back to
+///     its own place in <c>projects</c>.
+/// </param>
 /// <param name="Name">Its display name when it was deleted.</param>
 /// <param name="From">Where it lived, below the library, and where restoring puts it.</param>
 /// <param name="Deleted">When it was deleted.</param>
@@ -84,13 +87,28 @@ public sealed record ThumbnailList(IReadOnlyList<Thumbnail> Items);
 ///     the discovery file, which anyone can read and edit.
 /// </summary>
 /// <param name="Autosave">How unsaved work is kept.</param>
-public sealed record ServerPreferences(AutosavePreferences Autosave);
+public sealed record ServerPreferences(AutosavePreferences Autosave) {
+    /// <summary>
+    ///     How a new project bakes until it is told otherwise (#189), or null for Patina's own options. A texturing
+    ///     project still bakes at the size it is made at.
+    /// </summary>
+    public BakeOptions? Bake { get; init; }
+}
 
-/// <summary>How unsaved work is kept. It goes to the library's cache, never over a document.</summary>
+/// <summary>
+///     How unsaved work is kept. It goes to the library's cache unless a folder is chosen, never over a document.
+/// </summary>
 /// <param name="IntervalSeconds">How often open, unsaved documents are kept at the most. Zero is off.</param>
 /// <param name="IdleSeconds">
 ///     How long after the last edit a document is kept, without waiting for the interval. Zero
 ///     waits.
 /// </param>
 /// <param name="Keep">How many autosaves of a document are kept, the latest first. Restoring takes the latest.</param>
-public sealed record AutosavePreferences(int IntervalSeconds = 60, int IdleSeconds = 5, int Keep = 3);
+public sealed record AutosavePreferences(int IntervalSeconds = 60, int IdleSeconds = 5, int Keep = 3) {
+    /// <summary>
+    ///     The full path of a folder autosaves go to instead of each library's cache, a folder per library inside it,
+    ///     or null for the cache (#162). Autosaves the cache kept before one was chosen are still offered and let go
+    ///     of; those in a folder chosen earlier stay there and are not.
+    /// </summary>
+    public string? Folder { get; init; }
+}

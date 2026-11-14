@@ -29,6 +29,7 @@ static class StackEndpoints {
         stacks.MapStackMesh();
         stacks.MapStackPixels();
         stacks.MapStackPace();
+        stacks.MapStackNodePictures();
 
         void Post(string route, Delegate handler, string name, string summary, params int[] problems) =>
             stacks.MapPost(route, handler).Describe(name, summary, problems);
@@ -408,9 +409,12 @@ static class StackEndpoints {
             );
     }
 
-    static Results<Ok<StackIdColours>, ProblemHttpResult> GetIdColours(
+    /// <summary>The Worker reads the ID map, since the Server decodes no picture (#293).</summary>
+    static async Task<Results<Ok<StackIdColours>, ProblemHttpResult>> GetIdColours(
         string id,
         StackSessions sessions,
+        WorkerLink worker,
+        CancellationToken cancellationToken,
         float? u = null,
         float? v = null
     ) {
@@ -418,7 +422,21 @@ static class StackEndpoints {
             return NoSession(id);
         }
 
-        return session.MeshMaps is { } folder && IdColours.Read(folder, u, v) is { } colours
+        StackIdColours? colours = null;
+        if (session.MeshMaps is { } folder) {
+            try {
+                var connection = await worker.ConnectionAsync(cancellationToken);
+                var reply = await connection.SendAsync(
+                    new() { Type = IpcTypes.BakeIdColours, Picture = new(IdColours: new(folder, u, v)) },
+                    cancellationToken
+                );
+                colours = reply.Pictured?.IdColours;
+            } catch (Exception e) when (e is IpcException or IOException) {
+                return Refusals.OfEngine(e, StatusCodes.Status502BadGateway);
+            }
+        }
+
+        return colours is not null
             ? TypedResults.Ok(colours)
             : Refusals.Problem(
                 "This document has no bake with an ID map.",
@@ -468,7 +486,7 @@ static class StackEndpoints {
 
     internal static ProblemHttpResult NoSession(string id) =>
         Refusals.Problem(
-            $"There is no open stack '{id}'.",
+            $"There is no open document '{id}'.",
             Missing,
             Refusals.StackNotOpen,
             new Dictionary<string, string> { ["id"] = id }

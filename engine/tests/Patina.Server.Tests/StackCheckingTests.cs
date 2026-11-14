@@ -206,4 +206,117 @@ public sealed class StackCheckingTests {
         Assert.Equal((0.25f, 0.75f, 1d), (found.Target.U, found.Target.V, found.Target.Camera!.Yaw));
         Assert.Equal("0.2", found.Values["share"]);
     }
+
+    /// <summary>
+    ///     Every file the export writes is listed with its name as written, its size and what it takes, and the set's
+    ///     memory is their sum: Unreal's emissive and height files read nothing the set makes, so they are not listed.
+    /// </summary>
+    [Fact]
+    public void Each_file_written_is_listed_with_the_memory_it_takes() {
+        var checks = StackChecking.Judge(
+            Set("baseColor", "roughness", "metalness", "normal"),
+            Square,
+            Project(new()) with { Export = new() { Preset = Unreal.Id, Size = 512 } },
+            0,
+            Unreal
+        );
+
+        Assert.Equal(["T_Crate_D.png", "T_Crate_N.png", "T_Crate_ORM.png"], checks.Files.Select(static f => f.File));
+        Assert.All(
+            checks.Files,
+            static file => Assert.Equal((512, 512, 4L * 512 * 512), (file.Width, file.Height, file.Bytes))
+        );
+        Assert.Equal(checks.Files.Sum(static file => file.Bytes), checks.MemoryBytes);
+    }
+
+    static ChannelSource[] Lanes(string map, int count) => [..Enumerable.Range(0, count).Select(l => Lane(map, l))];
+
+    static ChannelSource Lane(string map, int lane = 0) => new(map, lane, false, 0);
+
+    /// <summary>A file of a preset: its name, format, compression, space, then mips.</summary>
+    static ExportTexture Texture(
+        (string Name, string Format, string Compression, string Space, bool Mips) file,
+        params ChannelSource[] lanes
+    ) =>
+        new(file.Name, file.Format, file.Compression, "balanced", file.Space, file.Mips, lanes);
+
+    /// <summary>
+    ///     A preset's files are held to what an engine reads well (#159): a colour and a data map packed in one file's
+    ///     colour lanes, data in sRGB, 8-bit colour in linear, a normal in BC1 or BC3 blocks, and a GPU container
+    ///     without mips. Each names the file as written and goes to the export's settings. Emission may be linear, and
+    ///     a file reading nothing the set makes is not judged.
+    /// </summary>
+    [Fact]
+    public void A_presets_files_are_held_to_their_packing_space_compression_and_mips() {
+        ExportPreset preset = new(
+            "bad",
+            "Bad",
+            "test",
+            GreenAxis.Up,
+            [
+                Texture(("{set}_mixed", "png8", "none", "srgb", false), [..Lanes("baseColor", 2), Lane("roughness")]),
+                Texture(("{set}_normal", "png8", "none", "srgb", false), Lanes("normal", 3)),
+                Texture(("{set}_colour", "ktx2", "bc7", "linear", true), Lanes("baseColor", 3)),
+                Texture(("{set}_n", "dds", "bc1", "linear", false), Lanes("normal", 3)),
+                Texture(("{set}_glow", "png8", "none", "linear", false), Lanes("emissive", 3)),
+                Texture(("{set}_opacity", "dds", "bc4", "linear", true), Lane("opacity"))
+            ],
+            "r",
+            null
+        );
+
+        var checks = StackChecking.Judge(Set("baseColor", "roughness", "normal", "emissive"), Square, null, 0, preset);
+
+        Assert.Equal(
+            [
+                (CheckCodes.PackingMixed, "Wood_mixed"), (CheckCodes.SpaceDataSrgb, "Wood_normal"),
+                (CheckCodes.SpaceColourLinear, "Wood_colour"), (CheckCodes.CompressionNormal, "Wood_n"),
+                (CheckCodes.MipsMissing, "Wood_n")
+            ],
+            checks.Problems.Select(static p => (p.Code, p.Values["file"]))
+        );
+        Assert.All(
+            checks.Problems,
+            static p => Assert.Equal(("warning", "export.preset"), (p.Severity, p.Target.Setting))
+        );
+        var mixed = checks.Problems[0].Values;
+        Assert.Equal(("Base Color", "Roughness"), (mixed["color"], mixed["data"]));
+        Assert.Equal("BC1 (RGB)", checks.Problems[3].Values["compression"]);
+    }
+
+    /// <summary>Every preset Patina ships passes its own file checks, for a set that makes every map.</summary>
+    [Fact]
+    public void No_shipped_preset_trips_the_file_checks() {
+        var state = Set([..ExportMaps.All.Except(ExportMaps.Derived)]);
+        foreach (var preset in ExportPresetCatalog.Read(null).Presets) {
+            var found = StackChecking.Judge(state, Square, null, 0, preset).Problems.Select(static p => p.Detail);
+            Assert.True(!found.Any(), $"{preset.Id}: {string.Join(" ", found)}");
+        }
+    }
+
+    /// <summary>
+    ///     The export works out specular, diffuse and glossiness from a set's metal-roughness maps, so a
+    ///     specular-glossiness preset says none of them is missing, and counts the files that read them.
+    /// </summary>
+    [Fact]
+    public void A_specular_glossiness_preset_misses_no_map_the_export_works_out() {
+        var specGloss = ExportPresetCatalog.Read(null).Find("spec-gloss")!;
+
+        var checks = StackChecking.Judge(
+            Set("baseColor", "opacity", "roughness", "metalness", "normal", "occlusion"),
+            Square,
+            null,
+            0,
+            specGloss
+        );
+
+        Assert.DoesNotContain(checks.Problems, static p => p.Code == CheckCodes.ChannelMissing);
+        Assert.Equal(
+            [
+                "Crate_Wood_Diffuse.png", "Crate_Wood_SpecularGlossiness.png", "Crate_Wood_Normal.png",
+                "Crate_Wood_AmbientOcclusion.png"
+            ],
+            checks.Files.Select(static file => file.File)
+        );
+    }
 }

@@ -105,7 +105,32 @@ const ImageFormats: Readonly<Record<string, string>> = {
   exr32: 'EXR 32-bit float'
 };
 
-export const channelName = termName;
+/** What a person named the open texture set's user channels (#141), by usage. */
+const channelNames = signal<ReadonlyMap<string, string>>(new Map());
+
+/** Takes the names a texture set's channels carry, which {@link channelName} then reads. */
+export function learnChannels(channels: readonly { usage: string; name?: string }[]): void {
+  const named = channels.filter(channel => channel.name).map(channel => [channel.usage, channel.name ?? ''] as const);
+  const held = channelNames();
+  if (named.length !== held.size || named.some(([usage, name]) => held.get(usage) !== name)) {
+    channelNames.set(new Map(named));
+  }
+}
+
+/** Whether a usage is a user channel's, `user0` to `user7`, which means nothing to the material (#141). */
+export function isUserChannel(usage: string): boolean {
+  return /^user[0-7]$/u.test(usage);
+}
+
+/** What a person named a user channel of the open texture set, if anybody did. */
+export function userChannelName(usage: string): string | undefined {
+  return channelNames().get(usage);
+}
+
+/** What a person calls a channel: a user channel's own name, else the vocabulary's label. */
+export function channelName(usage: string): string {
+  return userChannelName(usage) ?? termName(usage);
+}
 
 export const blendName = termName;
 

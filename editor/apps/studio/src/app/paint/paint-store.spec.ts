@@ -67,7 +67,8 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
       lane: 'Red',
       enabled: true,
       inside: 1,
-      outside: 0
+      outside: 0,
+      output: ''
     }
   };
 }
@@ -83,7 +84,7 @@ function stack(overrides: Partial<StackState> = {}): StackState {
     revision: 1,
     sequence: 3,
     history: { canUndo: false, canRedo: false, dirty: false },
-    channels: [{ usage: 'baseColor', default: [0, 0, 0, 1], format: 'Rgba8' }],
+    channels: [{ usage: 'baseColor', default: [0, 0, 0, 1], format: 'Rgba8', name: '', colour: false }],
     layers: [layer('base', 'fill'), layer('paint', 'paint')],
     previews: [],
     settled: 0,
@@ -170,7 +171,7 @@ function setup() {
 
 const notOpen = () =>
   Response.json(
-    { detail: "There is no open stack 's1'.", code: 'stack-not-open', values: { id: 's1' } },
+    { detail: "There is no open document 's1'.", code: 'stack-not-open', values: { id: 's1' } },
     { status: 404 }
   );
 
@@ -180,6 +181,35 @@ function drop(socket: GraphSocket | undefined): void {
 }
 
 const problem = (status: number, detail: string) => () => Response.json({ detail }, { status });
+
+describe('PaintStore refreshes (#274)', () => {
+  it('keeps the newest state when the replies to two edits come back in the other order', async () => {
+    const { store, server } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    let release: (() => void) | null = null;
+    const held = new Promise<void>(resolve => (release = resolve));
+    let gets = 0;
+    server.reply = (method, path) => {
+      if (method !== 'GET' || path !== '/api/v1/stacks/s1') {
+        return null;
+      }
+
+      gets++;
+      // The first edit's state was taken before the second's, and is answered after it.
+      return gets === 1
+        ? held.then(() => Response.json(stack({ name: 'Before', sequence: 4 })))
+        : Response.json(stack({ name: 'After', sequence: 5 }));
+    };
+
+    const first = store.edit({ op: 'setLayer', layer: 'base', name: 'Before' });
+    await vi.waitFor(() => expect(gets).toBe(1));
+    await store.edit({ op: 'setLayer', layer: 'base', name: 'After' });
+    (release as unknown as () => void)();
+    await first;
+
+    expect(store.state()?.name).toBe('After');
+  });
+});
 
 describe('PaintStore saving', () => {
   async function opened() {
@@ -696,7 +726,8 @@ describe('PaintStore', () => {
       lane: 'Red',
       blend: 'Copy',
       opacity: 1,
-      enabled: true
+      enabled: true,
+      output: ''
     };
     const masked = {
       ...layer('paint', 'paint'),
@@ -1025,8 +1056,8 @@ describe('PaintStore', () => {
           ? Response.json(
               stack({
                 channels: [
-                  { usage: 'baseColor', default: [0, 0, 0, 1], format: 'Rgba8' },
-                  { usage: 'roughness', default: [0.5, 0.5, 0.5, 1], format: 'Rgba8' }
+                  { usage: 'baseColor', default: [0, 0, 0, 1], format: 'Rgba8', name: '', colour: false },
+                  { usage: 'roughness', default: [0.5, 0.5, 0.5, 1], format: 'Rgba8', name: '', colour: false }
                 ]
               })
             )
@@ -1270,8 +1301,8 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
             ...state,
             model: 'crate.glb',
             channels: [
-              { usage: 'baseColor', default: [0, 0, 0, 1], format: 'Rgba8' },
-              { usage: 'roughness', default: [0.5, 0.5, 0.5, 1], format: 'Rgba8' }
+              { usage: 'baseColor', default: [0, 0, 0, 1], format: 'Rgba8', name: '', colour: false },
+              { usage: 'roughness', default: [0.5, 0.5, 0.5, 1], format: 'Rgba8', name: '', colour: false }
             ]
           }
         : state
@@ -1336,6 +1367,22 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     flat.release();
     await vi.waitFor(() => expect(sent(bodies)).toHaveLength(3));
     expect(sent(bodies)[2]).toMatchObject({ outline: true, through: false });
+  });
+
+  it('fills a face loop from a click even with a rectangle chosen, since a loop runs from where it lands (#129)', async () => {
+    const { store, bodies } = await onMesh();
+    store.tool.set('fill');
+    store.fillShape.set('rectangle');
+    store.fillMode.set('loop');
+    expect(store.fillChooses()).toBe('click');
+    const gesture = new StrokeGesture(store, () => aim);
+    gesture.press({ x: 10, y: 20, pressure: 1 });
+    expect(gesture.outlining()).toBe(false);
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(1));
+    expect(sent(bodies)[0]).toMatchObject({ curve: 'fill', fill: 'loop', outline: false, stamps: [{ x: 10, y: 20 }] });
+
+    store.fillMode.set('polygon');
+    expect(store.fillChooses()).toBe('rectangle');
   });
 
   it('fills what a lasso holds, and a rectangle hardly dragged is a click (#129)', async () => {

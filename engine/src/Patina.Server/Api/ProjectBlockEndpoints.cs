@@ -16,6 +16,12 @@ namespace Patina.Server.Api;
 /// </summary>
 static class ProjectBlockEndpoints {
     public static void MapProjectBlocks(this RouteGroupBuilder library) {
+        library.MapPut("/settings", SetLibrarySettings)
+            .Described(
+                "SetLibrarySettings",
+                "Keeps the library's name and the texel density new projects start from in library.yaml. "
+                + "GET /library reads them back; the export presets have routes of their own."
+            );
         library.MapPut("/export", SetLibraryExport)
             .Described(
                 "SetLibraryExport",
@@ -96,6 +102,18 @@ static class ProjectBlockEndpoints {
                 Refusals.Reason(problem)
             )
             : Keep(host, request.Project, null, library => library.SetPaint(request.Project, request.Paint));
+
+    static Results<Ok<LibraryInfo>, ProblemHttpResult> SetLibrarySettings(
+        LibraryHost host,
+        LibrarySettingsRequest request
+    ) =>
+        LibraryTreeEndpoints.Guarded(
+            host,
+            library => {
+                library.SetSettings(request.Name, request.TexelDensity);
+                return TypedResults.Ok(library.Describe());
+            }
+        );
 
     static Results<Ok<LibraryInfo>, ProblemHttpResult> SetLibraryExport(
         LibraryHost host,

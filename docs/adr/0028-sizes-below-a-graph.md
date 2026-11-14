@@ -1,7 +1,7 @@
 # ADR 0028: Sizes below a graph, and an export's own size
 
-**Status:** proposed, 2026-11-12, for issue #96. A compound's own base, an export's size and Keep aspect are built
-(2026-11-13); per-node and per-instance levels are a design only.
+**Status:** accepted, 2026-11-12, for issue #96. A compound's own base, an export's size and Keep aspect are built
+(2026-11-13), and per-node and per-instance levels (2026-11-14).
 
 ## What this answers
 
@@ -60,6 +60,14 @@ compiler, never silently. The graph's own size still moves every node together.
 
 A compound instance takes the same offset, applied to every node inside it on top of its own base.
 
+_Built (2026-11-14)._ A node's `level` in the file is a whole number of halvings, from -2 to 4, or absent. Absent is
+not zero: an absent level follows the finest image arriving, which is what every node did before, and zero is the
+graph's size even downstream of a node at another. A level past the range is computed at the nearest one it may, with
+a warning (Vixen `TG0026`); the Server refuses one. An Output has none, since its map is the graph's size. On a compound
+instance the level is added to each inner node's own, and an inner node that says none takes the instance's rather than
+following its inputs, because "this compound at half size" is about every node in it. Vixen's flattener folds the
+levels as it inlines, so the compiler sees one level per node.
+
 ### Relative to a parent is the same thing
 
 "Relative to parent" is a level offset of zero, which is what every node already is. "Absolute" sizes are not offered,
@@ -93,4 +101,4 @@ is a graph and follows the rules above, computed at the set's size with radii in
 3. Keep aspect on the shape sources (Vixen's nodes). Built on Shape, the one source that draws a shape: the square
    is repeated a whole number of times, the nearest to the ratio of the sides, so the image still tiles, and a cell is
    exactly square at 2:1 or 4:1 and as near square as a whole count allows between.
-4. Level offsets per node and per instance (Vixen's compiler, then the Inspector).
+4. Level offsets per node and per instance (Vixen's compiler, then the Inspector). Built.

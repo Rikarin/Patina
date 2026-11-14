@@ -512,6 +512,15 @@ public sealed record ExportStep(
     ExportOptions? Options = null
 );
 
+/// <summary>
+///     A compression preview planned by the Server and made where pictures are decoded (#293): the preset over one
+///     project's built objects, as an export would run it, and one file's region of it.
+/// </summary>
+/// <param name="Export">The preset and the objects it reads; its folder is where the preview's files go.</param>
+/// <param name="Id">The preview's id, a hash of everything it is made from.</param>
+/// <param name="Request">What was asked: the set, the file, the level and the region.</param>
+public sealed record CompressionStep(ExportStep Export, string Id, CompressionPreviewRequest Request);
+
 /// <summary>A line of a build's journal: a step starting, or with its project and a report, a step ended.</summary>
 public sealed record BuildLogLine(
     string Step,
