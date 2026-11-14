@@ -5458,6 +5458,175 @@
         }
       }
     },
+    "/api/v1/library/check": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Rescans, then reports the library\u0027s health by kind of finding, errors first, as patina library check prints it. Changes nothing.",
+        "operationId": "CheckLibrary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryHealth"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/cache/prune": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Removes built objects, bakes and reports nothing has touched for a number of days, 30 by default. A later build makes them again. Refused while a bake or build is queued or running.",
+        "operationId": "PruneCache",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CachePruneRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryTidied"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/clean": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it.",
+        "operationId": "CleanLibrary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryTidied"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/graphs": {
       "get": {
         "tags": [
@@ -10594,6 +10763,20 @@
         },
         "description": "The library\u0027s cache: what deleting it would cost is time, and nothing else."
       },
+      "CachePruneRequest": {
+        "required": [
+          "days"
+        ],
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "description": "How long a built object or report may go untouched before it goes, 0 or more.",
+            "format": "int32"
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/cache/prune\u0060."
+      },
       "CheckProblem": {
         "required": [
           "code",
@@ -14993,6 +15176,96 @@
         },
         "description": "The answer to \u0060GET /api/v1/library/files\u0060."
       },
+      "LibraryFinding": {
+        "required": [
+          "path",
+          "detail"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The file or project it concerns, relative to the library."
+          },
+          "detail": {
+            "type": "string",
+            "description": "The specifics."
+          }
+        },
+        "description": "One thing a library check found."
+      },
+      "LibraryFindingGroup": {
+        "required": [
+          "kind",
+          "isError",
+          "count",
+          "findings"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "What was found, such as \u0060MissingReference\u0060 or \u0060StaleOutput\u0060."
+          },
+          "isError": {
+            "type": "boolean",
+            "description": "Whether the library is wrong, as opposed to having work to do or room to tidy."
+          },
+          "count": {
+            "type": "integer",
+            "description": "How many there are in all.",
+            "format": "int32"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LibraryFinding"
+            },
+            "description": "The first of them, at most int LibraryHealth.FindingsPerKind."
+          }
+        },
+        "description": "What one kind of finding of a library check came to, as \u0060patina library check\u0060 prints it."
+      },
+      "LibraryHealth": {
+        "required": [
+          "projects",
+          "assets",
+          "outputs",
+          "errors",
+          "groups"
+        ],
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "integer",
+            "description": "The projects checked.",
+            "format": "int32"
+          },
+          "assets": {
+            "type": "integer",
+            "description": "The shared assets checked.",
+            "format": "int32"
+          },
+          "outputs": {
+            "type": "integer",
+            "description": "The outputs checked.",
+            "format": "int32"
+          },
+          "errors": {
+            "type": "integer",
+            "description": "How many findings say the library is wrong.",
+            "format": "int32"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LibraryFindingGroup"
+            },
+            "description": "The findings by kind, errors first."
+          }
+        },
+        "description": "The health of a library, from \u0060POST /api/v1/library/check\u0060."
+      },
       "LibraryInfo": {
         "required": [
           "id",
@@ -15246,6 +15519,26 @@
           }
         },
         "description": "The body of \u0060PUT /api/v1/library/export/targets\u0060 (#207)."
+      },
+      "LibraryTidied": {
+        "required": [
+          "removed",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "removed": {
+            "type": "integer",
+            "description": "How many entries or folders went.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The room that freed on disk.",
+            "format": "int64"
+          }
+        },
+        "description": "What tidying the library took away."
       },
       "MaterialBrush": {
         "required": [

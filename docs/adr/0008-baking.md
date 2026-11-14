@@ -146,8 +146,10 @@ flat ones. Anything else keys the high meshes by their bytes, as before: the ful
 whose key holds is proved by `A_set_whose_key_is_kept_bakes_the_same_after_the_change`, which bakes it again from the changed file
 and compares the bytes, and shows the same change darkening the set's AO when occlusion reaches across parts.
 
-**Cost.** A bake request reads the high meshes once more to work out its key; the parts' digests are kept for the last sixteen
-high meshes by content, so a quick bake of many sets reads each mesh once. A bake from the cache can differ from a fresh one only
+**Cost.** The Server reads no mesh (ADR 0039), so the Worker reports these facts in its answer to `mesh.sets`: each set's part
+names, and each file's box, normals and parts with a digest of each part's world corners. The Server keeps them until the file's
+bytes change, so a quick bake of many sets has each high mesh read once. Flattening welds within a file and never across two, so
+the facts of files read one at a time combine into what the bake meets. A bake from the cache can differ from a fresh one only
 where two triangles are struck at exactly the same distance and their numbering decides, which the numbering of another part can
 change; the two answers are the same surface.
 

@@ -1384,6 +1384,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/check': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Rescans, then reports the library's health by kind of finding, errors first, as patina library check prints it. Changes nothing. */
+    post: operations['CheckLibrary'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/cache/prune': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Removes built objects, bakes and reports nothing has touched for a number of days, 30 by default. A later build makes them again. Refused while a bake or build is queued or running. */
+    post: operations['PruneCache'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/clean': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it. */
+    post: operations['CleanLibrary'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/graphs': {
     parameters: {
       query?: never;
@@ -3208,6 +3259,14 @@ export interface components {
        * @description The room it takes on disk.
        */
       bytes: number;
+    };
+    /** @description The body of `POST /api/v1/library/cache/prune`. */
+    CachePruneRequest: {
+      /**
+       * Format: int32
+       * @description How long a built object or report may go untouched before it goes, 0 or more.
+       */
+      days: number;
     };
     /** @description One problem a texture set has before it is exported. */
     CheckProblem: {
@@ -5088,6 +5147,52 @@ export interface components {
       /** @description Whether there were more than the list holds. */
       more: boolean;
     };
+    /** @description One thing a library check found. */
+    LibraryFinding: {
+      /** @description The file or project it concerns, relative to the library. */
+      path: string;
+      /** @description The specifics. */
+      detail: string;
+    };
+    /** @description What one kind of finding of a library check came to, as `patina library check` prints it. */
+    LibraryFindingGroup: {
+      /** @description What was found, such as `MissingReference` or `StaleOutput`. */
+      kind: string;
+      /** @description Whether the library is wrong, as opposed to having work to do or room to tidy. */
+      isError: boolean;
+      /**
+       * Format: int32
+       * @description How many there are in all.
+       */
+      count: number;
+      /** @description The first of them, at most int LibraryHealth.FindingsPerKind. */
+      findings: components['schemas']['LibraryFinding'][];
+    };
+    /** @description The health of a library, from `POST /api/v1/library/check`. */
+    LibraryHealth: {
+      /**
+       * Format: int32
+       * @description The projects checked.
+       */
+      projects: number;
+      /**
+       * Format: int32
+       * @description The shared assets checked.
+       */
+      assets: number;
+      /**
+       * Format: int32
+       * @description The outputs checked.
+       */
+      outputs: number;
+      /**
+       * Format: int32
+       * @description How many findings say the library is wrong.
+       */
+      errors: number;
+      /** @description The findings by kind, errors first. */
+      groups: components['schemas']['LibraryFindingGroup'][];
+    };
     /** @description The reply to `GET /api/v1/library`: what opening a library reads, and nothing more. */
     LibraryInfo: {
       /**
@@ -5219,6 +5324,19 @@ export interface components {
        *     the library ships to. Empty, such a build writes nothing.
        */
       presets: string[];
+    };
+    /** @description What tidying the library took away. */
+    LibraryTidied: {
+      /**
+       * Format: int32
+       * @description How many entries or folders went.
+       */
+      removed: number;
+      /**
+       * Format: int64
+       * @description The room that freed on disk.
+       */
+      bytes: number;
     };
     /** @description A graph rendered to a picture a brush stamps. */
     MaterialBrush: {
@@ -13358,6 +13476,151 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CacheInfo'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CheckLibrary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryHealth'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PruneCache: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': null | components['schemas']['CachePruneRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryTidied'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CleanLibrary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryTidied'];
         };
       };
       /** @description Bad Request */
