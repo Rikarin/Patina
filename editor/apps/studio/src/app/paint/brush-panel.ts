@@ -131,24 +131,30 @@ const PreviewQuiet = 200;
             (valueChange)="store.fillMode.set(fillMode($event))"
           />
         </div>
-        <div class="flex items-center gap-2">
-          <span
-            class="text-foreground-muted w-16 shrink-0 text-xs"
-            title="Whether a click fills what is under it, or a drag fills everything a rectangle or a lasso holds"
-            >Selects</span
+        @if (store.fillMode() === 'loop') {
+          <span class="text-foreground-muted ps-[4.5rem] text-xs" data-testid="paint-fill-loop"
+            >Click near an edge: the loop runs across it, through the quads each side</span
           >
-          <xui-select
-            class="min-w-0 flex-1"
-            aria-label="Fill selection"
-            data-testid="paint-fill-shape"
-            [filterable]="false"
-            [itemText]="fillShapeName"
-            [items]="fillShapeValues"
-            [value]="store.fillShape()"
-            (valueChange)="store.fillShape.set(fillShape($event))"
-          />
-        </div>
-        @if (store.fillShape() !== 'click') {
+        } @else {
+          <div class="flex items-center gap-2">
+            <span
+              class="text-foreground-muted w-16 shrink-0 text-xs"
+              title="Whether a click fills what is under it, or a drag fills everything a rectangle or a lasso holds"
+              >Selects</span
+            >
+            <xui-select
+              class="min-w-0 flex-1"
+              aria-label="Fill selection"
+              data-testid="paint-fill-shape"
+              [filterable]="false"
+              [itemText]="fillShapeName"
+              [items]="fillShapeValues"
+              [value]="store.fillShape()"
+              (valueChange)="store.fillShape.set(fillShape($event))"
+            />
+          </div>
+        }
+        @if (store.fillChooses() !== 'click') {
           <span
             class="flex items-center gap-1 ps-[4.5rem] text-xs"
             title="Also fills what the viewport cannot see inside the outline: the far side, and what is hidden behind"

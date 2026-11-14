@@ -10,6 +10,7 @@ function lassoStore() {
   const store = {
     tool: signal('fill'),
     fillShape: signal('lasso'),
+    fillChooses: signal('lasso'),
     picking: signal(null),
     fillOutline: (points: readonly StackStamp[]) => {
       filled.push(points);

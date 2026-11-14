@@ -172,7 +172,8 @@ public sealed record StackPicture(
 /// <param name="Stencil">A picture on the screen that masks the brush by its brightness, or null.</param>
 /// <param name="Fill">
 ///     With the fill curve, how much of the mesh a click takes: <c>triangle</c>, <c>polygon</c> (the flat polygon it
-///     is part of), <c>part</c> (the named mesh it belongs to) or <c>shell</c> (its UV island). It needs a mesh.
+///     is part of), <c>part</c> (the named mesh it belongs to), <c>shell</c> (its UV island) or <c>loop</c> (the loop of
+///     quads through it, across its edge nearest the click, which takes no outline). It needs a mesh.
 /// </param>
 /// <param name="Outline">
 ///     With the fill curve, whether the stamps are one outline rather than clicks: a rectangle's four corners or a

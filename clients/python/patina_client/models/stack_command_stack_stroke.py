@@ -65,7 +65,8 @@ class StackCommandStackStroke:
             stencil (None | StackPicture | Unset):
             fill (None | str | Unset): With the fill curve, how much of the mesh a click takes: `triangle`, `polygon` (the
                 flat polygon it
-                is part of), `part` (the named mesh it belongs to) or `shell` (its UV island). It needs a mesh.
+                is part of), `part` (the named mesh it belongs to), `shell` (its UV island) or `loop` (the loop of
+                quads through it, across its edge nearest the click, which takes no outline). It needs a mesh.
             resume (list[float] | None | Unset): Where the brush already stands when this stroke carries on the one before
                 it, as two numbers in the units of
                 its stamps, or null. The stroke starts there without a stamp, as a pen lifted in the middle of one stroke and

@@ -63,6 +63,7 @@ static class StrokeSources {
             "triangle" => PaintFillMode.Triangle,
             "part" => PaintFillMode.Part,
             "shell" => PaintFillMode.Shell,
+            "loop" => PaintFillMode.Loop,
             _ => PaintFillMode.Polygon
         };
 
