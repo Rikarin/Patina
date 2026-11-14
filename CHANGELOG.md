@@ -261,6 +261,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Saving, autosaving, restoring a snapshot and reading a layer stack's pixels no longer fail with "No GPU process reached this stack" when the GPU is merely slow (#275): they wait for as long as a GPU process is connected and working, and give up only when none comes. The stack they wait on is evaluated before other open documents.
 - Saving a graph, a layer stack or a paint layer, and the engine's own caches, no longer fail on Windows when another program reads the file at that moment (#265): every save that moves a finished file into place waits for the reader, as the library's own writes have since #257.
 - A library change refused because another program still has the file open says so, with the code `file-busy` and the file's name, instead of an uncoded conflict a client can't tell from a name that is taken (#266).
 - Oil Paint's brush ridges tile at any Stroke Angle and at any size (#267): they are a noise smeared along the angle rather than one turned through it.
