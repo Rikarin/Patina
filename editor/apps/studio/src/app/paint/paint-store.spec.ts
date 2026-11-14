@@ -1433,6 +1433,63 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     keep(['lid']);
     await store.togglePartOnMesh({ x: 50, y: 50, pressure: 1 }, aim);
     expect(sent()).toHaveLength(2);
+
+    // Shift only takes in: the lid is already there, so nothing is sent.
+    keep(['lid', 'box']);
+    await store.togglePartOnMesh({ x: 50, y: 50, pressure: 1 }, aim, 'add');
+    expect(sent()).toHaveLength(2);
+  });
+
+  it('joins the meshes a marquee reaches to the layer by the mode chosen (#110)', async () => {
+    const { store, bodies, server } = await onMesh();
+    server.reply = (_method, path) => {
+      if (path.endsWith('/viewport/marquee')) {
+        return Response.json({ parts: ['box', 'hinge'] });
+      }
+
+      if (path.endsWith('/mesh-parts')) {
+        return Response.json({ parts: ['lid', 'box', 'hinge'] });
+      }
+
+      return path.endsWith('/mesh-mask') ? Response.json({ parts: [], asset: 'parts.png' }) : null;
+    };
+    const id = store.state()?.layers[0]?.id ?? '';
+    const keep = (parts: string[] | null) =>
+      store.state.update(state =>
+        state
+          ? {
+              ...state,
+              layers: state.layers.map(layer =>
+                layer.id === id ? { ...layer, mask: { ...layer.mask, meshParts: parts } } : layer
+              )
+            }
+          : state
+      );
+    const sent = () =>
+      bodies
+        .flatMap(body => (body as { commands?: { meshMask?: { parts: string[] } }[] }).commands ?? [])
+        .flatMap(c => (c.meshMask ? [c.meshMask.parts] : []));
+    store.pickingPart.set(id);
+
+    keep(null);
+    await store.marqueePartsOnMesh({ x: 10, y: 20, pressure: 1 }, { x: 60, y: 80, pressure: 1 }, aim, 'replace');
+    await vi.waitFor(() => expect(sent()).toHaveLength(1));
+    expect(sent()[0]).toEqual(['box', 'hinge']);
+
+    keep(['lid']);
+    await store.marqueePartsOnMesh({ x: 10, y: 20, pressure: 1 }, { x: 60, y: 80, pressure: 1 }, aim, 'add');
+    await vi.waitFor(() => expect(sent()).toHaveLength(2));
+    expect(sent()[1]).toEqual([]);
+
+    keep(['lid', 'box']);
+    await store.marqueePartsOnMesh({ x: 10, y: 20, pressure: 1 }, { x: 60, y: 80, pressure: 1 }, aim, 'remove');
+    await vi.waitFor(() => expect(sent()).toHaveLength(3));
+    expect(sent()[2]).toEqual(['lid']);
+
+    // Removing every mesh the layer is on would leave none, which is the whole model, so the layer stays as it is.
+    keep(['box']);
+    await store.marqueePartsOnMesh({ x: 10, y: 20, pressure: 1 }, { x: 60, y: 80, pressure: 1 }, aim, 'remove');
+    expect(sent()).toHaveLength(3);
   });
 
   it('fills nothing where the viewport draws nothing under a click, as when an isolation hides it (#136)', async () => {

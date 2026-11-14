@@ -411,6 +411,8 @@ from .viewport_graph_request import ViewportGraphRequest
 from .viewport_highlight import ViewportHighlight
 from .viewport_isolation import ViewportIsolation
 from .viewport_map_paths import ViewportMapPaths
+from .viewport_marquee import ViewportMarquee
+from .viewport_marquee_request import ViewportMarqueeRequest
 from .viewport_mesh_request import ViewportMeshRequest
 from .viewport_node_shown import ViewportNodeShown
 from .viewport_pick import ViewportPick
@@ -834,6 +836,8 @@ __all__ = (
     "ViewportHighlight",
     "ViewportIsolation",
     "ViewportMapPaths",
+    "ViewportMarquee",
+    "ViewportMarqueeRequest",
     "ViewportMeshRequest",
     "ViewportNodeShown",
     "ViewportPick",

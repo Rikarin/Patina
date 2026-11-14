@@ -19,12 +19,14 @@ public sealed class MeshCompoundTests {
         "Generators/Distance From Point",
         "Generators/Drips",
         "Generators/Edge Select",
+        "Generators/Fibrous Edge Wear",
         "Generators/Ground Grime",
         "Generators/Light",
         "Generators/Linear Gradient",
         "Generators/Moss",
         "Generators/Paint Chips",
         "Generators/Sun Fade",
+        "Generators/Wrinkles",
         "Stylised/Baked Lighting",
         "Photo/Clone Patch",
         "Photo/Fix Seams",
@@ -168,6 +170,28 @@ public sealed class MeshCompoundTests {
             Assert.True(Mean(picture, middle, 8..^8) > 0.9, $"{path} misses its own band.");
             Assert.True(Mean(picture, other, 8..^8) < 0.02, $"{path} takes the other band.");
             Assert.True(Mean(picture, 100..120, 8..^8) < 0.02, $"{path} takes the flat.");
+        }
+    }
+
+    /// <summary>
+    ///     Patina #120: fibrous wear keeps to the convex edges as the other wear does, and wrinkles gather in the
+    ///     hollows, each far more on its own side of the stand-in's curvature than on the other.
+    /// </summary>
+    [Theory]
+    [InlineData("Generators/Fibrous Edge Wear", true)]
+    [InlineData("Generators/Wrinkles", false)]
+    public void A_generator_keeps_to_its_side_of_the_curvature(string path, bool convex) {
+        if (Device() is not { } device) {
+            return;
+        }
+
+        using (device) {
+            var (compiler, graph) = Containing(path, out _, out _);
+            var picture = Bake(device, compiler, graph)["baseColor"];
+            var (own, other) = convex ? (Convex, Concave) : (Concave, Convex);
+            var (mine, theirs) = (Mean(picture, own, 8..^8), Mean(picture, other, 8..^8));
+
+            Assert.True(mine > theirs * 2 + 0.05, $"{path} covers {mine:0.000} here, {theirs:0.000} there.");
         }
     }
 

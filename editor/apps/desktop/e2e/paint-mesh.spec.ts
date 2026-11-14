@@ -361,7 +361,53 @@ test('a layer keeps to named meshes, a folder takes a mask, and the mesh reloads
     }, across);
   await expect.poll(() => greenAt(0.75), { timeout: 30_000 }).toBeGreaterThan(200);
 
-  await window.locator('[data-testid^=paint-layer-fill]').getByTestId('layer-mesh-mask').click();
+  // A marquee over the left of the picture keeps the layer to the one mesh there, whichever way the camera turns it,
+  // and a Shift-drag over the whole picture adds the other, which is every mesh again (#110).
+  const meshes = window.locator('[data-testid^=paint-layer-fill]').getByTestId('layer-mesh-mask');
+  const viewport = window.getByRole('application', { name: 'Viewport' });
+  const kept = async (): Promise<number> => {
+    await meshes.click();
+    await expect(window.getByTestId('layer-meshes')).toContainText('Hinge');
+    const on =
+      (await window.getByTestId('layer-mesh-Lid').isChecked()) ===
+      (await window.getByTestId('layer-mesh-Hinge').isChecked())
+        ? 2
+        : 1;
+    await window.mouse.click(4, 300); // anywhere else closes the list
+    return on;
+  };
+  const marquee = async (from: number, to: number, shift: boolean): Promise<void> => {
+    const box = await viewport.boundingBox();
+    if (!box) {
+      throw new Error('The viewport has no box.');
+    }
+
+    if (shift) {
+      await window.keyboard.down('Shift');
+    }
+
+    await window.mouse.move(box.x + box.width * from, box.y + 4);
+    await window.mouse.down();
+    await window.mouse.move(box.x + box.width * ((from + to) / 2), box.y + box.height / 2, { steps: 4 });
+    await window.mouse.move(box.x + box.width * to, box.y + box.height - 4, { steps: 4 });
+    await expect(window.getByTestId('viewport-marquee')).toBeVisible();
+    await window.mouse.up();
+    if (shift) {
+      await window.keyboard.up('Shift');
+    }
+  };
+  await meshes.click();
+  await window.getByTestId('layer-meshes-pick').click();
+  await expect(window.getByTestId('layer-meshes-combine')).toContainText('Replace');
+  await window.mouse.click(4, 300);
+  await marquee(0.02, 0.5, false);
+  await expect.poll(kept, { timeout: 30_000 }).toBe(1);
+  await marquee(0.02, 0.98, true);
+  await expect.poll(kept, { timeout: 30_000 }).toBe(2);
+  await meshes.click();
+  await window.getByTestId('layer-meshes-pick').click();
+  await expect(window.getByTestId('layer-meshes-combine')).toHaveCount(0);
+
   await expect(window.getByTestId('layer-meshes')).toContainText('Hinge');
   await window.getByTestId('layer-mesh-Hinge').click();
   await expect(window.getByTestId('layer-mesh-Hinge')).not.toBeChecked();

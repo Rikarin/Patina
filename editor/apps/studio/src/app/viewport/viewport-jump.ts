@@ -5,6 +5,8 @@ import type { ViewportCameraState } from '@patina/api-client';
 export interface ViewportTarget {
   readonly view?: string | null;
   readonly camera?: ViewportCameraState | null;
+  /** For the picture view, the file it shows, such as a mask written on its own (#109); shown again if it is. */
+  readonly picture?: string | null;
 }
 
 /**
@@ -15,6 +17,8 @@ export interface ViewportTarget {
 export class ViewportJump {
   /** The newest target, numbered so the same place asked for twice is gone to twice. */
   readonly target = signal<{ readonly at: number; readonly to: ViewportTarget } | null>(null);
+  /** The file the picture view shows now, as the viewport's client last set it, or null in any other view. */
+  readonly shownPicture = signal<string | null>(null);
   private asked = 0;
 
   /** Asks the viewport to show a view and look through a camera, either of which may be left as it is. */

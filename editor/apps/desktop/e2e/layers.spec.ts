@@ -177,6 +177,23 @@ test('a fill shows only the projection controls that apply', async () => {
   await pick(window, 'paint-fill-axis', 'Z');
   await expect(window.getByTestId('paint-fill-axis')).toContainText('Z');
   await expect(window.getByTestId('paint-fill-scale')).toBeVisible();
+
+  // A picture dragged from the library onto a channel's slot fills it, as Choose… would (#122).
+  const rust = join(scratch, 'rust.png');
+  writeFileSync(
+    rust,
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',
+      'base64'
+    )
+  );
+  await window.getByTestId('paint-fill-slot-baseColor').evaluate((slot, path) => {
+    const carried = new DataTransfer();
+    carried.setData('application/x-patina-library', JSON.stringify([path]));
+    slot.dispatchEvent(new DragEvent('dragover', { dataTransfer: carried, bubbles: true, cancelable: true }));
+    slot.dispatchEvent(new DragEvent('drop', { dataTransfer: carried, bubbles: true, cancelable: true }));
+  }, rust);
+  await expect(window.getByTestId('paint-fill-slot-baseColor')).toContainText('rust', { timeout: 30_000 });
 });
 
 test('colours painted in Blender bake to an id map, and a mask selects one', async () => {

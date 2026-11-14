@@ -58,6 +58,12 @@ public static class IpcTypes {
     public const string ViewportCast = "viewport.cast";
 
     /// <summary>
+    ///     Server to Worker: the named meshes that show inside the rectangle from <see cref="IpcMessage.Pick" /> to its
+    ///     second corner; answers with <see cref="IpcMessage.Marqueed" />. It reads the mesh and no device (#110).
+    /// </summary>
+    public const string ViewportMarquee = "viewport.marquee";
+
+    /// <summary>
     ///     Server to Worker: from now on the viewport wears the stack <see cref="IpcMessage.Following" />, or nothing
     ///     when that is null. The maps go from the stack's evaluation to the viewport inside the Worker.
     /// </summary>
@@ -240,6 +246,9 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to viewport.pick.</summary>
     public ViewportPick? Picked { get; set; }
+
+    /// <summary>The reply to viewport.marquee.</summary>
+    public ViewportMarquee? Marqueed { get; set; }
 
     /// <summary>viewport.cast: the rays and the mesh.</summary>
     public ViewportCastAsk? Cast { get; set; }
@@ -542,6 +551,7 @@ public sealed record ViewportRender(int Width, int Height, string SharedMemory, 
 ///     the map a pick says is in its texture set's own layout, which Find Layer, the color picker and the clone source
 ///     read. Null reads every material in the first.
 /// </param>
+/// <param name="To">For viewport.marquee, the rectangle's opposite corner; null for a pick.</param>
 public sealed record ViewportPickAsk(
     double X,
     double Y,
@@ -549,8 +559,14 @@ public sealed record ViewportPickAsk(
     int Width,
     int Height,
     string Mesh,
-    IReadOnlyDictionary<string, int>? UvSets = null
+    IReadOnlyDictionary<string, int>? UvSets = null,
+    ViewportCorner? To = null
 );
+
+/// <summary>A corner of a rectangle on the viewport's picture.</summary>
+/// <param name="X">Across, 0 to 1.</param>
+/// <param name="Y">Down, 0 to 1.</param>
+public sealed record ViewportCorner(double X, double Y);
 
 /// <summary>Rays along one direction to meet the mesh with (#263).</summary>
 /// <param name="Origins">Where each ray starts, in the mesh's own space: three numbers to a ray.</param>

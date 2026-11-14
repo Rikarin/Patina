@@ -254,6 +254,57 @@
         }
       }
     },
+    "/api/v1/viewport/marquee": {
+      "post": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "The named meshes that show inside a rectangle in the viewport, which a layer kept to some meshes takes or leaves (#110).",
+        "operationId": "MarqueeInViewport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportMarqueeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportMarquee"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/cast": {
       "post": {
         "tags": [
@@ -22043,6 +22094,81 @@
           }
         },
         "description": "Pictures to lay over the mesh\u0027s own materials, on every part. Each is a path on the Server\u0027s machine, and a slot\nleft null keeps what the material asks for. A filled slot replaces the material\u0027s factor too, so what shows\nis the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or\nthree grey ones both work. PNG, JPEG and EXR are read, base colour as sRGB and the rest as linear."
+      },
+      "ViewportMarquee": {
+        "required": [
+          "parts"
+        ],
+        "type": "object",
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Their names."
+          }
+        },
+        "description": "The named meshes a marquee reached (#110), by name in ordinal order; none when the model names none."
+      },
+      "ViewportMarqueeRequest": {
+        "required": [
+          "x",
+          "y",
+          "toX",
+          "toY"
+        ],
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "One corner, across the picture, 0 to 1.",
+            "format": "double"
+          },
+          "y": {
+            "type": "number",
+            "description": "That corner, down it, 0 to 1.",
+            "format": "double"
+          },
+          "toX": {
+            "type": "number",
+            "description": "The opposite corner, across.",
+            "format": "double"
+          },
+          "toY": {
+            "type": "number",
+            "description": "The opposite corner, down.",
+            "format": "double"
+          },
+          "camera": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The camera to look through, or null for the viewport\u0027s.",
+                "$ref": "#/components/schemas/ViewportCameraState"
+              }
+            ]
+          },
+          "width": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The picture\u0027s width, or null for the viewport\u0027s.",
+            "format": "int32"
+          },
+          "height": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Its height.",
+            "format": "int32"
+          }
+        },
+        "description": "Asks which named meshes show inside a rectangle on the viewport\u0027s picture (#110): a marquee, which takes every\nmesh it reaches into a layer\u0027s meshes, or out of them. Through what the viewport draws, as a pick is, so a mesh\nhidden behind another or isolated away is not reached."
       },
       "ViewportMeshRequest": {
         "required": [

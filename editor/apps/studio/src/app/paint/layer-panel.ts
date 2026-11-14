@@ -20,10 +20,12 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { Activity } from '../core/activity';
 import { colourName } from '../core/colour-names';
 import { IconImports } from '../core/icons';
 import { blendName, channelName, labelsOf, termName, valuesOf } from '../core/labels';
 import { amount, percent, toDegrees, toRadians } from '../core/numbers';
+import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { AnchorInputs, type AnchorSources } from './anchor-inputs';
@@ -33,6 +35,7 @@ import { tagSwatch } from './layer-tags';
 import { LayerDraft } from './live-value';
 import { MaterialUse } from './material-use';
 import { colourOf, hexOf, paintsOverMask, PaintStore, sameColour, writesChannel } from './paint-store';
+import { carriesPicture, droppedPicture, overPictureSlot } from './picture-drop';
 import { SettingKnobs } from './setting-knobs';
 import { SurfaceFields } from './surface-fields';
 
@@ -338,7 +341,12 @@ function stemOf(source: string): string | undefined {
                 }
               }
               @for (channel of layer.fill === 'Anchor' ? [] : (store.state()?.channels ?? []); track channel.usage) {
-                <div class="flex items-center gap-2">
+                <div
+                  class="flex items-center gap-2"
+                  [attr.data-testid]="'paint-fill-slot-' + channel.usage"
+                  (dragover)="layer.fill === 'Texture' && overSlot($event)"
+                  (drop)="layer.fill === 'Texture' && dropTexture(layer, channel.usage, $event)"
+                >
                   <span class="text-foreground-muted w-20 shrink-0 truncate text-xs">{{
                     channelName(channel.usage)
                   }}</span>
@@ -571,7 +579,11 @@ function stemOf(source: string): string | undefined {
                 />
               }
               @case ('Texture') {
-                <div class="flex items-center gap-2">
+                <div
+                  class="flex items-center gap-2"
+                  (dragover)="overSlot($event)"
+                  (drop)="dropEntryPicture(layer, entry.index, $event)"
+                >
                   <span class="min-w-0 flex-1 truncate text-xs" [title]="entry.layer.asset">{{
                     fileOf(entry.layer.asset) || 'None'
                   }}</span>
@@ -648,7 +660,12 @@ function stemOf(source: string): string | undefined {
               </div>
             }
             @case ('Texture') {
-              <div class="flex items-center gap-2">
+              <div
+                class="flex items-center gap-2"
+                data-testid="paint-mask-picture-slot"
+                (dragover)="overSlot($event)"
+                (drop)="dropMaskPicture(layer, $event)"
+              >
                 <span class="min-w-0 flex-1 truncate text-xs" [title]="layer.mask.asset">{{
                   fileOf(layer.mask.asset) || 'None'
                 }}</span>
@@ -978,6 +995,8 @@ export class LayerPanel {
   private readonly project = inject(ProjectStore);
   private readonly library = inject(LibraryStore);
   private readonly using = inject(MaterialUse);
+  private readonly status = inject(SystemStatus);
+  private readonly activity = inject(Activity);
   protected readonly fills = computed(() => this.store.vocabulary()?.fills.map(term => term.value) ?? []);
   protected readonly projections = computed(() => this.store.vocabulary()?.projections ?? []);
   /** A constant is the same colour wherever it lands, so it is only put on by what decides where it covers. */
@@ -1387,6 +1406,47 @@ export class LayerPanel {
 
   protected fileOf(path: string | undefined): string {
     return path?.split('/').pop() ?? '';
+  }
+
+  protected overSlot(event: DragEvent): void {
+    overPictureSlot(event);
+  }
+
+  /** A picture dropped on a channel of a picture fill fills it (#122), brought into the project as a chosen one is. */
+  protected async dropTexture(layer: StackLayer, usage: string, event: DragEvent): Promise<void> {
+    const picture = await this.dropped(event);
+    if (picture) {
+      this.setTexture(layer, usage, picture);
+    }
+  }
+
+  protected async dropMaskPicture(layer: StackLayer, event: DragEvent): Promise<void> {
+    const picture = await this.dropped(event);
+    if (picture) {
+      this.setMask(layer, { asset: picture });
+    }
+  }
+
+  protected async dropEntryPicture(layer: StackLayer, index: number, event: DragEvent): Promise<void> {
+    const picture = await this.dropped(event);
+    if (picture) {
+      this.setEntry(layer, index, { asset: picture });
+    }
+  }
+
+  /** The picture a drop on a slot carries, in the project; null, said in Activity, when it carries none. */
+  private async dropped(event: DragEvent): Promise<string | null> {
+    if (!carriesPicture(event)) {
+      return null;
+    }
+
+    const source = droppedPicture(event, this.status.pictures());
+    if (!source) {
+      this.activity.report({ tone: 'warning', source: 'Properties', text: 'Only a picture can go in a picture slot.' });
+      return null;
+    }
+
+    return this.project.bringPicture(source);
   }
 
   protected async chooseTexture(layer: StackLayer, usage: string): Promise<void> {
