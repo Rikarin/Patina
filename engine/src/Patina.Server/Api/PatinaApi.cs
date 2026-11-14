@@ -91,6 +91,16 @@ static class PatinaApi {
             .WithSummary("What is under a position in the viewport, and the camera a stroke there carries.")
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+        api.MapPost("/viewport/cast", CastAsync)
+            .WithName("CastInViewport")
+            .WithTags(ViewportTag)
+            .WithSummary(
+                "Where rays along one direction meet the open mesh in its own space, such as a decal's surface "
+                + "measured along the decal's facing (#263)."
+            )
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
         api.MapPut("/viewport/stack", WearStack)
             .WithName("ShowStackInViewport")
             .WithTags(ViewportTag)
@@ -141,6 +151,42 @@ static class PatinaApi {
             return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
         } catch (Exception e) when (e is IOException or TimeoutException) {
             return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    static async Task<Results<Ok<ViewportCast>, ProblemHttpResult>> CastAsync(
+        ViewportCastRequest request,
+        ViewportSession session,
+        CancellationToken cancellationToken
+    ) {
+        var rays = request.Origins.Count / 3;
+        var direction = request.Direction;
+        if (request.Origins.Count % 3 != 0
+            || rays > ViewportCastRequest.MaximumRays
+            || direction.Count != 3
+            || !(direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2] > 0f)
+            || !request.Origins.Concat(direction).All(float.IsFinite)) {
+            return Refusals.Problem(
+                $"A cast is three numbers to a ray, at most {ViewportCastRequest.MaximumRays} rays, and a direction of "
+                + "three numbers that has a length.",
+                StatusCodes.Status400BadRequest,
+                Refusals.CastRefused
+            );
+        }
+
+        try {
+            return TypedResults.Ok(await session.CastAsync(request, cancellationToken));
+        } catch (Patina.Ipc.IpcException e) {
+            return Refusals.Problem(
+                e.Message,
+                StatusCodes.Status409Conflict,
+                Refusals.ViewportMeshUnavailable,
+                Refusals.Reason(e.Message)
+            );
+        } catch (TimeoutException e) {
+            return Refusals.Of(e, StatusCodes.Status503ServiceUnavailable);
+        } catch (IOException e) {
+            return Refusals.Problem(e.Message, StatusCodes.Status503ServiceUnavailable, Refusals.RendererMissing);
         }
     }
 

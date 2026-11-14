@@ -9,7 +9,7 @@ static class Help {
     static readonly (string[] Words, string Summary, string Usage)[] Commands = [
         (["graph", "info"], "Prints what a graph or a package takes and makes, as JSON.", GraphCommands.InfoUsage),
         (["library", "new"], "Makes a new, empty library.", "  patina library new <path> [--name <name>]"),
-        (["library", "check"], "Reports what is wrong with a library.", "  patina library check <path> [--all]"),
+        (["library", "check"], "Reports what is wrong with a library.", LibraryCommands.CheckUsage),
         (["cache", "prune"], "Removes built objects nothing has used for a while.",
             "  patina cache prune <library> [--days <n>]"),
         (["bake"], "Evaluates a graph or a package on the GPU and writes each output as a PNG.", GraphBake.Usage),

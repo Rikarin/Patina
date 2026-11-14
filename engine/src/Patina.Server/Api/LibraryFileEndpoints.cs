@@ -24,7 +24,8 @@ static class LibraryFileEndpoints {
             .Described(
                 "GetLibraryPicture",
                 "A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other "
-                + "picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260)."
+                + "picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). With side, any "
+                + "picture as a PNG whose longer side is at most that many texels, for a thumbnail (#269)."
             );
     }
 
@@ -32,7 +33,12 @@ static class LibraryFileEndpoints {
     ///     Brings a picture into a project once it has read whole, as an import does. A path below the library that
     ///     climbs out of it is not read at all: the library refuses it.
     /// </summary>
-    static Results<Ok<ProjectPicture>, ProblemHttpResult> AddPicture(LibraryHost host, ProjectPictureRequest request) {
+    static async Task<Results<Ok<ProjectPicture>, ProblemHttpResult>> AddPicture(
+        LibraryHost host,
+        PicturePreviews previews,
+        ProjectPictureRequest request,
+        CancellationToken cancellationToken
+    ) {
         var file = request.Picture;
         if (host.Library is { } open && !Path.IsPathFullyQualified(file)) {
             var root = Path.GetFullPath(open.RootPath);
@@ -42,7 +48,7 @@ static class LibraryFileEndpoints {
             }
         }
 
-        return LibraryPictures.Unreadable(file) is { } refused
+        return await LibraryPictures.UnreadableAsync(previews, file, cancellationToken) is { } refused
             ? refused
             : LibraryTreeEndpoints.Guarded(
                 host,
@@ -75,12 +81,16 @@ static class LibraryFileEndpoints {
 
     /// <summary>
     ///     A picture file below the library: a PNG or a JPEG as it is, which every client shows, and any other as a PNG
-    ///     of it. ⚠ Below the library and nowhere else, and only a picture: a path that climbs out of it, or names a
-    ///     document, is not a picture the library holds.
+    ///     of it, kept in the cache by its content; with a side, any as a PNG no larger, for a thumbnail (#269).
+    ///     ⚠ Below the library and nowhere else, and only a picture: a path that climbs out of it, or names a document,
+    ///     is not a picture the library holds.
     /// </summary>
-    static Results<PhysicalFileHttpResult, FileContentHttpResult, ProblemHttpResult> GetPicture(
+    static async Task<Results<PhysicalFileHttpResult, ProblemHttpResult>> GetPicture(
         LibraryHost host,
-        string path
+        PicturePreviews previews,
+        string path,
+        CancellationToken cancellationToken,
+        int? side = null
     ) {
         if (host.Library is not { } library) {
             return LibraryTreeEndpoints.NoLibrary();
@@ -97,10 +107,18 @@ static class LibraryFileEndpoints {
             );
         }
 
-        return Path.GetExtension(file).ToLowerInvariant() switch {
-            ".png" => TypedResults.PhysicalFile(file, "image/png"),
-            ".jpg" or ".jpeg" => TypedResults.PhysicalFile(file, "image/jpeg"),
-            _ => LibraryPictures.Preview(file)
-        };
+        if (side is null) {
+            switch (Path.GetExtension(file).ToLowerInvariant()) {
+                case ".png":
+                    return TypedResults.PhysicalFile(file, "image/png");
+                case ".jpg" or ".jpeg":
+                    return TypedResults.PhysicalFile(file, "image/jpeg");
+            }
+        }
+
+        int? most = side is { } asked
+            ? Math.Clamp(asked, PicturePreviews.LeastSide, PicturePreviews.MostSide)
+            : null;
+        return await LibraryPictures.PreviewAsync(previews, file, most, cancellationToken);
     }
 }

@@ -131,14 +131,13 @@ export class SnapshotList {
   }
 
   protected async forget(path: string, snapshot: DocumentSnapshot): Promise<void> {
-    await this.act(path, async () => {
-      const client = await this.library.api();
-      const params = { query: { path, id: snapshot.id } };
-      unwrap(await client.DELETE('/api/v1/library/snapshots', { params }));
-    });
+    await this.act(path, () => this.project.deleteSnapshot(path, snapshot.id));
   }
 
-  /** Does one thing at a time, then reads the list again, whatever came of it. */
+  /**
+   * Does one thing at a time, then reads the list again, whatever came of it. Each thing says itself why it was
+   * refused (#270).
+   */
   private async act(path: string, work: () => Promise<unknown>): Promise<void> {
     this.busy.set(true);
     try {

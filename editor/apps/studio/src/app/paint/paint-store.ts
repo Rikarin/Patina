@@ -44,13 +44,12 @@ import {
   decalFrame,
   extendedPath,
   geometryLines,
+  geometryOrigins,
   geometryWarp,
-  onDecal,
   placedDecal,
   underDecal,
   vector
 } from './surface-frame';
-import { project } from './symmetry-guide';
 
 /** The most recent colours a project keeps, which is the Server's limit. */
 const RecentColours = 16;
@@ -139,7 +138,11 @@ export interface CloneSource {
 /** A picture on the viewport, fixed on the screen: what the projection tool paints and a stencil masks with. */
 export type ScreenPicture = StackPicture;
 
-/** Where something fixed on a view stands, in the view's pixels: a picture, or a material the projection tool paints. */
+/**
+ * Where something fixed on a view stands: a picture, or a material the projection tool paints. Its centre is in pixels
+ * from the middle of the view, so the viewport and the 2D view, whatever their sizes, each draw it in their own middle
+ * (#271).
+ */
 export type ScreenFrame = StackFrame;
 
 /** A step that moves, scales and turns a frame about its centre, as the stencil's keys take it. */
@@ -158,6 +161,12 @@ export interface FrameStep {
 export function frameOnMap<T extends ScreenFrame>(frame: T, origin: readonly [number, number], texels: number): T {
   const [x, y] = frame.centre as [number, number];
   return { ...frame, centre: [(x - origin[0]) * texels, (y - origin[1]) * texels], scale: frame.scale * texels };
+}
+
+/** A frame kept from the middle of a view, placed in the pixels of a view this size (#271). */
+export function frameOnPane<T extends ScreenFrame>(frame: T, size: readonly [number, number]): T {
+  const [x, y] = frame.centre as [number, number];
+  return { ...frame, centre: [size[0] / 2 + x, size[1] / 2 + y] };
 }
 
 /** A frame moved, scaled and turned by a step about its centre. */
@@ -393,6 +402,8 @@ export class PaintStore {
    * is placed in. The 2D view sets it as a stroke starts, with {@link atlasScale}.
    */
   readonly atlasOrigin = signal<readonly [number, number]>([0, 0]);
+  /** How large the 2D view is in its pixels, whose middle a frame is kept from. Set with {@link atlasOrigin}. */
+  readonly atlasPane = signal<readonly [number, number]>([0, 0]);
   /** Whether strokes go to the chosen layer's mask rather than its channels. */
   readonly masking = signal(false);
   /**
@@ -818,7 +829,7 @@ export class PaintStore {
    * as one edit. The surface is found as the camera sees it, so it is measured best looking at the decal; where a
    * line runs off the mesh it counts as flat.
    */
-  async warpToGeometry(camera: ViewportCameraState): Promise<void> {
+  async warpToGeometry(): Promise<void> {
     const layer = this.chosen();
     const decal = layer?.projection === 'Decal' ? layer.decal : null;
     if (!layer || !decal) {
@@ -826,29 +837,26 @@ export class PaintStore {
     }
 
     try {
-      // A square picture of the camera: places are put on it and asked back, so its size only has to agree with itself.
-      const aim = { width: 1024, height: 1024, camera };
-      const view = (await this.look(aim)).view;
-      const frame = decalFrame(decal);
-      const lines = await Promise.all(
-        geometryLines().map(line =>
-          Promise.all(
-            line.map(async ({ s, t }): Promise<Vector | null> => {
-              const shown = project(view, onDecal(decal, frame, s, t));
-              if (!shown) {
-                return null;
-              }
-
-              const hit = await this.picked({ x: shown[0], y: shown[1], pressure: 1 }, aim);
-              const at = vector(hit.position);
-              return hit.found && hit.position && underDecal(decal, at, hit.normal ? vector(hit.normal) : null)
-                ? at
-                : null;
-            })
-          )
-        )
+      // Every place at once, cast along the decal's own facing (#263): the camera has no say in what is measured.
+      const lines = geometryLines();
+      const client = await this.api();
+      const { hits } = unwrap(
+        await client.POST('/api/v1/viewport/cast', {
+          body: {
+            origins: geometryOrigins(decal, lines),
+            direction: [...decalFrame(decal).forward].map(lane => -lane)
+          }
+        })
       );
-      await this.edit({ op: 'setLayer', layer: layer.id, decal: { ...decal, warp: geometryWarp(decal, lines) } });
+      let at = 0;
+      const places = lines.map(line =>
+        line.map((): Vector | null => {
+          const hit = hits[at++];
+          const place = vector(hit?.position);
+          return hit?.found && underDecal(decal, place, hit.normal ? vector(hit.normal) : null) ? place : null;
+        })
+      );
+      await this.edit({ op: 'setLayer', layer: layer.id, decal: { ...decal, warp: geometryWarp(decal, places) } });
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }
@@ -1902,7 +1910,9 @@ export class PaintStore {
    * map in the 2D view.
    */
   private placed<T extends ScreenFrame>(frame: T, view: StackView | null): T {
-    return view ? frame : frameOnMap(frame, this.atlasOrigin(), this.atlasScale());
+    return view
+      ? frameOnPane(frame, [view.width, view.height])
+      : frameOnMap(frameOnPane(frame, this.atlasPane()), this.atlasOrigin(), this.atlasScale());
   }
 
   /**
@@ -2085,6 +2095,11 @@ export class PaintStore {
       this.shownUrl = url;
       this.picture.set(url);
     }
+  }
+
+  /** Reads the set again, as after the Server changed what it reads on its own, such as a finished bake (#268). */
+  reread(): Promise<void> {
+    return this.refresh();
   }
 
   private async refresh(): Promise<void> {

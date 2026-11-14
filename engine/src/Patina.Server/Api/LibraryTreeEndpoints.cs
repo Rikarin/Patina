@@ -272,8 +272,13 @@ static class LibraryTreeEndpoints {
         );
 
     /// <summary>Brings a file into a project once a picture reads whole: a broken one is refused, not copied.</summary>
-    static Results<Ok<ProjectContents>, ProblemHttpResult> ImportFile(LibraryHost host, ProjectFileRequest request) =>
-        LibraryPictures.Unreadable(request.File) is { } refused
+    static async Task<Results<Ok<ProjectContents>, ProblemHttpResult>> ImportFile(
+        LibraryHost host,
+        PicturePreviews previews,
+        ProjectFileRequest request,
+        CancellationToken cancellationToken
+    ) =>
+        await LibraryPictures.UnreadableAsync(previews, request.File, cancellationToken) is { } refused
             ? refused
             : Guarded(
                 host,

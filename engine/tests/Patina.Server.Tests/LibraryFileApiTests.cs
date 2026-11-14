@@ -132,6 +132,44 @@ public sealed partial class LibraryTreeApiTests {
         Assert.False(Directory.Exists(Path.Combine(server.Library, "projects/crate/pictures")));
     }
 
+    /// <summary>
+    ///     A picture asked for as a thumbnail comes sized down, and is decoded once: its PNG is kept in the cache by
+    ///     content, and a picture shown once is known to read when it is brought in (#269).
+    /// </summary>
+    [Fact]
+    public async Task A_thumbnail_is_sized_down_and_kept_by_content() {
+        await MakeCrateAsync();
+        var pictures = Directory.CreateDirectory(Path.Combine(server.Library, "projects/crate/pictures"));
+        var wide = Path.Combine(pictures.FullName, "wide.exr");
+        await File.WriteAllBytesAsync(wide, ExrCodec.Encode(new(64, 32, 1, new float[64 * 32])), Token);
+
+        const string Thumbnail = "/api/v1/library/picture?path=projects/crate/pictures/wide.exr&side=16";
+        using var first = await client.GetAsync(Thumbnail, Token);
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal("image/png", first.Content.Headers.ContentType?.MediaType);
+        var bytes = await first.Content.ReadAsByteArrayAsync(Token);
+        var (width, height, _, _) = PngCodec.Decode16(bytes);
+        Assert.Equal((16, 8), (width, height));
+
+        var kept = Path.Combine(server.Library, ".ptcache", "pictures");
+        Assert.Single(Directory.EnumerateFiles(kept, "*.png"));
+        Assert.Single(Directory.EnumerateFiles(kept, "*.read"));
+        using var again = await client.GetAsync(Thumbnail, Token);
+        Assert.Equal(bytes, await again.Content.ReadAsByteArrayAsync(Token));
+        Assert.Single(Directory.EnumerateFiles(kept, "*.png"));
+
+        // The same bytes from outside the library are known to read already.
+        var copy = Path.Combine(files.FullName, "copied.exr");
+        File.Copy(wide, copy);
+        using var imported = await client.PostAsJsonAsync(
+            "/api/v1/library/project/pictures",
+            new ProjectPictureRequest("crate", copy),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, imported.StatusCode);
+        Assert.Single(Directory.EnumerateFiles(kept, "*.read"));
+    }
+
     /// <summary>A broken picture already in the library is refused by name when a client asks to see it.</summary>
     [Fact]
     public async Task A_broken_picture_in_the_library_is_refused_when_shown() {

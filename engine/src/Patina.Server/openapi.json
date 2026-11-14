@@ -254,6 +254,67 @@
         }
       }
     },
+    "/api/v1/viewport/cast": {
+      "post": {
+        "tags": [
+          "Viewport"
+        ],
+        "summary": "Where rays along one direction meet the open mesh in its own space, such as a decal\u0027s surface measured along the decal\u0027s facing (#263).",
+        "operationId": "CastInViewport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewportCastRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewportCast"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/viewport/stack": {
       "put": {
         "tags": [
@@ -2913,7 +2974,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260).",
+        "summary": "A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). With side, any picture as a PNG whose longer side is at most that many texels, for a thumbnail (#269).",
         "operationId": "GetLibraryPicture",
         "parameters": [
           {
@@ -2922,6 +2983,14 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "side",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -17896,7 +17965,7 @@
               "type": "number",
               "format": "float"
             },
-            "description": "A warp (#134): where each point of a 3 by 3 grid over the picture lands on the decal\u0027s square, row by row from\nthe top left, as eighteen numbers 0 to 1 across and down. Null or empty bends nothing."
+            "description": "A warp (#134, #263): where each point of a square grid over the picture lands on the decal\u0027s square, row by row\nfrom the top left, two numbers 0 to 1 across and down to a point: eighteen for 3 by 3, fifty for 5 by 5, up to\nint StackDecal.MaximumWarpSide points on a side. A finer grid follows a surface that turns away on both sides,\nsuch as round a cylinder. Null or empty bends nothing."
           }
         },
         "description": "A decal (#133): a picture projected through a box placed on the model, kept in the stack as numbers, so it can\nbe moved, scaled and turned again. Every length is in the model\u0027s own units, the ones\n\u0060POST /viewport/pick\u0060 answers in."
@@ -20578,6 +20647,83 @@
           }
         },
         "description": "The viewport\u0027s camera: an orbit around the model. Its lens is in ViewportDisplay."
+      },
+      "ViewportCast": {
+        "required": [
+          "hits"
+        ],
+        "type": "object",
+        "properties": {
+          "hits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ViewportCastHit"
+            },
+            "description": "One to a ray."
+          }
+        },
+        "description": "Where each ray of a ViewportCastRequest met the mesh, in its order."
+      },
+      "ViewportCastHit": {
+        "required": [
+          "found"
+        ],
+        "type": "object",
+        "properties": {
+          "found": {
+            "type": "boolean",
+            "description": "Whether it met the mesh."
+          },
+          "position": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Where, in the mesh\u0027s own space: three numbers."
+          },
+          "normal": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The face it met, as a unit direction out of the side the ray came from: three numbers."
+          }
+        },
+        "description": "The first place one ray met the mesh, ahead of where it starts."
+      },
+      "ViewportCastRequest": {
+        "required": [
+          "origins",
+          "direction"
+        ],
+        "type": "object",
+        "properties": {
+          "origins": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Where each ray starts: three numbers to a ray, at most 1024 rays."
+          },
+          "direction": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The way every ray goes: three numbers, not all zero."
+          }
+        },
+        "description": "Asks where rays along one direction meet the open mesh, in its own space and through what the viewport draws\n(#263): a decal\u0027s surface measured along the decal\u0027s own direction, wherever the camera is, in one round trip."
       },
       "ViewportDisplay": {
         "required": [

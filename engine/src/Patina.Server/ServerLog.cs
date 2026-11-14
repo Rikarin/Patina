@@ -24,6 +24,12 @@ static partial class ServerLog {
     public static partial void ViewportFailed(ILogger logger, string reason);
 
     [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "Viewport: the Worker was told its display, drawing alone parts [{Parts}] and materials [{Materials}]"
+    )]
+    public static partial void ViewportIsolated(ILogger logger, string parts, string materials);
+
+    [LoggerMessage(
         Level = LogLevel.Warning,
         Message = "The Worker went away evaluating {Path}; the next one will take over"
     )]

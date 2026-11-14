@@ -66,7 +66,7 @@ function harness() {
   const paint = {
     state: paintState,
     failure: signal<string | null>(null),
-    useMeshMaps: vi.fn(() => Promise.resolve()),
+    reread: vi.fn(() => Promise.resolve()),
     open: vi.fn((path: string) => {
       sessions.add(`session:${path}`);
       paintState.set({ id: `session:${path}`, history: { dirty: false } });
@@ -778,6 +778,39 @@ describe('ProjectStore', () => {
       });
       expect(store.active()?.path).toBe(paths.texturing);
       expect(paint.open).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps the workspace while the document is closed for a restore, so its panes stay as they were (#270)', async () => {
+      const { store, client } = harness();
+      await store.open('a');
+      const seen: string[] = [];
+      const post = client.POST.getMockImplementation();
+      if (!post) {
+        throw new Error('The harness answers every POST.');
+      }
+
+      client.POST.mockImplementation((route, options) => {
+        if (route === '/api/v1/library/snapshots/restore') {
+          seen.push(store.workspace());
+        }
+
+        return post(route, options);
+      });
+
+      expect(await store.restoreSnapshot(paths.texturing, 'snap')).toBe(true);
+
+      expect(seen).toEqual(['texturing']);
+      expect(store.workspace()).toBe('texturing');
+    });
+
+    it('says why a snapshot was not deleted (#270)', async () => {
+      const { store, client } = harness();
+      await store.open('a');
+      client.DELETE.mockRejectedValueOnce(new ApiError(404, 'There is no such snapshot.'));
+
+      expect(await store.deleteSnapshot(paths.texturing, 'gone')).toBe(false);
+
+      expect(store.failure()).toBe('There is no such snapshot.');
     });
 
     it('restores nothing when the edits could not be saved', async () => {

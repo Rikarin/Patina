@@ -290,6 +290,31 @@ public sealed record ViewportPick(
     IReadOnlyList<float>? Normal = null,
     string? Part = null
 );
+
+/// <summary>
+///     Asks where rays along one direction meet the open mesh, in its own space and through what the viewport draws
+///     (#263): a decal's surface measured along the decal's own direction, wherever the camera is, in one round trip.
+/// </summary>
+/// <param name="Origins">Where each ray starts: three numbers to a ray, at most 1024 rays.</param>
+/// <param name="Direction">The way every ray goes: three numbers, not all zero.</param>
+public sealed record ViewportCastRequest(IReadOnlyList<float> Origins, IReadOnlyList<float> Direction) {
+    /// <summary>How many rays one request casts at most.</summary>
+    public const int MaximumRays = 1024;
+}
+
+/// <summary>Where each ray of a <see cref="ViewportCastRequest" /> met the mesh, in its order.</summary>
+/// <param name="Hits">One to a ray.</param>
+public sealed record ViewportCast(IReadOnlyList<ViewportCastHit> Hits);
+
+/// <summary>The first place one ray met the mesh, ahead of where it starts.</summary>
+/// <param name="Found">Whether it met the mesh.</param>
+/// <param name="Position">Where, in the mesh's own space: three numbers.</param>
+/// <param name="Normal">The face it met, as a unit direction out of the side the ray came from: three numbers.</param>
+public sealed record ViewportCastHit(
+    bool Found,
+    IReadOnlyList<float>? Position = null,
+    IReadOnlyList<float>? Normal = null
+);
 #pragma warning restore SK7005
 
 /// <summary>

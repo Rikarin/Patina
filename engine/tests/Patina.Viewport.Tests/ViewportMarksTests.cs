@@ -53,6 +53,17 @@ public sealed class ViewportMarksTests : IDisposable {
         Assert.Equal(8 * 2 * Floats, shapes.Lines.Length);
     }
 
+    /// <summary>A part denser than the most washed is washed evenly thinner, its outline whole (#271).</summary>
+    [Fact]
+    public void A_dense_mark_is_washed_thinner_and_outlined_whole() {
+        var mesh = ViewportMesh.Read(Model());
+
+        var shapes = ViewportMarks.Shapes(mesh, ([], ["painted"]), ([], []), 2);
+
+        Assert.Equal(2 * 3 * Floats, shapes.Triangles.Length);
+        Assert.Equal(8 * 2 * Floats, shapes.Lines.Length);
+    }
+
     [Fact]
     public void Nothing_named_or_isolated_away_marks_nothing() {
         var mesh = ViewportMesh.Read(Model());

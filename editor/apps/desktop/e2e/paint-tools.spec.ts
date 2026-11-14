@@ -403,6 +403,16 @@ test('the projection tool paints a picture in the 2D view, and a material from t
   await expect(window.getByTestId('screen-picture-2d-frame')).toBeVisible({ timeout: 30_000 });
   await expect(window.getByTestId('tool-strip')).toHaveAttribute('data-tool', 'projection');
 
+  // The 2D view draws the frame in its own middle, though it is narrower than the viewport (#271).
+  const frameBox = await window.getByTestId('screen-picture-2d-frame').boundingBox();
+  const paneBox = await window.getByTestId('screen-picture-2d').boundingBox();
+  if (!frameBox || !paneBox) {
+    throw new Error('The 2D view draws no frame.');
+  }
+
+  expect(Math.abs(frameBox.x + frameBox.width / 2 - (paneBox.x + paneBox.width / 2))).toBeLessThan(2);
+  expect(Math.abs(frameBox.y + frameBox.height / 2 - (paneBox.y + paneBox.height / 2))).toBeLessThan(2);
+
   // A stroke across the 2D view reads the picture where each texel is drawn under it.
   const map = window.getByTestId('paint-picture');
   const flat = async () => (await map.screenshot({ scale: 'css' })).toString('base64');

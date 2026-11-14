@@ -744,6 +744,29 @@ public sealed class ViewportSession(
             laidOut = layouts.Count == 0 ? null : new(layouts, StringComparer.Ordinal);
         }
 
+        var reply = await AskWorkerAsync(
+            new() { Type = IpcTypes.ViewportPick, Pick = new(request.X, request.Y, look, across, down, path, laidOut) },
+            cancellationToken
+        );
+        return reply.Picked!;
+    }
+
+    /// <summary>Where rays along one direction meet the open mesh, through the Worker, at once (#263).</summary>
+    public async Task<ViewportCast> CastAsync(ViewportCastRequest request, CancellationToken cancellationToken) {
+        string path;
+        lock (changing) {
+            path = mesh ?? throw new IpcException("Open a mesh first: there is nothing to cast at.");
+        }
+
+        var cast = new IpcMessage {
+            Type = IpcTypes.ViewportCast, Cast = new(request.Origins, request.Direction, path)
+        };
+        return (await AskWorkerAsync(cast, cancellationToken)).Casted!;
+    }
+
+    /// <summary>A question for the Worker that reads the mesh and no device: a pick or a cast.</summary>
+    /// <exception cref="RendererMissingException">No Worker came in time.</exception>
+    async Task<IpcMessage> AskWorkerAsync(IpcMessage request, CancellationToken cancellationToken) {
         using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         patience.CancelAfter(PickPatience);
         IpcConnection connection;
@@ -753,11 +776,7 @@ public sealed class ViewportSession(
             throw new RendererMissingException();
         }
 
-        var reply = await connection.SendAsync(
-            new() { Type = IpcTypes.ViewportPick, Pick = new(request.X, request.Y, look, across, down, path, laidOut) },
-            cancellationToken
-        );
-        return reply.Picked!;
+        return await connection.SendAsync(request, cancellationToken);
     }
 
     /// <summary>
@@ -793,6 +812,12 @@ public sealed class ViewportSession(
                 new() { Type = IpcTypes.ViewportDisplay, Display = settings },
                 cancellationToken
             );
+            if (logger.IsEnabled(LogLevel.Information)) {
+                // What the Worker draws alone, for a frame that shows otherwise to be traced (#271).
+                var parts = string.Join(", ", settings.Isolation?.Parts ?? []);
+                var materials = string.Join(", ", settings.Isolation?.Materials ?? []);
+                ServerLog.ViewportIsolated(logger, parts, materials);
+            }
         } catch (IpcException e) {
             ServerLog.ViewportFailed(logger, e.Message);
             lock (changing) {

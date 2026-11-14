@@ -78,8 +78,37 @@ export function onDecal(decal: StackDecal, frame: DecalFrame, s: number, t: numb
   );
 }
 
-/** The grid a warp leaves alone. */
-export const Unwarped: readonly number[] = [0, 0, 0.5, 0, 1, 0, 0, 0.5, 0.5, 0.5, 1, 0.5, 0, 1, 0.5, 1, 1, 1];
+/** The finest warp grid the Server takes, in points on a side (#263). */
+export const MaximumWarpSide = 9;
+
+/** A grid `side` points square that a warp leaves alone: each point where it is, two numbers to a point. */
+export function unwarped(side: number): number[] {
+  return Array.from({ length: side * side }, (_, point) => [
+    (point % side) / (side - 1),
+    Math.floor(point / side) / (side - 1)
+  ]).flat();
+}
+
+/** The 3 by 3 grid a warp leaves alone, which the Warp handles start from. */
+export const Unwarped: readonly number[] = unwarped(3);
+
+/** How many points a side of a warp's grid has, or 0 where its numbers make no square grid (#263). */
+export function warpSide(warp: readonly number[] | null | undefined): number {
+  const side = Math.round(Math.sqrt((warp?.length ?? 0) / 2));
+  return side >= 2 && side <= MaximumWarpSide && side * side * 2 === warp?.length ? side : 0;
+}
+
+/** A decal's warp, or the 3 by 3 grid that bends nothing where it has none. */
+export function warpOf(decal: StackDecal): readonly number[] {
+  return warpSide(decal.warp) ? (decal.warp ?? Unwarped) : Unwarped;
+}
+
+/** Whether a warp moves any point of its grid from where it is. */
+export function isWarped(warp: readonly number[] | null | undefined): boolean {
+  const side = warpSide(warp);
+  const still = side ? unwarped(side) : [];
+  return side > 0 && (warp ?? []).some((value, at) => Math.abs(value - (still[at] ?? 0)) > 1e-6);
+}
 
 /** A decal placed where a pick met the model, facing out of the face it met, its picture upright to the camera. */
 export function placedDecal(hit: ViewportPick, held: StackDecal | null | undefined): StackDecal {
@@ -170,23 +199,44 @@ export function decalOutline(decal: StackDecal, view: StackView): Quad | null {
   return corners.every(corner => corner !== null) ? (corners as Quad) : null;
 }
 
-/** Where the decal's warp grid is on a picture, nine points row by row, or null where any is behind the eye. */
+/**
+ * Where the decal's warp grid is on a picture, its points row by row, or null where any is behind the eye. A decal with
+ * no warp shows the 3 by 3 grid the handles start from.
+ */
 export function warpGrid(decal: StackDecal, view: StackView): [number, number][] | null {
   const frame = decalFrame(decal);
-  const grid = decal.warp?.length === Unwarped.length ? decal.warp : Unwarped;
-  const points = Array.from({ length: 9 }, (_, at) =>
+  const grid = warpOf(decal);
+  const points = Array.from({ length: grid.length / 2 }, (_, at) =>
     project(view, onDecal(decal, frame, grid[at * 2] ?? 0, grid[at * 2 + 1] ?? 0))
   );
   return points.every(point => point !== null) ? points : null;
 }
 
-/** How many places Warp to Geometry measures along each line across the decal's square (#134). */
-export const GeometrySamples = 9;
+/** How many points a side of the grid Warp to Geometry makes has (#263): fine enough to follow a cylinder. */
+export const GeometrySide = 5;
 
-/** Where Warp to Geometry measures the surface: three rows across the square, then three columns down it. */
-export function geometryLines(samples = GeometrySamples): { s: number; t: number }[][] {
+/** How many places Warp to Geometry measures along each line across the decal's square (#134). */
+export const GeometrySamples = 17;
+
+/**
+ * Where Warp to Geometry measures the surface: a row across the square through each row of its grid, then a column down
+ * it through each column.
+ */
+export function geometryLines(side = GeometrySide, samples = GeometrySamples): { s: number; t: number }[][] {
   const along = Array.from({ length: samples }, (_, at) => at / (samples - 1));
-  return [...[0, 0.5, 1].map(t => along.map(s => ({ s, t }))), ...[0, 0.5, 1].map(s => along.map(t => ({ s, t })))];
+  const lines = Array.from({ length: side }, (_, at) => at / (side - 1));
+  return [...lines.map(t => along.map(s => ({ s, t }))), ...lines.map(s => along.map(t => ({ s, t })))];
+}
+
+/**
+ * Where Warp to Geometry casts its rays from (#263): each place {@link geometryLines} asks for, on the face of the
+ * decal's box the picture comes from, three numbers to a place. They are cast against the facing, so the surface is
+ * measured along the decal's own direction wherever the camera is.
+ */
+export function geometryOrigins(decal: StackDecal, lines: readonly (readonly { s: number; t: number }[])[]): number[] {
+  const frame = decalFrame(decal);
+  const out = scaled(frame.forward, decal.depth / 2);
+  return lines.flatMap(line => line.flatMap(({ s, t }) => [...plus(onDecal(decal, frame, s, t), out)]));
 }
 
 /**
@@ -201,47 +251,63 @@ export function underDecal(decal: StackDecal, at: Vector, normal: Vector | null)
 }
 
 /**
- * The share of a line across the square at which half its length along the surface is reached: places measured evenly
- * across the square, null where the surface was not found, which counts as flat for its step.
+ * The share of a line across the square at which a share of its length along the surface is reached: places measured
+ * evenly across the square, null where the surface was not found, which counts as flat for its step.
  */
-export function halfwayAlong(places: readonly (Vector | null)[], step: number): number {
+export function shareAlong(places: readonly (Vector | null)[], step: number, share: number): number {
   const lengths = places.slice(1).map((place, at) => {
     const before = places[at];
     return place && before ? length(minus(place, before)) : step;
   });
   const total = lengths.reduce((sum, value) => sum + value, 0);
   if (!(total > 0) || lengths.length === 0) {
-    return 0.5;
+    return share;
   }
 
   let walked = 0;
   for (const [at, value] of lengths.entries()) {
-    if (walked + value >= total / 2 && value > 0) {
-      return (at + (total / 2 - walked) / value) / lengths.length;
+    if (walked + value >= total * share && value > 0) {
+      return (at + (total * share - walked) / value) / lengths.length;
     }
 
     walked += value;
   }
 
-  return 0.5;
+  return share;
+}
+
+/** The share of a line across the square at which half its length along the surface is reached. */
+export function halfwayAlong(places: readonly (Vector | null)[], step: number): number {
+  return shareAlong(places, step, 0.5);
 }
 
 /**
- * Warp to Geometry (#134): the warp that spreads the picture evenly along the surface under the decal rather than evenly
- * across its flat square, so a picture over a curve is not stretched where the surface turns away. The picture's edges
- * stay on the square's; its middle row and column move to where half the surface's length is reached. `lines` are the
- * places {@link geometryLines} asked for, in its order.
+ * Warp to Geometry (#134, #263): the warp that spreads the picture evenly along the surface under the decal rather than
+ * evenly across its flat square, so a picture over a curve is not stretched where the surface turns away. The picture's
+ * edges stay on the square's; each point inside moves along its row and its column to where the same share of the
+ * surface's length is reached, so a 5 by 5 grid can follow a surface that turns away on both sides. `lines` are the
+ * places {@link geometryLines} asked for, in its order, for a grid `side` points square.
  */
-export function geometryWarp(decal: StackDecal, lines: readonly (readonly (Vector | null)[])[]): number[] {
-  const warp = [...Unwarped];
-  for (let row = 0; row < 3; row++) {
-    const places = lines[row] ?? [];
-    warp[(row * 3 + 1) * 2] = halfwayAlong(places, decal.width / Math.max(places.length - 1, 1));
+export function geometryWarp(
+  decal: StackDecal,
+  lines: readonly (readonly (Vector | null)[])[],
+  side = GeometrySide
+): number[] {
+  const warp = unwarped(side);
+  for (let row = 0; row < side; row++) {
+    for (let column = 1; column < side - 1; column++) {
+      const places = lines[row] ?? [];
+      const step = decal.width / Math.max(places.length - 1, 1);
+      warp[(row * side + column) * 2] = shareAlong(places, step, column / (side - 1));
+    }
   }
 
-  for (let column = 0; column < 3; column++) {
-    const places = lines[3 + column] ?? [];
-    warp[(3 + column) * 2 + 1] = halfwayAlong(places, decal.height / Math.max(places.length - 1, 1));
+  for (let column = 0; column < side; column++) {
+    for (let row = 1; row < side - 1; row++) {
+      const places = lines[side + column] ?? [];
+      const step = decal.height / Math.max(places.length - 1, 1);
+      warp[(row * side + column) * 2 + 1] = shareAlong(places, step, row / (side - 1));
+    }
   }
 
   return warp;

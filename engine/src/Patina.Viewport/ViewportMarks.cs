@@ -21,17 +21,26 @@ static class ViewportMarks {
     static readonly Vector4 Edge = new(1f, 0.55f, 0.1f, 1f);
 
     /// <summary>
+    ///     The most marked triangles washed (#271). A denser part is washed one triangle in so many, evenly, which
+    ///     reads the same on screen; its outline is drawn whole. Each washed triangle uploads 84 bytes.
+    /// </summary>
+    public const int MostWashed = 250_000;
+
+    /// <summary>
     ///     The shapes that mark these parts and materials, of those an isolation shows; nothing when none are
     ///     named.
     /// </summary>
     /// <param name="mesh">The model as the viewport draws it.</param>
     /// <param name="marked">The named meshes and materials marked.</param>
     /// <param name="isolated">The named meshes and materials drawn alone, both empty for the whole model.</param>
+    /// <param name="most">The most triangles washed.</param>
     public static ViewportShapes Shapes(
         ViewportMesh mesh,
         (string[] Parts, string[] Materials) marked,
-        (string[] Parts, string[] Materials) isolated
+        (string[] Parts, string[] Materials) isolated,
+        int most = MostWashed
     ) {
+        ArgumentOutOfRangeException.ThrowIfLessThan(most, 1);
         if (marked.Parts.Length == 0 && marked.Materials.Length == 0) {
             return ViewportShapes.None;
         }
@@ -39,13 +48,21 @@ static class ViewportMarks {
         var shown = mesh.Shown(isolated.Parts, isolated.Materials).ToHashSet();
         List<float> triangles = [];
         Dictionary<(Vector3, Vector3), int> edges = [];
-        foreach (var part in mesh.Shown(marked.Parts, marked.Materials).Where(shown.Contains)) {
+        var parts = mesh.Shown(marked.Parts, marked.Materials).Where(shown.Contains).ToList();
+        var count = parts.Sum(static part => part.IndexCount / 3);
+        var step = Math.Max(1, (count + most - 1) / most);
+        var seen = 0;
+        foreach (var part in parts) {
             for (var corner = part.FirstIndex; corner + 2 < part.FirstIndex + part.IndexCount; corner += 3) {
                 Vector3[] at = [
                     Position(mesh, corner), Position(mesh, corner + 1), Position(mesh, corner + 2)
                 ];
+                var washed = seen++ % step == 0;
                 for (var side = 0; side < 3; side++) {
-                    Vertex(triangles, at[side], Wash);
+                    if (washed) {
+                        Vertex(triangles, at[side], Wash);
+                    }
+
                     var key = Key(at[side], at[(side + 1) % 3]);
                     edges[key] = edges.GetValueOrDefault(key) + 1;
                 }

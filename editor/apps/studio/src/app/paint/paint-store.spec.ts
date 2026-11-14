@@ -1444,17 +1444,19 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     store.end();
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(0));
     expect(sent(bodies).every(part => part.stencil === null)).toBe(true);
-    expect(sent(bodies)[0]?.source?.picture).toEqual(picture);
+    // Kept from the middle of the view (#271): the picked view is 100 pixels square.
+    expect(sent(bodies)[0]?.source?.picture).toEqual({ ...picture, centre: [100, 100] });
 
-    // The 2D view draws the map from 10 across and 20 down, a texel every quarter of a pixel.
+    // The 2D view, 40 by 60, draws the map from 10 across and 20 down, a texel every quarter of a pixel.
     await vi.waitFor(() => expect(sent(bodies).at(-1)?.stamps).toEqual([]));
+    store.atlasPane.set([40, 60]);
     store.atlasOrigin.set([10, 20]);
     store.atlasScale.set(4);
     let count = sent(bodies).length;
     store.begin({ x: 10, y: 10, pressure: 1 });
     store.end();
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
-    expect(sent(bodies)[count]?.source?.picture).toEqual({ ...picture, centre: [160, 120], scale: 8 });
+    expect(sent(bodies)[count]?.source?.picture).toEqual({ ...picture, centre: [240, 240], scale: 8 });
 
     await vi.waitFor(() => expect(sent(bodies).at(-1)?.stamps).toEqual([]));
     count = sent(bodies).length;
@@ -1463,13 +1465,13 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     store.begin({ x: 10, y: 10, pressure: 1 }, aim);
     store.end();
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
-    expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { image: picture.image, centre: [50, 50] } });
+    expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { image: picture.image, centre: [100, 100] } });
 
     count = sent(bodies).length;
     store.begin({ x: 10, y: 10, pressure: 1 });
     store.end();
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
-    expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { centre: [160, 120], scale: 8 } });
+    expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { centre: [240, 240], scale: 8 } });
   });
 
   it('projects the brush’s material from where it stands on the view, in every channel, through a stencil (#128)', async () => {
@@ -1491,7 +1493,7 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
       expect(part.source).toMatchObject({
         kind: 'material',
         graph: 'projects/crate/rust.vxtexgraph',
-        frame: { centre: [40, 30], scale: 0.5, angle: 0.1, tiled: true }
+        frame: { centre: [90, 80], scale: 0.5, angle: 0.1, tiled: true }
       });
       expect(part.stencil?.image).toBe(picture.image);
     }
