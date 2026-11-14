@@ -222,6 +222,14 @@ public sealed class AssetGraph {
 /// <summary>The keys of a project's outputs.</summary>
 public static class OutputKeys {
     /// <summary>
+    ///     Which generation of what an output builds to its key is of (#281). A tool's version moves only with the
+    ///     product's, so a change to what a build object holds, such as the UDIM tile wave 13 put in its manifest, would
+    ///     otherwise leave objects built before it in the cache, read as though they held it. Raise this with any such
+    ///     change: every output then builds once more.
+    /// </summary>
+    public const int Generation = 2;
+
+    /// <summary>
     ///     The key of <paramref name="output" />. The project's identity, the output's name and the library's
     ///     location are not in it: two projects building the same thing from the same inputs share the result, and
     ///     moving a project rebuilds nothing.
@@ -241,7 +249,9 @@ public static class OutputKeys {
         ToolCatalog tools,
         StackFiles? stacks = null
     ) {
-        using var hash = new KeyHash("patina.output.v1").Add(output.Tool).Add(tools.VersionOf(output.Tool));
+        using var hash = new KeyHash("patina.output.v1").Add(Generation)
+            .Add(output.Tool)
+            .Add(tools.VersionOf(output.Tool));
 
         hash.Add(output.Settings.Count);
         foreach (var (name, value) in output.Settings.OrderBy(static s => s.Key, StringComparer.Ordinal)) {
