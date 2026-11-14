@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The 2D View of a graph reads the texel the pointer rests on as the graph stored it (#184): its lanes at the picture's own precision and unclamped, so a height below nought or a light above one reads as it is, where the readout showed the preview's eight bits between nought and one. The preview's reading shows at once and the stored one a moment later, and its tooltip says whether the picture holds 8 bits, a 16-bit or a 32-bit float. Through the API `POST /api/v1/graphs/{id}/sample` with a node, a port and a place across and down the picture.
+
 - From This Computer…, in Choose a Picture and Choose a Mesh outside the desktop app (#4): a client of an engine on another computer sends a picture or a mesh of its own, and it is used as one chosen on the engine's machine is, for a layer, a mask, a project's mesh or a bake. Through the API `POST /api/v1/library/uploads?name=` takes the file as the body and answers with its path on the engine's machine, which every route that takes a file there takes. Files are kept in the library's `uploads` folder, the same file once; a name that is no picture or mesh is refused with `upload-kind`, and a file over 4 GiB with `upload-too-large` (ADR 0041).
 - Make Default, in the Bake dialog (#189): every project made after it bakes with those options, whichever app attached to the engine makes it, and a texturing project still at the size it is made at. Preferences says what new projects bake with, and Use Patina's goes back. Through the API `bake` in `PUT /api/v1/preferences`, refused with `preference-refused` when no bake could use the options.
 - A bar of the tool's settings over the viewport while a texturing document is painted (#201): the size, flow and opacity of a stroke, its color or a mask's grey, the fill's mode and selection, and the picker's Every channel, so the settings a painter changes stroke by stroke sit by the strokes. They are the brush's own, so Properties' Brush section shows the same values and keeps the rest.
@@ -350,6 +352,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Start lists the projects worked on lately in the open library as their own list (#162), each once and as recent as its newest document, beside the recent documents.
 
 ### Fixed
+
+- The viewport no longer wears a texture set before the engine has it (#295): telling the engine which sets the viewport wears went ahead of everything else asked of it, so it could wear a set it had not loaded yet, or one as it was before its last change. Frames do not wait for it: they go on, and the viewport is drawn again once the set is worn.
+- An open document no longer goes back to an older state on screen when the engine is slow (#295): a state the engine read before one already shown is dropped, whether it answers opening the document again, a refresh after an edit, or a reopen after the engine restarted.
 
 - A refusal names a file by its name alone on every system (#198): a Server on Linux or macOS left the folders of a Windows path in the sentence and the file's name, since it split a path only at `/`.
 - Export no longer shows the last export's Done and report while the next one is being started (#153): they go as soon as Export is pressed, so a second export from the dialog is never read as finished before it has begun.
