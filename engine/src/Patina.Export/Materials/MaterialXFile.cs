@@ -7,10 +7,11 @@ namespace Patina.Export.Materials;
 
 /// <summary>
 ///     A MaterialX 1.38 document: a node graph of images feeding a <c>standard_surface</c>, wrapped in a
-///     <c>surfacematerial</c>. A lane is an <c>extract</c>, one minus it an <c>invert</c>, and a normal whose green
-///     runs down is turned over before <c>normalmap</c>, which reads green up. Standard surface has no occlusion and no
-///     specular colour of this kind, so those are said and left out; height is left to a displacement shader this does
-///     not write.
+///     <c>surfacematerial</c>; or a MaterialX 1.39 document feeding an <c>open_pbr_surface</c> (#142), the model Patina
+///     moves to, whose inputs are named as OpenPBR names them. A lane is an <c>extract</c>, one minus it an
+///     <c>invert</c>, and a normal whose green runs down is turned over before <c>normalmap</c>, which reads green up.
+///     Neither surface has occlusion or specular colour of this kind, so those are said and left out; height is left
+///     to a displacement shader this does not write.
 /// </summary>
 sealed class MaterialXFile {
     const string Float = "float";
@@ -22,30 +23,43 @@ sealed class MaterialXFile {
     readonly XElement graph;
     readonly XElement shader;
     readonly Dictionary<string, string> images = new(StringComparer.Ordinal);
+    readonly bool openPbr;
 
-    public MaterialXFile(string name, ICollection<string> warnings) {
+    /// <param name="name">The material's name.</param>
+    /// <param name="warnings">Told what is left out.</param>
+    /// <param name="openPbr">Whether the surface is OpenPBR's, in MaterialX 1.39, rather than standard surface.</param>
+    public MaterialXFile(string name, ICollection<string> warnings, bool openPbr = false) {
         id = MaterialFiles.Identifier(name);
         this.warnings = warnings;
+        this.openPbr = openPbr;
         graph = new("nodegraph", new XAttribute("name", $"NG_{id}"));
-        shader = new("standard_surface", new XAttribute("name", $"SR_{id}"), new XAttribute("type", "surfaceshader"));
+        shader = new(Surface, new XAttribute("name", $"SR_{id}"), new XAttribute("type", "surfaceshader"));
     }
+
+    string Surface => openPbr ? "open_pbr_surface" : "standard_surface";
 
     public string Write(MaterialSlots slots) {
         Connect("base_color", Colour3, Three(slots.BaseColor, "base color", Colour3));
         Connect("specular_roughness", Float, Grey(slots.Roughness, "roughness"));
-        Connect("metalness", Float, Grey(slots.Metalness, "metalness"));
+        Connect(openPbr ? "base_metalness" : "metalness", Float, Grey(slots.Metalness, "metalness"));
         if (Grey(slots.Opacity, "opacity") is { } opacity) {
-            Connect("opacity", Colour3, Node("convert", Colour3, Input("in", Float, opacity)));
+            // OpenPBR's opacity is one number; standard surface's is a colour.
+            Connect(
+                openPbr ? "geometry_opacity" : "opacity",
+                openPbr ? Float : Colour3,
+                openPbr ? opacity : Node("convert", Colour3, Input("in", Float, opacity))
+            );
         }
 
         if (Three(slots.Emissive, "emissive", Colour3) is { } emission) {
-            shader.Add(Input("emission", Float, value: "1"));
+            // One, as MaterialX's own translation from standard surface carries `emission` to `emission_luminance`.
+            shader.Add(Input(openPbr ? "emission_luminance" : "emission", Float, value: "1"));
             Connect("emission_color", Colour3, emission);
         }
 
         if (Three(slots.Normal, "the normal", Vector3) is { } stored) {
             Connect(
-                "normal",
+                openPbr ? "geometry_normal" : "normal",
                 Vector3,
                 Node("normalmap", Vector3, Input("in", Vector3, Upright(stored, slots.Green)))
             );
@@ -72,11 +86,11 @@ sealed class MaterialXFile {
 
     void Unsupported(MaterialSlots slots) {
         if (slots.Occlusion is not null) {
-            warnings.Add("MaterialX: occlusion is left out, because standard_surface has no input for it.");
+            warnings.Add($"MaterialX: occlusion is left out, because {Surface} has no input for it.");
         }
 
         if (slots.Specular is not null && slots.Metalness is null) {
-            warnings.Add("MaterialX: specular color is left out, because standard_surface is metal-roughness.");
+            warnings.Add($"MaterialX: specular color is left out, because {Surface} is metal-roughness.");
         }
 
         if (slots.Height is not null) {
@@ -98,7 +112,7 @@ sealed class MaterialXFile {
         );
         var root = new XElement(
             "materialx",
-            new XAttribute("version", "1.38"),
+            new XAttribute("version", openPbr ? "1.39" : "1.38"),
             new XAttribute("colorspace", "lin_rec709"),
             graph,
             shader,

@@ -22,8 +22,13 @@ public static class ExportMemory {
             ExportCompressions.Half => 2 * held,
             ExportCompressions.Wide => 4 * held,
             _ => format switch {
-                ExportFormats.Png16 or ExportFormats.Tiff16 or ExportFormats.Exr16 => 2 * held,
-                ExportFormats.Exr32 or ExportFormats.Tiff32 or ExportFormats.Hdr => 4 * held,
+                // A format that follows its maps is counted at the deepest it can be, which a budget must allow for.
+                ExportFormats.Png16 or ExportFormats.Png or ExportFormats.Tiff16 or ExportFormats.Exr16 => 2 * held,
+                ExportFormats.Exr32
+                    or ExportFormats.Exr
+                    or ExportFormats.Tiff32
+                    or ExportFormats.Tiff
+                    or ExportFormats.Hdr => 4 * held,
                 _ => held
             }
         };

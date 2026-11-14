@@ -227,7 +227,7 @@ public static class OutputKeys {
     ///     would otherwise leave objects built before it in the cache, read as though they held it. Raise this with
     ///     any such change: every output then builds once more.
     /// </summary>
-    public const int Generation = 2;
+    public const int Generation = 3;
 
     /// <summary>
     ///     The key of <paramref name="output" />. The project's identity, the output's name and the library's

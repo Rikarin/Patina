@@ -157,7 +157,9 @@ static class BuildEndpoints {
         }
 
         var catalog = ExportPresetCatalog.Read(library.RootPath);
+        // A preset only some projects have exports those (ADR 0019); one nothing has is refused.
         if ((request.Presets ?? library.Document.ExportTargets).FirstOrDefault(id => catalog.Find(id) is null
+                && !ExportPresetCatalog.AnyProjectHas(library.RootPath, id)
             ) is { } bad) {
             return Refusals.Problem(
                 $"There is no preset '{bad}'.",

@@ -35,12 +35,12 @@ public sealed class BuildKeyTests {
     [Fact]
     public void A_key_is_stable_across_releases_of_this_code() {
         // Keys name files on farms and other machines, so a change here is a rebuild of every library. Do it on
-        // purpose: the last was OutputKeys.Generation, 2 (#281).
+        // purpose: the last was OutputKeys.Generation, 3, when a built map began to say its depth (#141).
         var asset = new AssetId(Guid.Parse("0190a000-0000-7000-8000-000000000001"));
         var project = Project(AssetReference.Floating(asset));
 
         Assert.Equal(
-            "f7c3c4bd09d20ff91fbe626581761d55b5338ca857e0edd4a9a1a0d2802d3269",
+            "b1accd89785070a28a36adc0ea75faa6cb113f7c92cd84fa422ac61f5aa2ffce",
             Key(project, new AssetNode(asset, Bytes, []))?.Hex
         );
     }

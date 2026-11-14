@@ -6,9 +6,9 @@ namespace Patina.Export.Materials;
 
 /// <summary>
 ///     The material files a preset writes beside a texture set's files (<see cref="ExportMaterials" />): a glTF
-///     material through Vixen's writer, a USD preview surface and a MaterialX standard surface. Each names the files by
-///     the slots <see cref="MaterialSlots" /> finds, and says what it had to leave out rather than wiring a lane to the
-///     wrong input.
+///     material through Vixen's writer, a USD preview surface, and a MaterialX standard surface or OpenPBR surface.
+///     Each names the files by the slots <see cref="MaterialSlots" /> finds, and says what it had to leave out rather
+///     than wiring a lane to the wrong input.
 /// </summary>
 public static class MaterialFiles {
     /// <summary>What was written and what a person should know.</summary>
@@ -51,10 +51,11 @@ public static class MaterialFiles {
         List<string> written = [];
         List<string> warnings = [];
         foreach (var kind in preset.Materials) {
-            var path = Path.Combine(folder, $"{stem}.{kind}");
+            var path = Path.Combine(folder, $"{stem}{ExportMaterials.ExtensionOf(kind)}");
             var text = kind switch {
                 ExportMaterials.Gltf => GltfMaterialFile.Write(slots, name, warnings),
                 ExportMaterials.Usd => new UsdMaterialFile(name, warnings).Write(slots),
+                ExportMaterials.OpenPbr => new MaterialXFile(name, warnings, true).Write(slots),
                 _ => new MaterialXFile(name, warnings).Write(slots)
             };
             File.WriteAllText(path, text, new UTF8Encoding(false));

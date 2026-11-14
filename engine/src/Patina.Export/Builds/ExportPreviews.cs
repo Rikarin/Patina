@@ -140,9 +140,10 @@ public static class ExportPreviews {
             throw new BuildRefusedException(e.Message, e);
         }
 
-        var texture = preset.Textures.FirstOrDefault(t => t.File == request.File)
+        var asked = preset.Textures.FirstOrDefault(t => t.File == request.File)
             ?? throw new BuildRefusedException($"{preset.Name} writes no file '{request.File}' here.");
-        var maps = DerivedMaps.Complete(set.Maps, texture.Maps);
+        var maps = DerivedMaps.Complete(set.Maps, asked.Maps);
+        var texture = ExportRun.Settled(asked, maps);
         if (!ChannelPacker.Applies(texture, maps)) {
             throw new BuildRefusedException(
                 $"'{request.File}' reads no map this texture set has, so it is not written."
