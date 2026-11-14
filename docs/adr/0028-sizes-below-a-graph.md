@@ -31,8 +31,9 @@ A layer stack is painted at its set's size, and painted texels cannot be compute
 resamples a stack's maps as it does now, and says so when it enlarges them.
 
 _Built (2026-11-13)._ The size is the run's own, from `ExportOptions.Size` and a set's `PerSet` size over it, which is
-what the Export dialog and `patina build --size` send. A preset's own `size` still resamples, because one build exports
-through several presets and their graphs are built once for all of them. Sets merged into one set of files take the
+what the Export dialog and `patina build --size` send. A preset's own `size` computes a project's graphs at it when every
+preset the project exports through names the same size (#280, 2026-11-14); presets that disagree still resample, because
+one build exports through several presets and their graphs are built once for all of them. Sets merged into one set of files take the
 export's size alone. A graph whose base is not square, or a side that is no whole step of its base, still meets a
 resample for the last step, as a graph at its own size does.
 

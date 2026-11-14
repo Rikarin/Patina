@@ -1,9 +1,11 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type JobState, createPatinaClient } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
 import { LibrarySelection } from '../library/library-selection';
+import { ProjectStore } from '../library/project-store';
 import { ExportPane } from './export-pane';
 import { ExportStore, requestFor, settingsFor, settingsOf, storedOf } from './export-store';
 
@@ -238,6 +240,43 @@ describe('ExportPane', () => {
     (page.querySelector('[data-testid="export-confirm-yes"]') as HTMLButtonElement).click();
     await settled(fixture);
     expect(bodies).toEqual([{ presets: ['unreal'] }]);
+  });
+
+  it('exports a graph its project does not ship on its own, and says a set it ships is that set (#153)', async () => {
+    const bodies: unknown[] = [];
+    const { fixture, text } = setup({
+      'GET library/project': () => Response.json({ id: 'p', name: 'Crate', path: 'crate', exportSets: ['Crate'] }),
+      'POST builds': request => {
+        void request.json().then(body => bodies.push(body));
+        return Response.json(build, { status: 202 });
+      }
+    });
+    const graph = { id: 'g', kind: 'graph', name: 'Rust', path: 'projects/crate/rust.vxtexgraph', material: null };
+    const painted = {
+      id: 't',
+      kind: 'texturing',
+      name: 'Crate',
+      path: 'projects/crate/Crate.vxlayers',
+      material: null
+    };
+    const front = signal<typeof graph | typeof painted>(graph);
+    Object.assign(TestBed.inject(ProjectStore), {
+      current: signal({ id: 'p', name: 'Crate', path: 'crate', exportSets: ['Crate'], documents: [graph, painted] }),
+      document: front
+    });
+    await settled(fixture);
+    await settled(fixture);
+    const page = fixture.nativeElement as HTMLElement;
+
+    expect(text('export-scope')).toEqual(['Rust on its own, as a texture set of Crate']);
+    (page.querySelector('[data-testid="export-start"]') as HTMLButtonElement).click();
+    await settled(fixture);
+    expect(bodies).toEqual([{ presets: ['unreal'], projects: ['p'], documents: ['rust.vxtexgraph'] }]);
+
+    // The build started above is still running, so the set is checked by what the dialog says it exports.
+    front.set(painted);
+    await settled(fixture);
+    expect(text('export-scope')).toEqual(['The texture set Crate of Crate']);
   });
 
   it('starts from the default preset rather than the first, and makes another the default', async () => {

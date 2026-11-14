@@ -166,6 +166,42 @@ public sealed class ExportPreviewBuildTests : IDisposable {
     }
 
     /// <summary>
+    ///     A preset's own size computes a project's graphs at it when every preset the project exports through agrees
+    ///     (#280): its file is what was computed, with nothing enlarged. Before, the graph was computed at its own size
+    ///     and the file enlarged from it. Presets that disagree leave the graph at its own size, and resample.
+    /// </summary>
+    [Fact]
+    public async Task A_presets_own_size_computes_a_graph_at_it() {
+        using var library = Library();
+        var unreal = ExportPresetCatalog.Read(null).Find("unreal")!;
+        foreach (var (id, size) in (IEnumerable<(string, int)>)[("sized", 64), ("smaller", 16)]) {
+            ExportPresetWriter.Save(
+                ExportPresetCatalog.ProjectFolder(Root, "crate"),
+                ExportPresetWriter.DocumentOf(unreal) with { Id = id, Name = id, Size = size }
+            );
+        }
+
+        var maps = new Maps();
+        await Build(library, new() { Presets = ["sized"] }, maps);
+        var sized = BuildPipeline.Plan(library, new() { Presets = ["sized"] }, ToolCatalog.Default, Token);
+        var both = BuildPipeline.Plan(library, new() { Presets = ["sized", "smaller"] }, ToolCatalog.Default, Token);
+
+        // The barrel has no such preset, so its graph is computed at its own size.
+        Assert.Equal(
+            ["32", "64"],
+            maps.Steps.Select(static step => step.Settings.GetValueOrDefault(TextureSizes.OutputSetting, "32"))
+                .Order(StringComparer.Ordinal)
+        );
+        var crate = sized.Projects.Single(static p => p.Project.Path == "crate");
+        var exported = ExportRun.Find(new ObjectStore(Root).FolderOf(crate.Exports[0].Key))!;
+        Assert.All(exported.Files, static file => Assert.Equal((64, 64), (file.Width, file.Height)));
+        Assert.NotEmpty(exported.Files);
+        Assert.DoesNotContain(exported.Warnings, static w => w.Contains("enlarged", StringComparison.Ordinal));
+        var mixed = both.Projects.Single(static p => p.Project.Path == "crate").Project.Outputs[0].Output;
+        Assert.False(mixed.Settings.ContainsKey(TextureSizes.OutputSetting));
+    }
+
+    /// <summary>
     ///     Before a build there is nothing to compress, and after one a preview of the Vixen preset's BC7 file has an
     ///     error, a gain, its three pictures, and the check's memory for the file; asked again, it is read back.
     /// </summary>
