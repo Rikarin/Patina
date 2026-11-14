@@ -149,9 +149,14 @@ public static class BakeHighReads {
         string[] suffixes
     ) {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        foreach (var at in (int[])[0, 1, 2]) {
-            hash.AppendData(BitConverter.GetBytes(files.Min(file => file.Minimum[at])));
-            hash.AppendData(BitConverter.GetBytes(files.Max(file => file.Maximum[at])));
+        for (var at = 0; at < 3; at++) {
+            var (low, high) = (float.PositiveInfinity, float.NegativeInfinity);
+            foreach (var file in files) {
+                (low, high) = (MathF.Min(low, file.Minimum[at]), MathF.Max(high, file.Maximum[at]));
+            }
+
+            hash.AppendData(BitConverter.GetBytes(low));
+            hash.AppendData(BitConverter.GetBytes(high));
         }
 
         foreach (var file in files) {

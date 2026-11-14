@@ -103,8 +103,8 @@ public sealed class BakeHighReadsTests : IDisposable {
     }
 
     /// <summary>
-    ///     The key as the Server works it out, from what the Worker read of each file (#285), and checked against the key
-    ///     the command line works out reading the files itself.
+    ///     The key as the Server works it out, from what the Worker read of each file (#285), and checked against the
+    ///     key the command line works out reading the files itself.
     /// </summary>
     string Key(BakeRequest request) {
         var key = BakeKeyReads.KeyOf(request, tools, new WorkerRead()).Hex;
@@ -112,7 +112,7 @@ public sealed class BakeHighReadsTests : IDisposable {
         return key;
     }
 
-    /// <summary>What a Server keeps of the Worker's read of each file, answered as it answers, read afresh each time.</summary>
+    /// <summary>What a Server keeps of the Worker's read of each file, answered as it answers, read afresh.</summary>
     sealed class WorkerRead : IMeshSetReads {
         public int? Udim(string file, string? material, int uvSet) => Find(file, material, uvSet)?.Udim;
 
