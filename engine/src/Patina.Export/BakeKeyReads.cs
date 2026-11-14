@@ -18,9 +18,11 @@ namespace Patina.Export;
 ///         faces did not change keeps its key and comes back from the cache, however the rest of the file changed.
 ///     </para>
 ///     <para>
-///         ⚠ <b>The high meshes and the cage stay keyed by their bytes</b>: any low face's rays may strike any high
-///         face, and occlusion reaches across the whole model, so a change to either is a change to every set. That is
-///         the full rebake, kept as the answer whenever it is unclear.
+///         ⚠ <b>The high meshes and the cage are keyed by their bytes, unless a set reads only its matched parts</b>:
+///         any low face's rays may strike any high face, and occlusion reaches across the whole model, so a change to
+///         either is a change to every set. That is the full rebake, kept as the answer whenever it is unclear. When
+///         rays match parts by name and nothing the set bakes reaches past them, <see cref="BakeHighReads" /> reads
+///         the high meshes as those parts, so a change to another part keeps the set's maps (ADR 0008).
 ///     </para>
 ///     <para>
 ///         ⚠ <b>Not per map and not per region of the atlas.</b> Every map of a set rests on the same ray, so they
@@ -44,7 +46,13 @@ public static class BakeKeyReads {
 
         // ⚠ A low mesh that is also a high mesh is still keyed by its bytes in that role, which the rays read whole.
         try {
-            reads["low"] = Geometry(MeshMapBakeRun.Read(request.Low, request.Material, request.UvSet ?? 0));
+            var low = MeshMapBakeRun.Read(request.Low, request.Material, request.UvSet ?? 0);
+            reads["low"] = Geometry(low);
+            if (BakeHighReads.Matched(request, low) is { } high) {
+                for (var at = 0; at < request.High.Count; at++) {
+                    reads[at == 0 ? "high" : $"high{at}"] = high; // one revision stands for every file, in order
+                }
+            }
         } catch (Exception e) when (e is ModelFormatException or InvalidDataException or IOException) {
             // The bake refuses it with its own words; the bytes key it until then.
         }

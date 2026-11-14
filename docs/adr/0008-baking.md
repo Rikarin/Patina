@@ -116,3 +116,40 @@ square, and the key reads `rows` only when it is set, so every square bake keeps
 
 The position map's range (#148) is `BakeOptions.Position.Range`: `box`, as before, `cube`, `sphere` or `none`. It is part of the
 options, so it joins every bake's key, and a bake made before it is baked once more rather than taken from the cache.
+
+## What a texture set's bake reads of the high mesh (#151)
+
+A bake is one job per texture set, and its key reads the low mesh as that set's faces (`BakeKeyReads`). The high meshes were keyed
+by their bytes, so any change to them rebaked every set. That stays the rule, and the exception is now written down option by
+option: a set reads only the high parts its own parts match by name when, and only when, nothing it bakes reaches past them.
+
+| Option or map | Reads past the set's matched parts? | Why |
+|---|---|---|
+| Rays not matched by name | Yes | Every ray may strike any high face. |
+| Matched by name, a low face matching no high part | Yes | Its rays fall back to the whole high mesh. |
+| Normal, height, opacity, world normal, position | No | One ray per sample, into the matched part's own tree, and its normal. |
+| AO, bent normal, thickness, occlusion within the part | No | Occlusion rays go into the part's tree. |
+| AO, bent normal, thickness, across parts | Yes | Occlusion rays strike the whole model. |
+| Curvature | Yes | The Laplacian at a vertex two parts share reads both, as welding in a file joins them. |
+| ID | Yes | Materials, parts and shells are numbered across every file, so another part's change renumbers this one's. |
+| Colour | Yes | Each part's material and pictures are read from the file, outside its geometry. |
+| Rounded edges, and an edges map of the high mesh | Yes | Edges near the hit are found on the whole high mesh, another part's included. |
+| Edges map of the low mesh, UV islands and borders | No | They read the set's own low faces. |
+| Tileable | Yes | Every part is copied around the patch. |
+| Relative distances, the self-hit bias, the ground plane, the position range, a curvature radius | The box only | Each is a share of the whole high mesh's box, or stands on it. |
+| Part names | All of them | A part renamed or added can change what matches. |
+
+**Decision.** When every row a set uses says "No", its key reads the high meshes as the box of all of them, every part's name, and
+the world positions and normals of every corner of its matched parts' faces, after flattening (`BakeHighReads`). Corners' numbers are
+not read, since another part's change shifts them; whether the high mesh has normals at all is, since without them the bake strikes
+flat ones. Anything else keys the high meshes by their bytes, as before: the full rebake is the answer whenever it is unclear. A set
+whose key holds is proved by `A_set_whose_key_is_kept_bakes_the_same_after_the_change`, which bakes it again from the changed file
+and compares the bytes, and shows the same change darkening the set's AO when occlusion reaches across parts.
+
+**Cost.** A bake request reads the high meshes once more to work out its key; the parts' digests are kept for the last sixteen
+high meshes by content, so a quick bake of many sets reads each mesh once. A bake from the cache can differ from a fresh one only
+where two triangles are struck at exactly the same distance and their numbering decides, which the numbering of another part can
+change; the two answers are the same surface.
+
+**Not decided here.** Narrowing per map (every map of a set rests on the same rays) and per region of the atlas (occlusion rays and
+the gutter cross regions) stay out, for the reasons the Jobs README gives. How fast a bake is stays #44's.
