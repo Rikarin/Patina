@@ -15,7 +15,7 @@ public sealed class ResultShelfTests : IDisposable {
         return texels;
     }
 
-    /// <summary>A result written by one shelf reads back from another over the same folder, as after a restart.</summary>
+    /// <summary>A result written by one shelf reads back from another over its folder, as after a restart.</summary>
     [Fact]
     public void A_result_reads_back_on_a_later_shelf() {
         var texels = Texels(4 * 4 * 8, 3);

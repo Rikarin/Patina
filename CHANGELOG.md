@@ -300,6 +300,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Finishes/Brushed meets itself across the edges at any angle (#276): its streaks were a noise turned by the angle, and a pattern turned by thirty degrees does not repeat, so a tiled brushed metal showed a seam. The grain is now smeared along the angle, which repeats at every angle. At an angle of nought it looks as before, with streaks of about an eighth of the map.
+- Triangulated Surface draws triangles, and tiles at any size (#267): its joints were so thin that at most sizes the horizontal ones vanished, so the facets were diamonds, and at sizes such as 480 the slanted ones leaked too and the whole picture became one ramp with a seam across it. The joints are now a twentieth of a triangle.
+- A big brush of a plain colour on a dense model lays each stamp on several threads (#25), where laying it was a quarter of a stamp's time on one thread after the rest had been shared out.
 - A save, an autosave, an export or a read of a layer stack's pixels under a proxy no longer compiles the stack twice (#288): the full-size stack is kept beside the proxy's, so the stroke after an autosave goes on at the proxy without waiting for a compile.
 - Restoring a snapshot, or taking one, of a document with edits just made no longer fails without saying why (#284): the engine is asked whether the document has unsaved edits, rather than trusting a tab that had not caught up, and they are saved first.
 - Saving a picture, a graph or the engine's shader caches no longer fails on Windows while the engine's shared graph and paint code is reading the file (#277): every read there lets another program write or delete the file meanwhile, as Patina's own reads already did.

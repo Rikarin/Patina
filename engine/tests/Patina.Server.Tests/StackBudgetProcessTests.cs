@@ -71,9 +71,9 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     What each layer hands the next is kept in <c>.ptcache</c> by a save, so a Worker that never ran the stack
-    ///     runs only the layer an edit changed and reads what is beneath it from disk (#208). Without the kept results a
-    ///     new Worker runs the whole stack, which is the sabotage this goes red under. What it reads is the picture a
-    ///     clean evaluation makes.
+    ///     runs only the layer an edit changed and reads what is beneath it from disk (#208). Without the kept results
+    ///     a new Worker runs the whole stack, which is the sabotage this goes red under. What it reads is the picture
+    ///     a clean evaluation makes.
     /// </summary>
     [Fact]
     public async Task A_saved_stack_keeps_its_layers_for_a_new_worker() {
