@@ -172,6 +172,7 @@ static class StrokeShapes {
             AspectAngle = brush.AspectAngle,
             FlowJitter = brush.FlowJitter,
             ScatterAxis = brush.ScatterAxis == "across" ? PaintScatterAxis.Across : PaintScatterAxis.Both,
-            Blend = brush.Accumulate ? PaintStampBlend.Accumulate : PaintStampBlend.Maximum
+            Blend = brush.Accumulate ? PaintStampBlend.Accumulate : PaintStampBlend.Maximum,
+            Alignment = brush.Alignment == "tangent" ? PaintStampAlignment.Tangent : PaintStampAlignment.Camera
         };
 }

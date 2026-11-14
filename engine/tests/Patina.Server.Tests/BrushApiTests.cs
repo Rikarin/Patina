@@ -51,7 +51,7 @@ public sealed class BrushApiTests : IAsyncLifetime {
         var paint = new ProjectPaintSettings {
             RecentColours = ["#d9401a", "#203040"],
             Palette = ["#ffffff"],
-            Brush = StackBrushes.Default with { Radius = 40f, Aspect = 3f, SizeSpace = "texture" },
+            Brush = StackBrushes.Default with { Radius = 40f, Aspect = 3f, SizeSpace = "texture", Alignment = "tangent" },
             Symmetry = new("radial", "y", Count: 6)
         };
 
@@ -208,6 +208,21 @@ public sealed class BrushApiTests : IAsyncLifetime {
         Assert.Equal("stroke-brush-refused", await CodeAsync(refused));
         Assert.Equal(HttpStatusCode.BadRequest, tool.StatusCode);
         Assert.DoesNotContain("Wide", ProjectYaml, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    ///     A stamp lies on the picture or on the surface (#123), and the vocabulary offers both, so a client keeps no list
+    ///     of its own; a word for anything else is refused.
+    /// </summary>
+    [Fact]
+    public void A_stamp_lies_on_the_picture_or_on_the_surface_and_nothing_else() {
+        var terms = Stacks.StackDocuments.Vocabulary.Brush;
+
+        Assert.Equal(["camera", "tangent"], terms.Alignments.Select(static term => term.Value));
+        Assert.Equal(["Camera", "Tangent"], terms.Alignments.Select(static term => term.Label));
+        Assert.Equal("camera", terms.Default.Alignment);
+        Assert.Null((StackBrushes.Default with { Alignment = "tangent" }).Problem());
+        Assert.Contains("lies on", (StackBrushes.Default with { Alignment = "uv" }).Problem(), StringComparison.Ordinal);
     }
 
     /// <summary>

@@ -6715,6 +6715,14 @@ export interface components {
        * @default 0
        */
       tiltSize: number;
+      /**
+       * @description What a stamp seen through a camera lies on: `camera`, the picture, so on a face that turns away it
+       *     stretches along the slope; or `tangent`, the plane that touches the surface under its middle, so it is the
+       *     same size and shape on the model however the face is turned. A stroke with no view is measured along the
+       *     surface already, and takes no notice.
+       * @default camera
+       */
+      alignment: string;
     };
     /** @description A picture of a brush: a stroke of it drawn small, under `/previews/{hash}`. */
     StackBrushPreview: {
@@ -6760,6 +6768,8 @@ export interface components {
       maximumCount: number;
       /** @description How a material brush can lay its maps on the mesh. */
       materialProjections: components['schemas']['StackTerm'][];
+      /** @description What a stamp seen through a camera can lie on. */
+      alignments: components['schemas']['StackTerm'][];
     };
     /** @description A channel a stack writes. */
     StackChannel: {

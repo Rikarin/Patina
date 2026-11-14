@@ -100,7 +100,8 @@ export const NewBrush: StackBrush = {
   occlusionTolerance: 2,
   facing: Math.PI / 2,
   resume: false,
-  tiltSize: 0
+  tiltSize: 0,
+  alignment: 'camera'
 };
 
 const ThumbnailQuiet = 400;

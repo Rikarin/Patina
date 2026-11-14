@@ -76,6 +76,37 @@ public sealed partial class StackProcessTests {
         Assert.InRange(modelFar, modelNear * 0.8, modelNear * 1.25);
     }
 
+    /// <summary>
+    ///     A dab seen at a slant (#123): on the picture it stretches along the face that turns away, and laid on the
+    ///     surface it covers only the disc it would seen square on, so less of the model.
+    /// </summary>
+    [Fact]
+    public async Task A_stamp_laid_on_the_surface_does_not_stretch_on_a_face_that_turns_away() {
+        using var deadline = Deadline(300);
+        var (instance, state) = await StartAsync("Tangent.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        await BindMeshAsync(state.Id, deadline.Token);
+        using var frames = await WearAsync(instance, state.Id, deadline.Token);
+        var slanted = await ZoomedAsync(1.05, deadline.Token);
+
+        StackStroke Dab(string alignment) =>
+            new(
+                "dab",
+                "paint",
+                "baseColor",
+                new(24f, Falloff: 0f, Alignment: alignment),
+                Red,
+                [new(Picture / 2f, Picture / 2f)],
+                View: slanted
+            );
+
+        var camera = await RedAfterAsync(state.Id, "camera", Dab("camera"), deadline.Token);
+        var tangent = await RedAfterAsync(state.Id, "tangent", Dab("tangent"), deadline.Token);
+
+        Assert.True(tangent > 0, "The dab laid on the surface painted nothing.");
+        Assert.True(tangent < camera * 0.95, $"{camera} texels on the picture and {tangent} laid on the surface.");
+    }
+
     /// <summary>Paints one stroke, counts the red texels of the exported base colour, and undoes it.</summary>
     async Task<int> RedAfterAsync(string id, string name, StackStroke stroke, CancellationToken token) {
         await EditAsync(id, token, stroke);
