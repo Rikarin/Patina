@@ -9392,6 +9392,13 @@
           "colour": {
             "description": "Where the colour map\u0027s colour comes from.",
             "$ref": "#/components/schemas/BakeColourOptions"
+          },
+          "tileable": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether the maps repeat without a seam (#212): a high-poly patch baked onto a flat low patch, the high mesh\nlaid again on each side of the low mesh\u0027s box so a ray near an edge meets what lies beyond it when the\nmaterial repeats. Null or false bakes the high meshes once, as they are."
           }
         },
         "description": "How a bake runs, with no meshes in it: what a project keeps between bakes and every client sends. Each map\u0027s\nown settings are a part of their own."
@@ -17303,6 +17310,9 @@
             "$ref": "#/components/schemas/StackCommandStackSetSettings"
           },
           {
+            "$ref": "#/components/schemas/StackCommandStackCarryPaint"
+          },
+          {
             "$ref": "#/components/schemas/StackCommandStackAddMaskLayer"
           },
           {
@@ -17344,6 +17354,7 @@
             "unflattenLayer": "#/components/schemas/StackCommandStackUnflattenLayer",
             "setHeightNormal": "#/components/schemas/StackCommandStackSetHeightNormal",
             "setSettings": "#/components/schemas/StackCommandStackSetSettings",
+            "carryPaint": "#/components/schemas/StackCommandStackCarryPaint",
             "addMaskLayer": "#/components/schemas/StackCommandStackAddMaskLayer",
             "removeMaskLayer": "#/components/schemas/StackCommandStackRemoveMaskLayer",
             "moveMaskLayer": "#/components/schemas/StackCommandStackMoveMaskLayer",
@@ -17561,6 +17572,27 @@
           }
         },
         "description": "Gives a layer a smart mask from the shelf (#135). Merged, it narrows the mask the layer has: the smart mask\u0027s\nbase multiplies over it as one more entry, its entries follow, and its effects run after the layer\u0027s own. Not\nmerged, it replaces the mask."
+      },
+      "StackCommandStackCarryPaint": {
+        "required": [
+          "fromUvSet",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "carryPaint"
+            ],
+            "type": "string"
+          },
+          "fromUvSet": {
+            "type": "integer",
+            "description": "The UV set the paint is laid out in now, by its number; 0 is the first.",
+            "format": "int32"
+          }
+        },
+        "description": "Carries every canvas of the texture set from the layout of another of the mesh\u0027s UV sets onto the one it is laid\nout in now, as one undo step (#210): each texel takes what was painted at its place on the surface. Sent after a\nStackSetSettings that changes the UV set, in the same batch, it keeps the paint where it was on\nthe model; on its own it projects paint laid out in another UV set onto this one. Every canvas becomes a new\none, so an undo gives the old ones back untouched. A surface the other layout leaves out reads as nothing."
       },
       "StackCommandStackDuplicateLayers": {
         "required": [
@@ -20332,7 +20364,8 @@
           "heightNormal",
           "uvSet",
           "bakedNormal",
-          "bakedOcclusion"
+          "bakedOcclusion",
+          "udim"
         ],
         "type": "object",
         "properties": {
@@ -20478,6 +20511,12 @@
                 "$ref": "#/components/schemas/StackPace"
               }
             ]
+          },
+          "udim": {
+            "type": "integer",
+            "description": "The UDIM tile its layout sits on in its UV set (#281), which its exported files are named by: 1001 for a set on\nthe first tile, on no mesh, or reaching several, which its problems say.",
+            "format": "int32",
+            "default": 1001
           }
         },
         "description": "A whole stack: everything a client needs to draw it, and no pixels."

@@ -17,6 +17,12 @@ sealed partial class StackHost {
             : IAuthoringCommand {
             public string Name => "Copy";
 
+            /// <summary>
+            ///     The layouts a copy is carried between (#210): what it copies is laid out in the first, and it in the
+            ///     second. Null for a copy laid out as what it copies.
+            /// </summary>
+            public (PaintProjection From, PaintProjection To)? Carry { get; init; }
+
             public void Do(ICommandContext context) {
                 var into = Target();
                 var from = canvases.Open(source);
@@ -25,6 +31,10 @@ sealed partial class StackHost {
                 // this set's size (#106): larger exactly, smaller by an average. The source is left as it was.
                 if (from is not null && (from.Width != into.Width || from.Height != into.Height)) {
                     from = from.Resampled(into.Width, into.Height);
+                }
+
+                if (from is not null && Carry is { } layouts) {
+                    from = PaintTransfer.Move(from, layouts.From, layouts.To);
                 }
 
                 foreach (var usage in into.Channels.Where(usage => from?.Has(usage) != true)) {

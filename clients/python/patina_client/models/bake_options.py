@@ -73,6 +73,10 @@ class BakeOptions:
                 together each bake at their own (#253). Null follows too; only false keeps int? BakeOptions.Rows. A bake of no
                 texture set keeps int? BakeOptions.Rows, and a finished bake's options say the height it was made at and leave
                 this out.
+            tileable (bool | None | Unset): Whether the maps repeat without a seam (#212): a high-poly patch baked onto a
+                flat low patch, the high mesh
+                laid again on each side of the low mesh's box so a ray near an edge meets what lies beyond it when the
+                material repeats. Null or false bakes the high meshes once, as they are.
      """
 
     resolution: int
@@ -95,6 +99,7 @@ class BakeOptions:
     colour: BakeColourOptions
     rows: int | None | Unset = UNSET
     follow_set_shape: bool | None | Unset = UNSET
+    tileable: bool | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -163,6 +168,12 @@ class BakeOptions:
         else:
             follow_set_shape = self.follow_set_shape
 
+        tileable: bool | None | Unset
+        if isinstance(self.tileable, Unset):
+            tileable = UNSET
+        else:
+            tileable = self.tileable
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -190,6 +201,8 @@ class BakeOptions:
             field_dict["rows"] = rows
         if follow_set_shape is not UNSET:
             field_dict["followSetShape"] = follow_set_shape
+        if tileable is not UNSET:
+            field_dict["tileable"] = tileable
 
         return field_dict
 
@@ -299,6 +312,16 @@ class BakeOptions:
         follow_set_shape = _parse_follow_set_shape(d.pop("followSetShape", UNSET))
 
 
+        def _parse_tileable(data: object) -> bool | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(bool | None | Unset, data)
+
+        tileable = _parse_tileable(d.pop("tileable", UNSET))
+
+
         bake_options = cls(
             resolution=resolution,
             format_=format_,
@@ -320,6 +343,7 @@ class BakeOptions:
             colour=colour,
             rows=rows,
             follow_set_shape=follow_set_shape,
+            tileable=tileable,
         )
 
 

@@ -64,6 +64,14 @@ import { PaintStore } from './paint-store';
             (click)="choose(set.path)"
           >
             <span class="min-w-0 flex-1 truncate">{{ set.name }}</span>
+            @if (set.path === front() && tile(); as udim) {
+              <span
+                class="readout text-foreground-muted shrink-0 text-xs"
+                data-testid="texture-set-tile"
+                title="The UDIM tile this texture set's layout sits on, which its exported files are named by"
+                >{{ udim }}</span
+              >
+            }
             @if (set.path === front() && size(); as side) {
               <span class="readout text-foreground-muted shrink-0 text-xs" data-testid="texture-set-size">{{
                 side
@@ -223,6 +231,11 @@ export class TextureSets {
       : document?.kind === 'texturing'
         ? [{ path: document.path, name: document.name, material: null }]
         : [];
+  });
+  /** The open set's UDIM tile, said only when it is not the first, where every set sits until its layout moves. */
+  protected readonly tile = computed(() => {
+    const udim = this.store.state()?.udim;
+    return udim !== undefined && udim !== 1001 ? `UDIM ${udim}` : null;
   });
   protected readonly size = computed(() => {
     const state = this.store.state();

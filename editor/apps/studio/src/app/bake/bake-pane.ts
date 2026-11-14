@@ -445,6 +445,18 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 (checkedChange)="set({ followSetShape: $event })"
               />
             </label>
+            <label
+              class="flex items-center justify-between gap-2 text-sm"
+              title="For a high-poly patch over a flat low patch: the high mesh is laid again on each side of the patch, so what spills past one edge comes back in at the other and the maps repeat without a seam."
+            >
+              Tileable
+              <xui-switch
+                aria-label="Tileable"
+                data-testid="bake-tileable"
+                [checked]="options.tileable === true"
+                (checkedChange)="set({ tileable: $event })"
+              />
+            </label>
 
             <p class="section-label mt-1">Rays</p>
             <div class="flex items-center justify-between gap-2 text-sm">

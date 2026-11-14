@@ -7,10 +7,11 @@ namespace Patina.Export.Builds;
 /// <summary>What a project's exported files are named by, read from the project as it is now.</summary>
 public static class ProjectNaming {
     /// <summary>
-    ///     What a project's files are named by: its name, and each texture set's mesh and material, read from the
-    ///     project as it is now. A project that cannot be read names files by its name alone.
+    ///     What a project's files are named by: its name, and each texture set's mesh, material and UDIM tile, read
+    ///     from the project as it is now. A project that cannot be read names files by its name alone.
     /// </summary>
     public static NamingValues Of(OpenLibrary library, string path, string name, string preset) {
+        ArgumentNullException.ThrowIfNull(library);
         var values = new NamingValues(name, preset);
         ProjectContents contents;
         try {
@@ -19,16 +20,15 @@ public static class ProjectNaming {
             return values;
         }
 
-        var meshes = contents.Meshes.Where(static m => m.Id is not null)
-            .ToDictionary(static m => m.Id!.Value, static m => MeshName(m));
+        var meshes = contents.Meshes.Where(static m => m.Id is not null).ToDictionary(static m => m.Id!.Value);
         Dictionary<string, SetNaming> sets = new(StringComparer.Ordinal);
         foreach (var document in contents.Documents) {
             var set = document.Material ?? document.Name;
             if (!sets.ContainsKey(set)) {
-                var mesh = document.Mesh is { } id && meshes.TryGetValue(id, out var meshName)
-                    ? meshName
-                    : string.Empty;
-                sets[set] = new(mesh, document.Material ?? string.Empty);
+                var mesh = document.Mesh is { } id ? meshes.GetValueOrDefault(id) : null;
+                sets[set] = new(mesh is null ? string.Empty : MeshName(mesh), document.Material ?? string.Empty) {
+                    Udim = mesh is null ? OneTile.First : TileOf(library, document, mesh)
+                };
             }
         }
 
@@ -40,4 +40,17 @@ public static class ProjectNaming {
     /// <summary>A mesh's name in a file name: the file it came from, without its extension.</summary>
     public static string MeshName(ProjectMeshInfo mesh) =>
         Path.GetFileNameWithoutExtension((mesh.Source ?? mesh.Path).Replace('\\', '/').Split('/')[^1]);
+
+    /// <summary>
+    ///     The UDIM tile a texture set's layout sits on, in the UV set its file chose (#281), so a preset's
+    ///     <c>{udim}</c> and <c>{tile}</c> name it before anything is built.
+    /// </summary>
+    static int TileOf(OpenLibrary library, ProjectDocumentInfo document, ProjectMeshInfo mesh) {
+        var file = LibraryLayout.Full(library.RootPath, document.Path);
+        var text = document.Kind == DocumentKinds.Texturing && File.Exists(file)
+            ? SharedFile.ReadAllText(file)
+            : string.Empty;
+        var uvSet = StackInputs.LayoutOf(text, document.Material).UvSet;
+        return SetUdim.Of(LibraryLayout.Full(library.RootPath, mesh.Path), document.Material, uvSet);
+    }
 }

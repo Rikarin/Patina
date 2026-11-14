@@ -32,17 +32,22 @@ public sealed record NamingValues(string Project, string Preset, string Set = ""
     public IReadOnlyDictionary<string, SetNaming> Sets { get; init; } =
         new Dictionary<string, SetNaming>(StringComparer.Ordinal);
 
-    /// <summary>These values for one texture set: its name, and its mesh and material when they are known.</summary>
+    /// <summary>
+    ///     These values for one texture set: its name, and its mesh, material and tile when they are known.
+    /// </summary>
     public NamingValues Of(string set) =>
         Sets.TryGetValue(set, out var known)
-            ? this with { Set = set, Mesh = known.Mesh, Material = known.Material }
+            ? this with { Set = set, Mesh = known.Mesh, Material = known.Material, Udim = known.Udim }
             : this with { Set = set };
 }
 
 /// <summary>What a texture set's files can be named by beyond the set's own name.</summary>
 /// <param name="Mesh">The mesh it paints, without its extension.</param>
 /// <param name="Material">The material of the mesh it paints, or nothing.</param>
-public sealed record SetNaming(string Mesh, string Material);
+public sealed record SetNaming(string Mesh, string Material) {
+    /// <summary>The UDIM tile its layout sits on (#281): 1001 until its layout says otherwise.</summary>
+    public int Udim { get; init; } = OneTile.First;
+}
 
 /// <summary>
 ///     Turns <c>T_{project}_D</c> into a relative path. Forward slashes make folders on every platform, and a value can

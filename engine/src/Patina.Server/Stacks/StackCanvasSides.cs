@@ -22,20 +22,19 @@ public sealed class StackCanvasSides(string folder) {
 
     /// <summary>
     ///     The size a stroke paints a canvas at, which is the set's, or refuses a stroke a Worker could not begin. A
-    ///     stroke on the model paints a canvas larger than its set, of the set's shape, at the canvas's own size (#19):
-    ///     it is placed by the picture and not by texels, so nothing it says changes with the size, and the detail the
-    ///     canvas holds stays.
+    ///     canvas larger than its set, of the set's shape, is painted at its own size (#19), so the detail it holds
+    ///     stays: a stroke on the model is placed by the picture and not by texels, and one in the 2D view is carried
+    ///     onto the canvas's texels (<see cref="StackStrokeScale" />).
     /// </summary>
     /// <param name="layer">The layer's name, for the reason.</param>
     /// <param name="paint">The canvas, beside the stack.</param>
     /// <param name="width">The set's width.</param>
     /// <param name="height">The set's height.</param>
-    /// <param name="onModel">Whether the stroke is on the model, with a view, rather than in the 2D view.</param>
     /// <returns>The size to paint at.</returns>
     /// <exception cref="StackEditRefusedException">
     ///     The canvas cannot be painted at that size in this session.
     /// </exception>
-    public (int Width, int Height) Check(string layer, string paint, int width, int height, bool onModel) {
+    public (int Width, int Height) Check(string layer, string paint, int width, int height) {
         if (Side(paint) is not { } held || held == (width, height)) {
             return (width, height);
         }
@@ -44,17 +43,15 @@ public sealed class StackCanvasSides(string folder) {
             ["layer"] = layer, ["held"] = Size(held.Width, held.Height), ["size"] = Size(width, height)
         };
         if (held.Width > width || held.Height > height) {
-            if (onModel
-                && held.Width >= width
+            if (held.Width >= width
                 && held.Height >= height
                 && (long)held.Width * height == (long)held.Height * width) {
                 return held;
             }
 
             throw new StackEditRefusedException(
-                $"'{layer}' holds {values["held"]} texels and the texture set is {values["size"]}. Painting it smaller "
-                + "would throw its detail away, so paint it on the model, which paints it at its own size, or set the "
-                + "size back to paint it here.",
+                $"'{layer}' holds {values["held"]} texels of another shape than the texture set's {values["size"]}. "
+                + "Painting it smaller would throw its detail away, so set the size back to that shape to paint it.",
                 Api.Refusals.CanvasLarger,
                 values
             );
@@ -70,6 +67,18 @@ public sealed class StackCanvasSides(string folder) {
         }
 
         return (width, height);
+    }
+
+    /// <summary>
+    ///     A stroke as it paints a canvas <paramref name="width" /> wide (#19), and what the stamps of the rest of its
+    ///     drag are multiplied by, which only a stroke in the 2D view needs (<see cref="StackStrokeScale" />).
+    /// </summary>
+    /// <param name="stroke">The stroke as sent.</param>
+    /// <param name="width">The width it paints at, from <see cref="Check" />.</param>
+    /// <param name="set">The set's width.</param>
+    public static (StackStroke Stroke, float? Stamps) Carried(StackStroke stroke, int width, int set) {
+        var by = StackStrokeScale.By(width, set);
+        return (StackStrokeScale.At(stroke, by), StackStrokeScale.OfStamps(stroke, by));
     }
 
     /// <summary>Takes in what the entries of a step that now stands did to their canvases.</summary>

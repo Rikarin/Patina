@@ -274,6 +274,8 @@ from .stack_command_stack_add_mask_layer import StackCommandStackAddMaskLayer
 from .stack_command_stack_add_mask_layer_op import StackCommandStackAddMaskLayerOp
 from .stack_command_stack_apply_mask import StackCommandStackApplyMask
 from .stack_command_stack_apply_mask_op import StackCommandStackApplyMaskOp
+from .stack_command_stack_carry_paint import StackCommandStackCarryPaint
+from .stack_command_stack_carry_paint_op import StackCommandStackCarryPaintOp
 from .stack_command_stack_duplicate_layers import StackCommandStackDuplicateLayers
 from .stack_command_stack_duplicate_layers_op import StackCommandStackDuplicateLayersOp
 from .stack_command_stack_flatten_layer import StackCommandStackFlattenLayer
@@ -693,6 +695,8 @@ __all__ = (
     "StackCommandStackAddMaskLayerOp",
     "StackCommandStackApplyMask",
     "StackCommandStackApplyMaskOp",
+    "StackCommandStackCarryPaint",
+    "StackCommandStackCarryPaintOp",
     "StackCommandStackDuplicateLayers",
     "StackCommandStackDuplicateLayersOp",
     "StackCommandStackFlattenLayer",

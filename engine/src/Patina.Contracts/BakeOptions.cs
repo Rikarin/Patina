@@ -139,6 +139,13 @@ public sealed record BakeOptions {
     public BakeColourOptions Colour { get; set; } = new();
 
     /// <summary>
+    ///     Whether the maps repeat without a seam (#212): a high-poly patch baked onto a flat low patch, the high mesh
+    ///     laid again on each side of the low mesh's box so a ray near an edge meets what lies beyond it when the
+    ///     material repeats. Null or false bakes the high meshes once, as they are.
+    /// </summary>
+    public bool? Tileable { get; set; }
+
+    /// <summary>
     ///     The code of the refusal of a minimum occluder distance at or past the occlusion distance while occlusion or
     ///     the bent normal is baked: every ray would start past its reach, and the map come out white (#228).
     /// </summary>

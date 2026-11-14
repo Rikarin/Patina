@@ -2685,6 +2685,12 @@ export interface components {
       rounding: components['schemas']['BakeRoundingOptions'];
       /** @description Where the colour map's colour comes from. */
       colour: components['schemas']['BakeColourOptions'];
+      /**
+       * @description Whether the maps repeat without a seam (#212): a high-poly patch baked onto a flat low patch, the high mesh
+       *     laid again on each side of the low mesh's box so a ray near an edge meets what lies beyond it when the
+       *     material repeats. Null or false bakes the high meshes once, as they are.
+       */
+      tileable?: null | boolean;
     };
     /** @description How the position map turns a point on the high poly mesh into a value (#148). */
     BakePositionOptions: {
@@ -6219,6 +6225,7 @@ export interface components {
       | components['schemas']['StackCommandStackUnflattenLayer']
       | components['schemas']['StackCommandStackSetHeightNormal']
       | components['schemas']['StackCommandStackSetSettings']
+      | components['schemas']['StackCommandStackCarryPaint']
       | components['schemas']['StackCommandStackAddMaskLayer']
       | components['schemas']['StackCommandStackRemoveMaskLayer']
       | components['schemas']['StackCommandStackMoveMaskLayer']
@@ -6315,6 +6322,22 @@ export interface components {
        * @default true
        */
       merge: boolean;
+    };
+    /**
+     * @description Carries every canvas of the texture set from the layout of another of the mesh's UV sets onto the one it is laid
+     *     out in now, as one undo step (#210): each texel takes what was painted at its place on the surface. Sent after a
+     *     StackSetSettings that changes the UV set, in the same batch, it keeps the paint where it was on
+     *     the model; on its own it projects paint laid out in another UV set onto this one. Every canvas becomes a new
+     *     one, so an undo gives the old ones back untouched. A surface the other layout leaves out reads as nothing.
+     */
+    StackCommandStackCarryPaint: {
+      /** @enum {string} */
+      op: 'carryPaint';
+      /**
+       * Format: int32
+       * @description The UV set the paint is laid out in now, by its number; 0 is the first.
+       */
+      fromUvSet: number;
     };
     /**
      * @description Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:
@@ -7704,6 +7727,13 @@ export interface components {
        */
       bakeStale?: null | string;
       pace?: null | components['schemas']['StackPace'];
+      /**
+       * Format: int32
+       * @description The UDIM tile its layout sits on in its UV set (#281), which its exported files are named by: 1001 for a set on
+       *     the first tile, on no mesh, or reaching several, which its problems say.
+       * @default 1001
+       */
+      udim: number;
     };
     /** @description Where a stroke's colour comes from, when it is not one colour. */
     StackStrokeSource: {
