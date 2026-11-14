@@ -15,8 +15,8 @@ public sealed partial class ViewportSession {
 
     /// <summary>
     ///     Tells the Worker which stacks the viewport wears. ⚠ The wear waits its turn behind the stack's own
-    ///     <c>stack.load</c> and <c>stack.sync</c> (#295), which on a software GPU can take minutes, so the frames go on
-    ///     without it and the viewport is drawn again once it is worn.
+    ///     <c>stack.load</c> and <c>stack.sync</c> (#295), which on a software GPU can take minutes, so the frames go
+    ///     on without it and the viewport is drawn again once it is worn.
     /// </summary>
     void TellWearing(IpcConnection connection, Wearing worn, CancellationToken cancellationToken) {
         Interlocked.Increment(ref wearsUnanswered);

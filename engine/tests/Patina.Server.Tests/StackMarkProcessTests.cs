@@ -7,8 +7,8 @@ namespace Patina.Server.Tests;
 /// <summary>
 ///     The mark on a texture set as the app makes it (#274, #295): New Project on find-isolate's two quads, each set's
 ///     stack open and the front one worn, and the other set pointed at. The renderer's own test and the viewport's
-///     process test draw the mark on Linux CI's software GPU, while that e2e saw no orange in the Server's picture; this
-///     is the e2e's path with no window, so it fails in the engine's CI if the Worker draws no mark there.
+///     process test draw the mark on Linux CI's software GPU, while that e2e saw no orange in the Server's picture;
+///     this is the e2e's path with no window, so it fails in the engine's CI if the Worker draws no mark there.
 /// </summary>
 public sealed partial class StackProcessTests {
     [Fact]

@@ -41,8 +41,6 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(GraphImageRequest))]
 [JsonSerializable(typeof(GraphImage))]
 [JsonSerializable(typeof(GraphHistogram))]
-[JsonSerializable(typeof(GraphSampleRequest))]
-[JsonSerializable(typeof(GraphSample))]
 [JsonSerializable(typeof(GraphCreateRequest))]
 [JsonSerializable(typeof(GraphCreated))]
 [JsonSerializable(typeof(ViewportPick), TypeInfoPropertyName = nameof(ViewportPick))]
@@ -114,4 +112,6 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(ViewportScreenshot), TypeInfoPropertyName = nameof(ViewportScreenshot))]
 [JsonSerializable(typeof(ViewportBakePreview), TypeInfoPropertyName = nameof(ViewportBakePreview))]
 [JsonSerializable(typeof(BakePreviewState), TypeInfoPropertyName = nameof(BakePreviewState))]
+[JsonSerializable(typeof(GraphSampleRequest))]
+[JsonSerializable(typeof(GraphSample))]
 public sealed partial class ContractsJsonContext : JsonSerializerContext;
