@@ -488,6 +488,20 @@ function handleIpc(): void {
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
+  handle('patina:saveImage', async (_event, name: unknown) => {
+    const options: SaveDialogOptions = {
+      title: 'Save Image',
+      defaultPath: typeof name === 'string' && name.length > 0 ? name.replace(/[\\/:*?"<>|]/gu, '_') : 'Picture.png',
+      filters: [{ name: 'PNG', extensions: ['png'] }],
+      properties: ['createDirectory', 'showOverwriteConfirmation']
+    };
+    const picked = await (window ? dialog.showSaveDialog(window, options) : dialog.showSaveDialog(options));
+    if (picked.canceled || !picked.filePath) {
+      return null;
+    }
+
+    return picked.filePath.toLowerCase().endsWith('.png') ? picked.filePath : `${picked.filePath}.png`;
+  });
   handle('patina:saveScreenshot', async () => {
     const options: SaveDialogOptions = {
       title: 'Save Screenshot',

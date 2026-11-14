@@ -806,7 +806,10 @@ export class GraphStore {
   }
 
   /** Writes a node's picture at full size and fetches it. The Worker does the work and the file is the answer. */
-  async fullImage(node: number, port: string): Promise<{ blob: Blob; width: number; height: number } | null> {
+  async fullImage(
+    node: number,
+    port: string
+  ): Promise<{ blob: Blob; width: number; height: number; hash: string } | null> {
     const id = this.mutableDocument()?.id;
     if (id === undefined) {
       return null;
@@ -819,11 +822,16 @@ export class GraphStore {
       const blob = unwrap(
         await this.api().GET('/api/v1/previews/{hash}', { params: { path: { hash: image.hash } }, parseAs: 'blob' })
       );
-      return { blob, width: image.width, height: image.height };
+      return { blob, width: image.width, height: image.height, hash: image.hash };
     } catch (error) {
       this.refused(error);
       return null;
     }
+  }
+
+  /** Writes a picture the Server has written, by its hash, to a PNG file on its machine (#184). Throws a refusal. */
+  async savePicture(hash: string, file: string): Promise<void> {
+    unwrap(await this.api().POST('/api/v1/previews/{hash}/save', { params: { path: { hash } }, body: { file } }));
   }
 
   /** Adds a node, and wires it to what it was made from: a dropped wire, the selection, or a wire it goes into. */

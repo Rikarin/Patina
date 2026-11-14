@@ -906,6 +906,60 @@
         }
       }
     },
+    "/api/v1/previews/{hash}/save": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Writes a picture the Server has written, by its hash, to a PNG file on the Server\u0027s machine, replacing one there. POST /graphs/{id}/images writes a node\u0027s picture at full size first.",
+        "operationId": "SavePreview",
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/previews/{hash}": {
       "get": {
         "tags": [
@@ -15773,6 +15827,19 @@
           }
         },
         "description": "The body of \u0060POST /api/v1/library/packages\u0060."
+      },
+      "PreviewSaveRequest": {
+        "required": [
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "The PNG to write, as a whole path on the Server\u0027s machine, in a folder that exists."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/previews/{hash}/save\u0060."
       },
       "ProblemDetails": {
         "type": "object",

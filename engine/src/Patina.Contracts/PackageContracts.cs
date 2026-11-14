@@ -19,6 +19,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(PackageImported))]
 [JsonSerializable(typeof(GraphRelinkRequest))]
 [JsonSerializable(typeof(ProjectBakePlan))]
+[JsonSerializable(typeof(PreviewSaveRequest))]
 [JsonSerializable(typeof(GraphFacts))]
 public sealed partial class PackageJsonContext : JsonSerializerContext;
 

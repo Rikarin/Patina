@@ -156,6 +156,7 @@ static class GraphEndpoints {
                 "The events after a number. /ws/graphs/{id}?since= sends the same events as they happen.",
                 Missing
             );
+        api.MapPreviewSave(Tag);
         api.MapGet("/previews/{hash}", GetPreview)
             .WithTags(Tag)
             .Produces<byte[]>(StatusCodes.Status200OK, "image/png")

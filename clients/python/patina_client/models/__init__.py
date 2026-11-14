@@ -212,6 +212,7 @@ from .package_manifest import PackageManifest
 from .package_plan import PackagePlan
 from .package_published import PackagePublished
 from .package_request import PackageRequest
+from .preview_save_request import PreviewSaveRequest
 from .problem_details import ProblemDetails
 from .project_bake_plan import ProjectBakePlan
 from .project_bake_request import ProjectBakeRequest
@@ -641,6 +642,7 @@ __all__ = (
     "PackagePlan",
     "PackagePublished",
     "PackageRequest",
+    "PreviewSaveRequest",
     "ProblemDetails",
     "ProjectBakePlan",
     "ProjectBakeRequest",

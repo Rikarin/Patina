@@ -330,6 +330,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/previews/{hash}/save': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Writes a picture the Server has written, by its hash, to a PNG file on the Server's machine, replacing one there. POST /graphs/{id}/images writes a node's picture at full size first. */
+    post: operations['SavePreview'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/previews/{hash}': {
     parameters: {
       query?: never;
@@ -5452,6 +5469,11 @@ export interface components {
       /** @description What it is used as, or null for the role its project gives it. */
       role?: null | string;
     };
+    /** @description The body of `POST /api/v1/previews/{hash}/save`. */
+    PreviewSaveRequest: {
+      /** @description The PNG to write, as a whole path on the Server's machine, in a folder that exists. */
+      file: string;
+    };
     ProblemDetails: {
       type?: null | string;
       title?: null | string;
@@ -9644,6 +9666,48 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SavePreview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        hash: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PreviewSaveRequest'];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
         headers: {
           [name: string]: unknown;
         };
