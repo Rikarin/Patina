@@ -170,7 +170,7 @@ function setup() {
 
 const notOpen = () =>
   Response.json(
-    { detail: "There is no open stack 's1'.", code: 'stack-not-open', values: { id: 's1' } },
+    { detail: "There is no open document 's1'.", code: 'stack-not-open', values: { id: 's1' } },
     { status: 404 }
   );
 

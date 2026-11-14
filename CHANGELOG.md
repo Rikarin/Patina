@@ -330,6 +330,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Flatten All Layers is called that in Undo History too, where it said "Flatten stack", and a document the engine no longer has open is called a document in the Server's refusal (#292).
 - A document opened again after the engine restarted shows what its file holds and takes strokes (#108, #226): the GPU engine kept the documents of the engine that had stopped and lent their unsaved paint to the ones opened again, so a stroke thrown away came back and the first new stroke on that layer never showed.
 - A bake no longer misses texels on a mesh's outline or along its edges (#287): a ray through an edge two triangles share could miss both, and a texel a chart claims past its triangle's edge could miss the mesh, so about one texel in a hundred of a low mesh baked onto itself read opacity 0 and took the nearest point. A texel whose centre lies in the triangle next to the one that claimed it now reads its own point at one sample per texel too, where it read the shared edge.
 - A tileable bake repeats along the patch's own layout (#287): one repeat is one unit of its texture coordinates, so a patch turned on its plane, or laid out over less than the whole square, tiles along its sides, where the copies were laid along the axes of its box. Its ID map gives each copy the colour of what it copies, by every source, where each copy was numbered apart, and a tileable ID map by material or mesh part no longer fails.

@@ -25,7 +25,7 @@ static class StackLabels {
             StackPasteLayers { AsInstances: true } => "Paste as instances",
             StackPasteLayers { Into: not null } into => $"Paste {into.Part.ToLowerInvariant()}",
             StackPasteLayers => "Paste layers",
-            StackFlattenLayer { Layer: null } => "Flatten stack",
+            StackFlattenLayer { Layer: null } => "Flatten all layers",
             StackFlattenLayer => "Flatten folder",
             StackUnflattenLayer => "Unflatten folder",
             StackAddInstance => "Add instance",

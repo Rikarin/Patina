@@ -468,7 +468,7 @@ static class StackEndpoints {
 
     internal static ProblemHttpResult NoSession(string id) =>
         Refusals.Problem(
-            $"There is no open stack '{id}'.",
+            $"There is no open document '{id}'.",
             Missing,
             Refusals.StackNotOpen,
             new Dictionary<string, string> { ["id"] = id }
