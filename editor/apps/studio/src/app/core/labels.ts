@@ -122,6 +122,30 @@ export function isUserChannel(usage: string): boolean {
   return /^user[0-7]$/u.test(usage);
 }
 
+/** Standard channels that hold one number, which a slider says better than a color. */
+const ScalarChannels: ReadonlySet<string> = new Set([
+  'roughness',
+  'metalness',
+  'height',
+  'occlusion',
+  'opacity',
+  'mask'
+]);
+
+/**
+ * Whether a channel holds one number, so that a slider of grey sets it rather than a color picker: a standard channel by
+ * its usage, and a user channel unless its texture set says it holds a color (#141, #298). Every place that offers a
+ * channel's value asks this, so a user channel's color flag is read the same everywhere.
+ *
+ * @param usage The channel.
+ * @param channels The texture set's channels, whose color flags decide a user channel.
+ */
+export function isScalarChannel(usage: string, channels: readonly { usage: string; colour?: boolean }[]): boolean {
+  return isUserChannel(usage)
+    ? !channels.some(channel => channel.usage === usage && channel.colour)
+    : ScalarChannels.has(usage);
+}
+
 /** What a person named a user channel of the open texture set, if anybody did. */
 export function userChannelName(usage: string): string | undefined {
   return channelNames().get(usage);

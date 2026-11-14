@@ -24,6 +24,7 @@ import { labelIn } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { Preferences, type ShelfSearch, sameSearch } from '../core/preferences';
 import { LibraryStore } from '../library/library-store';
+import { DragType as LibraryDrag } from '../library/library-tree';
 import { ProjectStore } from '../library/project-store';
 import { LibraryThumbnails } from '../library/thumbnails';
 import { BrushStore } from './brush-store';
@@ -43,6 +44,8 @@ const Everything = 'all';
 const Favourites = 'favourites';
 /** The type of a brush or tool preset, which a click takes up rather than adds (#124). */
 const Preset = 'preset';
+/** The type of a picture of the project's on the shelf (#203), which goes where a picture from the Library goes. */
+const Picture = 'picture';
 
 /**
  * What a layer can be filled with, from anywhere in the Library, each with its picture. Click to add it, or drag it
@@ -476,6 +479,10 @@ export class MaterialShelf {
 
     this.using.carried.set(material);
     event.dataTransfer?.setData('text/plain', material.name);
+    if (material.role === Picture) {
+      // A picture goes where the library's pictures go: into a picture slot, or onto the mesh as a decal (#122).
+      event.dataTransfer?.setData(LibraryDrag, JSON.stringify([material.source]));
+    }
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'copy';
     }

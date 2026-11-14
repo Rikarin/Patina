@@ -43,6 +43,23 @@ public sealed class StackGeneratorOutputTests : IDisposable {
         Assert.All(StackNodeKinds.Sources(), static source => Assert.Empty(source.Inputs ?? []));
     }
 
+    /// <summary>
+    ///     A project's own generator is listed for its stack with its pictures (#298), which no shared list holds, and
+    ///     nothing shipped is listed again.
+    /// </summary>
+    [Fact]
+    public void A_projects_own_generator_is_listed_for_its_stack_with_its_pictures() {
+        Assert.Empty(StackNodeKinds.OwnSources(folder.FullName));
+        A_generator_of_several_pictures_is_offered_with_them_and_one_of_one_without();
+
+        var own = Assert.Single(StackNodeKinds.OwnSources(folder.FullName));
+
+        Assert.Equal(Generator, own.Node);
+        Assert.Equal(["Mask", "Edge"], own.Outputs);
+        Assert.DoesNotContain(StackNodeKinds.Sources(), static source => source.Node == Generator);
+        Assert.Empty(StackNodeKinds.OwnSources(null));
+    }
+
     [Fact]
     public void A_masks_chosen_picture_reaches_the_file_and_another_generator_starts_from_none() {
         var editor = Editor();

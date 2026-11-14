@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { type MeshFacts, unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiInputImports } from '@xui/input';
@@ -37,7 +37,8 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
  * The document's own settings, at the top of Properties whatever tool or layer is chosen (#201): what it is and the
  * mesh it is painted on, its texture set's size, UV set and height to normal (ADR 0020), what the mesh is under that
  * set (#146), and its channels, with the one to paint and Add Channel. Nothing here depends on the brush or the
- * layer, so choosing a fill no longer hides Add Channel.
+ * layer, so choosing a fill no longer hides Add Channel. Folded, it keeps the document's name, mesh and channels and
+ * hides the texture set's settings, which change seldom (#298).
  *
  * **A setting of the document or its texture set goes here**, as a row of the `dl`: a label in `dt`, the control in
  * `dd`. Brush settings go in {@link BrushPanel}, and a layer's in {@link LayerPanel}. The Texture Sets pane lists the
@@ -80,153 +81,155 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
         </div>
       }
 
-      <dl
-        class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 text-xs"
-        aria-label="Texture set settings"
-        data-testid="texture-set-settings"
-      >
-        @if (state.set) {
-          <dt class="text-foreground-muted">Texture set</dt>
-          <dd class="truncate" data-testid="paint-document-set">{{ state.set }}</dd>
-        }
-        <dt class="text-foreground-muted" [title]="sizeHint">Size</dt>
-        <dd
-          class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1"
-          data-testid="paint-document-size"
-          [title]="sizeHint"
+      @if (settings()) {
+        <dl
+          class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 text-xs"
+          aria-label="Texture set settings"
+          data-testid="texture-set-settings"
         >
-          <xui-select
-            class="min-w-0"
-            size="sm"
-            aria-label="Texture set width"
-            data-testid="texture-set-width"
-            [filterable]="false"
-            [items]="sides()"
-            [itemText]="texels"
-            [value]="state.width"
-            (valueChange)="setSize($event, state.height)"
-          />
-          <span class="text-foreground-muted">×</span>
-          <xui-select
-            class="min-w-0"
-            size="sm"
-            aria-label="Texture set height"
-            data-testid="texture-set-height"
-            [filterable]="false"
-            [items]="sides()"
-            [itemText]="texels"
-            [value]="state.height"
-            (valueChange)="setSize(state.width, $event)"
-          />
-        </dd>
-        @if (uvSets().length > 1) {
-          <dt class="text-foreground-muted" [title]="uvSetHint">UV set</dt>
-          <dd [title]="uvSetHint">
+          @if (state.set) {
+            <dt class="text-foreground-muted">Texture set</dt>
+            <dd class="truncate" data-testid="paint-document-set">{{ state.set }}</dd>
+          }
+          <dt class="text-foreground-muted" [title]="sizeHint">Size</dt>
+          <dd
+            class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1"
+            data-testid="paint-document-size"
+            [title]="sizeHint"
+          >
             <xui-select
               class="min-w-0"
               size="sm"
-              aria-label="UV set"
-              data-testid="texture-set-uv-set"
+              aria-label="Texture set width"
+              data-testid="texture-set-width"
               [filterable]="false"
-              [items]="uvSets()"
-              [itemText]="uvSetName"
-              [value]="state.uvSet"
-              (valueChange)="setUvSet($event)"
+              [items]="sides()"
+              [itemText]="texels"
+              [value]="state.width"
+              (valueChange)="setSize($event, state.height)"
             />
-          </dd>
-          <dt class="text-foreground-muted" [title]="carryHint">Paint stays</dt>
-          <dd [title]="carryHint">
-            <xui-switch
-              aria-label="Paint stays where it is on the model"
-              data-testid="texture-set-carry-paint"
-              [checked]="carryPaint()"
-              (checkedChange)="carryPaint.set($event)"
-            />
-          </dd>
-        }
-        @if (heightNormal(); as method) {
-          <dt class="text-foreground-muted" [title]="heightNormalHint">Height to normal</dt>
-          <dd data-testid="texture-set-height-normal" [title]="heightNormalHint">
-            <xui-segmented-control
-              size="sm"
-              aria-label="Height to normal"
-              [options]="heightNormals"
-              [value]="method"
-              (valueChange)="setHeightNormal($event)"
-            />
-          </dd>
-        }
-        @if (userChannel(); as user) {
-          <dt class="text-foreground-muted" [title]="userHint">{{ termOf(user.usage) }} name</dt>
-          <dd [title]="userHint">
-            <input
-              class="w-full"
-              xuiInput
-              aria-label="User channel name"
-              data-testid="paint-user-channel-name"
-              [placeholder]="termOf(user.usage)"
-              [value]="user.name"
-              (change)="nameUserChannel(user.usage, $event)"
-            />
-          </dd>
-          <dt class="text-foreground-muted" [title]="colourHint">Holds a color</dt>
-          <dd [title]="colourHint">
-            <xui-switch
-              aria-label="User channel holds a color"
-              data-testid="paint-user-channel-colour"
-              [checked]="user.colour"
-              (checkedChange)="store.edit({ op: 'setUserChannel', usage: user.usage, colour: $event })"
-            />
-          </dd>
-        }
-        @if (channelDepth(); as depth) {
-          <dt class="text-foreground-muted" [title]="depthHint">{{ nameOf(store.channel()) }} depth</dt>
-          <!-- A list, not a segmented control: three labels of two words each wrapped in a pane this narrow (#13). -->
-          <dd data-testid="paint-channel-depth" [title]="depthHint">
+            <span class="text-foreground-muted">×</span>
             <xui-select
-              class="w-full"
-              aria-label="Channel depth"
+              class="min-w-0"
+              size="sm"
+              aria-label="Texture set height"
+              data-testid="texture-set-height"
               [filterable]="false"
-              [itemText]="depthName()"
-              [items]="depthValues()"
-              [value]="depth"
-              (valueChange)="setDepth($event)"
+              [items]="sides()"
+              [itemText]="texels"
+              [value]="state.height"
+              (valueChange)="setSize(state.width, $event)"
             />
           </dd>
-        }
-        @if (state.meshMaps) {
-          <dt class="text-foreground-muted" [title]="bakedNormalHint">Baked normal</dt>
-          <dd data-testid="texture-set-baked-normal" [title]="bakedNormalHint">
-            <xui-segmented-control
-              size="sm"
-              aria-label="Baked normal"
-              [options]="bakedNormals"
-              [value]="state.bakedNormal"
-              (valueChange)="setBake({ bakedNormal: $event })"
-            />
-          </dd>
-          <dt class="text-foreground-muted" [title]="bakedOcclusionHint">Baked occlusion</dt>
-          <dd data-testid="texture-set-baked-occlusion" [title]="bakedOcclusionHint">
-            <xui-segmented-control
-              size="sm"
-              aria-label="Baked occlusion"
-              [options]="bakedOcclusions"
-              [value]="state.bakedOcclusion"
-              (valueChange)="setBake({ bakedOcclusion: $event })"
-            />
-          </dd>
-        }
-        @if (meshFacts(); as facts) {
-          <dt class="text-foreground-muted">Mesh</dt>
-          <dd
-            class="readout truncate"
-            data-testid="paint-document-mesh-facts"
-            title="What the engine read of the mesh under this texture set: its triangles, parts and the UV sets they all have"
-          >
-            {{ facts }}
-          </dd>
-        }
-      </dl>
+          @if (uvSets().length > 1) {
+            <dt class="text-foreground-muted" [title]="uvSetHint">UV set</dt>
+            <dd [title]="uvSetHint">
+              <xui-select
+                class="min-w-0"
+                size="sm"
+                aria-label="UV set"
+                data-testid="texture-set-uv-set"
+                [filterable]="false"
+                [items]="uvSets()"
+                [itemText]="uvSetName"
+                [value]="state.uvSet"
+                (valueChange)="setUvSet($event)"
+              />
+            </dd>
+            <dt class="text-foreground-muted" [title]="carryHint">Paint stays</dt>
+            <dd [title]="carryHint">
+              <xui-switch
+                aria-label="Paint stays where it is on the model"
+                data-testid="texture-set-carry-paint"
+                [checked]="carryPaint()"
+                (checkedChange)="carryPaint.set($event)"
+              />
+            </dd>
+          }
+          @if (heightNormal(); as method) {
+            <dt class="text-foreground-muted" [title]="heightNormalHint">Height to normal</dt>
+            <dd data-testid="texture-set-height-normal" [title]="heightNormalHint">
+              <xui-segmented-control
+                size="sm"
+                aria-label="Height to normal"
+                [options]="heightNormals"
+                [value]="method"
+                (valueChange)="setHeightNormal($event)"
+              />
+            </dd>
+          }
+          @if (userChannel(); as user) {
+            <dt class="text-foreground-muted" [title]="userHint">{{ termOf(user.usage) }} name</dt>
+            <dd [title]="userHint">
+              <input
+                class="w-full"
+                xuiInput
+                aria-label="User channel name"
+                data-testid="paint-user-channel-name"
+                [placeholder]="termOf(user.usage)"
+                [value]="user.name"
+                (change)="nameUserChannel(user.usage, $event)"
+              />
+            </dd>
+            <dt class="text-foreground-muted" [title]="colourHint">Holds a color</dt>
+            <dd [title]="colourHint">
+              <xui-switch
+                aria-label="User channel holds a color"
+                data-testid="paint-user-channel-colour"
+                [checked]="user.colour"
+                (checkedChange)="store.edit({ op: 'setUserChannel', usage: user.usage, colour: $event })"
+              />
+            </dd>
+          }
+          @if (channelDepth(); as depth) {
+            <dt class="text-foreground-muted" [title]="depthHint">{{ nameOf(store.channel()) }} depth</dt>
+            <!-- A list, not a segmented control: three labels of two words each wrapped in a pane this narrow (#13). -->
+            <dd data-testid="paint-channel-depth" [title]="depthHint">
+              <xui-select
+                class="w-full"
+                aria-label="Channel depth"
+                [filterable]="false"
+                [itemText]="depthName()"
+                [items]="depthValues()"
+                [value]="depth"
+                (valueChange)="setDepth($event)"
+              />
+            </dd>
+          }
+          @if (state.meshMaps) {
+            <dt class="text-foreground-muted" [title]="bakedNormalHint">Baked normal</dt>
+            <dd data-testid="texture-set-baked-normal" [title]="bakedNormalHint">
+              <xui-segmented-control
+                size="sm"
+                aria-label="Baked normal"
+                [options]="bakedNormals"
+                [value]="state.bakedNormal"
+                (valueChange)="setBake({ bakedNormal: $event })"
+              />
+            </dd>
+            <dt class="text-foreground-muted" [title]="bakedOcclusionHint">Baked occlusion</dt>
+            <dd data-testid="texture-set-baked-occlusion" [title]="bakedOcclusionHint">
+              <xui-segmented-control
+                size="sm"
+                aria-label="Baked occlusion"
+                [options]="bakedOcclusions"
+                [value]="state.bakedOcclusion"
+                (valueChange)="setBake({ bakedOcclusion: $event })"
+              />
+            </dd>
+          }
+          @if (meshFacts(); as facts) {
+            <dt class="text-foreground-muted">Mesh</dt>
+            <dd
+              class="readout truncate"
+              data-testid="paint-document-mesh-facts"
+              title="What the engine read of the mesh under this texture set: its triangles, parts and the UV sets they all have"
+            >
+              {{ facts }}
+            </dd>
+          }
+        </dl>
+      }
 
       <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Channels">
         @for (channel of state.channels; track channel.usage) {
@@ -286,18 +289,20 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
         <p class="text-foreground-muted text-xs" role="status" data-testid="paint-applied-channels">{{ said }}</p>
       }
 
-      <div class="flex flex-col gap-1">
-        <span class="text-foreground-muted text-xs">Description</span>
-        <textarea
-          class="h-14 w-full"
-          xuiInput
-          aria-label="Texture set description"
-          data-testid="texture-set-description"
-          title="What this texture set is for, in your words. Nothing is evaluated or exported from it."
-          [value]="state.description"
-          (change)="describe($event)"
-        ></textarea>
-      </div>
+      @if (settings()) {
+        <div class="flex flex-col gap-1">
+          <span class="text-foreground-muted text-xs">Description</span>
+          <textarea
+            class="h-14 w-full"
+            xuiInput
+            aria-label="Texture set description"
+            data-testid="texture-set-description"
+            title="What this texture set is for, in your words. Nothing is evaluated or exported from it."
+            [value]="state.description"
+            (change)="describe($event)"
+          ></textarea>
+        </div>
+      }
     }
 
     <ng-template #channelMenu>
@@ -335,6 +340,8 @@ export class DocumentSection {
   protected readonly store = inject(PaintStore);
   protected readonly project = inject(ProjectStore);
   private readonly status = inject(SystemStatus);
+  /** Whether the texture set's settings and its description show, or only what the document is and its channels. */
+  readonly settings = input(true);
   private readonly library = inject(LibraryStore);
   protected readonly heightNormals = HeightNormals;
   protected readonly bakedNormals = BakedNormals;

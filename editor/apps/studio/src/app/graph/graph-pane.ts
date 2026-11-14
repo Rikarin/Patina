@@ -74,6 +74,7 @@ import { GraphStore, type NodeLink, type NodeWire, RerouteIn, RerouteOut, Rerout
 import { GraphViews } from './graph-views';
 import { NewGraphDialog } from './new-graph-dialog';
 import { NodeDragType } from './node-library';
+import { type NodeSize, sizeOf } from './node-size';
 import { PublishPackageDialog } from './publish-package-dialog';
 import { SaveCompoundDialog } from './save-compound-dialog';
 
@@ -122,6 +123,8 @@ interface NodeView {
   preview: boolean;
   /** Switched off: what feeds it passes straight through. */
   bypassed: boolean;
+  /** The size it is computed at when it has one of its own, as a card's badge says it, or null to follow its inputs. */
+  size: NodeSize | null;
   /** A reroute dot, drawn as a pill with a connector each side. */
   reroute: boolean;
 }
@@ -501,8 +504,18 @@ export class GraphThumbnail {
           (dblclick)="enter(view)"
           (positionChange)="move(view.id, $event)"
         >
-          @if (view.bypassed || problem || time) {
+          @if (view.bypassed || view.size || problem || time) {
             <xui-graph-node-actions>
+              @if (view.size; as size) {
+                <xui-tag
+                  minimal
+                  size="sm"
+                  data-testid="graph-node-size"
+                  [attr.data-level]="size.level"
+                  [title]="'Computed at its own size: ' + size.label + ' size'"
+                  >{{ size.badge }}</xui-tag
+                >
+              }
               @if (view.bypassed) {
                 <xui-tag
                   minimal
@@ -1760,6 +1773,7 @@ export class GraphCanvas {
         compound: null,
         preview: !reroute && (type?.hasPreview ?? true),
         bypassed: node.bypassed,
+        size: node.level === null || node.level === undefined ? null : sizeOf(node.level),
         reroute
       };
       this.nodeViews.set(node, view);

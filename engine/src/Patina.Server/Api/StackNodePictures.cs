@@ -5,11 +5,20 @@ using Patina.Server.Stacks;
 namespace Patina.Server.Api;
 
 /// <summary>
-///     Pictures of the node types a layer stack names (#290): its generators, filters and mask steps, each drawn as a
-///     graph's palette draws it, so a layer's generator list can show what each one makes.
+///     The node types a layer stack names beyond the vocabulary's lists: the project's own generators (#298), and
+///     pictures of any type (#290), each drawn as a graph's palette draws it, so a layer's generator list can show
+///     what each one makes.
 /// </summary>
 static class StackNodePictures {
-    public static void MapStackNodePictures(this RouteGroupBuilder stacks) =>
+    public static void MapStackNodePictures(this RouteGroupBuilder stacks) {
+        stacks.MapGet("/{id}/sources", GetSources)
+            .Describe(
+                "GetStackSources",
+                "The project's own compounds an image input can read as a generator: each reads no image and writes at "
+                + "least one, with what it takes and, for one that writes several, its results. The shipped ones are "
+                + "the vocabulary's sources.",
+                StatusCodes.Status404NotFound
+            );
         stacks.MapPost("/{id}/node-types/thumbnails", DrawAsync)
             .Describe(
                 "GetStackNodeTypeThumbnails",
@@ -20,6 +29,15 @@ static class StackNodePictures {
                 StatusCodes.Status404NotFound,
                 StatusCodes.Status503ServiceUnavailable
             );
+    }
+
+    static Results<Ok<IReadOnlyList<StackFilterKind>>, ProblemHttpResult> GetSources(
+        string id,
+        StackSessions sessions
+    ) =>
+        sessions.Find(id) is { } session
+            ? TypedResults.Ok(StackNodeKinds.OwnSources(session.Folder))
+            : StackEndpoints.NoSession(id);
 
     /// <summary>Draws node types small, through the Worker, once per type and Vixen.</summary>
     /// <param name="id">The stack, whose folder's compounds are among the types.</param>

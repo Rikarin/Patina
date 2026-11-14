@@ -45,3 +45,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0045](0045-tangent-stamps.md): accepted: a stamp laid on the surface is weighed on the plane touching the surface under its middle, the camera's right and up laid on it.
 - [0046](0046-quick-mask-across-sets.md): proposed: a model's quick mask strokes through a view are kept by the Server and laid in every set's quick mask, never taken out of a journal; undo, clear and show across sets wait on the owner's choice.
 - [0047](0047-worker-lanes.md): accepted: what goes ahead of a Worker's queue never wears a stack, and a frame does not wait for a wear.
+- [0048](0048-texture-set-display-names.md): proposed: a texture set keeps its mesh slot's name as its key, and a person's name for it is a label beside that; what `{set}` writes is open.

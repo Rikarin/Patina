@@ -946,6 +946,20 @@ export class PaintStore {
     }
   }
 
+  /**
+   * A fill on top whose channel being painted reads a picture (#203): the fill is one step and its picture a second, as
+   * a decal dropped on the mesh is.
+   */
+  async addPictureLayer(name: string, picture: string): Promise<void> {
+    const before = new Set(this.layers().map(row => row.layer.id));
+    await this.addLayer('fill', name);
+    // Only the layer just made: a picture set on the one chosen before would replace someone's work.
+    const layer = this.layer();
+    if (layer && !before.has(layer)) {
+      await this.edit({ op: 'setLayer', layer, textures: { [this.channel()]: picture } });
+    }
+  }
+
   /** What is under a place on the viewport, for a handle dragged over the mesh. */
   pickOnMesh(stamp: StackStamp, aim: Aim): Promise<ViewportPick> {
     return this.picked(stamp, aim);
@@ -1556,7 +1570,12 @@ export class PaintStore {
     }
 
     const vocabulary = this.vocabulary();
-    const listed = [...(vocabulary?.filters ?? []), ...(vocabulary?.maskEffects ?? []), ...(vocabulary?.sources ?? [])];
+    const listed = [
+      ...(vocabulary?.filters ?? []),
+      ...(vocabulary?.maskEffects ?? []),
+      ...(vocabulary?.sources ?? []),
+      ...this.ownSources()
+    ];
     const found = listed.find(kind => kind.node === node);
     if (found) {
       return found;
@@ -1573,6 +1592,43 @@ export class PaintStore {
     }
 
     return undefined;
+  }
+
+  /**
+   * The project's own generators an image input can read (#298), each with its results when it writes several, for the
+   * open document: no shared list holds them. Asked once a document opens, and empty until the Server answers.
+   */
+  readonly ownSources = computed<readonly StackFilterKind[]>(() => {
+    const id = this.state()?.id;
+    const held = this.ownSourcesHeld();
+    if (!id) {
+      return [];
+    }
+
+    if (held.stack !== id) {
+      untracked(() => void this.askOwnSources(id));
+      return [];
+    }
+
+    return held.sources;
+  });
+
+  private readonly ownSourcesHeld = signal<{ stack?: string; sources: readonly StackFilterKind[] }>({ sources: [] });
+  private ownSourcesAsked: string | null = null;
+
+  private async askOwnSources(stack: string): Promise<void> {
+    if (this.ownSourcesAsked === stack) {
+      return;
+    }
+
+    this.ownSourcesAsked = stack;
+    try {
+      const client = await this.api();
+      const reply = await client.GET('/api/v1/stacks/{id}/sources', { params: { path: { id: stack } } });
+      this.ownSourcesHeld.set({ stack, sources: Array.isArray(reply.data) ? reply.data : [] });
+    } finally {
+      this.ownSourcesAsked = null;
+    }
   }
 
   /** What the Server says about nodes the vocabulary does not list, for the stack it said it for. */
@@ -1616,6 +1672,17 @@ export class PaintStore {
     return unwrap(
       await client.POST('/api/v1/stacks/{id}/export', { params: { path: { id } }, body: { folder, layer, mask } })
     );
+  }
+
+  /** Writes every map of the open texture set as PNGs into a folder, as an export does. Null when none is open. */
+  async exportMaps(folder: string): Promise<readonly StackPixels[] | null> {
+    const id = this.state()?.id;
+    if (!id) {
+      return null;
+    }
+
+    const client = await this.api();
+    return unwrap(await client.POST('/api/v1/stacks/{id}/export', { params: { path: { id } }, body: { folder } }));
   }
 
   setMaskLayer(

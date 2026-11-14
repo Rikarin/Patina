@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { provideIcons } from '@ng-icons/core';
-import type { StackSymmetry, StackTerm } from '@patina/api-client';
+import type { StackTerm } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiSelectImports } from '@xui/select';
@@ -9,13 +9,13 @@ import { XuiSwitchImports } from '@xui/switch';
 import { hexColourName } from '../core/colour-names';
 import { Commands } from '../core/commands';
 import { IconImports } from '../core/icons';
-import { channelName, labelIn, labelsOf, termName, valuesOf } from '../core/labels';
+import { channelName, isScalarChannel, labelsOf, termName, valuesOf } from '../core/labels';
 import { degrees, percent, times, toDegrees, toRadians } from '../core/numbers';
 import { ProjectStore } from '../library/project-store';
 import { LibraryThumbnails } from '../library/thumbnails';
 import { BrushPresets } from './brush-presets';
 import { SizeSteps, radiusAt, sizeMeaning, sizePosition, sizeShown } from './brush-size';
-import { type BrushSettings, type FillMode, type FillShape, PaintStore } from './paint-store';
+import { type BrushSettings, type FillMode, type FillShape, PaintStore, colourOf, hexOf } from './paint-store';
 import { FillModes, FillShapes, PaintToolIcons, PaintTools } from './paint-tools';
 
 type NumberSetting = {
@@ -325,91 +325,6 @@ const PreviewQuiet = 200;
       </div>
     }
     <div class="flex items-center gap-2">
-      <span
-        class="text-foreground-muted w-16 shrink-0 text-xs"
-        title="Copies strokes on the mesh, in the 3D view and the 2D view alike"
-        >Symmetry</span
-      >
-      <xui-select
-        class="min-w-0 flex-1"
-        aria-label="Symmetry"
-        data-testid="paint-symmetry"
-        placeholder="Off"
-        [disabled]="!store.state()?.model"
-        [filterable]="false"
-        [itemText]="symmetryName()"
-        [items]="symmetries()"
-        [value]="store.symmetry()?.kind ?? ''"
-        (valueChange)="setKind($event ?? '')"
-      />
-    </div>
-    @if (store.symmetry(); as symmetry) {
-      <div class="flex items-center gap-2" data-testid="paint-symmetry-settings">
-        <span class="text-foreground-muted w-16 shrink-0 text-xs">{{
-          symmetry.kind === 'radial' ? 'Axis' : 'Plane'
-        }}</span>
-        <xui-select
-          class="min-w-0 flex-1"
-          aria-label="Symmetry axis"
-          data-testid="paint-symmetry-axis"
-          [filterable]="false"
-          [itemText]="labelsOf(terms().axes)"
-          [items]="valuesOf(terms().axes)"
-          [value]="symmetry.axis"
-          (valueChange)="$event && setSymmetry({ axis: $event })"
-        />
-        <xui-select
-          class="min-w-0 flex-1"
-          aria-label="Symmetry centre"
-          data-testid="paint-symmetry-centre"
-          [filterable]="false"
-          [itemText]="labelsOf(terms().centres)"
-          [items]="valuesOf(terms().centres)"
-          [value]="symmetry.centre"
-          (valueChange)="$event && setSymmetry({ centre: $event })"
-        />
-      </div>
-      @if (symmetry.kind === 'radial') {
-        <div class="flex items-center gap-2">
-          <span class="text-foreground-muted w-16 shrink-0 text-xs" title="How many strokes, this one among them"
-            >Copies</span
-          >
-          <xui-slider
-            class="min-w-0 flex-1"
-            labelStepSize="0"
-            aria-label="Radial copies"
-            data-testid="paint-symmetry-count"
-            [max]="terms().maximumCount"
-            [min]="2"
-            [stepSize]="1"
-            [value]="symmetry.count"
-            (valueChange)="setSymmetry({ count: $event })"
-          />
-          <span class="readout w-12 shrink-0 text-end text-xs">{{ symmetry.count }}</span>
-        </div>
-      } @else {
-        <div class="flex items-center gap-2">
-          <span
-            class="text-foreground-muted w-16 shrink-0 text-xs"
-            title="How far the plane is moved along its axis, as a share of the model's bounding radius"
-            >Offset</span
-          >
-          <xui-slider
-            class="min-w-0 flex-1"
-            labelStepSize="0"
-            aria-label="Plane offset"
-            data-testid="paint-symmetry-offset"
-            [max]="1"
-            [min]="-1"
-            [stepSize]="0.01"
-            [value]="symmetry.offset"
-            (valueChange)="setSymmetry({ offset: $event })"
-          />
-          <span class="readout w-12 shrink-0 text-end text-xs">{{ percent(symmetry.offset) }}</span>
-        </div>
-      }
-    }
-    <div class="flex items-center gap-2">
       <span class="text-foreground-muted w-16 shrink-0 text-xs" [title]="sizeMeans()">Size</span>
       <xui-slider
         class="min-w-0 flex-1"
@@ -604,12 +519,31 @@ const PreviewQuiet = 200;
             [checked]="store.alsoPaints().has(channel.usage)"
             (checkedChange)="toggleChannel(channel.usage, $event)"
           />
-          <span class="min-w-0 flex-1 truncate text-xs">{{ nameOf(channel.usage) }}</span>
-          <xui-color-picker
-            [attr.aria-label]="nameOf(channel.usage) + ' color'"
-            [value]="store.alsoPaints().get(channel.usage) ?? '#808080'"
-            (valueChange)="setChannel(channel.usage, $event)"
-          />
+          @if (isScalar(channel.usage)) {
+            <span class="w-16 shrink-0 truncate text-xs">{{ nameOf(channel.usage) }}</span>
+            <xui-slider
+              class="min-w-0 flex-1"
+              labelStepSize="0"
+              [attr.aria-label]="nameOf(channel.usage) + ' value'"
+              [attr.data-testid]="'paint-also-value-' + channel.usage"
+              [max]="1"
+              [min]="0"
+              [stepSize]="0.01"
+              [value]="greyOf(store.alsoPaints().get(channel.usage))"
+              (valueChange)="setChannel(channel.usage, hexOf([$event, $event, $event, 1]))"
+            />
+            <span class="readout w-10 shrink-0 text-end text-xs">{{
+              percent(greyOf(store.alsoPaints().get(channel.usage)))
+            }}</span>
+          } @else {
+            <span class="min-w-0 flex-1 truncate text-xs">{{ nameOf(channel.usage) }}</span>
+            <xui-color-picker
+              [attr.aria-label]="nameOf(channel.usage) + ' color'"
+              [attr.data-testid]="'paint-also-colour-' + channel.usage"
+              [value]="store.alsoPaints().get(channel.usage) ?? '#808080'"
+              (valueChange)="setChannel(channel.usage, $event)"
+            />
+          }
         </div>
       }
     </div>
@@ -759,12 +693,6 @@ export class BrushPanel {
     const model = !!this.store.state()?.model;
     return (space: string) => !model && space === 'model';
   });
-  /** Off first, then each kind of symmetry. */
-  protected readonly symmetries = computed(() => ['', ...valuesOf(this.terms().symmetries)]);
-  protected readonly symmetryName = computed(() => {
-    const terms = this.terms().symmetries;
-    return (kind: string) => (kind ? labelIn(terms, kind) : 'Off');
-  });
   protected readonly termName = termName;
   protected readonly percent = percent;
   protected readonly toRadians = toRadians;
@@ -779,12 +707,8 @@ export class BrushPanel {
       scatterAxes: brush?.scatterAxes ?? plain(['both', 'across']),
       alignments: brush?.alignments ?? plain(['camera', 'tangent']),
       sizeSpaces: brush?.sizeSpaces ?? plain(['screen', 'texture', 'model']),
-      symmetries: brush?.symmetries ?? plain(['mirror', 'radial']),
-      axes: brush?.axes ?? plain(['x', 'y', 'z']),
-      centres: brush?.centres ?? plain(['model', 'origin']),
       fills: brush?.fills ?? plain([...FillModes]),
-      materialProjections: brush?.materialProjections ?? plain(['Uv']),
-      maximumCount: brush?.maximumCount ?? 64
+      materialProjections: brush?.materialProjections ?? plain(['Uv'])
     };
   });
 
@@ -802,6 +726,21 @@ export class BrushPanel {
 
     this.store.alsoPaints.set(next);
   }
+
+  /**
+   * Whether another channel a stroke paints holds one number, so a slider of grey sets it: a user channel by its color
+   * flag, as the layer's values read it (#298).
+   */
+  protected isScalar(usage: string): boolean {
+    return isScalarChannel(usage, this.store.state()?.channels ?? []);
+  }
+
+  /** The grey a channel's swatch holds, read from its red. */
+  protected greyOf(hex: string | undefined): number {
+    return colourOf(hex ?? '#808080')[0] ?? 0;
+  }
+
+  protected readonly hexOf = hexOf;
 
   protected setChannel(usage: string, colour: string): void {
     this.store.alsoPaints.set(new Map(this.store.alsoPaints()).set(usage, colour));
@@ -861,26 +800,6 @@ export class BrushPanel {
 
   protected choose(key: ChoiceSetting, value: string): void {
     this.set(key, value);
-  }
-
-  /** Turns symmetry on as a kind, keeping the rest of what it was, or off. */
-  protected setKind(kind: string): void {
-    const held = this.store.symmetry();
-    this.store.symmetry.set(
-      kind
-        ? {
-            kind,
-            axis: held?.axis ?? 'x',
-            centre: held?.centre ?? 'model',
-            offset: held?.offset ?? 0,
-            count: held?.count ?? 4
-          }
-        : null
-    );
-  }
-
-  protected setSymmetry(change: Partial<StackSymmetry>): void {
-    this.store.symmetry.update(held => (held ? { ...held, ...change } : held));
   }
 }
 

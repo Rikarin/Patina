@@ -7,37 +7,52 @@ import { DocumentSection } from './document-section';
 import { LayerPanel } from './layer-panel';
 import { PaintStore } from './paint-store';
 import { ProjectSection } from './project-section';
+import { SymmetrySection } from './symmetry-section';
 
 /** The sections of Properties that fold, so the layer's settings and its mask can come up the pane (#201). */
-type Fold = 'document' | 'project' | 'brush';
-const Folds: readonly string[] = ['document', 'project', 'brush'];
+type Fold = 'document' | 'project' | 'symmetry' | 'brush';
+const Folds: readonly string[] = ['document', 'project', 'symmetry', 'brush'];
 
 const FoldKey = 'patina.properties.folded';
 
 /**
- * Which sections this machine last folded. A choice of the viewer's, so it stays in this browser. The project's settings
- * start folded, as they change seldom.
+ * What starts folded: the document's texture set settings and the project's, as they change seldom and would push the
+ * layer's settings down the pane (#298). The document's name, mesh and channels stay in view either way.
  */
+const StartFolded: readonly Fold[] = ['document', 'project'];
+
+/** Which sections this machine last folded. A choice of the viewer's, so it stays in this browser. */
 function savedFolds(): ReadonlySet<Fold> {
   try {
-    const held = JSON.parse(globalThis.localStorage.getItem(FoldKey) ?? '["project"]') as unknown;
+    const saved = globalThis.localStorage.getItem(FoldKey);
+    const held = (saved === null ? StartFolded : JSON.parse(saved)) as unknown;
     return new Set(Array.isArray(held) ? held.filter((fold): fold is Fold => Folds.includes(fold as string)) : []);
   } catch {
-    return new Set(['project']);
+    return new Set(StartFolded);
   }
 }
 
 /**
- * Properties: the document, then its project's settings, then the brush, then the chosen layer, each in its own section,
- * so that what belongs to the document never hides behind a tool or a layer (#201). Every section but the layer's folds
- * to its heading, and stays folded on this machine, so a layer's settings and its mask need not sit below the fold. The
+ * Properties: the document, then its project's settings, then symmetry, then the brush, then the chosen layer, each in
+ * its own section, so that what belongs to the document never hides behind a tool or a layer (#201). Every section but
+ * the layer's folds to its heading, and stays folded on this machine, so a layer's settings and its mask need not sit
+ * below the fold; the document folds to its name, mesh and channels. Symmetry is apart from the brush, so a fill whose
+ * decal or path follows it can still reach it (#298). The
  * picture under the brush is the Server's: the same plan that exports, so nothing here composites anything, and a stroke
  * shows when its stamps have come back as a new map. With a mesh bound a stroke here carries on over the seams it
  * crosses, and the Viewport pane paints the mesh itself.
  */
 @Component({
   selector: 'ptn-paint',
-  imports: [BrushPanel, DocumentSection, LayerPanel, NgTemplateOutlet, ProjectSection, XuiNonIdealStateImports],
+  imports: [
+    BrushPanel,
+    DocumentSection,
+    LayerPanel,
+    NgTemplateOutlet,
+    ProjectSection,
+    SymmetrySection,
+    XuiNonIdealStateImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   template: `
@@ -46,9 +61,7 @@ function savedFolds(): ReadonlySet<Fold> {
         <ng-container
           *ngTemplateOutlet="heading; context: { fold: 'document', name: 'Document', id: 'paint-fold-document' }"
         />
-        @if (!folded().has('document')) {
-          <ptn-document-section />
-        }
+        <ptn-document-section [settings]="!folded().has('document')" />
         <hr class="border-hairline" />
 
         <!-- Hidden while Project Settings is open, so that the one form is the one being changed. -->
@@ -58,6 +71,16 @@ function savedFolds(): ReadonlySet<Fold> {
           />
           @if (!folded().has('project')) {
             <ptn-project-section />
+          }
+          <hr class="border-hairline" />
+        }
+
+        @if (store.state()?.model?.trim()) {
+          <ng-container
+            *ngTemplateOutlet="heading; context: { fold: 'symmetry', name: 'Symmetry', id: 'paint-fold-symmetry' }"
+          />
+          @if (!folded().has('symmetry')) {
+            <ptn-symmetry-section />
           }
           <hr class="border-hairline" />
         }

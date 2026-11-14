@@ -192,6 +192,40 @@ describe('MaterialShelf', () => {
     expect(using.paintWith).not.toHaveBeenCalled();
   });
 
+  it('carries a picture as the Library carries one, so a picture slot or the mesh takes it (#203)', async () => {
+    const field: MaterialInfo = {
+      name: 'field',
+      kind: 'picture',
+      source: 'projects/alpha/pictures/field.png',
+      role: 'picture',
+      origin: 'project',
+      channels: [],
+      project: 'Alpha',
+      tags: ['PNG']
+    };
+    const { fixture, page, names, using, wanted } = setup([field]);
+    await vi.waitFor(async () => {
+      await settled(fixture);
+      expect(names()).toEqual(['fieldAlpha']);
+    });
+
+    expect(wanted).toEqual([field.source]);
+    const held = new Map<string, string>();
+    const data = {
+      setData: (type: string, value: string) => held.set(type, value),
+      getData: (type: string) => held.get(type) ?? '',
+      effectAllowed: 'none'
+    };
+    const row = page.querySelector<HTMLElement>('[data-testid="shelf-material"]');
+    expect(row?.getAttribute('draggable')).toBe('true');
+    row?.dispatchEvent(Object.assign(new Event('dragstart', { bubbles: true }), { dataTransfer: data }));
+    expect(JSON.parse(data.getData('application/x-patina-library'))).toEqual([field.source]);
+    expect(using.carried()).toEqual(field);
+
+    row?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(using.use).toHaveBeenCalledWith(expect.objectContaining({ source: field.source }));
+  });
+
   it('adds several materials chosen with Ctrl held together, in the shelf order (#203)', async () => {
     const { fixture, page, names, using } = setup();
     await vi.waitFor(async () => {

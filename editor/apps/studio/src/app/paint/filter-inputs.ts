@@ -196,8 +196,14 @@ export class FilterInputs {
   protected readonly meshMaps = computed(() => this.store.vocabulary()?.meshMaps ?? []);
   protected readonly channels = computed(() => (this.store.state()?.channels ?? []).map(channel => channel.usage));
 
+  /** The shipped generators, then the project's own (#298), which a slot reads the same way. */
   private readonly generators = computed(
-    () => new Map((this.store.vocabulary()?.sources ?? []).map(source => [source.node, source] as const))
+    () =>
+      new Map(
+        [...(this.store.vocabulary()?.sources ?? []), ...this.store.ownSources()].map(
+          source => [source.node, source] as const
+        )
+      )
   );
 
   /** Every generator, a category's together in the order the categories first come. */

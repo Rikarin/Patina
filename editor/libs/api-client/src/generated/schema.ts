@@ -2087,6 +2087,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/sources': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The project's own compounds an image input can read as a generator: each reads no image and writes at least one, with what it takes and, for one that writes several, its results. The shipped ones are the vocabulary's sources. */
+    get: operations['GetStackSources'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/{id}/node-types/thumbnails': {
     parameters: {
       query?: never;
@@ -16225,6 +16242,37 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackSources: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackFilterKind'][];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

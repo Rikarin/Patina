@@ -10,7 +10,8 @@ import {
   leave,
   newLibrary,
   newProject,
-  removeScratch
+  removeScratch,
+  showDocumentSettings
 } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
@@ -217,6 +218,7 @@ function pngSize(path: string): [number, number] {
 
 test('a Quick Bake of a set twice as wide as it is tall bakes at its shape, and a new shape says to bake again', async () => {
   test.setTimeout(300_000);
+  await showDocumentSettings(window);
   await expect(window.getByTestId('texture-set-settings')).toBeVisible({ timeout: 60_000 });
   const size = window.getByTestId('texture-set-size');
   const width = Number(/(\d+)×/u.exec((await size.textContent()) ?? '')?.[1]);

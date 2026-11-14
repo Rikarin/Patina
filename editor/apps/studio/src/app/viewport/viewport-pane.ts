@@ -18,7 +18,7 @@ import { BakeStore } from '../bake/bake-store';
 import { Activity } from '../core/activity';
 import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
-import { termName } from '../core/labels';
+import { channelName, isUserChannel, termName } from '../core/labels';
 import { milliseconds } from '../core/numbers';
 import { Preferences } from '../core/preferences';
 import { SystemStatus } from '../core/system-status';
@@ -27,6 +27,7 @@ import { GraphViews } from '../graph/graph-views';
 import { DragType as LibraryDrag } from '../library/library-tree';
 import { ProjectStore } from '../library/project-store';
 import { BrushRing } from '../paint/brush-ring';
+import { ChannelOnMesh } from '../paint/channel-on-mesh';
 import { MaterialUse } from '../paint/material-use';
 import { PaintStore, penOf } from '../paint/paint-store';
 import { PartMarquee } from '../paint/part-marquee';
@@ -107,6 +108,8 @@ const DragZoom = 4;
 
 /** What a value of the view list means when it is a mesh map rather than a view. */
 const MapPrefix = 'map:';
+/** What a value of the view list means when it is a user channel of the open texture set (#298). */
+const ChannelPrefix = 'channel:';
 /** What the view list shows while the viewport shows a node's picture, which only the graph can change. */
 const NodeView = 'node:';
 /** What the look list means by none. */
@@ -385,6 +388,7 @@ export class ViewportPane implements AfterViewInit {
   /** The graph touched last, which Show and Node lay on the mesh (#40). */
   protected readonly graphs = inject(GraphViews);
   protected readonly paint = inject(PaintStore);
+  private readonly channelOnMesh = inject(ChannelOnMesh);
   private readonly using = inject(MaterialUse);
   private readonly activity = inject(Activity);
   private readonly preferences = inject(Preferences);
@@ -578,25 +582,48 @@ export class ViewportPane implements AfterViewInit {
   protected readonly meshMaps = computed(() =>
     (this.bakes.current()?.result?.maps ?? []).map(map => ({ path: map.path, label: termName(map.map) }))
   );
-  /** What the view list offers: the node on view, while one is, each view, then the mesh maps it can show. */
+  /**
+   * The open texture set's user channels, which the material's shading never shows (#298), while it is on a mesh. Each
+   * is seen as its map holds it, through the picture view.
+   */
+  protected readonly userChannels = computed(() => {
+    const state = this.paint.state();
+    return state?.model.trim() ? state.channels.map(channel => channel.usage).filter(isUserChannel) : [];
+  });
+  /**
+   * What the view list offers: the node on view, while one is, each view, the open texture set's user channels, then
+   * the mesh maps it can show.
+   */
   protected readonly viewChoices = computed(() => [
     ...(this.viewport.node() === null ? [] : [NodeView]),
     ...Views,
+    ...this.userChannels().map(usage => ChannelPrefix + usage),
     ...this.meshMaps().map(map => MapPrefix + map.path),
     ...(this.shownPicture() ? [MapPrefix + (this.display().picture ?? '')] : [])
   ]);
   protected readonly viewChoice = computed(() => {
     const { view, picture } = this.display();
-    return this.viewport.node() !== null ? NodeView : view === 'picture' ? MapPrefix + (picture ?? '') : view;
+    const channel = this.channelOnMesh.channel();
+    if (this.viewport.node() !== null) {
+      return NodeView;
+    }
+
+    if (view === 'picture' && channel !== null && this.channelOnMesh.shows(picture)) {
+      return ChannelPrefix + channel;
+    }
+
+    return view === 'picture' ? MapPrefix + (picture ?? '') : view;
   });
   protected readonly viewChoiceName = computed(() => {
     const maps = new Map(this.meshMaps().map(map => [MapPrefix + map.path, `Mesh map · ${map.label}`] as const));
     return (choice: string): string =>
       choice === NodeView
         ? 'Node picture'
-        : choice.startsWith(MapPrefix)
-          ? (maps.get(choice) ?? fileName(choice.slice(MapPrefix.length)))
-          : this.viewName(choice);
+        : choice.startsWith(ChannelPrefix)
+          ? `Channel · ${channelName(choice.slice(ChannelPrefix.length))}`
+          : choice.startsWith(MapPrefix)
+            ? (maps.get(choice) ?? fileName(choice.slice(MapPrefix.length)))
+            : this.viewName(choice);
   });
   /** The rooms, the file lighting the model when it is none of them, and a file to choose, where there are files. */
   protected readonly environments = computed(() => [
@@ -624,10 +651,13 @@ export class ViewportPane implements AfterViewInit {
       choice === PickFile ? 'From a file…' : choice === NoLook ? 'No look' : (look ?? fileName(choice));
   });
 
-  /** The picture on view when it is none of the last bake's maps, such as one a project kept. */
+  /** The picture on view when it is none of the last bake's maps nor a channel, such as one a project kept. */
   protected readonly shownPicture = computed(() => {
     const { view, picture } = this.display();
-    return view === 'picture' && picture && !this.meshMaps().some(map => map.path === picture)
+    return view === 'picture' &&
+      picture &&
+      !this.meshMaps().some(map => map.path === picture) &&
+      !(this.channelOnMesh.channel() !== null && this.channelOnMesh.shows(picture))
       ? fileName(picture)
       : null;
   });
@@ -673,6 +703,11 @@ export class ViewportPane implements AfterViewInit {
 
   protected chooseView(value: string): void {
     if (value === NodeView) {
+      return;
+    }
+
+    if (value.startsWith(ChannelPrefix)) {
+      this.channelOnMesh.show(value.slice(ChannelPrefix.length));
       return;
     }
 
