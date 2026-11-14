@@ -87,7 +87,7 @@ public sealed class LibraryHealthApiTests : IAsyncLifetime {
         var cleaned = await client.PostAsync("/api/v1/library/clean", null, Token);
         var tidied = await cleaned.Content.ReadFromJsonAsync<LibraryTidied>(Token);
 
-        Assert.Equal(new LibraryTidied(1, 500), tidied);
+        Assert.Equal(new(1, 500), tidied);
         Assert.False(Directory.Exists(Path.Combine(crate, LibraryLayout.PaintBackupFolder)));
         Assert.True(File.Exists(Path.Combine(crate, LibraryLayout.ProjectFile)));
     }
