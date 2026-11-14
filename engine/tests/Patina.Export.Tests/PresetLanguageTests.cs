@@ -478,7 +478,7 @@ public sealed class PresetLanguageTests : IDisposable {
         File.WriteAllText(Path("in/broken.mtlx"), "<materialx");
 
         Assert.Contains(
-            ".usdc or .usdz",
+            ".usdc needs USD's own library",
             Assert.Throws<InvalidDataException>(() => UsdaReader.Read(Path("in/binary.usd"))).Message,
             StringComparison.Ordinal
         );
