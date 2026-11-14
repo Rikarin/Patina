@@ -2,6 +2,7 @@ using Patina.Content;
 using Patina.Contracts;
 using Patina.Library;
 using Patina.Server.Graphs;
+using System.Collections.Immutable;
 using System.Globalization;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
@@ -60,15 +61,22 @@ public static class StackDocuments {
 
     /// <summary>
     ///     What a clone or a material reads, written out when the stroke begins so a replay reads it again whatever is
-    ///     edited after: the set as it stands, or the set with the material's graph as its one fill layer. Null for
-    ///     any other stroke.
+    ///     edited after: the set as it stands for a clone, the set with the material's graph as its one fill layer, or
+    ///     the set with a layered material's own layers (#125). Null for any other stroke.
     /// </summary>
     /// <param name="source">Where the stroke's colour comes from.</param>
     /// <param name="document">The stack.</param>
-    /// <param name="set">The texture set the stroke paints.</param>
-    public static string? SourceText(StackStrokeSource? source, LayerStackAsset document, TextureSetAsset set) =>
+    /// <param name="set">The set the stroke paints.</param>
+    /// <param name="layered">A layered material's layers, made ready for the set, when the source names one.</param>
+    public static string? SourceText(
+        StackStrokeSource? source,
+        LayerStackAsset document,
+        TextureSetAsset set,
+        ImmutableArray<LayerAsset> layered = default
+    ) =>
         source?.Kind switch {
             "clone" => Text(document with { Sets = [set] }),
+            "material" when !layered.IsDefault => Text(document with { Sets = [set with { Layers = [..layered] }] }),
             "material" => Text(
                 document with {
                     Sets = [

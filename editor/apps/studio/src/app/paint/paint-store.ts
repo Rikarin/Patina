@@ -27,6 +27,7 @@ import {
   type StackStamp,
   type StackState,
   type StackStrokeSource,
+  type StackSurfacePath,
   type StackSymmetry,
   type StackView,
   type StackVocabulary,
@@ -184,10 +185,15 @@ function stepped<T extends ScreenFrame>(frame: T, step: FrameStep): T {
   };
 }
 
-/** A material from the shelf that a brush paints every channel of, by the graph its maps come from. */
+/**
+ * A material from the shelf that a brush paints every channel of: by the graph its maps come from, or a layered
+ * material whose own layers make them (#125).
+ */
 export interface BrushMaterial {
   name: string;
-  graph: string;
+  graph?: string;
+  /** A layered material, as the shelf names it: its layers are placed by their own projections, so it takes none. */
+  layered?: string;
   /** What the shelf names it by, whose picture the brush panel shows, if it came from the shelf. */
   source?: string;
 }
@@ -448,6 +454,11 @@ export class PaintStore {
    * its path, until it is set back to null.
    */
   readonly placing = signal<'decal' | 'path' | null>(null);
+  /**
+   * A path copied from a fill, to paste onto another (#130). It is numbers alone, its points in the model's space, so
+   * the app holds it rather than the Server.
+   */
+  readonly pathClip = signal<StackSurfacePath | null>(null);
   /**
    * The camera the viewport looks through, which the viewport keeps here for the panes outside it, such as
    * Properties' Warp to Geometry: null while no viewport is open.
@@ -2011,9 +2022,13 @@ export class PaintStore {
       case 'fill': {
         const material = this.material();
         const projection = this.materialProjection();
-        return material && !this.masking() && (tool === 'brush' || curve === 'fill')
-          ? { ...this.materialOf(material), projection: projection === 'Uv' ? null : projection }
-          : null;
+        if (!material || this.masking() || (tool !== 'brush' && curve !== 'fill')) {
+          return null;
+        }
+
+        return material.layered
+          ? this.materialOf(material)
+          : { ...this.materialOf(material), projection: projection === 'Uv' ? null : projection };
       }
       default:
         return null;
@@ -2022,10 +2037,14 @@ export class PaintStore {
 
   /** A material as a stroke lays it, repeating as often as its scale says. */
   private materialOf(material: BrushMaterial): StackStrokeSource {
+    if (material.layered) {
+      return { kind: 'material', layered: material.layered };
+    }
+
     const scale = this.materialScale();
     return {
       kind: 'material',
-      graph: material.graph,
+      graph: material.graph ?? null,
       placement: scale === 1 ? null : { scale, rotation: 0, offsetX: 0, offsetY: 0, sharpness: 4 }
     };
   }

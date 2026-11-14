@@ -11,6 +11,9 @@ static class StackSurfaces {
     /// <summary>How many points a path may have: what the Worker's table holds before the curve between them.</summary>
     public const int MaximumPoints = 256;
 
+    /// <summary>The widest a path's stamps are spaced, as a share of its width: past this a stroke is scattered dots.</summary>
+    public const float MaximumSpacing = 16f;
+
     /// <summary>A decal as the wire sends it.</summary>
     public static StackDecal? Wire(LayerDecal? decal) =>
         decal is null
@@ -48,7 +51,9 @@ static class StackSurfaces {
                 path.Ribbon,
                 path.Repeat,
                 path.Angle,
-                path.Box
+                path.Box,
+                path.Spacing,
+                path.Jitter
             );
 
     /// <summary>A decal as the stack keeps it.</summary>
@@ -103,9 +108,14 @@ static class StackSurfaces {
             throw new StackEditRefusedException("A path's radius is above zero.");
         }
 
-        if (path.Hardness is < 0f or > 1f || path.Angle is < 0f or > MathF.PI || !(path.Repeat >= 0f)) {
+        if (path.Hardness is < 0f or > 1f
+            || path.Angle is < 0f or > MathF.PI
+            || !(path.Repeat >= 0f)
+            || path.Spacing is not (>= 0f and <= MaximumSpacing)
+            || path.Jitter is not (>= 0f and <= 1f)) {
             throw new StackEditRefusedException(
-                "A path's hardness is from 0 to 1, its angle from 0 to π, and its repeat zero or more."
+                "A path's hardness is from 0 to 1, its angle from 0 to π, its repeat zero or more, its spacing from 0 to "
+                + $"{MaximumSpacing} and its jitter from 0 to 1."
             );
         }
 
@@ -135,6 +145,8 @@ static class StackSurfaces {
             Ribbon = path.Ribbon,
             Repeat = path.Repeat,
             Angle = path.Angle,
+            Spacing = path.Spacing,
+            Jitter = path.Jitter,
             Box = Box(path.Box)
         };
     }

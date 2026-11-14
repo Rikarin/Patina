@@ -57,7 +57,7 @@ export class MaterialUse {
 
   /**
    * Makes a material the brush's, so a stroke lays every channel of it from its own maps (#125). Only a material with
-   * maps can: a graph or a picture material, not a brush, a mask or a filter.
+   * maps can: a graph, a picture material or a layered material, not a brush, a mask or a filter.
    */
   async paintWith(material: MaterialInfo): Promise<void> {
     const project = this.project.current();
@@ -66,14 +66,19 @@ export class MaterialUse {
     }
 
     this.failure.set(null);
-    if (material.role !== 'material' || (material.kind !== 'graph' && material.kind !== 'image-material')) {
+    const layered = material.kind === 'layered-material';
+    if (material.role !== 'material' || (material.kind !== 'graph' && material.kind !== 'image-material' && !layered)) {
       this.failure.set(`${material.name} has no maps to paint with.`);
       return;
     }
 
     try {
-      const graph = await this.publish(project.path, material);
-      this.paint.material.set({ name: material.name, graph, source: material.source });
+      // A layered material's layers are read by the Server as the stroke begins, so nothing is published for it.
+      this.paint.material.set(
+        layered
+          ? { name: material.name, layered: material.source, source: material.source }
+          : { name: material.name, graph: await this.publish(project.path, material), source: material.source }
+      );
       // The fill and the projection tool lay a material too; any other tool gives way to the brush.
       if (this.paint.tool() !== 'fill' && this.paint.tool() !== 'projection') {
         this.paint.tool.set('brush');
