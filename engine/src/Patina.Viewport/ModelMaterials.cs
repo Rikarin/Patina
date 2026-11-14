@@ -11,7 +11,8 @@ namespace Patina.Viewport;
 ///     image, roughness the green and metallic the blue of theirs, as glTF packs them, and a picture inside the file is
 ///     written to a folder, since no pixel crosses the socket. A glTF's emissive factor and strength scale its
 ///     emission, its alpha becomes an opacity map unless the material is opaque, and a picture's texture transform
-///     goes with its slot, for the graph to draw.
+///     and its sampler's wrap go with its slot, for the graph to draw. Another format's opacity is its own picture and
+///     factor: an OBJ's <c>map_d</c> and <c>d</c>, an FBX's transparency.
 /// </summary>
 public static class ModelMaterials {
     /// <summary>Reads a model's materials.</summary>
@@ -68,7 +69,8 @@ public static class ModelMaterials {
         Dictionary<ModelTexture, string?> files = new(ReferenceEqualityComparer.Instance);
         foreach (var (texture, stem) in (IEnumerable<(ModelTexture?, string)>) [
                      (textures.BaseColor, "baseColor"), (textures.MetallicRoughness, "metallicRoughness"),
-                     (textures.Normal, "normal"), (textures.Occlusion, "occlusion"), (textures.Emissive, "emissive")
+                     (textures.Normal, "normal"), (textures.Occlusion, "occlusion"), (textures.Emissive, "emissive"),
+                     (textures.Opacity, "opacity")
                  ]) {
             if (texture is not null && !files.ContainsKey(texture)) {
                 files[texture] = Picture(texture, source, $"{name}_{stem}", warnings);
@@ -99,8 +101,15 @@ public static class ModelMaterials {
             slots.Add(emissive);
         }
 
-        if (textures.AlphaMode != ModelAlphaMode.Opaque) {
+        if (source.Gltf && textures.AlphaMode != ModelAlphaMode.Opaque) {
             slots.Add(Slot(ExportMap.Opacity, textures.BaseColor, 3, [colour.W]));
+        } else if (!source.Gltf && (textures.Opacity is not null || textures.OpacityFactor < 1f - 1e-4f)) {
+            // An opacity picture that is the base color's is its alpha; one of its own is grey, read in red.
+            var alpha = textures.Opacity is not null
+                && textures.BaseColor is not null
+                && files[textures.Opacity] is { } picture
+                && picture == files[textures.BaseColor];
+            slots.Add(Slot(ExportMap.Opacity, textures.Opacity, alpha ? 3 : 0, [textures.OpacityFactor]));
         }
 
         Said(name, textures, warnings);
@@ -134,9 +143,14 @@ public static class ModelMaterials {
         }
 
         ModelTexture?[] pictures = [
-            textures.BaseColor, textures.MetallicRoughness, textures.Normal, textures.Occlusion, textures.Emissive
+            textures.BaseColor, textures.MetallicRoughness, textures.Normal, textures.Occlusion, textures.Emissive,
+            textures.Opacity
         ];
         foreach (var picture in pictures.Distinct()) {
+            if (picture is { Transform: not null } && Tiling(picture) is { Said: { } said }) {
+                warnings.Add($"{name}: '{Path.GetFileName(picture.Path ?? picture.Extension)}' {said}");
+            }
+
             if (picture is { UvSet: > 0 }) {
                 warnings.Add(
                     $"{name}: '{Path.GetFileName(picture.Path ?? picture.Extension)}' is read through coordinate set "
@@ -144,6 +158,28 @@ public static class ModelMaterials {
                 );
             }
         }
+    }
+
+    /// <summary>
+    ///     What a placed picture reads beyond its edges, as a <c>Space/Transform 2D</c> names it, and what is said
+    ///     when the node cannot do what the file asks: a different wrap per axis, or a picture drawn once.
+    /// </summary>
+    static (string Tiling, string? Said) Tiling(ModelTexture texture) {
+        if (texture.WrapU != texture.WrapV) {
+            return ("Wrap", $"wraps {Named(texture.WrapU)} across and {Named(texture.WrapV)} down, and a graph's "
+                + "placement wraps both alike, so it repeats.");
+        }
+
+        return texture.WrapU == ModelTextureWrap.Decal
+            ? ("Clamp", "is drawn once with nothing around it, and a graph's placement clamps it at its edges.")
+            : (Named(texture.WrapU), null);
+
+        static string Named(ModelTextureWrap wrap) =>
+            wrap switch {
+                ModelTextureWrap.Clamp or ModelTextureWrap.Decal => "Clamp",
+                ModelTextureWrap.Mirror => "Mirror",
+                _ => "Wrap"
+            };
     }
 
     /// <summary>The usages a model's material fills, as an export names its maps.</summary>
@@ -170,7 +206,7 @@ public static class ModelMaterials {
                 transform.Rotation,
                 transform.Scale.X,
                 transform.Scale.Y
-            )
+            ) { Tiling = Tiling(texture).Tiling }
             : null;
         return new(usage, file, file is null ? -1 : lane, false, four) { Placement = placement };
     }
