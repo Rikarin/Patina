@@ -21764,6 +21764,13 @@
                 "$ref": "#/components/schemas/StackSurfaceSymmetry"
               }
             ]
+          },
+          "alpha": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For a stroke in stamps, the brush alpha each stamp takes the shape of, one of the vocabulary\u0027s \u0060alphas\u0060,\nturned with the path. Null, empty or \u0060Round\u0060 is a round stamp."
           }
         },
         "description": "A curve on the model that a fill with the \u0060Path\u0060 projection is laid along (#130, #131): the points stay in\nthe stack, so they can be moved after the stroke is seen, and the stroke follows. It passes through each point."

@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Vixen.Texturing.Layers;
+using Vixen.Texturing.Painting;
 
 namespace Patina.Server.Stacks;
 
@@ -35,39 +36,42 @@ static class StackSurfaces {
             );
 
     /// <summary>A path as the wire sends it.</summary>
-    public static StackSurfacePath? Wire(LayerSurfacePath? path) =>
-        path is null
-            ? null
-            : new(
-                [
-                    ..path.Points.Select(static point => new StackPathPoint(
-                            [point.X, point.Y, point.Z],
-                            [point.NormalX, point.NormalY, point.NormalZ],
-                            point.Pressure
-                        )
+    public static StackSurfacePath? Wire(LayerSurfacePath? path) {
+        if (path is null) {
+            return null;
+        }
+
+        return new(
+            [
+                ..path.Points.Select(static point => new StackPathPoint(
+                        [point.X, point.Y, point.Z],
+                        [point.NormalX, point.NormalY, point.NormalZ],
+                        point.Pressure
                     )
-                ],
-                path.Radius,
-                path.Hardness,
-                path.Ribbon,
-                path.Repeat,
-                path.Angle,
-                path.Box,
-                path.Spacing,
-                path.Jitter,
-                Wire(path.Symmetry)
-            );
+                )
+            ],
+            path.Radius,
+            path.Hardness,
+            path.Ribbon,
+            path.Repeat,
+            path.Angle,
+            path.Box,
+            path.Spacing,
+            path.Jitter,
+            Wire(path.Symmetry),
+            path.Alpha.Length > 0 ? path.Alpha : null
+        );
+    }
 
     /// <summary>A decal's or a path's symmetry as the wire sends it.</summary>
-    static StackSurfaceSymmetry? Wire(LayerSurfaceSymmetry? symmetry) =>
-        symmetry is null
-            ? null
-            : new(
-                symmetry.Axis,
-                symmetry.Through,
-                symmetry.Kind == LayerSymmetryKind.Radial ? "radial" : "mirror",
-                symmetry.Count
-            );
+    static StackSurfaceSymmetry? Wire(LayerSurfaceSymmetry? symmetry) {
+        if (symmetry is null) {
+            return null;
+        }
+
+        var kind = symmetry.Kind == LayerSymmetryKind.Radial ? "radial" : "mirror";
+        return new(symmetry.Axis, symmetry.Through, kind, symmetry.Count);
+    }
 
     /// <summary>A decal as the stack keeps it.</summary>
     /// <exception cref="StackEditRefusedException">A number is out of range, or a list is the wrong length.</exception>
@@ -133,6 +137,12 @@ static class StackSurfaces {
             );
         }
 
+        if (path.Alpha is { Length: > 0 } alpha && !PaintAlphas.Names.Contains(alpha, StringComparer.Ordinal)) {
+            throw new StackEditRefusedException(
+                $"'{alpha}' is not a brush alpha a path's stamps take: {string.Join(", ", PaintAlphas.Names)}."
+            );
+        }
+
         if (path.Points.Count > MaximumPoints) {
             throw new StackEditRefusedException($"A path has at most {MaximumPoints} points.");
         }
@@ -161,6 +171,7 @@ static class StackSurfaces {
             Angle = path.Angle,
             Spacing = path.Spacing,
             Jitter = path.Jitter,
+            Alpha = path.Alpha is null or PaintAlphas.Round ? string.Empty : path.Alpha,
             Box = Box(path.Box),
             Symmetry = Kept(path.Symmetry)
         };

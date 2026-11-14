@@ -122,8 +122,8 @@ public sealed partial class StackProcessTests {
         );
         Assert.Equal(
             ("radial", 2),
-            (await StateAsync(state.Id, deadline.Token)).Layers.Single(layer => layer.Id == badge).Path!.Symmetry is
-            { } symmetric
+            (await StateAsync(state.Id, deadline.Token)).Layers.Single(layer => layer.Id == badge)
+                .Path!.Symmetry is { } symmetric
                 ? (symmetric.Kind, symmetric.Count)
                 : default
         );
@@ -145,6 +145,21 @@ public sealed partial class StackProcessTests {
         );
         var stamped = await CountAsync(state.Id, "stamped", Reddish, deadline.Token);
         Assert.InRange(stamped, 1, thick * 3 / 4);
+
+        // A chisel's stamps are narrow across the path, so they cover less than round ones (#130); a name no alpha
+        // has is refused.
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(badge, Path: Through(size * 0.03f) with { Spacing = 2f, Jitter = 0.5f, Alpha = "Chisel" })
+        );
+        var chiselled = await CountAsync(state.Id, "chiselled", Reddish, deadline.Token);
+        Assert.InRange(chiselled, 1, stamped * 3 / 4);
+        await RefusedAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(badge, Path: Through(size * 0.03f) with { Spacing = 2f, Alpha = "Splat" })
+        );
         await RefusedAsync(
             state.Id,
             deadline.Token,
@@ -155,7 +170,7 @@ public sealed partial class StackProcessTests {
         var kept = (await StateAsync(state.Id, deadline.Token)).Layers.Single(layer => layer.Id == badge);
         Assert.Equal("Path", kept.Projection);
         Assert.Equal(3, kept.Path!.Points.Count);
-        Assert.Equal((2f, 0.5f), (kept.Path.Spacing, kept.Path.Jitter));
+        Assert.Equal((2f, 0.5f, "Chisel"), (kept.Path.Spacing, kept.Path.Jitter, kept.Path.Alpha));
         Assert.NotNull(kept.Decal);
     }
 

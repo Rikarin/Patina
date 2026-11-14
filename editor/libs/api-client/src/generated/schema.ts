@@ -8241,6 +8241,11 @@ export interface components {
        */
       jitter: number;
       symmetry?: null | components['schemas']['StackSurfaceSymmetry'];
+      /**
+       * @description For a stroke in stamps, the brush alpha each stamp takes the shape of, one of the vocabulary's `alphas`,
+       *     turned with the path. Null, empty or `Round` is a round stamp.
+       */
+      alpha?: null | string;
     };
     /**
      * @description How a decal or a path copies itself over the model (#132): mirrored through a plane, or turned round a line,

@@ -83,6 +83,10 @@ public sealed record StackPathPoint(IReadOnlyList<float> Position, IReadOnlyList
 ///     How far each stamp moves at random, 0 to 1: that share of the width to the side and of half the spacing along.
 /// </param>
 /// <param name="Symmetry">The copies the path makes of itself (#132), or null for the path alone.</param>
+/// <param name="Alpha">
+///     For a stroke in stamps, the brush alpha each stamp takes the shape of, one of the vocabulary's <c>alphas</c>,
+///     turned with the path. Null, empty or <c>Round</c> is a round stamp.
+/// </param>
 public sealed record StackSurfacePath(
     IReadOnlyList<StackPathPoint> Points,
     float Radius,
@@ -93,7 +97,8 @@ public sealed record StackSurfacePath(
     IReadOnlyList<float>? Box = null,
     float Spacing = 0f,
     float Jitter = 0f,
-    StackSurfaceSymmetry? Symmetry = null
+    StackSurfaceSymmetry? Symmetry = null,
+    string? Alpha = null
 );
 
 /// <summary>

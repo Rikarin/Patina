@@ -48,6 +48,9 @@ class StackSurfacePath:
                 spacing along. Default: 0.0.
             box (list[float] | None | Unset): The box the mesh's `position` bake is normalised in, as a decal's is.
             symmetry (None | StackSurfaceSymmetry | Unset):
+            alpha (None | str | Unset): For a stroke in stamps, the brush alpha each stamp takes the shape of, one of the
+                vocabulary's `alphas`,
+                turned with the path. Null, empty or `Round` is a round stamp.
      """
 
     points: list[StackPathPoint]
@@ -60,6 +63,7 @@ class StackSurfacePath:
     jitter: float = 0.0
     box: list[float] | None | Unset = UNSET
     symmetry: None | StackSurfaceSymmetry | Unset = UNSET
+    alpha: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -108,6 +112,12 @@ class StackSurfacePath:
         else:
             symmetry = self.symmetry
 
+        alpha: None | str | Unset
+        if isinstance(self.alpha, Unset):
+            alpha = UNSET
+        else:
+            alpha = self.alpha
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -125,6 +135,8 @@ class StackSurfacePath:
             field_dict["box"] = box
         if symmetry is not UNSET:
             field_dict["symmetry"] = symmetry
+        if alpha is not UNSET:
+            field_dict["alpha"] = alpha
 
         return field_dict
 
@@ -197,6 +209,16 @@ class StackSurfacePath:
         symmetry = _parse_symmetry(d.pop("symmetry", UNSET))
 
 
+        def _parse_alpha(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        alpha = _parse_alpha(d.pop("alpha", UNSET))
+
+
         stack_surface_path = cls(
             points=points,
             radius=radius,
@@ -208,6 +230,7 @@ class StackSurfacePath:
             jitter=jitter,
             box=box,
             symmetry=symmetry,
+            alpha=alpha,
         )
 
 
