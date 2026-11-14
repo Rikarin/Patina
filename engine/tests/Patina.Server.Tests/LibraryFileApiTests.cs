@@ -268,8 +268,7 @@ public sealed partial class LibraryTreeApiTests {
         using var refused = await client.PutAsJsonAsync("/api/v1/preferences", unusable, Token);
 
         foreach (var request in new[] {
-                     new ProjectCreateRequest("Crate", Mesh: mesh, Resolution: 1024),
-                     new ProjectCreateRequest("Empty")
+                     new ProjectCreateRequest("Crate", Mesh: mesh, Resolution: 1024), new ProjectCreateRequest("Empty")
                  }) {
             (await client.PostAsJsonAsync("/api/v1/library/projects", request, Token)).EnsureSuccessStatusCode();
         }

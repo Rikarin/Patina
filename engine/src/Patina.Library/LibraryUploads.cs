@@ -17,10 +17,10 @@ public sealed class UploadTooLargeException : IOException {
 
 /// <summary>
 ///     Files a client sent from its own computer (#4, ADR 0041), kept in the library's <c>uploads</c> folder so that
-///     everything that takes a file on the Server's machine takes one sent from anywhere: a project's mesh, a picture
-///     brought into a project, a bake's high mesh. They are the person's files, not cache, so a bake that reads one
-///     still finds it after the cache is deleted. Each is kept under its content's digest with its own name, so the same
-///     file sent twice is kept once and two files of one name never meet.
+///     everything that takes a file on the Server's machine takes one sent from anywhere: a project's mesh, a
+///     picture brought into a project, a bake's high mesh. They are the person's files, not cache, so a bake that
+///     reads one still finds it after the cache is deleted. Each is kept under its content's digest with its own
+///     name, so the same file sent twice is kept once and two files of one name never meet.
 /// </summary>
 public static class LibraryUploads {
     /// <summary>The folder below the library the files are kept in.</summary>
@@ -29,7 +29,7 @@ public static class LibraryUploads {
     /// <summary>The largest file taken: a mesh with its textures packed in can be large, but not without end.</summary>
     public const long MostBytes = 4L << 30;
 
-    /// <summary>How many hex digits of the digest name a file's folder: enough that two files never share one.</summary>
+    /// <summary>How many hex digits of the digest name a file's folder: enough that no two files share one.</summary>
     const int DigestDigits = 16;
 
     /// <summary>
@@ -50,7 +50,7 @@ public static class LibraryUploads {
     /// <param name="content">What is in it, read to its end.</param>
     /// <param name="cancellationToken">Stops reading; nothing is kept.</param>
     /// <exception cref="ArgumentException">The name is not one a file can be kept under.</exception>
-    /// <exception cref="UploadTooLargeException">It is larger than <see cref="MostBytes" />; nothing is kept.</exception>
+    /// <exception cref="UploadTooLargeException">It is over <see cref="MostBytes" />; nothing is kept.</exception>
     public static async Task<string> KeepAsync(
         string root,
         string name,

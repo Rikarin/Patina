@@ -7,8 +7,9 @@ using System.Globalization;
 namespace Patina.Server.Api;
 
 /// <summary>
-///     A file sent from a client's own computer (#4, ADR 0041): a client of a Server on another machine has no other way
-///     to give it a picture or a mesh of its own, since everything else takes a path on the Server's machine.
+///     A file sent from a client's own computer (#4, ADR 0041): a client of a Server on another machine has no
+///     other way to give it a picture or a mesh of its own, since everything else takes a path on the Server's
+///     machine.
 /// </summary>
 static class UploadEndpoints {
     public static void MapUploads(this RouteGroupBuilder library) {

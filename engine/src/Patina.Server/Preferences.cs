@@ -51,7 +51,7 @@ public sealed class Preferences {
     }
 
     /// <summary>Changes the settings and keeps them in the file.</summary>
-    /// <exception cref="ArgumentException">A setting is out of range, or the bake options are ones no bake can use.</exception>
+    /// <exception cref="ArgumentException">A setting is out of range, or no bake can use the bake options.</exception>
     /// <exception cref="IOException">The file could not be written.</exception>
     public ServerPreferences Set(ServerPreferences preferences) {
         ArgumentNullException.ThrowIfNull(preferences);
