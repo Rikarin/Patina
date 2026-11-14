@@ -38,6 +38,7 @@ public sealed record StackSymmetry(
 /// <param name="MaximumAspect">The longest a stamp can be, against its width.</param>
 /// <param name="MaximumCount">The most strokes a radial symmetry makes.</param>
 /// <param name="MaterialProjections">How a material brush can lay its maps on the mesh.</param>
+/// <param name="Alignments">What a stamp seen through a camera can lie on.</param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 public sealed record StackBrushTerms(
@@ -54,7 +55,8 @@ public sealed record StackBrushTerms(
     float MaximumRadius,
     float MaximumAspect,
     int MaximumCount,
-    IReadOnlyList<StackTerm> MaterialProjections
+    IReadOnlyList<StackTerm> MaterialProjections,
+    IReadOnlyList<StackTerm> Alignments
 );
 #pragma warning restore SK7005
 
@@ -255,6 +257,9 @@ public static class StackBrushes {
 
     /// <summary>Which way scatter moves a stamp.</summary>
     public static IReadOnlyList<string> ScatterAxes { get; } = ["both", "across"];
+
+    /// <summary>What a stamp seen through a camera lies on: the picture, or the plane touching the surface.</summary>
+    public static IReadOnlyList<string> Alignments { get; } = ["camera", "tangent"];
 
     /// <summary>The kinds of symmetry.</summary>
     public static IReadOnlyList<string> Symmetries { get; } = ["mirror", "radial"];
@@ -508,6 +513,10 @@ public static class StackBrushes {
 
         if (!ScatterAxes.Contains(brush.ScatterAxis)) {
             return $"'{brush.ScatterAxis}' is not a way for a stamp to scatter.";
+        }
+
+        if (!Alignments.Contains(brush.Alignment)) {
+            return $"'{brush.Alignment}' is not something a stamp lies on.";
         }
 
         return SizeSpaces.Contains(brush.SizeSpace) ? null : $"'{brush.SizeSpace}' is not what a size is measured in.";

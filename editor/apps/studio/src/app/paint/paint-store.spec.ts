@@ -11,6 +11,7 @@ import {
   NewBrush,
   PaintStore,
   colourOf,
+  curveTool,
   hexOf,
   paintsOverMask,
   penOf,
@@ -1150,6 +1151,39 @@ describe('PaintStore', () => {
       expect(parts[0]?.curve).toBe('path');
       expect(parts[0]?.stamps).toHaveLength(2);
     });
+  });
+
+  it('erases or smudges along a path when told to, and paints along it otherwise (#130)', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.tool.set('path');
+    interface Part {
+      colour: number[];
+      source: { kind: string } | null;
+      curve: string;
+    }
+    const parts = () =>
+      bodies.flatMap(body => (body as { commands: Part[] }).commands).filter(part => part.curve === 'path');
+    const points = [
+      { x: 1, y: 1, pressure: 1 },
+      { x: 9, y: 4, pressure: 1 }
+    ];
+
+    store.curveAction.set('erase');
+    await store.paintCurve(points, 'path');
+    store.curveAction.set('smudge');
+    await store.paintCurve(points, 'path');
+    store.curveAction.set('paint');
+    await store.paintCurve(points, 'path');
+
+    await vi.waitFor(() => expect(parts()).toHaveLength(3));
+    const [erased, smudged, painted] = parts();
+    expect(erased?.colour).toEqual([0, 0, 0, 0]);
+    expect(erased?.source).toBeNull();
+    expect(smudged?.source).toEqual({ kind: 'smudge' });
+    expect(painted?.colour).not.toEqual([0, 0, 0, 0]);
+    expect(painted?.source).toBeNull();
+    expect(curveTool('brush', 'erase')).toBe('brush');
   });
 
   it('takes one point from a double click', () => {

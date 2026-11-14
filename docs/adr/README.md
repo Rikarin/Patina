@@ -42,3 +42,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0042](0042-server-decodes-no-picture.md): accepted: the Server decodes no picture; the Worker reads a library picture, a bake's ID colours and a compression preview beside its queue, and a picture that took a Worker down is not asked about again.
 - [0043](0043-platform-checks.md): accepted: a platform's check limits are kept by the export preset that writes for it, and a project's sets are checked at once, the open ones measured and the rest judged from their files.
 - [0043](0043-files-at-their-maps-depth.md): accepted: `png`, `tiff` and `exr` files are as deep as the maps they read, a built map says its depth, and a set with a float channel computes at 32 bits.
+- [0043](0043-tangent-stamps.md): accepted: a stamp laid on the surface is weighed on the plane touching the surface under its middle, the camera's right and up laid on it.

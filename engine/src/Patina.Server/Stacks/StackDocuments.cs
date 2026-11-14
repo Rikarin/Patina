@@ -151,7 +151,8 @@ public static class StackDocuments {
             StackBrushes.MaximumRadius,
             StackBrushes.MaximumAspect,
             StackBrushes.MaximumCount,
-            Terms.InStack(StackBrushes.MaterialProjections)
+            Terms.InStack(StackBrushes.MaterialProjections),
+            Terms.InBrush(StackBrushes.Alignments)
         ),
         Terms.InStack(Enum.GetNames<LayerInputSource>()),
         StackNodeKinds.Sources(),

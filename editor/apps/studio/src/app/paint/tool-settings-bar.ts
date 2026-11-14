@@ -7,7 +7,14 @@ import { Commands } from '../core/commands';
 import { labelsOf, termName, valuesOf } from '../core/labels';
 import { percent } from '../core/numbers';
 import { SizeSteps, radiusAt, sizeMeaning, sizePosition, sizeShown } from './brush-size';
-import { type BrushSettings, type FillMode, type FillShape, PaintStore, type PaintTool } from './paint-store';
+import {
+  type BrushSettings,
+  type CurveAction,
+  type FillMode,
+  type FillShape,
+  PaintStore,
+  type PaintTool
+} from './paint-store';
 import { FillModes, FillShapes, PaintTools } from './paint-tools';
 
 /** The tools that lay a colour of their own, which the bar offers while they are in hand and not on a mask. */
@@ -69,6 +76,19 @@ const NotStrokes: ReadonlySet<PaintTool> = new Set(['fill', 'picker']);
             percent(paint.brush()[slider.key])
           }}</span>
         }
+      }
+      @if (curves()) {
+        <xui-select
+          class="w-24 shrink"
+          aria-label="Along the stroke"
+          title="Whether a line or a path lays the color, takes paint away or drags what is there"
+          data-testid="tool-settings-curve-action"
+          [filterable]="false"
+          [itemText]="curveActionName"
+          [items]="curveActions"
+          [value]="paint.curveAction()"
+          (valueChange)="$event && paint.curveAction.set(curveAction($event))"
+        />
       }
       @if (paint.tool() === 'fill') {
         <xui-select
@@ -158,7 +178,13 @@ export class ToolSettingsBar {
   });
 
   protected readonly strokes = computed(() => !NotStrokes.has(this.paint.tool()));
-  protected readonly colours = computed(() => Colouring.has(this.paint.tool()));
+  protected readonly colours = computed(
+    () => Colouring.has(this.paint.tool()) && (!this.curves() || this.paint.curveAction() === 'paint')
+  );
+  /** Whether the tool in hand is a line or a path, which paints, erases or smudges along itself (#130). */
+  protected readonly curves = computed(() => this.paint.tool() === 'line' || this.paint.tool() === 'path');
+  protected readonly curveActions: readonly CurveAction[] = ['paint', 'erase', 'smudge'];
+  protected readonly curveActionName = (value: string): string => termName(value);
   protected readonly sizePosition = computed(() => sizePosition(this.paint));
   protected readonly sizeShown = computed(() => sizeShown(this.paint.brush().sizeSpace, this.paint.radius()));
   protected readonly sizeMeans = computed(() => sizeMeaning(this.paint.brush().sizeSpace));
@@ -178,6 +204,10 @@ export class ToolSettingsBar {
 
   protected fillMode(value: string | null): FillMode {
     return FillModes.find(mode => mode === value) ?? 'polygon';
+  }
+
+  protected curveAction(value: string): CurveAction {
+    return this.curveActions.find(action => action === value) ?? 'paint';
   }
 
   protected fillShape(value: string | null): FillShape {

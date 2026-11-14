@@ -22,7 +22,7 @@ type NumberSetting = {
   [K in keyof BrushSettings]-?: NonNullable<BrushSettings[K]> extends number ? K : never;
 }[keyof BrushSettings];
 
-type ChoiceSetting = 'rotation' | 'curve' | 'scatterAxis' | 'sizeSpace';
+type ChoiceSetting = 'rotation' | 'curve' | 'scatterAxis' | 'sizeSpace' | 'alignment';
 
 /** How a slider's number is shown: a share as %, an angle in °, a stretch as ×, a distance in the size's units. */
 type Shown = 'share' | 'angle' | 'stretch' | 'size';
@@ -641,11 +641,13 @@ export class BrushPanel {
   protected readonly choices: readonly {
     key: ChoiceSetting;
     label: string;
-    terms: 'rotations' | 'falloffs' | 'scatterAxes';
+    terms: 'rotations' | 'falloffs' | 'scatterAxes' | 'alignments';
   }[] = [
     { key: 'rotation', label: 'Rotation', terms: 'rotations' },
     { key: 'curve', label: 'Falloff', terms: 'falloffs' },
-    { key: 'scatterAxis', label: 'Scatter', terms: 'scatterAxes' }
+    { key: 'scatterAxis', label: 'Scatter', terms: 'scatterAxes' },
+    // What a stamp seen in the viewport lies on: the screen, or the surface under it, so it does not stretch on a slope.
+    { key: 'alignment', label: 'Alignment', terms: 'alignments' }
   ];
   private readonly project = inject(ProjectStore);
   protected readonly pictures = inject(LibraryThumbnails);
@@ -775,6 +777,7 @@ export class BrushPanel {
       rotations: brush?.rotations ?? plain(['fixed', 'along', 'random', 'pen', 'tilt']),
       falloffs: brush?.falloffs ?? plain(['smooth', 'linear', 'spherical', 'tip']),
       scatterAxes: brush?.scatterAxes ?? plain(['both', 'across']),
+      alignments: brush?.alignments ?? plain(['camera', 'tangent']),
       sizeSpaces: brush?.sizeSpaces ?? plain(['screen', 'texture', 'model']),
       symmetries: brush?.symmetries ?? plain(['mirror', 'radial']),
       axes: brush?.axes ?? plain(['x', 'y', 'z']),

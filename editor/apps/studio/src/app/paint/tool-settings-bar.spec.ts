@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { CommandTable } from '../core/command-table';
 import { Commands } from '../core/commands';
 import { SizeSteps, radiusAt, sizePosition } from './brush-size';
-import { type FillMode, type FillShape, PaintStore, type PaintTool } from './paint-store';
+import { type CurveAction, type FillMode, type FillShape, PaintStore, type PaintTool } from './paint-store';
 import { ToolSettingsBar } from './tool-settings-bar';
 
 describe('ToolSettingsBar (#201)', () => {
@@ -19,6 +19,7 @@ describe('ToolSettingsBar (#201)', () => {
       fillMode: signal<FillMode>('polygon'),
       fillShape: signal<FillShape>('click'),
       pickEveryChannel: signal(true),
+      curveAction: signal<CurveAction>('paint'),
       vocabulary: signal(null)
     };
     TestBed.configureTestingModule({
@@ -73,6 +74,22 @@ describe('ToolSettingsBar (#201)', () => {
     fixture.detectChanges();
     expect(find('colour')).toBeNull();
     expect(find('mask-grey')).not.toBeNull();
+  });
+
+  it('lets a line or a path erase or smudge along itself, with no colour then (#130)', () => {
+    const { fixture, paint, find } = bar('path');
+    expect(find('curve-action')).not.toBeNull();
+    expect(find('colour')).not.toBeNull();
+
+    paint.curveAction.set('erase');
+    fixture.detectChanges();
+    expect(find('colour')).toBeNull();
+    expect(find('size')).not.toBeNull();
+
+    paint.tool.set('brush');
+    fixture.detectChanges();
+    expect(find('curve-action')).toBeNull();
+    expect(find('colour')).not.toBeNull();
   });
 
   it("gives the fill its own choices instead of a stroke's", () => {

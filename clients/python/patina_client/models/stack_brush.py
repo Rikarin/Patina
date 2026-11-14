@@ -76,6 +76,11 @@ class StackBrush:
                 radius, as a
                 pencil's side paints wider. A mouse is upright, so a brush with any of this paints smaller under one. Default:
                 0.0.
+            alignment (str): What a stamp seen through a camera lies on: `camera`, the picture, so on a face that turns away
+                it
+                stretches along the slope; or `tangent`, the plane that touches the surface under its middle, so it is the
+                same size and shape on the model however the face is turned. A stroke with no view is measured along the
+                surface already, and takes no notice. Default: 'camera'.
             alpha (None | str | Unset): A named alpha (Round, Square, Chisel, Cross) or an image relative to the stack, or
                 null.
      """
@@ -105,6 +110,7 @@ class StackBrush:
     facing: float = 1.5707964
     resume: bool = False
     tilt_size: float = 0.0
+    alignment: str = 'camera'
     alpha: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -163,6 +169,8 @@ class StackBrush:
 
         tilt_size = self.tilt_size
 
+        alignment = self.alignment
+
         alpha: None | str | Unset
         if isinstance(self.alpha, Unset):
             alpha = UNSET
@@ -198,6 +206,7 @@ class StackBrush:
             "facing": facing,
             "resume": resume,
             "tiltSize": tilt_size,
+            "alignment": alignment,
         })
         if alpha is not UNSET:
             field_dict["alpha"] = alpha
@@ -259,6 +268,8 @@ class StackBrush:
 
         tilt_size = d.pop("tiltSize")
 
+        alignment = d.pop("alignment")
+
         def _parse_alpha(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -295,6 +306,7 @@ class StackBrush:
             facing=facing,
             resume=resume,
             tilt_size=tilt_size,
+            alignment=alignment,
             alpha=alpha,
         )
 
