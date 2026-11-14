@@ -83,7 +83,7 @@ public sealed class StackCanvasSidesTests : IDisposable {
                     paint,
                     "baseColor",
                     0u,
-                    "",
+                    string.Empty,
                     null
                 ) { Width = 2048, Height = 2048 }
             ],

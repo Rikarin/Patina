@@ -166,7 +166,7 @@ public sealed class StackEditorPropertyTests {
     public void A_set_says_what_it_is_for_and_how_deep_each_channel_is() {
         var session = new StackSession("/tmp/Described.vxlayers", StackDocuments.Text(Sample()), static () => { });
         var usage = session.State.Channels[0].Usage;
-        Assert.Equal(("", "Rgba8"), (session.State.Description, session.State.Channels[0].Format));
+        Assert.Equal((string.Empty, "Rgba8"), (session.State.Description, session.State.Channels[0].Format));
         Assert.DoesNotContain("description:", session.Text, StringComparison.Ordinal);
 
         session.Apply(new([new StackSetSettings(Description: "  Rust in the seams.\nKeep the decals sharp.  ")]));
@@ -177,14 +177,17 @@ public sealed class StackEditorPropertyTests {
         Assert.Equal("Channel depth", session.Steps.Done[^1].Label);
         Assert.Contains("format: Rgba16Float", session.Text, StringComparison.Ordinal);
 
-        session.Apply(new([new StackSetSettings(Description: "")]));
-        Assert.Equal("", session.State.Description);
+        session.Apply(new([new StackSetSettings(Description: string.Empty)]));
+        Assert.Equal(string.Empty, session.State.Description);
         Assert.DoesNotContain("description:", session.Text, StringComparison.Ordinal);
 
         session.Undo();
         session.Undo();
-        Assert.Equal(("Rust in the seams.\nKeep the decals sharp.", "Rgba8"), (session.State.Description,
-            session.State.Channels[0].Format));
+        Assert.Equal(
+            ("Rust in the seams.\nKeep the decals sharp.", "Rgba8"),
+            (session.State.Description,
+                session.State.Channels[0].Format)
+        );
         var refused = Assert.Throws<StackEditRefusedException>(() =>
             session.Apply(new([new StackSetChannelFormat("nothing", "Rgba16Float")]))
         );
