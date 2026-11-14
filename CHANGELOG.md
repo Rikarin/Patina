@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Erosion Channels has a Meander (#290): water may favour a gentler way down over the steepest, so long runs on an even slope bend and merge into branching channels instead of lying straight and parallel. Nought is the steepest way, as before.
 - Fill past the dilation, a switch in the Bake dialog (#148): the texture past each chart's dilation is filled with a smooth blend of the maps around it, so its smallest mipmaps keep the maps' own values instead of fading to the empty background. Nothing the charts or the dilation wrote changes, and the ID, UV Islands and UV Borders maps keep their background. Through the API the bake option `diffusion`.
 - A UV Borders map to bake (#121), with a section in the Bake dialog: black on the border of each UV island of the low mesh and rising evenly to white a width inside it, measured along the UV layout, to fade a pattern out before the seam it would break at. A graph's Mesh Map node reads it. Through the API the bake options take the map `borders` and `borders.width`, a share of the texture.
 - The Edges map can mark the low mesh's edges (#278): Mesh, in its section of the Bake dialog, is High mesh, the edges where the rays land, as before, or Low mesh, the low mesh's own hard or sharp edges, so a low poly's edges get a band even under a high mesh that rounds them all. Through the API `edges.mesh`, `high` or `low`.
@@ -298,6 +299,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Preferences has a Viewport camera section: how fast a drag orbits and the wheel or a zoom drag zooms (Slow, Normal or Fast), and Invert the wheel, which zooms out when the wheel is rolled away.
 
 ### Fixed
+
+- Textured Fill no longer lays a photo's edge into the hole (#290): a photo that does not tile has a seam at its edge, and the grain borrowed from half way across carried it in as a bright and a dark line. Each borrowed part's grain is now taken on its own, and only where it is clear of a hole and a blur away from an edge that does not match the one across from it, so a photo that tiles keeps all of its grain.
+- Worley cells measured with Manhattan or Chebyshev distance no longer show grey wedges (#290): the search for the second-nearest point now reaches as far as that point can be, which for those two was past the three-by-three cells it read. Euclidean cells lose the rarer, fainter steps they had for the same reason.
+- Flood Fill and Area Fill tell apart two areas that go all the way round a tiling picture over the same rows (#290), such as two diagonal stripes, which shared a bounding box and so a random value, color and id. An area that goes round is now named by its first texel as well.
 
 - Restoring a snapshot, or taking one, of a document with edits just made no longer fails without saying why (#284): the engine is asked whether the document has unsaved edits, rather than trusting a tab that had not caught up, and they are saved first.
 - Saving a picture, a graph or the engine's shader caches no longer fails on Windows while the engine's shared graph and paint code is reading the file (#277): every read there lets another program write or delete the file meanwhile, as Patina's own reads already did.
