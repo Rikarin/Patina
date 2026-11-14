@@ -240,6 +240,13 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'unflattenFolder', label: 'Unflatten Folder', section: 'Layers', area: 'stack' },
   { id: 'flattenStack', label: 'Flatten All Layers', section: 'Layers', area: 'stack' },
   {
+    id: 'openStackAsGraph',
+    label: 'Open as Graph',
+    section: 'Layers',
+    area: 'stack',
+    hint: 'Writes the graph these layers stand for beside them, and opens it. The layers stay as they are'
+  },
+  {
     id: 'exportLayer',
     label: 'Export Layer Alone…',
     section: 'Layers',
@@ -514,6 +521,7 @@ export const MenuBar: readonly {
       'flattenFolder',
       'unflattenFolder',
       'flattenStack',
+      'openStackAsGraph',
       'exportLayer',
       'exportMask',
       '-',

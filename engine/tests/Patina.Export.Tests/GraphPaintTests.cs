@@ -60,12 +60,17 @@ public sealed class GraphPaintTests : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     A paint layer nobody has painted has no file yet, which the stack reads as clear, so the graph does too, and
+    ///     stamps the missing file so that its first save is noticed. A file outside the graph's folder is refused.
+    /// </summary>
     [Fact]
-    public void A_painted_file_that_is_not_there_is_refused_by_name() {
+    public void A_paint_file_not_yet_written_reads_clear_and_one_elsewhere_is_refused() {
         NodeTypeRegistry registry = new();
         NodeTypes.Register(registry);
         NodeGraphModel graph = new();
-        Output(graph, Bitmap(graph, PaintReference.Reference("paint/Gone.vxpaint", "baseColor")), "baseColor");
+        Output(graph, Bitmap(graph, PaintReference.Reference("paint/Unpainted.vxpaint", "baseColor")), "baseColor");
+        Output(graph, Bitmap(graph, PaintReference.Reference("../Elsewhere.vxpaint", "roughness")), "roughness");
         TextureGraphCompiler compiler = new(registry) { BaseWidth = Side, BaseHeight = Side };
         var plan = compiler.Compile(graph).Value;
 
@@ -79,7 +84,13 @@ public sealed class GraphPaintTests : IDisposable {
             var owed = TextureGraphExternals.Upload(uploads, plan, compiler.Externals);
             var filled = new GraphPictures().Fill(uploads, plan, owed, [folder], null);
 
-            Assert.Contains("vxpaint:baseColor|paint/Gone.vxpaint", Assert.Single(filled.Refusals).Message);
+            Assert.Contains("../Elsewhere.vxpaint", Assert.Single(filled.Refusals).Message);
+            var unpainted = Assert.Single(filled.Stamps);
+            Assert.Equal(-1, unpainted.Length);
+            Assert.False(GraphPictures.Moved(unpainted));
+            Directory.CreateDirectory(Path.Combine(folder, "paint"));
+            File.WriteAllBytes(Path.Combine(folder, "paint", "Unpainted.vxpaint"), [1]);
+            Assert.True(GraphPictures.Moved(unpainted));
         }
     }
 

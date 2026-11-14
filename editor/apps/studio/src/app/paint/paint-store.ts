@@ -962,6 +962,39 @@ export class PaintStore {
   }
 
   /**
+   * Writes the graph this stack stands for into its project as a new graph document (#205), saving the stack first, since
+   * the graph reads painted layers from their files. The stack stays as it is. The graph's path, or null if it was not
+   * written, which the failure says why.
+   */
+  async writeGraph(name: string): Promise<string | null> {
+    if (this.state()?.history.dirty && !(await this.act('save'))) {
+      return null;
+    }
+
+    const id = this.state()?.id;
+    if (!id) {
+      return null;
+    }
+
+    this.startAction();
+    try {
+      const client = await this.api();
+      const made = unwrap(
+        await client.POST('/api/v1/stacks/{id}/graph', { params: { path: { id } }, body: { name } })
+      );
+      this.notice.set(
+        made.problems.length > 0
+          ? `Wrote ${made.name}, without what could not come: ${made.problems.join(' ')}`
+          : `Wrote ${made.name}. The layers stay as they are; the graph is yours to take further.`
+      );
+      return made.path;
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+      return null;
+    }
+  }
+
+  /**
    * The session an open of this path got from the Server, once the open on its way has its answer; null if none was
    * asked for or the Server made none. A tab closed while its stack is still opening closes this, or the Server keeps a
    * session that nothing shows, and the document can then be neither moved nor deleted (#232).
