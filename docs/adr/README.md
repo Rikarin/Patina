@@ -40,3 +40,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0040](0040-superseded-evaluations.md): accepted: an evaluation a save waits behind is stopped between parts of its run, and nothing it began is trusted.
 - [0041](0041-uploads.md): accepted: a client sends a file from its own computer to `uploads/` in the library, kept by its digest with its own name, and gives the path the Server answers with to any route that takes a file.
 - [0042](0042-server-decodes-no-picture.md): accepted: the Server decodes no picture; the Worker reads a library picture, a bake's ID colours and a compression preview beside its queue, and a picture that took a Worker down is not asked about again.
+- [0043](0043-quick-mask-across-sets.md): proposed: a model's quick mask strokes through a view are kept by the Server and laid in every set's quick mask, never taken out of a journal; undo, clear and show across sets wait on the owner's choice.
