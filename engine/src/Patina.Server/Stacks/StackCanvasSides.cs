@@ -43,7 +43,9 @@ public sealed class StackCanvasSides(string folder) {
             ["layer"] = layer, ["held"] = Size(held.Width, held.Height), ["size"] = Size(width, height)
         };
         if (held.Width > width || held.Height > height) {
-            if (held.Width >= width && held.Height >= height && (long)held.Width * height == (long)held.Height * width) {
+            if (held.Width >= width
+                && held.Height >= height
+                && (long)held.Width * height == (long)held.Height * width) {
                 return held;
             }
 

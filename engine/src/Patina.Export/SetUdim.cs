@@ -9,7 +9,8 @@ namespace Patina.Export;
 ///     or time changes, and once for each material and UV set asked about.
 /// </summary>
 public static class SetUdim {
-    static readonly ConcurrentDictionary<(string File, string Set, int UvSet), (long Length, DateTime Written, int Udim)>
+    static readonly
+        ConcurrentDictionary<(string File, string Set, int UvSet), (long Length, DateTime Written, int Udim)>
         Known = new();
 
     /// <summary>

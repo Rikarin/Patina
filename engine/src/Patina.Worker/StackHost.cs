@@ -750,7 +750,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                     : (document.BaseWidth, document.BaseHeight);
                 Made(file, made);
                 CanvasCopy copy = new(canvases, file, Path.GetFullPath(from, folder), made.Item1, made.Item2) {
-                    Carry = part.Carry is { } carry ? Layouts(part.Model, carry) : null
+                    Carry = Layouts(part.Model, part.Carry)
                 };
                 return known[part.Id] = new(part.Id, null, null) { Copy = copy };
             }
@@ -801,10 +801,15 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         }
 
         /// <summary>
-        ///     This set's triangles laid out in two of the mesh's UV sets, which a copy is carried between (#210).
+        ///     This set's triangles laid out in two of the mesh's UV sets, which a copy is carried between (#210), or
+        ///     null for a copy that is not carried.
         /// </summary>
         /// <exception cref="IpcException">The mesh will not read, or a part lacks one of the UV sets.</exception>
-        (PaintProjection From, PaintProjection To) Layouts(string model, StackCarry carry) {
+        (PaintProjection From, PaintProjection To)? Layouts(string model, StackCarry? carry) {
+            if (carry is null) {
+                return null;
+            }
+
             var file = Path.GetFullPath(model, folder);
             return (meshes.Of(file, set, carry.FromUvSet).Projection, meshes.Of(file, set, carry.ToUvSet).Projection);
         }

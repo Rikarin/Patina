@@ -213,10 +213,8 @@ public sealed partial class StackProcessTests {
         await SaveAsync(state.Id, deadline.Token);
         Assert.Equal(held, File.ReadAllBytes(painted));
         var carried = Directory.EnumerateFiles(projectFolder, "*.vxpaint").Single(file => file != painted);
-        PaintCanvas canvas;
-        using (var read = File.OpenRead(carried)) {
-            canvas = PaintCanvas.Read(read);
-        }
+        using var read = new MemoryStream(await File.ReadAllBytesAsync(carried, deadline.Token));
+        var canvas = PaintCanvas.Read(read);
 
         var image = canvas.Channel("baseColor");
         var covered = 0;

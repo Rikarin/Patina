@@ -79,8 +79,8 @@ public static class SetMerge {
         return [
             ..tiles.Select(tile => sets.Where(set => set.Udim == tile).ToList())
                 .Select(group => group.Count == 1
-                    ? group[0] with { Name = string.Empty }
-                    : Atlas(group, group[0].Udim, warnings)
+                        ? group[0] with { Name = string.Empty }
+                        : Atlas(group, group[0].Udim, warnings)
                 )
         ];
     }
@@ -95,7 +95,7 @@ public static class SetMerge {
 
     /// <summary>Each tile the sets lie on, lowest first.</summary>
     static List<int> TilesOf(IReadOnlyList<ExportSet> sets) =>
-        sets.Select(static set => set.Udim).Distinct().Order().ToList();
+        [..sets.Select(static set => set.Udim).Distinct().Order()];
 
     /// <summary>Whether a set has no layout on a mesh to say where its texels go, which is then said.</summary>
     static bool Unlaid(IReadOnlyList<ExportSet> sets, ICollection<string> warnings) {

@@ -228,9 +228,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         }
 
         foreach (var (entry, part) in parts) {
-            entry.Stamps.AddRange(
-                entry.StampScale is { } by ? StackStrokeScale.Stamps(part.Stamps, by) : part.Stamps
-            );
+            entry.Stamps.AddRange(entry.StampScale is { } by ? StackStrokeScale.Stamps(part.Stamps, by) : part.Stamps);
             entry.Open = part.Open;
         }
 
@@ -546,11 +544,8 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             : canvasSides.Check(layer.Name, paint, Document.BaseWidth, Document.BaseHeight);
         // A larger canvas is painted at its own size (#19): a stroke in the 2D view is carried onto its texels, and a
         // brush sized in texels keeps its size on the model.
-        float? by = width == Document.BaseWidth ? null : (float)width / Document.BaseWidth;
-        var painted = by is not { } scale ? stroke
-            : stroke.View is null ? StackStrokeScale.Scaled(stroke, scale)
-            : stroke.Brush.SizeSpace != "texture" ? stroke
-            : stroke with { Brush = stroke.Brush with { Radius = stroke.Brush.Radius * scale } };
+        var by = StackStrokeScale.By(width, Document.BaseWidth);
+        var painted = StackStrokeScale.At(stroke, by);
 
         // A quick mask nothing has painted keeps nothing back, rather than everything.
         var kept = stroke.QuickMask is StackQuickMasks.Inside or StackQuickMasks.Outside
@@ -560,7 +555,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
                 SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set),
                 Width = width,
                 Height = height,
-                StampScale = stroke.View is null ? by : null,
+                StampScale = StackStrokeScale.OfStamps(stroke, by),
                 // Only a stroke on the mesh has faces to keep to; one in the 2D view reaches the whole layout.
                 Isolation = stroke.View is null ? null : Isolation,
                 Keep = kept ? QuickMask.Paint : null,
