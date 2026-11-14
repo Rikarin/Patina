@@ -5767,6 +5767,57 @@
         }
       }
     },
+    "/api/v1/library/revisions/purge": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Rescans, then removes the bytes under .revisions that no snapshot and no pin names any more, which the check lists as UnusedRevision, as patina library check --purge-revisions does. No snapshot or pin is taken while it runs.",
+        "operationId": "PurgeRevisions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryTidied"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/clean": {
       "post": {
         "tags": [

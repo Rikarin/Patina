@@ -56,7 +56,7 @@ static class SnapshotEndpoints {
                     );
                 }
 
-                return TypedResults.Ok(Snapshots.Take(library.RootPath, file, request.Name));
+                return TypedResults.Ok(library.TakeSnapshot(file, request.Name));
             }
         );
 
@@ -77,7 +77,7 @@ static class SnapshotEndpoints {
                     );
                 }
 
-                var before = Snapshots.Restore(library.RootPath, file, request.Id);
+                var before = library.RestoreSnapshot(file, request.Id);
                 host.RequestRescan();
                 return TypedResults.Ok(before);
             }

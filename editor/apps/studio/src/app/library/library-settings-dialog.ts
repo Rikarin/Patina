@@ -37,7 +37,8 @@ const PruneDays = 30;
 
 /**
  * Library Settings (#192): the open library's settings, which no other view shows, and the care it takes. Check Library
- * reads every project and material and says what is wrong, as `patina library check` does; Prune takes built objects
+ * reads every project and material and says what is wrong, as `patina library check` does, and removes the kept
+ * versions it found nothing uses, as `--purge-revisions` does; Prune takes built objects
  * nothing has used for a while out of the cache; Clean takes away the copies of paint a new UV layout moved (#162).
  * Each runs in the Server, which holds the library, and says what it did in Activity too.
  */
@@ -164,6 +165,20 @@ const PruneDays = 30;
                             and {{ count(group.count - group.findings.length) }} more
                           </span>
                         }
+                        @if (group.kind === 'UnusedRevision') {
+                          <button
+                            type="button"
+                            xuiButton
+                            size="sm"
+                            class="self-start"
+                            data-testid="library-settings-purge-revisions"
+                            [disabled]="busy() !== null"
+                            [title]="'Removes the kept versions no snapshot and no pin uses'"
+                            (click)="purgeRevisions()"
+                          >
+                            {{ busy() === 'purge' ? 'Removing…' : 'Remove Them' }}
+                          </button>
+                        }
                       </div>
                     }
                   </div>
@@ -255,7 +270,7 @@ export class LibrarySettingsDialog {
   protected readonly health = signal<LibraryHealth | null>(null);
   protected readonly cache = signal<CacheInfo | null>(null);
   protected readonly days = signal(PruneDays);
-  protected readonly busy = signal<'check' | 'prune' | 'clean' | 'settings' | null>(null);
+  protected readonly busy = signal<'check' | 'purge' | 'prune' | 'clean' | 'settings' | null>(null);
   protected readonly presets = signal<readonly ExportPresetInfo[]>([]);
   protected readonly tidied = signal<string | null>(null);
   protected readonly failure = signal<string | null>(null);
@@ -304,6 +319,15 @@ export class LibrarySettingsDialog {
         source: 'Library',
         text: this.summary(found)
       });
+    });
+  }
+
+  /** Removes the kept versions no snapshot and no pin uses, then checks again so the list says so (#292). */
+  async purgeRevisions(): Promise<void> {
+    await this.run('purge', async client => {
+      const done = unwrap(await client.POST('/api/v1/library/revisions/purge'));
+      this.say(`Removed ${count(done.removed)} kept versions nothing used, ${bytes(done.bytes)}.`);
+      this.health.set(unwrap(await client.POST('/api/v1/library/check')));
     });
   }
 
@@ -373,7 +397,7 @@ export class LibrarySettingsDialog {
   }
 
   private async run(
-    what: 'check' | 'prune' | 'clean' | 'settings',
+    what: 'check' | 'purge' | 'prune' | 'clean' | 'settings',
     act: (client: Awaited<ReturnType<LibraryStore['api']>>) => Promise<void>
   ): Promise<void> {
     this.busy.set(what);

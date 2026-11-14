@@ -136,7 +136,7 @@ static class SharedFolderMove {
         return free;
     }
 
-    /// <summary><paramref name="path" />, or the first of <c>name-2.ext</c>, <c>name-3.ext</c>… nothing holds.</summary>
+    /// <summary><paramref name="path" />, or the first free one of <c>name-2.ext</c>, <c>name-3.ext</c>…</summary>
     static string Free(string path) {
         var folder = Path.GetDirectoryName(path)!;
         var name = Path.GetFileName(path);
