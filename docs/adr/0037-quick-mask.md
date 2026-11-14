@@ -1,4 +1,4 @@
-# ADR 0036: A quick mask is a journaled canvas the session holds, kept to in the atlas, and never saved
+# ADR 0037: A quick mask is a journaled canvas the session holds, kept to in the atlas, and never saved
 
 **Status:** accepted, 2026-11-13, for issue #127.
 
