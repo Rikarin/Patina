@@ -169,10 +169,17 @@ public static partial class Refusals {
         QuotedPath()
             .Replace(
                 sentence,
-                static match => match.Groups[1].Value
-                    + Path.GetFileName(match.Groups[2].Value.TrimEnd('\\', '/'))
-                    + match.Groups[1].Value
+                static match => match.Groups[1].Value + LastName(match.Groups[2].Value) + match.Groups[1].Value
             );
+
+    /// <summary>
+    ///     A path's last name, cut at either slash on every system: <see cref="Path.GetFileName(string)" /> keeps a
+    ///     Windows path whole on Linux, and the sentence may be another system's (master's Linux and macOS CI).
+    /// </summary>
+    static string LastName(string path) {
+        var trimmed = path.TrimEnd('\\', '/');
+        return trimmed[(trimmed.LastIndexOfAny(['\\', '/']) + 1)..];
+    }
 
     /// <summary>A path in quotes that starts at a drive, a share or the root, and has a folder in it.</summary>
     [GeneratedRegex("""(['"])((?:[A-Za-z]:[\\/]|\\\\|/)[^'"]*[\\/][^'"]*)\1""")]
