@@ -187,6 +187,76 @@ public sealed class SetMergeTests : IDisposable {
     }
 
     /// <summary>
+    ///     Sets on two tiles merge into one set of files per tile when every file names its tile (#281): the two on
+    ///     1001 become one atlas and the one on 1002 its own files, each named by its tile.
+    /// </summary>
+    [Fact]
+    public void Sets_on_two_tiles_merge_per_tile_when_the_files_name_the_tile() {
+        var preset = ExportOverrides.Apply(
+            ExportPresetReader.Read(Preset.Replace("T_{project}_R", "T_{project}_R.{udim}"), "p"),
+            new() { Merge = true }
+        );
+        preset = preset with {
+            Textures = [preset.Textures[0], preset.Textures[1] with { File = "T_{project}_N_{tile}" }]
+        };
+        var made = Path.Combine(folder.FullName, "made");
+
+        var manifest = ExportRun.Run(
+            preset,
+            [
+                Set("Body", true, 0.25f), Set("Strap", false, 0.75f),
+                Set("Head", true, 0.5f) with { Udim = 1002 }
+            ],
+            made,
+            null,
+            Token
+        );
+        var delivered = ExportRun.Deliver(
+                "key",
+                made,
+                manifest,
+                Path.Combine(folder.FullName, "out"),
+                new("Crate", "p")
+            )
+            .Files.Select(Path.GetFileName)
+            .Order(StringComparer.Ordinal);
+
+        Assert.DoesNotContain(manifest.Warnings, static w => w.Contains("not merged", StringComparison.Ordinal));
+        Assert.Equal(
+            ["T_Crate_N_u1_v1.png", "T_Crate_N_u2_v1.png", "T_Crate_R.1001.png", "T_Crate_R.1002.png"],
+            delivered
+        );
+    }
+
+    /// <summary>A file name without the tile is one file for two tiles, so the sets stay apart and it says how.</summary>
+    [Fact]
+    public void Sets_on_two_tiles_stay_apart_when_a_file_does_not_name_the_tile() {
+        List<string> warnings = [];
+
+        var merged = SetMerge.PerTile(
+            [Set("Body", true, 0.25f), Set("Strap", false, 0.75f) with { Udim = 1002 }],
+            false,
+            warnings
+        );
+
+        Assert.Null(merged);
+        Assert.Contains("{udim} or {tile}", Assert.Single(warnings), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_tile_of_one_set_keeps_that_sets_maps_under_no_name() {
+        List<string> warnings = [];
+        var head = Set("Head", true, 0.5f) with { Udim = 1002 };
+
+        var merged = SetMerge.PerTile([Set("Body", true, 0.25f), Set("Strap", false, 0.75f), head], true, warnings)!;
+
+        Assert.Empty(warnings);
+        Assert.Equal([1001, 1002], merged.Select(static set => set.Udim));
+        Assert.All(merged, static set => Assert.Equal(string.Empty, set.Name));
+        Assert.Same(head.Maps, merged[1].Maps);
+    }
+
+    /// <summary>
     ///     One set of files has one size, the export's: a size chosen for one set is not used, and the report says so
     ///     (#252).
     /// </summary>

@@ -94,9 +94,10 @@ public static class ExportRun {
             sets = [..sets.Where(set => chosen.Contains(set.Name, StringComparer.Ordinal))];
         }
 
-        if (preset.Merge && SetMerge.Merge(sets, warnings) is { } merged) {
+        var namedByTile = preset.Textures.All(static texture => SetMerge.NamesTile(texture.File));
+        if (preset.Merge && SetMerge.PerTile(sets, namedByTile, warnings) is { } merged) {
             Unused(preset, sets, warnings);
-            sets = [merged];
+            sets = merged;
             several = false;
         }
 
