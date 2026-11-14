@@ -184,6 +184,9 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
   frames = Number(await viewport.getAttribute('data-frames'));
   await isolate.click();
   await expect(isolate).toHaveAttribute('aria-pressed', 'false');
+  // Off the row again: wood's mark takes its quad's blue under the pale grey this counts, now the wash is the orange
+  // a person sees (#286).
+  await viewport.hover();
   await drawn(viewport, 'isolation', [], frames);
   await expect.poll(quads, { timeout: 30_000 }).toBeGreaterThan(whole * 0.9);
   await viewport.screenshot({ path: join(shots, 'isolate-3-whole-again.png') });
