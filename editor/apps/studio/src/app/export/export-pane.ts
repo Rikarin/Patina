@@ -1,12 +1,12 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
-  Injector,
-  type OnInit,
   computed,
+  DestroyRef,
   effect,
   inject,
+  Injector,
+  type OnInit,
   signal,
   untracked
 } from '@angular/core';
@@ -38,6 +38,7 @@ import {
   type FileChoice,
   requestFor,
   sameOwner,
+  type SetChoice,
   settingsFor,
   settingsOf,
   usesDistance
@@ -354,7 +355,40 @@ function lanesOf(hex: string): number[] {
                     [value]="setSizeOf(set)"
                     (valueChange)="chooseSetSize(set, $event)"
                   />
+                  <xui-select
+                    class="w-32 shrink-0"
+                    data-testid="export-set-padding"
+                    [title]="
+                      settings().merge
+                        ? 'Merged sets are written as one set of files, with the export’s padding.'
+                        : 'What fills the empty texels of this texture set’s layout, where it needs other than the export’s.'
+                    "
+                    [aria-label]="'Padding of ' + set"
+                    [disabled]="settings().merge"
+                    [filterable]="false"
+                    [itemText]="setPaddingName"
+                    [items]="setPaddings()"
+                    [value]="setPaddingOf(set)"
+                    (valueChange)="chooseSetPadding(set, $event)"
+                  />
                 </div>
+                @if (!settings().merge && setDistanceOf(set); as distance) {
+                  <div class="flex items-center gap-2 pl-6 text-xs" data-testid="export-set-distance-row">
+                    <span class="text-foreground-muted w-16 shrink-0">Distance</span>
+                    <xui-slider
+                      class="min-w-0 flex-1"
+                      labelStepSize="0"
+                      data-testid="export-set-distance"
+                      [attr.aria-label]="'Padding distance of ' + set"
+                      [max]="64"
+                      [min]="0"
+                      [stepSize]="1"
+                      [value]="distance.value"
+                      (valueChange)="chooseSetDistance(set, $event)"
+                    />
+                    <span class="readout w-12 shrink-0 text-right">{{ distance.value }} px</span>
+                  </div>
+                }
               }
               <div class="flex items-center justify-between gap-2 pt-1">
                 <span
@@ -785,6 +819,10 @@ export class ExportPane implements OnInit {
   protected readonly setSizeName = (size: string): string => (size === 'export' ? 'Export’s size' : `${size} px`);
   /** The sides a texture set can take of its own, after the export's. */
   protected readonly setSizes = computed(() => ['export', ...this.status.textureSides().map(String)]);
+  protected readonly setPaddingName = (mode: string): string =>
+    mode === 'export' ? 'Export’s padding' : this.paddingName(mode);
+  /** The paddings a texture set can take of its own, after the export's. */
+  protected readonly setPaddings = computed(() => ['export', ...this.store.paddings()]);
 
   /** The project the dialog is about: the one in front, or the one selected in the Library. */
   protected readonly target = computed<{ id: string; name: string; path: string } | null>(() => {
@@ -1041,8 +1079,39 @@ export class ExportPane implements OnInit {
   }
 
   protected chooseSetSize(set: string, size: string | null): void {
+    const held = this.settings().perSet[set];
+    this.changeSet(set, { ...held, size: !size || size === 'export' ? null : Number(size) });
+  }
+
+  protected setPaddingOf(set: string): string {
+    return this.settings().perSet[set]?.padding?.mode ?? 'export';
+  }
+
+  /** The distance a set's own padding grows its islands by, boxed so a distance of nought still shows its row. */
+  protected setDistanceOf(set: string): { value: number } | null {
+    const padding = this.settings().perSet[set]?.padding;
+    return padding && usesDistance(padding.mode) ? { value: padding.distance } : null;
+  }
+
+  /** A set's own padding, which starts at the export's distance, or the export's again. */
+  protected chooseSetPadding(set: string, mode: string | null): void {
+    const held = this.settings().perSet[set];
+    const padding =
+      !mode || mode === 'export' ? null : { mode, distance: held?.padding?.distance ?? this.settings().distance };
+    this.changeSet(set, { size: held?.size ?? null, padding });
+  }
+
+  protected chooseSetDistance(set: string, distance: number): void {
+    const held = this.settings().perSet[set];
+    if (held?.padding) {
+      this.changeSet(set, { ...held, padding: { ...held.padding, distance } });
+    }
+  }
+
+  /** One set's choice, dropped when it changes nothing so the project keeps no empty entry. */
+  private changeSet(set: string, choice: SetChoice): void {
     const kept = Object.entries(this.settings().perSet).filter(([name]) => name !== set);
-    const own = !size || size === 'export' ? [] : [[set, { size: Number(size) }] as const];
+    const own = choice.size !== null || choice.padding ? [[set, choice] as const] : [];
     this.change({ perSet: Object.fromEntries([...kept, ...own]) });
   }
 
