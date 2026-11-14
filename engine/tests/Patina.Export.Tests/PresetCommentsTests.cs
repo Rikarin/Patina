@@ -2,7 +2,10 @@ using Patina.Export.Presets;
 
 namespace Patina.Export.Tests;
 
-/// <summary>A hand-written preset edited in the app keeps the comments above its fields and textures (#155).</summary>
+/// <summary>
+///     A hand-written preset edited in the app keeps the comments above its fields, its textures and the fields inside
+///     a texture (#155).
+/// </summary>
 public sealed class PresetCommentsTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-preset-comments-");
 
@@ -20,7 +23,7 @@ public sealed class PresetCommentsTests : IDisposable {
                                  # Colour first, alpha unused.
                                  - file: "{set}_albedo"
                                    format: png8
-                                   # This one is lost: it is inside a texture.
+                                   # Inside a texture, above its space.
                                    space: srgb
                                    channels: [baseColor.r, baseColor.g, baseColor.b]
                                  # Packed for the shader.
@@ -43,7 +46,9 @@ public sealed class PresetCommentsTests : IDisposable {
         Assert.Contains("# The phones read green down.\nnormal: y-down\n", text);
         Assert.Contains("  # Colour first, alpha unused.\n  - file: \"{set}_albedo\"\n", text);
         Assert.Contains("  # Packed for the shader.\n  - file: \"{set}_mask\"\n", text);
-        Assert.DoesNotContain("This one is lost", text);
+        Assert.Contains("    format: png8\n    # Inside a texture, above its space.\n    space: srgb\n", text);
+        // Above the albedo's space only: the mask's own space has no comment.
+        Assert.Equal(2, text.Split("# Inside a texture").Length);
         Assert.Equal("Mobile, smaller", ExportPresetReader.Read(text, "mobile").Name);
     }
 

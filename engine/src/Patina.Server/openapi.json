@@ -15268,7 +15268,7 @@
           },
           "file": {
             "type": "string",
-            "description": "A file on the Server\u0027s machine that describes materials: a glTF (\u0060.gltf\u0060, \u0060.glb\u0060) or another model\nfile, a MaterialX document (\u0060.mtlx\u0060) or a USD layer in its text form (\u0060.usda\u0060)."
+            "description": "A file on the Server\u0027s machine that describes materials: a glTF (\u0060.gltf\u0060, \u0060.glb\u0060) or another model\nfile, a MaterialX document (\u0060.mtlx\u0060), a USD layer in its text form (\u0060.usda\u0060) or a USD package\n(\u0060.usdz\u0060) whose layer is text."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/project/materials\u0060."
@@ -16363,10 +16363,11 @@
       },
       "ProjectDocumentInfo": {
         "required": [
+          "tags",
           "kind",
           "name",
           "path",
-          "tags"
+          "udim"
         ],
         "type": "object",
         "properties": {
@@ -16425,6 +16426,11 @@
               "string"
             ],
             "description": "Why that bake no longer fits it, so its maps need baking again, or null: \u0060mesh\u0060, made on a mesh it no\nlonger stands on, \u0060uvSet\u0060, laid out in another UV set than the one it chose (#238), or \u0060shape\u0060,\nof another shape than its Width by Height (#262)."
+          },
+          "udim": {
+            "type": "integer",
+            "description": "For a texturing document on a mesh, the UDIM tile its layout sits on in the UV set it chose (#289), which\nits exported files are named by: 1001 for one on the first tile, on several, on no mesh, or of another kind.",
+            "format": "int32"
           },
           "tags": {
             "type": "array",

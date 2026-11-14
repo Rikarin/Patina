@@ -177,8 +177,8 @@ public static class SetMerge {
             .ToList();
         var background = held.IndexOf(first);
         // A normal whose green runs the other way from the first set's is turned over.
-        var turned = held.Select(map => name == ExportMaps.Normal && map is not null && map.Green != first.Green)
-            .ToList();
+        var tangent = ExportMaps.IsTangentNormal(name);
+        var turned = held.Select(map => tangent && map is not null && map.Green != first.Green).ToList();
         var samples = new float[width * height * lanes];
         Parallel.For(
             0,

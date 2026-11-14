@@ -80,7 +80,8 @@ sealed class ViewportGrid(
 
     static void Add(List<float> vertices, Vector3 from, Vector3 to, Vector4 colour) {
         foreach (var at in new[] { from, to }) {
-            vertices.AddRange([at.X, at.Y, at.Z, colour.X, colour.Y, colour.Z, colour.W, 0f, 0f, 0f, 0f, 0f]);
+            vertices.AddRange([at.X, at.Y, at.Z, colour.X, colour.Y, colour.Z, colour.W]);
+            vertices.AddRange(new float[ViewportMesh.FloatsPerVertex - 7]);
         }
     }
 

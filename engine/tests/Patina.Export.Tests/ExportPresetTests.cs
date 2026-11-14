@@ -29,7 +29,10 @@ public sealed class ExportPresetTests : IDisposable {
 
         Assert.Empty(found.Problems);
         Assert.Equal(
-            ["blender", "gltf", "godot", "pbr", "spec-gloss", "unity-hdrp", "unity-urp", "unreal", "vixen"],
+            [
+                "blender", "gltf", "godot", "mesh-maps", "pbr", "spec-gloss", "unity-hdrp", "unity-urp", "unreal",
+                "vixen"
+            ],
             found.Presets.Select(static p => p.Id)
         );
         Assert.Equal(GreenAxis.Up, found.Find("gltf")!.Normal);

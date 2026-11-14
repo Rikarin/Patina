@@ -64,7 +64,7 @@ import { PaintStore } from './paint-store';
             (click)="choose(set.path)"
           >
             <span class="min-w-0 flex-1 truncate">{{ set.name }}</span>
-            @if (set.path === front() && tile(); as udim) {
+            @if (tileOf(set); as udim) {
               <span
                 class="readout text-foreground-muted shrink-0 text-xs"
                 data-testid="texture-set-tile"
@@ -227,16 +227,27 @@ export class TextureSets {
     const named = this.project.textureSets();
     const document = this.project.document();
     return named.length > 0
-      ? named.map(set => ({ path: set.path, name: set.material ?? set.name, material: set.material ?? null }))
+      ? named.map(set => ({
+          path: set.path,
+          name: set.material ?? set.name,
+          material: set.material ?? null,
+          udim: set.udim
+        }))
       : document?.kind === 'texturing'
-        ? [{ path: document.path, name: document.name, material: null }]
+        ? [{ path: document.path, name: document.name, material: null, udim: document.udim }]
         : [];
   });
-  /** The open set's UDIM tile, said only when it is not the first, where every set sits until its layout moves. */
-  protected readonly tile = computed(() => {
-    const udim = this.store.state()?.udim;
+  /** The open set's UDIM tile as its stack has it, which is newer than the project's list while it is open. */
+  protected readonly tile = computed(() => this.store.state()?.udim);
+
+  /**
+   * A set's UDIM tile, said only when it is not the first, where every set sits until its layout moves: the open set's
+   * from its stack, and every other set's from the project's list (#289).
+   */
+  protected tileOf(set: { path: string; udim?: number }): string | null {
+    const udim = set.path === this.front() ? (this.tile() ?? set.udim) : set.udim;
     return udim !== undefined && udim !== 1001 ? `UDIM ${udim}` : null;
-  });
+  }
   protected readonly size = computed(() => {
     const state = this.store.state();
     return state ? `${state.width}×${state.height}` : null;

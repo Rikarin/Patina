@@ -518,6 +518,33 @@ public sealed class LibraryFolderTests : IDisposable {
         Assert.Equal("projects/crate/bakes", contents.BakeFolder);
     }
 
+    /// <summary>
+    ///     Each texturing document says its UDIM tile, read by the host from its mesh, so a client can show every set's
+    ///     tile (#289); a graph, or a library with no reader, says 1001.
+    /// </summary>
+    [Fact]
+    public void A_projects_texturing_documents_say_their_tiles() {
+        var made = library.CreateProject(new("Crate"));
+        var low = Path.Combine(folder.FullName, "low.glb");
+        File.WriteAllText(low, "mesh");
+        var mesh = library.AddMesh(made.Path, low, null);
+        library.AddDocument(made.Path, DocumentKinds.Texturing, "head.vxlayers", "Head", mesh.Id);
+        library.AddDocument(made.Path, DocumentKinds.Graph, "wood.vxtexgraph", "Wood", null);
+        List<(string Mesh, string? Material, int UvSet)> asked = [];
+
+        Assert.All(library.Contents(made.Path).Documents, static d => Assert.Equal(1001, d.Udim));
+        library.Tiles = (file, material, uvSet) => {
+            asked.Add((file, material, uvSet));
+            return 1002;
+        };
+        var documents = library.Contents(made.Path).Documents;
+
+        Assert.Equal(1002, documents.Single(static d => d.Name == "Head").Udim);
+        Assert.Equal(1001, documents.Single(static d => d.Name == "Wood").Udim);
+        var (file, _, uv) = Assert.Single(asked);
+        Assert.Equal(("low.glb", 0), (Path.GetFileName(file), uv));
+    }
+
     [Fact]
     public void Adding_a_mesh_again_keeps_what_is_on_it() {
         var made = library.CreateProject(new("Crate"));

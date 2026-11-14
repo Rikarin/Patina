@@ -47,7 +47,10 @@ public static class MaterialFormats {
     public const string MaterialX = ".mtlx";
 
     public static IReadOnlyList<string> Materials { get; } =
-        [".gltf", ".glb", ".fbx", ".obj", ".dae", MaterialX, ".usda", ".usd"];
+        [".gltf", ".glb", ".fbx", ".obj", ".dae", MaterialX, ".usda", ".usd", Package];
+
+    /// <summary>A USD package, which the Server unpacks and reads when its layer is text.</summary>
+    public const string Package = ".usdz";
 
     /// <summary>The ones the Server reads as text: MaterialX, and USD, which must be in its text form.</summary>
     public static IReadOnlyList<string> Texts { get; } = [MaterialX, ".usda", ".usd"];

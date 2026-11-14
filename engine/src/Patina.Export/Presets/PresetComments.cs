@@ -5,17 +5,16 @@ namespace Patina.Export.Presets;
 
 /// <summary>
 ///     The comments of a hand-written preset, kept through an edit in the app (#155): the block at the top, the lines
-///     above a top-level field, and the lines above a texture, found again by its <c>file</c>. A comment anywhere else,
-///     inside a texture or after a value on its line, has nothing to stay attached to when the fields are written anew,
-///     and is lost.
+///     above a top-level field, the lines above a texture, found again by its <c>file</c>, and the lines above a field
+///     inside a texture, found again by the texture's <c>file</c> and the field's key. A comment after a value on its
+///     line, or above a field the edit leaves out, has nothing to stay attached to and is lost.
 /// </summary>
 public sealed class PresetComments {
     readonly List<string> head = [];
-    readonly Dictionary<string, List<string>> fields = new(StringComparer.Ordinal);
-    readonly Dictionary<string, List<string>> textures = new(StringComparer.Ordinal);
+    readonly Dictionary<string, List<string>> above = new(StringComparer.Ordinal);
 
     /// <summary>Whether the file had no comment that can be kept.</summary>
-    public bool Empty => head.Count == 0 && fields.Count == 0 && textures.Count == 0;
+    public bool Empty => head.Count == 0 && above.Count == 0;
 
     /// <summary>The comments of a preset's text that can be kept.</summary>
     /// <param name="text">The preset file's text.</param>
@@ -24,6 +23,7 @@ public sealed class PresetComments {
         var comments = new PresetComments();
         List<string> pending = [];
         var first = true;
+        string? texture = null;
         foreach (var line in Lines(text)) {
             var trimmed = line.TrimStart();
             if (trimmed.StartsWith('#')) {
@@ -41,8 +41,9 @@ public sealed class PresetComments {
                 first = false;
             }
 
-            if (pending.Count > 0 && Anchor(line) is { } anchor) {
-                (anchor.Texture ? comments.textures : comments.fields)[anchor.Name] = [..pending];
+            var anchor = Anchor(line, ref texture);
+            if (pending.Count > 0 && anchor is not null) {
+                comments.above[anchor] = [..pending];
             }
 
             pending.Clear();
@@ -69,10 +70,10 @@ public sealed class PresetComments {
             start = 1;
         }
 
+        string? texture = null;
         foreach (var line in lines.Skip(start)) {
-            if (Anchor(line) is { } anchor
-                && (anchor.Texture ? textures : fields).GetValueOrDefault(anchor.Name) is { } above) {
-                foreach (var comment in above) {
+            if (Anchor(line, ref texture) is { } anchor && above.GetValueOrDefault(anchor) is { } comments) {
+                foreach (var comment in comments) {
                     text.Append(comment).Append('\n');
                 }
             }
@@ -86,17 +87,27 @@ public sealed class PresetComments {
     static string[] Lines(string text) =>
         text.Replace("\r\n", "\n", StringComparison.Ordinal).TrimEnd('\n').Split('\n');
 
-    /// <summary>What a line can hold a comment above: a top-level field by its key, or a texture by its file.</summary>
-    static (bool Texture, string Name)? Anchor(string line) {
+    /// <summary>
+    ///     What a line can hold a comment above, as a key: a top-level field by its name, a texture by its file, or a
+    ///     field inside the texture being read by both. A top-level line ends the texture being read.
+    /// </summary>
+    static string? Anchor(string line, ref string? texture) {
         var at = line.IndexOf(':', StringComparison.Ordinal);
         if (line.Length > 0 && char.IsAsciiLetter(line[0]) && at > 0) {
-            return (false, line[..at]);
+            texture = null;
+            return line[..at];
         }
 
         var trimmed = line.TrimStart();
         const string File = "- file:";
-        return trimmed.StartsWith(File, StringComparison.Ordinal)
-            ? (true, Unquoted(trimmed[File.Length..].Trim()))
+        if (trimmed.StartsWith(File, StringComparison.Ordinal)) {
+            texture = Unquoted(trimmed[File.Length..].Trim());
+            return $"- {texture}";
+        }
+
+        var inner = trimmed.IndexOf(':', StringComparison.Ordinal);
+        return texture is not null && inner > 0 && char.IsAsciiLetter(trimmed[0])
+            ? $"- {texture}\n{trimmed[..inner]}"
             : null;
     }
 

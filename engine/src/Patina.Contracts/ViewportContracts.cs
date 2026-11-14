@@ -49,8 +49,12 @@ public static class ViewportViews {
     /// </summary>
     public const string TexelDensity = "texelDensity";
 
+    /// <summary>The mesh's vertex colours as stored, with no light; white where the file has none (#146).</summary>
+    public const string VertexColours = "vertexColours";
+
     /// <summary>Every view, in the order the Worker numbers them.</summary>
-    public static IReadOnlyList<string> All { get; } = [Lit, Clay, Unlit, ..Channels, Picture, TexelDensity];
+    public static IReadOnlyList<string> All { get; } =
+        [Lit, Clay, Unlit, ..Channels, Picture, TexelDensity, VertexColours];
 }
 
 /// <summary>The lanes <see cref="ViewportDisplay.PictureLane" /> takes: the colour, or one lane as a grey.</summary>

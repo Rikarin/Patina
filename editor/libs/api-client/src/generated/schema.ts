@@ -5226,7 +5226,8 @@ export interface components {
       project: string;
       /**
        * @description A file on the Server's machine that describes materials: a glTF (`.gltf`, `.glb`) or another model
-       *     file, a MaterialX document (`.mtlx`) or a USD layer in its text form (`.usda`).
+       *     file, a MaterialX document (`.mtlx`), a USD layer in its text form (`.usda`) or a USD package
+       *     (`.usdz`) whose layer is text.
        */
       file: string;
     };
@@ -5710,6 +5711,12 @@ export interface components {
        *     of another shape than its Width by Height (#262).
        */
       bakeStale?: null | string;
+      /**
+       * Format: int32
+       * @description For a texturing document on a mesh, the UDIM tile its layout sits on in the UV set it chose (#289), which
+       *     its exported files are named by: 1001 for one on the first tile, on several, on no mesh, or of another kind.
+       */
+      udim: number;
       /** @description What it can be searched by, sorted. */
       tags: string[];
     };
