@@ -402,6 +402,13 @@ public sealed record LibraryFileList(IReadOnlyList<LibraryFile> Files, bool More
 /// <param name="Path">Its path below the library, which a layer or a mask reads.</param>
 public sealed record ProjectPicture(string Path);
 
+/// <summary>A file a client sent from its own computer, now on the Server's machine (#4).</summary>
+/// <param name="Path">
+///     Its full path on the Server's machine, which anything that takes a file there takes: a project's mesh, a picture
+///     brought into a project, a bake's high mesh.
+/// </param>
+public sealed record UploadedFile(string Path);
+
 /// <summary>The body of <c>PATCH /api/v1/library/project/document</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>
 /// <param name="Document">The texturing document.</param>

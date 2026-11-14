@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { unwrap } from '@patina/api-client';
 import { desktop } from '../core/desktop';
 import { type FileChoice, FilePicker, type PickRequest } from '../core/file-picker';
 import { SystemStatus } from '../core/system-status';
@@ -55,6 +56,22 @@ export class FileChooser {
     }
 
     return this.onServer(await this.picker.pick({ kind: 'folder', title, project }));
+  }
+
+  /**
+   * Sends a file of this computer to the library (#4), for a client of a Server it cannot reach the disk of, and answers
+   * with the file's path on the Server's machine, which every field that reads a file takes.
+   */
+  async send(file: Blob, name: string): Promise<string> {
+    const client = await this.library.api();
+    return unwrap(
+      await client.POST('/api/v1/library/uploads', {
+        params: { query: { name } },
+        body: file as unknown as string,
+        bodySerializer: (body: unknown) => body as BodyInit,
+        headers: { 'Content-Type': 'application/octet-stream' }
+      })
+    ).path;
   }
 
   private onServer(choice: FileChoice | null): string | null {

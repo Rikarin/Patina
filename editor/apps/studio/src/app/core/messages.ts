@@ -101,6 +101,8 @@ const Words: Readonly<Record<string, string>> = {
   'node-unevaluated': 'That node has no picture yet. Try again once the graph has updated.',
   'viewport-no-mesh': 'There is no mesh in the viewport. Open a document, or choose a mesh, first.',
   'preference-refused': 'That preference can’t be kept. {reason}',
+  'upload-kind': '“{name}” isn’t a picture or a mesh Patina reads, so it wasn’t sent.',
+  'upload-too-large': 'That file is larger than the {most} GiB the library takes at once.',
   'request-invalid': 'Patina asked the engine for something it doesn’t take, which is a fault in Patina. {reason}'
 };
 

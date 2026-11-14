@@ -3246,6 +3246,87 @@
         }
       }
     },
+    "/api/v1/library/uploads": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps a picture or a mesh a client sent from its own computer in the library\u0027s uploads folder, and answers with its path on the Server\u0027s machine, which a project\u0027s mesh, a picture brought into a project and a bake\u0027s high mesh take. The same file sent again is kept once.",
+        "operationId": "UploadLibraryFile",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "$ref": "#/components/schemas/Stream"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedFile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/document": {
       "patch": {
         "tags": [
@@ -22071,6 +22152,10 @@
         },
         "description": "The words a stack\u0027s fields take, each with its label, so that a client holds no list of its own."
       },
+      "Stream": {
+        "type": "string",
+        "format": "binary"
+      },
       "SystemInfo": {
         "required": [
           "version",
@@ -22352,6 +22437,19 @@
           }
         },
         "description": "What one texture set\u0027s unwrap came to."
+      },
+      "UploadedFile": {
+        "required": [
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its full path on the Server\u0027s machine, which anything that takes a file there takes: a project\u0027s mesh, a picture\nbrought into a project, a bake\u0027s high mesh."
+          }
+        },
+        "description": "A file a client sent from its own computer, now on the Server\u0027s machine (#4)."
       },
       "ViewportBakePreview": {
         "required": [
