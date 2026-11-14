@@ -11,6 +11,8 @@ export type CameraSpeed = 'slow' | 'normal' | 'fast';
 export const CameraSpeeds: Readonly<Record<CameraSpeed, number>> = { slow: 0.5, normal: 1, fast: 2 };
 /** How the graph draws a wire: xUI's routings. */
 export type WireStyle = 'bezier' | 'smoothstep' | 'straight';
+/** A viewport display a person made their own, by setting: what the Server's display settings are called. */
+export type DisplayStart = Readonly<Record<string, string | number | boolean | null>>;
 
 /**
  * The person's settings for this app, wherever they work: not a library's or a project's. The desktop app keeps them
@@ -51,6 +53,11 @@ export interface PreferenceValues {
   favouriteMaterials: readonly string[];
   /** Documents brought to the front last, newest first, in every library, which Start offers again. */
   recentDocuments: readonly RecentDocument[];
+  /**
+   * How the viewport opens in a project that kept no display of its own, such as its light, background and grid, or
+   * null for Patina's (#189).
+   */
+  viewportStart: DisplayStart | null;
 }
 
 /** A document someone worked on, by where it is in its library. */
@@ -105,7 +112,8 @@ export const DefaultPreferences: PreferenceValues = {
   favouriteNodes: [],
   recentNodes: [],
   favouriteMaterials: [],
-  recentDocuments: []
+  recentDocuments: [],
+  viewportStart: null
 };
 
 /** How many node types each list keeps, so a hand-edited file cannot grow the palette without end. */
@@ -116,7 +124,9 @@ const StorageKey = 'patina.preferences';
 const DarkQuery = '(prefers-color-scheme: dark)';
 
 const Choices: {
-  [K in Exclude<keyof PreferenceValues, ListPreference | 'recentDocuments'>]: readonly PreferenceValues[K][];
+  [
+    K in Exclude<keyof PreferenceValues, ListPreference | 'recentDocuments' | 'viewportStart'>
+  ]: readonly PreferenceValues[K][];
 } = {
   theme: ['dark', 'light', 'system'],
   libraryView: ['list', 'grid'],
@@ -138,6 +148,18 @@ function listOf(value: unknown, limit: number): readonly string[] {
     : [];
 }
 
+/** A display made one's own as a file holds it: its settings of plain values, or null for none. */
+function displayStartOf(value: unknown): DisplayStart | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  const plain = Object.entries(value as Record<string, unknown>).filter(
+    ([, setting]) => setting === null || ['string', 'number', 'boolean'].includes(typeof setting)
+  );
+  return plain.length > 0 ? (Object.fromEntries(plain) as DisplayStart) : null;
+}
+
 /** Preferences as read from a file a person may have edited: anything unknown or out of range is the default. */
 export function readPreferences(value: unknown): PreferenceValues {
   const held =
@@ -155,6 +177,7 @@ export function readPreferences(value: unknown): PreferenceValues {
   }
 
   read.recentDocuments = recentDocumentsOf(held['recentDocuments']);
+  read.viewportStart = displayStartOf(held['viewportStart']);
 
   return read;
 }
@@ -184,6 +207,7 @@ export class Preferences {
   readonly recentNodes = computed(() => this.values().recentNodes);
   readonly favouriteMaterials = computed(() => this.values().favouriteMaterials);
   readonly recentDocuments = computed(() => this.values().recentDocuments);
+  readonly viewportStart = computed(() => this.values().viewportStart);
   /** Whether the app is dark now: the theme chosen, or the system's for `system`. */
   readonly dark = computed(() => {
     const theme = this.theme();

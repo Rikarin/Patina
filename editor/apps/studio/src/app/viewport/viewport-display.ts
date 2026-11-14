@@ -10,6 +10,8 @@ import { XuiSwitchImports } from '@xui/switch';
 import { Commands } from '../core/commands';
 import { labelsOf, valuesOf } from '../core/labels';
 import { degrees, percent, stops, toRadians } from '../core/numbers';
+import { Preferences } from '../core/preferences';
+import { startOf } from './display-start';
 import type { AxisView } from './orbit';
 import { DefaultDisplay, Shapes, ViewportClient } from './viewport-client';
 
@@ -386,6 +388,17 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
         xuiButton
         size="sm"
         variant="ghost"
+        data-testid="viewport-display-make-default"
+        title="Every project that has kept no display of its own opens with this light, background, grid and finish"
+        (click)="makeDefault()"
+      >
+        Make Default
+      </button>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
         data-testid="viewport-screenshot"
         [disabled]="!commands.enabled('saveScreenshot')"
         [title]="commands.tooltip('saveScreenshot')"
@@ -400,6 +413,7 @@ export class ViewportDisplayPanel {
   protected readonly viewport = inject(ViewportClient);
   protected readonly display = this.viewport.display;
   protected readonly commands = inject(Commands);
+  private readonly preferences = inject(Preferences);
   protected readonly projections = Projections;
   protected readonly lighting = Lighting;
   protected readonly finish = Finish;
@@ -444,5 +458,10 @@ export class ViewportDisplayPanel {
   protected reset(): void {
     const { environment, look = null, view, picture = null, pictureLane, pictureScale, shape } = this.display();
     this.viewport.setDisplay({ ...DefaultDisplay, environment, look, view, picture, pictureLane, pictureScale, shape });
+  }
+
+  /** Makes this display the one a project that kept none opens with, on this machine (#189). */
+  protected makeDefault(): void {
+    this.preferences.set({ viewportStart: startOf(this.display()) });
   }
 }

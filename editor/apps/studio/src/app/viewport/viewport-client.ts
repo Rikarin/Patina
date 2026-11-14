@@ -11,8 +11,10 @@ import type {
 import { unwrap } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { messageOf } from '../core/messages';
+import { Preferences } from '../core/preferences';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
+import { displayStart } from './display-start';
 import {
   type FrameTransport,
   type FrameTransportFactory,
@@ -99,6 +101,7 @@ export class ViewportClient {
   private readonly bakes = inject(BakeStore);
   private readonly projects = inject(ProjectStore);
   private readonly isolation = inject(IsolationStore);
+  private readonly preferences = inject(Preferences);
   private transport: FrameTransport | null = null;
   /** The project whose display is on the viewport, which a change is kept in. */
   private adopted: string | null = null;
@@ -235,7 +238,7 @@ export class ViewportClient {
 
     this.keepNow();
     this.adopted = project;
-    const kept = this.projects.current()?.viewport ?? DefaultDisplay;
+    const kept = this.projects.current()?.viewport ?? displayStart(DefaultDisplay, this.preferences.viewportStart());
     this.display.set(kept);
     this.sendDisplay(kept);
   }
