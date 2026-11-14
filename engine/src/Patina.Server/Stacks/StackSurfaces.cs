@@ -30,7 +30,8 @@ static class StackSurfaces {
                 decal.Tiled,
                 decal.Sampling.ToString(),
                 decal.Box,
-                decal.Warp
+                decal.Warp,
+                Wire(decal.Symmetry)
             );
 
     /// <summary>A path as the wire sends it.</summary>
@@ -53,7 +54,19 @@ static class StackSurfaces {
                 path.Angle,
                 path.Box,
                 path.Spacing,
-                path.Jitter
+                path.Jitter,
+                Wire(path.Symmetry)
+            );
+
+    /// <summary>A decal's or a path's symmetry as the wire sends it.</summary>
+    static StackSurfaceSymmetry? Wire(LayerSurfaceSymmetry? symmetry) =>
+        symmetry is null
+            ? null
+            : new(
+                symmetry.Axis,
+                symmetry.Through,
+                symmetry.Kind == LayerSymmetryKind.Radial ? "radial" : "mirror",
+                symmetry.Count
             );
 
     /// <summary>A decal as the stack keeps it.</summary>
@@ -93,7 +106,8 @@ static class StackSurfaces {
             Tiled = decal.Tiled,
             Sampling = StackEditor.Parsed(decal.Sampling, LayerSampling.Bilinear, "sampling"),
             Box = Box(decal.Box),
-            Warp = [..warp]
+            Warp = [..warp],
+            Symmetry = Kept(decal.Symmetry)
         };
     }
 
@@ -147,7 +161,39 @@ static class StackSurfaces {
             Angle = path.Angle,
             Spacing = path.Spacing,
             Jitter = path.Jitter,
-            Box = Box(path.Box)
+            Box = Box(path.Box),
+            Symmetry = Kept(path.Symmetry)
+        };
+    }
+
+    /// <summary>A decal's or a path's symmetry as the stack keeps it, or null for none.</summary>
+    /// <exception cref="StackEditRefusedException">The kind, the axis or the count makes no copy.</exception>
+    static LayerSurfaceSymmetry? Kept(StackSurfaceSymmetry? symmetry) {
+        if (symmetry is null) {
+            return null;
+        }
+
+        if (symmetry.Kind is not ("mirror" or "radial")) {
+            throw new StackEditRefusedException($"'{symmetry.Kind}' is not a kind of symmetry.");
+        }
+
+        var axis = Three(symmetry.Axis, "symmetry's axis");
+        if (!(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2] > 1e-12f)) {
+            throw new StackEditRefusedException("A symmetry's axis has a length.");
+        }
+
+        var radial = symmetry.Kind == "radial";
+        if (radial && symmetry.Count is < 2 or > LayerSurfaceSymmetry.MaximumCount) {
+            throw new StackEditRefusedException(
+                $"A radial symmetry makes 2 to {LayerSurfaceSymmetry.MaximumCount} copies, the original among them."
+            );
+        }
+
+        return new() {
+            Kind = radial ? LayerSymmetryKind.Radial : LayerSymmetryKind.Mirror,
+            Axis = axis,
+            Through = Three(symmetry.Through, "symmetry's point"),
+            Count = radial ? symmetry.Count : 2
         };
     }
 

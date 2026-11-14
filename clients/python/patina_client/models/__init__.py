@@ -398,6 +398,7 @@ from .stack_state import StackState
 from .stack_stroke_source import StackStrokeSource
 from .stack_summary import StackSummary
 from .stack_surface_path import StackSurfacePath
+from .stack_surface_symmetry import StackSurfaceSymmetry
 from .stack_symmetry import StackSymmetry
 from .stack_term import StackTerm
 from .stack_thumbnail import StackThumbnail
@@ -838,6 +839,7 @@ __all__ = (
     "StackStrokeSource",
     "StackSummary",
     "StackSurfacePath",
+    "StackSurfaceSymmetry",
     "StackSymmetry",
     "StackTerm",
     "StackThumbnail",

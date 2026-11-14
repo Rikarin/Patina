@@ -1,14 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, untracked } from '@angular/core';
-import type { StackDecal, StackLayer, StackSurfacePath } from '@patina/api-client';
+import type { StackDecal, StackLayer, StackSurfacePath, StackSurfaceSymmetry } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { labelsOf, valuesOf } from '../core/labels';
-import { toDegrees, toRadians } from '../core/numbers';
+import { count as counted, toDegrees, toRadians } from '../core/numbers';
 import { PaintStore } from './paint-store';
 import { isWarped } from './surface-frame';
+import { surfaceSymmetry } from './symmetry-guide';
 
 /** How the picture is read between its pixels, as a decal stores it. */
 const Samplings: readonly { value: string; label: string }[] = [
@@ -318,6 +319,26 @@ const Samplings: readonly { value: string; label: string }[] = [
         </div>
       }
     }
+    @if (placed(); as surface) {
+      <div
+        class="flex items-center gap-2"
+        title="Copies it as the brush's symmetry copies a stroke, through the model as the brush's symmetry is set now"
+      >
+        <span class="text-foreground-muted w-16 shrink-0 text-xs">Symmetry</span>
+        <xui-switch
+          aria-label="Copy it with the brush's symmetry"
+          data-testid="surface-symmetry"
+          [checked]="!!surface.symmetry"
+          [disabled]="!surface.symmetry && !paint.symmetry()"
+          (checkedChange)="setSymmetry($event)"
+        />
+        @if (surface.symmetry; as symmetry) {
+          <span class="readout text-xs" data-testid="surface-symmetry-shown">{{ symmetryName(symmetry) }}</span>
+        } @else if (!paint.symmetry()) {
+          <span class="text-foreground-muted text-xs">Set a symmetry in the brush first</span>
+        }
+      </div>
+    }
   `
 })
 export class SurfaceFields {
@@ -330,6 +351,11 @@ export class SurfaceFields {
   protected readonly decal = computed(() => this.layer().decal ?? null);
   protected readonly path = computed(() => this.layer().path ?? null);
   protected readonly count = computed(() => this.path()?.points.length ?? 0);
+  /** The decal or the path the projection uses, once it is placed: what a symmetry copies. */
+  protected readonly placed = computed(() => {
+    const layer = this.layer();
+    return layer.projection === 'Decal' ? this.decal() : layer.projection === 'Path' ? this.path() : null;
+  });
   protected warpToGeometry(): void {
     void this.paint.warpToGeometry();
   }
@@ -365,6 +391,32 @@ export class SurfaceFields {
     if (path) {
       void this.paint.edit({ op: 'setLayer', layer: this.layer().id, path: { ...path, ...change } });
     }
+  }
+
+  /**
+   * Copies the decal or the path with the brush's symmetry, kept on it as a plane or a line in the model's units
+   * (#132), or stops copying it. One edit either way.
+   */
+  protected setSymmetry(on: boolean): void {
+    const placed = this.placed();
+    const brush = this.paint.symmetry();
+    const symmetry = on && placed && brush ? surfaceSymmetry(brush, placed.box) : null;
+    if (on && !symmetry) {
+      return;
+    }
+
+    if (this.layer().projection === 'Decal') {
+      this.setDecal({ symmetry });
+    } else {
+      this.setPath({ symmetry });
+    }
+  }
+
+  /** What a kept symmetry is, in words: which way, round or across which axis, and how many for a radial one. */
+  protected symmetryName(symmetry: StackSurfaceSymmetry): string {
+    const lanes = symmetry.axis.map(Math.abs);
+    const axis = ['X', 'Y', 'Z'][lanes.indexOf(Math.max(...lanes))] ?? 'X';
+    return symmetry.kind === 'radial' ? `${counted(symmetry.count)} round ${axis}` : `Mirrored on ${axis}`;
   }
 
   protected copyPath(): void {

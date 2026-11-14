@@ -111,6 +111,32 @@ public sealed partial class StackProcessTests {
         var thick = await CountAsync(state.Id, "thick", Reddish, deadline.Token);
         Assert.True(thick > thin * 2, $"A path three times as wide covered {thick} texels against {thin}.");
 
+        // Turned half round the housing's upright axis (#132), the path makes a copy of itself on the far side,
+        // which covers about as much again; a symmetry with no axis is refused, and undoing it gives the pixels back.
+        var alone = Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor");
+        StackSurfaceSymmetry turn = new([0f, 1f, 0f], [0f, 0f, 0f], "radial");
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(badge, Path: Through(size * 0.03f) with { Symmetry = turn })
+        );
+        Assert.Equal(
+            ("radial", 2),
+            (await StateAsync(state.Id, deadline.Token)).Layers.Single(layer => layer.Id == badge).Path!.Symmetry is
+            { } symmetric
+                ? (symmetric.Kind, symmetric.Count)
+                : default
+        );
+        var copied = await CountAsync(state.Id, "copied", Reddish, deadline.Token);
+        Assert.True(copied > thick * 3 / 2, $"A path and its copy covered {copied} texels against {thick} alone.");
+        await RefusedAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(badge, Path: Through(size * 0.03f) with { Symmetry = turn with { Axis = [0f, 0f, 0f] } })
+        );
+        await ActAsync(state.Id, "undo", deadline.Token);
+        Assert.Equal(alone, Digest(await PixelsAsync(state.Id, true, deadline.Token), "baseColor"));
+
         // Stamps two widths apart leave gaps along the path (#130), and a spacing past the widest is refused.
         await EditAsync(
             state.Id,

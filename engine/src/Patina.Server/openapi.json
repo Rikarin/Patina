@@ -19670,6 +19670,17 @@
               "format": "float"
             },
             "description": "A warp (#134, #263): where each point of a square grid over the picture lands on the decal\u0027s square, row by row\nfrom the top left, two numbers 0 to 1 across and down to a point: eighteen for 3 by 3, fifty for 5 by 5, up to\nint StackDecal.MaximumWarpSide points on a side. A finer grid follows a surface that turns away on both sides,\nsuch as round a cylinder. Null or empty bends nothing."
+          },
+          "symmetry": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The copies the decal makes of itself (#132), or null for the decal alone.",
+                "$ref": "#/components/schemas/StackSurfaceSymmetry"
+              }
+            ]
           }
         },
         "description": "A decal (#133): a picture projected through a box placed on the model, kept in the stack as numbers, so it can\nbe moved, scaled and turned again. Every length is in the model\u0027s own units, the ones\n\u0060POST /viewport/pick\u0060 answers in."
@@ -21742,9 +21753,59 @@
             "description": "How far each stamp moves at random, 0 to 1: that share of the width to the side and of half the spacing along.",
             "format": "float",
             "default": 0
+          },
+          "symmetry": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The copies the path makes of itself (#132), or null for the path alone.",
+                "$ref": "#/components/schemas/StackSurfaceSymmetry"
+              }
+            ]
           }
         },
         "description": "A curve on the model that a fill with the \u0060Path\u0060 projection is laid along (#130, #131): the points stay in\nthe stack, so they can be moved after the stroke is seen, and the stroke follows. It passes through each point."
+      },
+      "StackSurfaceSymmetry": {
+        "required": [
+          "axis",
+          "through",
+          "kind",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "axis": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The plane\u0027s normal, or the line\u0027s direction: three numbers, any length but none."
+          },
+          "through": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "A point on the plane or the line, in the model\u0027s units: three numbers."
+          },
+          "kind": {
+            "type": "string",
+            "description": "\u0060mirror\u0060 through a plane, or \u0060radial\u0060 round a line.",
+            "default": "mirror"
+          },
+          "count": {
+            "type": "integer",
+            "description": "How many a radial symmetry makes, the original among them: 2 to 64.",
+            "format": "int32",
+            "default": 2
+          }
+        },
+        "description": "How a decal or a path copies itself over the model (#132): mirrored through a plane, or turned round a line,\nas a stroke\u0027s symmetry copies a stroke. The plane or the line is a place on the model, in its own units, so it\nis the same in every texture set."
       },
       "StackSymmetry": {
         "required": [

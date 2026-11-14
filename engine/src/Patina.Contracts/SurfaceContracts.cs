@@ -32,6 +32,7 @@ namespace Patina.Contracts;
 ///     <see cref="MaximumWarpSide" /> points on a side. A finer grid follows a surface that turns away on both sides,
 ///     such as round a cylinder. Null or empty bends nothing.
 /// </param>
+/// <param name="Symmetry">The copies the decal makes of itself (#132), or null for the decal alone.</param>
 public sealed record StackDecal(
     IReadOnlyList<float> Centre,
     IReadOnlyList<float> Facing,
@@ -44,7 +45,8 @@ public sealed record StackDecal(
     bool Tiled = false,
     string Sampling = "Bilinear",
     IReadOnlyList<float>? Box = null,
-    IReadOnlyList<float>? Warp = null
+    IReadOnlyList<float>? Warp = null,
+    StackSurfaceSymmetry? Symmetry = null
 ) {
     /// <summary>The finest warp grid, in points on a side: what the decal's kernel reads.</summary>
     public const int MaximumWarpSide = 9;
@@ -80,6 +82,7 @@ public sealed record StackPathPoint(IReadOnlyList<float> Position, IReadOnlyList
 /// <param name="Jitter">
 ///     How far each stamp moves at random, 0 to 1: that share of the width to the side and of half the spacing along.
 /// </param>
+/// <param name="Symmetry">The copies the path makes of itself (#132), or null for the path alone.</param>
 public sealed record StackSurfacePath(
     IReadOnlyList<StackPathPoint> Points,
     float Radius,
@@ -89,6 +92,23 @@ public sealed record StackSurfacePath(
     float Angle = 1.3f,
     IReadOnlyList<float>? Box = null,
     float Spacing = 0f,
-    float Jitter = 0f
+    float Jitter = 0f,
+    StackSurfaceSymmetry? Symmetry = null
+);
+
+/// <summary>
+///     How a decal or a path copies itself over the model (#132): mirrored through a plane, or turned round a line,
+///     as a stroke's symmetry copies a stroke. The plane or the line is a place on the model, in its own units, so it
+///     is the same in every texture set.
+/// </summary>
+/// <param name="Kind"><c>mirror</c> through a plane, or <c>radial</c> round a line.</param>
+/// <param name="Axis">The plane's normal, or the line's direction: three numbers, any length but none.</param>
+/// <param name="Through">A point on the plane or the line, in the model's units: three numbers.</param>
+/// <param name="Count">How many a radial symmetry makes, the original among them: 2 to 64.</param>
+public sealed record StackSurfaceSymmetry(
+    IReadOnlyList<float> Axis,
+    IReadOnlyList<float> Through,
+    string Kind = "mirror",
+    int Count = 2
 );
 #pragma warning restore SK7005

@@ -7202,6 +7202,7 @@ export interface components {
        *     such as round a cylinder. Null or empty bends nothing.
        */
       warp?: null | number[];
+      symmetry?: null | components['schemas']['StackSurfaceSymmetry'];
     };
     /** @description What an edit changed, so that a client need not read the whole stack again. */
     StackDelta: {
@@ -8239,6 +8240,29 @@ export interface components {
        * @default 0
        */
       jitter: number;
+      symmetry?: null | components['schemas']['StackSurfaceSymmetry'];
+    };
+    /**
+     * @description How a decal or a path copies itself over the model (#132): mirrored through a plane, or turned round a line,
+     *     as a stroke's symmetry copies a stroke. The plane or the line is a place on the model, in its own units, so it
+     *     is the same in every texture set.
+     */
+    StackSurfaceSymmetry: {
+      /** @description The plane's normal, or the line's direction: three numbers, any length but none. */
+      axis: number[];
+      /** @description A point on the plane or the line, in the model's units: three numbers. */
+      through: number[];
+      /**
+       * @description `mirror` through a plane, or `radial` round a line.
+       * @default mirror
+       */
+      kind: string;
+      /**
+       * Format: int32
+       * @description How many a radial symmetry makes, the original among them: 2 to 64.
+       * @default 2
+       */
+      count: number;
     };
     /**
      * @description How a stroke on a mesh copies itself: through a plane, or round an axis. The plane or the axis passes through
