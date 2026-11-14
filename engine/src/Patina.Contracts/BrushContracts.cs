@@ -270,7 +270,11 @@ public static class StackBrushes {
         ["brush", "eraser", "line", "path", "smudge", "clone", "projection"];
 
     /// <summary>How much of a mesh one click of a polygon fill takes.</summary>
-    public static IReadOnlyList<string> Fills { get; } = ["triangle", "polygon", "part", "shell"];
+    /// <remarks>
+    ///     <c>loop</c> takes the loop of quads through the one clicked, across its edge nearest the click (#129), so it
+    ///     is a click's and takes no outline.
+    /// </remarks>
+    public static IReadOnlyList<string> Fills { get; } = ["triangle", "polygon", "part", "shell", "loop"];
 
     /// <summary>
     ///     How a material brush lays its maps: a fill's projections, but for a decal and a path, which need a box or a
@@ -363,11 +367,15 @@ public static class StackBrushes {
     /// <param name="stroke">The stroke.</param>
     public static string? PaintProblem(this StackStroke stroke) {
         if (stroke.Curve == "fill" && !Fills.Contains(stroke.Fill ?? string.Empty)) {
-            return "A fill takes a triangle, a polygon, a mesh part or a UV shell.";
+            return "A fill takes a triangle, a polygon, a mesh part, a UV shell or a loop.";
         }
 
         if (stroke.Outline && (stroke.Curve != "fill" || stroke.Open || stroke.Stamps.Count < 3)) {
             return "An outline is a fill's, sent whole, with three corners at least.";
+        }
+
+        if (stroke is { Outline: true, Fill: "loop" }) {
+            return "A loop runs across the edge nearest a click, so it is filled by clicks and not an outline.";
         }
 
         if (stroke.Resume is { } resume

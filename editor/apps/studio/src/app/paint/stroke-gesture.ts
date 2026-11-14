@@ -199,7 +199,7 @@ export class StrokeGesture {
 
   /** A click fills the piece under it; with a rectangle or a lasso in hand, a press starts the outline. */
   private pressFill(stamp: StackStamp): void {
-    const shape = this.store.fillShape();
+    const shape = this.store.fillChooses();
     if (shape === 'click') {
       void this.store.fillAt(stamp, this.aim());
       return;
@@ -214,7 +214,7 @@ export class StrokeGesture {
 
   /** The outline as the pointer drags it: a rectangle from its first corner, or a lasso along the pointer's path. */
   private outline(stamp: StackStamp): void {
-    if (this.store.fillShape() === 'rectangle' && this.corner) {
+    if (this.store.fillChooses() === 'rectangle' && this.corner) {
       this.place(box(this.corner, stamp));
       return;
     }
@@ -237,7 +237,7 @@ export class StrokeGesture {
     this.place([]);
     const reach = spanOf(points);
     if (reach < ClickReach) {
-      if (corner && this.store.fillShape() === 'rectangle') {
+      if (corner && this.store.fillChooses() === 'rectangle') {
         void this.store.fillAt(corner, this.placedOn);
       }
 

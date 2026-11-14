@@ -7131,7 +7131,8 @@ export interface components {
       stencil?: null | components['schemas']['StackPicture'];
       /**
        * @description With the fill curve, how much of the mesh a click takes: `triangle`, `polygon` (the flat polygon it
-       *     is part of), `part` (the named mesh it belongs to) or `shell` (its UV island). It needs a mesh.
+       *     is part of), `part` (the named mesh it belongs to), `shell` (its UV island) or `loop` (the
+       *     loop of quads through it, across its edge nearest the click, which takes no outline). It needs a mesh.
        */
       fill?: null | string;
       /**

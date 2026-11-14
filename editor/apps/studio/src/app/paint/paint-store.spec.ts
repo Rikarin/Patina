@@ -1338,6 +1338,22 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     expect(sent(bodies)[2]).toMatchObject({ outline: true, through: false });
   });
 
+  it('fills a face loop from a click even with a rectangle chosen, since a loop runs from where it lands (#129)', async () => {
+    const { store, bodies } = await onMesh();
+    store.tool.set('fill');
+    store.fillShape.set('rectangle');
+    store.fillMode.set('loop');
+    expect(store.fillChooses()).toBe('click');
+    const gesture = new StrokeGesture(store, () => aim);
+    gesture.press({ x: 10, y: 20, pressure: 1 });
+    expect(gesture.outlining()).toBe(false);
+    await vi.waitFor(() => expect(sent(bodies)).toHaveLength(1));
+    expect(sent(bodies)[0]).toMatchObject({ curve: 'fill', fill: 'loop', outline: false, stamps: [{ x: 10, y: 20 }] });
+
+    store.fillMode.set('polygon');
+    expect(store.fillChooses()).toBe('rectangle');
+  });
+
   it('fills what a lasso holds, and a rectangle hardly dragged is a click (#129)', async () => {
     const { store, bodies } = await onMesh();
     store.tool.set('fill');

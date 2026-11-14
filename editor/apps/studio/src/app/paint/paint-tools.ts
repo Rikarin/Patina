@@ -41,7 +41,7 @@ export const PaintToolIcons = {
 };
 
 /** What a click of the fill tool can take, in the Server's words until its vocabulary gives the labels. */
-export const FillModes: readonly FillMode[] = ['triangle', 'polygon', 'part', 'shell'];
+export const FillModes: readonly FillMode[] = ['triangle', 'polygon', 'part', 'shell', 'loop'];
 
 /** How the fill tool chooses what it fills (#129). The editor's own, since the Server only ever sees an outline. */
 export const FillShapes: readonly { value: FillShape; label: string }[] = [

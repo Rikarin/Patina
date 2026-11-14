@@ -124,7 +124,7 @@ export function sameColour(left: readonly number[], right: readonly number[]): b
 }
 
 /** How much of the mesh a click of the fill tool takes: the Server's words (`StackBrushes.Fills`). */
-export type FillMode = 'triangle' | 'polygon' | 'part' | 'shell';
+export type FillMode = 'triangle' | 'polygon' | 'part' | 'shell' | 'loop';
 
 /**
  * How the fill tool chooses (#129): the piece under each click, or every piece inside a rectangle or a lasso drawn on
@@ -361,6 +361,11 @@ export class PaintStore {
   readonly partCombine = signal<Exclude<PartCombine, 'toggle'>>('replace');
   /** Whether the fill tool takes what is under a click, or what a rectangle or a lasso holds. */
   readonly fillShape = signal<FillShape>('click');
+  /**
+   * How the fill tool chooses as it stands: a face loop runs across the edge nearest a click (#129), so it takes clicks
+   * whatever {@link fillShape} says.
+   */
+  readonly fillChooses = computed<FillShape>(() => (this.fillMode() === 'loop' ? 'click' : this.fillShape()));
   /** Whether a rectangle or a lasso in the viewport also fills what the camera cannot see inside it. */
   readonly fillThrough = signal(false);
   /** Where the clone tool reads from, or null until one is set. */

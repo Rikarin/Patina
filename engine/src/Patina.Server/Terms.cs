@@ -87,7 +87,7 @@ public static class Terms {
 
     /// <summary>What a polygon fill calls how much of a mesh a click takes, where a capital is not enough.</summary>
     static readonly Dictionary<string, string> InFills = new(StringComparer.Ordinal) {
-        ["part"] = "Mesh Part", ["shell"] = "UV Shell"
+        ["part"] = "Mesh Part", ["shell"] = "UV Shell", ["loop"] = "Face Loop"
     };
 
     /// <summary>What a symmetry's plane or axis passes through.</summary>
