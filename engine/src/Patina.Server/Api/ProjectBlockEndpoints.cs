@@ -29,6 +29,12 @@ static class ProjectBlockEndpoints {
                 + "that checks measure against. Null forgets it, which leaves the Starter glTF preset. "
                 + "GET /export/presets says which preset that comes to."
             );
+        library.MapPut("/export/targets", SetExportTargets)
+            .Described(
+                "SetLibraryExportTargets",
+                "Keeps in library.yaml the export presets a build of the library writes when its request names none: "
+                + "the platforms the library ships to, each once. GET /library reads them back as exportTargets."
+            );
         library.MapPut("/project/export", SetExport)
             .Described(
                 "SetProjectExport",
@@ -106,22 +112,38 @@ static class ProjectBlockEndpoints {
     static Results<Ok<LibraryInfo>, ProblemHttpResult> SetDefaultPreset(
         LibraryHost host,
         LibraryPresetRequest request
+    ) =>
+        KeepPresets(host, request.Preset is { } id ? [id] : [], open => open.SetDefaultPreset(request.Preset));
+
+    static Results<Ok<LibraryInfo>, ProblemHttpResult> SetExportTargets(
+        LibraryHost host,
+        LibraryTargetsRequest request
+    ) =>
+        KeepPresets(host, request.Presets, open => open.SetExportTargets(request.Presets));
+
+    /// <summary>
+    ///     Keeps a library setting that names presets, once each names one the library has: a preset is a file, so
+    ///     one removed later is only skipped.
+    /// </summary>
+    static Results<Ok<LibraryInfo>, ProblemHttpResult> KeepPresets(
+        LibraryHost host,
+        IReadOnlyList<string> named,
+        Action<OpenLibrary> keep
     ) {
-        if (host.Library is { } library
-            && request.Preset is { } id
-            && ExportPresetCatalog.Read(library.RootPath).Find(id) is null) {
+        var catalog = host.Library is { } library ? ExportPresetCatalog.Read(library.RootPath) : null;
+        if (catalog is not null && named.FirstOrDefault(id => catalog.Find(id) is null) is { } missing) {
             return Refusals.Problem(
-                $"There is no preset '{id}' in this library.",
+                $"There is no preset '{missing}' in this library.",
                 StatusCodes.Status404NotFound,
                 Refusals.PresetMissing,
-                new Dictionary<string, string> { ["preset"] = id }
+                new Dictionary<string, string> { ["preset"] = missing }
             );
         }
 
         return LibraryTreeEndpoints.Guarded(
             host,
             open => {
-                open.SetDefaultPreset(request.Preset);
+                keep(open);
                 return TypedResults.Ok(open.Describe());
             }
         );

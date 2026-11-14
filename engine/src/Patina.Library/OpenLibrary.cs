@@ -512,13 +512,7 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     /// </summary>
     public void SetExport(ProjectExportSettings settings) {
         ArgumentNullException.ThrowIfNull(settings);
-        lock (documentGate) {
-            var text = DocumentCodec.Write(Document with { Export = settings });
-            LibraryFiles.Replace(Path.Combine(RootPath, LibraryLayout.LibraryFile), text);
-            // What the file now holds, in its order, is what is reported, as it would be after opening it again.
-            Volatile.Write(ref document, DocumentCodec.ReadLibrary(text, LibraryLayout.LibraryFile).Document);
-            Volatile.Write(ref fileSchema, SchemaChain.Library.Current);
-        }
+        Keep(kept => kept with { Export = settings });
     }
 
     /// <summary>
@@ -526,10 +520,22 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     ///     with null, which leaves the factory's starter (#240). Whether a preset of that id exists is the caller's to
     ///     ask: a preset is a file, and one removed later only means the starter again.
     /// </summary>
-    public void SetDefaultPreset(string? preset) {
+    public void SetDefaultPreset(string? preset) => Keep(kept => kept with { DefaultPreset = preset });
+
+    /// <summary>
+    ///     Keeps the export presets a build of the library writes when its request names none, in
+    ///     <c>library.yaml</c> (#207): the platforms the library ships to, each once, in the order given. Whether each
+    ///     preset exists is the caller's to ask.
+    /// </summary>
+    public void SetExportTargets(IReadOnlyList<string> presets) =>
+        Keep(kept => kept with { ExportTargets = [..presets.Distinct(StringComparer.Ordinal)] });
+
+    /// <summary>Changes <c>library.yaml</c>, and reads it back as the library's settings.</summary>
+    void Keep(Func<LibraryDocument, LibraryDocument> change) {
         lock (documentGate) {
-            var text = DocumentCodec.Write(Document with { DefaultPreset = preset });
+            var text = DocumentCodec.Write(change(Document));
             LibraryFiles.Replace(Path.Combine(RootPath, LibraryLayout.LibraryFile), text);
+            // What the file now holds, in its order, is what is reported, as it would be after opening it again.
             Volatile.Write(ref document, DocumentCodec.ReadLibrary(text, LibraryLayout.LibraryFile).Document);
             Volatile.Write(ref fileSchema, SchemaChain.Library.Current);
         }

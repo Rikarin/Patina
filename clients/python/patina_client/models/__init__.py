@@ -190,6 +190,7 @@ from .library_move_request import LibraryMoveRequest
 from .library_moved import LibraryMoved
 from .library_preset_request import LibraryPresetRequest
 from .library_report import LibraryReport
+from .library_targets_request import LibraryTargetsRequest
 from .material_brush import MaterialBrush
 from .material_import_request import MaterialImportRequest
 from .material_import_result import MaterialImportResult
@@ -615,6 +616,7 @@ __all__ = (
     "LibraryMoveRequest",
     "LibraryPresetRequest",
     "LibraryReport",
+    "LibraryTargetsRequest",
     "MaterialBrush",
     "MaterialImportRequest",
     "MaterialImportResult",
