@@ -30,7 +30,7 @@ class StackChannel:
                 unless the set
                 says more. Default: 'Rgba8'.
             name (str): What a person named a user channel (#141), such as Dirt; empty for the usage's own label.
-            colour (bool): Whether a user channel holds a color rather than one number (#141); false for any other channel.
+            colour (bool): Whether a user channel holds a color rather than one number (#141); false for any other.
      """
 
     usage: str

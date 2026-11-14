@@ -162,14 +162,17 @@ public sealed class ExportOptionsTests : IDisposable {
             Read(WithTexture(ExportFormats.Png16, "linear", "[roughness]")),
             new() { PerSet = [new("Head") { Padding = new("infinite", 0, []) }] }
         );
-        Dictionary<string, MapPicture> Maps() => new() {
-            ["roughness"] = Halves("roughness", 0.25f, 0.75f), [ExportMaps.Coverage] = LeftHalf()
-        };
+
+        static Dictionary<string, MapPicture> Maps() =>
+            new() { ["roughness"] = Halves("roughness", 0.25f, 0.75f), [ExportMaps.Coverage] = LeftHalf() };
+
         ExportSet[] sets = [new("Body", Maps()), new("Head", Maps())];
 
         var manifest = ExportRun.Run(preset, sets, Path("object"), null, Token);
 
-        var right = manifest.Files.Select(file => MapPictures.ReadFile(System.IO.Path.Combine(Path("object"), file.File))
+        var right = manifest.Files.Select(file => MapPictures.ReadFile(
+                    System.IO.Path.Combine(Path("object"), file.File)
+                )
                 .Samples[Side - 1]
             )
             .ToList();

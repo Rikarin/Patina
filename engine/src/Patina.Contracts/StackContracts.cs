@@ -23,7 +23,7 @@ public sealed record StackChannel(string Usage, IReadOnlyList<float> Default, st
     /// <summary>What a person named a user channel (#141), such as Dirt; empty for the usage's own label.</summary>
     public string Name { get; init; } = string.Empty;
 
-    /// <summary>Whether a user channel holds a color rather than one number (#141); false for any other channel.</summary>
+    /// <summary>Whether a user channel holds a color rather than one number (#141); false for any other.</summary>
     public bool Colour { get; init; }
 }
 

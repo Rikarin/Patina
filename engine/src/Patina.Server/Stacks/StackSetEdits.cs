@@ -144,7 +144,7 @@ static class StackSetEdits {
                 ..chosen.Channels.Select(channel => channel == held
                         ? channel with { Name = user.Name?.Trim() ?? held.Name, Colour = user.Colour ?? held.Colour }
                         : channel
-                    )
+                )
             ]
         };
         return editor.Replaced(

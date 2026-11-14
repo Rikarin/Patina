@@ -18059,7 +18059,7 @@
           },
           "colour": {
             "type": "boolean",
-            "description": "Whether a user channel holds a color rather than one number (#141); false for any other channel."
+            "description": "Whether a user channel holds a color rather than one number (#141); false for any other."
           }
         },
         "description": "A channel a stack writes."

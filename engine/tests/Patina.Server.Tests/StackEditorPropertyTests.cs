@@ -217,7 +217,7 @@ public sealed class StackEditorPropertyTests {
 
         session.Undo();
         session.Undo();
-        Assert.Equal("", session.State.Channels.Single(static channel => channel.Usage == "user2").Name);
+        Assert.Equal(string.Empty, session.State.Channels.Single(static channel => channel.Usage == "user2").Name);
         var standard = session.State.Channels[0].Usage;
         var refused = Assert.Throws<StackEditRefusedException>(() =>
             session.Apply(new([new StackSetUserChannel(standard, "Paint")]))
@@ -233,7 +233,7 @@ public sealed class StackEditorPropertyTests {
     /// <summary>The user channels an export reads are the ones a texture set writes, under the same names.</summary>
     [Fact]
     public void An_export_reads_every_user_channel_a_set_writes() =>
-        Assert.Equal(Vixen.Texturing.Layers.ChannelAsset.UserUsages, Patina.Export.Presets.ExportMaps.Users);
+        Assert.Equal(ChannelAsset.UserUsages, Patina.Export.Presets.ExportMaps.Users);
 
     /// <summary>
     ///     A stack's history is a list with labels, and a jump through it is one event that lands where single steps

@@ -6489,7 +6489,7 @@ export interface components {
       format: string;
       /** @description What a person named a user channel (#141), such as Dirt; empty for the usage's own label. */
       name: string;
-      /** @description Whether a user channel holds a color rather than one number (#141); false for any other channel. */
+      /** @description Whether a user channel holds a color rather than one number (#141); false for any other. */
       colour: boolean;
     };
     /** @description What Apply Channels to All Sets did, one entry for each other texture set of the model. */
