@@ -223,7 +223,7 @@ public sealed class GraphEditorPropertyTests {
         new(name, value.ToString(CultureInfo.InvariantCulture), string.Empty, "Float", 0f, 1f, string.Empty, []);
 
     static GraphCommand RandomCommand(Random random, NodeGraphAsset document) {
-        return random.Next(32) switch {
+        return random.Next(33) switch {
             0 => new GraphAddNode(Types[random.Next(Types.Length)], random.Next(100), random.Next(100)),
             1 => new GraphRemoveNodes([Node()]),
             2 => new GraphMoveNodes([new(Node(), random.Next(1000), random.Next(1000))]),
@@ -271,6 +271,7 @@ public sealed class GraphEditorPropertyTests {
                 Color: random.Next(2) == 0 ? string.Empty : "#eb6834",
                 Description: $"D{random.Next(3)}"
             ),
+            32 => new GraphSetLevel([Node()], random.Next(3) == 0 ? null : random.Next(-3, 6)),
             _ => new GraphSetText(Node(), "=Hue", "Wear * 2")
         };
         int Node() => document.Nodes.Length == 0 ? 1 : document.Nodes[random.Next(document.Nodes.Length)].Id;

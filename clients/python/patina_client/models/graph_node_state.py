@@ -8,6 +8,7 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
@@ -37,6 +38,9 @@ class GraphNodeState:
             bypassed (bool): True when it is switched off: what feeds its first input of an output's kind passes straight
                 through, and a
                 node with no such input passes nothing. Default: False.
+            level (int | None | Unset): The size it is computed at, in halvings of its graph's size: 1 is half the width and
+                height, -1 twice them, 0
+                the graph's own. Null follows the finest image arriving at it. On a compound it applies to every node inside.
      """
 
     id: int
@@ -46,6 +50,7 @@ class GraphNodeState:
     values: GraphNodeStateValues
     texts: GraphNodeStateTexts
     bypassed: bool = False
+    level: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -69,6 +74,12 @@ class GraphNodeState:
 
         bypassed = self.bypassed
 
+        level: int | None | Unset
+        if isinstance(self.level, Unset):
+            level = UNSET
+        else:
+            level = self.level
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -81,6 +92,8 @@ class GraphNodeState:
             "texts": texts,
             "bypassed": bypassed,
         })
+        if level is not UNSET:
+            field_dict["level"] = level
 
         return field_dict
 
@@ -111,6 +124,16 @@ class GraphNodeState:
 
         bypassed = d.pop("bypassed")
 
+        def _parse_level(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        level = _parse_level(d.pop("level", UNSET))
+
+
         graph_node_state = cls(
             id=id,
             type_=type_,
@@ -119,6 +142,7 @@ class GraphNodeState:
             values=values,
             texts=texts,
             bypassed=bypassed,
+            level=level,
         )
 
 

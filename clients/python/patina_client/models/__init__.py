@@ -118,6 +118,8 @@ from .graph_command_graph_set_group import GraphCommandGraphSetGroup
 from .graph_command_graph_set_group_op import GraphCommandGraphSetGroupOp
 from .graph_command_graph_set_info import GraphCommandGraphSetInfo
 from .graph_command_graph_set_info_op import GraphCommandGraphSetInfoOp
+from .graph_command_graph_set_level import GraphCommandGraphSetLevel
+from .graph_command_graph_set_level_op import GraphCommandGraphSetLevelOp
 from .graph_command_graph_set_parameter import GraphCommandGraphSetParameter
 from .graph_command_graph_set_parameter_op import GraphCommandGraphSetParameterOp
 from .graph_command_graph_set_port import GraphCommandGraphSetPort
@@ -558,6 +560,8 @@ __all__ = (
     "GraphCommandGraphSetGroupOp",
     "GraphCommandGraphSetInfo",
     "GraphCommandGraphSetInfoOp",
+    "GraphCommandGraphSetLevel",
+    "GraphCommandGraphSetLevelOp",
     "GraphCommandGraphSetParameter",
     "GraphCommandGraphSetParameterOp",
     "GraphCommandGraphSetPort",

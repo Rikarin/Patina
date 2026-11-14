@@ -3933,6 +3933,7 @@ export interface components {
       | components['schemas']['GraphCommandGraphSetComment']
       | components['schemas']['GraphCommandGraphRemoveComment']
       | components['schemas']['GraphCommandGraphSetBypass']
+      | components['schemas']['GraphCommandGraphSetLevel']
       | components['schemas']['GraphCommandGraphArrange']
       | components['schemas']['GraphCommandGraphSavePreset']
       | components['schemas']['GraphCommandGraphRemovePreset']
@@ -4217,6 +4218,21 @@ export interface components {
        * @description Its height, the same way. The two are set together.
        */
       physicalHeight?: null | number;
+    };
+    /**
+     * @description Sets the size nodes are computed at, relative to their graph's; see GraphNodeState. A radius
+     *     stays the same part of the picture at any level, because it is counted in the graph's base.
+     */
+    GraphCommandGraphSetLevel: {
+      /** @enum {string} */
+      op: 'setLevel';
+      /** @description The nodes. */
+      nodes: number[];
+      /**
+       * Format: int32
+       * @description From -2 (four times the graph's size) to 4 (a sixteenth of it), or null to follow the inputs.
+       */
+      level?: null | number;
     };
     /** @description Replaces a parameter where it stands. Dragging its default sends this on every step. */
     GraphCommandGraphSetParameter: {
@@ -4753,6 +4769,12 @@ export interface components {
        * @default false
        */
       bypassed: boolean;
+      /**
+       * Format: int32
+       * @description The size it is computed at, in halvings of its graph's size: 1 is half the width and height, -1 twice them, 0
+       *     the graph's own. Null follows the finest image arriving at it. On a compound it applies to every node inside.
+       */
+      level?: null | number;
     };
     /** @description How long one node's operations took on the GPU, the last time an evaluation ran them. */
     GraphNodeTime: {

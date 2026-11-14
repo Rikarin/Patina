@@ -1027,6 +1027,16 @@ export class GraphStore {
     void this.apply([{ op: 'setBypass', nodes: switchable, bypassed }], null);
   }
 
+  /**
+   * Sets the size nodes are computed at, in halvings of the graph's size, or null to follow their inputs. A radius
+   * stays the same part of the picture at any size.
+   */
+  setLevel(nodes: readonly number[], level: number | null): void {
+    if (nodes.length > 0) {
+      void this.apply([{ op: 'setLevel', nodes: [...nodes], level }], null);
+    }
+  }
+
   /** Lays the selection out among itself, or the whole graph when nothing is selected. */
   arrange(nodes: readonly number[] = [...this.mutableSelection()]): void {
     void this.apply([{ op: 'arrange', nodes: nodes.length > 1 ? [...nodes] : [] }], null);
