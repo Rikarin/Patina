@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { ApiError, type JobState } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
 import { Activity, jobTitle } from './activity';
+import { type AutosaveNote, autosaveNote } from './autosave-note';
 
 const bake = (overrides: Partial<JobState> = {}): JobState => ({
   id: 'j1',
@@ -41,6 +42,24 @@ describe('Activity', () => {
     expect(activity.unread()).toBe(0);
     activity.report({ tone: 'warning', source: 'Graph', text: 'Seen as it happens.' });
     expect(activity.unread()).toBe(0);
+  });
+
+  it('keeps what autosave says of a document: work kept, and a failure counted as a problem (#192)', () => {
+    const { activity } = harness();
+    const note = signal<AutosaveNote | null>(null);
+    activity.heed('Autosave', note);
+    TestBed.tick();
+
+    note.set(autosaveNote('Crate', { kind: 'autosaved', sequence: 4 }));
+    TestBed.tick();
+    note.set(autosaveNote('Crate', { kind: 'autosaveFailed', label: 'No Worker came.', sequence: 6 }));
+    TestBed.tick();
+
+    expect(activity.notices().map(notice => [notice.source, notice.tone, notice.text])).toEqual([
+      ['Autosave', 'warning', 'Autosave could not keep the edits to Crate: No Worker came.'],
+      ['Autosave', 'done', 'Autosave kept the unsaved edits to Crate.']
+    ]);
+    expect(activity.unread()).toBe(1);
   });
 
   it('hears each new value a pane keeps of what went wrong', () => {

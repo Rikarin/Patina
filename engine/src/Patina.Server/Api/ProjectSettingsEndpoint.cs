@@ -64,7 +64,7 @@ static class ProjectSettingsEndpoint {
             host.RequestRescan();
             return TypedResults.Ok(library.Contents(project));
         } catch (IpcException e) {
-            return LibraryTreeEndpoints.Problem(e, StatusCodes.Status422UnprocessableEntity);
+            return Refusals.OfEngine(e, StatusCodes.Status422UnprocessableEntity);
         } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
             return problem;
         }

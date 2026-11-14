@@ -55,6 +55,7 @@ static class JobEndpoints {
         BakeCache cache,
         LibraryHost host,
         StackSessions stacks,
+        BakeLinks links,
         CancellationToken cancellationToken
     ) {
         try {
@@ -65,17 +66,30 @@ static class JobEndpoints {
                 ? queue.Finished(
                     key,
                     request,
-                    await Task.Run(() => cache.Deliver(key, manifest, request, true), cancellationToken)
+                    await Task.Run(() => Cached(cache, links, key, manifest, request), cancellationToken)
                 )
                 : queue.Enqueue(key, request);
             return TypedResults.Accepted($"/api/v1/jobs/{job.Id}", job);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status404NotFound);
+            return Refusals.Of(e);
         } catch (BakeRefusedException e) {
             return e.Code is { } code
                 ? Refusals.Problem(e.Message, StatusCodes.Status422UnprocessableEntity, code, e.Values)
                 : TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
+    }
+
+    /// <summary>A bake already made, delivered as one just made is, open documents and all.</summary>
+    static BakeResult Cached(
+        BakeCache cache,
+        BakeLinks links,
+        string key,
+        BakeManifest manifest,
+        BakeRequest request
+    ) {
+        var result = cache.Deliver(key, manifest, request, true);
+        links.Delivered(request);
+        return result;
     }
 
     static Results<Ok<JobState>, ProblemHttpResult> GetOne(string id, JobQueue queue) =>
@@ -97,8 +111,7 @@ static class JobEndpoints {
             ? TypedResults.PhysicalFile(path, "image/png")
             : TypedResults.Problem($"Job '{id}' has no picture of '{map}'.", statusCode: StatusCodes.Status404NotFound);
 
-    static ProblemHttpResult NoJob(string id) =>
-        TypedResults.Problem($"There is no job '{id}'.", statusCode: StatusCodes.Status404NotFound);
+    static ProblemHttpResult NoJob(string id) => Refusals.NoJob(id);
 
     static async Task FollowAsync(HttpContext context, JobQueue queue, long? since = null) {
         if (!context.WebSockets.IsWebSocketRequest) {

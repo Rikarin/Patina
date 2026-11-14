@@ -228,7 +228,7 @@ static class LibraryEndpoints {
         } catch (ProjectRefusedException e) {
             return Refusals.Of(e);
         } catch (GraphEditRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.Of(e);
         }
     }
 

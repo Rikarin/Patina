@@ -91,9 +91,9 @@ static class StackMeshEndpoints {
             var connection = await worker.ConnectionAsync(cancellationToken);
             return (await connection.SendAsync(question, cancellationToken), null);
         } catch (IpcException e) {
-            return (null, TypedResults.Problem(e.Message, statusCode: Refused));
+            return (null, Refusals.OfEngine(e, Refused));
         } catch (Exception e) when (e is IOException or TimeoutException) {
-            return (null, TypedResults.Problem(e.Message, statusCode: Unavailable));
+            return (null, Refusals.OfEngine(e, Unavailable));
         }
     }
 

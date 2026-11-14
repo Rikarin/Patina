@@ -404,6 +404,47 @@ describe('PaintStore', () => {
     expect(store.recentColours()).toEqual([]);
   });
 
+  it('paints the quick mask white in one channel, then keeps strokes inside it, or outside once inverted (#127)', async () => {
+    const { store, bodies, posts } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.colour.set('#0000ff');
+    store.alsoPaints.set(new Map([['roughness', '#808080']]));
+    const sent = () =>
+      bodies.map(body => (body as { commands: { colour: number[]; quickMask: string | null }[] }).commands);
+
+    await store.toggleQuickMask();
+    expect(store.quickMask()).toBe('paint');
+    expect(posts.filter(path => path.endsWith('/quick-mask'))).toHaveLength(1);
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(sent().at(-1)?.[0]?.quickMask).toBe('paint'));
+    expect(sent().at(-1)).toHaveLength(1);
+    expect(sent().at(-1)?.[0]?.colour).toEqual([1, 1, 1, 1]);
+
+    await store.toggleQuickMask();
+    expect(store.quickMask()).toBe('keep');
+    const before = bodies.length;
+    store.begin({ x: 5, y: 6, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(before));
+    expect(
+      sent()
+        .at(-1)
+        ?.every(command => command.quickMask === 'inside')
+    ).toBe(true);
+
+    store.quickMaskInverted.set(true);
+    const inverted = bodies.length;
+    store.begin({ x: 7, y: 8, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(inverted));
+    expect(sent().at(-1)?.[0]?.quickMask).toBe('outside');
+
+    await store.clearQuickMask();
+    expect(store.quickMask()).toBe('off');
+    expect(store.quickMaskInverted()).toBe(false);
+  });
+
   it('paints an entry of a mask stack by its place, and only a paint entry (#109)', async () => {
     const { store, bodies } = setup();
     await store.open('/a/Crate.vxlayers', false);
@@ -523,6 +564,42 @@ describe('PaintStore', () => {
     expect(stackSummary({ revision: 2, settled: 2, evaluation: { ...evaluation, ran: 0 } })).toBe('Up to date');
     const stopped = { ...evaluation, problems: [{ layer: 'a', severity: 'Error', message: 'No.' }] };
     expect(stackSummary({ revision: 2, settled: 2, evaluation: stopped })).toBe('Not evaluated');
+    const paused = { paused: true, proxy: 1 };
+    expect(stackSummary({ revision: 3, settled: 2, evaluation, pace: paused })).toBe('Paused, with edits waiting');
+    expect(stackSummary({ revision: 2, settled: 2, evaluation, pace: paused })).toBe('Paused');
+  });
+
+  it('pauses, chooses a proxy, and hears another client do either (#208)', async () => {
+    const { store, sockets, server, posts } = setup();
+    let pace = { paused: false, proxy: 1 };
+    const sent: unknown[] = [];
+    server.reply = (method, path) => {
+      if (method === 'PUT' && path.endsWith('/pace')) {
+        return Promise.resolve(Response.json((pace = { paused: true, proxy: 4 })));
+      }
+
+      return method === 'GET' && path === '/api/v1/stacks/s1' ? Response.json(stack({ pace })) : null;
+    };
+    await store.open('/a/Crate.vxlayers', false);
+    expect(store.pace()).toEqual({ paused: false, proxy: 1 });
+
+    await store.setPace({ paused: true });
+    sent.push(posts.at(-1));
+    expect(sent).toEqual(['/api/v1/stacks/s1/pace']);
+    expect(store.pace()).toEqual({ paused: true, proxy: 4 });
+    expect(store.evaluated()).toMatch(/^Paused/u);
+
+    pace = { paused: false, proxy: 2 };
+    const hear = sockets[0]?.onmessage as unknown as (event: MessageEvent) => void;
+    hear({
+      data: JSON.stringify({
+        sequence: 5,
+        kind: 'paced',
+        revision: 1,
+        history: { canUndo: false, canRedo: false, dirty: false }
+      })
+    } as MessageEvent);
+    await vi.waitFor(() => expect(store.pace()).toEqual({ paused: false, proxy: 2 }));
   });
 
   it('says it lost the engine while its socket is down, and is live again once it reopens (#192)', async () => {
@@ -1444,17 +1521,19 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     store.end();
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(0));
     expect(sent(bodies).every(part => part.stencil === null)).toBe(true);
-    expect(sent(bodies)[0]?.source?.picture).toEqual(picture);
+    // Kept from the middle of the view (#271): the picked view is 100 pixels square.
+    expect(sent(bodies)[0]?.source?.picture).toEqual({ ...picture, centre: [100, 100] });
 
-    // The 2D view draws the map from 10 across and 20 down, a texel every quarter of a pixel.
+    // The 2D view, 40 by 60, draws the map from 10 across and 20 down, a texel every quarter of a pixel.
     await vi.waitFor(() => expect(sent(bodies).at(-1)?.stamps).toEqual([]));
+    store.atlasPane.set([40, 60]);
     store.atlasOrigin.set([10, 20]);
     store.atlasScale.set(4);
     let count = sent(bodies).length;
     store.begin({ x: 10, y: 10, pressure: 1 });
     store.end();
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
-    expect(sent(bodies)[count]?.source?.picture).toEqual({ ...picture, centre: [160, 120], scale: 8 });
+    expect(sent(bodies)[count]?.source?.picture).toEqual({ ...picture, centre: [240, 240], scale: 8 });
 
     await vi.waitFor(() => expect(sent(bodies).at(-1)?.stamps).toEqual([]));
     count = sent(bodies).length;
@@ -1463,13 +1542,13 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     store.begin({ x: 10, y: 10, pressure: 1 }, aim);
     store.end();
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
-    expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { image: picture.image, centre: [50, 50] } });
+    expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { image: picture.image, centre: [100, 100] } });
 
     count = sent(bodies).length;
     store.begin({ x: 10, y: 10, pressure: 1 });
     store.end();
     await vi.waitFor(() => expect(sent(bodies).length).toBeGreaterThan(count));
-    expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { centre: [160, 120], scale: 8 } });
+    expect(sent(bodies).at(-1)).toMatchObject({ source: null, stencil: { centre: [240, 240], scale: 8 } });
   });
 
   it('projects the brush’s material from where it stands on the view, in every channel, through a stencil (#128)', async () => {
@@ -1491,7 +1570,7 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
       expect(part.source).toMatchObject({
         kind: 'material',
         graph: 'projects/crate/rust.vxtexgraph',
-        frame: { centre: [40, 30], scale: 0.5, angle: 0.1, tiled: true }
+        frame: { centre: [90, 80], scale: 0.5, angle: 0.1, tiled: true }
       });
       expect(part.stencil?.image).toBe(picture.image);
     }

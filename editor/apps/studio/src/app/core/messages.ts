@@ -15,12 +15,14 @@ const Words: Readonly<Record<string, string>> = {
   'stroke-not-paint-layer':
     '{layer} is a {kind} layer, with nothing of its own to paint. Choose a paint layer, or paint its mask.',
   'stack-no-mesh': 'There is no mesh to paint on. Choose one in Project Settings.',
+  'viewport-cast-refused': 'The surface under the decal could not be measured. Try Warp to Geometry again.',
+  'viewport-mesh-unavailable': 'The mesh in the viewport could not be read: {reason}',
   'stroke-repeated-channel': 'That stroke could not be painted. Try it again.',
   'channel-missing': 'This texture set has no {channel} channel. It may have been removed by another client.',
   'channel-last': '{channel} is this texture set’s only channel, so it can’t be removed. Add another channel first.',
   'stroke-brush-refused': 'That brush can’t be used. {reason}',
   'stroke-canvas-larger':
-    '{layer} holds {held} texels and the texture set is {size}. Painting it smaller would lose detail: set the size back to {held} to paint this layer.',
+    '{layer} holds {held} texels and the texture set is {size}. Painting it smaller would lose detail: paint it on the model, which paints it at {held}, or set the size back to {held} to paint it here.',
   'stroke-canvas-painted-at-size':
     '{layer} was painted at {held} earlier in this session. Save, close and open the document again to paint it at {size}.',
   'history-step-gone': 'That step is no longer in the history: an edit made since replaced it.',
@@ -45,6 +47,8 @@ const Words: Readonly<Record<string, string>> = {
   'file-kind-unknown': 'The library lists pictures and meshes, and nothing else.',
   'history-empty': 'There is nothing to {what}.',
   'file-exists': 'There is a {file} there already. Choose another name.',
+  'file-busy':
+    '{file} is in use by another program, so it couldn’t be changed. Close it there, or wait a moment, and try again.',
   'file-missing': '{file} isn’t there any more. It may have been moved or deleted outside Patina.',
   'id-map-missing': 'This document has no ID map yet. Bake one, with ID among the maps.',
   'job-missing': 'That bake or export is no longer in Activity. The engine may have restarted since.',
@@ -63,7 +67,17 @@ const Words: Readonly<Record<string, string>> = {
   'snapshot-document-open': 'Close the document first, so the snapshot isn’t written over.',
   'material-missing': 'That material isn’t in the library any more. It may have been deleted outside Patina.',
   'compound-needs-graph': 'A compound is copied beside the graph that uses it. Open that graph first.',
-  'picture-unreadable': '{file} doesn’t read as a picture, so it wasn’t brought in. It may be damaged or cut short.'
+  'picture-unreadable': '{file} doesn’t read as a picture, so it wasn’t brought in. It may be damaged or cut short.',
+  'engine-unavailable':
+    'The GPU engine didn’t answer in time. If it stopped, it starts again on its own: try again in a moment.',
+  'engine-refused': 'The GPU engine couldn’t do that. {reason}',
+  'graph-refused': 'That change can’t be made to the graph. {reason}',
+  'file-changed':
+    'The file changed outside Patina after it was opened. Save again to write over that change, or open the file again to keep it.',
+  'file-unwritable': 'Patina couldn’t write or read the file there. {reason}',
+  'document-newer':
+    'This document was saved by a newer version of Patina, so it isn’t opened here: saving it would lose what is new. Open it in that version or a later one.',
+  'stack-proxy-refused': 'Choose Full, Half, Quarter or Eighth size.'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };
@@ -119,7 +133,7 @@ const CheckWords: Readonly<Record<string, string>> = {
   'bake-stale':
     'Its mesh maps were baked on another mesh, in another UV set than its UV {uvSet} or at another shape than its ' +
     'Width and Height, so what reads them lands in the wrong place. Bake it again.',
-  'uv-outside': '{count} triangles reach past the first UV tile, which is the only one painted.',
+  'uv-outside': '{count} triangles reach past the UV tile the rest are on, and a texture set paints one tile.',
   'uv-overlap': '{share} of the laid-out texels are under more than one triangle, so a stroke lands twice.',
   'uv-degenerate': '{count} triangles have no area in the UV layout, so no texel lands on them.',
   'uv-flipped': '{count} triangles are turned over in the UV layout, so a normal map reads them backwards.',

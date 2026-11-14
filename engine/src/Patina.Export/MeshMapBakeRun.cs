@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using Vixen.Core.Imaging;
+using Vixen.Core.Mathematics;
 using Vixen.Geometry;
 using Vixen.Geometry.Remeshing;
 using Vixen.Interchange;
@@ -61,7 +62,7 @@ public static class MeshMapBakeRun {
             );
         }
 
-        // ⚠ A bake fills the first tile and leaves the rest empty without a word, so a layout past it is refused.
+        // ⚠ A bake fills one tile and leaves the rest empty without a word, so a set on several tiles is refused.
         var named = request.Material is { } set
             ? $"Texture set '{set}' of '{Path.GetFileName(request.Low)}'"
             : $"'{Path.GetFileName(request.Low)}'";
@@ -86,13 +87,21 @@ public static class MeshMapBakeRun {
 
         progress?.Invoke(ReadingShare);
 
-        var maps = MapBaker.Bake(
+        var baked = MapBaker.Bake(
             high.Mesh,
             low.Mesh,
             settings,
             fraction => progress?.Invoke(ReadingShare + (1 - ReadingShare) * fraction),
             cancellationToken
         );
+        var bounds = high.Mesh.Bounds;
+        var maps = baked with {
+            CurvatureRange = BakeEdgeSettings.CurvatureScale(
+                baked.CurvatureRange,
+                request.Options,
+                Vector3.Distance(bounds.Minimum, bounds.Maximum)
+            )
+        };
 
         log.Add(
             string.Create(
@@ -151,7 +160,21 @@ public static class MeshMapBakeRun {
     /// <param name="shown">What is drawn alone, or null for the whole model.</param>
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
     /// <exception cref="InvalidDataException">It has no such material, or a part of it has no such set.</exception>
-    public static FlatModel Read(string path, string? material, int uvSet, ViewportIsolation? shown) {
+    public static FlatModel Read(string path, string? material, int uvSet, ViewportIsolation? shown) =>
+        Placed(path, material, uvSet, shown).Model;
+
+    /// <summary>
+    ///     Reads a mesh file as <see cref="Read(string, string?, int, ViewportIsolation?)" /> does, and says which UDIM
+    ///     tile its layout was moved home from (#20): 1001 when it was on the first, or on several.
+    /// </summary>
+    /// <exception cref="ModelFormatException">It is not a readable model.</exception>
+    /// <exception cref="InvalidDataException">It has no such material, or a part of it has no such set.</exception>
+    public static (FlatModel Model, int Udim) Placed(
+        string path,
+        string? material,
+        int uvSet,
+        ViewportIsolation? shown = null
+    ) {
         var read = Model(path, uvSet != 0);
         var names = MaterialNames.Unique(read.Model.Materials);
         if (shown is { Whole: false }) {
@@ -180,7 +203,9 @@ public static class MeshMapBakeRun {
             LayOut(read, uvSet, Path.GetFileName(path));
         }
 
-        return ModelGeometry.Flatten(read);
+        // A set on one UDIM tile past the first bakes, pads and is checked in its own maps (#20).
+        var flat = ModelGeometry.Flatten(read);
+        return (flat, OneTile.Home(flat.Mesh));
     }
 
     /// <summary>
@@ -282,22 +307,13 @@ public static class MeshMapBakeRun {
             Skew = (float)rays.Skew,
             SkewMap = rays.SkewMap is { Length: > 0 } map ? Mask(map, "skew map") : null,
             DistanceMap = rays.DistanceMap is { Length: > 0 } distance ? Mask(distance, "distance map") : null,
-            Rounding = Rounding(options.Rounding),
+            Rounding = BakeEdgeSettings.Rounding(options.Rounding),
+            EdgeMap = BakeEdgeSettings.Marked(options.Edges),
             Parts = rays.MatchByName
                 ? BakeParts.ByName(high.Parts, low.Parts, Suffixes(rays.HighSuffix), Suffixes(rays.LowSuffix))
                 : null,
             Threads = threads
         };
-    }
-
-    /// <summary>The edges to round, or null when rounding is off.</summary>
-    static BakeRounding? Rounding(BakeRoundingOptions rounding) {
-        if (!rounding.Enabled) {
-            return null;
-        }
-
-        var edges = rounding.Edges == "hard" ? RoundedEdges.Hard : RoundedEdges.Angle;
-        return new((float)rounding.Width, edges, (float)rounding.Angle);
     }
 
     /// <summary>A name ending as the matching takes it: one ending, or none for an empty field.</summary>
@@ -315,6 +331,9 @@ public static class MeshMapBakeRun {
                 "world" => MeshMaps.WorldNormal,
                 "id" => MeshMaps.Id,
                 "colour" => MeshMaps.Colour,
+                "opacity" => MeshMaps.Opacity,
+                "edges" => MeshMaps.Edges,
+                "islands" => MeshMaps.Islands,
                 _ => MeshMaps.None
             };
         }

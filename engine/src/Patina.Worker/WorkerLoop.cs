@@ -92,7 +92,7 @@ sealed class WorkerLoop(
                 IpcTypes.ViewportCamera => viewport.SetCamera(request),
                 IpcTypes.ViewportDisplay => viewport.SetDisplay(request),
                 IpcTypes.ViewportRender => viewport.Render(request),
-                IpcTypes.ViewportPick => viewport.Pick(request),
+                IpcTypes.ViewportPick or IpcTypes.ViewportCast => viewport.Locate(request),
                 IpcTypes.ViewportBakePreview => BakePreviewHost.Show(request, viewport.Live),
                 IpcTypes.GraphLoad
                     or IpcTypes.GraphEvaluate

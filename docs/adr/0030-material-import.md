@@ -21,6 +21,9 @@ one minus a lane, or a constant, and for a normal which way its green runs. The 
 | an emissive picture | `sRGB to Linear`: every format stores it sRGB, and a graph's emissive is linear (ADR 0011) |
 | a normal whose green runs up | a mix turning green over, since a graph's runs down (ADR 0011), and an export turns it back for a target that reads it up |
 | a number | `Source/Uniform`, a base colour taken to sRGB |
+| a picture placed by glTF's `KHR_texture_transform` | `Space/Transform 2D` straight after it (`PlacementNode`) |
+| glTF's emissive factor and `KHR_materials_emissive_strength` | the emission's factor, their product; a constant when there is no picture |
+| glTF's alpha, masked or blended | an `opacity` output from the base colour picture's alpha lane times the factor's alpha |
 
 Pictures are copied into the project's `pictures/<file name>/`, a picture already in the project is read where it is, and one
 inside the file is written there. A graph reads them relative to itself, so the library can move.
@@ -45,8 +48,15 @@ in the reply's `warnings`, and the rest of the material comes in.
 
 - **USD's binary forms** (`.usdc`, `.usdz`) need USD's own library, which Patina does not carry. They are refused with the
   sentence to save the layer as `.usda`.
-- **glTF's emissive strength, alpha mode and texture transforms** are not in what Vixen's reader gives. An emissive picture
-  comes in at a factor of one, and opacity not at all. The normal's scale is said, not applied.
+- **A glTF picture's placement** is drawn by `Space/Transform 2D`, whose turn is taken in texels: exact on the square
+  graphs an import makes. glTF reads a picture at `M·uv + offset`; the node reads its source at `A⁻¹(o − ½ − t) + ½`, so
+  `A = M⁻¹` and `t = A(½ − offset) − ½`, and an uneven scale under a turn needs the node's shear, since `M⁻¹` is then
+  not a turn times a scale. A property test holds the node's own mapping to glTF's at every point. Vixen's reader gives
+  glTF's numbers back from Assimp's, which are moved to its lower-left origin and turned the other way.
+- **A picture read through a second coordinate set** comes in on the first, and is named in the warnings, as is a
+  mask's cutoff, which is the export's to say. The normal's scale is said, not applied.
+- **glTF's emission is black unless the file says otherwise**, so an emissive picture with no factor brings no emission.
+  A format whose factor is not glTF's (FBX, OBJ, COLLADA) keeps its emissive picture at a factor of one.
 - **Height** is read from USD's displacement only; no other format here names one.
 - **USD and MaterialX output** are still unchecked in their own tools (#157); the reading here is checked against
   Patina's own writers and hand-written files, and the glTF path through a real Worker, a real GPU and an export.

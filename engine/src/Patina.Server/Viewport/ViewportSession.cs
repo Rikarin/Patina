@@ -30,7 +30,7 @@ public interface IFrameSubscriber {
 ///     when it has changed, and only the newest input counts, so a slow link skips camera positions and never queues
 ///     them. When a Worker dies the state stays, and the loop tells the next Worker the mesh and the camera again.
 /// </summary>
-public sealed class ViewportSession(
+public sealed partial class ViewportSession(
     WorkerLink worker,
     BakePreviewSession bakePreview,
     FrameMemory memory,
@@ -121,7 +121,8 @@ public sealed class ViewportSession(
                     display.Isolation,
                     node?.Shown,
                     following,
-                    display.Highlight
+                    display.Highlight,
+                    display.Symmetry
                 );
             }
         }
@@ -472,7 +473,8 @@ public sealed class ViewportSession(
                 Isolation = display.Isolation,
                 TexelDensity = display.TexelDensity,
                 Resolution = display.Resolution,
-                Highlight = display.Highlight
+                Highlight = display.Highlight,
+                Symmetry = display.Symmetry
             };
             mapsError = null;
             revision++;
@@ -517,6 +519,16 @@ public sealed class ViewportSession(
         ArgumentNullException.ThrowIfNull(highlight);
         lock (changing) {
             display = display with { Highlight = highlight.None ? null : highlight };
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>Draws a symmetry's mirror where it meets the model, for every client and a new Worker.</summary>
+    public void Symmetry(StackSymmetry? symmetry) {
+        lock (changing) {
+            display = display with { Symmetry = symmetry };
             revision++;
         }
 
@@ -727,39 +739,6 @@ public sealed class ViewportSession(
         Wake();
     }
 
-    /// <summary>What is under a position on the picture, through the Worker.</summary>
-    /// <exception cref="IOException">The Worker went.</exception>
-    /// <exception cref="IpcException">No mesh is open, or it cannot be read.</exception>
-    public async Task<ViewportPick> PickAsync(ViewportPickRequest request, CancellationToken cancellationToken) {
-        ViewportCamera look;
-        int across;
-        int down;
-        string path;
-        Dictionary<string, int>? laidOut;
-        lock (changing) {
-            path = mesh ?? throw new IpcException("Open a mesh first: there is nothing to pick.");
-            look = Lens(request.Camera ?? camera, display.Display);
-            across = request.Width ?? width;
-            down = request.Height ?? height;
-            laidOut = layouts.Count == 0 ? null : new(layouts, StringComparer.Ordinal);
-        }
-
-        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        patience.CancelAfter(PickPatience);
-        IpcConnection connection;
-        try {
-            connection = await worker.ConnectionAsync(patience.Token);
-        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new RendererMissingException();
-        }
-
-        var reply = await connection.SendAsync(
-            new() { Type = IpcTypes.ViewportPick, Pick = new(request.X, request.Y, look, across, down, path, laidOut) },
-            cancellationToken
-        );
-        return reply.Picked!;
-    }
-
     /// <summary>
     ///     A picture that cannot be read costs the picture and not the view: the error stays on the state, which a
     ///     frame clears for anything else, and the mesh goes on being drawn with what the Worker still has.
@@ -793,6 +772,12 @@ public sealed class ViewportSession(
                 new() { Type = IpcTypes.ViewportDisplay, Display = settings },
                 cancellationToken
             );
+            if (logger.IsEnabled(LogLevel.Information)) {
+                // What the Worker draws alone, for a frame that shows otherwise to be traced (#271).
+                var parts = string.Join(", ", settings.Isolation?.Parts ?? []);
+                var materials = string.Join(", ", settings.Isolation?.Materials ?? []);
+                ServerLog.ViewportIsolated(logger, parts, materials);
+            }
         } catch (IpcException e) {
             ServerLog.ViewportFailed(logger, e.Message);
             lock (changing) {

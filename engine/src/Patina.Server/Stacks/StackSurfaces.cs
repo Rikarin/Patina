@@ -69,8 +69,11 @@ static class StackSurfaces {
         }
 
         var warp = decal.Warp ?? [];
-        if (warp.Count is not (0 or 18) || !warp.All(float.IsFinite)) {
-            throw new StackEditRefusedException("A warp is eighteen numbers, a 3 by 3 grid of places, or none.");
+        if (!IsWarpGrid(warp.Count) || !warp.All(float.IsFinite)) {
+            throw new StackEditRefusedException(
+                "A warp is two numbers to a point of a square grid 2 to "
+                + $"{StackDecal.MaximumWarpSide} points on a side, such as eighteen for 3 by 3, or none."
+            );
         }
 
         return new() {
@@ -88,6 +91,10 @@ static class StackSurfaces {
             Warp = [..warp]
         };
     }
+
+    /// <summary>Whether so many numbers are none, or a square grid 2 to the finest points on a side (#263).</summary>
+    static bool IsWarpGrid(int count) =>
+        count == 0 || Enumerable.Range(2, StackDecal.MaximumWarpSide - 1).Any(side => side * side * 2 == count);
 
     /// <summary>A path as the stack keeps it.</summary>
     /// <exception cref="StackEditRefusedException">A number is out of range, or there are too many points.</exception>

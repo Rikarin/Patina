@@ -46,6 +46,9 @@ public sealed class ViewportRenderer : IDisposable {
     /// <summary>The mesh the marks were last made for, so a new one, or a new isolation, makes them again.</summary>
     ViewportMesh? markedOn;
 
+    /// <summary>A symmetry's mirror, whose line across the model is drawn with the marks (#132), or null.</summary>
+    (int Axis, bool Origin, float Offset)? mirror;
+
     readonly ViewportShadows shadows;
     readonly ViewportPost post;
     readonly ViewportShaders shaders;
@@ -373,6 +376,20 @@ public sealed class ViewportRenderer : IDisposable {
         Remark(true);
     }
 
+    /// <summary>
+    ///     Draws where a symmetry's mirror meets the model (#132), of what is drawn, or nothing for null. It stands
+    ///     against the whole model's box, as a stroke's does, so it is found again on each mesh opened.
+    /// </summary>
+    /// <param name="next">The plane's axis, 0 to 2, whether it meets the origin, and its offset; or null.</param>
+    public void Mirror((int Axis, bool Origin, float Offset)? next) {
+        if (mirror == next) {
+            return;
+        }
+
+        mirror = next;
+        Remark(true);
+    }
+
     /// <summary>Makes the marks again for the mesh drawn, when it or what they mark has changed.</summary>
     void Remark(bool changed) {
         var mesh = geometry?.Mesh;
@@ -381,11 +398,12 @@ public sealed class ViewportRenderer : IDisposable {
         }
 
         markedOn = mesh;
-        wire.SetHighlight(
-            mesh is null
-                ? ViewportShapes.None
-                : ViewportMarks.Shapes(mesh, marked, (isolatedParts, isolatedMaterials))
-        );
+        if (mesh is null) {
+            wire.SetHighlight(ViewportShapes.None);
+            return;
+        }
+
+        wire.SetHighlight(ViewportMarks.Shapes(mesh, marked, (isolatedParts, isolatedMaterials), mirror));
     }
 
     /// <summary>The parts a frame draws: all of them, or those the isolation keeps.</summary>
@@ -528,6 +546,7 @@ public sealed class ViewportRenderer : IDisposable {
                 ),
                 Slot(worn, ViewportSlot.Emissive, maps.Emissive, null, MapMeaning.Colour, textures.Black),
                 Slot(worn, ViewportSlot.Opacity, maps.Opacity, null, MapMeaning.Measurement, textures.Open),
+                worn[(int)ViewportSlot.QuickMask]?.View ?? textures.Black,
                 SizeOf(worn, colourMap)
             ),
             mapSampler
@@ -784,6 +803,8 @@ public sealed class ViewportRenderer : IDisposable {
     );
 
     /// <summary>One material's textures, and the side they are painted at, which its texel density is in.</summary>
+    // SK7005: one field for each texture the forward shader binds per material, which is what this record is.
+#pragma warning disable SK7005
     readonly record struct MaterialMaps(
         TextureViewHandle BaseColor,
         TextureViewHandle Normal,
@@ -792,8 +813,10 @@ public sealed class ViewportRenderer : IDisposable {
         TextureViewHandle Occlusion,
         TextureViewHandle Emissive,
         TextureViewHandle Opacity,
+        TextureViewHandle QuickMask,
         float Side
     );
+#pragma warning restore SK7005
 
     /// <summary>The GPU's copy of a mesh, and one descriptor set per material in it.</summary>
     sealed class Geometry : IDisposable {
@@ -899,6 +922,7 @@ public sealed class ViewportRenderer : IDisposable {
                     DescriptorWrite.Texture(Binding("occlusionMap"), material.Maps.Occlusion),
                     DescriptorWrite.Texture(Binding("emissiveMap"), material.Maps.Emissive),
                     DescriptorWrite.Texture(Binding("opacityMap"), material.Maps.Opacity),
+                    DescriptorWrite.Texture(Binding("quickMaskMap"), material.Maps.QuickMask),
                     DescriptorWrite.SamplerAt(Binding("mapSampler"), material.Sampler)
                 ]
             );

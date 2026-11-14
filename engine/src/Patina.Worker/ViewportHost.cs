@@ -121,6 +121,42 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         };
     }
 
+    /// <summary>A question about where things are on the mesh, which reads no device: a pick or a cast.</summary>
+    public IpcMessage Locate(IpcMessage request) =>
+        request.Type == IpcTypes.ViewportCast ? Cast(request) : Pick(request);
+
+    /// <summary>
+    ///     Where rays along one direction first meet the mesh (#263), through what the viewport draws as a pick is: the
+    ///     surface under a decal measured along the decal's own facing, wherever the camera looks from.
+    /// </summary>
+    public IpcMessage Cast(IpcMessage request) {
+        var cast = request.Cast ?? throw new IpcException("viewport.cast says nothing.");
+        if (cast.Origins.Count % 3 != 0 || cast.Direction.Count != 3) {
+            throw new IpcException("viewport.cast's origins are three numbers to a ray, and its direction three.");
+        }
+
+        var direction = new Vector3(cast.Direction[0], cast.Direction[1], cast.Direction[2]);
+        if (!(direction.LengthSquared() > 0f) || !float.IsFinite(direction.LengthSquared())) {
+            throw new IpcException("viewport.cast's direction has no length.");
+        }
+
+        direction = Vector3.Normalize(direction);
+        var shelf = meshes.Of(cast.Mesh);
+        var (through, _) = isolatedParts.Length > 0 || isolatedMaterials.Length > 0
+            ? meshes.Shown(cast.Mesh, isolatedParts, isolatedMaterials)
+            : (shelf.Projection, null);
+        var hits = new ViewportCastHit[cast.Origins.Count / 3];
+        for (var at = 0; at < hits.Length; at++) {
+            var origin = new Vector3(cast.Origins[at * 3], cast.Origins[at * 3 + 1], cast.Origins[at * 3 + 2]);
+            var ray = new Ray(origin, direction);
+            hits[at] = through.TryHit(ray, out var hit)
+                ? new(true, Numbers(hit.Point), Numbers(Facing(through, hit.Triangle, direction)))
+                : new(false);
+        }
+
+        return new() { Type = IpcTypes.Ok, Casted = new(hits) };
+    }
+
     /// <summary>The model's own number for a triangle an isolation drew, or -1 for none.</summary>
     static int Original(int[]? triangles, int triangle) =>
         triangle < 0 || triangles is null ? triangle : triangles[triangle];
@@ -165,6 +201,20 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         return IpcMessage.Ok(request.Id);
     }
 
+    /// <summary>A symmetry's mirror as the viewport draws it across the model (#132); none for a radial one.</summary>
+    static (int Axis, bool Origin, float Offset)? Mirror(StackSymmetry? symmetry) {
+        if (symmetry is not { Kind: "mirror" } mirror) {
+            return null;
+        }
+
+        var axis = mirror.Axis switch {
+            "y" => 1,
+            "z" => 2,
+            _ => 0
+        };
+        return (axis, mirror.Centre == "origin", mirror.Offset);
+    }
+
     static Viewport.ViewportMapFile? File(Ipc.ViewportMapFile? file) => file is null ? null : new(file.Path, file.Hash);
 
     /// <summary>
@@ -179,6 +229,7 @@ sealed class ViewportHost(string shaderCache, MeshShelf meshes) : IDisposable {
         isolatedMaterials = [..told.Isolation?.Materials ?? []];
         renderer.Isolate(isolatedParts, isolatedMaterials);
         renderer.Highlight(told.Highlight?.Parts ?? [], told.Highlight?.Materials ?? []);
+        renderer.Mirror(Mirror(told.Symmetry));
         SetEnvironment(settings.Environment);
         try {
             SetLook(told.Look?.Path, told.Look?.Hash);

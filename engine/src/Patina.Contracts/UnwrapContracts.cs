@@ -33,8 +33,8 @@ public sealed record UnwrapOptions {
 
     /// <summary>
     ///     What happens when the islands do not fit at that density: <c>shrink</c> scales them all down, and
-    ///     <c>refuse</c> stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one
-    ///     tile.
+    ///     <c>refuse</c> stops and says so. Spilling into a second UDIM tile is not offered while a texture set
+    ///     paints one tile.
     /// </summary>
     public string Overflow { get; init; } = "shrink";
 

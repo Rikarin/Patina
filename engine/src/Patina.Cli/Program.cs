@@ -20,6 +20,8 @@ switch (args) {
         return GraphCommands.Info(graph);
     case ["package", var graph, var folder, .. var options]:
         return GraphCommands.Package(graph, folder, options);
+    case ["build", "compare", var before, var after]:
+        return BuildCompareCommand.Run(before, after);
     case ["build", .. var options]:
         return await BuildCommand.RunAsync(options);
     case ["library", "new", var path, .. var options]:

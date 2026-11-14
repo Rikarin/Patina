@@ -68,4 +68,24 @@ public sealed class StackSessionApiTests : IAsyncLifetime {
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         Assert.Contains(reason, await refused.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
     }
+
+    /// <summary>
+    ///     A document from a newer build is refused with a code before a session holds it, since a save here would
+    ///     write it back at this build's format and lose what is new (#162). One at this build's format opens.
+    /// </summary>
+    [Fact]
+    public async Task A_document_from_a_newer_build_is_refused_and_left_as_it_is() {
+        var file = Path.Combine(server.Library, "Newer.vxlayers");
+        const string Newer = "version: 99\nname: Newer\nbaseWidth: 256\nbaseHeight: 256\nsets: []\n";
+        await File.WriteAllTextAsync(file, Newer, Token);
+
+        using var refused = await client.PostAsJsonAsync("/api/v1/stacks", new StackOpenRequest(file), Token);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+        using var problem = JsonDocument.Parse(await refused.Content.ReadAsStringAsync(Token));
+        Assert.Equal(Refusals.DocumentNewer, problem.RootElement.GetProperty("code").GetString());
+        Assert.Equal("99", problem.RootElement.GetProperty("values").GetProperty("written").GetString());
+        Assert.Equal("1", problem.RootElement.GetProperty("values").GetProperty("reads").GetString());
+        Assert.Equal(Newer, await File.ReadAllTextAsync(file, Token));
+    }
 }

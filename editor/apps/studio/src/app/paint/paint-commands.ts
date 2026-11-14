@@ -76,6 +76,20 @@ export class PaintCommands {
       checked: () => this.paint.stencil(),
       run: () => this.paint.stencil.set(!this.paint.stencil())
     });
+    this.commands.handle('toggleQuickMask', {
+      enabled: open,
+      checked: () => this.paint.quickMask() !== 'off',
+      run: () => void this.paint.toggleQuickMask()
+    });
+    this.commands.handle('invertQuickMask', {
+      enabled: () => open() && this.paint.quickMask() !== 'off',
+      checked: () => this.paint.quickMaskInverted(),
+      run: () => this.paint.quickMaskInverted.set(!this.paint.quickMaskInverted())
+    });
+    this.commands.handle('clearQuickMask', {
+      enabled: () => open() && this.paint.quickMask() !== 'off',
+      run: () => void this.paint.clearQuickMask()
+    });
     this.commands.handle('pickIdColour', {
       enabled: () => open() && this.paint.layer() !== null,
       run: () => this.paint.picking.set(this.paint.layer())

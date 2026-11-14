@@ -1,22 +1,28 @@
 import type { StackDecal, StackView, ViewportPick } from '@patina/api-client';
 import { describe, expect, it } from 'vitest';
 import {
+  GeometrySamples,
+  GeometrySide,
   Unwarped,
   decalChannel,
   decalFrame,
   decalOutline,
   extendedPath,
   geometryLines,
+  geometryOrigins,
   geometryWarp,
   halfwayAlong,
   isPicture,
+  isWarped,
   onDecal,
   onDecalPlane,
   pictureName,
   placedDecal,
   turned,
   underDecal,
-  warpGrid
+  unwarped,
+  warpGrid,
+  warpSide
 } from './surface-frame';
 import { project } from './symmetry-guide';
 
@@ -161,7 +167,9 @@ describe('Warp to Geometry (#134)', () => {
   it('leaves a flat surface unwarped', () => {
     const lines = geometryLines().map(line => line.map(({ s, t }) => flat(s, t)));
     const warp = geometryWarp(decal, lines);
-    warp.forEach((value, at) => expect(value).toBeCloseTo(Unwarped[at] ?? 0, 6));
+    const still = unwarped(GeometrySide);
+    expect(warp).toHaveLength(still.length);
+    warp.forEach((value, at) => expect(value).toBeCloseTo(still[at] ?? 0, 6));
   });
 
   it('moves the middle toward where the surface turns away, so each half of the picture covers as much of it', () => {
@@ -169,8 +177,8 @@ describe('Warp to Geometry (#134)', () => {
     // the 1.5 the row runs, half is reached a quarter into the right half, at 0.625 across, not at the middle.
     const bent = (s: number, t: number): [number, number, number] =>
       s <= 0.5 ? flat(s, t) : [s - 0.5, (0.5 - t) * 0.5, -(s - 0.5) * Math.sqrt(3)];
-    const lines = geometryLines().map(line => line.map(({ s, t }) => bent(s, t)));
-    const warp = geometryWarp(decal, lines);
+    const lines = geometryLines(3).map(line => line.map(({ s, t }) => bent(s, t)));
+    const warp = geometryWarp(decal, lines, 3);
 
     for (const row of [0, 1, 2]) {
       expect(warp[(row * 3 + 1) * 2]).toBeCloseTo(0.625, 6);
@@ -183,6 +191,55 @@ describe('Warp to Geometry (#134)', () => {
     for (const column of [0, 1, 2]) {
       expect(warp[(3 + column) * 2 + 1]).toBeCloseTo(0.5, 6);
     }
+  });
+
+  it('follows a surface that turns away on both sides with a 5 by 5 grid (#263), which a 3 by 3 cannot', () => {
+    // Both outer quarters of each row bend back at 60°, as round a cylinder, so each is twice as long on the surface:
+    // the row runs 1.5, and a quarter of it is reached at 0.1875 across, three quarters at 0.8125, half at the middle.
+    const round = (s: number, t: number): [number, number, number] => [
+      s - 0.5,
+      (0.5 - t) * 0.5,
+      -Math.max(0.25 - s, s - 0.75, 0) * Math.sqrt(3)
+    ];
+    const lines = geometryLines(5).map(line => line.map(({ s, t }) => round(s, t)));
+    const warp = geometryWarp(decal, lines, 5);
+    expect(warp).toHaveLength(50);
+
+    for (const row of [0, 1, 2, 3, 4]) {
+      const at = (column: number) => warp[(row * 5 + column) * 2];
+      expect(at(0)).toBe(0);
+      expect(at(1)).toBeCloseTo(0.1875, 6);
+      expect(at(2)).toBeCloseTo(0.5, 6);
+      expect(at(3)).toBeCloseTo(0.8125, 6);
+      expect(at(4)).toBe(1);
+    }
+
+    // The 3 by 3 grid's one inner point stays at the middle: it sees nothing to fix.
+    const coarse = geometryWarp(
+      decal,
+      geometryLines(3).map(line => line.map(({ s, t }) => round(s, t))),
+      3
+    );
+    expect(coarse[(3 + 1) * 2]).toBeCloseTo(0.5, 6);
+  });
+
+  it('casts from the face of the box the picture comes from, three numbers to a place', () => {
+    const lines = geometryLines();
+    const origins = geometryOrigins(decal, lines);
+    expect(origins).toHaveLength(GeometrySide * 2 * GeometrySamples * 3);
+    const frame = decalFrame(decal);
+    const first = onDecal(decal, frame, 0, 0);
+    close(origins.slice(0, 3), [first[0], first[1], first[2] + decal.depth / 2]);
+  });
+
+  it('knows a warp grid by its side, and a warp that moves nothing as none', () => {
+    expect(warpSide(Unwarped)).toBe(3);
+    expect(warpSide(unwarped(5))).toBe(5);
+    expect(warpSide([0, 0, 1])).toBe(0);
+    expect(warpSide([])).toBe(0);
+    expect(isWarped(unwarped(5))).toBe(false);
+    expect(isWarped([...unwarped(5).slice(0, 12), 0.6, ...unwarped(5).slice(13)])).toBe(true);
+    expect(must(warpGrid({ ...decal, warp: unwarped(5) }, view))).toHaveLength(25);
   });
 
   it('counts a stretch it could not find as flat', () => {

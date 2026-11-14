@@ -1,3 +1,5 @@
+using Patina.Contracts;
+
 namespace Patina.Server.Sessions;
 
 /// <summary>Something a client can follow: numbered events, and a way to wait for the next.</summary>
@@ -83,4 +85,18 @@ public abstract class FollowedSession<TEvent>(Func<TEvent, long> numberOf) : IEv
 
     /// <summary>The event that says the ones asked for are gone.</summary>
     protected abstract TEvent Resync();
+
+    /// <summary>
+    ///     Tells every follower how autosave went (#192): kept, so a crash now costs only later edits, or not, and why.
+    ///     Neither changes the document or its history.
+    /// </summary>
+    /// <param name="failure">Why it could not keep the edits, or null when it did.</param>
+    public void Autosaved(string? failure) {
+        lock (Changing) {
+            Log.Append(Noted(failure is null ? GraphEventKind.Autosaved : GraphEventKind.AutosaveFailed, failure));
+        }
+    }
+
+    /// <summary>The next event, of a kind that says something and changes nothing, with what it says.</summary>
+    protected abstract TEvent Noted(GraphEventKind kind, string? label);
 }

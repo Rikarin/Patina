@@ -5,6 +5,8 @@ from .asset_page import AssetPage
 from .asset_summary import AssetSummary
 from .autosave_preferences import AutosavePreferences
 from .bake_colour_options import BakeColourOptions
+from .bake_curvature_options import BakeCurvatureOptions
+from .bake_edge_options import BakeEdgeOptions
 from .bake_height_options import BakeHeightOptions
 from .bake_id_options import BakeIdOptions
 from .bake_occlusion_options import BakeOcclusionOptions
@@ -28,6 +30,7 @@ from .brush_preset_create_request import BrushPresetCreateRequest
 from .brush_preset_info import BrushPresetInfo
 from .brush_preset_list import BrushPresetList
 from .brush_preset_update_request import BrushPresetUpdateRequest
+from .build_comparison import BuildComparison
 from .build_preview import BuildPreview
 from .build_preview_project import BuildPreviewProject
 from .build_request import BuildRequest
@@ -62,6 +65,7 @@ from .export_preset_texture_document import ExportPresetTextureDocument
 from .export_preset_write import ExportPresetWrite
 from .export_report import ExportReport
 from .export_set_options import ExportSetOptions
+from .file_comparison import FileComparison
 from .file_formats import FileFormats
 from .folder_cost import FolderCost
 from .folder_create_request import FolderCreateRequest
@@ -193,6 +197,7 @@ from .material_use_request import MaterialUseRequest
 from .mesh_facts import MeshFacts
 from .mesh_material_facts import MeshMaterialFacts
 from .mesh_part_facts import MeshPartFacts
+from .output_comparison import OutputComparison
 from .output_report import OutputReport
 from .package_compound import PackageCompound
 from .package_dependency import PackageDependency
@@ -206,6 +211,7 @@ from .project_bake_request import ProjectBakeRequest
 from .project_bake_settings import ProjectBakeSettings
 from .project_check_settings import ProjectCheckSettings
 from .project_checks_request import ProjectChecksRequest
+from .project_comparison import ProjectComparison
 from .project_contents import ProjectContents
 from .project_create_request import ProjectCreateRequest
 from .project_document_copy_request import ProjectDocumentCopyRequest
@@ -250,6 +256,8 @@ from .stack_brush import StackBrush
 from .stack_brush_preview import StackBrushPreview
 from .stack_brush_terms import StackBrushTerms
 from .stack_channel import StackChannel
+from .stack_channels_applied import StackChannelsApplied
+from .stack_channels_spread import StackChannelsSpread
 from .stack_checks import StackChecks
 from .stack_clip import StackClip
 from .stack_clip_request import StackClipRequest
@@ -350,6 +358,8 @@ from .stack_mesh_mask import StackMeshMask
 from .stack_mesh_mask_request import StackMeshMaskRequest
 from .stack_mesh_parts import StackMeshParts
 from .stack_open_request import StackOpenRequest
+from .stack_pace import StackPace
+from .stack_pace_change import StackPaceChange
 from .stack_painted import StackPainted
 from .stack_path_point import StackPathPoint
 from .stack_picture import StackPicture
@@ -357,6 +367,8 @@ from .stack_pixels import StackPixels
 from .stack_placement import StackPlacement
 from .stack_preview import StackPreview
 from .stack_problem import StackProblem
+from .stack_quick_mask_request import StackQuickMaskRequest
+from .stack_quick_mask_state import StackQuickMaskState
 from .stack_sample import StackSample
 from .stack_sampled_channel import StackSampledChannel
 from .stack_save_material_request import StackSaveMaterialRequest
@@ -385,6 +397,9 @@ from .unwrap_set import UnwrapSet
 from .viewport_bake_preview import ViewportBakePreview
 from .viewport_bake_request import ViewportBakeRequest
 from .viewport_camera_state import ViewportCameraState
+from .viewport_cast import ViewportCast
+from .viewport_cast_hit import ViewportCastHit
+from .viewport_cast_request import ViewportCastRequest
 from .viewport_display import ViewportDisplay
 from .viewport_follow import ViewportFollow
 from .viewport_graph_request import ViewportGraphRequest
@@ -399,6 +414,7 @@ from .viewport_screenshot import ViewportScreenshot
 from .viewport_screenshot_request import ViewportScreenshotRequest
 from .viewport_stack_request import ViewportStackRequest
 from .viewport_state import ViewportState
+from .viewport_symmetry import ViewportSymmetry
 from .worker_status import WorkerStatus
 
 __all__ = (
@@ -407,7 +423,9 @@ __all__ = (
     "AssetSummary",
     "AutosavePreferences",
     "BakeColourOptions",
+    "BakeCurvatureOptions",
     "BakedMapFile",
+    "BakeEdgeOptions",
     "BakeHeightOptions",
     "BakeIdOptions",
     "BakeOcclusionOptions",
@@ -430,6 +448,7 @@ __all__ = (
     "BrushPresetInfo",
     "BrushPresetList",
     "BrushPresetUpdateRequest",
+    "BuildComparison",
     "BuildPreview",
     "BuildPreviewProject",
     "BuildRequest",
@@ -464,6 +483,7 @@ __all__ = (
     "ExportPresetWrite",
     "ExportReport",
     "ExportSetOptions",
+    "FileComparison",
     "FileFormats",
     "FolderCost",
     "FolderCreateRequest",
@@ -595,6 +615,7 @@ __all__ = (
     "MeshFacts",
     "MeshMaterialFacts",
     "MeshPartFacts",
+    "OutputComparison",
     "OutputReport",
     "PackageCompound",
     "PackageDependency",
@@ -608,6 +629,7 @@ __all__ = (
     "ProjectBakeSettings",
     "ProjectCheckSettings",
     "ProjectChecksRequest",
+    "ProjectComparison",
     "ProjectContents",
     "ProjectCreateRequest",
     "ProjectDocumentCopyRequest",
@@ -652,6 +674,8 @@ __all__ = (
     "StackBrushPreview",
     "StackBrushTerms",
     "StackChannel",
+    "StackChannelsApplied",
+    "StackChannelsSpread",
     "StackChecks",
     "StackClip",
     "StackClipRequest",
@@ -752,6 +776,8 @@ __all__ = (
     "StackMeshMaskRequest",
     "StackMeshParts",
     "StackOpenRequest",
+    "StackPace",
+    "StackPaceChange",
     "StackPainted",
     "StackPathPoint",
     "StackPicture",
@@ -759,6 +785,8 @@ __all__ = (
     "StackPlacement",
     "StackPreview",
     "StackProblem",
+    "StackQuickMaskRequest",
+    "StackQuickMaskState",
     "StackSample",
     "StackSampledChannel",
     "StackSavedMaterial",
@@ -787,6 +815,9 @@ __all__ = (
     "ViewportBakePreview",
     "ViewportBakeRequest",
     "ViewportCameraState",
+    "ViewportCast",
+    "ViewportCastHit",
+    "ViewportCastRequest",
     "ViewportDisplay",
     "ViewportFollow",
     "ViewportGraphRequest",
@@ -801,5 +832,6 @@ __all__ = (
     "ViewportScreenshotRequest",
     "ViewportStackRequest",
     "ViewportState",
+    "ViewportSymmetry",
     "WorkerStatus",
 )

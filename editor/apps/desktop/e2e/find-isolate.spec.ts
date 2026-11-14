@@ -1,4 +1,11 @@
-import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+  type Locator,
+  type Page
+} from '@playwright/test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -140,16 +147,20 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
 
   // One of two equal quads alone is about half of what both were.
   const isolate = window.getByTestId('texture-set-isolate-wood');
+  let frames = Number(await viewport.getAttribute('data-frames'));
   await isolate.click();
   await expect(isolate).toHaveAttribute('aria-pressed', 'true');
   // Off the row, so the count is of the quad and not its mark.
   await viewport.hover();
+  await drawnAlone(viewport, ['wood'], frames);
   await expect.poll(() => quads(), { timeout: 30_000 }).toBeLessThan(whole * 0.7);
   expect(await quads()).toBeGreaterThan(whole * 0.3);
   await viewport.screenshot({ path: join(shots, 'isolate-2-wood-alone.png') });
 
+  frames = Number(await viewport.getAttribute('data-frames'));
   await isolate.click();
   await expect(isolate).toHaveAttribute('aria-pressed', 'false');
+  await drawnAlone(viewport, [], frames);
   await expect.poll(quads, { timeout: 30_000 }).toBeGreaterThan(whole * 0.9);
   await viewport.screenshot({ path: join(shots, 'isolate-3-whole-again.png') });
 
@@ -289,3 +300,32 @@ test('the 2D view draws the UV layout over the map, says where the pointer is, a
   await wire.click();
   await expect(layout).toHaveCount(0);
 });
+
+/** The Server's address and token, as the app holds them. */
+async function server(): Promise<{ baseUrl: string; token: string }> {
+  return window.evaluate(() =>
+    (
+      globalThis as unknown as { patina: { connection(): Promise<{ baseUrl: string; token: string }> } }
+    ).patina.connection()
+  );
+}
+
+/**
+ * Waits until the Server draws these materials alone, none for the whole model, and frames drawn since have reached the
+ * viewport, so a count of its pixels is of what was asked for (#271). The Server draws only when something changes, so
+ * the frames counted are those since `frames`, read before the change was asked for.
+ */
+async function drawnAlone(viewport: Locator, materials: string[], frames: number): Promise<void> {
+  const { baseUrl, token } = await server();
+  const headers = { Authorization: `Bearer ${token}` };
+  const alone = async (): Promise<string[]> => {
+    const state = (await (await fetch(`${baseUrl}/api/v1/viewport`, { headers })).json()) as {
+      isolation?: { materials: string[] } | null;
+    };
+    return state.isolation?.materials ?? [];
+  };
+  await expect.poll(alone, { timeout: 30_000 }).toEqual(materials);
+  await expect
+    .poll(async () => Number(await viewport.getAttribute('data-frames')), { timeout: 30_000 })
+    .toBeGreaterThan(frames);
+}

@@ -11,7 +11,10 @@ namespace Patina.Export;
 /// <summary>The maps of one texture set.</summary>
 /// <param name="Name">Its name, or nothing for a project with no named sets.</param>
 /// <param name="Maps">The maps, by name.</param>
-public sealed record ExportSet(string Name, IReadOnlyDictionary<string, MapPicture> Maps);
+public sealed record ExportSet(string Name, IReadOnlyDictionary<string, MapPicture> Maps) {
+    /// <summary>The UDIM tile the set's layout sits on, which its files are named by (#20).</summary>
+    public int Udim { get; init; } = OneTile.First;
+}
 
 /// <summary>What a delivery put in a folder.</summary>
 /// <param name="Files">The files, absolute.</param>
@@ -136,7 +139,7 @@ public static class ExportRun {
                         levels,
                         bytes.LongLength,
                         set
-                    ) { Space = texture.Space, Maps = [..texture.Maps.Where(maps.ContainsKey)] }
+                    ) { Space = texture.Space, Maps = [..texture.Maps.Where(maps.ContainsKey)], Udim = sets[at].Udim }
                 );
             }
         }
@@ -254,7 +257,9 @@ public static class ExportRun {
         foreach (var file in manifest.Files) {
             var name = NamingTemplate.Resolve(
                 several ? NamingTemplate.PerSet(file.Template) : file.Template,
-                values.Of(file.Set) with { Space = file.Space, Size = Math.Max(file.Width, file.Height) },
+                values.Of(file.Set) with {
+                    Space = file.Space, Size = Math.Max(file.Width, file.Height), Udim = file.Udim
+                },
                 Path.GetExtension(file.File)
             );
             var path = Path.Combine(target, name);

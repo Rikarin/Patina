@@ -42,6 +42,7 @@ import {
 } from '@xui/node-graph';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiOmnibarImports } from '@xui/omnibar';
+import { XuiSelectOption } from '@xui/select';
 import { XuiSpinnerImports } from '@xui/spinner';
 import { XuiTagImports } from '@xui/tag';
 import { Commands } from '../core/commands';
@@ -236,6 +237,7 @@ export class GraphThumbnail {
     XuiMenuImports,
     XuiNodeGraphImports,
     XuiOmnibarImports,
+    XuiSelectOption,
     XuiTagImports
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -256,7 +258,7 @@ export class GraphThumbnail {
   `,
   template: `
     @let current = document();
-    <div class="chrome-bar flex h-9 shrink-0 items-center gap-1 px-2">
+    <div class="pane-bar gap-1 px-2" role="toolbar" aria-label="Graph">
       @for (crumb of store.trail(); track crumb.id) {
         <button
           type="button"
@@ -737,7 +739,20 @@ export class GraphThumbnail {
       [open]="paletteOpen()"
       (itemSelected)="add($event)"
       (openChange)="paletteOpen.set($event)"
-    />
+    >
+      <ng-template xuiSelectOption let-item>
+        @let type = typeOf(item);
+        <span class="flex min-w-0 items-center gap-2" data-testid="palette-item" [attr.data-node]="type.path">
+          @let picture = store.nodePictures.url(type.path);
+          @if (picture) {
+            <img class="size-6 shrink-0 rounded-xs" alt="" data-testid="palette-picture" [src]="picture" />
+          } @else {
+            <span class="size-6 shrink-0" aria-hidden="true"></span>
+          }
+          <span class="truncate">{{ type.title }}</span>
+        </span>
+      </ng-template>
+    </xui-omnibar>
     <xui-omnibar
       aria-label="Find a node"
       debounce="0"
@@ -822,6 +837,8 @@ export class GraphCanvas {
 
   protected readonly groupOf = (item: PaletteItem): string => item.group;
   protected readonly titleOf = (item: PaletteItem): string => item.type.title;
+  /** A palette row's node type. The omnibar's row template does not know what its items are. */
+  protected readonly typeOf = (item: unknown): GraphNodeType => (item as PaletteItem).type;
   /**
    * What the palette offers: with nothing typed, the starred node types, then the ones added last, then every one by
    * category; typed, the Server's ranking. Each list keeps only what the wire being made can use.
@@ -832,6 +849,7 @@ export class GraphCanvas {
       this.answered = query;
       const ranked = query.trim() !== '';
       this.paletteRanked.set(ranked);
+      this.store.nodePictures.want(types.map(type => type.path));
       return ranked
         ? types.map(type => ({ type, group: '' }))
         : paletteOf(types, this.preferences.favouriteNodes(), this.preferences.recentNodes());

@@ -18,7 +18,7 @@ import { ProjectStore } from './project-store';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex min-h-0 flex-col', role: 'group', 'aria-label': 'Snapshots', 'data-testid': 'snapshots' },
   template: `
-    <div class="chrome-bar flex h-8 shrink-0 items-center gap-2 px-2">
+    <div class="pane-bar gap-2 px-2" role="toolbar" aria-label="Snapshots">
       <span class="section-label flex-1">Snapshots</span>
     </div>
     @if (path(); as path) {
@@ -131,14 +131,13 @@ export class SnapshotList {
   }
 
   protected async forget(path: string, snapshot: DocumentSnapshot): Promise<void> {
-    await this.act(path, async () => {
-      const client = await this.library.api();
-      const params = { query: { path, id: snapshot.id } };
-      unwrap(await client.DELETE('/api/v1/library/snapshots', { params }));
-    });
+    await this.act(path, () => this.project.deleteSnapshot(path, snapshot.id));
   }
 
-  /** Does one thing at a time, then reads the list again, whatever came of it. */
+  /**
+   * Does one thing at a time, then reads the list again, whatever came of it. Each thing says itself why it was
+   * refused (#270).
+   */
   private async act(path: string, work: () => Promise<unknown>): Promise<void> {
     this.busy.set(true);
     try {

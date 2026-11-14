@@ -52,6 +52,12 @@ public static class IpcTypes {
     public const string ViewportPick = "viewport.pick";
 
     /// <summary>
+    ///     Server to Worker: where the rays of <see cref="IpcMessage.Cast" /> meet the mesh; answers with
+    ///     <see cref="IpcMessage.Casted" />. It reads the mesh and no device (#263).
+    /// </summary>
+    public const string ViewportCast = "viewport.cast";
+
+    /// <summary>
     ///     Server to Worker: from now on the viewport wears the stack <see cref="IpcMessage.Following" />, or nothing
     ///     when that is null. The maps go from the stack's evaluation to the viewport inside the Worker.
     /// </summary>
@@ -192,7 +198,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 17;
+    public const int ProtocolVersion = 18;
 
     public string Type { get; set; } = string.Empty;
 
@@ -228,6 +234,12 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to viewport.pick.</summary>
     public ViewportPick? Picked { get; set; }
+
+    /// <summary>viewport.cast: the rays and the mesh.</summary>
+    public ViewportCastAsk? Cast { get; set; }
+
+    /// <summary>The reply to viewport.cast.</summary>
+    public ViewportCast? Casted { get; set; }
 
     /// <summary>viewport.stack: which stack the viewport wears.</summary>
     public string? Following { get; set; }
@@ -473,6 +485,7 @@ public sealed record ViewportMapSet(
 /// </param>
 /// <param name="Resolution">The side of a map for a material whose own size cannot be read, in texels.</param>
 /// <param name="Highlight">What is marked on the model, or null for nothing.</param>
+/// <param name="Symmetry">The symmetry whose mirror is drawn where it meets the model, or null for none.</param>
 public sealed record ViewportDisplaySet(
     ViewportDisplay Display,
     ViewportMapFile? Look,
@@ -480,7 +493,8 @@ public sealed record ViewportDisplaySet(
     ViewportIsolation? Isolation = null,
     double TexelDensity = 0,
     int Resolution = 2048,
-    ViewportHighlight? Highlight = null
+    ViewportHighlight? Highlight = null,
+    StackSymmetry? Symmetry = null
 );
 
 /// <summary>
@@ -525,6 +539,12 @@ public sealed record ViewportPickAsk(
     string Mesh,
     IReadOnlyDictionary<string, int>? UvSets = null
 );
+
+/// <summary>Rays along one direction to meet the mesh with (#263).</summary>
+/// <param name="Origins">Where each ray starts, in the mesh's own space: three numbers to a ray.</param>
+/// <param name="Direction">The way every ray goes: three numbers.</param>
+/// <param name="Mesh">The mesh. Only its file is read, as a pick's is.</param>
+public sealed record ViewportCastAsk(IReadOnlyList<float> Origins, IReadOnlyList<float> Direction, string Mesh);
 
 /// <summary>A frame that is now in shared memory.</summary>
 public sealed record ViewportFrame(int Width, int Height, double RenderMilliseconds);
@@ -695,6 +715,11 @@ public sealed record StackLoad(
 /// </param>
 /// <param name="Outline">For a fill, whether its stamps are one outline to fill inside, not clicks.</param>
 /// <param name="Through">For an outline through a view, whether what the camera cannot see is filled too.</param>
+/// <param name="Keep">
+///     The quick mask the stroke is kept to, a paint file relative to the stack whose mask channel's red lets it
+///     through (#127), or null.
+/// </param>
+/// <param name="KeepOutside">Whether the stroke is kept to where that quick mask is not painted instead.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -719,7 +744,9 @@ public sealed record StackPaintPart(
     IReadOnlyList<float>? Resume = null,
     ViewportIsolation? Isolation = null,
     bool Outline = false,
-    bool Through = false
+    bool Through = false,
+    string? Keep = null,
+    bool KeepOutside = false
 );
 
 /// <summary>What a flattened group's canvas is made of.</summary>
@@ -739,19 +766,27 @@ public sealed record StackCapture(string Document, string Layer, bool Backdrop);
 /// <param name="Standing">Every stroke that stands, by number, in order.</param>
 /// <param name="Parts">The stamps this Worker has not been sent.</param>
 /// <param name="Forget">Strokes that can never stand again.</param>
+/// <param name="QuickMask">
+///     The quick mask the viewport lays over the model in red, a paint file relative to the stack, or null for none.
+/// </param>
 public sealed record StackSync(
     string Session,
     string? Document,
     IReadOnlyList<long> Standing,
     IReadOnlyList<StackPaintPart> Parts,
-    IReadOnlyList<long> Forget
+    IReadOnlyList<long> Forget,
+    string? QuickMask = null
 );
 
 /// <summary>Asks for the stack to be composited as it stands.</summary>
 /// <param name="Session">The session.</param>
 /// <param name="PreviewSide">The longest side of a preview, or 0 for none: a drag the viewport is showing.</param>
 /// <param name="PreviewFolder">The content-addressed folder previews go in.</param>
-public sealed record StackEvaluate(string Session, int PreviewSide, string PreviewFolder);
+/// <param name="Proxy">
+///     What the stack's sides are divided by while it is edited (#208): 1 for full size. Its pixels, its checks and
+///     its samples are read at full size whatever this is.
+/// </param>
+public sealed record StackEvaluate(string Session, int PreviewSide, string PreviewFolder, int Proxy = 1);
 
 // SK7005: a message record's constructor is its wire shape, one parameter per field.
 #pragma warning disable SK7005

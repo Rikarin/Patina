@@ -63,6 +63,14 @@ static class ViewportMapEndpoints {
                 "Marks some named meshes and materials (texture sets) on the model in one colour with their outline, "
                 + "for every client. Empty lists mark nothing."
             );
+        api.MapPut("/viewport/symmetry", Mirror)
+            .WithName("SetViewportSymmetry")
+            .WithTags(Tag)
+            .WithSummary(
+                "Draws where a symmetry's mirror meets the model, as a line across its surface hidden where the model "
+                + "hides it, for every client. Null draws nothing, and so does a radial symmetry."
+            )
+            .ProducesProblem(Refused);
         api.MapPut("/viewport/bake", ShowBakeAsync)
             .WithName("ShowBakeInViewport")
             .WithTags(Tag)
@@ -117,7 +125,7 @@ static class ViewportMapEndpoints {
             session.SetMaps(hashed);
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: Missing);
+            return Refusals.Of(e);
         }
     }
 
@@ -172,7 +180,7 @@ static class ViewportMapEndpoints {
             session.SetDisplay(new(request, look, picture));
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: Missing);
+            return Refusals.Of(e);
         }
     }
 
@@ -202,9 +210,9 @@ static class ViewportMapEndpoints {
         try {
             return TypedResults.Ok(await session.ScreenshotAsync(request, cancellationToken));
         } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
+            return Refusals.OfEngine(e, Refused);
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.Unwritable(e, Unavailable);
         } catch (TimeoutException e) {
             return Refusals.Of(e, Unavailable);
         }
@@ -244,13 +252,13 @@ static class ViewportMapEndpoints {
             session.Redraw();
             return TypedResults.Ok(shown);
         } catch (RendererMissingException e) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.OfEngine(e, Unavailable);
         } catch (IpcException e) {
             session.Redraw();
-            return TypedResults.Problem(e.Message, statusCode: Refused);
+            return Refusals.OfEngine(e, Refused);
         } catch (Exception e) when (e is IOException or TimeoutException) {
             // The Worker went, or took longer than a reply may to read the meshes: the next frame tells it again.
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.OfEngine(e, Unavailable);
         }
     }
 
@@ -264,6 +272,15 @@ static class ViewportMapEndpoints {
         return TypedResults.Ok(session.State);
     }
 
+    static Results<Ok<ViewportState>, ProblemHttpResult> Mirror(ViewportSymmetry request, ViewportSession session) {
+        if (request.Symmetry?.Problem() is { } problem) {
+            return Refusals.Problem(problem, Refused, Refusals.BrushRefused, Refusals.Reason(problem));
+        }
+
+        session.Symmetry(request.Symmetry);
+        return TypedResults.Ok(session.State);
+    }
+
     static async Task<Results<Ok<ViewportState>, ProblemHttpResult>> ShowBakeAsync(
         ViewportBakeRequest request,
         JobQueue queue,
@@ -271,12 +288,7 @@ static class ViewportMapEndpoints {
         CancellationToken cancellationToken
     ) {
         if (queue.Find(request.Job) is not { } job) {
-            return Refusals.Problem(
-                $"There is no job '{request.Job}'.",
-                Missing,
-                Refusals.JobMissing,
-                new Dictionary<string, string> { ["id"] = request.Job }
-            );
+            return Refusals.NoJob(request.Job);
         }
 
         if (job is not { State: JobStates.Done, Result: { } result }) {
@@ -311,7 +323,7 @@ static class ViewportMapEndpoints {
             session.Show(job.Bake.Low, hashed, alone);
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: Missing);
+            return Refusals.Of(e);
         }
     }
 
@@ -365,9 +377,9 @@ static class ViewportMapEndpoints {
 
             return TypedResults.Ok(session.State);
         } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Conflict);
+            return Refusals.OfEngine(e, Conflict);
         } catch (Exception e) when (e is IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.OfEngine(e, Unavailable);
         }
     }
 

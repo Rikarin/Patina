@@ -18,7 +18,13 @@ public sealed record BuildManifest(
     IReadOnlyList<BuiltMap> Maps,
     IReadOnlyList<string> Files,
     IReadOnlyList<string> Warnings
-);
+) {
+    /// <summary>
+    ///     The UDIM tile its texture set's layout sits on, which a preset's <c>{udim}</c> and <c>{tile}</c> name (#20):
+    ///     1001 for a set on the first tile, on several, or on no mesh.
+    /// </summary>
+    public int Udim { get; init; } = 1001;
+}
 
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
 #pragma warning disable SK7005
@@ -48,6 +54,9 @@ public sealed record ExportedFile(
 
     /// <summary>The maps it read that the set had; a lane of any other map holds that map's default.</summary>
     public IReadOnlyList<string> Maps { get; init; } = [];
+
+    /// <summary>The UDIM tile of the texture set it was made from (#20).</summary>
+    public int Udim { get; init; } = 1001;
 }
 #pragma warning restore SK7005
 
@@ -159,7 +168,10 @@ public sealed record ExportSetOptions(string Set) {
 ///     Changing one gives the export another key, so it never reuses files made under other settings.
 /// </summary>
 public sealed record ExportOptions {
-    /// <summary>The longest side of every file, 1 to 8192: 2048 makes a 4096 map's file 2048.</summary>
+    /// <summary>
+    ///     The longest side of every file, 1 to 8192: 2048 makes a 4096 map's file 2048. A graph is computed at it
+    ///     rather than resampled to it; a bake's or a layer stack's maps are resampled.
+    /// </summary>
     public int? Size { get; init; }
 
     /// <summary>How a file changes size: box, bilinear or nearest.</summary>
@@ -371,7 +383,13 @@ public sealed record ExportReport(
     IReadOnlyList<string> Skipped,
     IReadOnlyList<string> Warnings,
     string? Error
-);
+) {
+    /// <summary>
+    ///     Each of <see cref="Files" />' SHA-256, in the same order, as the build left it, so that two builds can be
+    ///     compared after the second has written over the first. Empty in a report from before builds kept them.
+    /// </summary>
+    public IReadOnlyList<string> Digests { get; init; } = [];
+}
 
 /// <summary>What a build did to one project. Only a project something happened to has one.</summary>
 /// <param name="Id">The project.</param>

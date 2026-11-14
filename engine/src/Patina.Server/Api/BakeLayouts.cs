@@ -31,6 +31,12 @@ static class BakeLayouts {
         };
     }
 
+    /// <summary>The file of the texture set a bake is of, or null when no project of the library holds it.</summary>
+    public static string? DocumentOf(OpenLibrary? library, BakeRequest request) {
+        ArgumentNullException.ThrowIfNull(request);
+        return library is null ? null : DocumentOf(library, request.Low, request.Material);
+    }
+
     /// <summary>
     ///     The file of the texture set on this material of the project that holds the mesh, or null. A mesh of one
     ///     material has one document, which names no material, and a bake of it names none either: that document is

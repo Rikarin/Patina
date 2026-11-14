@@ -12,6 +12,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.stack_symmetry import StackSymmetry
   from ..models.viewport_camera_state import ViewportCameraState
   from ..models.viewport_display import ViewportDisplay
   from ..models.viewport_follow import ViewportFollow
@@ -54,6 +55,7 @@ class ViewportState:
             node (None | Unset | ViewportNodeShown):
             following (None | Unset | ViewportFollow):
             highlight (None | Unset | ViewportHighlight):
+            symmetry (None | StackSymmetry | Unset):
      """
 
     maps: ViewportMapPaths
@@ -70,6 +72,7 @@ class ViewportState:
     node: None | Unset | ViewportNodeShown = UNSET
     following: None | Unset | ViewportFollow = UNSET
     highlight: None | Unset | ViewportHighlight = UNSET
+    symmetry: None | StackSymmetry | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -77,6 +80,7 @@ class ViewportState:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_symmetry import StackSymmetry # noqa: PLC0415
         from ..models.viewport_camera_state import ViewportCameraState # noqa: PLC0415
         from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         from ..models.viewport_follow import ViewportFollow # noqa: PLC0415
@@ -148,6 +152,14 @@ class ViewportState:
         else:
             highlight = self.highlight
 
+        symmetry: dict[str, Any] | None | Unset
+        if isinstance(self.symmetry, Unset):
+            symmetry = UNSET
+        elif isinstance(self.symmetry, StackSymmetry):
+            symmetry = self.symmetry.to_dict()
+        else:
+            symmetry = self.symmetry
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -174,6 +186,8 @@ class ViewportState:
             field_dict["following"] = following
         if highlight is not UNSET:
             field_dict["highlight"] = highlight
+        if symmetry is not UNSET:
+            field_dict["symmetry"] = symmetry
 
         return field_dict
 
@@ -181,6 +195,7 @@ class ViewportState:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_symmetry import StackSymmetry # noqa: PLC0415
         from ..models.viewport_camera_state import ViewportCameraState # noqa: PLC0415
         from ..models.viewport_display import ViewportDisplay # noqa: PLC0415
         from ..models.viewport_follow import ViewportFollow # noqa: PLC0415
@@ -322,6 +337,26 @@ class ViewportState:
         highlight = _parse_highlight(d.pop("highlight", UNSET))
 
 
+        def _parse_symmetry(data: object) -> None | StackSymmetry | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                symmetry_type_1 = StackSymmetry.from_dict(data)
+
+
+
+                return symmetry_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackSymmetry | Unset, data)
+
+        symmetry = _parse_symmetry(d.pop("symmetry", UNSET))
+
+
         viewport_state = cls(
             maps=maps,
             camera=camera,
@@ -337,6 +372,7 @@ class ViewportState:
             node=node,
             following=following,
             highlight=highlight,
+            symmetry=symmetry,
         )
 
 

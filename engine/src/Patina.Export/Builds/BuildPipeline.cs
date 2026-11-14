@@ -80,7 +80,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         var selection = new OutputSelection(
             request.Asset is { } asset ? AssetId.From(asset) : null,
             request.Projects?.Select(ProjectId.From).ToList()
-        ) { Documents = request.Documents };
+        ) { Documents = request.Documents, Sizes = SizesOf(request.Options) };
         var scan = library.ScanOutputs(selection, tools, cancellationToken);
         presets.Refuse(scan.Projects.Select(static p => p.Path));
         return BuildPlan.Make(
@@ -192,6 +192,19 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         }
 
         return project.Unresolved.Count > 0;
+    }
+
+    /// <summary>
+    ///     The sides an export's own size asks graphs to be computed at (ADR 0028): the export's, and any set's own
+    ///     over it. A graph computed at the side it is written at is exported as it was computed, and is never
+    ///     enlarged. Sets merged into one set of files are written at the export's size, so their own sides are not
+    ///     used.
+    /// </summary>
+    static GraphSizes? SizesOf(ExportOptions? options) {
+        var perSet = (options is { Merge: true } ? [] : options?.PerSet ?? [])
+            .Where(static set => set.Size is not null)
+            .ToDictionary(static set => set.Set, static set => set.Size!.Value, StringComparer.Ordinal);
+        return options?.Size is null && perSet.Count == 0 ? null : new(options?.Size, perSet);
     }
 
     static string ExportsOf(OpenLibrary library, BuildRequest request) =>
@@ -327,7 +340,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                     manifest.Skipped,
                     [..manifest.Warnings, ..delivered.Warnings],
                     null
-                )
+                ) { Digests = BuildComparisons.Digests(delivered.Files) }
             );
         } catch (BuildStepFailedException e) {
             journal.Ended(step, identity, FailedExport(preset.Id, e.Message));

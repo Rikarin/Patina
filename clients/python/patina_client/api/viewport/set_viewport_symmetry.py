@@ -1,0 +1,202 @@
+from http import HTTPStatus
+from typing import Any, cast
+from urllib.parse import quote
+
+import httpx2
+
+from ...client import AuthenticatedClient, Client
+from ...types import Response, UNSET
+from ... import errors
+
+from ...models.problem_details import ProblemDetails
+from ...models.viewport_state import ViewportState
+from ...models.viewport_symmetry import ViewportSymmetry
+from typing import cast
+
+
+
+def _get_kwargs(
+    *,
+    body: ViewportSymmetry,
+
+) -> dict[str, Any]:
+    headers: dict[str, Any] = {}
+
+
+    
+
+    
+
+    _kwargs: dict[str, Any] = {
+        "method": "put",
+        "url": "/api/v1/viewport/symmetry",
+    }
+
+    _kwargs["json"] = body.to_dict()
+
+    headers["Content-Type"] = "application/json"
+
+    _kwargs["headers"] = headers
+    return _kwargs
+
+
+
+def _parse_response(*, client: AuthenticatedClient | Client, response: httpx2.Response) -> ProblemDetails | ViewportState | None:
+    if response.status_code == 200:
+        response_200 = ViewportState.from_dict(response.json())
+
+
+
+        return response_200
+
+    if response.status_code == 422:
+        response_422 = ProblemDetails.from_dict(response.json())
+
+
+
+        return response_422
+
+    if client.raise_on_unexpected_status:
+        raise errors.UnexpectedStatus(response.status_code, response.content)
+    else:
+        return None
+
+
+def _build_response(*, client: AuthenticatedClient | Client, response: httpx2.Response) -> Response[ProblemDetails | ViewportState]:
+    return Response(
+        status_code=HTTPStatus(response.status_code),
+        content=response.content,
+        headers=response.headers,
+        parsed=_parse_response(client=client, response=response),
+    )
+
+
+def sync_detailed(
+    *,
+    client: AuthenticatedClient | Client,
+    body: ViewportSymmetry,
+
+) -> Response[ProblemDetails | ViewportState]:
+    """ Draws where a symmetry's mirror meets the model, as a line across its surface hidden where the model
+    hides it, for every client. Null draws nothing, and so does a radial symmetry.
+
+    Args:
+        body (ViewportSymmetry): The symmetry a brush paints with, which the viewport draws where
+            its mirror's plane meets the model (#132): the
+            line the plane cuts across the surface, hidden where the model hides it. A radial symmetry
+            draws nothing here.
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx2.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        Response[ProblemDetails | ViewportState]
+     """
+
+
+    kwargs = _get_kwargs(
+        body=body,
+
+    )
+
+    response = client.get_httpx_client().request(
+        **kwargs,
+    )
+
+    return _build_response(client=client, response=response)
+
+def sync(
+    *,
+    client: AuthenticatedClient | Client,
+    body: ViewportSymmetry,
+
+) -> ProblemDetails | ViewportState | None:
+    """ Draws where a symmetry's mirror meets the model, as a line across its surface hidden where the model
+    hides it, for every client. Null draws nothing, and so does a radial symmetry.
+
+    Args:
+        body (ViewportSymmetry): The symmetry a brush paints with, which the viewport draws where
+            its mirror's plane meets the model (#132): the
+            line the plane cuts across the surface, hidden where the model hides it. A radial symmetry
+            draws nothing here.
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx2.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        ProblemDetails | ViewportState
+     """
+
+
+    return sync_detailed(
+        client=client,
+body=body,
+
+    ).parsed
+
+async def asyncio_detailed(
+    *,
+    client: AuthenticatedClient | Client,
+    body: ViewportSymmetry,
+
+) -> Response[ProblemDetails | ViewportState]:
+    """ Draws where a symmetry's mirror meets the model, as a line across its surface hidden where the model
+    hides it, for every client. Null draws nothing, and so does a radial symmetry.
+
+    Args:
+        body (ViewportSymmetry): The symmetry a brush paints with, which the viewport draws where
+            its mirror's plane meets the model (#132): the
+            line the plane cuts across the surface, hidden where the model hides it. A radial symmetry
+            draws nothing here.
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx2.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        Response[ProblemDetails | ViewportState]
+     """
+
+
+    kwargs = _get_kwargs(
+        body=body,
+
+    )
+
+    response = await client.get_async_httpx_client().request(
+        **kwargs
+    )
+
+    return _build_response(client=client, response=response)
+
+async def asyncio(
+    *,
+    client: AuthenticatedClient | Client,
+    body: ViewportSymmetry,
+
+) -> ProblemDetails | ViewportState | None:
+    """ Draws where a symmetry's mirror meets the model, as a line across its surface hidden where the model
+    hides it, for every client. Null draws nothing, and so does a radial symmetry.
+
+    Args:
+        body (ViewportSymmetry): The symmetry a brush paints with, which the viewport draws where
+            its mirror's plane meets the model (#132): the
+            line the plane cuts across the surface, hidden where the model hides it. A radial symmetry
+            draws nothing here.
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx2.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        ProblemDetails | ViewportState
+     """
+
+
+    return (await asyncio_detailed(
+        client=client,
+body=body,
+
+    )).parsed

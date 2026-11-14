@@ -272,8 +272,13 @@ static class LibraryTreeEndpoints {
         );
 
     /// <summary>Brings a file into a project once a picture reads whole: a broken one is refused, not copied.</summary>
-    static Results<Ok<ProjectContents>, ProblemHttpResult> ImportFile(LibraryHost host, ProjectFileRequest request) =>
-        LibraryPictures.Unreadable(request.File) is { } refused
+    static async Task<Results<Ok<ProjectContents>, ProblemHttpResult>> ImportFile(
+        LibraryHost host,
+        PicturePreviews previews,
+        ProjectFileRequest request,
+        CancellationToken cancellationToken
+    ) =>
+        await LibraryPictures.UnreadableAsync(previews, request.File, cancellationToken) is { } refused
             ? refused
             : Guarded(
                 host,
@@ -455,13 +460,16 @@ static class LibraryTreeEndpoints {
             FileNotFoundException missing => Refusals.Of(missing),
             ProjectRefusedException refused => Refusals.Of(refused),
             StackEditRefusedException refused => Refusals.Of(refused, StatusCodes.Status400BadRequest),
-            LibraryItemOpenException => Problem(e, StatusCodes.Status409Conflict),
-            IOException or UnauthorizedAccessException => Problem(e, StatusCodes.Status409Conflict),
+            LibraryItemOpenException => Refusals.Problem(
+                e.Message,
+                StatusCodes.Status409Conflict,
+                Refusals.LibraryConflict,
+                Refusals.Reason(e.Message)
+            ),
+            _ when Refusals.Busy(e) is { } busy => busy,
+            IOException or UnauthorizedAccessException => Refusals.Unwritable(e, StatusCodes.Status409Conflict),
             _ => null
         };
-
-    internal static ProblemHttpResult Problem(Exception e, int status) =>
-        TypedResults.Problem(e.Message, statusCode: status);
 
     internal static ProblemHttpResult NoLibrary() => Refusals.NoLibraryOpen();
 }

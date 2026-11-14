@@ -108,6 +108,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/cast': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Where rays along one direction meet the open mesh in its own space, such as a decal's surface measured along the decal's facing (#263). */
+    post: operations['CastInViewport'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/stack': {
     parameters: {
       query?: never;
@@ -203,6 +220,23 @@ export interface paths {
     get?: never;
     /** Marks some named meshes and materials (texture sets) on the model in one colour with their outline, for every client. Empty lists mark nothing. */
     put: operations['SetViewportHighlight'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/viewport/symmetry': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Draws where a symmetry's mirror meets the model, as a line across its surface hidden where the model hides it, for every client. Null draws nothing, and so does a radial symmetry. */
+    put: operations['SetViewportSymmetry'];
     post?: never;
     delete?: never;
     options?: never;
@@ -805,7 +839,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). */
+    /** A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). With side, any picture as a PNG whose longer side is at most that many texels, for a thumbnail (#269). */
     get: operations['GetLibraryPicture'];
     put?: never;
     post?: never;
@@ -1335,6 +1369,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/graphs/{id}/node-types/thumbnails': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Pictures of node types this graph can use, each at its defaults with a noise on its picture inputs, by hash under /previews, drawing those the cache lacks first. A type with no picture has none. */
+    post: operations['GetGraphNodeTypeThumbnails'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/graphs/{id}/compounds': {
     parameters: {
       query?: never;
@@ -1575,6 +1626,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/channels/apply-to-all': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Gives each of the model's other texture sets the channels this set has and it lacks (#141), each starting as what leaves its material alone. A set open in a session takes them as one undo step of its own, left unsaved; a set nobody has open has them written to its file. Nothing is taken off a set. Says what each set was given, or why it was left alone. */
+    post: operations['ApplyStackChannelsToAllSets'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/{id}/brush-preview': {
     parameters: {
       query?: never;
@@ -1586,6 +1654,24 @@ export interface paths {
     put?: never;
     /** A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. With stamp, one stamp of it instead, as a cursor shows it: square, the stamp's long half-axis reaching the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke could take is refused with its reason. */
     post: operations['PreviewStackBrush'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/quick-mask': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The session's quick mask: whether the viewport lays it over the model, and whether it is painted. */
+    get: operations['GetStackQuickMask'];
+    /** Shows or hides the session's quick mask in the viewport, red where it is painted, or starts a new, empty one. A stroke paints it with quickMask paint, and is kept inside or outside it with inside or outside. It is the session's: no save writes it, and neither change is a step of history. */
+    put: operations['SetStackQuickMask'];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1688,6 +1774,23 @@ export interface paths {
     put?: never;
     /** Evaluates from nothing and writes each map to a file, and says where and what they hold. */
     post: operations['ExportStack'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/pace': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Pauses or resumes a stack's evaluation, or sets the proxy its picture is composited at while it is edited. Every client hears a paced event. Saving, exporting and checking always evaluate it whole. */
+    put: operations['PaceStack'];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -2156,6 +2259,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/builds/{id}/compare': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What differs from an earlier build: outputs by key, files by their bytes. */
+    get: operations['CompareBuilds'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/export/presets/{id}': {
     parameters: {
       query?: never;
@@ -2356,6 +2476,20 @@ export interface components {
       /** @description For `texture`: the picture to carry across, as a path on the Server's machine. */
       texture: string;
     };
+    /** @description The curvature map's stored range (#148). */
+    BakeCurvatureOptions: {
+      /**
+       * @description `auto`, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or
+       *                 `custom`, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a crease, so every
+       *                 bake made with it agrees.
+       */
+      range: string;
+      /**
+       * Format: double
+       * @description For `custom`: the radius of the tightest bend the map tells apart, in the rays' units.
+       */
+      radius: number;
+    };
     /** @description One baked map, as a file. */
     BakedMapFile: {
       /** @description What it measures. */
@@ -2378,6 +2512,29 @@ export interface components {
        * @description Its height in pixels, or null when it is as tall as it is wide.
        */
       rows?: null | number;
+    };
+    /** @description Which edges the edges map marks, and the band it draws along them (#148). */
+    BakeEdgeOptions: {
+      /**
+       * @description `hard`, the edges the high mesh's own normals split, or `angle`, every edge whose faces meet at
+       *                 double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges.
+       */
+      edges: string;
+      /**
+       * Format: double
+       * @description How far either side of an edge the band reaches, in the rays' units.
+       */
+      width: number;
+      /**
+       * Format: double
+       * @description For `angle`: the least angle between two faces that is an edge, in degrees.
+       */
+      angle: number;
+      /**
+       * @description How the band falls from white on the edge to black at its side: `even`, a straight ramp; `smooth`,
+       *     a smoothstep; or `chamfer`, white all the way across.
+       */
+      profile: string;
     };
     /** @description The height map's stored range. */
     BakeHeightOptions: {
@@ -2479,8 +2636,9 @@ export interface components {
       gutter: number;
       /**
        * @description Which maps to write: `normal`, `height`, `ao`, `bent`, `curvature`,
-       *     `thickness`, `position`, `world`, `id`, `colour`. The default is what a project's
-       *     masks read.
+       *     `thickness`, `position`, `world`, `id`, `colour`, `opacity` (where a ray
+       *     found the high mesh), `edges` (a band along its sharp or hard edges) and `islands` (a color per UV
+       *     island of the low mesh). The default is what a project's masks read.
        */
       maps: string[];
       /** @description The frame of the normal and bent normal maps: `tangent` or `object`. */
@@ -2495,6 +2653,10 @@ export interface components {
       occlusion: components['schemas']['BakeOcclusionOptions'];
       /** @description The thickness map's own settings. */
       thickness: components['schemas']['BakeThicknessOptions'];
+      /** @description The curvature map's stored range. */
+      curvature: components['schemas']['BakeCurvatureOptions'];
+      /** @description Which edges the edges map marks, how wide and in what profile. */
+      edges: components['schemas']['BakeEdgeOptions'];
       /** @description What the ID map labels and how it colours them. */
       id: components['schemas']['BakeIdOptions'];
       /** @description Edges baked round into the normal, with no high poly to give them a bevel. */
@@ -2648,6 +2810,11 @@ export interface components {
        * @description For `angle`: the least angle between two faces that is an edge, in degrees.
        */
       angle: number;
+      /**
+       * @description How the normal turns across the bevel: `even`, a round fillet; `smooth`, flat at the bevel's side
+       *     and turning fastest near the edge; or `chamfer`, one flat face at the halfway angle.
+       */
+      profile: string;
     };
     /** @description The thickness map's own settings. */
     BakeThicknessOptions: {
@@ -2753,6 +2920,25 @@ export interface components {
       source: string;
       /** @description What it holds now. */
       preset: components['schemas']['BrushPreset'];
+    };
+    /** @description What differs between two builds (#217): their outputs' keys and their files' bytes, project by project. */
+    BuildComparison: {
+      /** @description The earlier build. */
+      before: string;
+      /** @description The later build. */
+      after: string;
+      /** @description Each project either build touched, by path, with what differs. */
+      projects: components['schemas']['ProjectComparison'][];
+      /**
+       * Format: int32
+       * @description Files whose bytes differ or that only one build wrote.
+       */
+      changedFiles: number;
+      /**
+       * Format: int32
+       * @description Files both builds wrote byte for byte the same.
+       */
+      sameFiles: number;
     };
     /**
      * @description What a build would do, from the build keys and with nothing run. int BuildPreview.Rebuilds and
@@ -3166,7 +3352,8 @@ export interface components {
     ExportOptions: {
       /**
        * Format: int32
-       * @description The longest side of every file, 1 to 8192: 2048 makes a 4096 map's file 2048.
+       * @description The longest side of every file, 1 to 8192: 2048 makes a 4096 map's file 2048. A graph is computed at it
+       *     rather than resampled to it; a bake's or a layer stack's maps are resampled.
        */
       size?: null | number;
       /** @description How a file changes size: box, bilinear or nearest. */
@@ -3413,6 +3600,11 @@ export interface components {
       warnings: string[];
       /** @description Why it failed. */
       error?: null | string;
+      /**
+       * @description Each of IReadOnlyList&lt;string&gt; ExportReport.Files' SHA-256, in the same order, as the build left it, so that two builds can be
+       *     compared after the second has written over the first. Empty in a report from before builds kept them.
+       */
+      digests: string[];
     };
     /**
      * @description One texture set's changes over the whole export's (#153): its own size, padding, dithering and files. Null
@@ -3433,6 +3625,15 @@ export interface components {
       dither?: null | boolean;
       /** @description This set's files turned off or written in another format. */
       files?: null | components['schemas']['ExportFileChoice'][];
+    };
+    /** @description One exported file in two builds. */
+    FileComparison: {
+      /** @description The preset that wrote it. */
+      preset: string;
+      /** @description Where it is, below the export's folder, with forward slashes. */
+      file: string;
+      /** @description One of BuildChanges. */
+      change: string;
     };
     /** @description What a client may offer, with the dot. */
     FileFormats: {
@@ -4104,6 +4305,9 @@ export interface components {
       | 'typesChanged'
       | 'closed'
       | 'selected'
+      | 'autosaved'
+      | 'autosaveFailed'
+      | 'paced'
       | 'resync';
     /** @description The events after a number, for a client that does not hold a WebSocket or has missed some. */
     GraphEventPage: {
@@ -4940,6 +5144,17 @@ export interface components {
        */
       uvSets: number;
     };
+    /** @description One output in two builds. */
+    OutputComparison: {
+      /** @description The output. */
+      name: string;
+      /** @description Its build key in the earlier build, or null when that build did not touch it. */
+      before?: null | string;
+      /** @description Its build key in the later build, or null. */
+      after?: null | string;
+      /** @description One of BuildChanges: the same key is the same result. */
+      change: string;
+    };
     /** @description One output in a project's report. */
     OutputReport: {
       /** @description The output. */
@@ -5104,6 +5319,27 @@ export interface components {
       project: string;
       /** @description What its texture sets are held to now. */
       checks: components['schemas']['ProjectCheckSettings'];
+    };
+    /** @description What differs in one project between two builds. */
+    ProjectComparison: {
+      /**
+       * Format: uuid
+       * @description The project.
+       */
+      id: string;
+      /** @description Its name. */
+      name: string;
+      /** @description Its path below `projects/`. */
+      path: string;
+      /**
+       * @description Which builds touched it: both, before or after. A build that leaves a project alone writes nothing of it, so a
+       *     project only one build touched has its files listed as that build left them.
+       */
+      touched: string;
+      /** @description Its outputs, with their keys in each build. */
+      outputs: components['schemas']['OutputComparison'][];
+      /** @description Its exported files, with their change. */
+      files: components['schemas']['FileComparison'][];
     };
     /** @description A project as it opens. */
     ProjectContents: {
@@ -5861,6 +6097,27 @@ export interface components {
       /** @description What it starts as. */
       default: number[];
     };
+    /** @description What Apply Channels to All Sets did, one entry for each other texture set of the model. */
+    StackChannelsApplied: {
+      /** @description The model's other sets, the open ones first. */
+      sets: components['schemas']['StackChannelsSpread'][];
+    };
+    /** @description What Apply Channels to All Sets did to one other texture set of the model (#141). */
+    StackChannelsSpread: {
+      /** @description The set, by the material it paints. */
+      set: string;
+      /** @description Its stack file. */
+      path: string;
+      /** @description The channels it was given, by usage; none when it had them all or was left alone. */
+      added: string[];
+      /**
+       * @description Whether it is open in a session, which took the channels as an undo step of its own, unsaved. A set nobody has
+       *     open had them written to its file.
+       */
+      open: boolean;
+      /** @description Why it was left as it was, or null. */
+      problem?: null | string;
+    };
     /** @description The reply to `GET /api/v1/stacks/{id}/checks`: one texture set measured against its project. */
     StackChecks: {
       /** @description The stack session. */
@@ -6409,6 +6666,13 @@ export interface components {
        * @default false
        */
       through: boolean;
+      /**
+       * @description The session's quick mask (#127), or null to leave it out: `paint` paints the quick mask itself, by the red
+       *     of Colour, instead of the layer, which may then be any; `inside` keeps the stroke to
+       *     where the quick mask is painted, and `outside` to where it is not. A quick mask nothing is painted on keeps
+       *     nothing back.
+       */
+      quickMask?: null | string;
     };
     /** @description Takes a flattened group back to its children, which composite again. */
     StackCommandStackUnflattenLayer: {
@@ -6489,8 +6753,10 @@ export interface components {
        */
       box?: null | number[];
       /**
-       * @description A warp (#134): where each point of a 3 by 3 grid over the picture lands on the decal's square, row by row from
-       *     the top left, as eighteen numbers 0 to 1 across and down. Null or empty bends nothing.
+       * @description A warp (#134, #263): where each point of a square grid over the picture lands on the decal's square, row by row
+       *     from the top left, two numbers 0 to 1 across and down to a point: eighteen for 3 by 3, fifty for 5 by 5, up to
+       *     int StackDecal.MaximumWarpSide points on a side. A finer grid follows a surface that turns away on both sides,
+       *     such as round a cylinder. Null or empty bends nothing.
        */
       warp?: null | number[];
     };
@@ -7074,6 +7340,35 @@ export interface components {
       /** @description A `.vxlayers` file, absolute or relative to the library. */
       path: string;
     };
+    /**
+     * @description How a stack is evaluated while it is edited, which is the session's and never the file's (#208). Saving,
+     *     exporting, checking and reading pixels always evaluate it whole, at full size, paused or not.
+     */
+    StackPace: {
+      /**
+       * @description Whether edits wait to be evaluated, so that a big stack can be set up without paying for each step. Resuming
+       *     evaluates everything at once.
+       * @default false
+       */
+      paused: boolean;
+      /**
+       * Format: int32
+       * @description What the stack's width and height are divided by for the viewport and previews while it is edited: 1, 2, 4
+       *     or 8. Painted pixels stay at full size; only what they are composited into is smaller.
+       * @default 1
+       */
+      proxy: number;
+    };
+    /** @description A change to how a stack is evaluated while it is edited (#208). What is left out stays as it is. */
+    StackPaceChange: {
+      /** @description Whether edits wait to be evaluated. */
+      paused?: null | boolean;
+      /**
+       * Format: int32
+       * @description What the stack's sides are divided by: 1, 2, 4 or 8.
+       */
+      proxy?: null | number;
+    };
     /** @description A channel a stroke touched. */
     StackPainted: {
       /** @description The layer. */
@@ -7198,6 +7493,24 @@ export interface components {
       severity: string;
       /** @description What is wrong. */
       message: string;
+    };
+    /** @description Shows or hides a stack's quick mask in the viewport, or clears it (#127). */
+    StackQuickMaskRequest: {
+      /** @description Whether the viewport lays the quick mask over the model in red. */
+      shown: boolean;
+      /**
+       * @description Whether to start a new, empty quick mask. Not an undo step: strokes kept to the old one keep what they painted,
+       *     and undoing a stroke on the old one changes nothing a later stroke reads.
+       * @default false
+       */
+      clear: boolean;
+    };
+    /** @description A stack's quick mask. */
+    StackQuickMaskState: {
+      /** @description Whether the viewport lays it over the model. */
+      shown: boolean;
+      /** @description Whether a stroke that stands has painted it, so that a stroke kept to it is kept. */
+      painted: boolean;
     };
     /**
      * @description What every channel of a stack holds at one place on its map, as a material picker takes it up: numbers read
@@ -7368,6 +7681,7 @@ export interface components {
        *     of another shape than the set's Width by Height (#262). Either way its maps need baking again.
        */
       bakeStale?: null | string;
+      pace?: null | components['schemas']['StackPace'];
     };
     /** @description Where a stroke's colour comes from, when it is not one colour. */
     StackStrokeSource: {
@@ -7686,8 +8000,8 @@ export interface components {
       texelDensity: number;
       /**
        * @description What happens when the islands do not fit at that density: `shrink` scales them all down, and
-       *     `refuse` stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one
-       *     tile.
+       *     `refuse` stops and says so. Spilling into a second UDIM tile is not offered while a texture set
+       *     paints one tile.
        */
       overflow: string;
     };
@@ -7815,6 +8129,30 @@ export interface components {
        * @default 0
        */
       panZ: number;
+    };
+    /** @description Where each ray of a ViewportCastRequest met the mesh, in its order. */
+    ViewportCast: {
+      /** @description One to a ray. */
+      hits: components['schemas']['ViewportCastHit'][];
+    };
+    /** @description The first place one ray met the mesh, ahead of where it starts. */
+    ViewportCastHit: {
+      /** @description Whether it met the mesh. */
+      found: boolean;
+      /** @description Where, in the mesh's own space: three numbers. */
+      position?: null | number[];
+      /** @description The face it met, as a unit direction out of the side the ray came from: three numbers. */
+      normal?: null | number[];
+    };
+    /**
+     * @description Asks where rays along one direction meet the open mesh, in its own space and through what the viewport draws
+     *     (#263): a decal's surface measured along the decal's own direction, wherever the camera is, in one round trip.
+     */
+    ViewportCastRequest: {
+      /** @description Where each ray starts: three numbers to a ray, at most 1024 rays. */
+      origins: number[];
+      /** @description The way every ray goes: three numbers, not all zero. */
+      direction: number[];
     };
     /**
      * @description How the viewport is lit, shown and finished. None of it reaches a file that is exported; a project keeps it, so
@@ -8224,6 +8562,14 @@ export interface components {
       node?: null | components['schemas']['ViewportNodeShown'];
       following?: null | components['schemas']['ViewportFollow'];
       highlight?: null | components['schemas']['ViewportHighlight'];
+      symmetry?: null | components['schemas']['StackSymmetry'];
+    };
+    /**
+     * @description The symmetry a brush paints with, which the viewport draws where its mirror's plane meets the model (#132): the
+     *     line the plane cuts across the surface, hidden where the model hides it. A radial symmetry draws nothing here.
+     */
+    ViewportSymmetry: {
+      symmetry?: null | components['schemas']['StackSymmetry'];
     };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {
@@ -8473,6 +8819,57 @@ export interface operations {
       };
     };
   };
+  CastInViewport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportCastRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportCast'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   ShowStackInViewport: {
     parameters: {
       query?: never;
@@ -8676,6 +9073,39 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ViewportState'];
+        };
+      };
+    };
+  };
+  SetViewportSymmetry: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportSymmetry'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
     };
@@ -10593,6 +11023,7 @@ export interface operations {
     parameters: {
       query: {
         path: string;
+        side?: number;
       };
       header?: never;
       path?: never;
@@ -12557,6 +12988,50 @@ export interface operations {
       };
     };
   };
+  GetGraphNodeTypeThumbnails: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ThumbnailRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ThumbnailList'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetGraphCompounds: {
     parameters: {
       query?: never;
@@ -13189,6 +13664,37 @@ export interface operations {
       };
     };
   };
+  ApplyStackChannelsToAllSets: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackChannelsApplied'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   PreviewStackBrush: {
     parameters: {
       query?: {
@@ -13235,6 +13741,72 @@ export interface operations {
       };
       /** @description Service Unavailable */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackQuickMask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackQuickMaskState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetStackQuickMask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackQuickMaskRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackQuickMaskState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -13535,6 +14107,50 @@ export interface operations {
       };
       /** @description Service Unavailable */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PaceStack: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackPaceChange'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackPace'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
         headers: {
           [name: string]: unknown;
         };
@@ -14621,6 +15237,39 @@ export interface operations {
         };
         content: {
           'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CompareBuilds: {
+    parameters: {
+      query: {
+        before: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BuildComparison'];
         };
       };
       /** @description Not Found */

@@ -104,6 +104,7 @@ public sealed partial class GraphApiTests : IDisposable {
 
             using var missing = await client.SendAsync(state.Id, new([new GraphRemoveGroup(9)]), Token);
             Assert.Equal(HttpStatusCode.UnprocessableEntity, missing.StatusCode);
+            Assert.Contains("graph-refused", await missing.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
         }
     }
 
@@ -931,6 +932,7 @@ public sealed partial class GraphApiTests : IDisposable {
             await File.AppendAllTextAsync(state.Path, "# someone else\n", Token);
             using var refused = await client.PostAsync($"/api/v1/graphs/{state.Id}/save", null, Token);
             Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+            Assert.Contains("file-changed", await refused.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
 
             using var forced = await client.PostAsync($"/api/v1/graphs/{state.Id}/save?force=true", null, Token);
             Assert.Equal(HttpStatusCode.OK, forced.StatusCode);

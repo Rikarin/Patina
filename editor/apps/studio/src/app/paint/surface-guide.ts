@@ -14,14 +14,14 @@ import { ViewportClient } from '../viewport/viewport-client';
 import { PaintStore } from './paint-store';
 import {
   type Quad,
-  Unwarped,
   decalOutline,
   onDecalPlane,
   pathOutline,
   pathPoint,
   turned,
   vector,
-  warpGrid
+  warpGrid,
+  warpOf
 } from './surface-frame';
 import { project } from './symmetry-guide';
 
@@ -98,7 +98,9 @@ const Settle = 120;
             </circle>
             @if (paint.warping()) {
               @if (grid(); as warp) {
-                <polyline class="fill-none stroke-sky-300/80" stroke-width="1" [attr.points]="gridLines(warp)" />
+                @for (line of gridLines(warp); track $index) {
+                  <polyline class="fill-none stroke-sky-300/80" stroke-width="1" [attr.points]="line" />
+                }
                 @for (point of warp; track $index) {
                   <circle
                     class="pointer-events-auto cursor-move fill-sky-300/60 stroke-white"
@@ -256,11 +258,19 @@ export class SurfaceGuide {
     return [top[0] + ((top[0] - centre[0]) / away) * 22, top[1] + ((top[1] - centre[1]) / away) * 22];
   }
 
-  /** The warp grid's rows and columns, as one line through its nine points. */
-  protected gridLines(grid: readonly (readonly [number, number])[]): string {
-    const at = (index: number) => grid[index] ?? [0, 0];
-    const order = [0, 1, 2, 5, 4, 3, 6, 7, 8, 5, 2, 1, 4, 7, 6, 3, 0];
-    return order.map(index => `${at(index)[0].toFixed(1)},${at(index)[1].toFixed(1)}`).join(' ');
+  /** The warp grid's rows, then its columns, each as a line through its points: a 3 by 3 grid or a finer one. */
+  protected gridLines(grid: readonly (readonly [number, number])[]): string[] {
+    const side = Math.round(Math.sqrt(grid.length));
+    const through = (indices: readonly number[]) =>
+      indices
+        .map(index => grid[index] ?? [0, 0])
+        .map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
+        .join(' ');
+    const steps = Array.from({ length: side }, (_, at) => at);
+    return [
+      ...steps.map(row => through(steps.map(column => row * side + column))),
+      ...steps.map(column => through(steps.map(row => row * side + column)))
+    ];
   }
 
   protected hold(event: PointerEvent, handle: Handle): void {
@@ -331,7 +341,7 @@ export class SurfaceGuide {
       const shown = this.decalShown() ?? decal;
       const place = onDecalPlane(shown, view, x, y);
       if (place) {
-        const warp = [...(shown.warp?.length === Unwarped.length ? shown.warp : Unwarped)];
+        const warp = [...warpOf(shown)];
         warp[handle.index * 2] = place[0];
         warp[handle.index * 2 + 1] = place[1];
         this.draft.set({ layer: layer.id, decal: { ...shown, warp } });

@@ -9,13 +9,14 @@ static class Help {
     static readonly (string[] Words, string Summary, string Usage)[] Commands = [
         (["graph", "info"], "Prints what a graph or a package takes and makes, as JSON.", GraphCommands.InfoUsage),
         (["library", "new"], "Makes a new, empty library.", "  patina library new <path> [--name <name>]"),
-        (["library", "check"], "Reports what is wrong with a library.", "  patina library check <path> [--all]"),
+        (["library", "check"], "Reports what is wrong with a library.", LibraryCommands.CheckUsage),
         (["cache", "prune"], "Removes built objects nothing has used for a while.",
             "  patina cache prune <library> [--days <n>]"),
         (["bake"], "Evaluates a graph or a package on the GPU and writes each output as a PNG.", GraphBake.Usage),
         (["bake-maps"], "Bakes mesh maps from a high mesh onto a low one, on the CPU.", MeshMapCommand.Usage),
         (["package"], "Publishes a graph as a package: its compounds and pictures in one folder.",
             GraphCommands.PackageUsage),
+        (["build", "compare"], "Prints what differs between two builds, as JSON.", BuildCompareCommand.Usage),
         (["build"], "Rebuilds and exports a library's projects.", BuildCommand.Usage),
         (["version"], "Prints the version.", "  patina version"),
         (["help"], "Prints this, or one command's usage.", "  patina help [<command>]")

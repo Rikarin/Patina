@@ -135,6 +135,8 @@ export class LibraryStore {
   private readonly mutableChanges = signal(0);
   private client: PatinaClient | null = null;
   private seen: LibraryInfo | null = null;
+  /** Whether the Server has a library, as `/system` said, or null until it has said. */
+  private hasLibrary: boolean | null = null;
   /** A write was made since the index last said it had caught up. */
   private written = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
@@ -248,14 +250,18 @@ export class LibraryStore {
     this.stopTimer();
     try {
       const client = await this.api();
-      this.accept(unwrap(await client.GET('/api/v1/library')));
-    } catch (error) {
-      this.seen = null;
-      if (error instanceof ApiError && error.status === 404) {
-        this.mutableState.set({ kind: 'none' });
-        this.selection.clear();
+      if (await this.libraryless(client)) {
+        this.none();
       } else {
+        this.accept(unwrap(await client.GET('/api/v1/library')));
+      }
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        this.none();
+      } else {
+        this.seen = null;
         this.client = null; // a restarted Server has a new port and token
+        this.hasLibrary = null;
         this.mutableState.set({ kind: 'error', reason: messageOf(error) });
       }
     }
@@ -265,6 +271,34 @@ export class LibraryStore {
       const delay = this.seen?.indexing ? IndexingPollMs : IdlePollMs;
       this.timer = setTimeout(() => void this.poll(), delay);
     }
+  }
+
+  private none(): void {
+    this.seen = null;
+    this.mutableState.set({ kind: 'none' });
+    this.selection.clear();
+  }
+
+  /**
+   * Whether the Server says it was started with no library, so that `/library` is not asked only to answer 404, which
+   * every start with no library logged (#192). Asked once: a Server's library is the one it was started with. A Server
+   * that cannot say is asked for its library, as before.
+   */
+  private async libraryless(client: PatinaClient): Promise<boolean> {
+    if (this.hasLibrary === null) {
+      try {
+        const { library } = unwrap(await client.GET('/api/v1/system'));
+        if (library === undefined) {
+          return false; // a Server that does not say
+        }
+
+        this.hasLibrary = library !== null;
+      } catch {
+        return false;
+      }
+    }
+
+    return !this.hasLibrary;
   }
 
   private accept(info: LibraryInfo): void {

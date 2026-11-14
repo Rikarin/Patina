@@ -33,6 +33,17 @@ public static class SetMerge {
             return null;
         }
 
+        // ⚠ Each set's layout is read moved home onto 1001, so sets on two tiles would land on one another (#20).
+        var tiles = sets.Select(static set => set.Udim).Distinct().Order().ToList();
+        if (tiles.Count > 1) {
+            warnings.Add(
+                "The texture sets were written one by one and not merged: they lie on UDIM tiles "
+                + string.Join(", ", tiles)
+                + ", and one set of files holds one tile."
+            );
+            return null;
+        }
+
         var pictures = sets.SelectMany(static (ExportSet set) => set.Maps.Values).ToList();
         var width = pictures.Max(static (MapPicture map) => map.Image.Width);
         var height = pictures.Max(static (MapPicture map) => map.Image.Height);
@@ -58,7 +69,7 @@ public static class SetMerge {
         }
 
         maps[ExportMaps.Coverage] = new(ExportMaps.Coverage, new(width, height, 1, covered), GreenAxis.Up);
-        return new(string.Empty, maps);
+        return new(string.Empty, maps) { Udim = tiles[0] };
     }
 
     /// <summary>Which set each texel is written from, or -1 where no layout covers it.</summary>

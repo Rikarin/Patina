@@ -27,8 +27,10 @@ namespace Patina.Contracts;
 ///     does not.
 /// </param>
 /// <param name="Warp">
-///     A warp (#134): where each point of a 3 by 3 grid over the picture lands on the decal's square, row by row from
-///     the top left, as eighteen numbers 0 to 1 across and down. Null or empty bends nothing.
+///     A warp (#134, #263): where each point of a square grid over the picture lands on the decal's square, row by row
+///     from the top left, two numbers 0 to 1 across and down to a point: eighteen for 3 by 3, fifty for 5 by 5, up to
+///     <see cref="MaximumWarpSide" /> points on a side. A finer grid follows a surface that turns away on both sides,
+///     such as round a cylinder. Null or empty bends nothing.
 /// </param>
 public sealed record StackDecal(
     IReadOnlyList<float> Centre,
@@ -43,7 +45,10 @@ public sealed record StackDecal(
     string Sampling = "Bilinear",
     IReadOnlyList<float>? Box = null,
     IReadOnlyList<float>? Warp = null
-);
+) {
+    /// <summary>The finest warp grid, in points on a side: what the decal's kernel reads.</summary>
+    public const int MaximumWarpSide = 9;
+}
 
 /// <summary>One point a path passes through, as <c>POST /viewport/pick</c> found it on the model.</summary>
 /// <param name="Position">Where, in the model's own units: three numbers.</param>

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
   from ..models.stack_channel import StackChannel
   from ..models.stack_evaluation import StackEvaluation
   from ..models.stack_layer import StackLayer
+  from ..models.stack_pace import StackPace
   from ..models.stack_preview import StackPreview
 
 
@@ -61,6 +62,7 @@ class StackState:
                 none: `mesh`, made on a mesh
                 the set no longer stands on, or `uvSet`, laid out in another of the mesh's UV sets (#238), or `shape`,
                 of another shape than the set's Width by Height (#262). Either way its maps need baking again.
+            pace (None | StackPace | Unset):
      """
 
     id: str
@@ -86,6 +88,7 @@ class StackState:
     mesh_maps: None | str | Unset = UNSET
     anchors: list[StackAnchor] | None | Unset = UNSET
     bake_stale: None | str | Unset = UNSET
+    pace: None | StackPace | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -98,6 +101,7 @@ class StackState:
         from ..models.stack_channel import StackChannel # noqa: PLC0415
         from ..models.stack_evaluation import StackEvaluation # noqa: PLC0415
         from ..models.stack_layer import StackLayer # noqa: PLC0415
+        from ..models.stack_pace import StackPace # noqa: PLC0415
         from ..models.stack_preview import StackPreview # noqa: PLC0415
         id = self.id
 
@@ -185,6 +189,14 @@ class StackState:
         else:
             bake_stale = self.bake_stale
 
+        pace: dict[str, Any] | None | Unset
+        if isinstance(self.pace, Unset):
+            pace = UNSET
+        elif isinstance(self.pace, StackPace):
+            pace = self.pace.to_dict()
+        else:
+            pace = self.pace
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -217,6 +229,8 @@ class StackState:
             field_dict["anchors"] = anchors
         if bake_stale is not UNSET:
             field_dict["bakeStale"] = bake_stale
+        if pace is not UNSET:
+            field_dict["pace"] = pace
 
         return field_dict
 
@@ -229,6 +243,7 @@ class StackState:
         from ..models.stack_channel import StackChannel # noqa: PLC0415
         from ..models.stack_evaluation import StackEvaluation # noqa: PLC0415
         from ..models.stack_layer import StackLayer # noqa: PLC0415
+        from ..models.stack_pace import StackPace # noqa: PLC0415
         from ..models.stack_preview import StackPreview # noqa: PLC0415
         d = dict(src_dict)
         id = d.pop("id")
@@ -361,6 +376,26 @@ class StackState:
         bake_stale = _parse_bake_stale(d.pop("bakeStale", UNSET))
 
 
+        def _parse_pace(data: object) -> None | StackPace | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                pace_type_1 = StackPace.from_dict(data)
+
+
+
+                return pace_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackPace | Unset, data)
+
+        pace = _parse_pace(d.pop("pace", UNSET))
+
+
         stack_state = cls(
             id=id,
             path=path,
@@ -385,6 +420,7 @@ class StackState:
             mesh_maps=mesh_maps,
             anchors=anchors,
             bake_stale=bake_stale,
+            pace=pace,
         )
 
 

@@ -139,7 +139,7 @@ export class ProjectDetails {
       </xui-descriptions>
     </div>
 
-    <div class="chrome-bar flex h-8 shrink-0 items-center gap-2 px-3" data-testid="impact-summary">
+    <div class="pane-bar gap-2 px-3" role="group" aria-label="Impact" data-testid="impact-summary">
       @if (impact().impact(); as answer) {
         <span class="readout truncate font-medium">Affects {{ projects(answer.projects) }}</span>
         <span class="readout text-foreground-muted shrink-0">{{ answer.pinned.toLocaleString('en') }} pinned</span>

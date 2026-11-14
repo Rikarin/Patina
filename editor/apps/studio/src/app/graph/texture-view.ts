@@ -109,7 +109,7 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
           [style.width.px]="256 * zoom()"
         />
       </div>
-      <div class="chrome-bar flex h-7 shrink-0 items-center gap-2 px-2">
+      <div class="pane-bar gap-2 px-2" role="group" aria-label="Picture">
         <span class="readout min-w-0 truncate" data-testid="texture-size">
           {{ mapName(map.map) }}, {{ map.width }} × {{ map.height }}, shown at 8 bits
         </span>
@@ -197,7 +197,7 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
           }}</span>
         </div>
       }
-      <div class="chrome-bar flex h-7 shrink-0 items-center gap-2 px-2">
+      <div class="pane-bar gap-2 px-2" role="group" aria-label="Picture">
         <span class="readout shrink-0" data-testid="texture-size">{{ sizeText() }}</span>
         @if (texel(); as at) {
           <span
@@ -209,7 +209,7 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
         }
         <span class="readout ms-auto shrink-0" data-testid="texture-zoom">{{ percent() }}</span>
       </div>
-      <div class="chrome-bar flex h-8 shrink-0 items-center gap-1 px-2">
+      <div class="pane-bar gap-1 px-2" role="toolbar" aria-label="2D View">
         <button
           type="button"
           xuiButton

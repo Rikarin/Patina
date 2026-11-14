@@ -1,5 +1,6 @@
 using Patina.Bench;
 using Patina.Contracts;
+using Patina.Export.Builds;
 using Patina.Library;
 using System.Diagnostics;
 using System.Net;
@@ -224,6 +225,19 @@ public sealed class BuildProcessTests : IDisposable {
             report.Items,
             static p => Assert.All(p.Exports.SelectMany(static e => e.Files), static f => Assert.True(File.Exists(f)))
         );
+        Assert.All(
+            report.Items.SelectMany(static p => p.Exports),
+            static e => Assert.Equal(e.Files.Count, e.Digests.Count)
+        );
+
+        // The second build touched nothing, so every project is as the first left it (#217).
+        var compared = await http.GetFromJsonAsync(
+            $"/api/v1/builds/{again.Id}/compare?before={job.Id}",
+            ContractsJsonContext.Default.BuildComparison,
+            deadline.Token
+        );
+        Assert.Equal(Projects, compared!.Projects.Count);
+        Assert.All(compared.Projects, static p => Assert.Equal(BuildComparisons.Touched.Before, p.Touched));
 
         // A fast runner can finish the last step before the kill lands. A step that was lost makes a second attempt,
         // and a lost step that was not retried would have failed above, so one attempt means nothing was lost.

@@ -32,11 +32,28 @@ public static class StackDocuments {
 
     /// <exception cref="StackEditRefusedException">It is not a stack.</exception>
     public static LayerStackAsset Parse(string text) {
+        LayerStackAsset document;
         try {
-            return LayerStackYaml.Read(text);
+            document = LayerStackYaml.Read(text);
         } catch (InvalidDataException e) {
             throw new StackEditRefusedException(e.Message, e);
         }
+
+        // ⚠ Before anything edits it: a save would write it back at this build's format, dropping what is newer (#162).
+        if (document.Version > LayerStackAsset.CurrentVersion) {
+            var (written, reads) = (
+                document.Version.ToString(CultureInfo.InvariantCulture),
+                LayerStackAsset.CurrentVersion.ToString(CultureInfo.InvariantCulture)
+            );
+            throw new StackEditRefusedException(
+                $"This document was written by a newer build of Patina, at format {written}, and this build reads up "
+                + $"to format {reads}. Open it with that build or a later one: saving it here would lose what is new.",
+                Api.Refusals.DocumentNewer,
+                new Dictionary<string, string> { ["written"] = written, ["reads"] = reads }
+            );
+        }
+
+        return document;
     }
 
     public static string Text(LayerStackAsset document) => LayerStackYaml.Write(document);

@@ -28,6 +28,7 @@ public static class Terms {
         ["bent"] = "Bent Normal",
         ["world"] = "World Normal",
         ["id"] = "ID",
+        ["islands"] = "UV Islands",
 
         // Port and parameter kinds.
         ["Float"] = "Number",

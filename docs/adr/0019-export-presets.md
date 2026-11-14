@@ -19,7 +19,9 @@ id only some projects have exports those and leaves the rest alone. A file that 
 
 Files are the truth. The editor sends a document, the Server writes the YAML, reads it back through the same reader as a
 hand-written file, and keeps it only if that reads it (`ExportPresetWriter`): the editor can make nothing a person could
-not write. What is lost by editing in the app is a hand-written file's comments; every field survives, and a property test
+not write. A hand-written file's comments survive too where they stand above something the writer writes again
+(`PresetComments`): the block at the top, a top-level field's, and a texture's, found again by its `file`; a comment
+inside a texture or after a value is lost. Every field survives, and a property test
 holds that every factory preset comes back from the editor as it was. Removing a preset deletes its file.
 
 ## The language
@@ -191,6 +193,15 @@ files on one machine. Block compression and the CPU writers are managed code and
 What comes off a GPU is not promised to be the same bytes across GPUs or drivers (plan §3.2), so neither is a file made
 from it.
 
+**What differs between two builds** (#217) is read from their reports, never from the files: by the time anyone asks,
+the later build has written over the earlier one's. An export's report keeps each delivered file's SHA-256 beside its
+path, in the journal as each export ends, so a restarted build keeps them too. `BuildComparisons` sets two reports side
+by side, project by project: an output is the same when its build key is, and a file when its digest is; a file only
+one build delivered is added or removed, and one from a report written before digests were kept is unknown. A build
+records only the projects it touched, so a project one build left alone is listed as the other build left it. It is
+`GET /api/v1/builds/{id}/compare?before=`, `patina build compare <earlier> <later>` over the report folders a build
+prints, and in the Export dialog the files changed and the same since the build read before, in that session.
+
 ## Built-in presets
 
 Beside ADR 0011's five: `gltf` (base colour with alpha, normal, ORM in glTF's order, emissive, and a `.gltf`), `blender`
@@ -206,6 +217,4 @@ read green up. None has been opened in its target; that is #46.
 - **Basis, ASTC and ETC.** `compression` is BC1 to BC7, half and float; there is no encoder for the mobile formats.
 - **TIFF and WebP are written and not read here.** Their round trip is Vixen's `ImageWriterTests`, through libtiff,
   ImageIO and libwebp, which skip where those are not installed.
-- **A report of what differs between two builds** (#217) is not built.
-- **USD reading** and **MaterialX import** are not built; glTF's material read stops at Vixen's `ModelReader`, with no
-  Patina command that makes a material from one yet.
+- **Binary USD** (`.usdc`, `.usdz`) is not read; text USD, MaterialX and glTF materials are imported (ADR 0030).

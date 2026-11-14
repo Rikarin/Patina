@@ -290,6 +290,31 @@ public sealed record ViewportPick(
     IReadOnlyList<float>? Normal = null,
     string? Part = null
 );
+
+/// <summary>
+///     Asks where rays along one direction meet the open mesh, in its own space and through what the viewport draws
+///     (#263): a decal's surface measured along the decal's own direction, wherever the camera is, in one round trip.
+/// </summary>
+/// <param name="Origins">Where each ray starts: three numbers to a ray, at most 1024 rays.</param>
+/// <param name="Direction">The way every ray goes: three numbers, not all zero.</param>
+public sealed record ViewportCastRequest(IReadOnlyList<float> Origins, IReadOnlyList<float> Direction) {
+    /// <summary>How many rays one request casts at most.</summary>
+    public const int MaximumRays = 1024;
+}
+
+/// <summary>Where each ray of a <see cref="ViewportCastRequest" /> met the mesh, in its order.</summary>
+/// <param name="Hits">One to a ray.</param>
+public sealed record ViewportCast(IReadOnlyList<ViewportCastHit> Hits);
+
+/// <summary>The first place one ray met the mesh, ahead of where it starts.</summary>
+/// <param name="Found">Whether it met the mesh.</param>
+/// <param name="Position">Where, in the mesh's own space: three numbers.</param>
+/// <param name="Normal">The face it met, as a unit direction out of the side the ray came from: three numbers.</param>
+public sealed record ViewportCastHit(
+    bool Found,
+    IReadOnlyList<float>? Position = null,
+    IReadOnlyList<float>? Normal = null
+);
 #pragma warning restore SK7005
 
 /// <summary>
@@ -316,6 +341,13 @@ public sealed record ViewportHighlight(IReadOnlyList<string> Parts, IReadOnlyLis
     [System.Text.Json.Serialization.JsonIgnore]
     public bool None => Parts.Count == 0 && Materials.Count == 0;
 }
+
+/// <summary>
+///     The symmetry a brush paints with, which the viewport draws where its mirror's plane meets the model (#132): the
+///     line the plane cuts across the surface, hidden where the model hides it. A radial symmetry draws nothing here.
+/// </summary>
+/// <param name="Symmetry">The symmetry, as a stroke takes it, or null for none.</param>
+public sealed record ViewportSymmetry(StackSymmetry? Symmetry);
 
 /// <summary>
 ///     Asks for the viewport's picture as a PNG on the Server's machine: the camera, display settings and look it has
@@ -423,6 +455,7 @@ public sealed record ViewportNodeShown(string Graph, int Node, string Port);
 /// </param>
 /// <param name="Following">The graph the viewport keeps up with, or null.</param>
 /// <param name="Highlight">What is marked on the model, or null for nothing.</param>
+/// <param name="Symmetry">The symmetry whose mirror is drawn across the model, or null for none.</param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 public sealed record ViewportState(
@@ -439,7 +472,8 @@ public sealed record ViewportState(
     ViewportIsolation? Isolation = null,
     ViewportNodeShown? Node = null,
     ViewportFollow? Following = null,
-    ViewportHighlight? Highlight = null
+    ViewportHighlight? Highlight = null,
+    StackSymmetry? Symmetry = null
 );
 #pragma warning restore SK7005
 

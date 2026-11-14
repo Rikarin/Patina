@@ -135,4 +135,28 @@ describe('ExportStore', () => {
     expect(store.projects()[0]?.name).toBe('Crate');
     expect(store.projectCount()).toBe(60);
   });
+
+  it('compares a finished build with the one read before it (#217)', async () => {
+    const asked: string[] = [];
+    const report = () => Response.json({ projects: 1, built: 1, failed: 0, files: 2, folder: '/r' });
+    const page = () => Response.json({ total: 0, items: [], offset: 0, limit: 50 });
+    const { store } = setup({
+      ...jobs,
+      'GET builds/b1/report': report,
+      'GET builds/b1/report/projects': page,
+      'GET builds/b2/report': report,
+      'GET builds/b2/report/projects': page,
+      'GET builds/b2/compare': request => {
+        asked.push(new URL(request.url).searchParams.get('before') ?? '');
+        return Response.json({ before: 'b1', after: 'b2', projects: [], changedFiles: 1, sameFiles: 1 });
+      }
+    });
+
+    await store.read('b1');
+    expect(store.comparison()).toBeNull();
+    await store.read('b2');
+
+    expect(asked).toEqual(['b1']);
+    expect(store.comparison()?.changedFiles).toBe(1);
+  });
 });

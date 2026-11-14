@@ -15,6 +15,7 @@ import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiCheckboxImports } from '@xui/checkbox';
 import { XuiColorPickerImports } from '@xui/color-picker';
+import { XuiProgressBarImports } from '@xui/progress-bar';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
@@ -22,7 +23,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { desktop } from '../core/desktop';
 import { jobStateName, labelIn, termName } from '../core/labels';
 import { messageOf } from '../core/messages';
-import { percent, toPercent } from '../core/numbers';
+import { percent } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { LibrarySelection } from '../library/library-selection';
 import { ProjectStore } from '../library/project-store';
@@ -81,6 +82,7 @@ function lanesOf(hex: string): number[] {
     XuiCalloutImports,
     XuiCheckboxImports,
     XuiColorPickerImports,
+    XuiProgressBarImports,
     XuiSegmentedControlImports,
     XuiSelectImports,
     XuiSliderImports,
@@ -634,16 +636,7 @@ function lanesOf(hex: string): number[] {
                 </span>
                 <span class="readout" data-testid="export-percent">{{ percentText() }}</span>
               </div>
-              <div
-                class="bg-surface-sunken h-1.5 overflow-hidden rounded-sm"
-                role="progressbar"
-                aria-label="Export progress"
-                [attr.aria-valuenow]="percent()"
-                aria-valuemin="0"
-                aria-valuemax="100"
-              >
-                <div class="bg-primary h-full" [style.width.%]="percent()"></div>
-              </div>
+              <xui-progress-bar aria-label="Export progress" [value]="store.build()?.progress ?? 0" />
             </div>
             @if (build.error) {
               <xui-callout color="error" compact data-testid="export-build-error">{{ build.error }}</xui-callout>
@@ -663,6 +656,14 @@ function lanesOf(hex: string): number[] {
               <span>Failed</span>
               <span class="readout" data-testid="export-report-failed">{{ report.failed }}</span>
             </div>
+            @if (store.comparison(); as compared) {
+              <div class="well grid grid-cols-[1fr_auto] gap-x-3 p-2 text-xs" data-testid="export-comparison">
+                <span>Files changed since the last build</span>
+                <span class="readout" data-testid="export-comparison-changed">{{ compared.changedFiles }}</span>
+                <span>Files the same</span>
+                <span class="readout" data-testid="export-comparison-same">{{ compared.sameFiles }}</span>
+              </div>
+            }
             @if (report.nothing; as nothing) {
               <xui-callout color="warning" compact data-testid="export-report-nothing">{{ nothing }}</xui-callout>
             }
@@ -763,7 +764,6 @@ export class ExportPane implements OnInit {
   });
   protected readonly stateName = jobStateName;
   protected readonly running = computed(() => ['queued', 'running'].includes(this.store.build()?.state ?? ''));
-  protected readonly percent = computed(() => toPercent(this.store.build()?.progress ?? 0));
   protected readonly percentText = computed(() => percent(this.store.build()?.progress ?? 0));
   protected readonly distanced = computed(() => usesDistance(this.settings().padding));
   protected readonly paddingHex = computed(() => hexOf(this.settings().colour));

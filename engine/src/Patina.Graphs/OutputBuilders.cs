@@ -158,23 +158,31 @@ public sealed class OutputBuilders(
         );
 
         var manifest = Pictures(step, folder, usages, raw, GreenOf(step, GreenAxis.Down));
-        return manifest.Maps is [var first, ..] && Coverage(step, set.UvSet, first.Width, first.Height) is { } islands
+        if (manifest.Maps is not [var first, ..]
+            || Coverage(step, set.UvSet, first.Width, first.Height) is not { } laid) {
+            return manifest;
+        }
+
+        // The set's files are named by the UDIM tile its layout sits on (#20).
+        return laid.Picture is { } islands
             ? manifest with {
-                Maps = [..manifest.Maps, MapPictures.Write(folder, ExportMaps.Coverage, islands, true, null)]
+                Maps = [..manifest.Maps, MapPictures.Write(folder, ExportMaps.Coverage, islands, true, null)],
+                Udim = laid.Udim
             }
-            : manifest;
+            : manifest with { Udim = laid.Udim };
     }
 
     /// <summary>
     ///     Which texels of the stack's mesh layout its texture set covers, one where it does: what an export's padding
-    ///     grows from. Null for a stack on no mesh, which has no background to pad.
+    ///     grows from, and the UDIM tile the layout sits on. Null for a stack on no mesh, which has no background to
+    ///     pad and is on the first tile.
     /// </summary>
-    static FloatImage? Coverage(OutputStep step, int uvSet, int width, int height) {
+    static (FloatImage? Picture, int Udim)? Coverage(OutputStep step, int uvSet, int width, int height) {
         if (!step.Settings.ContainsKey(ProjectOutputs.MeshSetting)) {
             return null;
         }
 
-        return MeshCoverage.Of(
+        return MeshCoverage.Read(
             MeshMapSettings.Role(step, ProjectOutputs.MeshSetting),
             step.Settings.GetValueOrDefault(ProjectOutputs.MaterialSetting),
             uvSet,

@@ -27,7 +27,7 @@ const OverShown = 50;
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex min-h-0 flex-1 flex-col', role: 'group', 'aria-label': 'Texture memory' },
   template: `
-    <div class="chrome-bar flex h-8 shrink-0 items-center gap-1 px-2" data-testid="costs-path">
+    <div class="pane-bar gap-1 px-2" role="toolbar" aria-label="Folder" data-testid="costs-path">
       <button type="button" xuiButton size="sm" variant="ghost" (click)="folder.set('')">Library</button>
       @for (step of steps(); track step.path) {
         <span class="text-foreground-muted">/</span>
@@ -66,7 +66,7 @@ const OverShown = 50;
         <li class="text-foreground-muted px-3 py-1 text-sm">No document here has maps to count yet.</li>
       }
     </ol>
-    <div class="chrome-bar border-hairline flex h-8 shrink-0 items-center gap-2 border-t px-2">
+    <div class="pane-bar border-hairline gap-2 border-t px-2" role="toolbar" aria-label="Budget">
       <span class="section-label flex-1">Over budget</span>
       <xui-select
         class="w-28"
@@ -106,6 +106,8 @@ export class LibraryCostsView {
   protected readonly over = signal<readonly DocumentCost[]>([]);
   protected readonly overTotal = signal(0);
   protected readonly size = bytes;
+  /** Whether the Server has a library, as a boolean, so that each poll of it does not read the costs again. */
+  private readonly ready = computed(() => this.store.state().kind === 'ready');
 
   /** Each folder on the way to the one shown, for going back up. */
   protected readonly steps = computed(() => {
@@ -119,7 +121,10 @@ export class LibraryCostsView {
     effect(() => {
       const folder = this.folder();
       const budget = this.budget();
-      untracked(() => void this.read(folder, budget));
+      // ⚠ Only once there is a library: with none, every start asked and logged two 404s (#192).
+      if (this.ready()) {
+        untracked(() => void this.read(folder, budget));
+      }
     });
   }
 

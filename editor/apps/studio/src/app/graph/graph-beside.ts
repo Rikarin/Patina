@@ -32,7 +32,7 @@ const None = '';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col', 'data-testid': 'graph-beside' },
   template: `
-    <div class="chrome-bar flex min-h-8 shrink-0 items-center gap-2 px-2 py-1">
+    <div class="pane-bar gap-2 px-2" role="toolbar" aria-label="Graph beside">
       <xui-select
         class="max-w-64 min-w-0 flex-1"
         aria-label="Graph beside"

@@ -1,10 +1,11 @@
-import { DestroyRef, Injectable, computed, inject, signal, untracked } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import {
   ApiError,
   type Connection,
   type HistoryList,
   type PatinaClient,
   type StackBrush,
+  type StackChannelsApplied,
   type StackClip,
   type StackCommand,
   type StackCommandBatch,
@@ -16,6 +17,8 @@ import {
   type StackLayer,
   type StackMask,
   type StackMaskEffect,
+  type StackPace,
+  type StackPaceChange,
   type StackPicture,
   type StackPixels,
   type StackPreview,
@@ -31,6 +34,7 @@ import {
   type ViewportPick,
   unwrap
 } from '@patina/api-client';
+import { type AutosaveNote, autosaveNote } from '../core/autosave-note';
 import { learnTerms } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { milliseconds, toRadians } from '../core/numbers';
@@ -44,13 +48,12 @@ import {
   decalFrame,
   extendedPath,
   geometryLines,
+  geometryOrigins,
   geometryWarp,
-  onDecal,
   placedDecal,
   underDecal,
   vector
 } from './surface-frame';
-import { project } from './symmetry-guide';
 
 /** The most recent colours a project keeps, which is the Server's limit. */
 const RecentColours = 16;
@@ -139,7 +142,11 @@ export interface CloneSource {
 /** A picture on the viewport, fixed on the screen: what the projection tool paints and a stencil masks with. */
 export type ScreenPicture = StackPicture;
 
-/** Where something fixed on a view stands, in the view's pixels: a picture, or a material the projection tool paints. */
+/**
+ * Where something fixed on a view stands: a picture, or a material the projection tool paints. Its centre is in pixels
+ * from the middle of the view, so the viewport and the 2D view, whatever their sizes, each draw it in their own middle
+ * (#271).
+ */
 export type ScreenFrame = StackFrame;
 
 /** A step that moves, scales and turns a frame about its centre, as the stencil's keys take it. */
@@ -158,6 +165,12 @@ export interface FrameStep {
 export function frameOnMap<T extends ScreenFrame>(frame: T, origin: readonly [number, number], texels: number): T {
   const [x, y] = frame.centre as [number, number];
   return { ...frame, centre: [(x - origin[0]) * texels, (y - origin[1]) * texels], scale: frame.scale * texels };
+}
+
+/** A frame kept from the middle of a view, placed in the pixels of a view this size (#271). */
+export function frameOnPane<T extends ScreenFrame>(frame: T, size: readonly [number, number]): T {
+  const [x, y] = frame.centre as [number, number];
+  return { ...frame, centre: [size[0] / 2 + x, size[1] / 2 + y] };
 }
 
 /** A frame moved, scaled and turned by a step about its centre. */
@@ -303,6 +316,8 @@ export class PaintStore {
   readonly link = signal<'live' | 'reconnecting'>('live');
   /** Something the person should know that went right enough, such as edits lost when the engine restarted. */
   readonly notice = signal<string | null>(null);
+  /** What autosave last said about this document: kept, or not and why (#192). */
+  readonly autosave = signal<AutosaveNote | null>(null);
 
   /** Told as something new starts, for whoever keeps a failure of its own. */
   onAction: () => void = () => undefined;
@@ -393,6 +408,8 @@ export class PaintStore {
    * is placed in. The 2D view sets it as a stroke starts, with {@link atlasScale}.
    */
   readonly atlasOrigin = signal<readonly [number, number]>([0, 0]);
+  /** How large the 2D view is in its pixels, whose middle a frame is kept from. Set with {@link atlasOrigin}. */
+  readonly atlasPane = signal<readonly [number, number]>([0, 0]);
   /** Whether strokes go to the chosen layer's mask rather than its channels. */
   readonly masking = signal(false);
   /**
@@ -402,6 +419,13 @@ export class PaintStore {
   readonly maskLayer = signal<number | null>(null);
   /** What a stroke on a mask lays down, from nothing shown to everything: a mask is one number, not a colour. */
   readonly maskGrey = signal(0);
+  /**
+   * The quick mask (#127): `paint` while strokes paint it instead of a layer, `keep` while they are kept to it, or
+   * `off`. The Server holds it for the session and lays it over the model in red while it is on.
+   */
+  readonly quickMask = signal<'off' | 'paint' | 'keep'>('off');
+  /** Whether strokes kept to the quick mask go where it is not painted, rather than where it is. */
+  readonly quickMaskInverted = signal(false);
   readonly brush = signal<BrushSettings>(settingsOf(NewBrush));
   readonly vocabulary = signal<StackVocabulary | null>(null);
   /** The layers last copied, from this stack or another. The Server holds them, pixels and all. */
@@ -510,6 +534,11 @@ export class PaintStore {
   });
 
   constructor() {
+    // The viewport draws where the brush's mirror meets the model (#132), while a stack on a mesh is worn.
+    effect(() => {
+      const symmetry = this.worn() && this.state()?.model.trim() ? this.symmetry() : null;
+      untracked(() => void this.showSymmetry(symmetry));
+    });
     inject(DestroyRef).onDestroy(() => {
       this.stopped = true;
       this.socket?.close();
@@ -818,7 +847,7 @@ export class PaintStore {
    * as one edit. The surface is found as the camera sees it, so it is measured best looking at the decal; where a
    * line runs off the mesh it counts as flat.
    */
-  async warpToGeometry(camera: ViewportCameraState): Promise<void> {
+  async warpToGeometry(): Promise<void> {
     const layer = this.chosen();
     const decal = layer?.projection === 'Decal' ? layer.decal : null;
     if (!layer || !decal) {
@@ -826,29 +855,26 @@ export class PaintStore {
     }
 
     try {
-      // A square picture of the camera: places are put on it and asked back, so its size only has to agree with itself.
-      const aim = { width: 1024, height: 1024, camera };
-      const view = (await this.look(aim)).view;
-      const frame = decalFrame(decal);
-      const lines = await Promise.all(
-        geometryLines().map(line =>
-          Promise.all(
-            line.map(async ({ s, t }): Promise<Vector | null> => {
-              const shown = project(view, onDecal(decal, frame, s, t));
-              if (!shown) {
-                return null;
-              }
-
-              const hit = await this.picked({ x: shown[0], y: shown[1], pressure: 1 }, aim);
-              const at = vector(hit.position);
-              return hit.found && hit.position && underDecal(decal, at, hit.normal ? vector(hit.normal) : null)
-                ? at
-                : null;
-            })
-          )
-        )
+      // Every place at once, cast along the decal's own facing (#263): the camera has no say in what is measured.
+      const lines = geometryLines();
+      const client = await this.api();
+      const { hits } = unwrap(
+        await client.POST('/api/v1/viewport/cast', {
+          body: {
+            origins: geometryOrigins(decal, lines),
+            direction: [...decalFrame(decal).forward].map(lane => -lane)
+          }
+        })
       );
-      await this.edit({ op: 'setLayer', layer: layer.id, decal: { ...decal, warp: geometryWarp(decal, lines) } });
+      let at = 0;
+      const places = lines.map(line =>
+        line.map((): Vector | null => {
+          const hit = hits[at++];
+          const place = vector(hit?.position);
+          return hit?.found && underDecal(decal, place, hit.normal ? vector(hit.normal) : null) ? place : null;
+        })
+      );
+      await this.edit({ op: 'setLayer', layer: layer.id, decal: { ...decal, warp: geometryWarp(decal, places) } });
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }
@@ -939,9 +965,71 @@ export class PaintStore {
     this.idColours.set(null);
     this.picking.set(null);
     this.unbaked.set(null);
+    this.quickMask.set('off');
+    this.quickMaskInverted.set(false);
     const socket = this.socket;
     this.socket = null;
     socket?.close();
+  }
+
+  /**
+   * Paints the quick mask, or keeps strokes to what was painted on it: the first turns it on and the second applies
+   * it, as one key does (#127). It shows on the model while it is on.
+   */
+  async toggleQuickMask(): Promise<void> {
+    await this.showQuickMask(this.quickMask() === 'paint' ? 'keep' : 'paint', false);
+  }
+
+  /** The symmetry the viewport was last asked to draw, as JSON, so the same one is not sent twice. */
+  private symmetryShown = 'null';
+
+  private async showSymmetry(symmetry: StackSymmetry | null): Promise<void> {
+    const text = JSON.stringify(symmetry);
+    if (text === this.symmetryShown) {
+      return;
+    }
+
+    this.symmetryShown = text;
+    try {
+      const client = await this.api();
+      unwrap(await client.PUT('/api/v1/viewport/symmetry', { body: { symmetry } }));
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
+  /** Takes the quick mask off and starts the next one empty. */
+  async clearQuickMask(): Promise<void> {
+    this.quickMaskInverted.set(false);
+    await this.showQuickMask('off', true);
+  }
+
+  private async showQuickMask(mode: 'off' | 'paint' | 'keep', clear: boolean): Promise<void> {
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    this.quickMask.set(mode);
+    try {
+      const client = await this.api();
+      const body = { shown: mode !== 'off', clear };
+      unwrap(await client.PUT('/api/v1/stacks/{id}/quick-mask', { params: { path: { id } }, body }));
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
+  }
+
+  /** What a stroke asks of the quick mask: to paint it, to be kept inside or outside it, or nothing. */
+  private quickMaskOfStroke(): 'paint' | 'inside' | 'outside' | null {
+    switch (this.quickMask()) {
+      case 'paint':
+        return 'paint';
+      case 'keep':
+        return this.quickMaskInverted() ? 'outside' : 'inside';
+      default:
+        return null;
+    }
   }
 
   /** Puts a layer's mask in front of the brush, which starts as what shows on a flat mask: white on black, or black. */
@@ -1008,6 +1096,20 @@ export class PaintStore {
 
     const client = await this.api();
     return unwrap(await client.GET('/api/v1/stacks/{id}/instances', { params: { path: { id } } }));
+  }
+
+  /**
+   * Gives the model's other texture sets the channels this one has and they lack (#141): an open one as an undo step of
+   * its own, a closed one in its file. Says what each was given.
+   */
+  async applyChannelsToAllSets(): Promise<StackChannelsApplied> {
+    const id = this.state()?.id;
+    if (!id) {
+      return { sets: [] };
+    }
+
+    const client = await this.api();
+    return unwrap(await client.POST('/api/v1/stacks/{id}/channels/apply-to-all', { params: { path: { id } } }));
   }
 
   /** The named meshes in this texture set, which a layer can be kept to. */
@@ -1270,6 +1372,28 @@ export class PaintStore {
   async viewportMesh(): Promise<string | null> {
     const client = await this.api();
     return unwrap(await client.GET('/api/v1/viewport')).mesh ?? null;
+  }
+
+  /** How the stack evaluates while it is edited: paused or not, and the proxy its picture is composited at (#208). */
+  readonly pace = computed<StackPace>(() => this.state()?.pace ?? { paused: false, proxy: 1 });
+
+  /**
+   * Pauses or resumes evaluation, or composites the picture at another proxy. Every client hears it, and a save or an
+   * export is never paused or smaller.
+   */
+  async setPace(change: StackPaceChange): Promise<void> {
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    try {
+      const client = await this.api();
+      const pace = unwrap(await client.PUT('/api/v1/stacks/{id}/pace', { params: { path: { id } }, body: change }));
+      this.state.update(state => (state?.id === id ? { ...state, pace } : state));
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+    }
   }
 
   /** Chooses the bake generators read. */
@@ -1794,9 +1918,13 @@ export class PaintStore {
     const brush = this.wholeBrush();
     const radius =
       !view && brush.sizeSpace === 'screen' ? Math.max(0.5, brush.radius * this.atlasScale()) : brush.radius;
-    const source = this.sourceOf(tool, view, curve);
+    const quickMask = this.quickMaskOfStroke();
+    // A quick mask is one grey, painted white or wiped, and takes a smudge or a picture but no material or clone.
+    const anySource = this.sourceOf(tool, view, curve);
+    const source =
+      quickMask === 'paint' && anySource?.kind !== 'smudge' && anySource?.kind !== 'picture' ? null : anySource;
     const resume = this.resumeFrom;
-    if (tool === 'clone' && !source) {
+    if (tool === 'clone' && !source && quickMask !== 'paint') {
       this.failure.set(this.cloneSource() ? CloneOnModel : CloneFirst);
       return;
     }
@@ -1806,20 +1934,24 @@ export class PaintStore {
     const grey = this.maskGrey();
     const target = this.layers().find(row => row.layer.id === layer)?.layer;
     const writes = (usage: string) => !target || writesChannel(target, usage);
-    const channels: [string, number[]][] = this.masking()
-      ? [[this.channel(), [grey, grey, grey, 1]]]
-      : source?.kind === 'material'
-        ? (this.state()?.channels ?? [])
-            .filter(channel => writes(channel.usage))
-            .map((channel): [string, number[]] => [channel.usage, colourOf(this.colour())])
-        : [
-            [this.channel(), colourOf(this.colour())],
-            ...(tool === 'projection'
-              ? []
-              : [...this.alsoPaints()]
-                  .filter(([usage]) => usage !== this.channel() && writes(usage))
-                  .map(([usage, colour]): [string, number[]] => [usage, colourOf(colour)]))
-          ];
+    const masking = this.masking() && quickMask !== 'paint';
+    const channels: [string, number[]][] =
+      quickMask === 'paint'
+        ? [[this.channel(), [1, 1, 1, 1]]]
+        : masking
+          ? [[this.channel(), [grey, grey, grey, 1]]]
+          : source?.kind === 'material'
+            ? (this.state()?.channels ?? [])
+                .filter(channel => writes(channel.usage))
+                .map((channel): [string, number[]] => [channel.usage, colourOf(this.colour())])
+            : [
+                [this.channel(), colourOf(this.colour())],
+                ...(tool === 'projection'
+                  ? []
+                  : [...this.alsoPaints()]
+                      .filter(([usage]) => usage !== this.channel() && writes(usage))
+                      .map(([usage, colour]): [string, number[]] => [usage, colourOf(colour)]))
+              ];
     const revision = await this.command({
       commands: channels.map(([channel, colour]) => ({
         op: 'stroke' as const,
@@ -1831,8 +1963,8 @@ export class PaintStore {
         colour: tool === 'eraser' ? [0, 0, 0, 0] : colour,
         stamps,
         open,
-        mask: this.masking(),
-        maskLayer: this.masking() ? this.maskLayer() : null,
+        mask: masking,
+        maskLayer: masking ? this.maskLayer() : null,
         view,
         curve,
         symmetry,
@@ -1844,7 +1976,8 @@ export class PaintStore {
         fill: curve === 'fill' ? this.fillMode() : null,
         outline,
         through: outline && view !== null && this.fillThrough(),
-        resume: curve === 'free' ? resume : null
+        resume: curve === 'free' ? resume : null,
+        quickMask
       }))
     });
     if (revision !== null && revision > this.lastShown) {
@@ -1902,7 +2035,9 @@ export class PaintStore {
    * map in the 2D view.
    */
   private placed<T extends ScreenFrame>(frame: T, view: StackView | null): T {
-    return view ? frame : frameOnMap(frame, this.atlasOrigin(), this.atlasScale());
+    return view
+      ? frameOnPane(frame, [view.width, view.height])
+      : frameOnMap(frameOnPane(frame, this.atlasPane()), this.atlasOrigin(), this.atlasScale());
   }
 
   /**
@@ -2087,6 +2222,27 @@ export class PaintStore {
     }
   }
 
+  /** Reads the set again, as after the Server changed what it reads on its own, such as a finished bake (#268). */
+  reread(): Promise<void> {
+    return this.refresh();
+  }
+
+  /** Reads how the stack is paced again, after another client changed it. */
+  private async repace(): Promise<void> {
+    const id = this.state()?.id;
+    if (!id) {
+      return;
+    }
+
+    try {
+      const client = await this.api();
+      const { pace } = unwrap(await client.GET('/api/v1/stacks/{id}', { params: { path: { id } } }));
+      this.state.update(state => (state?.id === id ? { ...state, pace: pace ?? null } : state));
+    } catch {
+      // The next state read brings it, and a lost session is reported where the socket closes.
+    }
+  }
+
   private async refresh(): Promise<void> {
     const id = this.state()?.id;
     if (id) {
@@ -2166,6 +2322,14 @@ export class PaintStore {
     );
     if (event.evaluation) {
       this.heardNotes(event.evaluation.diagnostics);
+    }
+
+    if (event.kind === 'paced') {
+      void this.repace(); // another client paused, resumed or chose a proxy
+    }
+
+    if (event.kind === 'autosaved' || event.kind === 'autosaveFailed') {
+      this.autosave.set(autosaveNote(this.state()?.name ?? 'the document', event));
     }
 
     const previews = event.evaluation?.previews ?? [];
@@ -2250,9 +2414,13 @@ export function writesChannel(layer: StackLayer, usage: string): boolean {
 }
 
 /** What a stack's toolbar says about its last evaluation: how long it took, not how many nodes ran. */
-export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'evaluation'>): string {
+export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'evaluation' | 'pace'>): string {
   if (state.settled < state.revision) {
-    return 'Evaluating…';
+    return state.pace?.paused ? 'Paused, with edits waiting' : 'Evaluating…';
+  }
+
+  if (state.pace?.paused) {
+    return 'Paused';
   }
 
   const evaluation = state.evaluation;
@@ -2266,6 +2434,18 @@ export function stackSummary(state: Pick<StackState, 'revision' | 'settled' | 'e
 
   return evaluation.ran === 0 ? 'Up to date' : `Updated in ${milliseconds(evaluation.milliseconds)}`;
 }
+
+/** What a proxy is called: the share of the stack's width and height its picture is composited at (#208). */
+export function proxyName(proxy: number): string {
+  return ProxyNames.get(proxy) ?? 'Full size';
+}
+
+const ProxyNames = new Map([
+  [1, 'Full size'],
+  [2, 'Half size'],
+  [4, 'Quarter size'],
+  [8, 'Eighth size']
+]);
 
 /** A mask's effects with one more of a node, or none of it if it had one: what a toggle such as Invert sends. */
 export function toggledEffect(effects: readonly StackMaskEffect[], node: string): StackMaskEffect[] {

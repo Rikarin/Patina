@@ -64,7 +64,7 @@ const Limits: readonly Limit[] = [
   host: { class: 'flex h-full min-h-0 flex-col', 'data-testid': 'checks' },
   template: `
     @if (stack(); as state) {
-      <div class="chrome-bar flex shrink-0 items-center gap-2 px-2 py-1">
+      <div class="pane-bar gap-2 px-2" role="toolbar" aria-label="Checks">
         <button
           type="button"
           xuiButton

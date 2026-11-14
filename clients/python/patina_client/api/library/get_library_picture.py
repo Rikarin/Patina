@@ -9,6 +9,7 @@ from ...types import Response, UNSET
 from ... import errors
 
 from ...models.problem_details import ProblemDetails
+from ...types import UNSET, Unset
 from typing import cast
 
 
@@ -16,6 +17,7 @@ from typing import cast
 def _get_kwargs(
     *,
     path: str,
+    side: int | Unset = UNSET,
 
 ) -> dict[str, Any]:
     
@@ -25,6 +27,8 @@ def _get_kwargs(
     params: dict[str, Any] = {}
 
     params["path"] = path
+
+    params["side"] = side
 
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
@@ -82,13 +86,16 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
     path: str,
+    side: int | Unset = UNSET,
 
 ) -> Response[ProblemDetails]:
     """ A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other
-    picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260).
+    picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). With side, any picture
+    as a PNG whose longer side is at most that many texels, for a thumbnail (#269).
 
     Args:
         path (str):
+        side (int | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -101,6 +108,7 @@ def sync_detailed(
 
     kwargs = _get_kwargs(
         path=path,
+side=side,
 
     )
 
@@ -114,13 +122,16 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
     path: str,
+    side: int | Unset = UNSET,
 
 ) -> ProblemDetails | None:
     """ A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other
-    picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260).
+    picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). With side, any picture
+    as a PNG whose longer side is at most that many texels, for a thumbnail (#269).
 
     Args:
         path (str):
+        side (int | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -134,6 +145,7 @@ def sync(
     return sync_detailed(
         client=client,
 path=path,
+side=side,
 
     ).parsed
 
@@ -141,13 +153,16 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
     path: str,
+    side: int | Unset = UNSET,
 
 ) -> Response[ProblemDetails]:
     """ A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other
-    picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260).
+    picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). With side, any picture
+    as a PNG whose longer side is at most that many texels, for a thumbnail (#269).
 
     Args:
         path (str):
+        side (int | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -160,6 +175,7 @@ async def asyncio_detailed(
 
     kwargs = _get_kwargs(
         path=path,
+side=side,
 
     )
 
@@ -173,13 +189,16 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
     path: str,
+    side: int | Unset = UNSET,
 
 ) -> ProblemDetails | None:
     """ A picture the library holds, as a client can show it: a PNG or a JPEG as its file, and any other
-    picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260).
+    picture as an 8-bit PNG of it, such as a TIFF, a TGA, a PSD or an EXR (#260). With side, any picture
+    as a PNG whose longer side is at most that many texels, for a thumbnail (#269).
 
     Args:
         path (str):
+        side (int | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -193,5 +212,6 @@ async def asyncio(
     return (await asyncio_detailed(
         client=client,
 path=path,
+side=side,
 
     )).parsed

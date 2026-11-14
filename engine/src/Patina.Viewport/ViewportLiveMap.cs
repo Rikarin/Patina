@@ -26,7 +26,13 @@ public enum ViewportSlot {
     Emissive,
 
     /// <summary>What the surface covers, shown as cut out or not.</summary>
-    Opacity
+    Opacity,
+
+    /// <summary>
+    ///     A quick mask, shown red over the surface where it is painted, in every view. No map of the material: it
+    ///     never reaches a file that is exported.
+    /// </summary>
+    QuickMask
 }
 
 /// <summary>A rectangle of a picture.</summary>

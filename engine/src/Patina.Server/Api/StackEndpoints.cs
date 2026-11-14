@@ -27,6 +27,7 @@ static class StackEndpoints {
         stacks.MapStackBrushes();
         stacks.MapStackMesh();
         stacks.MapStackPixels();
+        stacks.MapStackPace();
 
         void Post(string route, Delegate handler, string name, string summary, params int[] problems) =>
             stacks.MapPost(route, handler).Describe(name, summary, problems);
@@ -173,7 +174,7 @@ static class StackEndpoints {
         try {
             return TypedResults.Ok(act());
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: Missing);
+            return Refusals.Of(e);
         } catch (StackEditRefusedException e) {
             return Refusals.Of(e, Refused);
         }
@@ -298,11 +299,11 @@ static class StackEndpoints {
         try {
             return TypedResults.Ok(await evaluator.SaveAsync(session, force, cancellationToken));
         } catch (GraphFileChangedException e) {
-            return TypedResults.Problem(e.Message, statusCode: Conflict);
+            return Refusals.Of(e);
         } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
+            return Refusals.OfEngine(e, Refused);
         } catch (Exception e) when (e is TimeoutException or IOException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.OfEngine(e, Unavailable);
         }
     }
 
@@ -320,10 +321,12 @@ static class StackEndpoints {
 
         try {
             return TypedResults.Ok(await evaluator.CopyAsync(session, request.Layers, clips, cancellationToken));
-        } catch (Exception e) when (e is StackEditRefusedException or IpcException) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
+        } catch (StackEditRefusedException e) {
+            return Refusals.Of(e, Refused);
+        } catch (IpcException e) {
+            return Refusals.OfEngine(e, Refused);
         } catch (Exception e) when (e is TimeoutException or IOException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.OfEngine(e, Unavailable);
         }
     }
 
@@ -356,11 +359,11 @@ static class StackEndpoints {
         try {
             return TypedResults.Ok(await ask(session));
         } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
+            return Refusals.OfEngine(e, Refused);
         } catch (TimeoutException e) {
             return Refusals.Of(e, Unavailable);
         } catch (IOException e) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.OfEngine(e, Unavailable);
         }
     }
 
@@ -380,7 +383,7 @@ static class StackEndpoints {
                 new StackThumbnails([..drawn.Select(static item => new StackThumbnail(item.Layer, item.Hash))])
             );
         } catch (Exception e) when (e is IpcException or IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
         }
     }
 

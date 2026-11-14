@@ -326,6 +326,40 @@ test('a smudge drags paint along, and a clone copies it from its source', async 
   await window.screenshot({ path: join(shots, 'tool-clone.png') });
 });
 
+test('the quick mask shows red where it is painted, and a stroke after it reaches only there (#127)', async () => {
+  await openOnMesh();
+  const button = window.getByTestId('tool-strip-quick-mask');
+  await button.click();
+  await expect(button).toHaveAttribute('data-quick-mask', 'paint');
+  const blank = await shot();
+  await drag(0.38, 0.45, 0.62, 0.45);
+  // Red over the model where the quick mask is painted, and the layer left alone.
+  await expect.poll(async () => changed(blank, await shot()), { timeout: 60_000 }).toBeGreaterThan(300);
+  await settled();
+  await window.screenshot({ path: join(shots, 'quick-mask-painted.png') });
+
+  await button.click();
+  await expect(button).toHaveAttribute('data-quick-mask', 'keep');
+  await colour('#10e018');
+  await settled();
+  const masked = await shot();
+  // Down across the band: only where it crosses the quick mask is painted.
+  await drag(0.5, 0.2, 0.5, 0.75);
+  await expect.poll(async () => changed(masked, await shot(), 40), { timeout: 60_000 }).toBeGreaterThan(30);
+  await settled();
+  const kept = await changed(masked, await shot(), 40);
+  await window.keyboard.press(process.platform === 'darwin' ? 'Meta+Z' : 'Control+Z');
+  await settled();
+
+  // The same stroke kept outside the quick mask paints the rest of its length instead, which is more of it.
+  await window.keyboard.press('y');
+  await drag(0.5, 0.2, 0.5, 0.75);
+  await expect.poll(async () => changed(masked, await shot(), 40), { timeout: 60_000 }).toBeGreaterThan(kept);
+  await settled();
+  expect(await window.getByTestId('app-failure').allTextContents()).toEqual([]);
+  await window.screenshot({ path: join(shots, 'quick-mask-kept.png') });
+});
+
 test('a picture on the viewport projects through the brush, and as a stencil masks it', async () => {
   await openOnMesh();
   const picture = join(scratch, 'checker.png');
@@ -402,6 +436,16 @@ test('the projection tool paints a picture in the 2D view, and a material from t
   await window.getByTestId('paint-screen-picture-choose').click();
   await expect(window.getByTestId('screen-picture-2d-frame')).toBeVisible({ timeout: 30_000 });
   await expect(window.getByTestId('tool-strip')).toHaveAttribute('data-tool', 'projection');
+
+  // The 2D view draws the frame in its own middle, though it is narrower than the viewport (#271).
+  const frameBox = await window.getByTestId('screen-picture-2d-frame').boundingBox();
+  const paneBox = await window.getByTestId('screen-picture-2d').boundingBox();
+  if (!frameBox || !paneBox) {
+    throw new Error('The 2D view draws no frame.');
+  }
+
+  expect(Math.abs(frameBox.x + frameBox.width / 2 - (paneBox.x + paneBox.width / 2))).toBeLessThan(2);
+  expect(Math.abs(frameBox.y + frameBox.height / 2 - (paneBox.y + paneBox.height / 2))).toBeLessThan(2);
 
   // A stroke across the 2D view reads the picture where each texel is drawn under it.
   const map = window.getByTestId('paint-picture');

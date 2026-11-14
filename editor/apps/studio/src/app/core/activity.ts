@@ -1,6 +1,7 @@
 import { Injectable, Injector, type Signal, computed, effect, inject, signal, untracked } from '@angular/core';
 import type { JobState } from '@patina/api-client';
 import { BakeStore } from '../bake/bake-store';
+import type { AutosaveNote } from './autosave-note';
 import { messageOf } from './messages';
 import { percent } from './numbers';
 
@@ -191,6 +192,24 @@ export class Activity {
         }
 
         last = text;
+      },
+      { injector: this.injector }
+    );
+  }
+
+  /** Keeps each autosave note a document hears as a notice: a failure to know about, or work kept (#192). */
+  heed(source: string, said: Signal<AutosaveNote | null>): void {
+    let last: number | null = null;
+    effect(
+      () => {
+        const note = said();
+        if (note && note.sequence !== last) {
+          untracked(() => {
+            this.report({ tone: note.tone, source, text: note.text });
+          });
+        }
+
+        last = note?.sequence ?? last;
       },
       { injector: this.injector }
     );

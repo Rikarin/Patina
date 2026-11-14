@@ -5,8 +5,9 @@ using Patina.Server.Stacks;
 namespace Patina.Server.Api;
 
 /// <summary>
-///     What a brush panel asks of an open stack besides strokes (#123, #127): a picture of the brush, and what every
-///     channel holds at a place, for a material picker. Each is numbers or a hash, never pixels in JSON.
+///     What a brush panel asks of an open stack besides strokes (#123, #127): a picture of the brush, what every
+///     channel holds at a place, for a material picker, and the quick mask. Each is numbers or a hash, never pixels in
+///     JSON.
 /// </summary>
 static class StackBrushEndpoints {
     const int Missing = StatusCodes.Status404NotFound;
@@ -25,6 +26,33 @@ static class StackBrushEndpoints {
                 Missing,
                 Refused,
                 Unavailable
+            );
+        stacks.MapGet(
+                "/{id}/quick-mask",
+                Results<Ok<StackQuickMaskState>, ProblemHttpResult>(string id, StackSessions sessions) =>
+                    sessions.Find(id) is { } open ? TypedResults.Ok(open.QuickMask) : StackEndpoints.NoSession(id)
+            )
+            .Describe(
+                "GetStackQuickMask",
+                "The session's quick mask: whether the viewport lays it over the model, and whether it is painted.",
+                Missing
+            );
+        stacks.MapPut(
+                "/{id}/quick-mask",
+                Results<Ok<StackQuickMaskState>, ProblemHttpResult>(
+                    string id,
+                    StackQuickMaskRequest request,
+                    StackSessions sessions
+                ) => sessions.Find(id) is { } open
+                    ? TypedResults.Ok(open.SetQuickMask(request))
+                    : StackEndpoints.NoSession(id)
+            )
+            .Describe(
+                "SetStackQuickMask",
+                "Shows or hides the session's quick mask in the viewport, red where it is painted, or starts a new, "
+                + "empty one. A stroke paints it with quickMask paint, and is kept inside or outside it with inside or "
+                + "outside. It is the session's: no save writes it, and neither change is a step of history.",
+                Missing
             );
         stacks.MapPost("/{id}/sample", Sample)
             .Describe(

@@ -190,6 +190,12 @@ public sealed record StackPicture(
 ///     put down again: its first stamp comes a step along, so nothing is laid twice where the two meet, and a lazy
 ///     brush keeps its string. Only a free stroke carries one on; it is still an undo step of its own.
 /// </param>
+/// <param name="QuickMask">
+///     The session's quick mask (#127), or null to leave it out: <c>paint</c> paints the quick mask itself, by the red
+///     of <paramref name="Colour" />, instead of the layer, which may then be any; <c>inside</c> keeps the stroke to
+///     where the quick mask is painted, and <c>outside</c> to where it is not. A quick mask nothing is painted on keeps
+///     nothing back.
+/// </param>
 public sealed record StackStroke(
     string Stroke,
     string Layer,
@@ -208,6 +214,41 @@ public sealed record StackStroke(
     string? Fill = null,
     IReadOnlyList<float>? Resume = null,
     bool Outline = false,
-    bool Through = false
+    bool Through = false,
+    string? QuickMask = null
 ) : StackCommand;
 #pragma warning restore SK7005
+
+/// <summary>What <see cref="StackStroke.QuickMask" /> takes.</summary>
+public static class StackQuickMasks {
+    /// <summary>The stroke paints the quick mask.</summary>
+    public const string Paint = "paint";
+
+    /// <summary>The stroke reaches only where the quick mask is painted.</summary>
+    public const string Inside = "inside";
+
+    /// <summary>The stroke reaches only where the quick mask is not painted.</summary>
+    public const string Outside = "outside";
+
+    /// <summary>Every value, in the order a client offers them.</summary>
+    public static IReadOnlyList<string> All { get; } = [Paint, Inside, Outside];
+
+    /// <summary>
+    ///     What every quick mask's paint file name holds, beside the stack: a canvas no layer names, which a save never
+    ///     writes.
+    /// </summary>
+    public const string FileMarker = ".quick-mask-";
+}
+
+/// <summary>Shows or hides a stack's quick mask in the viewport, or clears it (#127).</summary>
+/// <param name="Shown">Whether the viewport lays the quick mask over the model in red.</param>
+/// <param name="Clear">
+///     Whether to start a new, empty quick mask. Not an undo step: strokes kept to the old one keep what they painted,
+///     and undoing a stroke on the old one changes nothing a later stroke reads.
+/// </param>
+public sealed record StackQuickMaskRequest(bool Shown, bool Clear = false);
+
+/// <summary>A stack's quick mask.</summary>
+/// <param name="Shown">Whether the viewport lays it over the model.</param>
+/// <param name="Painted">Whether a stroke that stands has painted it, so that a stroke kept to it is kept.</param>
+public sealed record StackQuickMaskState(bool Shown, bool Painted);

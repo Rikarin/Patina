@@ -53,6 +53,14 @@ static class GraphEndpoints {
                 Missing,
                 Refused
             );
+        graphs.MapPost("/{id}/node-types/thumbnails", DrawNodeTypesAsync)
+            .Describe(
+                "GetGraphNodeTypeThumbnails",
+                "Pictures of node types this graph can use, each at its defaults with a noise on its picture inputs, "
+                + "by hash under /previews, drawing those the cache lacks first. A type with no picture has none.",
+                Missing,
+                Unavailable
+            );
         graphs.MapGet("/{id}/compounds", GetCompounds)
             .Describe(
                 "GetGraphCompounds",
@@ -159,9 +167,9 @@ static class GraphEndpoints {
         try {
             return TypedResults.Ok(sessions.Open(request.Path).State);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status404NotFound);
+            return Refusals.Of(e);
         } catch (GraphEditRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.Of(e);
         }
     }
 
@@ -285,6 +293,32 @@ static class GraphEndpoints {
         return true;
     }
 
+    /// <summary>Draws node types small, through the Worker, once per type and Vixen.</summary>
+    /// <param name="id">The session, whose compounds are among the types.</param>
+    /// <param name="request">The types, by path, as sources.</param>
+    /// <param name="sessions">The open graphs.</param>
+    /// <param name="thumbnails">The pictures.</param>
+    /// <param name="cancellationToken">Stops it between pictures.</param>
+    static async Task<Results<Ok<ThumbnailList>, ProblemHttpResult>> DrawNodeTypesAsync(
+        string id,
+        ThumbnailRequest request,
+        GraphSessions sessions,
+        Thumbnails thumbnails,
+        CancellationToken cancellationToken
+    ) {
+        if (sessions.Find(id) is not { } session) {
+            return NoSession(id);
+        }
+
+        try {
+            return TypedResults.Ok(
+                new ThumbnailList(await thumbnails.DrawNodesAsync(session, request.Sources, cancellationToken))
+            );
+        } catch (TimeoutException e) {
+            return Refusals.Of(e, StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
     static Results<Ok<IReadOnlyList<GraphCompound>>, ProblemHttpResult> GetCompounds(
         string id,
         GraphSessions sessions
@@ -305,7 +339,7 @@ static class GraphEndpoints {
         try {
             return TypedResults.Ok(session.Apply(batch));
         } catch (GraphEditRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.Of(e);
         }
     }
 
@@ -324,7 +358,7 @@ static class GraphEndpoints {
             host.RequestRescan();
             return TypedResults.Ok(extraction);
         } catch (GraphEditRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.Of(e);
         }
     }
 
@@ -371,9 +405,9 @@ static class GraphEndpoints {
 
             return TypedResults.Ok(result);
         } catch (GraphFileChangedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+            return Refusals.Of(e);
         } catch (GraphEditRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.Of(e);
         }
     }
 
@@ -392,9 +426,9 @@ static class GraphEndpoints {
             var image = await evaluator.ImageAsync(session, request.Node, request.Port, cancellationToken);
             return TypedResults.Ok(new GraphImage(image.Hash, image.Width, image.Height));
         } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+            return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
         } catch (Exception e) when (e is IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
         }
     }
 

@@ -51,9 +51,9 @@ export function handleStencilKeys(commands: Commands, paint: PaintStore, destroy
 
 /**
  * What is fixed on a view (#128): the picture the projection tool paints and a stencil masks with, or the material the
- * projection tool paints. It is drawn where a stroke will read it, in the view's own pixels, and three handles move it,
- * scale it and turn it. The picture itself takes no pointer, so a stroke over it still paints. The viewport and the 2D
- * view each draw it over themselves at the same place in their own pixels.
+ * projection tool paints. It is drawn where a stroke will read it, kept from the middle of the view, and three handles
+ * move it, scale it and turn it. The picture itself takes no pointer, so a stroke over it still paints. The viewport and the 2D
+ * view each draw it at the same distance from their own middle, whatever their sizes (#271).
  */
 @Component({
   selector: 'ptn-screen-picture',
@@ -67,8 +67,8 @@ export function handleStencilKeys(commands: Commands, paint: PaintStore, destroy
         [attr.data-centre]="frame.centre.join(',')"
         [attr.data-scale]="frame.scale"
         [attr.data-angle]="frame.angle"
-        [style.left.px]="frame.centre[0]"
-        [style.top.px]="frame.centre[1]"
+        [style.left]="'calc(50% + ' + frame.centre[0] + 'px)'"
+        [style.top]="'calc(50% + ' + frame.centre[1] + 'px)'"
         [style.width.px]="size()[0] * frame.scale"
         [style.height.px]="size()[1] * frame.scale"
         [style.transform]="'translate(-50%, -50%) rotate(' + frame.angle + 'rad)'"
@@ -201,7 +201,7 @@ export class ScreenPictureOverlay {
 
     const [width, height] = this.size();
     const fit = (Math.min(box.width, box.height) * FirstShare) / Math.max(width, height);
-    this.write({ ...frame, centre: [box.width / 2, box.height / 2], scale: fit, angle: 0 });
+    this.write({ ...frame, centre: [0, 0], scale: fit, angle: 0 });
   }
 
   private write(frame: ScreenFrame): void {
@@ -260,10 +260,10 @@ export class ScreenPictureOverlay {
     }
   }
 
-  /** Where a pointer is in the view's own pixels, which a stroke's picture is in. */
+  /** Where a pointer is in pixels from the middle of the view, which a frame is kept in (#271). */
   private at(event: PointerEvent): { x: number; y: number } {
     const box = this.host.nativeElement.getBoundingClientRect();
-    return { x: event.clientX - box.left, y: event.clientY - box.top };
+    return { x: event.clientX - box.left - box.width / 2, y: event.clientY - box.top - box.height / 2 };
   }
 
   private async load(image: string | null): Promise<void> {

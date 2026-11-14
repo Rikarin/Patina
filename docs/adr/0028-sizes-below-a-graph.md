@@ -1,6 +1,7 @@
 # ADR 0028: Sizes below a graph, and an export's own size
 
-**Status:** proposed, 2026-11-12, for issue #96. A compound's own base is built (2026-11-13); the rest is a design only.
+**Status:** proposed, 2026-11-12, for issue #96. A compound's own base, an export's size and Keep aspect are built
+(2026-11-13); per-node and per-instance levels are a design only.
 
 ## What this answers
 
@@ -29,13 +30,19 @@ enlarged stays for those, and goes away for graphs.
 A layer stack is painted at its set's size, and painted texels cannot be computed at another: an export at another size
 resamples a stack's maps as it does now, and says so when it enlarges them.
 
+_Built (2026-11-13)._ The size is the run's own, from `ExportOptions.Size` and a set's `PerSet` size over it, which is
+what the Export dialog and `patina build --size` send. A preset's own `size` still resamples, because one build exports
+through several presets and their graphs are built once for all of them. Sets merged into one set of files take the
+export's size alone. A graph whose base is not square, or a side that is no whole step of its base, still meets a
+resample for the last step, as a graph at its own size does.
+
 ### A compound has its own base
 
 A compound inlined into a graph keeps the base it was authored at: a radius inside it is counted in the compound's
 base, so that a Blur of 8 in a compound authored at 512 is as wide, measured against the compound's picture, inside a
 host at 1024 as it was on its own. That is 16 of the host's texels.
 
-*Built, and not as first designed.* The first design gave the inlined nodes a level of their own. A level changes how
+_Built, and not as first designed._ The first design gave the inlined nodes a level of their own. A level changes how
 many texels a picture has, not what a radius is counted in, so it would have computed the compound at half the size
 and still read its radius in the host's unit. What Vixen does instead is scale every length a node dispatches (its
 `TexelsAtBase` parameters) by the host's base over the compound's, as the node is compiled, which holds on a refresh
@@ -55,14 +62,14 @@ A compound instance takes the same offset, applied to every node inside it on to
 ### Relative to a parent is the same thing
 
 "Relative to parent" is a level offset of zero, which is what every node already is. "Absolute" sizes are not offered,
-for the reason above. A node whose input is a bitmap may still say *as the picture*, which reads the picture's own size
+for the reason above. A node whose input is a bitmap may still say _as the picture_, which reads the picture's own size
 and is the one place an absolute size enters; it is resampled to the node's level where it meets the graph.
 
 ### Non-square images keep shapes round
 
 A source draws in the image's unit square stretched to the image, as Designer does, unless it says otherwise. That
 stays the default, because a non-square texture is almost always mapped onto a non-square face and the stretch is what
-the face undoes. A source that draws a shape gains *Keep aspect*, which draws in a square of the shorter side's unit and
+the face undoes. A source that draws a shape gains _Keep aspect_, which draws in a square of the shorter side's unit and
 tiles that across the longer one, so a Disc on 2048×1024 is round. It is a setting per source, not a graph setting,
 because a graph may want both.
 
@@ -80,7 +87,9 @@ is a graph and follows the rules above, computed at the set's size with radii in
 
 ## Order of work
 
-1. The export's size computing graphs at it (Patina's build plan; no Vixen change).
+1. The export's size computing graphs at it (Patina's build plan; no Vixen change). Built.
 2. A compound's own base (Vixen's compiler). Built.
-3. Keep aspect on the shape sources (Vixen's nodes).
+3. Keep aspect on the shape sources (Vixen's nodes). Built on Shape, the one source that draws a shape: the square
+   is repeated a whole number of times, the nearest to the ratio of the sides, so the image still tiles, and a cell is
+   exactly square at 2:1 or 4:1 and as near square as a whole count allows between.
 4. Level offsets per node and per instance (Vixen's compiler, then the Inspector).

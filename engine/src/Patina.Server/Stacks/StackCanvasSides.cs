@@ -20,26 +20,41 @@ public sealed class StackCanvasSides(string folder) {
     readonly Dictionary<string, (int Width, int Height)> sides = new(StringComparer.Ordinal);
     readonly HashSet<string> stroked = new(StringComparer.Ordinal);
 
-    /// <summary>Refuses a stroke on a canvas, at the set's size, that a Worker could not begin.</summary>
+    /// <summary>
+    ///     The size a stroke paints a canvas at, which is the set's, or refuses a stroke a Worker could not begin. A
+    ///     stroke on the model paints a canvas larger than its set, of the set's shape, at the canvas's own size (#19):
+    ///     it is placed by the picture and not by texels, so nothing it says changes with the size, and the detail the
+    ///     canvas holds stays.
+    /// </summary>
     /// <param name="layer">The layer's name, for the reason.</param>
     /// <param name="paint">The canvas, beside the stack.</param>
-    /// <param name="width">The set's width, which the stroke paints at.</param>
+    /// <param name="width">The set's width.</param>
     /// <param name="height">The set's height.</param>
+    /// <param name="onModel">Whether the stroke is on the model, with a view, rather than in the 2D view.</param>
+    /// <returns>The size to paint at.</returns>
     /// <exception cref="StackEditRefusedException">
     ///     The canvas cannot be painted at that size in this session.
     /// </exception>
-    public void Check(string layer, string paint, int width, int height) {
+    public (int Width, int Height) Check(string layer, string paint, int width, int height, bool onModel) {
         if (Side(paint) is not { } held || held == (width, height)) {
-            return;
+            return (width, height);
         }
 
         var values = new Dictionary<string, string> {
             ["layer"] = layer, ["held"] = Size(held.Width, held.Height), ["size"] = Size(width, height)
         };
         if (held.Width > width || held.Height > height) {
+            if (onModel
+                && held.Width >= width
+                && held.Height >= height
+                && (long)held.Width * height == (long)held.Height * width) {
+                return held;
+            }
+
             throw new StackEditRefusedException(
                 $"'{layer}' holds {values["held"]} texels and the texture set is {values["size"]}. Painting it smaller "
-                + "would throw its detail away, so set the size back to paint this layer.",
+                + "would throw its detail away, so paint it on the model, which paints it at its own size, or set the "
+                + "size back to paint it here.",
                 Api.Refusals.CanvasLarger,
                 values
             );
@@ -53,6 +68,8 @@ public sealed class StackCanvasSides(string folder) {
                 values
             );
         }
+
+        return (width, height);
     }
 
     /// <summary>Takes in what the entries of a step that now stands did to their canvases.</summary>

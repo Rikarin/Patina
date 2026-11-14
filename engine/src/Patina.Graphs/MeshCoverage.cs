@@ -1,6 +1,5 @@
 using Patina.Export;
 using Vixen.Core.Imaging;
-using Vixen.Core.Mathematics;
 using Vixen.Texturing.Painting;
 
 namespace Patina.Graphs;
@@ -18,21 +17,25 @@ public static class MeshCoverage {
     /// <param name="height">The maps' height.</param>
     /// <returns>The picture, or null for a model with no layout, which has no background to pad.</returns>
     /// <exception cref="InvalidDataException">The model has no such material.</exception>
-    public static FloatImage? Of(string mesh, string? material, int uvSet, int width, int height) {
-        var model = MeshMapBakeRun.Read(mesh, material, uvSet).Mesh;
-        var corners = model.TexCoords;
-        if (corners.Length == 0 || corners.Length != model.CornerCount) {
-            return null;
-        }
+    public static FloatImage? Of(string mesh, string? material, int uvSet, int width, int height) =>
+        Read(mesh, material, uvSet, width, height).Picture;
 
-        // Each face fanned into triangles, three corners at a time.
-        List<Vector2> triangles = [];
-        foreach (var face in model.Faces) {
-            for (var corner = 1; corner + 1 < face.Count; corner++) {
-                triangles.Add(corners[face.Start]);
-                triangles.Add(corners[face.Start + corner]);
-                triangles.Add(corners[face.Start + corner + 1]);
-            }
+    /// <summary>
+    ///     The coverage as <see cref="Of" /> draws it, and the UDIM tile the set's layout sits on (#20), which its
+    ///     files are named by: 1001 when it reaches several.
+    /// </summary>
+    /// <exception cref="InvalidDataException">The model has no such material.</exception>
+    public static (FloatImage? Picture, int Udim) Read(
+        string mesh,
+        string? material,
+        int uvSet,
+        int width,
+        int height
+    ) {
+        var (model, udim) = MeshMapBakeRun.Placed(mesh, material, uvSet);
+        var triangles = OneTile.Triangles(model.Mesh);
+        if (triangles.Length == 0) {
+            return (null, udim);
         }
 
         var covered = PaintCoverage.FromTriangles(width, height, triangles);
@@ -41,6 +44,6 @@ public static class MeshCoverage {
             samples[at] = covered.IsCovered(at) ? 1f : 0f;
         }
 
-        return new(width, height, 1, samples);
+        return (new(width, height, 1, samples), udim);
     }
 }

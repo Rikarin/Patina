@@ -3,8 +3,9 @@ name: Oil Paint
 nodes:
   - { id: 1, type: Sub-graph/Input, x: -960, y: 0 }
   - { id: 2, type: Filters/Anisotropic Painterly Smooth, x: -640, y: 0, texts: { '=Radius': 'brush' } }
-  - { id: 3, type: Source/Noise, x: -960, y: 260, values: { Octaves: [3], Scale Y: [0.15] }, texts: { Basis: Gradient, '=Scale': '24f + detail * 64f', '=Seed': seed } }
-  - { id: 4, type: Space/Transform 2D, x: -640, y: 260, texts: { Tiling: Wrap, '=Rotation': 'angle * 0.0174532924f' } }
+  - { id: 3, type: Source/Noise, x: -960, y: 260, values: { Octaves: [3] }, texts: { Basis: Gradient, '=Scale': '24f + detail * 64f', '=Seed': seed } }
+  - { id: 4, type: Filters/Directional Blur, x: -800, y: 260, values: { Length: [64] }, texts: { '=Angle': 'angle * 0.0174532924f' } }
+  - { id: 9, type: Colour/Auto Levels, x: -640, y: 260 }
   - { id: 8, type: Colour/Grayscale, x: -480, y: 120 }
   - { id: 5, type: Filters/Warp, x: -320, y: 260, values: { Intensity: [6] } }
   - { id: 6, type: Filters/Emboss, x: 0, y: 260, values: { Elevation: [0.7] }, texts: { '=Intensity': 'relief * 0.25f' } }
@@ -19,7 +20,8 @@ nodes:
 edges:
   - { fromNode: 1, fromPort: Input, toNode: 2, toPort: Input }
   - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Input }
-  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: Input }
+  - { fromNode: 4, fromPort: Out, toNode: 9, toPort: Input }
+  - { fromNode: 9, fromPort: Out, toNode: 5, toPort: Input }
   - { fromNode: 2, fromPort: Out, toNode: 8, toPort: Input }
   - { fromNode: 8, fromPort: Out, toNode: 5, toPort: Warp }
   - { fromNode: 5, fromPort: Out, toNode: 6, toPort: Height }
@@ -38,7 +40,7 @@ settings:
   summary: 'An oil painting of the picture beneath: its regions flattened into strokes that follow their outlines, and brush ridges lit across them.'
 parameters:
   - { name: brush, label: Brush Size, default: '5', summary: 'How wide a stroke is, in texels. More flattens bigger regions.', kind: Float, minimum: 1, maximum: 16, group: Strokes }
-  - { name: angle, label: Stroke Angle, default: '30', summary: 'Which way the brush ridges run, in degrees.', kind: Float, minimum: 0, maximum: 180, group: Strokes }
+  - { name: angle, label: Stroke Angle, default: '30', summary: 'Which way the brush ridges run, in degrees from across towards down. The ridges are smeared along it, so they tile at any angle.', kind: Float, minimum: 0, maximum: 180, group: Strokes }
   - { name: detail, label: Ridge Detail, default: '0.2', summary: 'How fine the brush ridges are.', kind: Float, minimum: 0, maximum: 1, group: Strokes }
   - { name: relief, label: Relief, default: '0.35', summary: 'How strongly the ridges catch the light.', kind: Float, minimum: 0, maximum: 1, group: Strokes }
   - { name: saturation, label: Saturation, default: '0.6', summary: 'How rich the colours are. A half leaves them as they were.', kind: Float, minimum: 0, maximum: 1, group: Colour }

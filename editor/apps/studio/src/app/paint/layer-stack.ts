@@ -16,6 +16,8 @@ import {
   matFormatColorFill,
   matGradient,
   matHideSource,
+  matPause,
+  matPlayArrow,
   matTune,
   matViewInAr,
   matVisibility,
@@ -46,7 +48,7 @@ import { IsolationStore } from '../viewport/isolation-store';
 import { type DropZone, dropManyCommands, nudgeCommands } from './layer-drag';
 import { tagSwatch } from './layer-tags';
 import { MaterialUse } from './material-use';
-import { type LayerRow, PaintStore, hexOf, maskOn, toggledEffect } from './paint-store';
+import { type LayerRow, PaintStore, hexOf, maskOn, proxyName, toggledEffect } from './paint-store';
 
 const RowHeight = 56;
 /** A row in the compact list (#106): its thumbnails and its blending on one line. */
@@ -136,6 +138,8 @@ const MaskMarks: Readonly<Record<string, string>> = {
       matFormatColorFill,
       matGradient,
       matHideSource,
+      matPause,
+      matPlayArrow,
       matTune,
       matViewInAr,
       matVisibility,
@@ -149,7 +153,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
     '(document:pointerup)': 'letGo()'
   },
   template: `
-    <div class="chrome-bar flex shrink-0 items-center gap-0.5 px-1 py-0.5" role="toolbar" aria-label="Layers">
+    <div class="pane-bar gap-0.5 px-1" role="toolbar" aria-label="Layers">
       <xui-select
         class="w-24 min-w-0 shrink-0 [&_button]:text-xs"
         style="--control-height-md: 1.375rem; --control-padding-md: 0.375rem"
@@ -316,9 +320,43 @@ const MaskMarks: Readonly<Record<string, string>> = {
       </xui-callout>
     }
 
-    @if (store.evaluated(); as evaluated) {
-      <div class="readout text-foreground-muted shrink-0 truncate px-2 text-xs" data-testid="layers-evaluation">
-        {{ evaluated }}
+    @if (store.state()) {
+      <div class="flex shrink-0 items-center gap-0.5 ps-2 pe-1" data-testid="layers-pace">
+        <span class="readout text-foreground-muted min-w-0 flex-1 truncate text-xs" data-testid="layers-evaluation">{{
+          store.evaluated()
+        }}</span>
+        <xui-select
+          class="w-20 min-w-0 shrink-0 [&_button]:text-xs"
+          style="--control-height-md: 1.375rem; --control-padding-md: 0.375rem"
+          aria-label="Proxy"
+          title="Composites the picture smaller while you work. Saving, exporting and checks are always full size."
+          data-testid="layers-proxy"
+          [filterable]="false"
+          [itemText]="proxyLabel"
+          [items]="proxies"
+          [matchTargetWidth]="false"
+          [value]="store.pace().proxy"
+          (valueChange)="store.setPace({ proxy: $event ?? 1 })"
+        />
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          class="w-6 shrink-0 px-0"
+          data-testid="layers-pause"
+          [title]="
+            store.pace().paused
+              ? 'Resume: evaluates every edit made while paused'
+              : 'Pause: edits wait to be evaluated while you set up'
+          "
+          [attr.aria-label]="store.pace().paused ? 'Resume evaluation' : 'Pause evaluation'"
+          [attr.aria-pressed]="store.pace().paused"
+          [class.bg-selection]="store.pace().paused"
+          (click)="store.setPace({ paused: !store.pace().paused })"
+        >
+          <ng-icon xui size="sm" [name]="store.pace().paused ? 'matPlayArrow' : 'matPause'" />
+        </button>
       </div>
     }
 
@@ -343,7 +381,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
     }
 
     @if (maskStackLayer(); as owner) {
-      <div class="chrome-bar flex shrink-0 items-center gap-1 px-1 py-0.5" data-testid="mask-stack-bar">
+      <div class="pane-bar gap-1 px-1" role="toolbar" aria-label="Mask" data-testid="mask-stack-bar">
         <button
           type="button"
           xuiButton
@@ -1868,6 +1906,9 @@ export class LayerStack {
   });
   protected readonly channels = computed(() => (this.store.state()?.channels ?? []).map(channel => channel.usage));
   protected readonly channelLabel = channelName;
+  /** The proxies a stack composites at, as what its sides are divided by (#208). */
+  protected readonly proxies = [1, 2, 4, 8];
+  protected readonly proxyLabel = proxyName;
   /** The layer whose list of meshes is open. */
   protected readonly meshLayer = signal<StackLayer | null>(null);
   protected readonly parts = signal<readonly string[]>([]);

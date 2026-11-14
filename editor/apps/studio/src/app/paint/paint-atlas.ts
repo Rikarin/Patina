@@ -420,6 +420,7 @@ export class PaintAtlas {
     const view = this.host.nativeElement.getBoundingClientRect();
     this.store.atlasScale.set(this.side()[0] / Math.max(box.width, 1));
     this.store.atlasOrigin.set([box.left - view.left, box.top - view.top]);
+    this.store.atlasPane.set([view.width, view.height]);
     this.gesture.press(this.stamp(event), { line: event.shiftKey, snap: event.ctrlKey || event.metaKey });
   }
 

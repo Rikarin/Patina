@@ -65,6 +65,17 @@ public sealed class PresetLanguageTests : IDisposable {
         Assert.Equal(expected, name);
     }
 
+    /// <summary>Every file was named tile 1001, whichever tile its set's layout sat on (#20).</summary>
+    [Theory]
+    [InlineData(1001, "Body_1001_u1_v1.png")]
+    [InlineData(1002, "Body_1002_u2_v1.png")]
+    [InlineData(1013, "Body_1013_u3_v2.png")]
+    public void The_udim_and_the_tile_are_the_sets_own(int udim, string expected) {
+        var values = new NamingValues("Crate", "p") { Udim = udim };
+
+        Assert.Equal(expected, NamingTemplate.Resolve("{set}_{udim}_{tile}", values.Of("Body"), ".png"));
+    }
+
     [Fact]
     public void A_name_a_project_does_not_know_falls_back_to_what_holds_it() {
         var values = new NamingValues("Crate", "p");
