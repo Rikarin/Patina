@@ -324,10 +324,10 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     }
 
     /// <summary>
-    ///     A layered material a stroke lays (#125), made ready for the set as applying it would make it, with the graphs it
-    ///     needs brought into the project; default for any other source.
+    ///     A layered material a stroke lays (#125), made ready for the set as applying it would make it, with the
+    ///     graphs it needs brought into the project; default for any other source.
     /// </summary>
-    /// <exception cref="StackEditRefusedException">There is no such material, or it has no layers for this set.</exception>
+    /// <exception cref="StackEditRefusedException">There is no such material, or it has none for this set.</exception>
     ImmutableArray<LayerAsset> Layered(StackStrokeSource? source) {
         if (source is not { Kind: "material", Layered: { } named }) {
             return default;

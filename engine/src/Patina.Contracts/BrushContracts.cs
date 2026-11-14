@@ -186,6 +186,8 @@ public sealed record BrushPresetUpdateRequest(string Project, string Source, Bru
 ///     maps, and the stroke lays what they make, each layer where its own projection puts it; so it takes no
 ///     <paramref name="Projection" />, axis or <paramref name="Placement" /> of its own.
 /// </param>
+// SK7005: a wire record's constructor is its JSON shape, one parameter per field.
+#pragma warning disable SK7005
 public sealed record StackStrokeSource(
     string Kind,
     string? Graph = null,
@@ -197,6 +199,7 @@ public sealed record StackStrokeSource(
     StackFrame? Frame = null,
     string? Layered = null
 );
+#pragma warning restore SK7005
 
 /// <summary>Where something fixed on a stroke's picture stands: moved, scaled, turned and perhaps tiled.</summary>
 /// <param name="Centre">Where its middle is on the stroke's picture, in the units stamps are in: two numbers.</param>
@@ -299,7 +302,7 @@ public static class StackBrushes {
             _ => $"'{source.Kind}' is not where a stroke's colour can come from."
         };
 
-    /// <summary>What is wrong with a layered material brush, which lays its layers where they put themselves, or null.</summary>
+    /// <summary>What is wrong with a layered material brush, whose layers are placed by themselves, or null.</summary>
     static string? LayeredProblem(StackStrokeSource source) {
         if (string.IsNullOrWhiteSpace(source.Layered) || source.Graph is not null) {
             return "A material brush names one material: a graph or a layered material.";

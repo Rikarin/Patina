@@ -11,7 +11,7 @@ static class StackSurfaces {
     /// <summary>How many points a path may have: what the Worker's table holds before the curve between them.</summary>
     public const int MaximumPoints = 256;
 
-    /// <summary>The widest a path's stamps are spaced, as a share of its width: past this a stroke is scattered dots.</summary>
+    /// <summary>The widest a path's stamps are spaced, as a share of its width: past it, scattered dots.</summary>
     public const float MaximumSpacing = 16f;
 
     /// <summary>A decal as the wire sends it.</summary>
@@ -114,8 +114,8 @@ static class StackSurfaces {
             || path.Spacing is not (>= 0f and <= MaximumSpacing)
             || path.Jitter is not (>= 0f and <= 1f)) {
             throw new StackEditRefusedException(
-                "A path's hardness is from 0 to 1, its angle from 0 to π, its repeat zero or more, its spacing from 0 to "
-                + $"{MaximumSpacing} and its jitter from 0 to 1."
+                "A path's hardness is from 0 to 1, its angle from 0 to π, its repeat zero or more, its spacing "
+                + $"from 0 to {MaximumSpacing} and its jitter from 0 to 1."
             );
         }
 

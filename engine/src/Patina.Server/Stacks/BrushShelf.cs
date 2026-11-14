@@ -20,9 +20,9 @@ public static class BrushShelf {
     const int ProjectPage = 200;
 
     /// <summary>
-    ///     Each preset file as last read, kept while its file stands (#124): every shelf load lists every other project's
-    ///     presets, and reading each file every time was most of what a load cost in a library of many projects. A file
-    ///     that would not read is kept as null, so it is not tried again until it changes.
+    ///     Each preset file as last read, kept while its file stands (#124): every shelf load lists every other
+    ///     project's presets, and reading each file every time was most of what a load cost in a library of many
+    ///     projects. A file that would not read is kept as null, so it is not tried again until it changes.
     /// </summary>
     static readonly ConcurrentDictionary<string, (DateTime Stamp, BrushPreset? Preset)> Kept =
         new(StringComparer.Ordinal);

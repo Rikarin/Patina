@@ -128,7 +128,11 @@ public sealed partial class StackProcessTests {
         var painted = await TexelAsync(state.Id, "painted", at, at, deadline.Token);
         await ActAsync(state.Id, "undo", deadline.Token);
 
-        await EditAsync(state.Id, deadline.Token, new StackAddLayer("material", string.Empty, Material: "smart:Plastic"));
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackAddLayer("material", string.Empty, Material: "smart:Plastic")
+        );
         var applied = await TexelAsync(state.Id, "applied", at, at, deadline.Token);
 
         Assert.NotEqual(blank, applied);
