@@ -570,7 +570,12 @@ import { ViewportPane } from './viewport/viewport-pane';
       <ptn-library-settings [(open)]="librarySettingsOpen" />
     }
 
-    <xui-dialog size="sm" title="Save As" [open]="project.savingAs()" (openChange)="project.savingAs.set($event)">
+    <xui-dialog
+      size="sm"
+      [title]="project.copying() ? 'Save a Copy' : 'Save As'"
+      [open]="project.savingAs()"
+      (openChange)="project.savingAs.set($event)"
+    >
       <form (submit)="saveAs($event, saveName.value)">
         <xui-dialog-body>
           <input
@@ -830,7 +835,7 @@ export class App {
     event.preventDefault();
     if (name.trim()) {
       this.project.savingAs.set(false);
-      void this.project.saveAs(name.trim());
+      void this.project.saveAs(name.trim(), this.project.copying());
     }
   }
 

@@ -61,6 +61,12 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'projectSettings', label: 'Project Settings…', section: 'File', keys: ['Mod+Shift+,'] },
   { id: 'save', label: 'Save', section: 'File', keys: ['Mod+S'], typing: true },
   { id: 'saveAs', label: 'Save As…', section: 'File', keys: ['Mod+Shift+S'] },
+  {
+    id: 'saveCopy',
+    label: 'Save a Copy…',
+    section: 'File',
+    hint: 'Saves a copy under a new name and keeps working on this one'
+  },
   { id: 'saveAll', label: 'Save All', section: 'File', keys: ['Mod+Alt+S'], typing: true },
   { id: 'closeDocument', label: 'Close Document', section: 'File', keys: ['Mod+W'] },
   { id: 'closeProject', label: 'Close Project', section: 'File' },
@@ -459,6 +465,7 @@ export const MenuBar: readonly {
       '-',
       'save',
       'saveAs',
+      'saveCopy',
       'saveAll',
       '-',
       'closeDocument',

@@ -841,6 +841,8 @@ export class ProjectStore {
 
   /** A name for Save As is being asked for. */
   readonly savingAs = signal(false);
+  /** The name asked for is a copy's, which Save a Copy leaves where it is (#162). */
+  readonly copying = signal(false);
 
   clearFailure(): void {
     this.mutableFailure.set(null);
@@ -849,8 +851,11 @@ export class ProjectStore {
   /** Autosaved work for the document in front, which is offered until it is taken or refused. */
   readonly recoverable = signal<{ path: string; saved: string } | null>(null);
 
-  /** Saves what is in front, then carries on in a copy under a new name. */
-  async saveAs(name: string): Promise<void> {
+  /**
+   * Saves what is in front, then carries on in a copy under a new name. Save a Copy (#162) stays on the document in
+   * front, and says where the copy went.
+   */
+  async saveAs(name: string, stay = false): Promise<void> {
     const tab = this.active();
     const project = tab?.project;
     const document = this.documentOf(tab);
@@ -870,7 +875,9 @@ export class ProjectStore {
       this.mutableContents.update(all => new Map(all).set(project, contents));
       const copy = contents.documents.at(-1);
       this.library.refreshSoon();
-      if (copy) {
+      if (copy && stay) {
+        this.mutableNotice.set(`Saved a copy as ${copy.name}, and kept ${tab.name} in front.`);
+      } else if (copy) {
         await this.openDocument(project, copy.path);
       }
     } catch (failure) {

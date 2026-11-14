@@ -344,6 +344,31 @@ describe('ProjectStore', () => {
     expect(client.POST).not.toHaveBeenCalledWith('/api/v1/library/project/document/copy', expect.anything());
   });
 
+  it('keeps the document in front for Save a Copy, and says where the copy went (#162)', async () => {
+    const { store, client } = harness();
+    await store.open('a');
+    const copied = {
+      ...contents,
+      documents: [
+        ...contents.documents,
+        { id: 'c', kind: 'texturing', name: 'A Copy', path: 'projects/a/c.yaml', mesh: 'm' }
+      ]
+    };
+    client.POST.mockImplementation(((route: string) =>
+      Promise.resolve({
+        data: route === '/api/v1/library/project/document/copy' ? copied : { items: [] },
+        response: new Response()
+      })) as never);
+
+    await store.saveAs('A Copy', true);
+
+    expect(client.POST).toHaveBeenCalledWith('/api/v1/library/project/document/copy', {
+      body: { project: 'a', document: 'd', name: 'A Copy' }
+    });
+    expect(store.active()?.path).toBe(paths.texturing);
+    expect(store.notice()).toBe('Saved a copy as A Copy, and kept A in front.');
+  });
+
   it('reopens on what was last in front', async () => {
     const held = memoryStorage();
     storage = () => held;
