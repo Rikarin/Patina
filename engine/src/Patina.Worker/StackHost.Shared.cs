@@ -54,7 +54,11 @@ sealed partial class StackHost {
 
             foreach (var file in borrowed.Keys.Where(file => !lent.ContainsKey(file)).ToList()) {
                 borrowed.Remove(file);
-                canvases.Forget(file);
+                // ⚠ One this session has painted since is its own now, strokes and all: forgetting it read the file
+                // back over them, and the stroke never showed.
+                if (!own.Contains(file)) {
+                    canvases.Forget(file);
+                }
             }
 
             foreach (var (file, canvas) in lent) {
