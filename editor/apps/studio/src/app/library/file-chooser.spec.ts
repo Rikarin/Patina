@@ -90,3 +90,27 @@ describe('FileChooser', () => {
     expect(pathOnServer('C:\\Game.ptlib\\', 'projects/a/a.glb')).toBe('C:\\Game.ptlib/projects/a/a.glb');
   });
 });
+
+describe('FileChooser.send (#4)', () => {
+  it('sends a file of this computer as it is, by its name, and answers with its path on the Server', async () => {
+    const POST = vi.fn((_path: string, _init: unknown) =>
+      Promise.resolve({ data: { path: '/srv/Game.ptlib/uploads/ab12/scan.png' }, response: { ok: true } })
+    );
+    TestBed.configureTestingModule({
+      providers: [{ provide: LibraryStore, useValue: { api: () => Promise.resolve({ POST }) } }]
+    });
+    const file = new Blob(['picture']);
+
+    const path = await TestBed.inject(FileChooser).send(file, 'scan.png');
+
+    expect(path).toBe('/srv/Game.ptlib/uploads/ab12/scan.png');
+    const [route, init] = POST.mock.calls[0] as [
+      string,
+      { params: unknown; body: unknown; headers: unknown; bodySerializer: (body: unknown) => unknown }
+    ];
+    expect(route).toBe('/api/v1/library/uploads');
+    expect(init.params).toEqual({ query: { name: 'scan.png' } });
+    expect(init.headers).toEqual({ 'Content-Type': 'application/octet-stream' });
+    expect(init.bodySerializer(init.body)).toBe(file);
+  });
+});

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, model, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, model, signal, untracked } from '@angular/core';
 import { type components, unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
@@ -9,8 +9,9 @@ import { XuiSwitchImports } from '@xui/switch';
 import { LibraryStore } from '../library/library-store';
 import { Commands } from './commands';
 import { desktop } from './desktop';
+import { EnginePreferences } from './engine-preferences';
 import { messageOf } from './messages';
-import { bytes } from './numbers';
+import { bytes, count } from './numbers';
 import type { CameraSpeed, LibraryTabChoice, LibraryViewChoice, ShelfViewChoice, Theme } from './preferences';
 import { Preferences } from './preferences';
 
@@ -200,7 +201,14 @@ const MostKept = 20;
             <h3 class="section-label">Keys</h3>
             <div class="flex items-center gap-3">
               <span class="text-foreground-muted min-w-0 flex-1 text-xs">Every key, and presets from other apps.</span>
-              <button type="button" xuiButton size="sm" data-testid="preferences-keys" (click)="showKeys()">
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                data-testid="preferences-keys"
+                (click)="showKeys()"
+              >
                 {{ commands.label('shortcuts') }}
               </button>
             </div>
@@ -277,6 +285,32 @@ const MostKept = 20;
             }
           </section>
 
+          <section class="flex flex-col gap-2" data-testid="preferences-bake">
+            <h3 class="section-label">Bake</h3>
+            <div class="flex items-center gap-3">
+              <span class="w-36 shrink-0">New projects bake with</span>
+              <span class="readout min-w-0 flex-1 truncate" data-testid="preferences-bake-default">{{
+                bakeDefault()
+              }}</span>
+              @if (engine.bake()) {
+                <button
+                  type="button"
+                  xuiButton
+                  size="sm"
+                  variant="ghost"
+                  data-testid="preferences-bake-reset"
+                  (click)="engine.makeBakeDefault(null)"
+                >
+                  Use Patina’s
+                </button>
+              }
+            </div>
+            <p class="text-foreground-muted text-xs">
+              Make Default in the Bake dialog keeps its options for every project made after it, by any app attached to
+              the engine. A texturing project still bakes at the size it is made at.
+            </p>
+          </section>
+
           <section class="flex flex-col gap-2" data-testid="preferences-cache">
             <h3 class="section-label">Cache</h3>
             @if (cache(); as held) {
@@ -326,8 +360,9 @@ export class PreferencesDialog {
   protected readonly Math = Math;
   protected readonly canReveal = desktop() !== undefined;
 
-  protected readonly autosave = signal<AutosavePreferences | null>(null);
-  protected readonly autosaveFailure = signal<string | null>(null);
+  protected readonly engine = inject(EnginePreferences);
+  protected readonly autosave = this.engine.autosave;
+  protected readonly autosaveFailure = this.engine.failure;
   protected readonly cache = signal<CacheInfo | null>(null);
   protected readonly cacheFailure = signal<string | null>(null);
 
@@ -363,28 +398,23 @@ export class PreferencesDialog {
       return;
     }
 
-    const next = { ...held, ...change };
-    this.autosave.set(next);
-    try {
-      const client = await this.library.api();
-      const saved = unwrap(await client.PUT('/api/v1/preferences', { body: { autosave: next } }));
-      this.autosave.set(saved.autosave);
-      this.autosaveFailure.set(null);
-    } catch (failure) {
-      this.autosave.set(held);
-      this.autosaveFailure.set(messageOf(failure));
-    }
+    await this.engine.change({ autosave: { ...held, ...change } });
   }
 
-  private async read(): Promise<void> {
-    const client = await this.library.api();
-    try {
-      this.autosave.set(unwrap(await client.GET('/api/v1/preferences')).autosave);
-      this.autosaveFailure.set(null);
-    } catch (failure) {
-      this.autosaveFailure.set(messageOf(failure));
+  /** What a new project bakes with, in a few words. */
+  protected readonly bakeDefault = computed(() => {
+    const bake = this.engine.bake();
+    if (!bake) {
+      return 'Patina’s own';
     }
 
+    const maps = bake.maps.length === 1 ? '1 map' : `${count(bake.maps.length)} maps`;
+    return `Yours: ${count(bake.resolution)} texels, ${maps}`;
+  });
+
+  private async read(): Promise<void> {
+    await this.engine.read();
+    const client = await this.library.api();
     try {
       this.cache.set(unwrap(await client.GET('/api/v1/library/cache')));
       this.cacheFailure.set(null);

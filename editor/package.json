@@ -24,6 +24,7 @@
     "@xui/descriptions": "^3.2.0",
     "@xui/dialog": "^3.2.0",
     "@xui/dock-manager": "^3.2.0",
+    "@xui/file-input": "^3.2.0",
     "@xui/form-field": "^3.2.0",
     "@xui/icon": "^3.2.0",
     "@xui/input": "^3.2.0",

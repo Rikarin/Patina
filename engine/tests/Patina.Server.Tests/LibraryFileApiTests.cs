@@ -252,4 +252,35 @@ public sealed partial class LibraryTreeApiTests {
         var plain = await File.ReadAllTextAsync(Path.Combine(server.Library, "projects/plain/project.yaml"), Token);
         Assert.DoesNotContain("bake", plain, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    ///     A new project bakes with the options the person made their default (#189), a texturing one still at the size
+    ///     it was made at, and options no bake could use are refused rather than kept.
+    /// </summary>
+    [Fact]
+    public async Task A_new_project_bakes_with_the_default_options() {
+        var mesh = Path.Combine(files.FullName, "crate.glb");
+        File.WriteAllText(mesh, "mesh");
+        var preferred = new BakeOptions { Resolution = 512, Supersampling = 4, Maps = ["normal", "ao"] };
+        (await client.PutAsJsonAsync("/api/v1/preferences", new ServerPreferences(new()) { Bake = preferred }, Token))
+            .EnsureSuccessStatusCode();
+        var unusable = new ServerPreferences(new()) { Bake = new() { Maps = [] } };
+        using var refused = await client.PutAsJsonAsync("/api/v1/preferences", unusable, Token);
+
+        foreach (var request in new[] {
+                     new ProjectCreateRequest("Crate", Mesh: mesh, Resolution: 1024), new ProjectCreateRequest("Empty")
+                 }) {
+            (await client.PostAsJsonAsync("/api/v1/library/projects", request, Token)).EnsureSuccessStatusCode();
+        }
+
+        async Task<BakeOptions> OptionsOf(string path) =>
+            (await client.GetFromJsonAsync<ProjectContents>($"/api/v1/library/project?path={path}", Token))!
+            .Bake.Options;
+
+        var (crate, empty) = (await OptionsOf("crate"), await OptionsOf("empty"));
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal((1024, 4), (crate.Resolution, crate.Supersampling));
+        Assert.Equal(["normal", "ao"], crate.Maps);
+        Assert.Equal((512, 4), (empty.Resolution, empty.Supersampling));
+    }
 }

@@ -84,7 +84,13 @@ public sealed record ThumbnailList(IReadOnlyList<Thumbnail> Items);
 ///     the discovery file, which anyone can read and edit.
 /// </summary>
 /// <param name="Autosave">How unsaved work is kept.</param>
-public sealed record ServerPreferences(AutosavePreferences Autosave);
+public sealed record ServerPreferences(AutosavePreferences Autosave) {
+    /// <summary>
+    ///     How a new project bakes until it is told otherwise (#189), or null for Patina's own options. A texturing
+    ///     project still bakes at the size it is made at.
+    /// </summary>
+    public BakeOptions? Bake { get; init; }
+}
 
 /// <summary>How unsaved work is kept. It goes to the library's cache, never over a document.</summary>
 /// <param name="IntervalSeconds">How often open, unsaved documents are kept at the most. Zero is off.</param>

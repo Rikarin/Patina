@@ -44,7 +44,7 @@ const stack = down(1.4, layers, tabs(1.2, properties, inspector, history, checks
 /** The same with the model's texture sets over it, which only a mesh has. */
 const texturingStack = down(
   1.4,
-  pane('sets', 'Texture Sets', 0.28),
+  pane('sets', 'Texture Sets', 0.42),
   { ...layers, size: 1 },
   tabs(1, properties, inspector, history, checks)
 );

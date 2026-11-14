@@ -900,6 +900,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/uploads': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Keeps a picture or a mesh a client sent from its own computer in the library's uploads folder, and answers with its path on the Server's machine, which a project's mesh, a picture brought into a project and a bake's high mesh take. The same file sent again is kept once. */
+    post: operations['UploadLibraryFile'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/document': {
     parameters: {
       query?: never;
@@ -6251,6 +6268,7 @@ export interface components {
     ServerPreferences: {
       /** @description How unsaved work is kept. */
       autosave: components['schemas']['AutosavePreferences'];
+      bake?: null | components['schemas']['BakeOptions'];
     };
     /** @description Puts a document back as a snapshot holds it, or forgets a snapshot. */
     SnapshotRequest: {
@@ -8395,6 +8413,8 @@ export interface components {
       /** @description How wide a channel's painted texels can be (#19): 8-bit, and 16-bit and 32-bit float. */
       formats?: null | components['schemas']['StackTerm'][];
     };
+    /** Format: binary */
+    Stream: string;
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {
       /** @description The Server's release version. */
@@ -8548,6 +8568,14 @@ export interface components {
       packed: number;
       /** @description What a person should know: an island split, a rescale. */
       warnings: string[];
+    };
+    /** @description A file a client sent from its own computer, now on the Server's machine (#4). */
+    UploadedFile: {
+      /**
+       * @description Its full path on the Server's machine, which anything that takes a file there takes: a project's mesh, a picture
+       *     brought into a project, a bake's high mesh.
+       */
+      path: string;
     };
     /**
      * @description A bake's setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,
@@ -11744,6 +11772,68 @@ export interface operations {
       };
       /** @description Conflict */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  UploadLibraryFile: {
+    parameters: {
+      query: {
+        name: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/octet-stream': components['schemas']['Stream'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UploadedFile'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Payload Too Large */
+      413: {
         headers: {
           [name: string]: unknown;
         };

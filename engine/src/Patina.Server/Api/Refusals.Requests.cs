@@ -155,6 +155,15 @@ public static partial class Refusals {
     public static ProblemHttpResult Of(ViewportNoMeshException none) =>
         Problem(none.Message, StatusCodes.Status409Conflict, ViewportNoMesh);
 
+    /// <summary>
+    ///     A file sent to the library under a name it cannot keep: not a picture or a mesh Patina reads, or not a
+    ///     file's name alone (#4). Values: <c>name</c>.
+    /// </summary>
+    public const string UploadKind = "upload-kind";
+
+    /// <summary>A file sent to the library that is larger than it takes (#4). Values: <c>most</c>, in GiB.</summary>
+    public const string UploadTooLarge = "upload-too-large";
+
     /// <summary>A preference out of range. Values: <c>reason</c>, the Server's own sentence.</summary>
     public const string PreferenceRefused = "preference-refused";
 
