@@ -210,6 +210,17 @@ test('a mask switches off and on from its own menu and Shift-click, and pastes i
   await expect(base.getByTestId('layer-mask')).toHaveAttribute('title', /^Uniform mask\./);
   await expect(window.getByTestId('app-undo')).toHaveAttribute('aria-label', 'Undo Paste mask');
   await window.screenshot({ path: join(shots, 'mask-switch-2-pasted.png') });
+
+  // Saved to the shelf under a name given now, starting from the layer's (#135).
+  await mask.click({ button: 'right' });
+  await window.getByTestId('mask-menu-save').click();
+  await expect(window.getByTestId('shelf-save-name')).toHaveValue('Paint Mask');
+  await window.getByTestId('shelf-save-name').fill('Black Out');
+  await window.getByTestId('shelf-save-confirm').click();
+  await expect(window.getByTestId('shelf-save-dialog')).toHaveCount(0);
+  await expect(window.getByTestId('shelf-material').filter({ hasText: 'Black Out' })).toHaveCount(1, {
+    timeout: 30_000
+  });
 });
 
 test('a mask effect blends over the mask it reads, and copies into another layer’s mask', async () => {

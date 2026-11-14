@@ -52,6 +52,7 @@ import { MaskOnMesh } from './mask-on-mesh';
 import { MaterialUse } from './material-use';
 import { PartCombines } from './mesh-selection';
 import { type LayerRow, PaintStore, hexOf, maskOn, proxyName, toggledEffect } from './paint-store';
+import { type ShelfSave, ShelfSaveDialog } from './shelf-save-dialog';
 
 const RowHeight = 56;
 /** A row in the compact list (#106): its thumbnails and its blending on one line. */
@@ -113,6 +114,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
   imports: [
     IconImports,
     MenuKeys,
+    ShelfSaveDialog,
     XuiButtonImports,
     XuiCalloutImports,
     XuiContextMenuImports,
@@ -1309,6 +1311,8 @@ const MaskMarks: Readonly<Record<string, string>> = {
       </xui-menu>
     </ng-template>
 
+    <ptn-shelf-save-dialog [asked]="shelfSave()" (closed)="shelfSave.set(null)" />
+
     <ng-template #layerMenu>
       <xui-menu data-testid="layer-menu" [attr.aria-label]="menuLabel()">
         @if (menuPart() === 'mask' && menuLayer(); as layer) {
@@ -1335,7 +1339,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
             [disabled]="!project.current()"
             (triggered)="saveToShelf(layer, true)"
           >
-            Save as Smart Mask
+            Save as Smart Mask…
           </button>
           <button
             type="button"
@@ -1497,7 +1501,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
               [disabled]="!project.current()"
               (triggered)="saveToShelf(layer, false)"
             >
-              Save as Smart Material
+              Save as Smart Material…
             </button>
             <button type="button" xuiMenuItem data-testid="layer-menu-copy" (triggered)="store.copyLayers()">
               Copy <span menuItemLabel>{{ commands.keyText('copy') }}</span>
@@ -1603,8 +1607,11 @@ export class LayerStack {
 
     const chosen = this.store.selection();
     const layers = mask || !chosen.has(layer.id) ? [layer.id] : [...chosen];
-    void this.store.saveToShelf(layers, mask, mask ? `${layer.name} Mask` : layer.name, project.path);
+    this.shelfSave.set({ layers, mask, name: mask ? `${layer.name} Mask` : layer.name, project: project.path });
   }
+
+  /** Layers or a mask being named before they go to the shelf (#135), or null. */
+  protected readonly shelfSave = signal<ShelfSave | null>(null);
 
   protected opacityOf(layer: StackLayer): number {
     const draft = this.draft();
