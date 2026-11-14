@@ -212,6 +212,22 @@ public sealed class BakeMapKindsTests : IDisposable {
         Assert.NotEqual(Assert.Single(auto.Result.Maps).Scale, scale);
     }
 
+    /// <summary>
+    ///     A curvature map from the normal map reaches the bake (#148): the fixture's high mesh has detail the normal
+    ///     map carries, so its bends read otherwise than the high mesh's own faces do.
+    /// </summary>
+    [Fact]
+    public void A_curvature_from_the_normal_map_is_another_map_than_the_meshs() {
+        Bake("from-mesh", static options => options with { Maps = ["curvature"] }, true);
+        Bake(
+            "from-map",
+            static options => options with { Maps = ["curvature"], Curvature = new() { Source = "normal-map" } },
+            true
+        );
+
+        Assert.NotEqual(Picture("from-mesh", "curvature").Pixels, Picture("from-map", "curvature").Pixels);
+    }
+
     /// <summary>The options refuse a profile, a curvature range and an edges width that are not ones.</summary>
     [Fact]
     public void Profiles_ranges_and_widths_that_are_not_ones_are_refused() {
@@ -219,6 +235,7 @@ public sealed class BakeMapKindsTests : IDisposable {
         Assert.Contains("profile", new BakeOptions { Edges = new() { Profile = "bevel" } }.Problem());
         Assert.Contains("width", new BakeOptions { Edges = new() { Width = 0 } }.Problem());
         Assert.Contains("curvature", new BakeOptions { Curvature = new() { Range = "loose" } }.Problem());
+        Assert.Contains("curvature", new BakeOptions { Curvature = new() { Source = "photo" } }.Problem());
         Assert.Contains("radius", new BakeOptions { Curvature = new() { Range = "custom", Radius = 0 } }.Problem());
         Assert.Null(new BakeOptions { Maps = ["opacity", "edges", "islands"] }.Problem());
     }

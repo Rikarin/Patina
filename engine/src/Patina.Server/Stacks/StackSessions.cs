@@ -44,7 +44,7 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips, Mes
             full,
             () => {
                 if (!File.Exists(full)) {
-                    throw new FileNotFoundException($"There is no stack at '{full}'.", full);
+                    throw new FileNotFoundException($"There is no document at '{full}'.", full);
                 }
 
                 StackSession session = new(full, SharedFile.ReadAllText(full), table.Wake) {

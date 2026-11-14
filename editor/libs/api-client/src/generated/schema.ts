@@ -1149,7 +1149,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The bakes a project's own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh. */
+    /** The bakes a project's own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh; output puts the maps in a folder of the Server's machine instead of the project's; set, once per texture set, bakes those instead of the ones the project ticks. */
     get: operations['GetProjectBakePlan'];
     put?: never;
     post?: never;
@@ -2672,8 +2672,14 @@ export interface components {
       /** @description For `texture`: the picture to carry across, as a path on the Server's machine. */
       texture: string;
     };
-    /** @description The curvature map's stored range (#148). */
+    /** @description The curvature map's source and stored range (#148). */
     BakeCurvatureOptions: {
+      /**
+       * @description Where the bends come from: `mesh`, the high mesh's own faces where each ray lands; or
+       *     `normal-map`, the bends of the baked normal map, which is the high mesh's detail over the low mesh,
+       *     down to its smallest grooves, and none of the low mesh's own shape.
+       */
+      source: string;
       /**
        * @description `auto`, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or
        *                 `custom`, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a crease, so every
@@ -12708,6 +12714,8 @@ export interface operations {
       query: {
         project: string;
         document?: string;
+        output?: string;
+        set?: string[];
       };
       header?: never;
       path?: never;

@@ -70,4 +70,21 @@ public sealed class ProjectBakePlanApiTests : IAsyncLifetime {
         var missing = await client.GetAsync("/api/v1/library/project/bake/plan?project=nothing", Token);
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
     }
+
+    [Fact]
+    public async Task A_chosen_output_folder_and_named_sets_outrank_the_projects_own_and_an_unknown_set_is_refused() {
+        var elsewhere = Path.Combine(server.Library, "elsewhere");
+        var plan = await client.GetFromJsonAsync<ProjectBakePlan>(
+            $"/api/v1/library/project/bake/plan?project=crate&output={Uri.EscapeDataString(elsewhere)}&set=Lid&set=Box",
+            Token
+        );
+
+        Assert.Equal(
+            [("Lid", Path.Combine(elsewhere, "Lid")), ("Box", Path.Combine(elsewhere, "Box"))],
+            plan!.Requests.Select(static request => (request.Material, request.Output))
+        );
+
+        var refused = await client.GetAsync("/api/v1/library/project/bake/plan?project=crate&set=Strap", Token);
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+    }
 }

@@ -155,7 +155,7 @@ public sealed class StackAnchorFlattenTests {
         Assert.Equal(layers, whole.Children.Select(static layer => layer.Id));
         Assert.True(Assert.Single(editor.Standing, static entry => entry.Capture is not null).Capture!.Backdrop);
 
-        Assert.Equal("Flatten stack", editor.Undo());
+        Assert.Equal("Flatten all layers", editor.Undo());
         Assert.Equal(layers, editor.Set.Layers.Select(static layer => layer.Id));
     }
 

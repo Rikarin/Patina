@@ -57,7 +57,7 @@ class BakeOptions:
             occlusion (BakeOcclusionOptions): The occlusion rays, which ambient occlusion, the bent normal and thickness
                 share.
             thickness (BakeThicknessOptions): The thickness map's own settings.
-            curvature (BakeCurvatureOptions): The curvature map's stored range (#148).
+            curvature (BakeCurvatureOptions): The curvature map's source and stored range (#148).
             edges (BakeEdgeOptions): Which edges the edges map marks, and the band it draws along them (#148).
             borders (BakeBorderOptions): The borders map's width (#121).
             id (BakeIdOptions): What an ID map labels, and how it colours the labels.

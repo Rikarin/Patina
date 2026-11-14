@@ -19,6 +19,8 @@ def _get_kwargs(
     *,
     project: str,
     document: str | Unset = UNSET,
+    output: str | Unset = UNSET,
+    set_: list[str] | Unset = UNSET,
 
 ) -> dict[str, Any]:
     
@@ -30,6 +32,15 @@ def _get_kwargs(
     params["project"] = project
 
     params["document"] = document
+
+    params["output"] = output
+
+    json_set_: list[str] | Unset = UNSET
+    if not isinstance(set_, Unset):
+        json_set_ = set_
+
+
+    params["set"] = json_set_
 
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
@@ -95,14 +106,20 @@ def sync_detailed(
     client: AuthenticatedClient | Client,
     project: str,
     document: str | Unset = UNSET,
+    output: str | Unset = UNSET,
+    set_: list[str] | Unset = UNSET,
 
 ) -> Response[ProblemDetails | ProjectBakePlan]:
     """ The bakes a project's own settings ask for, one per texture set to bake or one for its mesh, ready
-    for POST /jobs/bakes. A document, by its path below the library, chooses the mesh.
+    for POST /jobs/bakes. A document, by its path below the library, chooses the mesh; output puts the
+    maps in a folder of the Server's machine instead of the project's; set, once per texture set, bakes
+    those instead of the ones the project ticks.
 
     Args:
         project (str):
         document (str | Unset):
+        output (str | Unset):
+        set_ (list[str] | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -116,6 +133,8 @@ def sync_detailed(
     kwargs = _get_kwargs(
         project=project,
 document=document,
+output=output,
+set_=set_,
 
     )
 
@@ -130,14 +149,20 @@ def sync(
     client: AuthenticatedClient | Client,
     project: str,
     document: str | Unset = UNSET,
+    output: str | Unset = UNSET,
+    set_: list[str] | Unset = UNSET,
 
 ) -> ProblemDetails | ProjectBakePlan | None:
     """ The bakes a project's own settings ask for, one per texture set to bake or one for its mesh, ready
-    for POST /jobs/bakes. A document, by its path below the library, chooses the mesh.
+    for POST /jobs/bakes. A document, by its path below the library, chooses the mesh; output puts the
+    maps in a folder of the Server's machine instead of the project's; set, once per texture set, bakes
+    those instead of the ones the project ticks.
 
     Args:
         project (str):
         document (str | Unset):
+        output (str | Unset):
+        set_ (list[str] | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -152,6 +177,8 @@ def sync(
         client=client,
 project=project,
 document=document,
+output=output,
+set_=set_,
 
     ).parsed
 
@@ -160,14 +187,20 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
     project: str,
     document: str | Unset = UNSET,
+    output: str | Unset = UNSET,
+    set_: list[str] | Unset = UNSET,
 
 ) -> Response[ProblemDetails | ProjectBakePlan]:
     """ The bakes a project's own settings ask for, one per texture set to bake or one for its mesh, ready
-    for POST /jobs/bakes. A document, by its path below the library, chooses the mesh.
+    for POST /jobs/bakes. A document, by its path below the library, chooses the mesh; output puts the
+    maps in a folder of the Server's machine instead of the project's; set, once per texture set, bakes
+    those instead of the ones the project ticks.
 
     Args:
         project (str):
         document (str | Unset):
+        output (str | Unset):
+        set_ (list[str] | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -181,6 +214,8 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         project=project,
 document=document,
+output=output,
+set_=set_,
 
     )
 
@@ -195,14 +230,20 @@ async def asyncio(
     client: AuthenticatedClient | Client,
     project: str,
     document: str | Unset = UNSET,
+    output: str | Unset = UNSET,
+    set_: list[str] | Unset = UNSET,
 
 ) -> ProblemDetails | ProjectBakePlan | None:
     """ The bakes a project's own settings ask for, one per texture set to bake or one for its mesh, ready
-    for POST /jobs/bakes. A document, by its path below the library, chooses the mesh.
+    for POST /jobs/bakes. A document, by its path below the library, chooses the mesh; output puts the
+    maps in a folder of the Server's machine instead of the project's; set, once per texture set, bakes
+    those instead of the ones the project ticks.
 
     Args:
         project (str):
         document (str | Unset):
+        output (str | Unset):
+        set_ (list[str] | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -217,5 +258,7 @@ async def asyncio(
         client=client,
 project=project,
 document=document,
+output=output,
+set_=set_,
 
     )).parsed

@@ -884,7 +884,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
                 new SetDocumentCommand(
                     this,
                     Document with { Sets = [..Document.Sets.Select(held => held.Name == set ? whole : held)] },
-                    "Flatten stack"
+                    "Flatten all layers"
                 )
             );
         }

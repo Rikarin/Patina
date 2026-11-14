@@ -226,7 +226,7 @@ static class PatinaApi {
     ) {
         if (stacks.Find(request.Stack) is not { } stack) {
             return Refusals.Problem(
-                $"There is no open stack '{request.Stack}'.",
+                $"There is no open document '{request.Stack}'.",
                 StatusCodes.Status404NotFound,
                 Refusals.StackNotOpen,
                 new Dictionary<string, string> { ["id"] = request.Stack }
