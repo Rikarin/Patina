@@ -149,18 +149,35 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
   // drawn since, or the orange in it (#274).
   const unmarked = await quads(true);
   let frames = Number(await viewport.getAttribute('data-frames'));
-  await window.getByTestId('texture-set-wood').hover();
+  const row = window.getByTestId('texture-set-wood');
+  await row.hover();
   await drawn(viewport, 'highlight', ['wood'], frames);
+  /**
+   * The orange, pointing at wood again first if the mark went: the row unmarks when the pointer leaves it, and a list
+   * that moves under a still pointer leaves it (#295). Each time is said, so a run shows whether that happened.
+   */
+  const pointed = async (): Promise<number> => {
+    const held = await marks();
+    if (held.join() !== 'wood') {
+      const hovered = await row.evaluate(element => element.closest('[data-set]')?.matches(':hover') ?? false);
+      console.warn(`The mark was ${held.join() || 'off'} while wood was pointed at (row hovered: ${hovered})`);
+      await row.hover();
+    }
+
+    return quads(true);
+  };
   try {
     await expect
-      .poll(() => quads(true), { timeout: 30_000, message: 'The mark on wood is drawn orange' })
+      .poll(pointed, { timeout: 30_000, message: 'The mark on wood is drawn orange' })
       .toBeGreaterThan(unmarked + 1_000);
   } catch (failure) {
-    // Whether the Worker drew the mark and the app lost it, or the Worker never drew it.
+    // Whether the Worker drew the mark and the app lost it, or the Worker never drew it, and what the Server marks.
     const drawn = await count(await serverPicture(window, join(shots, 'isolate-0-wood-marked-server.png')), true);
-    throw new Error(`${String(failure)}\nThe Server's own picture of the viewport has ${drawn} orange pixels.`, {
-      cause: failure
-    });
+    const held = (await marks()).join() || 'nothing';
+    throw new Error(
+      `${String(failure)}\nThe Server's own picture of the viewport has ${drawn} orange pixels, and it marks ${held}.`,
+      { cause: failure }
+    );
   }
 
   await viewport.screenshot({ path: join(shots, 'isolate-0-wood-marked.png') });
@@ -329,6 +346,14 @@ test('the 2D view draws the UV layout over the map, says where the pointer is, a
 });
 
 /** The Server's address and token, as the app holds them. */
+/** The materials the Server marks on the model now. */
+async function marks(): Promise<string[]> {
+  const { baseUrl, token } = await server();
+  const response = await fetch(`${baseUrl}/api/v1/viewport`, { headers: { Authorization: `Bearer ${token}` } });
+  const state = (await response.json()) as { highlight?: { materials: string[] } | null };
+  return state.highlight?.materials ?? [];
+}
+
 async function server(): Promise<{ baseUrl: string; token: string }> {
   return window.evaluate(() =>
     (

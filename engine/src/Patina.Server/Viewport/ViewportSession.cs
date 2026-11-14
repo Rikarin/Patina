@@ -630,7 +630,7 @@ public sealed partial class ViewportSession(
 
             work = new(
                 mesh,
-                new(stack, also, painted, new Dictionary<string, int>(layouts, StringComparer.Ordinal)),
+                new(stack, also, PaintedShown, new Dictionary<string, int>(layouts, StringComparer.Ordinal)),
                 maps,
                 Shown(),
                 Lens(camera, display.Display),
@@ -716,10 +716,7 @@ public sealed partial class ViewportSession(
 
         var wearing = work.Worn.Stack is null ? null : string.Join('|', [work.Worn.Stack, ..work.Worn.Also]);
         if (wearing != toldStack) {
-            await connection.SendAsync(
-                new() { Type = IpcTypes.ViewportStack, Following = work.Worn.Stack, FollowingAlso = work.Worn.Also },
-                cancellationToken
-            );
+            TellWearing(connection, work.Worn, cancellationToken);
             toldStack = wearing;
         }
 
@@ -818,7 +815,7 @@ public sealed partial class ViewportSession(
                 ? (null, revision)
                 : (new(
                     mesh,
-                    new(stack, also, painted, new Dictionary<string, int>(layouts, StringComparer.Ordinal)),
+                    new(stack, also, PaintedShown, new Dictionary<string, int>(layouts, StringComparer.Ordinal)),
                     maps,
                     Shown(),
                     Lens(camera, display.Display),

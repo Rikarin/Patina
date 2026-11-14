@@ -68,8 +68,9 @@ sealed class WorkerLoop(
                 or IpcTypes.BakeIdColours
                 or IpcTypes.ExportCompress,
             // ⚠ A frame waits for the request being answered, never behind every evaluation and thumbnail sent before
-            // it: on a software GPU those queue for minutes, and the viewport stopped answering a change (#274).
-            Urgent = static type => type.StartsWith("viewport.", StringComparison.Ordinal)
+            // it: on a software GPU those queue for minutes, and the viewport stopped answering a change (#274). What
+            // wears a stack keeps its place behind the stack's own requests (#295).
+            Urgent = IpcTypes.Urgent
         };
         await using (connection) {
             connection.Start();
@@ -116,6 +117,7 @@ sealed class WorkerLoop(
                     or IpcTypes.GraphEvaluate
                     or IpcTypes.GraphImage
                     or IpcTypes.GraphHistogram
+                    or IpcTypes.GraphSample
                     or IpcTypes.GraphClose
                     or IpcTypes.StackLoad
                     or IpcTypes.StackSync
@@ -313,6 +315,7 @@ sealed class WorkerLoop(
             IpcTypes.GraphEvaluate => graphs.Evaluate(request),
             IpcTypes.GraphImage => graphs.Image(request),
             IpcTypes.GraphHistogram => graphs.Histogram(request),
+            IpcTypes.GraphSample => graphs.Sample(request),
             IpcTypes.GraphClose => graphs.Close(request),
             IpcTypes.StackLoad => stacks.Load(request),
             IpcTypes.StackSync => stacks.Sync(request),

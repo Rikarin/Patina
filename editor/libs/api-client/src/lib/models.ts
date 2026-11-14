@@ -72,6 +72,7 @@ export type GraphCompound = components['schemas']['GraphCompound'];
 export type GraphDiagnostic = components['schemas']['GraphDiagnostic'];
 export type GraphPreview = components['schemas']['GraphPreview'];
 export type GraphHistogram = components['schemas']['GraphHistogram'];
+export type GraphSample = components['schemas']['GraphSample'];
 export type GraphNodeTime = components['schemas']['GraphNodeTime'];
 export type GraphHistoryState = components['schemas']['GraphHistoryState'];
 export type GraphEvaluation = components['schemas']['GraphEvaluation'];

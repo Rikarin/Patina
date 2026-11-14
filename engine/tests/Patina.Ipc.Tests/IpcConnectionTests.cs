@@ -204,6 +204,56 @@ public sealed class IpcConnectionTests : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     The Worker's own lane (#295): a frame and what it needs go ahead, but wearing a stack keeps its place behind
+    ///     the stack's load and sync sent before it, or the viewport wore a stack the Worker did not hold yet.
+    /// </summary>
+    [Fact]
+    public async Task Wearing_a_stack_waits_for_the_stack_and_a_frame_does_not() {
+        var release = new TaskCompletionSource();
+        var started = new TaskCompletionSource();
+        List<string> answered = [];
+        var (left, right) = await ConnectAsync(
+            Reply,
+            async (request, _) => {
+                if (request.Type == IpcTypes.StackEvaluate) {
+                    started.TrySetResult();
+                    await release.Task;
+                }
+
+                lock (answered) {
+                    answered.Add(request.Type);
+                }
+
+                return IpcMessage.Ok(request.Id);
+            },
+            static type => type == IpcTypes.Health,
+            urgent: IpcTypes.Urgent
+        );
+        await using (left) {
+            await using (right) {
+                var busy = left.SendAsync(new() { Type = IpcTypes.StackEvaluate }, Token);
+                await started.Task.WaitAsync(TimeSpan.FromSeconds(5), Token);
+                string[] sent = [
+                    IpcTypes.StackLoad, IpcTypes.StackSync, IpcTypes.ViewportStack, IpcTypes.ViewportDisplay,
+                    IpcTypes.ViewportCamera, IpcTypes.ViewportRender
+                ];
+                var rest = sent.Select(type => left.SendAsync(new() { Type = type }, Token)).ToArray();
+                await Task.Delay(100, Token);
+                release.SetResult();
+                await Task.WhenAll([busy, ..rest]).WaitAsync(TimeSpan.FromSeconds(5), Token);
+
+                Assert.Equal(
+                    [
+                        IpcTypes.StackEvaluate, IpcTypes.ViewportDisplay, IpcTypes.ViewportCamera,
+                        IpcTypes.ViewportRender, IpcTypes.StackLoad, IpcTypes.StackSync, IpcTypes.ViewportStack
+                    ],
+                    answered
+                );
+            }
+        }
+    }
+
     [Fact]
     public void Device_work_that_stops_moving_is_hung_and_a_beat_or_idle_clears_it() {
         var now = TimeSpan.FromHours(1);

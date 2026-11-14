@@ -44,3 +44,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0044](0044-files-at-their-maps-depth.md): accepted: `png`, `tiff` and `exr` files are as deep as the maps they read, a built map says its depth, and a set with a float channel computes at 32 bits.
 - [0045](0045-tangent-stamps.md): accepted: a stamp laid on the surface is weighed on the plane touching the surface under its middle, the camera's right and up laid on it.
 - [0046](0046-quick-mask-across-sets.md): proposed: a model's quick mask strokes through a view are kept by the Server and laid in every set's quick mask, never taken out of a journal; undo, clear and show across sets wait on the owner's choice.
+- [0047](0047-worker-lanes.md): accepted: what goes ahead of a Worker's queue never wears a stack, and a frame does not wait for a wear.

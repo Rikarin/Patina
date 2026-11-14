@@ -11,6 +11,7 @@ import {
   type GraphInterfacePort,
   type GraphNodeType,
   type GraphPresetState,
+  type GraphSample,
   type GraphSelection,
   type GraphSettingDefinition,
   type GraphState,
@@ -802,6 +803,25 @@ export class GraphStore {
     } catch (error) {
       this.refused(error);
       return null;
+    }
+  }
+
+  /**
+   * One texel of a node's picture as the graph stored it, at the picture's own precision (#184), or null when the
+   * Server cannot read it now. A place is given across and down the picture, 0 to 1.
+   */
+  async sample(node: number, port: string, u: number, v: number): Promise<GraphSample | null> {
+    const id = this.mutableDocument()?.id;
+    if (id === undefined) {
+      return null;
+    }
+
+    try {
+      return unwrap(
+        await this.api().POST('/api/v1/graphs/{id}/sample', { params: { path: { id } }, body: { node, port, u, v } })
+      );
+    } catch {
+      return null; // the 8-bit readout stays, which is still true to a byte
     }
   }
 

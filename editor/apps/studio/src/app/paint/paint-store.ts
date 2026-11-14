@@ -2194,7 +2194,19 @@ export class PaintStore {
     }
   }
 
+  /**
+   * Takes a state the Server sent as the stack's. ⚠ One taken before a state already adopted for the same session is
+   * dropped (#295), whichever request it answers: the Server takes its picture of the stack first and may then wait, so
+   * an open, a refresh and a reopen can be answered in any order, and on a slow GPU an older one arrived last and undid
+   * newer edits on screen.
+   */
   private adopt(state: StackState): void {
+    const held = this.adopted;
+    if (held !== null && held.id === state.id && state.sequence < held.sequence) {
+      return;
+    }
+
+    this.adopted = { id: state.id, sequence: state.sequence };
     this.state.set(state);
     learnChannels(state.channels);
     this.sequence = state.sequence;
@@ -2393,6 +2405,9 @@ export class PaintStore {
     }
   }
 
+  /** The session and the event sequence of the newest state adopted, which an older reply cannot replace. */
+  private adopted: { id: string; sequence: number } | null = null;
+
   /** How many refreshes were asked for, and the newest whose reply was taken. */
   private refreshesAsked = 0;
   private refreshTaken = 0;
@@ -2442,6 +2457,7 @@ export class PaintStore {
     }
 
     this.failure.set(null);
+    this.adopted = null; // a new Server counts its events from the start again
     if (lost.history.dirty) {
       this.notice.set(RestartedNotice);
       this.recovery.ask(lost.path); // what autosave kept of the edits is offered back (#162)

@@ -6572,6 +6572,77 @@
         }
       }
     },
+    "/api/v1/graphs/{id}/sample": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Reads one texel of a node\u0027s picture, at the size the graph computes it, as the graph stored it: its lanes at the precision of its format and unclamped.",
+        "operationId": "SampleGraphPicture",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphSampleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphSample"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/graphs/{id}/undo": {
       "post": {
         "tags": [
@@ -15257,6 +15328,94 @@
           }
         },
         "description": "The body of \u0060POST /api/v1/graphs/{id}/relink\u0060: a picture the graph reads, and the file it is now."
+      },
+      "GraphSample": {
+        "required": [
+          "node",
+          "port",
+          "x",
+          "y",
+          "width",
+          "height",
+          "format",
+          "values"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "integer",
+            "description": "The node.",
+            "format": "int32"
+          },
+          "port": {
+            "type": "string",
+            "description": "Its output port, or the usage of an Output node."
+          },
+          "x": {
+            "type": "integer",
+            "description": "The texel\u0027s column.",
+            "format": "int32"
+          },
+          "y": {
+            "type": "integer",
+            "description": "Its row, from the top.",
+            "format": "int32"
+          },
+          "width": {
+            "type": "integer",
+            "description": "The picture\u0027s width, which is the size the graph computes it.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height.",
+            "format": "int32"
+          },
+          "format": {
+            "type": "string",
+            "description": "How the picture is stored: \u0060R8\u0060, \u0060Rg8\u0060, \u0060Rgba8\u0060, \u0060R16Float\u0060, \u0060Rgba16Float\u0060,\n\u0060R32Float\u0060 or \u0060Rgba32Float\u0060."
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "description": "The texel\u0027s lanes as stored: one for a grey, two for a normal\u0027s, four for a colour."
+          }
+        },
+        "description": "One texel of a node\u0027s picture as the graph stored it, at the size the graph computes it: its numbers at the\nprecision of its format, unclamped, where a preview\u0027s PNG holds eight bits of each lane between 0 and 1."
+      },
+      "GraphSampleRequest": {
+        "required": [
+          "node",
+          "port",
+          "u",
+          "v"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "integer",
+            "description": "The node.",
+            "format": "int32"
+          },
+          "port": {
+            "type": "string",
+            "description": "Its output port, or the usage of an Output node."
+          },
+          "u": {
+            "type": "number",
+            "description": "Across the picture, 0 at its left edge and 1 at its right.",
+            "format": "double"
+          },
+          "v": {
+            "type": "number",
+            "description": "Down it, 0 at its top and 1 at its bottom.",
+            "format": "double"
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/graphs/{id}/sample\u0060: a place on one node\u0027s picture (#184)."
       },
       "GraphSelection": {
         "required": [

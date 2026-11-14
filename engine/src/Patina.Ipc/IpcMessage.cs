@@ -7,7 +7,7 @@ namespace Patina.Ipc;
 ///     Message types. Every message other than <see cref="Ok" /> and <see cref="Error" /> is a request, which gets one
 ///     of those two as its reply with the same <see cref="IpcMessage.Id" />. Either side may send requests.
 /// </summary>
-public static class IpcTypes {
+public static partial class IpcTypes {
     /// <summary>Worker to Server, first on a connection: who it is (<see cref="IpcMessage.Worker" />).</summary>
     public const string Hello = "hello";
 
@@ -342,6 +342,12 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to graph.histogram.</summary>
     public GraphLevels? GraphLevels { get; set; }
+
+    /// <summary>graph.sample: which picture, and where on it.</summary>
+    public GraphSampleAsk? GraphSample { get; set; }
+
+    /// <summary>The reply to graph.sample.</summary>
+    public GraphSampled? GraphSampled { get; set; }
 
     /// <summary>The reply to graph.evaluate.</summary>
     public GraphResult? GraphResult { get; set; }

@@ -1,3 +1,4 @@
+using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Server.Stacks;
 using Vixen.NodeGraph;
@@ -68,6 +69,24 @@ public sealed class GraphEvaluator(
             cancellationToken
         );
         return reply.GraphLevels!;
+    }
+
+    /// <summary>Has the Worker read one texel of a node's picture, as the graph stored it (#184).</summary>
+    /// <exception cref="IpcException">The Worker holds no such picture.</exception>
+    /// <exception cref="TimeoutException">No Worker came, or it did not answer.</exception>
+    public async Task<GraphSampled> SampleAsync(
+        GraphSession session,
+        GraphSampleRequest request,
+        CancellationToken cancellationToken
+    ) {
+        var reply = await AskAsync(
+            new() {
+                Type = IpcTypes.GraphSample,
+                GraphSample = new(session.Id, request.Node, request.Port, request.U, request.V)
+            },
+            cancellationToken
+        );
+        return reply.GraphSampled!;
     }
 
     /// <summary>Sends one question to the Worker, waiting a while for one to come.</summary>
