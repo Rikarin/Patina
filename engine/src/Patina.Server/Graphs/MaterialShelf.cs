@@ -70,6 +70,7 @@ public static class MaterialShelf {
             )
         ];
         found.AddRange(Starters());
+        found.AddRange(ShelfCompounds.All);
         found.AddRange(Packaged(library));
         if (project is not null) {
             found.AddRange(
@@ -348,9 +349,13 @@ public static class MaterialShelf {
     ///     Publishes a material graph into a project, as the compound a graph fill reads, so that a saved edit reaches
     ///     every layer that uses it. Republishing replaces it.
     /// </summary>
-    /// <returns>The compound's node type.</returns>
+    /// <returns>The compound's node type, which for a compound the shelf ships is its own (#122).</returns>
     /// <exception cref="StackEditRefusedException">The graph has no output a layer could use.</exception>
     public static string Publish(OpenLibrary library, string project, string source) {
+        if (ShelfCompounds.NodeOf(source) is { } shipped) {
+            return shipped;
+        }
+
         source = source.StartsWith(StarterPrefix, StringComparison.Ordinal) ? Bring(library, project, source) : source;
         var full = Path.GetFullPath(source, library.RootPath);
         var root = Path.GetFullPath(library.RootPath) + Path.DirectorySeparatorChar;
