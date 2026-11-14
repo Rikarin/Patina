@@ -124,8 +124,8 @@ sealed partial class StackHost {
         /// <summary>
         ///     A canvas made the size a stroke paints at (#19). Larger is exact and loses nothing, and is done only to
         ///     a canvas no stroke of this session has begun on, since a stroke's undo holds the pixels it painted over.
-        ///     A canvas larger than its set keeps its size and is sampled at the set's, so it is never made smaller; one of
-        ///     another shape arrives with the size of the set's shape that holds it, which only enlarges it.
+        ///     A canvas larger than its set keeps its size and is sampled at the set's, so it is never made smaller;
+        ///     one of another shape arrives with the size of the set's shape that holds it, which only enlarges it.
         /// </summary>
         /// <exception cref="IpcException">The canvas cannot be painted at that size here.</exception>
         PaintCanvas Resized(string file, string name, PaintCanvas canvas, (int Width, int Height) side) {
@@ -152,10 +152,10 @@ sealed partial class StackHost {
         }
 
         /// <summary>
-        ///     A canvas whose channel the stroke paints at its width (#19): a channel narrower is widened, exactly, into a
-        ///     new canvas sharing the other channels, as <see cref="Resized" /> enlarges one, and a new channel is made at
-        ///     it. One wider keeps its width, so no paint is rounded. The Server asks to widen only a canvas no stroke of
-        ///     this session began on, since a stroke's undo holds the image it painted over.
+        ///     A canvas whose channel the stroke paints at its width (#19): a channel narrower is widened, exactly,
+        ///     into a new canvas sharing the other channels, as <see cref="Resized" /> enlarges one, and a new channel
+        ///     is made at it. One wider keeps its width, so no paint is rounded. The Server asks to widen only a canvas
+        ///     no stroke of this session began on, since a stroke's undo holds the image it painted over.
         /// </summary>
         /// <exception cref="IpcException">A canvas a stroke of this session began on was asked to widen.</exception>
         PaintCanvas Widened(string file, PaintCanvas canvas, StackPaintPart part) {

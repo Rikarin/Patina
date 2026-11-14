@@ -4,11 +4,11 @@ using Vixen.Texturing.Painting;
 namespace Patina.Worker;
 
 /// <summary>
-///     Canvases one session paints that another reads (#108). An instance in one texture set of a paint layer in another
-///     reads the source's canvas, and each session holds its own store of canvases, so it read the source's file and
-///     showed only what was saved. A session now reads the canvas another session of this Worker has painted, the same
-///     object, so its tiles repair as the source's strokes land and an undo there is an undo here. What it borrowed goes
-///     back to the file when the painting session closes.
+///     Canvases one session paints that another reads (#108). An instance in one texture set of a paint layer in
+///     another reads the source's canvas, and each session holds its own store of canvases, so it read the source's
+///     file and showed only what was saved. A session now reads the canvas another session of this Worker has painted,
+///     the same object, so its tiles repair as the source's strokes land and an undo there is an undo here. What it
+///     borrowed goes back to the file when the painting session closes.
 /// </summary>
 sealed partial class StackHost {
     /// <summary>What every other session holds painted, which a session reads in place of the file.</summary>
@@ -16,15 +16,17 @@ sealed partial class StackHost {
         Held.Where(session => !ReferenceEquals(session, asking)).SelectMany(static session => session.Painted());
 
     internal sealed partial class Session {
-        /// <summary>The canvases this session reads from another, by file, as they were lent at its last prepare.</summary>
+        /// <summary>
+        ///     The canvases this session reads from another, by file, as they were lent at its last prepare.
+        /// </summary>
         readonly Dictionary<string, PaintCanvas> borrowed = new(StringComparer.Ordinal);
 
         /// <summary>What the other sessions of this Worker hold painted, which <see cref="Borrow" /> reads.</summary>
         public Func<IEnumerable<(string File, PaintCanvas Canvas)>> Elsewhere { get; set; } = static () => [];
 
         /// <summary>
-        ///     The canvases this session has painted, copied or made, with the file each will be saved to: what a session
-        ///     of another texture set reads in place of the file (#108). A quick mask is this session's alone.
+        ///     The canvases this session has painted, copied or made, with the file each will be saved to: what a
+        ///     session of another texture set reads in place of the file (#108). A quick mask is this session's alone.
         /// </summary>
         public IEnumerable<(string File, PaintCanvas Canvas)> Painted() {
             foreach (var name in touched.Where(static name => !IsQuickMask(name))) {

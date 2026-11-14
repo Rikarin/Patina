@@ -75,7 +75,9 @@ public sealed class StackJournalEntry(
     /// </summary>
     public string? Format { get; init; }
 
-    /// <summary>The colour in full, four numbers, for a stroke at a width the packed colour would round; or null.</summary>
+    /// <summary>
+    ///     The colour in full, four numbers, for a stroke at a width the packed colour would round; or null.
+    /// </summary>
     public IReadOnlyList<float>? Lanes { get; init; }
 
     /// <summary>

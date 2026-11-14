@@ -75,8 +75,21 @@ public sealed class StackCanvasSidesTests : IDisposable {
         var sides = new StackCanvasSides(folder.FullName);
         var paint = Canvas(2048, 2048);
         sides.Check("Paint", paint, 2048, 2048);
-        sides.Stood([new(1, new("s", "Paint", "baseColor", new(4f), [1f, 1f, 1f, 1f], []), paint, "baseColor", 0u,
-            "", null) { Width = 2048, Height = 2048 }], 2048, 2048);
+        sides.Stood(
+            [
+                new(
+                    1,
+                    new("s", "Paint", "baseColor", new(4f), [1f, 1f, 1f, 1f], []),
+                    paint,
+                    "baseColor",
+                    0u,
+                    "",
+                    null
+                ) { Width = 2048, Height = 2048 }
+            ],
+            2048,
+            2048
+        );
 
         var refused = Assert.Throws<StackEditRefusedException>(() => sides.Check("Paint", paint, 2048, 512));
 

@@ -257,7 +257,11 @@ public sealed partial class StackProcessTests {
         var flat = new StackStroke("flat", "paint", "baseColor", new(10f, 0.3f), Red, Line(300, 100, 5), true);
         await EditAsync(again.Id, deadline.Token, flat);
         await EditAsync(again.Id, deadline.Token, flat with { Stamps = Line(330, 100, 5), Open = false });
-        await EditAsync(again.Id, deadline.Token, flat with { Stroke = "more", Stamps = Line(300, 200, 5), Open = false });
+        await EditAsync(
+            again.Id,
+            deadline.Token,
+            flat with { Stroke = "more", Stamps = Line(300, 200, 5), Open = false }
+        );
 
         var shown = await PixelsAsync(again.Id, false, deadline.Token);
         Assert.NotEqual(Digest(before, "baseColor"), Digest(shown, "baseColor"));

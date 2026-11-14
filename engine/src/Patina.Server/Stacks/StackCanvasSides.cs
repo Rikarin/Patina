@@ -1,6 +1,7 @@
 using Patina.Contracts;
 using Patina.Library;
 using System.Globalization;
+using Vixen.Texturing.Layers;
 using Vixen.Texturing.Painting;
 
 namespace Patina.Server.Stacks;
@@ -29,12 +30,20 @@ public sealed class StackCanvasSides(string folder) {
     ///     the canvas, whose undo holds the pixels it painted over, which keeps the width it has until it is opened
     ///     again. A Worker widens a channel to it, exactly. Call after <see cref="Check" />, which reads the canvas.
     /// </summary>
+    /// <param name="layer">The layer painted, or null for a quick mask, which is eight bits a lane.</param>
     /// <param name="paint">The canvas, beside the stack.</param>
     /// <param name="usage">The channel.</param>
-    /// <param name="asked">The width the set asks.</param>
-    public PaintTexelFormat Format(string paint, string usage, PaintTexelFormat asked) {
+    /// <param name="set">The set, whose channel says the width it asks; a mask's is eight bits a lane.</param>
+    /// <returns>The width's name, or null for eight bits a lane.</returns>
+    public string? Depth(LayerAsset? layer, string paint, string usage, TextureSetAsset set) {
+        if (layer is null) {
+            return null;
+        }
+
+        var asked = set.Channels.Find(channel => channel.Usage == usage)?.Format ?? PaintTexelFormat.Rgba8;
         var held = formats.GetValueOrDefault((paint, usage));
-        return PaintTexelFormats.Holds(held, asked) || stroked.Contains(paint) ? held : asked;
+        var depth = PaintTexelFormats.Holds(held, asked) || stroked.Contains(paint) ? held : asked;
+        return depth == PaintTexelFormat.Rgba8 ? null : depth.ToString();
     }
 
     /// <summary>
@@ -71,9 +80,9 @@ public sealed class StackCanvasSides(string folder) {
         };
         if (Math.Max(target.Width, target.Height) > TextureSizes.Largest) {
             throw new StackEditRefusedException(
-                $"'{layer}' holds {values["held"]} texels of another shape than the texture set's {values["size"]}, and "
-                + $"painting it at the set's shape would make it {values["target"]}, past the largest side. Set the size "
-                + "back to that shape to paint it.",
+                $"'{layer}' holds {values["held"]} texels of another shape than the texture set's "
+                + $"{values["size"]}, and painting it at the set's shape would make it {values["target"]}, past the "
+                + "largest side. Set the size back to that shape to paint it.",
                 Api.Refusals.CanvasLarger,
                 values
             );

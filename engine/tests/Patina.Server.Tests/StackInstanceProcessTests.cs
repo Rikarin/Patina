@@ -37,8 +37,8 @@ public sealed partial class StackProcessTests {
     /// <summary>
     ///     An instance of a paint layer in another set shows the source's strokes before they are saved (#108): the
     ///     Worker's session of the instance's set reads the canvas the source's session paints. They stay through a
-    ///     Worker lost and replaced, which replays the source's strokes, and go with an undo there. Before, the instance
-    ///     read the source's file and showed only what was saved.
+    ///     Worker lost and replaced, which replays the source's strokes, and go with an undo there. Before, the
+    ///     instance read the source's file and showed only what was saved.
     /// </summary>
     [Fact]
     public async Task Unsaved_strokes_on_a_source_show_in_its_instance_in_another_texture_set() {
@@ -94,7 +94,9 @@ public sealed partial class StackProcessTests {
     async Task<string> BaseColorPreviewAsync(string id, CancellationToken token) =>
         (await StateAsync(id, token)).Previews.Single(static preview => preview.Usage == "baseColor").Hash;
 
-    /// <summary>The set's published base color once it is another than <paramref name="from" />, or after a while.</summary>
+    /// <summary>
+    ///     The set's published base color once it is another than <paramref name="from" />, or after a while.
+    /// </summary>
     async Task<string> PreviewMovedAsync(string id, string from, CancellationToken token) {
         for (var tries = 0; tries < 100; tries++) {
             if (await BaseColorPreviewAsync(id, token) is var hash && hash != from) {

@@ -13,7 +13,8 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     A height channel at 16-bit float keeps a value eight bits round away: the stroke lays 0.3 where eight bits
-    ///     would hold 77 of 255, the file holds the channel at its width, and a Worker lost and replaced paints the same.
+    ///     would hold 77 of 255, the file holds the channel at its width, and a Worker lost and replaced paints the
+    ///     same.
     /// </summary>
     [Fact]
     public async Task A_channel_at_sixteen_bits_keeps_what_eight_bits_round_away() {
@@ -25,10 +26,16 @@ public sealed partial class StackProcessTests {
             new StackAddChannel("height"),
             new StackSetChannelFormat("height", "Rgba16Float")
         );
-        var channel = (await StateAsync(state.Id, deadline.Token)).Channels.Single(static held => held.Usage == "height");
+        var channels = (await StateAsync(state.Id, deadline.Token)).Channels;
+        var channel = channels.Single(static held => held.Usage == "height");
         Assert.Equal("Rgba16Float", channel.Format);
 
-        await EditAsync(state.Id, deadline.Token, Dab("deep", "height", 200f, 200f), Dab("flat", "baseColor", 400f, 400f));
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            Dab("deep", "height", 200f, 200f),
+            Dab("flat", "baseColor", 400f, 400f)
+        );
         var painted = Digest(await PixelsAsync(state.Id, false, deadline.Token), "height");
 
         worker.Kill();
@@ -80,6 +87,8 @@ public sealed partial class StackProcessTests {
         using var deadline = Deadline(120);
         var (_, state) = await StartAsync("Depthless.vxlayers", deadline.Token);
 
-        await RefusedAsync(state.Id, "channel-format-unknown", new StackSetChannelFormat("baseColor", "Rgb10"), deadline.Token);
+        var none = new StackSetChannelFormat("baseColor", "Rgb10");
+
+        await RefusedAsync(state.Id, "channel-format-unknown", none, deadline.Token);
     }
 }

@@ -106,7 +106,9 @@ static class StackSetEdits {
         }
 
         var changed = chosen with {
-            Channels = [..chosen.Channels.Select(channel => channel == held ? channel with { Format = width } : channel)]
+            Channels = [
+                ..chosen.Channels.Select(channel => channel == held ? channel with { Format = width } : channel)
+            ]
         };
         return editor.Replaced(
             editor.Document with { Sets = [..editor.Document.Sets.Select(set => set == chosen ? changed : set)] },

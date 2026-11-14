@@ -584,7 +584,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         /// </summary>
         public IReadOnlyList<string> Prepare(bool full = false) {
             var divided = full ? 1 : proxy;
-            // Before the early return: another session's strokes since are in the canvas it lends, not in a plan (#108).
+            // Before the early return: another session's strokes since are in the canvas it lends, not in a plan
+            // (#108).
             Borrow();
             if (!stale && Run.Plan is not null && divided == prepared) {
                 Compiled = false;

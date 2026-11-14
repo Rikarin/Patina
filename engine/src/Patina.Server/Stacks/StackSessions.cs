@@ -126,7 +126,9 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
         }
     }
 
-    /// <summary>Closes a session, and an instance of its layers in another set reads the saved canvases again (#108).</summary>
+    /// <summary>
+    ///     Closes a session, and an instance of its layers in another set reads the saved canvases again (#108).
+    /// </summary>
     /// <param name="session">The session.</param>
     public void Close(StackSession session) {
         table.Close(session);
