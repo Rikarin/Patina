@@ -8,7 +8,10 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from typing import cast
 
+if TYPE_CHECKING:
+  from ..models.platform_check_limits import PlatformCheckLimits
 
 
 
@@ -32,8 +35,12 @@ class ProjectCheckSettings:
                 library's. Default: 0.0.
             density_tolerance (float): How far a set's density may stray from it before it is flagged, as a share: 0.25 is a
                 quarter. Default: 0.25.
+            platforms (list[PlatformCheckLimits]): Limits of their own for the platforms the project ships to, each named by
+                the export preset that writes for
+                it. A set measured with that preset is held to them in place of the project's.
      """
 
+    platforms: list[PlatformCheckLimits]
     memory_budget: float = 0.0
     max_size: int = 0
     texel_density: float = 0.0
@@ -45,6 +52,7 @@ class ProjectCheckSettings:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.platform_check_limits import PlatformCheckLimits # noqa: PLC0415
         memory_budget = self.memory_budget
 
         max_size = self.max_size
@@ -52,6 +60,13 @@ class ProjectCheckSettings:
         texel_density = self.texel_density
 
         density_tolerance = self.density_tolerance
+
+        platforms = []
+        for platforms_item_data in self.platforms:
+            platforms_item = platforms_item_data.to_dict()
+            platforms.append(platforms_item)
+
+
 
 
         field_dict: dict[str, Any] = {}
@@ -61,6 +76,7 @@ class ProjectCheckSettings:
             "maxSize": max_size,
             "texelDensity": texel_density,
             "densityTolerance": density_tolerance,
+            "platforms": platforms,
         })
 
         return field_dict
@@ -69,6 +85,7 @@ class ProjectCheckSettings:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.platform_check_limits import PlatformCheckLimits # noqa: PLC0415
         d = dict(src_dict)
         memory_budget = d.pop("memoryBudget")
 
@@ -78,11 +95,22 @@ class ProjectCheckSettings:
 
         density_tolerance = d.pop("densityTolerance")
 
+        platforms = []
+        _platforms = d.pop("platforms")
+        for platforms_item_data in (_platforms):
+            platforms_item = PlatformCheckLimits.from_dict(platforms_item_data)
+
+
+
+            platforms.append(platforms_item)
+
+
         project_check_settings = cls(
             memory_budget=memory_budget,
             max_size=max_size,
             texel_density=texel_density,
             density_tolerance=density_tolerance,
+            platforms=platforms,
         )
 
 

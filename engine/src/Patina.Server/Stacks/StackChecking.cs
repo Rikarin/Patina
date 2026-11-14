@@ -42,20 +42,25 @@ public static class StackChecking {
         }
     }
 
-    /// <summary>The density a project holds its sets to: its own, or the library's.</summary>
-    public static double TargetDensity(ProjectContents? project, double library) =>
-        project?.Checks?.TexelDensity is > 0 and var own ? own : library;
+    /// <summary>The density limits hold sets to: their own, or the library's.</summary>
+    public static double TargetDensity(ProjectCheckSettings? limits, double library) =>
+        limits?.TexelDensity is > 0 and var own ? own : library;
 
     /// <summary>
-    ///     What the texel density view measures a worn stack against: its project's density, and its maps' side for a
-    ///     material whose own size the Worker cannot read.
+    ///     What the texel density view measures a worn stack against: its project's density on the platform its preset
+    ///     writes for, and its maps' side for a material whose own size the Worker cannot read.
     /// </summary>
     public static (double Target, int Resolution) Density(OpenLibrary? library, StackSession stack) {
         ArgumentNullException.ThrowIfNull(stack);
         var state = stack.State;
-        return (TargetDensity(ProjectOf(library, stack.Path), library?.Describe().TexelDensity ?? 0),
-            Math.Max(state.Width, state.Height));
+        var project = ProjectOf(library, stack.Path);
+        var limits = project?.Checks?.For(PresetOf(project, library)?.Id);
+        return (TargetDensity(limits, library?.Describe().TexelDensity ?? 0), Math.Max(state.Width, state.Height));
     }
+
+    /// <summary>A stack's file as its project lists it: below the library, with forward slashes.</summary>
+    public static string DocumentOf(OpenLibrary? library, string stackPath) =>
+        library is null ? stackPath : Path.GetRelativePath(library.RootPath, stackPath).Replace('\\', '/');
 
     /// <summary>
     ///     The preset a project exports with: the one it last chose, else the library's default, else the factory's
@@ -69,26 +74,40 @@ public static class StackChecking {
             : found.Default(library?.Document.DefaultPreset);
     }
 
-    /// <summary>Judges what the Worker measured.</summary>
+    /// <summary>
+    ///     The preset a check measures with: the one a client asked for, which is a platform the project ships to, or
+    ///     else the project's own.
+    /// </summary>
+    /// <exception cref="KeyNotFoundException">No preset of the asked id is in the library or the project.</exception>
+    public static ExportPreset? PresetOf(ProjectContents? project, OpenLibrary? library, string? asked) {
+        if (asked is null) {
+            return PresetOf(project, library);
+        }
+
+        var root = library?.RootPath;
+        return ExportPresetCatalog.Read(root, root is null ? null : project?.Path).Find(asked)
+            ?? throw new KeyNotFoundException($"There is no preset '{asked}' in this library.");
+    }
+
+    /// <summary>Judges what the Worker measured, or what the Server knows of a set nobody has open.</summary>
     /// <param name="state">The stack as it stands.</param>
-    /// <param name="measured">What the Worker measured of it.</param>
+    /// <param name="measured">What the Worker measured of it, or null when it was not asked.</param>
     /// <param name="project">Its project, or null for a stack beside none.</param>
     /// <param name="libraryDensity">The library's texel density, in texels per unit.</param>
     /// <param name="preset">The export preset, or null when the library has none.</param>
     public static StackChecks Judge(
         StackState state,
-        StackMeasured measured,
+        StackMeasured? measured,
         ProjectContents? project,
         double libraryDensity,
         ExportPreset? preset
     ) {
         ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(measured);
-        var settings = project?.Checks ?? new ProjectCheckSettings();
+        var settings = (project?.Checks ?? new ProjectCheckSettings()).For(preset?.Id);
         var name = state.Set.Length > 0 ? $"Texture set '{state.Set}'" : $"'{state.Name}'";
-        var (width, height) = (measured.Width, measured.Height);
-        var target = TargetDensity(project, libraryDensity);
-        var density = measured.Layout is { } layout ? LayoutCheck.Density(layout, Math.Max(width, height)) : 0;
+        var (width, height) = measured is null ? (state.Width, state.Height) : (measured.Width, measured.Height);
+        var target = TargetDensity(settings, libraryDensity);
+        var density = measured?.Layout is { } layout ? LayoutCheck.Density(layout, Math.Max(width, height)) : 0;
         var naming = new NamingValues(project?.Name ?? state.Name, preset?.Id ?? string.Empty, state.Set);
         var written = preset is null ? null : Written(preset, project?.Export).For(state.Set);
         var files = written is null ? [] : ExportFileChecking.Files(written, naming, Maps(state), width, height);
@@ -105,12 +124,13 @@ public static class StackChecking {
         }
 
         problems.AddRange(Density(density, target, settings.DensityTolerance, name));
-        if (measured.Layout is { } measures) {
+        if (measured?.Layout is { } measures) {
             problems.AddRange(Layout(measures, name));
         }
 
         problems.AddRange(
-            measured.Maps.Where(static measure => measure.Share >= TexelShare).Select(measure => Values(measure, name))
+            (measured?.Maps ?? []).Where(static measure => measure.Share >= TexelShare)
+            .Select(measure => Values(measure, name))
         );
         return new(
             state.Id,
@@ -123,7 +143,9 @@ public static class StackChecking {
             budget,
             preset?.Name ?? string.Empty,
             problems,
-            files
+            files,
+            state.Path,
+            measured is not null
         );
     }
 

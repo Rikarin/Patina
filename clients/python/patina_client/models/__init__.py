@@ -223,12 +223,14 @@ from .package_manifest import PackageManifest
 from .package_plan import PackagePlan
 from .package_published import PackagePublished
 from .package_request import PackageRequest
+from .platform_check_limits import PlatformCheckLimits
 from .preview_save_request import PreviewSaveRequest
 from .problem_details import ProblemDetails
 from .project_bake_plan import ProjectBakePlan
 from .project_bake_request import ProjectBakeRequest
 from .project_bake_settings import ProjectBakeSettings
 from .project_check_settings import ProjectCheckSettings
+from .project_checks import ProjectChecks
 from .project_checks_request import ProjectChecksRequest
 from .project_comparison import ProjectComparison
 from .project_contents import ProjectContents
@@ -674,11 +676,13 @@ __all__ = (
     "PackagePlan",
     "PackagePublished",
     "PackageRequest",
+    "PlatformCheckLimits",
     "PreviewSaveRequest",
     "ProblemDetails",
     "ProjectBakePlan",
     "ProjectBakeRequest",
     "ProjectBakeSettings",
+    "ProjectChecks",
     "ProjectCheckSettings",
     "ProjectChecksRequest",
     "ProjectComparison",

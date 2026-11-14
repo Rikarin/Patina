@@ -77,6 +77,7 @@ static class LibraryTreeEndpoints {
             );
 
         library.MapProjectBlocks();
+        library.MapProjectChecks();
 
         library.MapPatch("/project/settings", ProjectSettingsEndpoint.SetAsync)
             .Described(

@@ -62,8 +62,9 @@ static class ProjectBlockEndpoints {
             .Described(
                 "SetProjectChecks",
                 "Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory "
-                + "budget, a size limit and a texel density, which GET /stacks/{id}/checks and the texel density view "
-                + "measure against."
+                + "budget, a size limit and a texel density, and limits of their own for each platform it ships to, by "
+                + "the export preset that writes for it. GET /stacks/{id}/checks, GET /library/project/checks and the "
+                + "texel density view measure against them."
             );
         library.MapPut("/project/paint", SetPaint)
             .Described(

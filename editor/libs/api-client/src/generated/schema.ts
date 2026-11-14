@@ -788,8 +788,9 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
-    /** Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory budget, a size limit and a texel density, which GET /stacks/{id}/checks and the texel density view measure against. */
+    /** Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what its file says, its limits, its files and its bake, and says it was not measured. The export preset of a platform to check for, or none for the project's own. */
+    get: operations['GetProjectChecks'];
+    /** Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory budget, a size limit and a texel density, and limits of their own for each platform it ships to, by the export preset that writes for it. GET /stacks/{id}/checks, GET /library/project/checks and the texel density view measure against them. */
     put: operations['SetProjectChecks'];
     post?: never;
     delete?: never;
@@ -1803,7 +1804,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Checks the texture set before export, against its project's budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is. */
+    /** Checks the texture set before export, against its project's budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is. A preset checks it for that platform, with the limits the project keeps for it. The export preset of a platform to check for, or none for the project's own. */
     get: operations['GetStackChecks'];
     put?: never;
     post?: never;
@@ -5865,6 +5866,29 @@ export interface components {
       /** @description What it is used as, or null for the role its project gives it. */
       role?: null | string;
     };
+    /**
+     * @description What one platform holds a project's texture sets to (#159), named by the export preset that writes for it. A
+     *     zero is the project's own limit.
+     */
+    PlatformCheckLimits: {
+      /** @description The export preset's id. */
+      preset: string;
+      /**
+       * Format: double
+       * @description The most GPU memory one set's files may take on it, in mebibytes, or zero for the project's.
+       */
+      memoryBudget: number;
+      /**
+       * Format: int32
+       * @description The longest side a set's maps may have on it, in texels, or zero for the project's.
+       */
+      maxSize: number;
+      /**
+       * Format: double
+       * @description The texel density it holds sets to, or zero for the project's.
+       */
+      texelDensity: number;
+    };
     /** @description The body of `POST /api/v1/previews/{hash}/save`. */
     PreviewSaveRequest: {
       /** @description The PNG to write, as a whole path on the Server's machine, in a folder that exists. */
@@ -5915,6 +5939,23 @@ export interface components {
       cage: string;
     };
     /**
+     * @description The reply to `GET /api/v1/library/project/checks`: every texture set and layered material of a project
+     *     checked at once, against one platform (#159).
+     */
+    ProjectChecks: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description The export preset measured against, by its name. */
+      preset: string;
+      /**
+       * Format: int64
+       * @description The GPU memory all the sets' exported files take together.
+       */
+      memoryBytes: number;
+      /** @description Each set, in the order the project lists its documents. */
+      sets: components['schemas']['StackChecks'][];
+    };
+    /**
      * @description What a project holds its texture sets to before they are exported (#159), kept in its `project.yaml`. A
      *     zero is no limit, and a texel density of zero is the library's.
      */
@@ -5944,6 +5985,11 @@ export interface components {
        * @default 0.25
        */
       densityTolerance: number;
+      /**
+       * @description Limits of their own for the platforms the project ships to, each named by the export preset that writes for
+       *     it. A set measured with that preset is held to them in place of the project's.
+       */
+      platforms: components['schemas']['PlatformCheckLimits'][];
     };
     /** @description The body of `PUT /api/v1/library/project/checks`. */
     ProjectChecksRequest: {
@@ -6801,7 +6847,7 @@ export interface components {
     };
     /** @description The reply to `GET /api/v1/stacks/{id}/checks`: one texture set measured against its project. */
     StackChecks: {
-      /** @description The stack session. */
+      /** @description The stack session, or empty for a set nobody has open. */
       stack: string;
       /** @description The texture set, or empty for a model with no named sets. */
       set: string;
@@ -6844,6 +6890,13 @@ export interface components {
       problems: components['schemas']['CheckProblem'][];
       /** @description Each file the export writes for the set, with the GPU memory it takes. */
       files: components['schemas']['CheckFile'][];
+      /** @description The stack's file below the library, as a project lists it. */
+      document: string;
+      /**
+       * @description Whether the Worker measured its layout and values. A set nobody has open is judged on what the Server knows of
+       *     it, its limits, its files and its bake, and not on its density, its UVs or its values.
+       */
+      measured: boolean;
     };
     /** @description Layers copied out of a stack, which a StackPasteLayers names. */
     StackClip: {
@@ -11739,6 +11792,56 @@ export interface operations {
       };
     };
   };
+  GetProjectChecks: {
+    parameters: {
+      query: {
+        project: string;
+        preset?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectChecks'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   SetProjectChecks: {
     parameters: {
       query?: never;
@@ -15076,7 +15179,9 @@ export interface operations {
   };
   GetStackChecks: {
     parameters: {
-      query?: never;
+      query?: {
+        preset?: string;
+      };
       header?: never;
       path: {
         id: string;

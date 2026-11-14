@@ -2779,7 +2779,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Keeps what a project\u0027s texture sets are held to before export in its project.yaml: a GPU memory budget, a size limit and a texel density, which GET /stacks/{id}/checks and the texel density view measure against.",
+        "summary": "Keeps what a project\u0027s texture sets are held to before export in its project.yaml: a GPU memory budget, a size limit and a texel density, and limits of their own for each platform it ships to, by the export preset that writes for it. GET /stacks/{id}/checks, GET /library/project/checks and the texel density view measure against them.",
         "operationId": "SetProjectChecks",
         "requestBody": {
           "content": {
@@ -2798,6 +2798,72 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what its file says, its limits, its files and its bake, and says it was not measured. The export preset of a platform to check for, or none for the project\u0027s own.",
+        "operationId": "GetProjectChecks",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "preset",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectChecks"
                 }
               }
             }
@@ -6981,13 +7047,20 @@
         "tags": [
           "Stacks"
         ],
-        "summary": "Checks the texture set before export, against its project\u0027s budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is.",
+        "summary": "Checks the texture set before export, against its project\u0027s budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is. A preset checks it for that platform, with the limits the project keeps for it. The export preset of a platform to check for, or none for the project\u0027s own.",
         "operationId": "GetStackChecks",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "preset",
+            "in": "query",
             "schema": {
               "type": "string"
             }
@@ -16664,6 +16737,37 @@
         },
         "description": "The body of \u0060POST /api/v1/library/packages\u0060."
       },
+      "PlatformCheckLimits": {
+        "required": [
+          "preset",
+          "memoryBudget",
+          "maxSize",
+          "texelDensity"
+        ],
+        "type": "object",
+        "properties": {
+          "preset": {
+            "type": "string",
+            "description": "The export preset\u0027s id."
+          },
+          "memoryBudget": {
+            "type": "number",
+            "description": "The most GPU memory one set\u0027s files may take on it, in mebibytes, or zero for the project\u0027s.",
+            "format": "double"
+          },
+          "maxSize": {
+            "type": "integer",
+            "description": "The longest side a set\u0027s maps may have on it, in texels, or zero for the project\u0027s.",
+            "format": "int32"
+          },
+          "texelDensity": {
+            "type": "number",
+            "description": "The texel density it holds sets to, or zero for the project\u0027s.",
+            "format": "double"
+          }
+        },
+        "description": "What one platform holds a project\u0027s texture sets to (#159), named by the export preset that writes for it. A\nzero is the project\u0027s own limit."
+      },
       "PreviewSaveRequest": {
         "required": [
           "file"
@@ -16787,12 +16891,45 @@
         },
         "description": "What a project keeps about baking, in its own file: the options, which texture sets to bake, and the files\nbeyond the project\u0027s mesh that a bake reads."
       },
+      "ProjectChecks": {
+        "required": [
+          "project",
+          "preset",
+          "memoryBytes",
+          "sets"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "preset": {
+            "type": "string",
+            "description": "The export preset measured against, by its name."
+          },
+          "memoryBytes": {
+            "type": "integer",
+            "description": "The GPU memory all the sets\u0027 exported files take together.",
+            "format": "int64"
+          },
+          "sets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackChecks"
+            },
+            "description": "Each set, in the order the project lists its documents."
+          }
+        },
+        "description": "The reply to \u0060GET /api/v1/library/project/checks\u0060: every texture set and layered material of a project\nchecked at once, against one platform (#159)."
+      },
       "ProjectCheckSettings": {
         "required": [
           "memoryBudget",
           "maxSize",
           "texelDensity",
-          "densityTolerance"
+          "densityTolerance",
+          "platforms"
         ],
         "type": "object",
         "properties": {
@@ -16819,6 +16956,13 @@
             "description": "How far a set\u0027s density may stray from it before it is flagged, as a share: 0.25 is a quarter.",
             "format": "double",
             "default": 0.25
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlatformCheckLimits"
+            },
+            "description": "Limits of their own for the platforms the project ships to, each named by the export preset that writes for\nit. A set measured with that preset is held to them in place of the project\u0027s."
           }
         },
         "description": "What a project holds its texture sets to before they are exported (#159), kept in its \u0060project.yaml\u0060. A\nzero is no limit, and a texel density of zero is the library\u0027s."
@@ -18669,13 +18813,15 @@
           "memoryBudget",
           "preset",
           "problems",
-          "files"
+          "files",
+          "document",
+          "measured"
         ],
         "type": "object",
         "properties": {
           "stack": {
             "type": "string",
-            "description": "The stack session."
+            "description": "The stack session, or empty for a set nobody has open."
           },
           "set": {
             "type": "string",
@@ -18728,6 +18874,14 @@
               "$ref": "#/components/schemas/CheckFile"
             },
             "description": "Each file the export writes for the set, with the GPU memory it takes."
+          },
+          "document": {
+            "type": "string",
+            "description": "The stack\u0027s file below the library, as a project lists it."
+          },
+          "measured": {
+            "type": "boolean",
+            "description": "Whether the Worker measured its layout and values. A set nobody has open is judged on what the Server knows of\nit, its limits, its files and its bake, and not on its density, its UVs or its values."
           }
         },
         "description": "The reply to \u0060GET /api/v1/stacks/{id}/checks\u0060: one texture set measured against its project."

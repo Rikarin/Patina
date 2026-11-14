@@ -108,6 +108,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(ViewportIsolation), TypeInfoPropertyName = nameof(ViewportIsolation))]
 [JsonSerializable(typeof(ViewportHighlight), TypeInfoPropertyName = nameof(ViewportHighlight))]
 [JsonSerializable(typeof(StackChecks), TypeInfoPropertyName = nameof(StackChecks))]
+[JsonSerializable(typeof(ProjectChecks), TypeInfoPropertyName = nameof(ProjectChecks))]
 [JsonSerializable(typeof(ViewportScreenshotRequest), TypeInfoPropertyName = nameof(ViewportScreenshotRequest))]
 [JsonSerializable(typeof(ViewportScreenshot), TypeInfoPropertyName = nameof(ViewportScreenshot))]
 [JsonSerializable(typeof(ViewportBakePreview), TypeInfoPropertyName = nameof(ViewportBakePreview))]
