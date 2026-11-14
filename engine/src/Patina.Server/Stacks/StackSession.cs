@@ -89,6 +89,9 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
+    /// <summary>What the Worker read of the mesh's texture sets (#285), for the set's tile. None, the first tile.</summary>
+    public IMeshSetReads? Meshes { get; init; }
+
     /// <summary>Whether this history copies a canvas out of a folder, which then has to stay.</summary>
     public bool Reads(string folder) {
         lock (Changing) {
@@ -294,11 +297,11 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                 );
             }
 
-            // ⚠ Outside the lock: after a mesh change this reads the mesh once for the set's faces (#151) and its tile
-            // (#281), and strokes and edits must not wait on that.
+            // ⚠ Outside the lock: after a mesh change this waits for the Worker to read the mesh once for the set's faces
+            // (#151) and its tile (#281), and strokes and edits must not wait on that.
             return state with {
                 BakeStale = BakeFit.OfModel(bake.Folder, bake.Model, bake.Set),
-                Udim = SetUdim.Of(bake.Model, state.Set, bake.Set.UvSet)
+                Udim = Meshes is { } meshes ? SetUdim.Of(meshes, bake.Model, state.Set, bake.Set.UvSet) : OneTile.First
             };
         }
     }

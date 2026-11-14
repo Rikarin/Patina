@@ -24,7 +24,7 @@ public sealed class JobRunner : BackgroundService {
         JobQueue queue,
         BakeCache cache,
         WorkerLink worker,
-        LibraryHost library,
+        BuildRunner builds,
         BakeLinks links,
         ILogger<JobRunner> logger
     ) {
@@ -33,7 +33,7 @@ public sealed class JobRunner : BackgroundService {
         this.worker = worker;
         this.links = links;
         this.logger = logger;
-        builds = new(library, ToolCatalog.Default);
+        this.builds = builds;
         worker.Reported += Hear;
     }
 

@@ -50,7 +50,16 @@ public interface IBuildExecutor {
 /// <param name="library">The library.</param>
 /// <param name="executor">What runs a step.</param>
 /// <param name="tools">The installed tool versions.</param>
-public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, ToolCatalog tools) {
+/// <param name="meshes">
+///     What reads a texture set's UDIM tile for the names a preset gives: the mesh, or in the Server what the Worker
+///     read of it (#285).
+/// </param>
+public sealed class BuildPipeline(
+    OpenLibrary library,
+    IBuildExecutor executor,
+    ToolCatalog tools,
+    IMeshSetReads meshes
+) {
     readonly ObjectStore objects = new(library.RootPath);
 
     /// <summary>Works out what a build would do, running nothing.</summary>
@@ -365,7 +374,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 folder,
                 manifest,
                 export.Target,
-                ProjectNaming.Of(library, project.Project.Path, project.Project.Name, preset.Id),
+                ProjectNaming.Of(library, project.Project.Path, project.Project.Name, preset.Id, meshes),
                 Beside(project),
                 ExportOverrides.Apply(preset, options),
                 PartOf(project, request)

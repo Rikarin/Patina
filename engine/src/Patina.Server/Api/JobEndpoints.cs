@@ -56,12 +56,15 @@ static class JobEndpoints {
         LibraryHost host,
         StackSessions stacks,
         BakeLinks links,
+        MeshSetCache meshes,
         CancellationToken cancellationToken
     ) {
         try {
             BakeInputs.Check(request);
             request = BakeLayouts.Resolved(host.Library, request, stacks);
-            var key = (await Task.Run(() => BakeKeyReads.KeyOf(request, ToolCatalog.Default), cancellationToken)).Hex;
+            // The low mesh's faces and the pictures the high meshes name are what the Worker read of them (#285).
+            var key = (await Task.Run(() => BakeKeyReads.KeyOf(request, ToolCatalog.Default, meshes), cancellationToken))
+                .Hex;
             var job = cache.Find(key) is { } manifest
                 ? queue.Finished(
                     key,

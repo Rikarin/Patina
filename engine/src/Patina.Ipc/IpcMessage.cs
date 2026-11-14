@@ -134,6 +134,13 @@ public static class IpcTypes {
     /// <summary>Server to Worker: say what the mesh at <see cref="IpcMessage.MeshFile" /> is (#146).</summary>
     public const string MeshFacts = "mesh.facts";
 
+    /// <summary>
+    ///     Server to Worker: read the texture sets of the mesh at <see cref="IpcMessage.MeshFile" />, each material in
+    ///     each UV set, for the tiles and faces the Server keeps (#285); answered in <see cref="IpcMessage.MeshSets" />.
+    ///     Uses no device, and is answered beside the Worker's queue, never behind an evaluation.
+    /// </summary>
+    public const string MeshSets = "mesh.sets";
+
     public const string MeshPartMask = "mesh.part-mask";
 
     /// <summary>
@@ -210,7 +217,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 19;
+    public const int ProtocolVersion = 20;
 
     public string Type { get; set; } = string.Empty;
 
@@ -357,6 +364,9 @@ public sealed class IpcMessage {
 
     /// <summary>What a mesh is, in the answer to <see cref="IpcTypes.MeshFacts" />.</summary>
     public MeshFacts? Facts { get; set; }
+
+    /// <summary>A mesh's texture sets, in the answer to <see cref="IpcTypes.MeshSets" />.</summary>
+    public MeshSetsRead? MeshSets { get; set; }
 
     public MaterialReadAsk? MaterialRead { get; set; }
 

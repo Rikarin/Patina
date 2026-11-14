@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Library;
 using Vixen.Core.Imaging;
 using Vixen.Core.Mathematics;
 using Vixen.Geometry.Remeshing;
@@ -137,28 +138,35 @@ public static class BakeColourSources {
     ///     The pictures beside the high meshes that a colour bake from materials reads, so a key changes when one does.
     /// </summary>
     /// <param name="request">The bake.</param>
+    /// <param name="meshes">What reads the high meshes for the pictures they name.</param>
     /// <returns>The pictures that are there, by path.</returns>
     /// <remarks>A request that bakes no colour, or carries a picture or vertex colours, reads none of them.</remarks>
-    public static IReadOnlyList<string> PicturesRead(BakeRequest request) {
+    public static IReadOnlyList<string> PicturesRead(BakeRequest request, IMeshSetReads meshes) {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(meshes);
         if (!request.Options.Maps.Contains("colour", StringComparer.Ordinal)
             || request.Options.Colour.Source is "texture" or "vertex-colour") {
             return [];
         }
 
+        return [
+            ..request.High.SelectMany(meshes.Pictures).Where(File.Exists).Distinct(StringComparer.Ordinal)
+        ];
+    }
+
+    /// <summary>The base colour pictures a model's materials name beside its file, there or not.</summary>
+    /// <param name="file">The model, read.</param>
+    /// <param name="path">Where it was read from.</param>
+    public static IReadOnlyList<string> PicturesNamed(ReadModel file, string path) {
+        ArgumentNullException.ThrowIfNull(file);
         List<string> pictures = [];
-        foreach (var path in request.High) {
-            var file = MeshMapBakeRun.Model(path);
-            foreach (var textures in file.MaterialTextures) {
-                if (textures.BaseColor is { } texture
-                    && Resolved(texture, path) is { } picture
-                    && File.Exists(picture)) {
-                    pictures.Add(picture);
-                }
+        foreach (var textures in file.MaterialTextures) {
+            if (textures.BaseColor is { } texture && Resolved(texture, path) is { } picture) {
+                pictures.Add(picture);
             }
         }
 
-        return [..pictures.Distinct(StringComparer.Ordinal)];
+        return pictures;
     }
 
     /// <summary>A decoded picture as the bake reads it, from sRGB to linear light when it is a colour.</summary>

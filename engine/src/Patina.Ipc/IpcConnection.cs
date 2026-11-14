@@ -36,6 +36,12 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
     /// </summary>
     public Func<string, bool>? Immediate { get; init; }
 
+    /// <summary>
+    ///     Which requests are answered beside the rest, each on its own as soon as it is read: neither the read nor the
+    ///     queue waits for them, nor they for the queue. For work that touches nothing the queue's work does.
+    /// </summary>
+    public Func<string, bool>? Aside { get; init; }
+
     /// <summary>Completes when the peer has gone or this connection was disposed.</summary>
     public Task Closed => closed.Task;
 
@@ -105,6 +111,8 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
                     if (pending.TryGetValue(message.Id, out var reply)) {
                         reply.TrySetResult(message);
                     }
+                } else if (Aside?.Invoke(message.Type) == true) {
+                    _ = Task.Run(() => AnswerAsideAsync(message, cancellationToken), CancellationToken.None);
                 } else if (Immediate is { } immediate && !immediate(message.Type)) {
                     queued.Writer.TryWrite(message);
                 } else {
@@ -134,12 +142,21 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
     async Task QueueLoopAsync(CancellationToken cancellationToken) {
         try {
             await foreach (var message in queued.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
-                await WriteAsync(
-                        await AnswerAsync(message, cancellationToken).ConfigureAwait(false),
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false);
+                await AnswerAsideAsync(message, cancellationToken).ConfigureAwait(false);
             }
+        } catch (OperationCanceledException) {
+            // The peer has gone, and the read loop says so.
+        }
+    }
+
+    /// <summary>Answers one request and writes the answer, unless the peer has gone.</summary>
+    async Task AnswerAsideAsync(IpcMessage message, CancellationToken cancellationToken) {
+        try {
+            await WriteAsync(
+                    await AnswerAsync(message, cancellationToken).ConfigureAwait(false),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
         } catch (Exception e) when (e is IOException
                                         or SocketException
                                         or ObjectDisposedException

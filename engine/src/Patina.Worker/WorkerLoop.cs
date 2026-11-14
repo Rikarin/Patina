@@ -57,7 +57,8 @@ sealed class WorkerLoop(
         var stream = await IpcSocket.ConnectAsync(socketPath, ConnectTimeout, cancellationToken);
         IpcConnection? connection = null;
         connection = new(stream, (request, token) => AnswerAsync(connection!, request, token)) {
-            Immediate = static type => type is IpcTypes.Health or IpcTypes.BakeCancel or IpcTypes.BuildCancel
+            Immediate = static type => type is IpcTypes.Health or IpcTypes.BakeCancel or IpcTypes.BuildCancel,
+            Aside = static type => type is IpcTypes.MeshSets
         };
         await using (connection) {
             connection.Start();
@@ -119,6 +120,7 @@ sealed class WorkerLoop(
                 IpcTypes.MeshMaterials => Materials(request),
                 IpcTypes.MeshParts => Parts(request),
                 IpcTypes.MeshFacts => Facts(request),
+                IpcTypes.MeshSets => Sets(request),
                 IpcTypes.MaterialRead => ReadMaterials(request),
                 IpcTypes.MeshPartMask => PartMask(request),
                 IpcTypes.MeshUvWire => UvWires.Answer(request),
@@ -174,6 +176,15 @@ sealed class WorkerLoop(
     static IpcMessage Facts(IpcMessage request) {
         var file = request.MeshFile ?? throw new IpcException("mesh.facts names no file.");
         return Reading(file, () => new() { Type = IpcTypes.Ok, Id = request.Id, Facts = MeshFactsReader.Read(file) });
+    }
+
+    /// <summary>
+    ///     A mesh's texture sets, for what the Server keeps of them (#285). Uses no device and keeps nothing, so it is
+    ///     answered beside the queue.
+    /// </summary>
+    static IpcMessage Sets(IpcMessage request) {
+        var file = request.MeshFile ?? throw new IpcException("mesh.sets names no file.");
+        return Reading(file, () => new() { Type = IpcTypes.Ok, Id = request.Id, MeshSets = MeshFileReads.All(file) });
     }
 
     /// <summary>A model's materials as maps (#157). Uses no device; Assimp is native, so it runs here.</summary>
