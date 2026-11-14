@@ -22,6 +22,8 @@ export interface Connection {
 
 const MaxBackoffMs = 10_000;
 const ReadyTimeoutMs = 60_000;
+/** The lines kept of what each process said, for Diagnostics and a failed e2e's `engine-logs` (#294): 200 held a minute. */
+const KeptLogLines = 2_000;
 
 /**
  * One supervised child process: started with a command line computed at each (re)start, restarted with backoff
@@ -115,7 +117,7 @@ class Sidecar {
     const keep = (data: Buffer) => {
       const lines = data.toString().split('\n').filter(Boolean);
       this.log.push(...lines);
-      this.log.splice(0, Math.max(0, this.log.length - 200));
+      this.log.splice(0, Math.max(0, this.log.length - KeptLogLines));
       const waiting = this.status.state === 'starting' || this.status.state === 'restarting';
       if (this.child === child && waiting && lines.some(line => this.ready.test(line))) {
         this.set('running', null);
