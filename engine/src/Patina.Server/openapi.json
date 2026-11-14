@@ -10777,6 +10777,52 @@
         },
         "description": "The body of \u0060POST /api/v1/library/cache/prune\u0060."
       },
+      "CheckFile": {
+        "required": [
+          "file",
+          "format",
+          "compression",
+          "width",
+          "height",
+          "mips",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Its name as the export writes it, with its extension."
+          },
+          "format": {
+            "type": "string",
+            "description": "Its format, one of the export formats."
+          },
+          "compression": {
+            "type": "string",
+            "description": "What its blocks hold, or \u0060none\u0060."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Its width, in texels, as it is written.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height.",
+            "format": "int32"
+          },
+          "mips": {
+            "type": "boolean",
+            "description": "Whether it carries a mip chain."
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The GPU memory it takes, its mips included.",
+            "format": "int64"
+          }
+        },
+        "description": "One file an export writes for a texture set, and what it takes on a GPU (#159)."
+      },
       "CheckProblem": {
         "required": [
           "code",
@@ -18119,7 +18165,8 @@
           "memoryBytes",
           "memoryBudget",
           "preset",
-          "problems"
+          "problems",
+          "files"
         ],
         "type": "object",
         "properties": {
@@ -18171,6 +18218,13 @@
               "$ref": "#/components/schemas/CheckProblem"
             },
             "description": "What is wrong, in the order of IReadOnlyList\u0026lt;string\u0026gt; CheckCodes.All, which puts the project\u0027s limits, the errors,\nfirst."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckFile"
+            },
+            "description": "Each file the export writes for the set, with the GPU memory it takes."
           }
         },
         "description": "The reply to \u0060GET /api/v1/stacks/{id}/checks\u0060: one texture set measured against its project."

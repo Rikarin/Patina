@@ -85,6 +85,10 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
   await expect(window.getByTestId('checks-density')).toHaveText(/\d+ per unit/u, { timeout: 120_000 });
   await expect(window.getByTestId('checks-memory')).toHaveText(/ MB with /u);
 
+  // Each file the export writes is listed with its size and the memory it takes.
+  await window.getByTestId('checks-files').locator('summary').click();
+  await expect(window.getByTestId('checks-file').first()).toHaveText(/\.\w+\s*\d+ × \d+\s*[\d.]+ MB/u);
+
   // A density far past what the set has is one it falls short of, and the problem shows it on the mesh.
   await window.getByTestId('checks-limits').locator('summary').click();
   await window.getByTestId('checks-limit-texelDensity').fill('1000000');

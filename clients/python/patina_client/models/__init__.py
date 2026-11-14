@@ -37,6 +37,7 @@ from .build_preview_project import BuildPreviewProject
 from .build_request import BuildRequest
 from .cache_info import CacheInfo
 from .cache_prune_request import CachePruneRequest
+from .check_file import CheckFile
 from .check_problem import CheckProblem
 from .check_problem_values import CheckProblemValues
 from .check_target import CheckTarget
@@ -477,6 +478,7 @@ __all__ = (
     "BuildRequest",
     "CacheInfo",
     "CachePruneRequest",
+    "CheckFile",
     "CheckProblem",
     "CheckProblemValues",
     "CheckTarget",

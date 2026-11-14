@@ -82,10 +82,41 @@ public static class CheckCodes {
     // a clone of another list of them.
     /// <summary>Every code, in the order a list shows them.</summary>
     public static IReadOnlyList<string> All { get; } = [
-        OverBudget, TooLarge, ChannelMissing, DensityLow, DensityHigh, BakeStale, UvOutside, UvOverlap, UvDegenerate,
-        UvFlipped,
+        OverBudget, TooLarge, ChannelMissing, PackingMixed, SpaceDataSrgb, SpaceColourLinear, CompressionNormal,
+        MipsMissing, DensityLow, DensityHigh, BakeStale, UvOutside, UvOverlap, UvDegenerate, UvFlipped,
         AlbedoDark, AlbedoBright, MetalDark, MetalPartial
     ];
+
+    /// <summary>
+    ///     A file packs a colour map and a data map into its colour lanes, so one of them is held in the other's
+    ///     encoding and an engine reads it with the wrong one. Values: <c>file</c>, <c>color</c>, <c>data</c>, each
+    ///     channel by its label.
+    /// </summary>
+    public const string PackingMixed = "packing-mixed";
+
+    /// <summary>
+    ///     A file in sRGB holds a data map, such as a normal or roughness, whose numbers an engine reads as linear and
+    ///     whose precision sRGB spends in the darks. Values: <c>file</c>, <c>channel</c>.
+    /// </summary>
+    public const string SpaceDataSrgb = "space-data-srgb";
+
+    /// <summary>
+    ///     An 8-bit file in linear holds base colour, which bands in the darks and reads washed out in an engine that
+    ///     takes it as sRGB. Values: <c>file</c>, <c>channel</c>.
+    /// </summary>
+    public const string SpaceColourLinear = "space-color-linear";
+
+    /// <summary>
+    ///     A tangent-space normal held in BC1 or BC3 colour blocks, which shift its lanes together and show as blocks
+    ///     on a lit surface; BC5 or BC7 keep it. Values: <c>file</c>, <c>compression</c>, by its label.
+    /// </summary>
+    public const string CompressionNormal = "compression-normal";
+
+    /// <summary>
+    ///     A KTX2 or DDS file without a mip chain, which an engine samples as it is, so it shimmers at a distance.
+    ///     Values: <c>file</c>.
+    /// </summary>
+    public const string MipsMissing = "mips-missing";
 
     /// <summary>Triangles laid out past their texture set's one UDIM tile. Values: <c>count</c>.</summary>
     public const string UvOutside = "uv-outside";
@@ -208,6 +239,7 @@ public sealed record MapMeasure(string Code, double Share, CheckSpot Spot);
 ///     What is wrong, in the order of <see cref="CheckCodes.All" />, which puts the project's limits, the errors,
 ///     first.
 /// </param>
+/// <param name="Files">Each file the export writes for the set, with the GPU memory it takes.</param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 public sealed record StackChecks(
@@ -220,6 +252,27 @@ public sealed record StackChecks(
     long MemoryBytes,
     long MemoryBudget,
     string Preset,
-    IReadOnlyList<CheckProblem> Problems
+    IReadOnlyList<CheckProblem> Problems,
+    IReadOnlyList<CheckFile> Files
+);
+#pragma warning restore SK7005
+
+/// <summary>One file an export writes for a texture set, and what it takes on a GPU (#159).</summary>
+/// <param name="File">Its name as the export writes it, with its extension.</param>
+/// <param name="Format">Its format, one of the export formats.</param>
+/// <param name="Compression">What its blocks hold, or <c>none</c>.</param>
+/// <param name="Width">Its width, in texels, as it is written.</param>
+/// <param name="Height">Its height.</param>
+/// <param name="Mips">Whether it carries a mip chain.</param>
+/// <param name="Bytes">The GPU memory it takes, its mips included.</param>
+#pragma warning disable SK7005
+public sealed record CheckFile(
+    string File,
+    string Format,
+    string Compression,
+    int Width,
+    int Height,
+    bool Mips,
+    long Bytes
 );
 #pragma warning restore SK7005
