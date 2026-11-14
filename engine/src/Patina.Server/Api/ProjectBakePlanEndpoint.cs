@@ -43,12 +43,38 @@ static class ProjectBakePlanEndpoint {
         );
 
     /// <summary>
+    ///     A preview as a project's bake plan would show it (#296), or the refusal: no library, no such project or
+    ///     document, or a project file that cannot be read. A preview that names no project is as it was sent.
+    /// </summary>
+    internal static ProblemHttpResult? Resolve(
+        LibraryHost host,
+        ViewportBakePreview asked,
+        out ViewportBakePreview resolved
+    ) {
+        resolved = asked;
+        if (asked.Project is null) {
+            return null;
+        }
+
+        if (host.Library is not { } library) {
+            return LibraryTreeEndpoints.NoLibrary();
+        }
+
+        try {
+            resolved = Resolved(library, asked);
+            return null;
+        } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
+            return problem;
+        }
+    }
+
+    /// <summary>
     ///     A preview that names a project, with the meshes, cage and options that project's bake plan takes in place of
     ///     those sent (#296), so a client shows the bake it would run without working out its paths.
     /// </summary>
     /// <exception cref="FileNotFoundException">The library has no such project.</exception>
     /// <exception cref="ProjectRefusedException">The project has no mesh, or lists no such document.</exception>
-    internal static ViewportBakePreview Resolved(OpenLibrary library, ViewportBakePreview asked) {
+    static ViewportBakePreview Resolved(OpenLibrary library, ViewportBakePreview asked) {
         if (asked.Project is not { } project) {
             return asked;
         }

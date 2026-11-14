@@ -45,9 +45,13 @@ public sealed record BakeCurvatureOptions {
         : !Sources.Contains(Source, StringComparer.Ordinal) ? $"'{Source}' is not where a curvature map comes from."
         : Range == "custom"
         && !(Radius > 0 && double.IsFinite(Radius)) ? "A custom curvature radius is more than nothing."
-        : Source == "rays" && !(Sampling > 0 && double.IsFinite(Sampling))
-            ? "The curvature's sampling radius is more than nothing."
-        : Source == "rays" && Rays is < 1 or > 256 ? "Curvature by rays casts 1 to 256 rays."
+        : Source == "rays" ? RaysProblem()
+        : null;
+
+    /// <summary>What is wrong with the secondary rays, or null.</summary>
+    string? RaysProblem() =>
+        !(Sampling > 0 && double.IsFinite(Sampling)) ? "The curvature's sampling radius is more than nothing."
+        : Rays is < 1 or > 256 ? "Curvature by rays casts 1 to 256 rays."
         : null;
 }
 

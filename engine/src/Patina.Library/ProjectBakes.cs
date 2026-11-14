@@ -112,8 +112,8 @@ public static class ProjectBakes {
     /// <param name="mesh">The mesh baked onto.</param>
     /// <param name="asked">The sets asked for.</param>
     /// <param name="named">
-    ///     Whether they were named for this bake. Named sets must all be on the mesh. The project's ticked sets may be on
-    ///     its other meshes, so only those on this one count, and only none at all is refused (#296).
+    ///     Whether they were named for this bake. Named sets must all be on the mesh. The project's ticked sets may be
+    ///     on its other meshes, so only those on this one count, and only none at all is refused (#296).
     /// </param>
     static List<string?> Chosen(
         ProjectDocument project,
@@ -140,7 +140,8 @@ public static class ProjectBakes {
         return asked.Count == 0 ? [..all]
             : here.Count > 0 ? here
             : throw new ArgumentException(
-                $"None of the texture sets the project ticks ({string.Join(", ", asked)}) is on this mesh. It has {has}."
+                $"None of the texture sets the project ticks ({string.Join(", ", asked)}) is on this mesh. "
+                + $"It has {has}."
             );
     }
 }

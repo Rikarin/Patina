@@ -224,15 +224,8 @@ static class ViewportMapEndpoints {
         LibraryHost host,
         CancellationToken cancellationToken
     ) {
-        if (asked.Project is not null && host.Library is null) {
-            return LibraryTreeEndpoints.NoLibrary();
-        }
-
-        ViewportBakePreview request;
-        try {
-            request = host.Library is { } library ? ProjectBakePlanEndpoint.Resolved(library, asked) : asked;
-        } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
-            return problem;
+        if (ProjectBakePlanEndpoint.Resolve(host, asked, out var request) is { } refused) {
+            return refused;
         }
 
         if (request.Low.Length > 0) {
