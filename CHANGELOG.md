@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Two more mask generators (#120), as CC0 compounds in `content/compounds/Generators/`: Fibrous Edge Wear, the convex edges worn through with a rim torn into long strands, with Amount, Reach, Softness, Fineness, Stretch and Seed; and Wrinkles, creased ridges gathered in the hollows of the model, with Amount, Spread, Frequency, Softness and Seed.
 - A picture slot takes a drop (#122): a picture dragged from the library or from this machine onto a channel of a Bitmap fill, a Bitmap mask or a Bitmap mask entry in Properties fills that slot, brought into the project as Choose… brings one. Anything else dropped there is refused with a word in Activity.
 - Save as Smart Material… and Save as Smart Mask… ask for a name first (#135), starting from the layer's own, rather than always naming what they save after the layer.
 - A layer's mask can be seen on the model on its own (#109): Show Mask on Mesh in the mask's menu or the layer's, On Mesh in the mask's own list, or Alt-click on the mask, shows it in the viewport's picture view, white where the layer shows and black where it does not. It keeps up with every edit to the stack, and the same command, another view, or closing the stack puts the material back. The mask is written alone, as Export Mask Alone writes it, into the library's `.ptcache/mask-view`.
