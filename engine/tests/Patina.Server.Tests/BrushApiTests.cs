@@ -210,6 +210,41 @@ public sealed class BrushApiTests : IAsyncLifetime {
         Assert.DoesNotContain("Wide", ProjectYaml, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    ///     Another project's preset is on the shelf, and the shelf keeps what it read of it only while the file stands
+    ///     (#124): an edit to the file, or a new preset in that project, is on the next load.
+    /// </summary>
+    [Fact]
+    public async Task Another_projects_presets_are_read_again_when_their_files_change() {
+        using var barrel = await client.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new ProjectCreateRequest("Barrel", Kind: "layered-material"),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.Created, barrel.StatusCode);
+        var preset = new BrushPreset("brush", StackBrushes.Default with { Radius = 30f });
+        using var created = await client.PostAsJsonAsync(
+            "/api/v1/library/brushes",
+            new BrushPresetCreateRequest("barrel", "Dent", preset),
+            Token
+        );
+        var made = (await created.Content.ReadFromJsonAsync<BrushPresetInfo>(Token))!;
+
+        Assert.Equal(30f, (await ShelfAsync()).Single(static p => p.Name == "Dent").Preset.Brush.Radius);
+        var file = Path.Combine(server.Library, made.Source);
+        File.WriteAllText(file, File.ReadAllText(file).Replace("radius: 30", "radius: 12", StringComparison.Ordinal));
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddSeconds(5));
+        Assert.Equal(12f, (await ShelfAsync()).Single(static p => p.Name == "Dent").Preset.Brush.Radius);
+
+        using var second = await client.PostAsJsonAsync(
+            "/api/v1/library/brushes",
+            new BrushPresetCreateRequest("barrel", "Gouge", preset),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        Assert.Contains(await ShelfAsync(), static p => p is { Name: "Gouge", Origin: "library" });
+    }
+
     async Task<IReadOnlyList<BrushPresetInfo>> ShelfAsync() =>
         (await client.GetFromJsonAsync<BrushPresetList>("/api/v1/library/brushes?project=crate", Token))!.Items;
 

@@ -278,7 +278,11 @@ public static class MaterialShelf {
         }
     }
 
-    static IReadOnlyList<ProjectDocumentInfo> DocumentsOf(OpenLibrary library, string project) {
+    /// <summary>
+    ///     What a project lists, read again only when its file has changed since; the brush shelf reads every other
+    ///     project's through this too (#124).
+    /// </summary>
+    internal static IReadOnlyList<ProjectDocumentInfo> DocumentsOf(OpenLibrary library, string project) {
         var file = library.ProjectFile(project, LibraryLayout.ProjectFile);
         var stamp = File.GetLastWriteTimeUtc(file);
         if (Kept.TryGetValue(file, out var held) && held.Stamp == stamp) {

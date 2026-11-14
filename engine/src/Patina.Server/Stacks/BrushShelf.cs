@@ -1,5 +1,7 @@
 using Patina.Contracts;
 using Patina.Library;
+using Patina.Server.Graphs;
+using System.Collections.Concurrent;
 
 namespace Patina.Server.Stacks;
 
@@ -16,6 +18,14 @@ public static class BrushShelf {
     const string Elsewhere = "library";
     const int ElsewhereLimit = 300;
     const int ProjectPage = 200;
+
+    /// <summary>
+    ///     Each preset file as last read, kept while its file stands (#124): every shelf load lists every other project's
+    ///     presets, and reading each file every time was most of what a load cost in a library of many projects. A file
+    ///     that would not read is kept as null, so it is not tried again until it changes.
+    /// </summary>
+    static readonly ConcurrentDictionary<string, (DateTime Stamp, BrushPreset? Preset)> Kept =
+        new(StringComparer.Ordinal);
 
     /// <summary>Every preset a project can use, favourites first, then shipped, its own and others', by name.</summary>
     /// <param name="library">The library.</param>
@@ -111,20 +121,33 @@ public static class BrushShelf {
 
     /// <summary>One project's presets. A file that will not read is left off rather than emptying the shelf.</summary>
     static IEnumerable<BrushPresetInfo> Of(OpenLibrary library, string project, string origin, string[]? words) {
-        foreach (var document in library.Contents(project).Documents) {
-            if (document.Kind != DocumentKinds.BrushPreset || (words is not null && !Found(document, words))) {
-                continue;
-            }
-
-            BrushPreset preset;
-            try {
-                preset = BrushPresets.Read(Path.GetFullPath(document.Path, library.RootPath));
-            } catch (Exception e) when (e is LibraryFormatException or IOException or UnauthorizedAccessException) {
+        foreach (var document in MaterialShelf.DocumentsOf(library, project)) {
+            if (document.Kind != DocumentKinds.BrushPreset
+                || (words is not null && !Found(document, words))
+                || Read(Path.GetFullPath(document.Path, library.RootPath)) is not { } preset) {
                 continue;
             }
 
             yield return new(document.Name, document.Path, origin, preset, origin == Own ? null : project);
         }
+    }
+
+    /// <summary>A preset file, from <see cref="Kept" /> while it stands; null when it will not read.</summary>
+    static BrushPreset? Read(string file) {
+        var stamp = File.GetLastWriteTimeUtc(file);
+        if (Kept.TryGetValue(file, out var held) && held.Stamp == stamp) {
+            return held.Preset;
+        }
+
+        BrushPreset? preset;
+        try {
+            preset = BrushPresets.Read(file);
+        } catch (Exception e) when (e is LibraryFormatException or IOException or UnauthorizedAccessException) {
+            preset = null;
+        }
+
+        Kept[file] = (stamp, preset);
+        return preset;
     }
 
     static IEnumerable<BrushPresetInfo> Others(OpenLibrary library, string? project, string[] words) {
