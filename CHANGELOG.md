@@ -261,6 +261,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Restoring a snapshot, or taking one, of a document with edits just made no longer fails without saying why (#284): the engine is asked whether the document has unsaved edits, rather than trusting a tab that had not caught up, and they are saved first.
+- Saving a picture, a graph or the engine's shader caches no longer fails on Windows while the engine's shared graph and paint code is reading the file (#277): every read there lets another program write or delete the file meanwhile, as Patina's own reads already did.
 - Saving, autosaving, restoring a snapshot and reading a layer stack's pixels no longer fail with "No GPU process reached this stack" when the GPU is merely slow (#275): they wait for as long as a GPU process is connected and working, and give up only when none comes. The stack they wait on is evaluated before other open documents.
 - Saving a graph, a layer stack or a paint layer, and the engine's own caches, no longer fail on Windows when another program reads the file at that moment (#265): every save that moves a finished file into place waits for the reader, as the library's own writes have since #257.
 - A library change refused because another program still has the file open says so, with the code `file-busy` and the file's name, instead of an uncoded conflict a client can't tell from a name that is taken (#266).
