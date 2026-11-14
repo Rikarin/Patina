@@ -299,6 +299,12 @@ export class PaintStore {
   private sequence = 0;
   private stopped = false;
   private stroke: string | null = null;
+  /**
+   * The stack and layer the drag under way paints, taken as it began. ⚠ Its last part can leave after the document has
+   * gone behind another (#274): it still goes to its own stack, whose session stays open, never to the one in front,
+   * and a drag with nowhere to go still ends, or a save would wait for it for ever.
+   */
+  private strokeOn: { stack: string; layer: string } | null = null;
   private strokes = 0;
   private pending: StackStamp[] = [];
   private view: StackView | null = null;
@@ -1685,6 +1691,8 @@ export class PaintStore {
     this.startAction();
     this.strokes += 1;
     this.stroke = `drag-${Date.now()}-${this.strokes}`;
+    const [stack, layer] = [this.state()?.id, this.layer()];
+    this.strokeOn = stack && layer ? { stack, layer } : null;
     this.resumeFrom = resume ? [resume.x, resume.y] : null;
     this.view = null;
     this.cloneStep = null;
@@ -1928,19 +1936,28 @@ export class PaintStore {
     }
 
     const stroke = this.stroke;
-    const layer = this.layer();
-    if (!stroke || !layer || (open && this.pending.length === 0)) {
+    const on = this.strokeOn;
+    if (!stroke || !on) {
+      this.ending = false;
+      this.pending = [];
+      return;
+    }
+
+    if (open && this.pending.length === 0) {
       return;
     }
 
     const stamps = this.pending;
     this.pending = [];
-    this.sending = this.send(stroke, layer, stamps, open, this.view, 'free', this.oldestStamp).finally(() => {
-      this.sending = null;
-      if (this.pending.length > 0) {
-        this.flush(open && this.stroke !== null);
+    const { stack, layer } = on;
+    this.sending = this.send(stroke, layer, stamps, open, this.view, 'free', this.oldestStamp, false, stack).finally(
+      () => {
+        this.sending = null;
+        if (this.pending.length > 0) {
+          this.flush(open && this.stroke !== null);
+        }
       }
-    });
+    );
     if (!open) {
       this.stroke = null;
       this.ending = false;
@@ -1955,7 +1972,8 @@ export class PaintStore {
     view: StackView | null,
     curve: 'free' | 'line' | 'path' | 'fill',
     since: number,
-    outline = false
+    outline = false,
+    stack = this.state()?.id
   ): Promise<void> {
     const tool = this.tool();
     const picture = this.screenPicture();
@@ -2003,35 +2021,38 @@ export class PaintStore {
                       .filter(([usage]) => usage !== this.channel() && writes(usage))
                       .map(([usage, colour]): [string, number[]] => [usage, colourOf(colour)]))
               ];
-    const revision = await this.command({
-      commands: channels.map(([channel, colour]) => ({
-        op: 'stroke' as const,
-        stroke,
-        layer,
-        channel,
-        brush: { ...brush, radius },
-        // A stamp mixes towards its colour, so towards nothing at all takes paint away.
-        colour: tool === 'eraser' ? [0, 0, 0, 0] : colour,
-        stamps,
-        open,
-        mask: masking,
-        maskLayer: masking ? this.maskLayer() : null,
-        view,
-        curve,
-        symmetry,
-        source,
-        stencil:
-          picture && this.stencil() && (tool !== 'projection' || this.projectsMaterial())
-            ? this.placed(picture, view)
-            : null,
-        fill: curve === 'fill' ? this.fillMode() : null,
-        outline,
-        through: outline && view !== null && this.fillThrough(),
-        resume: curve === 'free' ? resume : null,
-        quickMask
-      }))
-    });
-    if (revision !== null && revision > this.lastShown) {
+    const revision = await this.command(
+      {
+        commands: channels.map(([channel, colour]) => ({
+          op: 'stroke' as const,
+          stroke,
+          layer,
+          channel,
+          brush: { ...brush, radius },
+          // A stamp mixes towards its colour, so towards nothing at all takes paint away.
+          colour: tool === 'eraser' ? [0, 0, 0, 0] : colour,
+          stamps,
+          open,
+          mask: masking,
+          maskLayer: masking ? this.maskLayer() : null,
+          view,
+          curve,
+          symmetry,
+          source,
+          stencil:
+            picture && this.stencil() && (tool !== 'projection' || this.projectsMaterial())
+              ? this.placed(picture, view)
+              : null,
+          fill: curve === 'fill' ? this.fillMode() : null,
+          outline,
+          through: outline && view !== null && this.fillThrough(),
+          resume: curve === 'free' ? resume : null,
+          quickMask
+        }))
+      },
+      stack
+    );
+    if (revision !== null && revision > this.lastShown && stack === this.state()?.id) {
       this.sentAt.set(revision, since);
     }
   }
@@ -2123,8 +2144,7 @@ export class PaintStore {
   }
 
   /** Sends a batch, and answers the revision it made, or null when it was refused. */
-  private async command(body: StackCommandBatch): Promise<number | null> {
-    const id = this.state()?.id;
+  private async command(body: StackCommandBatch, id = this.state()?.id): Promise<number | null> {
     if (!id) {
       return null;
     }
