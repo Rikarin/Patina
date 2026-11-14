@@ -226,7 +226,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 20;
+    public const int ProtocolVersion = 21;
 
     public string Type { get; set; } = string.Empty;
 
@@ -616,6 +616,10 @@ public static class MaterialThumbnailKinds {
 /// <param name="Node">A graph's Output node to draw. A stack ignores it.</param>
 /// <param name="Usage">The map to draw: an Output's usage, or a stack's channel.</param>
 /// <param name="PreviewFolder">The content-addressed cache the PNG is written to.</param>
+/// <param name="MeshMaps">
+///     The folder of baked maps a graph's Mesh Map nodes read, or null for none, as for a node type drawn for a document
+///     painted on a mesh.
+/// </param>
 public sealed record MaterialThumbnailAsk(
     string Kind,
     string Path,
@@ -624,7 +628,8 @@ public sealed record MaterialThumbnailAsk(
     IReadOnlyList<string> ImageRoots,
     int Node,
     string Usage,
-    string PreviewFolder
+    string PreviewFolder,
+    string? MeshMaps = null
 );
 
 // SK7005: a message record's constructor is its wire shape, one parameter per field.
