@@ -63,6 +63,39 @@ public sealed class ProjectBakesTests : IDisposable {
     }
 
     [Fact]
+    public void Ticked_sets_on_another_mesh_are_left_out_and_only_none_on_this_mesh_is_refused() {
+        var root = folder.FullName;
+        var project = Project(
+            Set("lid.vxlayers", Crate, "Lid"),
+            Set("box.vxlayers", Crate, "Box"),
+            Set("stone.vxlayers", Rock, "Stone")
+        );
+        var both = project with { Bake = project.Bake! with { Sets = ["Lid", "Stone"] } };
+
+        Assert.Equal(["Stone"], ProjectBakes.Requests(root, both, "stone.vxlayers").Select(static r => r.Material));
+        Assert.Equal(["Lid"], ProjectBakes.Requests(root, both, "box.vxlayers").Select(static r => r.Material));
+
+        var none = Assert.Throws<ArgumentException>(() => ProjectBakes.Requests(root, project, "stone.vxlayers"));
+        Assert.Contains("None of the texture sets the project ticks (Lid)", none.Message, StringComparison.Ordinal);
+        Assert.Contains("It has Stone.", none.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_setup_of_a_bake_is_its_whole_low_mesh_whatever_sets_are_ticked() {
+        var root = folder.FullName;
+        var project = Project(Set("lid.vxlayers", Crate, "Lid"), Set("stone.vxlayers", Rock, "Stone"));
+
+        var setup = ProjectBakes.Setup(root, project, "stone.vxlayers");
+
+        Assert.Equal((Path.Combine(root, "rock.fbx"), null), (setup.Low, setup.Material));
+        Assert.Equal([Path.Combine(root, "rock.fbx"), Path.Combine(root, "extra_high.fbx")], setup.High);
+        Assert.Equal(Path.Combine(root, "cage.fbx"), setup.Cage);
+        Assert.Equal(512, setup.Options.Resolution);
+        var crate = Project(Set("lid.vxlayers", Crate, "Lid"));
+        Assert.Equal(Path.Combine(root, "meshes", "crate_low.fbx"), ProjectBakes.Setup(root, crate).Low);
+    }
+
+    [Fact]
     public void A_project_with_no_mesh_or_no_such_set_or_document_is_refused_in_a_sentence() {
         var root = folder.FullName;
         var project = Project(Set("lid.vxlayers", Crate, "Lid"));
