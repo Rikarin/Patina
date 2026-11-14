@@ -93,6 +93,7 @@ function stack(overrides: Partial<StackState> = {}): StackState {
     bakedNormal: 'Combine',
     bakedOcclusion: 'Combine',
     uvSet: 0,
+    udim: 1001,
     ...overrides
   };
   return state;
