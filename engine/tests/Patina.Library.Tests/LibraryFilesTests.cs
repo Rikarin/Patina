@@ -51,6 +51,60 @@ public sealed class LibraryFilesTests : IDisposable {
     }
 
     [Fact]
+    public void A_file_written_straight_into_shared_is_kept_and_a_loose_graph_is_listed() {
+        var root = Root("Loose.ptlib");
+        LibraryFiles.CreateLibrary(root, new(LibraryId.New(), "Loose", 1024, [], "pbr", []));
+        var shared = Path.Combine(root, "shared");
+        Directory.CreateDirectory(Path.Combine(shared, "graphs"));
+        File.WriteAllText(Path.Combine(shared, "graphs", "moss.vxtexgraph"), "name: Moss");
+        File.WriteAllText(Path.Combine(shared, "top.vxtexgraph"), "name: Top");
+        File.WriteAllText(Path.Combine(shared, "notes.txt"), "keep me");
+
+        using var library = OpenLibrary.Open(root);
+        library.Rescan(TestContext.Current.CancellationToken);
+
+        Assert.False(Directory.Exists(shared));
+        var project = Path.Combine(root, "projects", "shared-assets");
+        Assert.Equal("keep me", File.ReadAllText(Path.Combine(project, "notes.txt")));
+        Assert.Equal(
+            ["projects/shared-assets/moss.vxtexgraph", "projects/shared-assets/top.vxtexgraph"],
+            library.Assets(new(null, null, 0, 50)).Items.Select(static a => a.Path).Order(StringComparer.Ordinal)
+        );
+    }
+
+    [Fact]
+    public void A_shared_folder_that_comes_back_joins_the_first_move_and_overwrites_nothing() {
+        var root = Root("Again.ptlib");
+        LibraryFiles.CreateLibrary(root, new(LibraryId.New(), "Again", 1024, [], "pbr", []));
+        var shared = Path.Combine(root, "shared", "graphs");
+        var first = new AssetDocument(AssetId.New(), "graph", "Rust", [], []);
+        var second = new AssetDocument(AssetId.New(), "graph", "Rust Again", [], []);
+        Directory.CreateDirectory(shared);
+        File.WriteAllText(Path.Combine(shared, "rust.vxtexgraph"), "name: Rust");
+        File.WriteAllText(Path.Combine(shared, "rust.vxtexgraph.asset.yaml"), DocumentCodec.Write(first));
+        OpenLibrary.Open(root).Dispose();
+        Directory.CreateDirectory(shared);
+        File.WriteAllText(Path.Combine(shared, "rust.vxtexgraph"), "name: Rust Again");
+        File.WriteAllText(Path.Combine(shared, "rust.vxtexgraph.asset.yaml"), DocumentCodec.Write(second));
+
+        using var library = OpenLibrary.Open(root);
+        library.Rescan(TestContext.Current.CancellationToken);
+
+        var project = Path.Combine(root, "projects", "shared-assets");
+        Assert.Equal("name: Rust", File.ReadAllText(Path.Combine(project, "rust.vxtexgraph")));
+        Assert.Equal("name: Rust Again", File.ReadAllText(Path.Combine(project, "rust-2.vxtexgraph")));
+        Assert.Equal(
+            [
+                (second.Id.Value, "projects/shared-assets/rust-2.vxtexgraph"),
+                (first.Id.Value, "projects/shared-assets/rust.vxtexgraph")
+            ],
+            library.Assets(new(null, null, 0, 50))
+                .Items.Select(static a => (a.Id, a.Path))
+                .OrderBy(static a => a.Path, StringComparer.Ordinal)
+        );
+    }
+
+    [Fact]
     public void A_new_library_has_the_layout_of_the_plan() {
         var root = Root("New.ptlib");
         var id = LibraryId.New();

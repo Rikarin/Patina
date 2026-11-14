@@ -1122,7 +1122,7 @@ export class GraphStore {
    * the file as the graph finds it, so this sends the path the person picked. A refusal is thrown for the caller to
    * show, since it comes from a dialog.
    */
-  async relinkPicture(from: string, to: string): Promise<void> {
+  async relinkPicture(from: string, to: string, node: number | null = null): Promise<void> {
     const id = this.mutableDocument()?.id;
     if (id === undefined) {
       throw new Error('No graph is open.');
@@ -1130,7 +1130,12 @@ export class GraphStore {
 
     this.endGesture();
     await this.edits.submit(async () =>
-      unwrap(await this.api().POST('/api/v1/graphs/{id}/relink', { params: { path: { id } }, body: { from, to } }))
+      unwrap(
+        await this.api().POST('/api/v1/graphs/{id}/relink', {
+          params: { path: { id } },
+          body: { from, to, ...(node === null ? {} : { node }) }
+        })
+      )
     );
   }
 

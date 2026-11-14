@@ -8,6 +8,8 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
+from typing import cast
 
 
 
@@ -23,12 +25,16 @@ class GraphRelinkRequest:
     """ The body of `POST /api/v1/graphs/{id}/relink`: a picture the graph reads, and the file it is now.
 
         Attributes:
-            from_ (str): The picture as the graph's Bitmap nodes name it.
+            from_ (str): The picture as the graph's Bitmap nodes name it; not read when a node is named.
             to (str): The file to read instead: absolute, or below the library.
+            node (int | None | Unset): One Bitmap node to point at the file, whatever it reads now, or null for every one
+                that reads
+                From (#292).
      """
 
     from_: str
     to: str
+    node: int | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -40,6 +46,12 @@ class GraphRelinkRequest:
 
         to = self.to
 
+        node: int | None | Unset
+        if isinstance(self.node, Unset):
+            node = UNSET
+        else:
+            node = self.node
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -47,6 +59,8 @@ class GraphRelinkRequest:
             "from": from_,
             "to": to,
         })
+        if node is not UNSET:
+            field_dict["node"] = node
 
         return field_dict
 
@@ -59,9 +73,20 @@ class GraphRelinkRequest:
 
         to = d.pop("to")
 
+        def _parse_node(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        node = _parse_node(d.pop("node", UNSET))
+
+
         graph_relink_request = cls(
             from_=from_,
             to=to,
+            node=node,
         )
 
 

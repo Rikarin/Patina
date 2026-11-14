@@ -11,7 +11,7 @@ namespace Patina.Server.Api;
 static class ProjectBakePlanEndpoint {
     const string ProjectsPrefix = LibraryLayout.ProjectsFolder + "/";
 
-    public static void MapProjectBakePlan(this RouteGroupBuilder library) =>
+    public static void MapProjectBakePlan(this RouteGroupBuilder library) {
         library.MapGet("/project/bake/plan", GetPlan)
             .Described(
                 "GetProjectBakePlan",
@@ -20,6 +20,31 @@ static class ProjectBakePlanEndpoint {
                 + "the maps in a folder of the Server's machine instead of the project's; set, once per texture set, "
                 + "bakes those instead of the ones the project ticks."
             );
+        library.MapPost("/project/bake/import", Import)
+            .Described(
+                "ImportProjectBake",
+                "Brings maps baked in another program in as a texturing document's bake: each PNG is copied where the "
+                + "document's own bake goes and replaces the map of its name there, and the document, open or not, "
+                + "reads them as a bake of its mesh, UV set and material as they stand. A normal map's green runs up."
+            );
+    }
+
+    static Results<Ok<BakeImported>, ProblemHttpResult> Import(
+        LibraryHost host,
+        BakeLinks links,
+        BakeImportRequest request
+    ) =>
+        LibraryTreeEndpoints.Guarded(
+            host,
+            library => {
+                List<BakeImportMap> maps = [
+                    ..request.Maps.Select(map => map with { File = Path.GetFullPath(map.File, library.RootPath) })
+                ];
+                var (folder, document) = BakeImport.Run(library.RootPath, request with { Maps = maps });
+                links.Imported(document, folder);
+                return TypedResults.Ok(new BakeImported(LibraryLayout.Relative(library.RootPath, folder)));
+            }
+        );
 
     static Results<Ok<ProjectBakePlan>, ProblemHttpResult> GetPlan(
         LibraryHost host,

@@ -16,6 +16,7 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     readonly Lock rescanGate = new();
     readonly Lock createGate = new();
     readonly Lock documentGate = new();
+
     int fileSchema;
     LibraryDocument document;
     int rescans;
@@ -473,7 +474,9 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
             file = summary.Path[(LibraryLayout.ProjectsFolder.Length + 1)..];
         }
 
-        return Write(() => ProjectFiles.SetPin(RootPath, path, asset, file));
+        lock (RevisionGate) {
+            return Write(() => ProjectFiles.SetPin(RootPath, path, asset, file));
+        }
     }
 
     /// <summary>A change to the files, which the index sees at the next rescan.</summary>
@@ -606,6 +609,12 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
             cancellationToken
         );
     }
+
+    /// <summary>
+    ///     Held while bytes go under <c>.revisions</c> or a pin names them, and while unused ones are removed (#292),
+    ///     which <see cref="LibraryRevisions" /> does.
+    /// </summary>
+    internal Lock RevisionGate { get; } = new();
 
     public void Dispose() => database.Dispose();
 }

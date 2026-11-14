@@ -661,6 +661,25 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               @if (!options.maps.includes(section())) {
                 <p class="text-foreground-muted text-xs">Off: the next bake leaves this map out.</p>
               }
+              @if (importable(); as document) {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted min-w-0 flex-1 text-xs">
+                    Baked in another program? Bring in its PNG as {{ document.name }}’s {{ label(section()) }} map.
+                  </span>
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    variant="ghost"
+                    data-testid="bake-import"
+                    [title]="'Copies a PNG into the bake of ' + document.name + ', in place of this map'"
+                    [disabled]="importing()"
+                    (click)="importMap(section())"
+                  >
+                    {{ importing() ? 'Bringing In…' : 'Bring In…' }}
+                  </button>
+                </div>
+              }
             </div>
             @switch (section()) {
               @case ('normal') {
@@ -1664,6 +1683,34 @@ export class BakePane {
     const path = await this.choose('mesh', 'Add a High Poly Mesh');
     if (path) {
       this.settings.update(settings => ({ ...settings, high: [...settings.high, path] }));
+    }
+  }
+
+  /** The texturing document in front, whose bake a map baked elsewhere can become (#144). */
+  protected readonly importable = computed(() => {
+    const document = this.project.document();
+    return document?.kind === 'texturing' && document.id ? { id: document.id, name: document.name } : null;
+  });
+  protected readonly importing = signal(false);
+
+  /** Brings a PNG baked in another program in as this map of the document in front's bake (#144). */
+  protected async importMap(map: string): Promise<void> {
+    const project = this.project.current()?.path;
+    const document = this.importable();
+    const file = project && document ? await this.choose('picture', `Choose the ${this.label(map)} Map`) : null;
+    if (!project || !document || !file) {
+      return;
+    }
+
+    this.refused.set(null);
+    this.importing.set(true);
+    try {
+      await this.store.importMap(project, document.id, map, file, this.options()?.space ?? 'tangent');
+      await this.project.refreshContents(project);
+    } catch (error) {
+      this.refused.set(messageOf(error));
+    } finally {
+      this.importing.set(false);
     }
   }
 

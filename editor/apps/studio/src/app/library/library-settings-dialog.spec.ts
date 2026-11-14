@@ -143,6 +143,32 @@ describe('LibrarySettingsDialog', () => {
     expect(report).toHaveBeenCalledWith(expect.objectContaining({ tone: 'warning', source: 'Library' }));
   });
 
+  it('removes the kept versions the check found nothing uses, then checks again (#292)', async () => {
+    const unused = {
+      ...health,
+      errors: 0,
+      groups: [
+        { kind: 'UnusedRevision', isError: false, count: 2, findings: [{ path: '.revisions/ab/abcd', detail: '' }] }
+      ]
+    };
+    let checks = 0;
+    const { fixture, POST } = await render(path =>
+      path === '/api/v1/library/check'
+        ? ok(checks++ === 0 ? unused : { ...health, errors: 0, groups: [] })
+        : ok({ removed: 2, bytes: 2048 })
+    );
+
+    byId('library-settings-check-run')?.click();
+    await fixture.whenStable();
+    expect(byId('library-settings-finding-MissingReference')).toBeNull();
+    byId('library-settings-purge-revisions')?.click();
+    await fixture.whenStable();
+
+    expect(POST).toHaveBeenCalledWith('/api/v1/library/revisions/purge');
+    expect(byId('library-settings-tidied')?.textContent.trim()).toBe('Removed 2 kept versions nothing used, 2.0 KB.');
+    expect(byId('library-settings-purge-revisions')).toBeNull();
+  });
+
   it('prunes for the days chosen and cleans, saying what each freed', async () => {
     const { fixture, POST } = await render(path =>
       ok(

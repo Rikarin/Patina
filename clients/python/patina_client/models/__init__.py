@@ -10,6 +10,9 @@ from .bake_curvature_options import BakeCurvatureOptions
 from .bake_edge_options import BakeEdgeOptions
 from .bake_height_options import BakeHeightOptions
 from .bake_id_options import BakeIdOptions
+from .bake_import_map import BakeImportMap
+from .bake_import_request import BakeImportRequest
+from .bake_imported import BakeImported
 from .bake_occlusion_options import BakeOcclusionOptions
 from .bake_options import BakeOptions
 from .bake_position_options import BakePositionOptions
@@ -466,6 +469,9 @@ __all__ = (
     "BakeEdgeOptions",
     "BakeHeightOptions",
     "BakeIdOptions",
+    "BakeImported",
+    "BakeImportMap",
+    "BakeImportRequest",
     "BakeOcclusionOptions",
     "BakeOptions",
     "BakePositionOptions",

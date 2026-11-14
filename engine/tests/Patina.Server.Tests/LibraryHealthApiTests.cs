@@ -76,6 +76,49 @@ public sealed class LibraryHealthApiTests : IAsyncLifetime {
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
     }
 
+    /// <summary>
+    ///     The Server removes the bytes of a forgotten snapshot, which only the CLI could while it held the library
+    ///     alone (#292), and the snapshot still listed keeps its own.
+    /// </summary>
+    [Fact]
+    public async Task A_purge_removes_the_bytes_of_a_forgotten_snapshot_and_keeps_the_rest() {
+        await MakeAsync("Crate");
+        var crate = Path.Combine(server.Library, LibraryLayout.ProjectsFolder, "crate");
+        var graph = Path.GetFileName(Assert.Single(Directory.GetFiles(crate, "*" + LibraryLayout.GraphExtension)));
+        var document = $"{LibraryLayout.ProjectsFolder}/crate/{graph}";
+        var kept = await TakeAsync(document, "Kept");
+        await File.AppendAllTextAsync(Path.Combine(crate, graph), "\n# later\n", Token);
+        var forgotten = await TakeAsync(document, "Forgotten");
+        (await client.DeleteAsync(
+            $"/api/v1/library/snapshots?path={Uri.EscapeDataString(document)}&id={forgotten.Id}",
+            Token
+        )).EnsureSuccessStatusCode();
+
+        var purged = await client.PostAsync("/api/v1/library/revisions/purge", null, Token);
+        var tidied = await purged.Content.ReadFromJsonAsync<LibraryTidied>(Token);
+
+        Assert.Equal(1, tidied!.Removed);
+        Assert.True(tidied.Bytes > 0);
+        var restored = await client.PostAsJsonAsync(
+            "/api/v1/library/snapshots/restore",
+            new SnapshotRequest(document, kept.Id),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
+        var text = await File.ReadAllTextAsync(Path.Combine(crate, graph), Token);
+        Assert.DoesNotContain("# later", text, StringComparison.Ordinal);
+    }
+
+    async Task<DocumentSnapshot> TakeAsync(string document, string name) {
+        var taken = await client.PostAsJsonAsync(
+            "/api/v1/library/snapshots",
+            new SnapshotTakeRequest(document, name),
+            Token
+        );
+        taken.EnsureSuccessStatusCode();
+        return (await taken.Content.ReadFromJsonAsync<DocumentSnapshot>(Token))!;
+    }
+
     [Fact]
     public async Task Clean_takes_the_copies_of_moved_paint_and_nothing_else() {
         await MakeAsync("Crate");

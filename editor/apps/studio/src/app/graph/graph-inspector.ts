@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injector, computed, inject, input, signal } from '@angular/core';
 import { provideIcons } from '@ng-icons/core';
 import { matPublish, matRadioButtonUnchecked } from '@ng-icons/material-icons/baseline';
 import type { GraphEdgeState, GraphNodeState, GraphPresetState, GraphSettingDefinition } from '@patina/api-client';
@@ -21,8 +21,12 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
+import { Activity } from '../core/activity';
 import { IconImports } from '../core/icons';
+import { messageOf } from '../core/messages';
+import { FileChooser } from '../library/file-chooser';
 import { LibraryInspector } from '../library/library-inspector';
+import { ProjectStore } from '../library/project-store';
 import { holds } from './graph-authoring';
 import {
   type GraphField,
@@ -53,6 +57,9 @@ interface Exposure {
 const SliderSteps = 1000;
 /** How a setting names a parameter of its graph instead of holding a value: Vixen's name-knob reference. */
 const ReferencePrefix = '$';
+/** The node that reads a picture file, and the setting that names it, as the Server's relink names them. */
+const BitmapNode = 'Source/Bitmap';
+const BitmapSource = 'Source';
 
 export { keptLanes } from './graph-fields';
 
@@ -425,14 +432,39 @@ export { keptLanes } from './graph-fields';
                     }
                   }
                   @case ('text') {
-                    <input
-                      xuiInput
-                      size="sm"
-                      [attr.aria-label]="field.name"
-                      [disabled]="!store.editable()"
-                      [value]="textOf(field)"
-                      (change)="setText(field, $event)"
-                    />
+                    @if (picksPicture(field)) {
+                      <div class="flex min-w-0 items-center gap-1">
+                        <input
+                          class="min-w-0 flex-1"
+                          xuiInput
+                          size="sm"
+                          [attr.aria-label]="field.name"
+                          [disabled]="!store.editable()"
+                          [value]="textOf(field)"
+                          (change)="setText(field, $event)"
+                        />
+                        <button
+                          type="button"
+                          xuiButton
+                          size="sm"
+                          data-testid="graph-bitmap-choose"
+                          [disabled]="!store.editable() || choosing()"
+                          [title]="'Choose the picture this Bitmap reads'"
+                          (click)="choosePicture(field)"
+                        >
+                          Choose…
+                        </button>
+                      </div>
+                    } @else {
+                      <input
+                        xuiInput
+                        size="sm"
+                        [attr.aria-label]="field.name"
+                        [disabled]="!store.editable()"
+                        [value]="textOf(field)"
+                        (change)="setText(field, $event)"
+                      />
+                    }
                   }
                 }
               }
@@ -448,6 +480,9 @@ export { keptLanes } from './graph-fields';
 export class GraphInspector {
   protected readonly store = inject(GraphStore);
   protected readonly steps = SliderSteps;
+  // Asked for only when a picture is chosen: what they bring with them has no use to every other field.
+  private readonly injector = inject(Injector);
+  protected readonly choosing = signal(false);
 
   readonly node = input.required<GraphNodeState>();
 
@@ -776,6 +811,34 @@ export class GraphInspector {
   protected setText(field: Extract<GraphField, { source: 'text' }>, event: Event): void {
     this.store.setText(this.node().id, field.name, (event.target as HTMLInputElement).value);
     this.store.endGesture();
+  }
+
+  /** A Bitmap's Source, which is picked from the library's pictures as well as typed (#292). */
+  protected picksPicture(field: GraphField): boolean {
+    return this.node().type === BitmapNode && field.name === BitmapSource;
+  }
+
+  /**
+   * Asks for a picture and points this Bitmap at it, as one undo step. The Server names the file as the graph finds it,
+   * so the field reads as a typed name would.
+   */
+  protected async choosePicture(field: Extract<GraphField, { source: 'text' }>): Promise<void> {
+    const project = this.injector.get(ProjectStore).current()?.path ?? null;
+    const file = await this.injector
+      .get(FileChooser)
+      .path({ kind: 'picture', title: 'Choose a Picture for the Bitmap', project });
+    if (file === null) {
+      return;
+    }
+
+    this.choosing.set(true);
+    try {
+      await this.store.relinkPicture(this.textOf(field), file, this.node().id);
+    } catch (failure) {
+      this.injector.get(Activity).report({ tone: 'error', source: 'Graph', text: messageOf(failure) });
+    } finally {
+      this.choosing.set(false);
+    }
   }
 }
 

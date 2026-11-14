@@ -8,7 +8,7 @@ namespace Patina.Library;
 ///     with no editor. One request per texture set to bake, or one for the whole mesh when it has none.
 /// </summary>
 public static class ProjectBakes {
-    const string MapsFolder = "maps";
+    internal const string MapsFolder = "maps";
 
     /// <summary>The project at a folder, read.</summary>
     /// <exception cref="FileNotFoundException">The folder holds no <c>project.yaml</c>.</exception>

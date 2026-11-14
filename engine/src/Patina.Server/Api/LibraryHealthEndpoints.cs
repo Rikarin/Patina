@@ -9,7 +9,8 @@ namespace Patina.Server.Api;
 
 /// <summary>
 ///     Keeping a library well from any client (#192, #162): the check <c>patina library check</c> runs, pruning the
-///     cache as <c>patina cache prune</c> does, and clearing the copies of moved paint. The CLI needs the library to
+///     cache as <c>patina cache prune</c> does, removing unused revisions as <c>--purge-revisions</c> does (#292), and
+///     clearing the copies of moved paint. The CLI needs the library to
 ///     itself; these run in the Server that holds it.
 /// </summary>
 static class LibraryHealthEndpoints {
@@ -28,6 +29,13 @@ static class LibraryHealthEndpoints {
                 "PruneCache",
                 "Removes built objects, bakes and reports nothing has touched for a number of days, 30 by default. "
                 + "A later build makes them again. Refused while a bake or build is queued or running."
+            );
+        library.MapPost("/revisions/purge", PurgeRevisionsAsync)
+            .Described(
+                "PurgeRevisions",
+                "Rescans, then removes the bytes under .revisions that no snapshot and no pin names any more, which "
+                + "the check lists as UnusedRevision, as patina library check --purge-revisions does. No snapshot or "
+                + "pin is taken while it runs."
             );
         library.MapPost("/clean", Clean)
             .Described(
@@ -49,6 +57,25 @@ static class LibraryHealthEndpoints {
         try {
             var report = await Task.Run(() => library.Check(cancellationToken: cancellationToken), cancellationToken);
             return TypedResults.Ok(Health(report));
+        } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
+            return problem;
+        }
+    }
+
+    static async Task<Results<Ok<LibraryTidied>, ProblemHttpResult>> PurgeRevisionsAsync(
+        LibraryHost host,
+        CancellationToken cancellationToken
+    ) {
+        if (host.Library is not { } library) {
+            return LibraryTreeEndpoints.NoLibrary();
+        }
+
+        try {
+            var (files, bytes) = await Task.Run(
+                () => LibraryRevisions.Purge(library, cancellationToken),
+                cancellationToken
+            );
+            return TypedResults.Ok(new LibraryTidied(files, bytes));
         } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
             return problem;
         }

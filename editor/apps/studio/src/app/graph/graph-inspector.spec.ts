@@ -7,6 +7,7 @@ import { XuiColorPicker } from '@xui/color-picker';
 import { XuiNumericInput } from '@xui/numeric-input';
 import { XuiSelect } from '@xui/select';
 import { SystemStatus } from '../core/system-status';
+import { FileChooser } from '../library/file-chooser';
 import { ProjectStore } from '../library/project-store';
 import { GraphInspector, Inspector, keptLanes } from './graph-inspector';
 import { GraphSelection, GraphSettings, freeParameterName } from './graph-settings';
@@ -279,6 +280,49 @@ const selectionOrBox = `
   }
   <input data-testid="box" />
 `;
+
+describe("a Bitmap's Source", () => {
+  const bitmapType: GraphNodeType = {
+    path: 'Source/Bitmap',
+    title: 'Bitmap',
+    category: 'Source',
+    summary: '',
+    hasPreview: true,
+    ports: [],
+    settings: [{ name: 'Source', default: '', summary: '', kind: 'String', group: '', accepted: [], minimum: null }]
+  };
+
+  async function render(picked: string | null) {
+    const store = { ...fakeStore(), types: signal(new Map([[bitmapType.path, bitmapType]])), relinkPicture: vi.fn() };
+    const path = vi.fn(() => Promise.resolve(picked));
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: GraphStore, useValue: store },
+        { provide: FileChooser, useValue: { path } },
+        { provide: ProjectStore, useValue: { current: signal({ path: 'crate' }) } }
+      ]
+    });
+    const fixture = TestBed.createComponent(GraphInspector);
+    fixture.componentRef.setInput('node', { ...node(7), type: bitmapType.path });
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="graph-bitmap-choose"]').click();
+    await fixture.whenStable();
+    return { store, path };
+  }
+
+  it('is chosen from the pictures of the project in front, and points this node alone at it (#292)', async () => {
+    const { store, path } = await render('C:/Art/Game.ptlib/projects/crate/pictures/bark.png');
+
+    expect(path).toHaveBeenCalledWith(expect.objectContaining({ kind: 'picture', project: 'crate' }));
+    expect(store.relinkPicture).toHaveBeenCalledWith('', 'C:/Art/Game.ptlib/projects/crate/pictures/bark.png', 7);
+  });
+
+  it('is left as it is when no picture is chosen', async () => {
+    const { store } = await render(null);
+
+    expect(store.relinkPicture).not.toHaveBeenCalled();
+  });
+});
 
 describe('the Inspector', () => {
   function render(arrange: (store: ReturnType<typeof fakeStore>) => void = () => undefined) {

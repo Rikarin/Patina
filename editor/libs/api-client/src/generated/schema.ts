@@ -1194,6 +1194,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/project/bake/import': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings maps baked in another program in as a texturing document's bake: each PNG is copied where the document's own bake goes and replaces the map of its name there, and the document, open or not, reads them as a bake of its mesh, UV set and material as they stand. A normal map's green runs up. */
+    post: operations['ImportProjectBake'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/snapshots': {
     parameters: {
       query?: never;
@@ -1470,6 +1487,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/revisions/purge': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Rescans, then removes the bytes under .revisions that no snapshot and no pin names any more, which the check lists as UnusedRevision, as patina library check --purge-revisions does. No snapshot or pin is taken while it runs. */
+    post: operations['PurgeRevisions'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/clean': {
     parameters: {
       query?: never;
@@ -1618,7 +1652,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Points every Bitmap node that reads a picture at another file, as one undo step. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
+    /** Points every Bitmap node that reads a picture at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
     post: operations['RelinkGraphPicture'];
     delete?: never;
     options?: never;
@@ -2875,6 +2909,38 @@ export interface components {
        * @default random
        */
       palette: string;
+    };
+    /** @description Where maps brought in now are, which the document reads its bake from. */
+    BakeImported: {
+      /** @description The bake's folder, below the library. */
+      folder: string;
+    };
+    /** @description One map brought in. */
+    BakeImportMap: {
+      /** @description One of the maps a bake makes, such as `normal`, `ao` or `curvature`. */
+      map: string;
+      /** @description The PNG, absolute or below the library. A normal map's green runs up the picture, as Patina's bakes do. */
+      file: string;
+    };
+    /**
+     * @description Maps baked in another program, brought in as a texturing document's bake (#144): the body of
+     *     `POST /api/v1/library/project/bake/import`.
+     */
+    BakeImportRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /**
+       * Format: uuid
+       * @description The texturing document, by its id, whose texture set the maps are of.
+       */
+      document: string;
+      /** @description Each map and the PNG of it, on the Server's machine. */
+      maps: components['schemas']['BakeImportMap'][];
+      /**
+       * @description Whether the normal is in `tangent` or `object` space, as a bake's options say.
+       * @default tangent
+       */
+      space: string;
     };
     /** @description The occlusion rays, which ambient occlusion, the bent normal and thickness share. */
     BakeOcclusionOptions: {
@@ -5107,10 +5173,16 @@ export interface components {
     };
     /** @description The body of `POST /api/v1/graphs/{id}/relink`: a picture the graph reads, and the file it is now. */
     GraphRelinkRequest: {
-      /** @description The picture as the graph's Bitmap nodes name it. */
+      /** @description The picture as the graph's Bitmap nodes name it; not read when a node is named. */
       from: string;
       /** @description The file to read instead: absolute, or below the library. */
       to: string;
+      /**
+       * Format: int32
+       * @description One Bitmap node to point at the file, whatever it reads now, or null for every one that reads
+       *     From (#292).
+       */
+      node?: null | number;
     };
     /**
      * @description The nodes chosen in a graph session, and the one kept on view whatever is chosen. A session has one selection,
@@ -13354,6 +13426,57 @@ export interface operations {
       };
     };
   };
+  ImportProjectBake: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BakeImportRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BakeImported'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetDocumentSnapshots: {
     parameters: {
       query: {
@@ -14316,6 +14439,53 @@ export interface operations {
         'application/json': null | components['schemas']['CachePruneRequest'];
       };
     };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryTidied'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PurgeRevisions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
     responses: {
       /** @description OK */
       200: {
