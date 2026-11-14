@@ -395,6 +395,11 @@ public sealed class StackEvaluator(
         );
         state.Document = work.Document;
         told[session.Id] = state;
+        // Another set's instance of a paint layer reads this one's canvas in the Worker, so it is evaluated again once
+        // the strokes are there: before, it may have read the canvas as it was (#108).
+        List<long> standing = [..work.Standing.Select(static entry => entry.Id)];
+        var painted = parts.Count > 0 || !standing.SequenceEqual(state.Standing);
+        state.Standing = standing;
 
         // ⚠ The viewport is what a drag watches, and a preview costs an encode per map per stamp. The last part of
         // the stroke has no open strokes, so the maps a client lists catch up as it ends.
@@ -409,6 +414,10 @@ public sealed class StackEvaluator(
         session.Publish(work, reply.StackResult!);
         viewport.Repainted(session.Id, work.Revision);
         viewport.Laid(session.Id, session.Set, session.UvSet);
+        if (painted) {
+            sessions.CatchUp(session);
+        }
+
         held.Stamps += parts.Sum(static part => part.Stamps.Count);
         await CheckpointAsync(session, connection, work, held, state, cancellationToken);
         TrimNow();
@@ -536,6 +545,9 @@ public sealed class StackEvaluator(
         ///     undo.
         /// </summary>
         public IReadOnlyList<long> Base { get; set; } = [];
+
+        /// <summary>The strokes that stood at the last sync.</summary>
+        public IReadOnlyList<long> Standing { get; set; } = [];
     }
 
     /// <summary>The checkpoints of one session.</summary>

@@ -116,15 +116,22 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
     }
 
     /// <summary>
-    ///     An edit of one set reaches every instance of its layers in another, open in a session of its own.
+    ///     An edit of one set reaches every instance of its layers in another, open in a session of its own: when it is
+    ///     made, and when its strokes reach the Worker, whose sessions read each other's canvases (#108).
     /// </summary>
-    void CatchUp(StackSession changed) {
+    /// <param name="changed">The session whose set changed.</param>
+    public void CatchUp(StackSession changed) {
         foreach (var other in table.All.Where(other => other != changed && other.ReadsOtherSets)) {
             other.Evaluate();
         }
     }
 
-    public void Close(StackSession session) => table.Close(session);
+    /// <summary>Closes a session, and an instance of its layers in another set reads the saved canvases again (#108).</summary>
+    /// <param name="session">The session.</param>
+    public void Close(StackSession session) {
+        table.Close(session);
+        CatchUp(session);
+    }
 
     public IReadOnlyList<string> TakeClosed() => table.TakeClosed();
 

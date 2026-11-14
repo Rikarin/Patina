@@ -45,7 +45,9 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
     public IpcMessage Load(IpcMessage request) {
         var load = request.StackLoad ?? throw new IpcException("stack.load holds no stack.");
         var folder = load.Folder is null ? null : Path.Combine(load.Folder, LibraryLayout.CompoundsFolder);
-        Hold(load.Session, new(load, gpu.Evaluator, compounds.Of(folder), pictures, meshes));
+        Session session = new(load, gpu.Evaluator, compounds.Of(folder), pictures, meshes);
+        session.Elsewhere = () => PaintedElsewhere(session);
+        Hold(load.Session, session);
         return IpcMessage.Ok(request.Id);
     }
 
@@ -582,6 +584,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         /// </summary>
         public IReadOnlyList<string> Prepare(bool full = false) {
             var divided = full ? 1 : proxy;
+            // Before the early return: another session's strokes since are in the canvas it lends, not in a plan (#108).
+            Borrow();
             if (!stale && Run.Plan is not null && divided == prepared) {
                 Compiled = false;
                 return [];
