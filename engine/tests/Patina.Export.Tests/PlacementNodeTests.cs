@@ -35,10 +35,8 @@ public sealed class PlacementNodeTests {
                  [(0f, 0f), (1f, 0f), (0f, 1f), (0.3f, 0.8f), (0.5f, 0.5f)]) {
             var expected = GltfReads(placement, u, v);
             var read = NodeReads(node, u, v);
-            // ⚠ A tolerance, not decimal places: 1.16549993 and 1.16550004 round apart to three places, which failed
-            // the property on a macOS runner over a difference of one bit.
-            Assert.Equal(expected.U, read.U, 1e-3f);
-            Assert.Equal(expected.V, read.V, 1e-3f);
+            Assert.Equal(expected.U, read.U, 3);
+            Assert.Equal(expected.V, read.V, 3);
         }
     }
 
