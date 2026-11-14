@@ -182,6 +182,63 @@ public sealed class ViewportRendererTests : IDisposable {
         Assert.Equal(whole, Render(renderer, camera));
     }
 
+    /// <summary>
+    ///     The model find-isolate's e2e marks (#274): two grey quads side by side, each its own material, from an OBJ
+    ///     with no library and no normals. Marking one washes it orange and outlines it, and leaves the other grey. On
+    ///     Linux CI that e2e saw no orange at all; this says whether the renderer draws it there.
+    ///     <c>PATINA_PICTURES</c> keeps the frames.
+    /// </summary>
+    [Fact]
+    public void A_marked_quad_of_two_is_washed_orange_and_the_other_is_not() {
+        using var renderer = Open();
+        var mesh = Path.Combine(cache.FullName, "sets.obj");
+        File.WriteAllLines(
+            mesh,
+            [
+                "v 0 0 0", "v 1 0 0", "v 1 1 0", "v 0 1 0", "v 1.2 0 0", "v 2.2 0 0", "v 2.2 1 0", "v 1.2 1 0",
+                "vt 0 0", "vt 1 0", "vt 1 1", "vt 0 1",
+                "usemtl metal", "f 1/1 2/2 3/3 4/4",
+                "usemtl wood", "f 5/1 6/2 7/3 8/4"
+            ]
+        );
+        renderer.OpenMesh(mesh);
+        Assert.Equal(["metal", "wood"], ViewportGeometry.Materials(mesh).Order(StringComparer.Ordinal));
+        var camera = OrbitCamera.Default;
+        var whole = Render(renderer, camera);
+
+        renderer.Highlight([], ["wood"]);
+        var marked = Render(renderer, camera);
+        renderer.Highlight([], []);
+        var unmarked = Render(renderer, camera);
+        Keep("sets-whole.png", whole);
+        Keep("sets-wood-marked.png", marked);
+
+        // The e2e's test for orange: red well over blue, which neither the grey quads nor the sky are.
+        static int Orange(byte[] pixels) =>
+            Enumerable.Range(0, Width * Height).Count(i => pixels[i * 4] > 140 && pixels[i * 4] > pixels[i * 4 + 2] + 50);
+
+        Assert.Equal(0, Orange(whole));
+        var orange = Orange(marked);
+        Assert.True(orange > 300, $"Only {orange} pixels are orange with wood marked.");
+        Assert.Equal(whole, unmarked);
+
+        // Only one quad: the orange is on one side of the middle of what was drawn.
+        var columns = Enumerable.Range(0, Width * Height)
+            .Where(i => marked[i * 4] > 140 && marked[i * 4] > marked[i * 4 + 2] + 50)
+            .Select(static i => i % Width)
+            .ToList();
+        Assert.True(columns.Max() - columns.Min() < Width / 2, "The mark spread over both quads.");
+    }
+
+    static void Keep(string name, byte[] pixels) {
+        if (Environment.GetEnvironmentVariable("PATINA_PICTURES") is { Length: > 0 } pictures) {
+            File.WriteAllBytes(
+                Path.Combine(pictures, name),
+                Vixen.Core.Imaging.PngCodec.Encode8(Width, Height, 4, pixels)
+            );
+        }
+    }
+
     [Fact]
     public void The_fixture_comes_out_lit_over_the_sky() {
         using var renderer = Open();

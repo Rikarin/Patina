@@ -138,21 +138,29 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
   await viewport.screenshot({ path: join(shots, 'isolate-1-whole.png') });
 
   // Pointing at a set marks it on the model, and the mark goes with the pointer (#136).
+  // Each step is waited for apart, so a failure says which did not happen: the Server hearing of the mark, a frame
+  // drawn since, or the orange in it (#274).
   const unmarked = await quads(true);
+  let frames = Number(await viewport.getAttribute('data-frames'));
   await window.getByTestId('texture-set-wood').hover();
-  await expect.poll(() => quads(true), { timeout: 30_000 }).toBeGreaterThan(unmarked + 1_000);
+  await drawn(viewport, 'highlight', ['wood'], frames);
+  await expect
+    .poll(() => quads(true), { timeout: 30_000, message: 'The mark on wood is drawn orange' })
+    .toBeGreaterThan(unmarked + 1_000);
   await viewport.screenshot({ path: join(shots, 'isolate-0-wood-marked.png') });
+  frames = Number(await viewport.getAttribute('data-frames'));
   await viewport.hover();
+  await drawn(viewport, 'highlight', [], frames);
   await expect.poll(() => quads(true), { timeout: 30_000 }).toBeLessThan(unmarked + 200);
 
   // One of two equal quads alone is about half of what both were.
   const isolate = window.getByTestId('texture-set-isolate-wood');
-  let frames = Number(await viewport.getAttribute('data-frames'));
+  frames = Number(await viewport.getAttribute('data-frames'));
   await isolate.click();
   await expect(isolate).toHaveAttribute('aria-pressed', 'true');
   // Off the row, so the count is of the quad and not its mark.
   await viewport.hover();
-  await drawnAlone(viewport, ['wood'], frames);
+  await drawn(viewport, 'isolation', ['wood'], frames);
   await expect.poll(() => quads(), { timeout: 30_000 }).toBeLessThan(whole * 0.7);
   expect(await quads()).toBeGreaterThan(whole * 0.3);
   await viewport.screenshot({ path: join(shots, 'isolate-2-wood-alone.png') });
@@ -160,7 +168,7 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
   frames = Number(await viewport.getAttribute('data-frames'));
   await isolate.click();
   await expect(isolate).toHaveAttribute('aria-pressed', 'false');
-  await drawnAlone(viewport, [], frames);
+  await drawn(viewport, 'isolation', [], frames);
   await expect.poll(quads, { timeout: 30_000 }).toBeGreaterThan(whole * 0.9);
   await viewport.screenshot({ path: join(shots, 'isolate-3-whole-again.png') });
 
@@ -311,21 +319,32 @@ async function server(): Promise<{ baseUrl: string; token: string }> {
 }
 
 /**
- * Waits until the Server draws these materials alone, none for the whole model, and frames drawn since have reached the
- * viewport, so a count of its pixels is of what was asked for (#271). The Server draws only when something changes, so
- * the frames counted are those since `frames`, read before the change was asked for.
+ * Waits until the Server draws these materials alone or marks them, none for the whole model or no mark, and frames
+ * drawn since have reached the viewport, so a count of its pixels is of what was asked for (#271). The Server draws
+ * only when something changes, so the frames counted are those since `frames`, read before the change was asked for.
  */
-async function drawnAlone(viewport: Locator, materials: string[], frames: number): Promise<void> {
+async function drawn(
+  viewport: Locator,
+  what: 'isolation' | 'highlight',
+  materials: string[],
+  frames: number
+): Promise<void> {
   const { baseUrl, token } = await server();
   const headers = { Authorization: `Bearer ${token}` };
-  const alone = async (): Promise<string[]> => {
-    const state = (await (await fetch(`${baseUrl}/api/v1/viewport`, { headers })).json()) as {
-      isolation?: { materials: string[] } | null;
-    };
-    return state.isolation?.materials ?? [];
+  const held = async (): Promise<string[]> => {
+    const state = (await (await fetch(`${baseUrl}/api/v1/viewport`, { headers })).json()) as Record<
+      string,
+      { materials: string[] } | null | undefined
+    >;
+    return state[what]?.materials ?? [];
   };
-  await expect.poll(alone, { timeout: 30_000 }).toEqual(materials);
   await expect
-    .poll(async () => Number(await viewport.getAttribute('data-frames')), { timeout: 30_000 })
+    .poll(held, { timeout: 30_000, message: `The Server's ${what} names ${materials.join(', ') || 'nothing'}` })
+    .toEqual(materials);
+  await expect
+    .poll(async () => Number(await viewport.getAttribute('data-frames')), {
+      timeout: 30_000,
+      message: `A frame reaches the viewport after the ${what} changed`
+    })
     .toBeGreaterThan(frames);
 }

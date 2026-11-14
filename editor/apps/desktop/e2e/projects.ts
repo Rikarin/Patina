@@ -1,4 +1,4 @@
-import { expect, type ElectronApplication, type Page } from '@playwright/test';
+import { expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { existsSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
@@ -153,6 +153,7 @@ export function ending(app: ElectronApplication, waitMs = 30_000): Promise<void>
 
 /** Ends the app with no one to answer its question about unsaved paint. */
 export async function leave(app: ElectronApplication): Promise<void> {
+  await keepLogs(app);
   // The engine's processes outlive Electron's exit for a moment, and on Windows a file they still hold cannot be
   // deleted, so the scratch folder would fail to go. Wait for every process to end before the test cleans up.
   const pids = [electronPid(app), ...(await sidecarPids(app))].filter((pid): pid is number => pid !== undefined);
@@ -169,6 +170,33 @@ export async function leave(app: ElectronApplication): Promise<void> {
   // in an evaluation on the software GPU can draw that out past the runner's teardown. Windows ends it either way.
   for (const pid of pids.filter(running)) {
     process.kill(pid, 'SIGKILL');
+  }
+}
+
+/**
+ * Attaches what the engine's processes last said to a test that failed, as `engine-logs`, which CI uploads with the
+ * rest of its results: on a runner that is the only way to see a cause the app's window does not show (#274).
+ */
+async function keepLogs(app: ElectronApplication): Promise<void> {
+  const info = test.info();
+  if (info.status === info.expectedStatus) {
+    return;
+  }
+
+  const logs = await app
+    .windows()[0]
+    ?.evaluate(() =>
+      (globalThis as unknown as { patina: { logs(): Promise<Record<string, string[]>> } }).patina.logs()
+    )
+    .catch(() => undefined); // a window that has gone has nothing to say
+  if (logs) {
+    const body = Object.entries(logs)
+      .map(([name, lines]) => [`== ${name}`, ...lines].join('
+'))
+      .join('
+
+');
+    await info.attach('engine-logs', { body, contentType: 'text/plain' });
   }
 }
 
