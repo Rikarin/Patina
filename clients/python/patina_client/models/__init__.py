@@ -36,6 +36,7 @@ from .build_preview import BuildPreview
 from .build_preview_project import BuildPreviewProject
 from .build_request import BuildRequest
 from .cache_info import CacheInfo
+from .cache_prune_request import CachePruneRequest
 from .check_problem import CheckProblem
 from .check_problem_values import CheckProblemValues
 from .check_target import CheckTarget
@@ -185,11 +186,15 @@ from .library_costs import LibraryCosts
 from .library_export_request import LibraryExportRequest
 from .library_file import LibraryFile
 from .library_file_list import LibraryFileList
+from .library_finding import LibraryFinding
+from .library_finding_group import LibraryFindingGroup
+from .library_health import LibraryHealth
 from .library_info import LibraryInfo
 from .library_move_request import LibraryMoveRequest
 from .library_moved import LibraryMoved
 from .library_preset_request import LibraryPresetRequest
 from .library_report import LibraryReport
+from .library_tidied import LibraryTidied
 from .material_brush import MaterialBrush
 from .material_import_request import MaterialImportRequest
 from .material_import_result import MaterialImportResult
@@ -461,6 +466,7 @@ __all__ = (
     "BuildPreviewProject",
     "BuildRequest",
     "CacheInfo",
+    "CachePruneRequest",
     "CheckProblem",
     "CheckProblemValues",
     "CheckTarget",
@@ -610,11 +616,15 @@ __all__ = (
     "LibraryExportRequest",
     "LibraryFile",
     "LibraryFileList",
+    "LibraryFinding",
+    "LibraryFindingGroup",
+    "LibraryHealth",
     "LibraryInfo",
     "LibraryMoved",
     "LibraryMoveRequest",
     "LibraryPresetRequest",
     "LibraryReport",
+    "LibraryTidied",
     "MaterialBrush",
     "MaterialImportRequest",
     "MaterialImportResult",
