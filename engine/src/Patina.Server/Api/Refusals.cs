@@ -91,6 +91,12 @@ public static class Refusals {
     /// </summary>
     public const string ChannelLast = "channel-last";
 
+    /// <summary>
+    ///     Paint carried from the UV set the texture set is laid out in already, which would only resample it (#210).
+    ///     Values: <c>uvSet</c>, counted from 1 as a person counts them.
+    /// </summary>
+    public const string CarrySameUvSet = "carry-paint-same-uv-set";
+
     /// <summary>A stack command that cannot apply, for a reason no client is expected to explain.</summary>
     public const string StackRefused = "stack-refused";
 

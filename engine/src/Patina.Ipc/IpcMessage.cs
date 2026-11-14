@@ -198,7 +198,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 18;
+    public const int ProtocolVersion = 19;
 
     public string Type { get; set; } = string.Empty;
 
@@ -720,6 +720,7 @@ public sealed record StackLoad(
 ///     through (#127), or null.
 /// </param>
 /// <param name="KeepOutside">Whether the stroke is kept to where that quick mask is not painted instead.</param>
+/// <param name="Carry">With <paramref name="From" />, the UV sets the copy is carried between (#210), or null.</param>
 public sealed record StackPaintPart(
     long Id,
     string Paint,
@@ -746,8 +747,18 @@ public sealed record StackPaintPart(
     bool Outline = false,
     bool Through = false,
     string? Keep = null,
-    bool KeepOutside = false
+    bool KeepOutside = false,
+    StackCarry? Carry = null
 );
+
+/// <summary>
+///     With <see cref="StackPaintPart.From" />, the layouts a copy is carried between (#210): the canvas it copies is
+///     laid out in one of the mesh's UV sets, and the copy in another, each texel reading the place on the surface it
+///     covers.
+/// </summary>
+/// <param name="FromUvSet">The UV set the canvas copied is laid out in.</param>
+/// <param name="ToUvSet">The UV set the copy is laid out in.</param>
+public sealed record StackCarry(int FromUvSet, int ToUvSet);
 
 /// <summary>What a flattened group's canvas is made of.</summary>
 /// <param name="Document">The stack as text, as it stood when the group was flattened.</param>

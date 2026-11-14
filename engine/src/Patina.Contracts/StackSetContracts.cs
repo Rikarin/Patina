@@ -39,6 +39,16 @@ public sealed record StackSetSettings(
     string? BakedOcclusion = null
 ) : StackCommand;
 
+/// <summary>
+///     Carries every canvas of the texture set from the layout of another of the mesh's UV sets onto the one it is laid
+///     out in now, as one undo step (#210): each texel takes what was painted at its place on the surface. Sent after a
+///     <see cref="StackSetSettings" /> that changes the UV set, in the same batch, it keeps the paint where it was on
+///     the model; on its own it projects paint laid out in another UV set onto this one. Every canvas becomes a new
+///     one, so an undo gives the old ones back untouched. A surface the other layout leaves out reads as nothing.
+/// </summary>
+/// <param name="FromUvSet">The UV set the paint is laid out in now, by its number; 0 is the first.</param>
+public sealed record StackCarryPaint(int FromUvSet) : StackCommand;
+
 /// <summary>What Apply Channels to All Sets did to one other texture set of the model (#141).</summary>
 /// <param name="Set">The set, by the material it paints.</param>
 /// <param name="Path">Its stack file.</param>

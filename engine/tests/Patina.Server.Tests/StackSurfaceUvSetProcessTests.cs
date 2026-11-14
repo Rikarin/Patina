@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Library;
+using Vixen.Texturing.Painting;
 
 namespace Patina.Server.Tests;
 
@@ -174,6 +175,59 @@ public sealed partial class StackProcessTests {
         var (x, y) = (picked.Position![0], picked.Position[1]);
         Assert.Equal(0.5f + 0.25f * x, picked.U, 0.01f);
         Assert.Equal(0.25f + 0.25f * y, picked.V, 0.01f);
+    }
+
+    /// <summary>
+    ///     Paint carried from UV set 1 into UV set 2 with the move (#210): painted all over in the first layout, where
+    ///     the triangle is half the square, it lands in the second's small triangle in the middle of the map and nowhere
+    ///     else, as an evaluation from nothing shows it too; the canvas it was on stays as it was, for an undo.
+    /// </summary>
+    [Fact]
+    public async Task Paint_carried_into_the_second_uv_set_lands_in_its_layout() {
+        using var deadline = Deadline(300);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var mesh = TwoLayoutTriangle(Path.Combine(folder.FullName, "meshes"));
+        _ = await StartAsync("Unused.vxlayers", deadline.Token);
+        var project = await MakeTexturingProjectAsync(mesh, deadline.Token);
+        var projectFolder = Path.Combine(Library, "projects", project);
+        var stack = Path.GetRelativePath(Library, Directory.EnumerateFiles(projectFolder, "*.vxlayers").Single())
+            .Replace('\\', '/');
+        var state = await OpenAsync(stack, deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("paint", "Ink"));
+        var ink = (await StateAsync(state.Id, deadline.Token)).Layers.Single(static layer => layer.Name == "Ink").Id;
+        var brush = new StackBrush(state.Width, Falloff: 0f);
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackStroke("all", ink, "baseColor", brush, Red, [new(state.Width / 2f, state.Height / 2f)])
+        );
+        await SaveAsync(state.Id, deadline.Token);
+        var painted = Directory.EnumerateFiles(projectFolder, "*.vxpaint").Single();
+        var held = File.ReadAllBytes(painted);
+
+        await EditAsync(state.Id, deadline.Token, new StackSetSettings(UvSet: 1), new StackCarryPaint(0));
+
+        var shown = await PixelsAsync(state.Id, false, deadline.Token);
+        var clean = await PixelsAsync(state.Id, true, deadline.Token);
+        Assert.Equal(Digest(clean, "baseColor"), Digest(shown, "baseColor"));
+        await SaveAsync(state.Id, deadline.Token);
+        Assert.Equal(held, File.ReadAllBytes(painted));
+        var carried = Directory.EnumerateFiles(projectFolder, "*.vxpaint").Single(file => file != painted);
+        PaintCanvas canvas;
+        using (var read = File.OpenRead(carried)) {
+            canvas = PaintCanvas.Read(read);
+        }
+
+        var image = canvas.Channel("baseColor");
+        var covered = 0;
+        for (var y = 0; y < image.Height; y++) {
+            for (var x = 0; x < image.Width; x++) {
+                covered += image.At(x, y) != image.Background ? 1 : 0;
+            }
+        }
+
+        var whole = image.Width * image.Height;
+        Assert.InRange(covered, whole / 64, whole / 16);
     }
 
     /// <summary>The first of a few places on the picture, from a few sides, that meets the ramp.</summary>

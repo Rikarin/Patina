@@ -17274,6 +17274,9 @@
             "$ref": "#/components/schemas/StackCommandStackSetSettings"
           },
           {
+            "$ref": "#/components/schemas/StackCommandStackCarryPaint"
+          },
+          {
             "$ref": "#/components/schemas/StackCommandStackAddMaskLayer"
           },
           {
@@ -17315,6 +17318,7 @@
             "unflattenLayer": "#/components/schemas/StackCommandStackUnflattenLayer",
             "setHeightNormal": "#/components/schemas/StackCommandStackSetHeightNormal",
             "setSettings": "#/components/schemas/StackCommandStackSetSettings",
+            "carryPaint": "#/components/schemas/StackCommandStackCarryPaint",
             "addMaskLayer": "#/components/schemas/StackCommandStackAddMaskLayer",
             "removeMaskLayer": "#/components/schemas/StackCommandStackRemoveMaskLayer",
             "moveMaskLayer": "#/components/schemas/StackCommandStackMoveMaskLayer",
@@ -17532,6 +17536,27 @@
           }
         },
         "description": "Gives a layer a smart mask from the shelf (#135). Merged, it narrows the mask the layer has: the smart mask\u0027s\nbase multiplies over it as one more entry, its entries follow, and its effects run after the layer\u0027s own. Not\nmerged, it replaces the mask."
+      },
+      "StackCommandStackCarryPaint": {
+        "required": [
+          "fromUvSet",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "carryPaint"
+            ],
+            "type": "string"
+          },
+          "fromUvSet": {
+            "type": "integer",
+            "description": "The UV set the paint is laid out in now, by its number; 0 is the first.",
+            "format": "int32"
+          }
+        },
+        "description": "Carries every canvas of the texture set from the layout of another of the mesh\u0027s UV sets onto the one it is laid\nout in now, as one undo step (#210): each texel takes what was painted at its place on the surface. Sent after a\nStackSetSettings that changes the UV set, in the same batch, it keeps the paint where it was on\nthe model; on its own it projects paint laid out in another UV set onto this one. Every canvas becomes a new\none, so an undo gives the old ones back untouched. A surface the other layout leaves out reads as nothing."
       },
       "StackCommandStackDuplicateLayers": {
         "required": [

@@ -6197,6 +6197,7 @@ export interface components {
       | components['schemas']['StackCommandStackUnflattenLayer']
       | components['schemas']['StackCommandStackSetHeightNormal']
       | components['schemas']['StackCommandStackSetSettings']
+      | components['schemas']['StackCommandStackCarryPaint']
       | components['schemas']['StackCommandStackAddMaskLayer']
       | components['schemas']['StackCommandStackRemoveMaskLayer']
       | components['schemas']['StackCommandStackMoveMaskLayer']
@@ -6293,6 +6294,22 @@ export interface components {
        * @default true
        */
       merge: boolean;
+    };
+    /**
+     * @description Carries every canvas of the texture set from the layout of another of the mesh's UV sets onto the one it is laid
+     *     out in now, as one undo step (#210): each texel takes what was painted at its place on the surface. Sent after a
+     *     StackSetSettings that changes the UV set, in the same batch, it keeps the paint where it was on
+     *     the model; on its own it projects paint laid out in another UV set onto this one. Every canvas becomes a new
+     *     one, so an undo gives the old ones back untouched. A surface the other layout leaves out reads as nothing.
+     */
+    StackCommandStackCarryPaint: {
+      /** @enum {string} */
+      op: 'carryPaint';
+      /**
+       * Format: int32
+       * @description The UV set the paint is laid out in now, by its number; 0 is the first.
+       */
+      fromUvSet: number;
     };
     /**
      * @description Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:

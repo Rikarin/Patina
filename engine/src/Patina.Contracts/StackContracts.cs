@@ -518,7 +518,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackFlattenLayer), "flattenLayer"),
  JsonDerivedType(typeof(StackUnflattenLayer), "unflattenLayer")]
 [JsonDerivedType(typeof(StackSetHeightNormal), "setHeightNormal")]
-[JsonDerivedType(typeof(StackSetSettings), "setSettings")]
+[JsonDerivedType(typeof(StackSetSettings), "setSettings"), JsonDerivedType(typeof(StackCarryPaint), "carryPaint")]
 [JsonDerivedType(typeof(StackAddMaskLayer), "addMaskLayer")]
 [JsonDerivedType(typeof(StackRemoveMaskLayer), "removeMaskLayer"),
  JsonDerivedType(typeof(StackMoveMaskLayer), "moveMaskLayer")]

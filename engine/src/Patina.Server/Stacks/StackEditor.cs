@@ -228,7 +228,9 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         }
 
         foreach (var (entry, part) in parts) {
-            entry.Stamps.AddRange(part.Stamps);
+            entry.Stamps.AddRange(
+                entry.StampScale is { } by ? StackStrokeScale.Stamps(part.Stamps, by) : part.Stamps
+            );
             entry.Open = part.Open;
         }
 
@@ -312,6 +314,9 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
                 break;
             case StackUnflattenLayer unflatten:
                 Unflatten(unflatten.Layer, set, Do);
+                break;
+            case StackCarryPaint carry:
+                Carry(carry, step, set, Do);
                 break;
             default:
                 if (!StackLayerEdits.Run(this, command, set, Do) && !StackSetEdits.Run(this, command, Do)) {
@@ -538,11 +543,14 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         // undone.
         var (width, height) = layer is null
             ? (Document.BaseWidth, Document.BaseHeight)
-            : canvasSides.Check(layer.Name, paint, Document.BaseWidth, Document.BaseHeight, stroke.View is not null);
-        // A brush sized in texels keeps its size on the model when it paints a larger canvas at its own (#19).
-        var painted = width == Document.BaseWidth || stroke.Brush.SizeSpace != "texture"
-            ? stroke
-            : stroke with { Brush = stroke.Brush with { Radius = stroke.Brush.Radius * width / Document.BaseWidth } };
+            : canvasSides.Check(layer.Name, paint, Document.BaseWidth, Document.BaseHeight);
+        // A larger canvas is painted at its own size (#19): a stroke in the 2D view is carried onto its texels, and a
+        // brush sized in texels keeps its size on the model.
+        float? by = width == Document.BaseWidth ? null : (float)width / Document.BaseWidth;
+        var painted = by is not { } scale ? stroke
+            : stroke.View is null ? StackStrokeScale.Scaled(stroke, scale)
+            : stroke.Brush.SizeSpace != "texture" ? stroke
+            : stroke with { Brush = stroke.Brush with { Radius = stroke.Brush.Radius * scale } };
 
         // A quick mask nothing has painted keeps nothing back, rather than everything.
         var kept = stroke.QuickMask is StackQuickMasks.Inside or StackQuickMasks.Outside
@@ -552,6 +560,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
                 SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set),
                 Width = width,
                 Height = height,
+                StampScale = stroke.View is null ? by : null,
                 // Only a stroke on the mesh has faces to keep to; one in the 2D view reaches the whole layout.
                 Isolation = stroke.View is null ? null : Isolation,
                 Keep = kept ? QuickMask.Paint : null,
@@ -891,6 +900,19 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         }
 
         run(new SetLayerCommand(this, new(set, id), group, group with { Paint = string.Empty }, "Unflatten folder"));
+    }
+
+    /// <summary>The set's paint carried from another UV set's layout onto its own (#210).</summary>
+    void Carry(StackCarryPaint carry, UndoStep step, string set, Action<IAuthoringCommand> run) {
+        StackPaintCarry carried = new(this, set);
+        if (carried.Run(carry, run) is not { } layouts) {
+            return;
+        }
+
+        foreach (var (from, to) in carried.Canvases) {
+            var size = (Document.BaseWidth, Document.BaseHeight);
+            step.Strokes.Add(StackJournalEntry.CarriedCopy(nextEntry++, (to, from), Document.Model, size, layouts));
+        }
     }
 
     internal void Journal(StackLayerCopies copies, UndoStep step) {

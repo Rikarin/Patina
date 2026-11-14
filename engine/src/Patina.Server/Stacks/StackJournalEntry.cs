@@ -70,6 +70,38 @@ public sealed class StackJournalEntry(
     public int Height { get; init; }
 
     /// <summary>
+    ///     What the stamps of a stroke in the 2D view are multiplied by to land on a canvas larger than the set (#19),
+    ///     which the rest of its drag is carried by too, or null when they are the canvas's texels already.
+    /// </summary>
+    public float? StampScale { get; init; }
+
+    /// <summary>
+    ///     With <see cref="From" />, the UV sets a copy is carried between (#210), or null for a copy laid out as what
+    ///     it copies.
+    /// </summary>
+    public Ipc.StackCarry? Carry { get; private init; }
+
+    /// <summary>
+    ///     A canvas that starts as a copy of another laid out in another UV set (#210), made at the set's size then as
+    ///     any copy is.
+    /// </summary>
+    /// <param name="id">Its number in the journal.</param>
+    /// <param name="canvas">The new canvas, then the one it copies.</param>
+    /// <param name="model">The mesh both layouts are read on.</param>
+    /// <param name="size">The set's size.</param>
+    /// <param name="carry">The UV sets it is carried between.</param>
+    public static StackJournalEntry CarriedCopy(
+        long id,
+        (string Paint, string From) canvas,
+        string model,
+        (int Width, int Height) size,
+        Ipc.StackCarry carry
+    ) =>
+        new(id, NoStroke, canvas.Paint, string.Empty, 0u, model, null) {
+            From = canvas.From, Width = size.Width, Height = size.Height, Carry = carry
+        };
+
+    /// <summary>
     ///     What the viewport drew alone when a stroke on the mesh began (#136), or null for the whole model: a stroke
     ///     reaches only what was shown. In the journal so a replay reaches the same faces whatever is shown since.
     /// </summary>
@@ -100,15 +132,10 @@ public sealed class StackJournalEntry(
     ///     a replay after the set's size changed makes it the same.
     /// </summary>
     public static StackJournalEntry Copy(long id, string paint, string from, string model, int width, int height) =>
-        new(
-            id,
-            new(string.Empty, string.Empty, string.Empty, new(1f), [0f, 0f, 0f, 0f], []),
-            paint,
-            string.Empty,
-            0u,
-            model,
-            null
-        ) { From = from, Width = width, Height = height };
+        new(id, NoStroke, paint, string.Empty, 0u, model, null) { From = from, Width = width, Height = height };
+
+    /// <summary>What an entry that is no stroke is made from: no brush, no colour and nowhere it went.</summary>
+    static StackStroke NoStroke => new(string.Empty, string.Empty, string.Empty, new(1f), [0f, 0f, 0f, 0f], []);
 
     /// <summary>
     ///     What this entry makes <see cref="Paint" /> hold instead of strokes: one group of a document, composited,
@@ -119,15 +146,7 @@ public sealed class StackJournalEntry(
 
     /// <summary>A canvas that starts as what one group of a document composites: a flattened group's cache.</summary>
     public static StackJournalEntry Captured(long id, string paint, StackCaptureEntry capture, string model) =>
-        new(
-            id,
-            new(string.Empty, string.Empty, string.Empty, new(1f), [0f, 0f, 0f, 0f], []),
-            paint,
-            string.Empty,
-            0u,
-            model,
-            null
-        ) { Capture = capture };
+        new(id, NoStroke, paint, string.Empty, 0u, model, null) { Capture = capture };
 }
 
 /// <summary>What a flattened group's canvas is made of.</summary>
