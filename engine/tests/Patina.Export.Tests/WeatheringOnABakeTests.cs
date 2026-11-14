@@ -1,6 +1,5 @@
 using Patina.Bench;
 using Patina.Content;
-using Patina.Contracts;
 using Patina.Jobs;
 using Vixen.Core.Imaging;
 using Vixen.Graphics.Vulkan;
@@ -68,7 +67,7 @@ public sealed class WeatheringOnABakeTests : IDisposable {
             Assert.True(edges.Count > 100 && faces.Count > 100, $"{edges.Count} edge and {faces.Count} face texels.");
             Assert.True(
                 Math.Abs(onEdges - onFaces) > 0.02,
-                $"{look} changed the edges by {onEdges:0.000} and the faces by {onFaces:0.000}: it does not read the bake."
+                $"{look} changed the edges by {onEdges:0.000} and the faces by {onFaces:0.000}: it ignores the bake."
             );
         }
     }

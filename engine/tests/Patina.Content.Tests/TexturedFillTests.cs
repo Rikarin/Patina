@@ -42,7 +42,7 @@ public sealed class TexturedFillTests {
         }
     }
 
-    /// <summary>A white noise with a disc of a third of the picture cut out of its middle, filled by a compound.</summary>
+    /// <summary>A white noise with a disc a third of the picture across cut out of it, filled by a compound.</summary>
     static Bitmap Filled(VulkanDevice device, string path) {
         NodeTypeRegistry registry = new();
         NodeTypes.Register(registry);
@@ -80,7 +80,7 @@ public sealed class TexturedFillTests {
         return bake.Read(compiler.Outputs.Single().Image);
     }
 
-    /// <summary>The standard deviation of red inside the middle of the hole, or in the corners well clear of it.</summary>
+    /// <summary>The standard deviation of red in the middle of the hole, or in the corners clear of it.</summary>
     static double Spread(Bitmap picture, bool inside) {
         List<double> values = [];
 
