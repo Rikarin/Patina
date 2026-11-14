@@ -7682,6 +7682,13 @@ export interface components {
        */
       bakeStale?: null | string;
       pace?: null | components['schemas']['StackPace'];
+      /**
+       * Format: int32
+       * @description The UDIM tile its layout sits on in its UV set (#281), which its exported files are named by: 1001 for a set on
+       *     the first tile, on no mesh, or reaching several, which its problems say.
+       * @default 1001
+       */
+      udim: number;
     };
     /** @description Where a stroke's colour comes from, when it is not one colour. */
     StackStrokeSource: {

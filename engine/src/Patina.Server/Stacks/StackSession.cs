@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export;
 using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
@@ -293,9 +294,12 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                 );
             }
 
-            // ⚠ Outside the lock: after a mesh change this reads the mesh once for the set's faces (#151), and strokes
-            // and edits must not wait on that.
-            return state with { BakeStale = BakeFit.OfModel(bake.Folder, bake.Model, bake.Set) };
+            // ⚠ Outside the lock: after a mesh change this reads the mesh once for the set's faces (#151) and its tile
+            // (#281), and strokes and edits must not wait on that.
+            return state with {
+                BakeStale = BakeFit.OfModel(bake.Folder, bake.Model, bake.Set),
+                Udim = SetUdim.Of(bake.Model, state.Set, bake.Set.UvSet)
+            };
         }
     }
 
