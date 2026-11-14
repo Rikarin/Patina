@@ -5,8 +5,8 @@ namespace Patina.Server.Tests;
 /// <summary>A loop fill on the housing with a real Worker, counted in the exported map (#129).</summary>
 public sealed partial class StackProcessTests {
     /// <summary>
-    ///     ⚠ The housing's eight sides are each one quad, laid one to a cell of the atlas with the quad's first edge, an
-    ///     upright one, along the cell's bottom. A loop clicked near that edge runs round the housing, across the
+    ///     ⚠ The housing's eight sides are each one quad, laid one to a cell of the atlas with the quad's first edge,
+    ///     an upright one, along the cell's bottom. A loop clicked near that edge runs round the housing, across the
     ///     uprights, and fills all eight sides: eight times the one side a polygon fill takes there. Clicked near the
     ///     side's top edge instead it runs up into the caps, whose fans are triangles and not quads, so it stops at
     ///     once both ways and takes the side alone. A loop sent as an outline is refused, since it runs from where a
@@ -33,9 +33,11 @@ public sealed partial class StackProcessTests {
         Assert.Equal(side, column);
 
         StackStamp[] box = [new(In(0.1f), In(0.1f)), new(In(0.9f), In(0.1f)), new(In(0.9f), In(0.9f))];
-        await RefusedAsync(state.Id, deadline.Token, Click("outline", "loop", 0.5f, 0.5f) with {
-            Stamps = box, Outline = true
-        });
+        await RefusedAsync(
+            state.Id,
+            deadline.Token,
+            Click("outline", "loop", 0.5f, 0.5f) with { Stamps = box, Outline = true }
+        );
         await RefusedAsync(state.Id, deadline.Token, Click("unknown", "ring", 0.5f, 0.5f));
     }
 }

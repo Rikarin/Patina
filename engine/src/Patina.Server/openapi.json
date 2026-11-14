@@ -19495,7 +19495,7 @@
               "null",
               "string"
             ],
-            "description": "With the fill curve, how much of the mesh a click takes: \u0060triangle\u0060, \u0060polygon\u0060 (the flat polygon it\nis part of), \u0060part\u0060 (the named mesh it belongs to), \u0060shell\u0060 (its UV island) or \u0060loop\u0060 (the loop of\nquads through it, across its edge nearest the click, which takes no outline). It needs a mesh."
+            "description": "With the fill curve, how much of the mesh a click takes: \u0060triangle\u0060, \u0060polygon\u0060 (the flat polygon it\nis part of), \u0060part\u0060 (the named mesh it belongs to), \u0060shell\u0060 (its UV island) or \u0060loop\u0060 (the\nloop of quads through it, across its edge nearest the click, which takes no outline). It needs a mesh."
           },
           "resume": {
             "type": [
