@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The project's pictures are on the shelf (#203): Pictures, beside Materials and Masks, lists each picture of the open project with a picture of it, searchable by name and file type. A click adds a fill whose channel being painted reads it; a drag carries it where a picture from the Library goes, into a picture slot in Properties or onto the mesh as a decal (#122). Through the API `role: "picture"` in `GET /api/v1/library/materials`, with the file's path below the library as its source, and `POST /api/v1/library/thumbnails` draws any picture file.
 - Symmetry has a section of its own in Properties (#298), between the project and the brush, shown whenever the document is on a mesh, so it can be set while a fill is chosen and a decal or a path set to Like the Brush follows it. It folds as the other sections do.
 - A user channel can be seen on the mesh (#298): the viewport's view list offers each of the open texture set's user channels, as Channel · its name, and shows it as its map holds it, a grey for one number and its colors for a color, kept up with each edit. Choosing another view puts the material back.
 - A project's own generators are in an image input's Generator list (#298), beside the shipped ones, with Result for one that writes several. Through the API `GET /api/v1/stacks/{id}/sources`.

@@ -931,6 +931,20 @@ export class PaintStore {
     }
   }
 
+  /**
+   * A fill on top whose channel being painted reads a picture (#203): the fill is one step and its picture a second, as
+   * a decal dropped on the mesh is.
+   */
+  async addPictureLayer(name: string, picture: string): Promise<void> {
+    const before = new Set(this.layers().map(row => row.layer.id));
+    await this.addLayer('fill', name);
+    // Only the layer just made: a picture set on the one chosen before would replace someone's work.
+    const layer = this.layer();
+    if (layer && !before.has(layer)) {
+      await this.edit({ op: 'setLayer', layer, textures: { [this.channel()]: picture } });
+    }
+  }
+
   /** What is under a place on the viewport, for a handle dragged over the mesh. */
   pickOnMesh(stamp: StackStamp, aim: Aim): Promise<ViewportPick> {
     return this.picked(stamp, aim);

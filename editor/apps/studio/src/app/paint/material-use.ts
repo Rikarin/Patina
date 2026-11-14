@@ -43,6 +43,12 @@ export class MaterialUse {
         }
 
         await this.paint.edit({ op: 'applyMask', layer: layer.id, source: material.source, merge: true });
+      } else if (material.role === 'picture') {
+        // A picture of the project's fills a new layer's channel being painted, as Choose… in its slot would (#203).
+        const picture = await this.project.bringPicture(material.source);
+        if (picture) {
+          await this.placed(drop, () => this.paint.addPictureLayer(material.name, picture));
+        }
       } else if (material.kind === 'graph' || material.kind === 'image-material') {
         await this.useGraph(material, await this.publish(project.path, material), drop);
       } else {

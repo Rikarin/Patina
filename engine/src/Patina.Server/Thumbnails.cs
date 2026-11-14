@@ -6,6 +6,7 @@ using Patina.Server.Stacks;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
+using Vixen.NodeGraph;
 
 namespace Patina.Server;
 
@@ -178,6 +179,10 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             return null;
         }
 
+        if (PictureFormats.IsPicture(full)) {
+            return OfPicture(source, full);
+        }
+
         if (!full.EndsWith(LibraryLayout.GraphExtension, StringComparison.OrdinalIgnoreCase)
             && !full.EndsWith(StackDocuments.Extension, StringComparison.OrdinalIgnoreCase)) {
             return null; // a brush preset or a mesh: nothing a material picture can show
@@ -220,6 +225,24 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             DocumentKinds.Graph => 4,
             _ => -1
         };
+
+    /// <summary>
+    ///     A picture file, as a graph that reads it into its base colour draws it (#203): the Worker decodes it as a
+    ///     layer would, and the file's stamp is part of its key, so a picture saved over is drawn again.
+    /// </summary>
+    (string Key, MaterialThumbnailAsk Ask)? OfPicture(string source, string full) {
+        var folder = Path.GetDirectoryName(full)!;
+        NodeGraphAsset graph = new() {
+            Name = Path.GetFileNameWithoutExtension(full),
+            Nodes = [
+                new() { Id = 1, Type = BitmapNode, Texts = new() { [SourceSetting] = Path.GetFileName(full) } },
+                new() { Id = 2, Type = OutputNode, Texts = new() { [UsageSetting] = DefaultUsage } }
+            ],
+            Edges = [new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Input" }]
+        };
+        var file = Path.Combine(folder, graph.Name + LibraryLayout.GraphExtension);
+        return OfGraph(source, GraphDocuments.Text(graph), file, null, [folder]);
+    }
 
     /// <summary>A graph's Output, preferring its base colour, computed at the picture's size.</summary>
     (string Key, MaterialThumbnailAsk Ask)? OfGraph(
