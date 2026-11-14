@@ -67,7 +67,8 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
       lane: 'Red',
       enabled: true,
       inside: 1,
-      outside: 0
+      outside: 0,
+      output: ''
     }
   };
 }
@@ -696,7 +697,8 @@ describe('PaintStore', () => {
       lane: 'Red',
       blend: 'Copy',
       opacity: 1,
-      enabled: true
+      enabled: true,
+      output: ''
     };
     const masked = {
       ...layer('paint', 'paint'),

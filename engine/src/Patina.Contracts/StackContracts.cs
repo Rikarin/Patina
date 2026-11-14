@@ -169,6 +169,10 @@ public sealed record StackAnchorUse(string Layer, string Where, string Channel);
 /// </param>
 /// <param name="Inside">With colours, what the mask is where they are: its output value, 0 to 1.</param>
 /// <param name="Outside">With colours, what the mask is everywhere else: its background, 0 to 1.</param>
+/// <param name="Output">
+///     Which picture of a generator that writes several is the mask, by its name in the generator's Outputs, or empty
+///     for its only one. Another generator starts from empty.
+/// </param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
@@ -187,7 +191,8 @@ public sealed record StackMask(
     string Lane = "Red",
     bool Enabled = true,
     float Inside = 1f,
-    float Outside = 0f
+    float Outside = 0f,
+    string Output = ""
 );
 
 /// <summary>
@@ -207,6 +212,7 @@ public sealed record StackMask(
 /// <param name="Opacity">How much of it composites, 0 to 1.</param>
 /// <param name="Enabled">Whether it composites at all.</param>
 /// <param name="Lane">Which lane of its picture it reads: Red, Green, Blue or Alpha.</param>
+/// <param name="Output">Which picture of a generator entry that writes several it reads, or empty for its only one.</param>
 public sealed record StackMaskLayer(
     string Source,
     float Value = 1f,
@@ -220,7 +226,8 @@ public sealed record StackMaskLayer(
     string Blend = "Copy",
     float Opacity = 1f,
     bool Enabled = true,
-    string Lane = "Red"
+    string Lane = "Red",
+    string Output = ""
 );
 
 /// <summary>One step run on a mask.</summary>
@@ -264,6 +271,10 @@ public sealed record StackIdColours(IReadOnlyList<StackIdColour> Colours, IReadO
 /// <param name="Ports">Its numbers, each saying what it is and what it starts as. Never an image it reads.</param>
 /// <param name="Settings">What it takes as text.</param>
 /// <param name="Inputs">The images it reads, its subject first. Empty for a generator.</param>
+/// <param name="Outputs">
+///     The pictures it writes, by name, when it writes more than one, so a generator read for one picture is told which
+///     (#120); null when it writes one.
+/// </param>
 public sealed record StackFilterKind(
     string Node,
     string Name,
@@ -271,7 +282,8 @@ public sealed record StackFilterKind(
     string Summary,
     IReadOnlyList<GraphPortDefinition> Ports,
     IReadOnlyList<GraphSettingDefinition> Settings,
-    IReadOnlyList<StackFilterInput>? Inputs = null
+    IReadOnlyList<StackFilterInput>? Inputs = null,
+    IReadOnlyList<string>? Outputs = null
 );
 
 /// <summary>One image a filter reads, as Properties offers a slot for it.</summary>
@@ -294,6 +306,7 @@ public sealed record StackFilterInput(string Port, string Summary, bool Subject,
 /// <param name="Parameters">The generator's settings, by name.</param>
 /// <param name="Asset">The image read, for Texture.</param>
 /// <param name="Map">The mesh map read, for Bake.</param>
+/// <param name="Output">Which picture of a generator that writes several is read, or empty for its only one.</param>
 public sealed record StackInput(
     string Source,
     string Channel = "",
@@ -302,7 +315,8 @@ public sealed record StackInput(
     IReadOnlyDictionary<string, IReadOnlyList<float>>? Values = null,
     IReadOnlyDictionary<string, string>? Parameters = null,
     string Asset = "",
-    string Map = ""
+    string Map = "",
+    string Output = ""
 );
 
 /// <summary>A word a stack's field takes, and what a person calls it.</summary>
@@ -781,6 +795,10 @@ public sealed record StackMoveMaskLayer(string Layer, int Index, int Delta) : St
 ///     The image inputs of a generator entry that anchor points feed, by port, replacing all of them. Another
 ///     generator starts with none.
 /// </param>
+/// <param name="Output">
+///     Which picture of a generator entry that writes several it reads, or empty for its only one. Another generator
+///     starts from empty.
+/// </param>
 public sealed record StackSetMaskLayer(
     string Layer,
     int Index,
@@ -795,7 +813,8 @@ public sealed record StackSetMaskLayer(
     float? Opacity = null,
     bool? Enabled = null,
     string? Lane = null,
-    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null
+    IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null,
+    string? Output = null
 ) : StackCommand;
 #pragma warning restore SK7005
 

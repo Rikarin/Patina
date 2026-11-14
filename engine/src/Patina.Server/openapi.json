@@ -19257,6 +19257,13 @@
               "$ref": "#/components/schemas/StackAnchorRef"
             },
             "description": "The image inputs of a generator entry that anchor points feed, by port, replacing all of them. Another\ngenerator starts with none."
+          },
+          "output": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Which picture of a generator entry that writes several it reads, or empty for its only one. Another generator\nstarts from empty."
           }
         },
         "description": "Changes an entry of a layer\u0027s mask stack. What is null stays."
@@ -20026,6 +20033,16 @@
               "$ref": "#/components/schemas/StackFilterInput"
             },
             "description": "The images it reads, its subject first. Empty for a generator."
+          },
+          "outputs": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "The pictures it writes, by name, when it writes more than one, so a generator read for one picture is told which\n(#120); null when it writes one."
           }
         },
         "description": "An adjustment a filter layer or a mask can run, or a generator an input can read: any node or shipped compound\na stack can use there. A project\u0027s own compounds reach a stack from the shelf."
@@ -20156,7 +20173,8 @@
           "channel",
           "generator",
           "asset",
-          "map"
+          "map",
+          "output"
         ],
         "type": "object",
         "properties": {
@@ -20217,6 +20235,11 @@
           "map": {
             "type": "string",
             "description": "The mesh map read, for Bake.",
+            "default": ""
+          },
+          "output": {
+            "type": "string",
+            "description": "Which picture of a generator that writes several is read, or empty for its only one.",
             "default": ""
           }
         },
@@ -20528,7 +20551,8 @@
           "lane",
           "enabled",
           "inside",
-          "outside"
+          "outside",
+          "output"
         ],
         "type": "object",
         "properties": {
@@ -20665,6 +20689,11 @@
             "description": "With colours, what the mask is everywhere else: its background, 0 to 1.",
             "format": "float",
             "default": 0
+          },
+          "output": {
+            "type": "string",
+            "description": "Which picture of a generator that writes several is the mask, by its name in the generator\u0027s Outputs, or empty\nfor its only one. Another generator starts from empty.",
+            "default": ""
           }
         },
         "description": "What decides where a layer shows."
@@ -20746,7 +20775,8 @@
           "blend",
           "opacity",
           "enabled",
-          "lane"
+          "lane",
+          "output"
         ],
         "type": "object",
         "properties": {
@@ -20831,6 +20861,11 @@
             "type": "string",
             "description": "Which lane of its picture it reads: Red, Green, Blue or Alpha.",
             "default": "Red"
+          },
+          "output": {
+            "type": "string",
+            "description": "Which picture of a generator entry that writes several it reads, or empty for its only one.",
+            "default": ""
           }
         },
         "description": "One entry of a mask\u0027s own stack: a source, composited over the base and the entries beneath it with its own\nblend and opacity. Paint over a generator is a Paint entry over a Generator base."

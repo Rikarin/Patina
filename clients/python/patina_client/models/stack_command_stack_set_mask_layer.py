@@ -48,6 +48,9 @@ class StackCommandStackSetMaskLayer:
             inputs (None | StackCommandStackSetMaskLayerInputsType1 | Unset): The image inputs of a generator entry that
                 anchor points feed, by port, replacing all of them. Another
                 generator starts with none.
+            output (None | str | Unset): Which picture of a generator entry that writes several it reads, or empty for its
+                only one. Another generator
+                starts from empty.
      """
 
     op: StackCommandStackSetMaskLayerOp
@@ -65,6 +68,7 @@ class StackCommandStackSetMaskLayer:
     enabled: bool | None | Unset = UNSET
     lane: None | str | Unset = UNSET
     inputs: None | StackCommandStackSetMaskLayerInputsType1 | Unset = UNSET
+    output: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -159,6 +163,12 @@ class StackCommandStackSetMaskLayer:
         else:
             inputs = self.inputs
 
+        output: None | str | Unset
+        if isinstance(self.output, Unset):
+            output = UNSET
+        else:
+            output = self.output
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -191,6 +201,8 @@ class StackCommandStackSetMaskLayer:
             field_dict["lane"] = lane
         if inputs is not UNSET:
             field_dict["inputs"] = inputs
+        if output is not UNSET:
+            field_dict["output"] = output
 
         return field_dict
 
@@ -361,6 +373,16 @@ class StackCommandStackSetMaskLayer:
         inputs = _parse_inputs(d.pop("inputs", UNSET))
 
 
+        def _parse_output(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        output = _parse_output(d.pop("output", UNSET))
+
+
         stack_command_stack_set_mask_layer = cls(
             op=op,
             layer=layer,
@@ -377,6 +399,7 @@ class StackCommandStackSetMaskLayer:
             enabled=enabled,
             lane=lane,
             inputs=inputs,
+            output=output,
         )
 
 

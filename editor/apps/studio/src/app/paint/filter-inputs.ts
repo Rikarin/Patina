@@ -99,9 +99,26 @@ const FirstGenerator = 'Noise/Clouds';
                   [items]="generatorNodes()"
                   [matchTargetWidth]="false"
                   [value]="held.generator || null"
-                  (valueChange)="$event && change(slot.port, { generator: $event, values: null, parameters: null })"
+                  (valueChange)="
+                    $event && change(slot.port, { generator: $event, values: null, parameters: null, output: '' })
+                  "
                 />
               </div>
+              @if (resultsOf(held.generator); as results) {
+                <div class="flex items-center gap-2 ps-[4.5rem]">
+                  <xui-select
+                    class="min-w-0 flex-1"
+                    placeholder="Choose a result"
+                    title="Which of the generator’s results it reads"
+                    [aria-label]="slot.port + ' generator result'"
+                    [attr.data-testid]="testId() + slot.port + '-result'"
+                    [filterable]="false"
+                    [items]="results"
+                    [value]="held.output || null"
+                    (valueChange)="change(slot.port, { output: $event ?? '' })"
+                  />
+                </div>
+              }
               @if (generatorOf(held.generator); as generator) {
                 <ptn-filter-fields
                   class="ps-[4.5rem]"
@@ -220,6 +237,11 @@ export class FilterInputs {
     return (map: string) => (map ? labelIn(maps, map) : 'None');
   });
 
+  /** The results of a generator that writes several, which a slot names the one of (#120); null for one. */
+  protected resultsOf(node: string | undefined): readonly string[] | null {
+    return this.store.kindOf(node)?.outputs ?? null;
+  }
+
   protected generatorOf(node: string | undefined): StackFilterKind | undefined {
     return node ? this.generators().get(node) : undefined;
   }
@@ -276,7 +298,7 @@ export class FilterInputs {
 
   /** A new source, from where a person would start: the slot's own channel, or a noise. */
   private started(slot: StackFilterInput, source: string): StackInput {
-    const blank: StackInput = { source, channel: '', generator: '', asset: '', map: '' };
+    const blank: StackInput = { source, channel: '', generator: '', asset: '', map: '', output: '' };
     const first = this.mask() ? (this.channels()[0] ?? '') : '';
     switch (source) {
       case 'Beneath':

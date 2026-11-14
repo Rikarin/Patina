@@ -123,6 +123,7 @@ sealed class StackMaskLayerEdits(StackEditor editor) {
             GeneratorTexts = StackEditor.Merged(sameGenerator ? held.GeneratorTexts : [], change.Parameters),
             GeneratorValues = sameGenerator ? held.GeneratorValues : [],
             GeneratorInputs = StackDocuments.References(change.Inputs) ?? (sameGenerator ? held.GeneratorInputs : []),
+            GeneratorOutput = change.Output ?? (sameGenerator ? held.GeneratorOutput : string.Empty),
             Map = change.Map ?? held.Map,
             Blend = StackEditor.Parsed(change.Blend, held.Blend, "blend mode"),
             Opacity = change.Opacity ?? held.Opacity,

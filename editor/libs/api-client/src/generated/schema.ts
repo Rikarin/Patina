@@ -6980,6 +6980,11 @@ export interface components {
       inputs?: null | {
         [key: string]: components['schemas']['StackAnchorRef'];
       };
+      /**
+       * @description Which picture of a generator entry that writes several it reads, or empty for its only one. Another generator
+       *     starts from empty.
+       */
+      output?: null | string;
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {
@@ -7358,6 +7363,11 @@ export interface components {
       settings: components['schemas']['GraphSettingDefinition'][];
       /** @description The images it reads, its subject first. Empty for a generator. */
       inputs?: null | components['schemas']['StackFilterInput'][];
+      /**
+       * @description The pictures it writes, by name, when it writes more than one, so a generator read for one picture is told which
+       *     (#120); null when it writes one.
+       */
+      outputs?: null | string[];
     };
     /** @description Asks which layer is on top at a place on a stack's map, as a click on the mesh or the map finds it. */
     StackFindRequest: {
@@ -7452,6 +7462,11 @@ export interface components {
        * @default
        */
       map: string;
+      /**
+       * @description Which picture of a generator that writes several is read, or empty for its only one.
+       * @default
+       */
+      output: string;
     };
     /** @description An instance layer and the layer it stands for, across two texture sets of one model (#108). */
     StackInstanceLink: {
@@ -7656,6 +7671,12 @@ export interface components {
        * @default 0
        */
       outside: number;
+      /**
+       * @description Which picture of a generator that writes several is the mask, by its name in the generator's Outputs, or empty
+       *     for its only one. Another generator starts from empty.
+       * @default
+       */
+      output: string;
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {
@@ -7753,6 +7774,11 @@ export interface components {
        * @default Red
        */
       lane: string;
+      /**
+       * @description Which picture of a generator entry that writes several it reads, or empty for its only one.
+       * @default
+       */
+      output: string;
     };
     /** @description Chooses the bake a stack's generators and bake masks read. */
     StackMeshMapsRequest: {
