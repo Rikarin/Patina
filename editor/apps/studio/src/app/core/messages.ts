@@ -27,6 +27,8 @@ const Words: Readonly<Record<string, string>> = {
     'The texture set is laid out in UV set {uvSet} already, so its paint is where it belongs. Choose the UV set the paint was laid out in.',
   'stroke-canvas-painted-at-size':
     '{layer} was painted at {held} earlier in this session. Save, close and open the document again to paint it at {target}.',
+  'channel-format-unknown':
+    '{format} is not a depth a channel can be painted at. Choose 8-bit, 16-bit or 32-bit float.',
   'history-step-gone': 'That step is no longer in the history: an edit made since replaced it.',
   'anchor-taken': 'Another layer is already the anchor “{anchor}”. Choose another name.',
   'anchor-in-use': '{layer} reads the anchor “{anchor}”. Point it elsewhere before taking the anchor away.',
