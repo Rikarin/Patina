@@ -26,7 +26,8 @@ class BinItem:
 
         Attributes:
             id (str): The entry, which the bin routes take.
-            kind (str): `project` or `document`.
+            kind (str): `project`, `document`, or `pictures` for those a Clean found nothing read, each going back to
+                            its own place in `projects`.
             name (str): Its display name when it was deleted.
             from_ (str): Where it lived, below the library, and where restoring puts it.
             deleted (datetime.datetime): When it was deleted.

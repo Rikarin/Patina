@@ -50,12 +50,23 @@ public sealed class Preferences {
         }
     }
 
+    /// <summary>
+    ///     The folder a library's autosaves go to outside its cache, a folder of its own in the one the person chose,
+    ///     or null when they chose none (#162).
+    /// </summary>
+    /// <param name="root">The library's folder.</param>
+    public string? AutosaveAway(string root) =>
+        Current.Autosave.Folder is { } chosen ? Recovery.Away(chosen, root) : null;
+
     /// <summary>Changes the settings and keeps them in the file.</summary>
-    /// <exception cref="ArgumentException">A setting is out of range, or no bake can use the bake options.</exception>
-    /// <exception cref="IOException">The file could not be written.</exception>
+    /// <exception cref="ArgumentException">
+    ///     A setting is out of range, the autosave folder no full path, or no bake can use the bake options.
+    /// </exception>
+    /// <exception cref="IOException">The file could not be written, or the autosave folder made.</exception>
     public ServerPreferences Set(ServerPreferences preferences) {
         ArgumentNullException.ThrowIfNull(preferences);
         Check(preferences);
+        preferences = preferences with { Autosave = Placed(preferences.Autosave) };
         lock (gate) {
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
             LibraryFiles.Replace(
@@ -83,6 +94,28 @@ public sealed class Preferences {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(autosave.IdleSeconds, MostSeconds, "idleSeconds");
         ArgumentOutOfRangeException.ThrowIfLessThan(autosave.Keep, 1, "keep");
         ArgumentOutOfRangeException.ThrowIfGreaterThan(autosave.Keep, MostKept, "keep");
+        if (autosave.Folder is { Length: > 0 } folder && !Path.IsPathFullyQualified(folder)) {
+            throw new ArgumentException("An autosave folder is a full path, such as one a folder picker gives.");
+        }
+    }
+
+    /// <summary>
+    ///     The settings with the autosave folder as kept: none when it is blank, and otherwise its full path, made now
+    ///     so that a folder that cannot be written is refused here and not at the next autosave.
+    /// </summary>
+    static AutosavePreferences Placed(AutosavePreferences autosave) {
+        if (string.IsNullOrWhiteSpace(autosave.Folder)) {
+            return autosave with { Folder = null };
+        }
+
+        var folder = Path.TrimEndingDirectorySeparator(Path.GetFullPath(autosave.Folder));
+        try {
+            Directory.CreateDirectory(folder);
+        } catch (UnauthorizedAccessException e) {
+            throw new IOException(e.Message, e);
+        }
+
+        return autosave with { Folder = folder };
     }
 
     /// <summary>The file, or the defaults when there is none or it cannot be used, which the log says.</summary>

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Patina.Contracts;
 using Patina.Library;
 using System.Net;
@@ -181,6 +182,50 @@ public sealed class LibraryCareApiTests : IAsyncLifetime {
         }
 
         Assert.Equal(kept, heard);
+    }
+
+    /// <summary>
+    ///     Autosaves go to the folder the person chose, a folder of the library's own inside it, and are offered from
+    ///     there; the cache keeps none (#162). A folder that is no full path is refused before anything is kept.
+    /// </summary>
+    [Fact]
+    public async Task Autosave_keeps_a_document_in_the_folder_chosen_for_it_and_offers_it_from_there() {
+        var chosen = Path.Combine(server.Library, "..", Path.GetFileName(server.Library) + "-autosaves");
+        var relative = await client.PutAsJsonAsync(
+            "/api/v1/preferences",
+            new ServerPreferences(new(3600, 1, 3) { Folder = "autosaves" }),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.BadRequest, relative.StatusCode);
+        var set = await client.PutAsJsonAsync(
+            "/api/v1/preferences",
+            new ServerPreferences(new(3600, 1, 3) { Folder = chosen }),
+            Token
+        );
+        var kept = (await set.Content.ReadFromJsonAsync<ServerPreferences>(Token))!.Autosave.Folder;
+        Assert.Equal(Path.GetFullPath(chosen), kept);
+        try {
+            var state = await client.OpenAsync(GraphTesting.Write(server.Library, GraphTesting.Sample()), Token);
+            await client.EditAsync(state.Id, Token, new GraphSetValue(2, "Hue", [0.5f]));
+            var file = Path.GetFullPath(state.Path, server.Library);
+            var away = Recovery.Away(kept!, server.Library);
+            var deadline = DateTime.UtcNow.AddSeconds(6);
+            while (Recovery.Count(server.Library, file, away) == 0 && DateTime.UtcNow < deadline) {
+                await Task.Delay(100, Token);
+            }
+
+            Assert.Equal(1, Recovery.Count(server.Library, file, away));
+            Assert.Equal(0, Recovery.Count(server.Library, file));
+            Assert.StartsWith(away, Recovery.Folder(server.Library, file, away), StringComparison.Ordinal);
+
+            // What a restart would offer comes from there, and a discard lets go of it there.
+            var gate = server.Services.GetRequiredService<AutosaveGate>();
+            Assert.NotNull(gate.Newer(server.Library, file));
+            (await client.DeleteAsync($"/api/v1/graphs/{state.Id}?discard=true", Token)).EnsureSuccessStatusCode();
+            Assert.Equal(0, Recovery.Count(server.Library, file, away));
+        } finally {
+            Directory.Delete(kept!, true);
+        }
     }
 
     [Fact]

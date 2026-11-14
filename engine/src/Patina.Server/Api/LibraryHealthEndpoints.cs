@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Jobs;
 using Patina.Library;
+using Patina.Server.Graphs;
+using Patina.Server.Stacks;
 
 namespace Patina.Server.Api;
 
@@ -30,7 +32,9 @@ static class LibraryHealthEndpoints {
         library.MapPost("/clean", Clean)
             .Described(
                 "CleanLibrary",
-                "Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it."
+                "Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it, "
+                + "and moves the pictures in projects that no document reads, saved or open, into the bin as one "
+                + "entry."
             );
     }
 
@@ -100,12 +104,31 @@ static class LibraryHealthEndpoints {
             }
         );
 
-    static Results<Ok<LibraryTidied>, ProblemHttpResult> Clean(LibraryHost host) =>
+    /// <summary>
+    ///     Deletes the copies of moved paint, and moves the pictures nothing reads into the bin (#162). An open
+    ///     document counts by what it holds now, saved or not, so a picture just put on a layer stays.
+    /// </summary>
+    static Results<Ok<LibraryCleaned>, ProblemHttpResult> Clean(
+        LibraryHost host,
+        StackSessions stacks,
+        GraphSessions graphs
+    ) =>
         LibraryTreeEndpoints.Guarded(
             host,
-            static library => {
+            library => {
                 var (folders, bytes) = PaintBackups.Remove(library.RootPath);
-                return TypedResults.Ok(new LibraryTidied(folders, bytes));
+                Dictionary<string, string> open = new(StringComparer.Ordinal);
+                foreach (var stack in stacks.All) {
+                    open[stack.Path] = stack.Text;
+                }
+
+                foreach (var graph in graphs.All) {
+                    open[graph.Path] = graph.Text;
+                }
+
+                // As the copies of moved paint go: from the folders alone, which the next rescan finds as they are.
+                var (item, pictures, pictureBytes) = UnusedPictures.Bin(library.RootPath, open);
+                return TypedResults.Ok(new LibraryCleaned(folders, bytes, pictures, pictureBytes, item?.Id));
             }
         );
 }

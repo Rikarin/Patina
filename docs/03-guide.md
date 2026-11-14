@@ -25,9 +25,13 @@ Everything is a file in the library's folder, so it can sit in version control, 
 deleted but the time to rebuild it. **Your work is yours:** libraries, projects and the textures you export belong to
 you, and Patina's licence does not reach them.
 
-File > Library Settings… shows what new projects start from and looks after the library: **Check Library** lists what
-is wrong or out of date, **Prune** takes out of the cache what nothing has used for a while, and **Clean** removes the
-copies of paint a project keeps each time a new UV layout moves it.
+File > Library Settings… changes the library's name, the texel density new projects start from and the presets a build of
+the whole library writes, and looks after the library: **Check Library** lists what is wrong or out of date, **Prune**
+takes out of the cache what nothing has used for a while, and **Clean** removes the copies of paint a project keeps each
+time a new UV layout moves it and moves the pictures no document uses to the bin, where **Restore** puts them all back.
+
+Autosave keeps unsaved work in the library's cache, or in a folder chosen under Edit > Preferences > Autosave, and
+offers it back after a crash. Window > Log shows what the engine has said lately, beside Activity.
 
 ## Painting and layers
 

@@ -246,6 +246,11 @@ export class LibraryStore {
     return this.client;
   }
 
+  /** Takes the library as the engine answered a change of its settings, without waiting for the next poll (#192). */
+  settled(info: LibraryInfo): void {
+    this.accept(info);
+  }
+
   private async poll(): Promise<void> {
     this.stopTimer();
     try {

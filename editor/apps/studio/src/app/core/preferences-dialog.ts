@@ -6,6 +6,7 @@ import { XuiDialogImports } from '@xui/dialog';
 import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSwitchImports } from '@xui/switch';
+import { FileChooser } from '../library/file-chooser';
 import { LibraryStore } from '../library/library-store';
 import { Commands } from './commands';
 import { desktop } from './desktop';
@@ -217,8 +218,9 @@ const MostKept = 20;
           <section class="flex flex-col gap-2" data-testid="preferences-autosave">
             <h3 class="section-label">Autosave</h3>
             <p class="text-foreground-muted text-xs">
-              The engine keeps open, unsaved work in the library's cache, never over a document, and offers it back
-              after a crash or a restart. These settings are the engine's, so every app attached to it uses them.
+              The engine keeps open, unsaved work in the library's cache or a folder you choose, never over a document,
+              and offers it back after a crash or a restart. These settings are the engine's, so every app attached to
+              it uses them.
             </p>
             @if (autosave(); as held) {
               <label class="flex items-center gap-3">
@@ -276,6 +278,38 @@ const MostKept = 20;
                   />
                   <span class="text-foreground-muted text-xs">autosaves of each document</span>
                 </label>
+                <div class="flex items-center gap-3">
+                  <span class="w-36 shrink-0">Kept in</span>
+                  <span
+                    class="min-w-0 flex-1 truncate text-xs select-text"
+                    data-testid="preferences-autosave-folder"
+                    [title]="held.folder ?? ''"
+                  >
+                    {{ held.folder ?? "The library's cache" }}
+                  </span>
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    data-testid="preferences-autosave-choose"
+                    (click)="chooseAutosaveFolder()"
+                  >
+                    Choose…
+                  </button>
+                  @if (held.folder) {
+                    <button
+                      type="button"
+                      xuiButton
+                      size="sm"
+                      variant="ghost"
+                      data-testid="preferences-autosave-cache"
+                      title="Keeps new autosaves in each library's cache again"
+                      (click)="saveAutosave({ folder: null })"
+                    >
+                      Use the Cache
+                    </button>
+                  }
+                </div>
               }
             } @else if (!autosaveFailure()) {
               <p class="text-foreground-muted text-xs">Asking the engine…</p>
@@ -348,6 +382,7 @@ export class PreferencesDialog {
   protected readonly preferences = inject(Preferences);
   protected readonly commands = inject(Commands);
   private readonly library = inject(LibraryStore);
+  private readonly chooser = inject(FileChooser);
 
   protected readonly themes = Themes;
   protected readonly libraryViews = LibraryViews;
@@ -389,6 +424,17 @@ export class PreferencesDialog {
 
   protected reveal(path: string): void {
     void desktop()?.reveal(path);
+  }
+
+  /**
+   * Asks for a folder for autosaves to go to (#162), on the engine's machine: each library gets a folder of its own in
+   * it. Autosaves already in the cache are still offered.
+   */
+  protected async chooseAutosaveFolder(): Promise<void> {
+    const folder = await this.chooser.folder('Choose a folder for autosaves');
+    if (folder) {
+      await this.saveAutosave({ folder });
+    }
   }
 
   /** Changes autosave on the Server, which keeps it in the person's preferences file. */

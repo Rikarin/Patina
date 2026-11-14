@@ -62,6 +62,10 @@ builder.WebHost.UseUrls(urls);
 // The hosting log's "Request starting/finished" lines carry the query string, and a WebSocket presents the access token
 // there (?access_token=, Api/Access.cs). Only its warnings are kept.
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
+// The latest lines, for any client's log pane (#192).
+var ring = new LogRing();
+builder.Logging.AddProvider(ring);
+builder.Services.AddSingleton(ring);
 builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection("Patina"));
 builder.Services.ConfigureHttpJsonOptions(static o => {
         o.SerializerOptions.TypeInfoResolverChain.Insert(0, ContractsJsonContext.Default);
@@ -101,7 +105,9 @@ builder.Services.AddSingleton<Holders>();
 builder.Services.AddSingleton<PreviewStore>();
 builder.Services.AddSingleton<Thumbnails>();
 builder.Services.AddSingleton<Preferences>();
-builder.Services.AddSingleton<AutosaveGate>();
+builder.Services.AddSingleton(static services =>
+    new AutosaveGate(services.GetRequiredService<Preferences>().AutosaveAway)
+);
 builder.Services.AddSingleton<GraphEvaluator>();
 builder.Services.AddHostedService(static services => services.GetRequiredService<GraphEvaluator>());
 builder.Services.AddHostedService<GraphFollower>();
