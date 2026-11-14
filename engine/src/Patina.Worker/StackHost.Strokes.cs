@@ -144,7 +144,7 @@ sealed partial class StackHost {
             var enlarged = canvas.Enlarged(width, height);
             canvases.Adopt(file, enlarged);
             // The plan holds the smaller one's texture, which the larger one's tiles do not fit.
-            stale = true;
+            Restale();
             return enlarged;
         }
 
@@ -165,7 +165,7 @@ sealed partial class StackHost {
 
             canvas = new(side.Width, side.Height);
             canvases.Adopt(file, canvas);
-            stale = true;
+            Restale();
             return canvas;
         }
 

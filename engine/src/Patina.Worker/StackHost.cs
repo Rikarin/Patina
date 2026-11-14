@@ -185,14 +185,16 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         var stack = Find(ask.Session);
 
         // What the viewport holds is at the proxy; anything else is what a file would hold, at full size (#208).
-        var problems = stack.Prepare(!ask.Viewport);
-        if (problems.Count > 0 || stack.Run.Plan is null) {
-            throw new IpcException(string.Join(' ', problems));
-        }
-
         if (ask.Viewport) {
+            var problems = stack.Prepare();
+            if (problems.Count > 0 || stack.Run.Plan is null) {
+                throw new IpcException(string.Join(' ', problems));
+            }
+
             return new() { Type = IpcTypes.Ok, StackPicture = Sampled(stack) };
         }
+
+        var run = stack.Whole();
 
         if (ask.Layer is { } layer) {
             using var alone = stack.Alone(layer, ask.Mask, out var name);
@@ -202,8 +204,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             };
         }
 
-        using var bake = ask.Clean ? stack.Run.EvaluateClean() : stack.Run.Evaluate();
-        return new() { Type = IpcTypes.Ok, StackPicture = Read(stack.Run, bake, stack.Name, ask.Folder, ask.File) };
+        using var bake = ask.Clean ? run.EvaluateClean() : run.Evaluate();
+        return new() { Type = IpcTypes.Ok, StackPicture = Read(run, bake, stack.Name, ask.Folder, ask.File) };
     }
 
     static string Digest(Bitmap map) => Convert.ToHexStringLower(SHA256.HashData(map.Pixels));
@@ -282,6 +284,12 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         LayerStackAsset document;
         bool stale = true;
         int proxy = 1;
+
+        /// <summary>The full-size stack beside a proxy's, for what a file would hold: <see cref="Whole" />.</summary>
+        LayerStackEvaluator? whole;
+
+        /// <summary>Whether <see cref="whole" /> is behind the document.</summary>
+        bool wholeStale = true;
 
         /// <summary>What the plan was last prepared at, as the proxy's divisor.</summary>
         int prepared = 1;
@@ -380,16 +388,12 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         /// </summary>
         /// <exception cref="IpcException">The stack does not evaluate.</exception>
         public IReadOnlyList<StackSampledChannel> SampleAt(float u, float v) {
-            var problems = Prepare(true);
-            if (problems.Count > 0 || Run.Plan is null) {
-                throw new IpcException(string.Join(' ', problems));
-            }
-
+            var run = Whole();
             var x = Math.Clamp((int)(u * document.BaseWidth), 0, document.BaseWidth - 1);
             var y = Math.Clamp((int)(v * document.BaseHeight), 0, document.BaseHeight - 1);
-            using var bake = Run.Evaluate();
+            using var bake = run.Evaluate();
             return [
-                ..Run.Outputs.Select(output => new StackSampledChannel(
+                ..run.Outputs.Select(output => new StackSampledChannel(
                         output.Usage,
                         StackSampling.Value(
                             bake.ReadTexels(output.Image, [new(x, y, 1, 1)])[0],
@@ -470,13 +474,16 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
         public string Name => Path.GetFileNameWithoutExtension(path);
 
-        public void Dispose() => Run.Dispose();
+        public void Dispose() {
+            Run.Dispose();
+            whole?.Dispose();
+        }
 
         /// <summary>Goes from the strokes that stand here to the strokes that should.</summary>
         public void Sync(StackSync sync, DeviceWatch watch) {
             if (sync.Document is { } text) {
                 document = LayerStackYaml.Read(text);
-                stale = true;
+                Restale();
             }
 
             QuickMask = sync.QuickMask;
@@ -572,16 +579,69 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
         /// <summary>What the stack's sides are divided by while it is edited (#208).</summary>
         public int Proxy {
-            set => proxy = Math.Max(1, value);
+            set {
+                proxy = Math.Max(1, value);
+                if (proxy == 1) {
+                    // At full size the viewport's plan is the file's too, and a second would only hold memory.
+                    whole?.Dispose();
+                    whole = null;
+                }
+            }
+        }
+
+        /// <summary>The plans are behind the document, or behind a canvas whose size changed.</summary>
+        void Restale() {
+            stale = true;
+            wholeStale = true;
         }
 
         /// <summary>
-        ///     Brings the plan up to the document, which only a change of structure compiles, or a change of size: at
-        ///     the proxy, or at full size for what a file would hold. Canvases stay at full size, and the plan samples
-        ///     them down.
+        ///     The stack at full size, for whatever reads what a file would hold: a save, an export, a check, a sample
+        ///     and a read of the pixels. With no proxy that is the viewport's own; under a proxy it is a second
+        ///     evaluator kept beside the proxy's, so a full-size read compiles neither plan again and the next edit
+        ///     goes on at the proxy where it left off (#288). It uploads the canvases a second time, which costs far
+        ///     less than a compile each way per autosave on a big stack.
         /// </summary>
-        public IReadOnlyList<string> Prepare(bool full = false) {
-            var divided = full ? 1 : proxy;
+        /// <exception cref="IpcException">The stack does not evaluate.</exception>
+        public LayerStackEvaluator Whole() {
+            if (proxy == 1) {
+                var problems = Prepare();
+                return problems.Count > 0 || Run.Plan is null
+                    ? throw new IpcException(string.Join(' ', problems))
+                    : Run;
+            }
+
+            if (whole is null) {
+                whole = new(evaluator, canvases, path, fill) {
+                    Draft = true, Baked = Run.Baked, PositionBox = positionBox
+                };
+                wholeStale = true;
+            }
+
+            if (!wholeStale && whole.Plan is not null) {
+                return whole;
+            }
+
+            if (LayerStackEdit.SetFor(document, set) is not { } chosen) {
+                throw new IpcException($"This stack has no texture set '{set}'.");
+            }
+
+            var refused = whole.Prepare(document, chosen, compounds.Registry, compounds.Source);
+            if (refused.Count > 0 || whole.Plan is null) {
+                throw new IpcException(string.Join(' ', refused));
+            }
+
+            wholeStale = false;
+            return whole;
+        }
+
+        /// <summary>
+        ///     Brings the viewport's plan up to the document, which only a change of structure compiles, or a change of
+        ///     the proxy. Canvases stay at full size, and the plan samples them down. What a file would hold is
+        ///     <see cref="Whole" />.
+        /// </summary>
+        public IReadOnlyList<string> Prepare() {
+            var divided = proxy;
             if (!stale && Run.Plan is not null && divided == prepared) {
                 Compiled = false;
                 return [];
