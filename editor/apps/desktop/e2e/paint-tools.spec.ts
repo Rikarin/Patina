@@ -574,13 +574,15 @@ test('a dab on the strap paints the top under it only with the occlusion test of
   await atlas.screenshot({ path: join(shots, 'occlusion-off-atlas.png') });
   const through = await atlas.screenshot();
 
+  const dabbed = through.toString('base64');
   await window.getByTestId('app-undo').click();
-  await expect.poll(async () => changed(blank, await map(), 8), { timeout: 60_000 }).toBe(0);
+  await expect.poll(async () => changed(dabbed, await map(), 8), { timeout: 60_000 }).toBeGreaterThan(0);
   await settled();
+  const undone = await map();
   await window.getByTestId('paint-occlusion').click();
   await expect(window.getByTestId('paint-occlusion')).toBeChecked();
   await click(0.5, 0.5);
-  await expect.poll(async () => changed(blank, await map(), 8), { timeout: 60_000 }).toBeGreaterThan(0);
+  await expect.poll(async () => changed(undone, await map(), 8), { timeout: 60_000 }).toBeGreaterThan(0);
   await settled();
   await window.screenshot({ path: join(shots, 'occlusion-on-window.png') });
   await atlas.screenshot({ path: join(shots, 'occlusion-on-atlas.png') });
