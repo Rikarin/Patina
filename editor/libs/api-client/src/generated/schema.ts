@@ -1091,6 +1091,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/project/bake/plan': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The bakes a project's own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh. */
+    get: operations['GetProjectBakePlan'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/snapshots': {
     parameters: {
       query?: never;
@@ -5442,6 +5459,18 @@ export interface components {
       status?: null | number;
       detail?: null | string;
       instance?: null | string;
+    };
+    /**
+     * @description The bakes a project's own settings ask for (#186): one request per texture set to bake, or one for the whole
+     *     mesh, as the Bake dialog sends them. `GET /api/v1/library/project/bake/plan` answers it, and
+     *     `patina bake-maps --project … --dry-run` prints it, so a script bakes a project the way the editor does
+     *     without working the requests out itself.
+     */
+    ProjectBakePlan: {
+      /** @description The project's folder. */
+      project: string;
+      /** @description What to send to `POST /api/v1/jobs/bakes`, one at a time or all at once. */
+      requests: components['schemas']['BakeRequest'][];
     };
     /** @description The body of `PUT /api/v1/library/project/bake`. */
     ProjectBakeRequest: {
@@ -12205,6 +12234,56 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['PackageImported'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetProjectBakePlan: {
+    parameters: {
+      query: {
+        project: string;
+        document?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectBakePlan'];
         };
       };
       /** @description Bad Request */

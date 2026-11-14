@@ -92,7 +92,9 @@ So the format is the graph and what it reads, made self-contained, and stamped.
 
 ## `patina` with no Server
 
-- `patina package <graph> <folder> [--library <path>] [--role …]` publishes a package anywhere.
+- `patina package <graph> <folder> [--library <path>] [--role …] [--zip]` publishes a package anywhere, as a folder or
+  as one zip.
+- `patina package import <zip | folder> (--library <path> | --into <folder>)` brings one in, as Import Package… does.
 - `patina graph info <graph | package>` prints a `GraphFacts` as JSON: inputs, outputs, parameters, presets, settings,
   what the graph says about itself and the manifest.
 - `patina bake <graph | package> <folder> [--seed <n>] [--preset <name>] [--param <name>=<value>]…` sets a parameter's
@@ -103,9 +105,15 @@ So the format is the graph and what it reads, made self-contained, and stamped.
 ## Costs and open questions
 
 - **Fonts and SVG files are not carried.** A Text or Vector node with a file of its own refuses publishing.
-- **A package is a folder, not one file.** That is what diffs in Git; sending one means zipping it. There is no import of
-  a zipped package yet, so bringing a third-party package in is copying its folder into `packages/`.
-- **No relink view.** The plan names a missing picture and where it was looked for, and the Bitmap node is pointed at it
-  again by hand. A dependency view with relink (#185) is left.
+- **A package is a folder, not one file.** That is what diffs in Git; sending one means zipping it, which
+  `patina package --zip` does: the folder under `<name>.ptpkg/`, its entries sorted and stamped alike, so the same package
+  zips to the same bytes. Import Package… and `POST /library/packages/import` (#185) take such a zip, or a manifest at the
+  zip's top, or a `.ptpkg` folder. Nothing is written until the whole package has been unpacked beside `packages/` and its
+  manifest read (a newer `format` is refused as above) and every file it names found; an entry that is rooted or climbs
+  out of the package, or a zip that unpacks to more than 4 GiB, brings nothing in. The package then replaces one of its
+  name whole.
+- **Relink reaches the graph's own Bitmap nodes.** The plan's `in` says which compound names a picture, or none for the
+  graph itself; `POST /graphs/{id}/relink` repoints every Bitmap of an open graph that reads one picture, as one undo
+  step, naming the new file as ADR 0007 finds it. A picture only a compound reads is relinked by opening that compound.
 - **Stale compounds of a package that was removed stay in a project** that used it, as any project compound does.
 - **Graph-file tags of another project's graph are not searched** from this project, as above.

@@ -4188,6 +4188,74 @@
         }
       }
     },
+    "/api/v1/library/project/bake/plan": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The bakes a project\u0027s own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh.",
+        "operationId": "GetProjectBakePlan",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectBakePlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/snapshots": {
       "get": {
         "tags": [
@@ -15741,6 +15809,27 @@
             ]
           }
         }
+      },
+      "ProjectBakePlan": {
+        "required": [
+          "project",
+          "requests"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project\u0027s folder."
+          },
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BakeRequest"
+            },
+            "description": "What to send to \u0060POST /api/v1/jobs/bakes\u0060, one at a time or all at once."
+          }
+        },
+        "description": "The bakes a project\u0027s own settings ask for (#186): one request per texture set to bake, or one for the whole\nmesh, as the Bake dialog sends them. \u0060GET /api/v1/library/project/bake/plan\u0060 answers it, and\n\u0060patina bake-maps --project \u2026 --dry-run\u0060 prints it, so a script bakes a project the way the editor does\nwithout working the requests out itself."
       },
       "ProjectBakeRequest": {
         "required": [

@@ -12,6 +12,8 @@ switch (args) {
         return Help.Print(command, Console.Out);
     case [.. var command, "--help" or "-h"]:
         return Help.Print(command, Console.Out);
+    case ["bake-maps", .. var options] when ProjectBakeCommand.Is(options):
+        return ProjectBakeCommand.Run(options);
     case ["bake-maps", .. var options]:
         return MeshMapCommand.Run(options);
     case ["bake", var graph, var folder, .. var options] when GraphBake.Options(options) is { } read:

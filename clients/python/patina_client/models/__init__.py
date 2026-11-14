@@ -167,6 +167,7 @@ from .graph_port_range import GraphPortRange
 from .graph_preset_state import GraphPresetState
 from .graph_preset_state_values import GraphPresetStateValues
 from .graph_preview import GraphPreview
+from .graph_relink_request import GraphRelinkRequest
 from .graph_selection import GraphSelection
 from .graph_setting_condition import GraphSettingCondition
 from .graph_setting_definition import GraphSettingDefinition
@@ -205,11 +206,14 @@ from .output_report import OutputReport
 from .package_compound import PackageCompound
 from .package_dependency import PackageDependency
 from .package_file import PackageFile
+from .package_import_request import PackageImportRequest
+from .package_imported import PackageImported
 from .package_manifest import PackageManifest
 from .package_plan import PackagePlan
 from .package_published import PackagePublished
 from .package_request import PackageRequest
 from .problem_details import ProblemDetails
+from .project_bake_plan import ProjectBakePlan
 from .project_bake_request import ProjectBakeRequest
 from .project_bake_settings import ProjectBakeSettings
 from .project_check_settings import ProjectCheckSettings
@@ -592,6 +596,7 @@ __all__ = (
     "GraphPresetState",
     "GraphPresetStateValues",
     "GraphPreview",
+    "GraphRelinkRequest",
     "GraphSelection",
     "GraphSettingCondition",
     "GraphSettingDefinition",
@@ -630,11 +635,14 @@ __all__ = (
     "PackageCompound",
     "PackageDependency",
     "PackageFile",
+    "PackageImported",
+    "PackageImportRequest",
     "PackageManifest",
     "PackagePlan",
     "PackagePublished",
     "PackageRequest",
     "ProblemDetails",
+    "ProjectBakePlan",
     "ProjectBakeRequest",
     "ProjectBakeSettings",
     "ProjectCheckSettings",

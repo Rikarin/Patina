@@ -2,7 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace Patina.Contracts;
 
-/// <summary>What a package's manifest, publishing and <c>patina graph info</c> put on the wire (ADR 0027).</summary>
+/// <summary>
+///     What a package's manifest, publishing and <c>patina graph info</c> put on the wire (ADR 0027), and the other
+///     answers the command line prints as the API does.
+/// </summary>
 [JsonSourceGenerationOptions(
     WriteIndented = true,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
@@ -15,6 +18,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(PackageImportRequest))]
 [JsonSerializable(typeof(PackageImported))]
 [JsonSerializable(typeof(GraphRelinkRequest))]
+[JsonSerializable(typeof(ProjectBakePlan))]
 [JsonSerializable(typeof(GraphFacts))]
 public sealed partial class PackageJsonContext : JsonSerializerContext;
 
