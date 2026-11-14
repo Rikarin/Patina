@@ -27,8 +27,8 @@ shader ViewportForward {
     [PerFrame] var environmentSampler: Sampler
 
     // What is shown, in `ViewportView`'s order: 0 lit, 1 clay, 2 unlit, then the stored values from 3 base colour to 10
-    // the picture, and 11 the texel density. A uniform rather than a permutation, because a branch every pixel takes the
-    // same way costs nothing and twelve pipelines would.
+    // the picture, 11 the texel density and 12 the vertex colours. A uniform rather than a permutation, because a branch
+    // every pixel takes the same way costs nothing and thirteen pipelines would.
     [PerFrame] var view: float
     [PerFrame] var picture: Texture2D
     [PerFrame] var pictureSampler: Sampler
@@ -68,14 +68,16 @@ shader ViewportForward {
     stream var worldNormal: float3
     stream var surfaceUv: float2
     stream var worldTangent: float4
+    stream var vertexColour: float4
 
     [VertexShader]
     [Semantic("SV_Position")]
-    func Vertex(position: float3, normal: float3, texCoord: float2, tangent: float4): float4 {
+    func Vertex(position: float3, normal: float3, texCoord: float2, tangent: float4, colour: float4): float4 {
         worldPosition = position
         worldNormal = normal
         surfaceUv = texCoord
         worldTangent = tangent
+        vertexColour = colour
         return viewProjection * float4(position, 1f)
     }
 
@@ -179,7 +181,13 @@ shader ViewportForward {
             return Stored(Lane(picture.Sample(pictureSampler, surfaceUv)) * pictureScale)
         }
 
-        return Density()
+        if (view < 11.5f) {
+            return Density()
+        }
+
+        // The vertex colours as the file stores them: a number per vertex, interpolated, with no light. White where the
+        // file has none.
+        return Stored(vertexColour.rgb)
     }
 
     func Stored(value: float3): float3 {
