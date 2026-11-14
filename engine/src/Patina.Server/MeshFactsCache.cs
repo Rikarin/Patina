@@ -13,16 +13,12 @@ namespace Patina.Server;
 ///     ⚠ Only an answer is kept. A refusal, or no Worker, asks again the next time, so a file fixed in place or a
 ///     Worker that came back is read.
 /// </remarks>
-public sealed class MeshFactsCache {
-    readonly Func<string, CancellationToken, Task<MeshFacts?>> ask;
+/// <param name="ask">Reads a file's facts, or null when the reader said nothing: the Worker, or a test's own.</param>
+public sealed class MeshFactsCache(Func<string, CancellationToken, Task<MeshFacts?>> ask) {
     readonly Dictionary<string, Kept> kept = new(StringComparer.Ordinal);
 
     /// <summary>A cache that asks the Worker the link reaches.</summary>
     public MeshFactsCache(WorkerLink worker) : this((file, token) => AskAsync(worker, file, token)) { }
-
-    /// <summary>A cache that asks <paramref name="ask" />, for a test.</summary>
-    /// <param name="ask">Reads a file's facts, or null when the reader said nothing.</param>
-    public MeshFactsCache(Func<string, CancellationToken, Task<MeshFacts?>> ask) => this.ask = ask;
 
     /// <summary>What a file is: kept while its bytes stay, or read again. Null when the Worker said nothing.</summary>
     /// <exception cref="IpcException">The Worker could not read it.</exception>
