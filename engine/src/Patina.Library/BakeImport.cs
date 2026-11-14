@@ -68,7 +68,7 @@ public static class BakeImport {
             Name,
             Format,
             new(files, 0, 0, [], false),
-            mesh.Hash ?? (File.Exists(meshFile) ? LibraryFiles.Digest(meshFile) : null),
+            File.Exists(meshFile) ? LibraryFiles.Digest(meshFile) : mesh.Hash,
             layout.UvSet,
             request.Space,
             item.Material
