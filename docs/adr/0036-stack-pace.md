@@ -22,9 +22,12 @@ controls help, and both are how a session evaluates, not what the document is.
   save waiting. The Worker compiles the full-size plan for each of them whatever the proxy, and goes back to the proxy for
   the next edit. That costs a compile each way, which is cheap beside the evaluation and keeps one rule: what is written
   is what the stack is, at its size.
-- **A proxy repairs nothing in tiles.** A canvas at full size feeding a plan at a quarter is of another extent than the
-  op that reads it, and the evaluator already runs such an op whole rather than guess which texels moved. The proxy wins
-  on everything that is not under the brush; under the brush it costs a whole run at a fraction of the texels.
+- **A proxy repairs in tiles too** (amended for #279). A canvas at full size feeding a plan at a quarter is of
+  another extent than the op that reads it. Only `Bitmap` reads a picture of another size, and it samples each texel of
+  the plan at its centre scaled into the canvas, one texel across, so Vixen scales the rectangles a stroke changed into
+  the plan's texels, a texel or two wider on each side, and repairs there (`TextureLocality.Resamples`). Any other op
+  that meets an input of another size still runs whole. A stroke under a proxy is then a repair of a sixteenth of the
+  texels, and a property test checks that the scaled rectangle covers every texel whose read reaches the change.
 - **Not per layer.** A layer at its own proxy would make its composite with the layers around it a resample at every
   boundary, and the evaluator's content keys would differ by layer. The document-wide divisor gives most of the win.
 

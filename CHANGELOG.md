@@ -261,6 +261,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A stroke while the document composites at a proxy is repaired over the tiles it touched, as at full size, rather than running every layer above it whole (#279).
+- A layered material written by a newer build of Patina is refused by the Worker and by `patina build` as well as by the Server, so nothing reads it as far as it goes and writes it back without what was new (#279).
 - Saving a graph, a layer stack or a paint layer, and the engine's own caches, no longer fail on Windows when another program reads the file at that moment (#265): every save that moves a finished file into place waits for the reader, as the library's own writes have since #257.
 - A library change refused because another program still has the file open says so, with the code `file-busy` and the file's name, instead of an uncoded conflict a client can't tell from a name that is taken (#266).
 - Oil Paint's brush ridges tile at any Stroke Angle and at any size (#267): they are a noise smeared along the angle rather than one turned through it.

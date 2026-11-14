@@ -30,20 +30,16 @@ public static class StackDocuments {
 
     const float DefaultTolerance = 0.02f;
 
-    /// <exception cref="StackEditRefusedException">It is not a stack.</exception>
+    /// <exception cref="StackEditRefusedException">It is not a stack, or a newer build wrote it.</exception>
     public static LayerStackAsset Parse(string text) {
-        LayerStackAsset document;
         try {
-            document = LayerStackYaml.Read(text);
-        } catch (InvalidDataException e) {
-            throw new StackEditRefusedException(e.Message, e);
-        }
-
-        // ⚠ Before anything edits it: a save would write it back at this build's format, dropping what is newer (#162).
-        if (document.Version > LayerStackAsset.CurrentVersion) {
+            return LayerStackYaml.Read(text);
+        } catch (LayerStackNewerException e) {
+            // ⚠ Vixen refuses it before anything edits it: a save would write it back at this build's format, dropping
+            // what is newer (#162). The Worker and the CLI read through the same refusal (#279).
             var (written, reads) = (
-                document.Version.ToString(CultureInfo.InvariantCulture),
-                LayerStackAsset.CurrentVersion.ToString(CultureInfo.InvariantCulture)
+                e.Written.ToString(CultureInfo.InvariantCulture),
+                e.Reads.ToString(CultureInfo.InvariantCulture)
             );
             throw new StackEditRefusedException(
                 $"This document was written by a newer build of Patina, at format {written}, and this build reads up "
@@ -51,9 +47,9 @@ public static class StackDocuments {
                 Api.Refusals.DocumentNewer,
                 new Dictionary<string, string> { ["written"] = written, ["reads"] = reads }
             );
+        } catch (InvalidDataException e) {
+            throw new StackEditRefusedException(e.Message, e);
         }
-
-        return document;
     }
 
     public static string Text(LayerStackAsset document) => LayerStackYaml.Write(document);
