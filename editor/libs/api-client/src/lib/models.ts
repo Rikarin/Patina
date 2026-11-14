@@ -131,6 +131,7 @@ export type StackSample = components['schemas']['StackSample'];
 export type StackSampledChannel = components['schemas']['StackSampledChannel'];
 export type StackDecal = components['schemas']['StackDecal'];
 export type StackSurfacePath = components['schemas']['StackSurfacePath'];
+export type StackSurfaceSymmetry = components['schemas']['StackSurfaceSymmetry'];
 export type StackPathPoint = components['schemas']['StackPathPoint'];
 export type StackSavedMaterial = components['schemas']['StackSavedMaterial'];
 export type StackStrokeSource = components['schemas']['StackStrokeSource'];

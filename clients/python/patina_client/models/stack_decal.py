@@ -11,6 +11,8 @@ from ..types import UNSET, Unset
 from ..types import UNSET, Unset
 from typing import cast
 
+if TYPE_CHECKING:
+  from ..models.stack_surface_symmetry import StackSurfaceSymmetry
 
 
 
@@ -49,6 +51,7 @@ class StackDecal:
                 from the top left, two numbers 0 to 1 across and down to a point: eighteen for 3 by 3, fifty for 5 by 5, up to
                 int StackDecal.MaximumWarpSide points on a side. A finer grid follows a surface that turns away on both sides,
                 such as round a cylinder. Null or empty bends nothing.
+            symmetry (None | StackSurfaceSymmetry | Unset):
      """
 
     centre: list[float]
@@ -63,6 +66,7 @@ class StackDecal:
     sampling: str = 'Bilinear'
     box: list[float] | None | Unset = UNSET
     warp: list[float] | None | Unset = UNSET
+    symmetry: None | StackSurfaceSymmetry | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -70,6 +74,7 @@ class StackDecal:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.stack_surface_symmetry import StackSurfaceSymmetry # noqa: PLC0415
         centre = self.centre
 
 
@@ -116,6 +121,14 @@ class StackDecal:
         else:
             warp = self.warp
 
+        symmetry: dict[str, Any] | None | Unset
+        if isinstance(self.symmetry, Unset):
+            symmetry = UNSET
+        elif isinstance(self.symmetry, StackSurfaceSymmetry):
+            symmetry = self.symmetry.to_dict()
+        else:
+            symmetry = self.symmetry
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -135,6 +148,8 @@ class StackDecal:
             field_dict["box"] = box
         if warp is not UNSET:
             field_dict["warp"] = warp
+        if symmetry is not UNSET:
+            field_dict["symmetry"] = symmetry
 
         return field_dict
 
@@ -142,6 +157,7 @@ class StackDecal:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.stack_surface_symmetry import StackSurfaceSymmetry # noqa: PLC0415
         d = dict(src_dict)
         centre = cast(list[float], d.pop("centre"))
 
@@ -202,6 +218,26 @@ class StackDecal:
         warp = _parse_warp(d.pop("warp", UNSET))
 
 
+        def _parse_symmetry(data: object) -> None | StackSurfaceSymmetry | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                symmetry_type_1 = StackSurfaceSymmetry.from_dict(data)
+
+
+
+                return symmetry_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackSurfaceSymmetry | Unset, data)
+
+        symmetry = _parse_symmetry(d.pop("symmetry", UNSET))
+
+
         stack_decal = cls(
             centre=centre,
             facing=facing,
@@ -215,6 +251,7 @@ class StackDecal:
             sampling=sampling,
             box=box,
             warp=warp,
+            symmetry=symmetry,
         )
 
 

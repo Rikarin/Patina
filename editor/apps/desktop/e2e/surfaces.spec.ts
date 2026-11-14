@@ -145,6 +145,18 @@ test('a decal is placed with a click and scaled by its handle, a path takes poin
   await window.keyboard.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z');
   await expect.poll(async () => changed(placed, await shot()), { timeout: 60_000 }).toBeLessThan(red * 0.2);
 
+  // Mirrored on x, the decal keeps a copy of itself through the model's middle (#132): Properties says so, the
+  // viewport draws the copy dashed, and taking the symmetry off again is one more edit.
+  await pick(window, 'surface-symmetry', 'Mirror on X');
+  await expect(window.getByTestId('surface-symmetry-shown')).toHaveText('Mirrored on X', { timeout: 30_000 });
+  await expect(window.getByTestId('surface-decal-copy')).toBeVisible({ timeout: 30_000 });
+  await settled();
+  await window.screenshot({ path: join(shots, 'surface-decal-mirrored.png') });
+  await pick(window, 'surface-symmetry', 'Off');
+  await expect(window.getByTestId('surface-symmetry-shown')).toHaveCount(0, { timeout: 30_000 });
+  await expect(window.getByTestId('surface-decal-copy')).toHaveCount(0);
+  await settled();
+
   // The same fill along a path through three clicks.
   await pick(window, 'paint-fill-projection', 'Path');
   await settled();
@@ -165,6 +177,14 @@ test('a decal is placed with a click and scaled by its handle, a path takes poin
   await settled();
   await window.screenshot({ path: join(shots, 'surface-path.png') });
   await expect(window.getByTestId('surface-path-point-2')).toBeVisible();
+
+  // Spaced into stamps, a chisel alpha narrows each stamp across the path (#130).
+  const spaced = await shot();
+  await window.getByTestId('surface-path-spacing').click();
+  await pick(window, 'surface-path-alpha', 'Chisel');
+  await expect.poll(async () => changed(spaced, await shot()), { timeout: 60_000 }).toBeGreaterThan(20);
+  await settled();
+  await window.screenshot({ path: join(shots, 'surface-path-chisel.png') });
 
   await window.getByTestId('surface-path-ribbon').click();
   await settled();
