@@ -5574,6 +5574,12 @@ export interface components {
        *     of another shape than its Width by Height (#262).
        */
       bakeStale?: null | string;
+      /**
+       * Format: int32
+       * @description For a texturing document on a mesh, the UDIM tile its layout sits on in the UV set it chose (#289), which
+       *     its exported files are named by: 1001 for one on the first tile, on several, on no mesh, or of another kind.
+       */
+      udim: number;
       /** @description What it can be searched by, sorted. */
       tags: string[];
     };

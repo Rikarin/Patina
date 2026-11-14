@@ -131,6 +131,12 @@ public sealed record ProjectDocumentInfo(
     /// </summary>
     public string? BakeStale { get; init; }
 
+    /// <summary>
+    ///     For a texturing document on a mesh, the UDIM tile its layout sits on in the UV set it chose (#289), which
+    ///     its exported files are named by: 1001 for one on the first tile, on several, on no mesh, or of another kind.
+    /// </summary>
+    public int Udim { get; init; } = 1001;
+
     /// <summary>What it can be searched by, sorted.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
 }

@@ -1,3 +1,4 @@
+using Patina.Export;
 using Patina.Library;
 using System.Threading.Channels;
 
@@ -58,7 +59,9 @@ public sealed class LibraryHost(ServerIdentity identity, ILogger<LibraryHost> lo
         }
 
         try {
-            return OpenLibrary.Open(root);
+            var library = OpenLibrary.Open(root);
+            library.Tiles = SetUdim.Of;
+            return library;
         } catch (LibraryFormatException e) {
             ServerLog.LibraryUnreadable(logger, e.Message);
             return null;

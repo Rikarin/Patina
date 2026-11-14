@@ -118,7 +118,9 @@ The tile travels with a stack's build object (`BuildManifest.Udim`) to its expor
   would be one file, and the sets are written one by one with a sentence saying what to add (#281).
 - **Before a build.** The Server reads a set's tile from its mesh in its UV set (`SetUdim`, once per file while it stays
   as it was), as it reads a set's faces for its bake, so a stack's state carries `udim`, the Texture Sets pane shows it,
-  and a preset's file list names each set by its tile (#281).
+  and a preset's file list names each set by its tile (#281). A project's contents carry each texturing document's
+  `udim` too (#289), read by the same `SetUdim` through `OpenLibrary.Tiles`, which the Server sets because the library
+  reads no meshes, so the pane shows every set's tile and not only the open one's.
 - **A build object made before a change to what it holds** keeps its key, since a tool's version moves only with the
   product's. `OutputKeys.Generation` is in every output's key and is raised with such a change; it was raised to 2 for
   the tile in the manifest.

@@ -170,7 +170,16 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
 
     /// <summary>What a project's folder holds.</summary>
     /// <exception cref="FileNotFoundException">There is no such project.</exception>
-    public ProjectContents Contents(string path) => ProjectFiles.Read(RootPath, path);
+    public ProjectContents Contents(string path) =>
+        Tiles is { } read
+            ? ProjectTiles.With(RootPath, ProjectFiles.Read(RootPath, path), read)
+            : ProjectFiles.Read(RootPath, path);
+
+    /// <summary>
+    ///     What reads a texture set's UDIM tile from its mesh, set by a host that can read meshes; without it every
+    ///     document of <see cref="Contents" /> says 1001.
+    /// </summary>
+    public TileReader? Tiles { get; set; }
 
     /// <summary>The full path of a file a project holds, from its path relative to the project.</summary>
     public string ProjectFile(string path, string file) =>
