@@ -208,7 +208,8 @@ public static class ExportFormats {
     public static IReadOnlyList<string> All { get; } =
         [Png8, Png16, Png, Tga, Jpeg, Tiff8, Tiff16, Tiff32, Tiff, WebP, Exr16, Exr32, Exr, Hdr, Ktx2, Dds];
 
-    /// <summary>A PNG as deep as the maps it reads (#141): 8-bit, or 16-bit for linear numbers from deeper maps.
+    /// <summary>
+    ///     A PNG as deep as the maps it reads (#141): 8-bit, or 16-bit for linear numbers from deeper maps.
     /// </summary>
     public const string Png = "png";
 

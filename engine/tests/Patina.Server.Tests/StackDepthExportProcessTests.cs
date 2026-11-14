@@ -11,7 +11,7 @@ public sealed partial class StackProcessTests {
 
     /// <summary>
     ///     A project preset of two PNGs that follow their maps: the height painted at 16-bit float is written as a
-    ///     16-bit PNG holding a value eight bits round away, and the roughness painted at eight bits stays an 8-bit PNG.
+    ///     16-bit PNG holding a value eight bits round away, and the roughness painted at eight bits stays 8-bit.
     /// </summary>
     [Fact]
     public async Task A_png_that_follows_its_maps_is_as_deep_as_its_channel_is_painted() {

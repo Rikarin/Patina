@@ -9,9 +9,9 @@ namespace Patina.Export.Materials;
 ///     A MaterialX 1.38 document: a node graph of images feeding a <c>standard_surface</c>, wrapped in a
 ///     <c>surfacematerial</c>; or a MaterialX 1.39 document feeding an <c>open_pbr_surface</c> (#142), the model Patina
 ///     moves to, whose inputs are named as OpenPBR names them. A lane is an <c>extract</c>, one minus it an
-///     <c>invert</c>, and a normal whose green runs down is turned over before <c>normalmap</c>, which reads green up. Standard surface has no occlusion and no
-///     specular colour of this kind, so those are said and left out; height is left to a displacement shader this does
-///     not write.
+///     <c>invert</c>, and a normal whose green runs down is turned over before <c>normalmap</c>, which reads green up.
+///     Neither surface has occlusion or specular colour of this kind, so those are said and left out; height is left
+///     to a displacement shader this does not write.
 /// </summary>
 sealed class MaterialXFile {
     const string Float = "float";
