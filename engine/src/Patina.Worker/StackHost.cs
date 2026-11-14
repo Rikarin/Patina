@@ -8,7 +8,6 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using Vixen.Authoring;
 using Vixen.Core.Imaging;
-using Vixen.Core.Mathematics;
 using Vixen.NodeGraph;
 using Vixen.Terrain;
 using Vixen.TextureGraph;

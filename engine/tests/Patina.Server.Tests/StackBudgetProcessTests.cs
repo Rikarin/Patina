@@ -69,9 +69,9 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
-    ///     Only the stroke that makes a layer's canvas compiles: every stroke after it begins on the plan it left (#279).
-    ///     Under a proxy a stroke is still repaired in tiles, scaled from the canvas to the plan's size, rather than
-    ///     running every op above the canvas whole.
+    ///     Only the stroke that makes a layer's canvas compiles: every stroke after it begins on the plan it left
+    ///     (#279). Under a proxy a stroke is still repaired in tiles, scaled from the canvas to the plan's size,
+    ///     rather than running every op above the canvas whole.
     /// </summary>
     [Fact]
     public async Task A_new_stroke_compiles_nothing_and_a_proxy_repairs_its_tiles() {

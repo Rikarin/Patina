@@ -13,7 +13,7 @@ namespace Patina.Viewport;
 ///     and the frame in another (#282).
 /// </summary>
 sealed class ViewportMaterials(VulkanDevice device, ViewportTextures textures, SamplerHandle sampler) : IDisposable {
-    /// <summary>Live maps by material. <see cref="ViewportRenderer.AllMaterials" /> is a stack on the whole model.</summary>
+    /// <summary>Live maps by material; <see cref="ViewportRenderer.AllMaterials" /> paints the whole model.</summary>
     readonly Dictionary<int, ViewportLiveMap?[]> live = [];
 
     /// <summary>The pictures laid over the mesh's own materials.</summary>

@@ -1,19 +1,7 @@
 using Patina.Contracts;
-using Patina.Export;
-using Patina.Graphs;
-using Patina.Ipc;
-using Patina.Library;
 using Patina.Viewport;
-using System.Diagnostics;
 using System.Security.Cryptography;
-using Vixen.Authoring;
-using Vixen.Core.Imaging;
-using Vixen.Core.Mathematics;
-using Vixen.NodeGraph;
-using Vixen.Terrain;
 using Vixen.TextureGraph;
-using Vixen.Texturing.Layers;
-using Vixen.Texturing.Painting;
 
 namespace Patina.Worker;
 
