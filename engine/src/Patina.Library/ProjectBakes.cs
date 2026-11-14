@@ -4,8 +4,8 @@ namespace Patina.Library;
 
 /// <summary>
 ///     The bakes a project's own settings ask for (#186): what the Bake dialog and Quick Bake send for a project, read
-///     from its <c>project.yaml</c>, so that <c>patina bake-maps --project</c> bakes the same maps to the same place with
-///     no editor. One request per texture set to bake, or one for the whole mesh when it has none.
+///     from its <c>project.yaml</c>, so that <c>patina bake-maps --project</c> bakes the same maps to the same place
+///     with no editor. One request per texture set to bake, or one for the whole mesh when it has none.
 /// </summary>
 public static class ProjectBakes {
     const string MapsFolder = "maps";
@@ -34,7 +34,9 @@ public static class ProjectBakes {
     /// </param>
     /// <param name="output">Where the maps go instead of the project's bake folder, or null.</param>
     /// <param name="sets">The texture sets to bake, by material, over those the project chose; empty for those.</param>
-    /// <exception cref="ArgumentException">The project has no mesh, or names no such document or texture set.</exception>
+    /// <exception cref="ArgumentException">
+    ///     The project has no mesh, or names no such document or texture set.
+    /// </exception>
     public static IReadOnlyList<BakeRequest> Requests(
         string folder,
         ProjectDocument project,

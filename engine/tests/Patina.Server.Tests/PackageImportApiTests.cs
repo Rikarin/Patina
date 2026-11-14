@@ -81,8 +81,17 @@ public sealed class PackageImportApiTests : IAsyncLifetime {
         return package;
     }
 
-    async Task<HttpResponseMessage> ImportAsync(string source) =>
-        await client.PostAsJsonAsync("/api/v1/library/packages/import", new PackageImportRequest(source), Token);
+    Task<HttpResponseMessage> ImportAsync(string source) =>
+        client.PostAsJsonAsync("/api/v1/library/packages/import", new PackageImportRequest(source), Token);
+
+    /// <summary>A zip of these entries, written as they are named, however they are named.</summary>
+    static void Zip(string path, params (string Name, string Text)[] entries) {
+        using var archive = ZipFile.Open(path, ZipArchiveMode.Create);
+        foreach (var (name, text) in entries) {
+            using var writer = new StreamWriter(archive.CreateEntry(name).Open());
+            writer.Write(text);
+        }
+    }
 
     static async Task<string> CodeOf(HttpResponseMessage response) {
         using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -124,24 +133,17 @@ public sealed class PackageImportApiTests : IAsyncLifetime {
     [Fact]
     public async Task A_zip_that_climbs_out_of_its_package_or_is_newer_or_holds_no_package_writes_nothing() {
         var climbing = Path.Combine(outside.FullName, "climbing.zip");
-        using (var archive = ZipFile.Open(climbing, ZipArchiveMode.Create)) {
-            foreach (var (name, text) in new[] {
-                         ("Moss.ptpkg/package.yaml", "format: 1\nname: Moss\ngraph: Moss.vxtexgraph\n"),
-                         ("Moss.ptpkg/Moss.vxtexgraph", Moss),
-                         ("Moss.ptpkg/../../escaped.txt", "out")
-                     }) {
-                await using var stream = archive.CreateEntry(name).Open();
-                await stream.WriteAsync(System.Text.Encoding.UTF8.GetBytes(text), Token);
-            }
-        }
+        Zip(
+            climbing,
+            ("Moss.ptpkg/package.yaml", "format: 1\nname: Moss\ngraph: Moss.vxtexgraph\n"),
+            ("Moss.ptpkg/Moss.vxtexgraph", Moss),
+            ("Moss.ptpkg/../../escaped.txt", "out")
+        );
 
         var newer = Path.Combine(outside.FullName, "newer.zip");
         ZipFile.CreateFromDirectory(SentPackage(PackageManifests.Format + 1), newer, CompressionLevel.Fastest, true);
         var empty = Path.Combine(outside.FullName, "empty.zip");
-        await using (var file = File.Create(empty)) {
-            using var archive = new ZipArchive(file, ZipArchiveMode.Create);
-            archive.CreateEntry("readme.txt");
-        }
+        Zip(empty, ("readme.txt", string.Empty));
 
         foreach (var source in new[] { climbing, newer, empty, Path.Combine(outside.FullName, "Moss.vxtexgraph") }) {
             await File.WriteAllTextAsync(Path.Combine(outside.FullName, "Moss.vxtexgraph"), Moss, Token);

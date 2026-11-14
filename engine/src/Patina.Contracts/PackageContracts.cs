@@ -115,7 +115,9 @@ public sealed record PackageImportRequest(string Source);
 /// <param name="Replaced">True when a package of its name was there, and this one replaced it.</param>
 public sealed record PackageImported(string Path, PackageManifest Manifest, bool Replaced);
 
-/// <summary>The body of <c>POST /api/v1/graphs/{id}/relink</c>: a picture the graph reads, and the file it is now.</summary>
+/// <summary>
+///     The body of <c>POST /api/v1/graphs/{id}/relink</c>: a picture the graph reads, and the file it is now.
+/// </summary>
 /// <param name="From">The picture as the graph's Bitmap nodes name it.</param>
 /// <param name="To">The file to read instead: absolute, or below the library.</param>
 public sealed record GraphRelinkRequest(string From, string To);

@@ -7,8 +7,9 @@ using System.Text.Json;
 namespace Patina.Cli;
 
 /// <summary>
-///     <c>patina bake-maps --project</c> (#186): a project's bake with its own settings, as Quick Bake makes it, with no
-///     Server and no editor. The maps go where the project's documents read them, so a build after it exports them.
+///     <c>patina bake-maps --project</c> (#186): a project's bake with its own settings, as Quick Bake makes it,
+///     with no Server and no editor. The maps go where the project's documents read them, so a build after it
+///     exports them.
 /// </summary>
 static class ProjectBakeCommand {
     public const string Usage =

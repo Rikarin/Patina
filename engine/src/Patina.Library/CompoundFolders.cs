@@ -43,8 +43,8 @@ public static class CompoundFolders {
     }
 
     /// <summary>
-    ///     How a graph names a picture so that its <see cref="PictureRoots" /> find it: below the first root holding it,
-    ///     with forward slashes, which travels with the graph and the library; else its whole path.
+    ///     How a graph names a picture so that its <see cref="PictureRoots" /> find it: below the first root holding
+    ///     it, with forward slashes, which travels with the graph and the library; else its whole path.
     /// </summary>
     /// <param name="roots">The graph's picture roots, in order.</param>
     /// <param name="picture">The picture's file.</param>

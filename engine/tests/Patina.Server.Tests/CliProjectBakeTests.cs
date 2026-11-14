@@ -17,7 +17,7 @@ public sealed class CliProjectBakeTests : IDisposable {
 
     public void Dispose() => folder.Delete(true);
 
-    /// <summary>The housing pair, and a project that paints the low with a texture set and bakes two maps at 32.</summary>
+    /// <summary>The housing pair, and a project that paints the low and bakes two maps at 32.</summary>
     string Project() {
         var project = Path.Combine(folder.FullName, "Housing");
         BakeFixture.Write(Path.Combine(project, "meshes"), 0.02f);

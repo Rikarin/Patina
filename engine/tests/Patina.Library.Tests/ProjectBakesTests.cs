@@ -1,5 +1,3 @@
-using Patina.Contracts;
-
 namespace Patina.Library.Tests;
 
 /// <summary>
