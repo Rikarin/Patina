@@ -23,6 +23,18 @@ public sealed class FactoryCompoundTests {
         "Grunges/Fibre Tangle",
         "Grunges/Fine Scratches",
         "Grunges/Galvanised Spangle",
+        "Grunges/Grunge 01",
+        "Grunges/Grunge 02",
+        "Grunges/Grunge 03",
+        "Grunges/Grunge 04",
+        "Grunges/Grunge 05",
+        "Grunges/Grunge 06",
+        "Grunges/Grunge 07",
+        "Grunges/Grunge 08",
+        "Grunges/Grunge 09",
+        "Grunges/Grunge 10",
+        "Grunges/Grunge 11",
+        "Grunges/Grunge 12",
         "Grunges/Mould Spots",
         "Grunges/Oil Stains",
         "Grunges/Pitted Steel",
@@ -175,10 +187,13 @@ public sealed class FactoryCompoundTests {
 
     /// <summary>
     ///     Not flat, and no seam: across each edge a texel differs from the texel on the far side about as much as two
-    ///     neighbours differ inside the picture.
+    ///     neighbours differ inside the picture. At 512 and at 480, as Vixen's roll call holds its nodes, since a
+    ///     noise's cells rounded to a whole number tile at a power of two and need not at any other side.
     /// </summary>
-    [Fact]
-    public void Every_factory_compound_draws_a_picture_that_tiles() {
+    [Theory]
+    [InlineData(512)]
+    [InlineData(480)]
+    public void Every_factory_compound_draws_a_picture_that_tiles(int side) {
         FactoryCompounds.Register();
 
         if (!VulkanDevice.TryCreate(new(), out var device, out var refusal)) {
@@ -193,8 +208,7 @@ public sealed class FactoryCompoundTests {
 
             // A compound that reads the mesh or changes a picture is no tile of its own; MeshCompoundTests holds those.
             foreach (var path in FactoryCompounds.Paths.Except(MeshCompoundTests.Named, StringComparer.Ordinal)) {
-                const int Side = 128;
-                var (compiler, graph) = Containing(path, Side);
+                var (compiler, graph) = Containing(path, side);
                 var plan = compiler.Compile(graph).Value;
 
                 using TextureUploads uploads = new(device);
@@ -205,12 +219,16 @@ public sealed class FactoryCompoundTests {
                 var (seam, inside, spread) = Measure(picture);
 
                 if (spread < 0.05) {
-                    problems.Add($"{path} is flat: its values span {spread:0.000}");
+                    problems.Add($"{path} at {side} is flat: its values span {spread:0.000}");
                 }
 
                 if (seam > 2.5 * inside + 0.01) {
-                    problems.Add($"{path} has a seam: {seam:0.0000} across the edges against {inside:0.0000} inside");
+                    problems.Add(
+                        $"{path} at {side} has a seam: {seam:0.0000} across the edges against {inside:0.0000} inside"
+                    );
                 }
+
+                Pictures.Keep(path, picture, $" {side}");
             }
 
             Assert.Empty(problems);

@@ -16,14 +16,17 @@ public sealed partial class StackProcessTests {
         // A type that cannot draw has no picture, as a Worker with no device would answer, so the device is asked.
         await PixelsAsync(unused.Id, false, deadline.Token);
         var graph = await http.OpenAsync(GraphTesting.Write(Library, GraphTesting.Sample()), deadline.Token);
-        string[] types = ["Source/Noise", "Filters/Blur", "Source/Shape", "Output/Output", "Nobody/Here"];
+        // A shipped grunge is a compound of Patina's own content, and the shelf's pictures of it are drawn here (#169).
+        string[] types = [
+            "Source/Noise", "Filters/Blur", "Source/Shape", "Grunges/Grunge 01", "Output/Output", "Nobody/Here"
+        ];
 
         var first = await NodePicturesAsync(graph.Id, types, deadline.Token);
 
-        Assert.All(first[..3], static hash => Assert.Matches("^[0-9a-f]{64}$", hash));
-        Assert.Equal(3, first[..3].Distinct().Count());
-        Assert.Null(first[3]);
+        Assert.All(first[..4], static hash => Assert.Matches("^[0-9a-f]{64}$", hash));
+        Assert.Equal(4, first[..4].Distinct().Count());
         Assert.Null(first[4]);
+        Assert.Null(first[5]);
         Assert.Equal((64, 64), await PictureSizeAsync(first[0]!, deadline.Token));
 
         // Asked again, nothing is drawn; with the cache gone, the same pictures are drawn again.

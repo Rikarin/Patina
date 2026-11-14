@@ -1,0 +1,36 @@
+version: 1
+name: Grunge 09
+nodes:
+  - { id: 1, type: Source/Shape, x: 0, y: 0, values: { Falloff: [0.1], Scale: [0.9] }, texts: { Kind: Disc } }
+  - id: 2
+    type: Placement/Splatter
+    x: 300
+    y: 0
+    values: { Scale Jitter: [0.7], Rotation Jitter: [6.2831855] }
+    texts: { Accumulation: Max, '=Count': '40f + amount * 200f', '=Scale': '0.08f - scale * 0.05f' }
+  - { id: 3, type: Source/Noise, x: 0, y: 300, values: { Octaves: [3], Gain: [0.5] }, texts: { Basis: Gradient, '=Scale': '8f' } }
+  - { id: 4, type: Filters/Warp, x: 600, y: 0, values: { Intensity: [3] } }
+  - id: 10
+    type: Filters/Pixel Processor
+    x: 900
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(smoothstep(0.5f - y * 0.45f, 0.55f, a.x), 0f, 0f, 1f)'
+      '=Y': contrast
+  - { id: 99, type: Sub-graph/Output, x: 1200, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: Pattern }
+  - { fromNode: 2, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 4, toPort: Warp }
+  - { fromNode: 4, fromPort: Out, toNode: 10, toPort: A }
+  - { fromNode: 10, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'Small chipped flecks, ragged at their edges, as knocks leave in paint. White is a fleck.' }
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - { name: scale, label: Scale, default: '0.5', summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: amount, label: Amount, default: '0.5', summary: 'How much of the surface the grunge covers.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: contrast, label: Contrast, default: '0.5', summary: 'How hard its edges are: low is soft and faint, high is crisp.', kind: Float, minimum: 0, maximum: 1, group: Grunge }

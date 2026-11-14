@@ -1,0 +1,28 @@
+version: 1
+name: Grunge 01
+nodes:
+  - { id: 1, type: Source/Noise, x: 0, y: 0, values: { Octaves: [5], Gain: [0.55] }, texts: { Basis: Gradient, Profile: Billow, '=Scale': '3f + scale * 8f' } }
+  - { id: 2, type: Source/Noise, x: 0, y: 300, values: { Octaves: [3], Gain: [0.5] }, texts: { Basis: Gradient, '=Scale': '24f' } }
+  - id: 10
+    type: Filters/Pixel Processor
+    x: 900
+    y: 0
+    texts:
+      Format: Grey
+      Expression: 'float4(smoothstep(x, x + 0.03f + (1f - y) * 0.2f, a.x) * (0.55f + 0.45f * b.x), 0f, 0f, 1f)'
+      '=X': '0.4f - amount * 0.3f'
+      '=Y': contrast
+  - { id: 99, type: Sub-graph/Output, x: 1200, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 10, toPort: A }
+  - { fromNode: 2, fromPort: Out, toNode: 10, toPort: B }
+  - { fromNode: 10, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - { name: Out, direction: Output, kind: Image, default: [], summary: 'Soft, cloudy blotches of grime with a faint grain in them, as a dusty or neglected surface gathers. White is grime.' }
+settings: { baseWidth: '1024', baseHeight: '1024', seed: '1' }
+parameters:
+  - { name: scale, label: Scale, default: '0.5', summary: 'How large the features are: low is fewer, bigger ones, high is many small ones.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: amount, label: Amount, default: '0.5', summary: 'How much of the surface the grunge covers.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
+  - { name: contrast, label: Contrast, default: '0.5', summary: 'How hard its edges are: low is soft and faint, high is crisp.', kind: Float, minimum: 0, maximum: 1, group: Grunge }
