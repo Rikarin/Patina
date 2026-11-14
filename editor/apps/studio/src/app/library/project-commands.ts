@@ -82,7 +82,20 @@ export class ProjectCommands {
     handle(
       'saveAs',
       () => project.active() !== null || arriving(),
-      () => inFront(() => project.savingAs.set(project.active() !== null))
+      () =>
+        inFront(() => {
+          project.copying.set(false);
+          project.savingAs.set(project.active() !== null);
+        })
+    );
+    handle(
+      'saveCopy',
+      () => project.active() !== null || arriving(),
+      () =>
+        inFront(() => {
+          project.copying.set(true);
+          project.savingAs.set(project.active() !== null);
+        })
     );
     handle(
       'saveAll',

@@ -581,6 +581,10 @@ public sealed partial class ViewportSession(
                 try {
                     await DrawAsync(work, cancellationToken);
                     rendered = wanted;
+                } catch (FramesUnavailableException e) {
+                    // No room for frames is not a lost Worker: say why, and try again on the next change.
+                    Fail(e.Message);
+                    rendered = wanted;
                 } catch (Exception e) when (e is IOException or TimeoutException) {
                     // The Worker died mid-frame. Nothing is lost: the next one is told everything and this frame runs
                     // again.

@@ -297,6 +297,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Help > Documentation opens a guide to Patina (`docs/03-guide.md`), from a library to an export. Help > About Patina says which Patina this is and what runs it, the licences it and its parts come under, and that libraries, projects and exported textures belong to their authors; on a Mac it is the first item of the Patina menu.
 - Start lists the documents worked on last in the open library, newest first, and opens one in a click. One that has moved or gone since is forgotten, and Start says so rather than opening something else of its project. The list is kept in the editor's `preferences.json`, by library, so a library keeps its list when its folder moves.
 - Preferences has a Viewport camera section: how fast a drag orbits and the wheel or a zoom drag zooms (Slow, Normal or Fast), and Invert the wheel, which zooms out when the wheel is rolled away.
+- Library Settings…, in the File menu (#192): the open library's name, folder, counts, texel density, channels, export presets and shader, which no view showed. Check Library reads every project and material and lists what is wrong or out of date by kind, errors first, as `patina library check` does; Prune takes out of the cache the built objects, bakes and reports nothing has used for the days chosen, 30 by default, as `patina cache prune` does, and is refused while a bake or build is waiting or running. Each says what it found or freed in Activity too. Through the API `POST /api/v1/library/check` and `POST /api/v1/library/cache/prune`, which work while the Server holds the library, where the CLI needs it to itself.
+- Clean, in Library Settings (#162): removes the copies of paint each project keeps in `.paint-backup` whenever a new UV layout moves it, and says how much room that freed. Through the API `POST /api/v1/library/clean`.
+- The key helper (#190): Help > Key Helper, or F1, shows over the app every key that would do something now, by section and as you have set them, so it changes with what is in front, and how to move the view while a model shows. F1 again, Escape or a click outside it puts it away.
+- Save a Copy…, in the File menu (#162): saves the document in front, then writes a copy of it under a new name and keeps working on the original, where Save As carries on in the copy.
+- Start lists the projects worked on lately in the open library as their own list (#162), each once and as recent as its newest document, beside the recent documents.
 
 ### Fixed
 
@@ -464,6 +469,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a word. The Bake dialog says so under the field and will not bake, and the Server, `patina bake-maps` and the engine refuse it,
   with the code `bake-occluder-minimum` for clients. Thickness reads only the occluder distance, so it still bakes.
 - Paint says when it has lost Patina's engine, as Graph does: Layers shows that the stack comes back when the engine reconnects, and warns when the GPU engine is not running.
+- A failed Apply in Properties' Project section says why beside its own Apply, where it landed in the app-wide bar, and still says so once the document has opened again (#291). A failure in Project Settings stays in the dialog.
+- A Server takes no room for viewport frames until it draws one (#291), so one that never shows a viewport, a test's or a script's, starts on a full disk. When the frames cannot be made, the viewport says where and how much room they wanted, where it said only "not enough space".
+- The Python client's tests run the engine under the `dotnet` that holds .NET 11, `DOTNET_ROOT` first and then `~/.dotnet`, as the desktop app does, so an older `dotnet` first on PATH no longer fails them with 0x80008096 (#291).
 
 ### Changed
 

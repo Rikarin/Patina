@@ -21,7 +21,7 @@ import { ProjectStore } from './project-store';
     >
       <form (submit)="apply($event, form)">
         <xui-dialog-body data-testid="project-settings">
-          <ptn-project-settings-form #form [shown]="project.settingsOpen()" />
+          <ptn-project-settings-form #form place="dialog" [shown]="project.settingsOpen()" />
         </xui-dialog-body>
         <xui-dialog-footer>
           <button type="button" xuiButton variant="ghost" (click)="project.settingsOpen.set(false)">Cancel</button>

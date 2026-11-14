@@ -61,10 +61,22 @@ export const CommandTable: readonly CommandSpec[] = [
   { id: 'projectSettings', label: 'Project Settings…', section: 'File', keys: ['Mod+Shift+,'] },
   { id: 'save', label: 'Save', section: 'File', keys: ['Mod+S'], typing: true },
   { id: 'saveAs', label: 'Save As…', section: 'File', keys: ['Mod+Shift+S'] },
+  {
+    id: 'saveCopy',
+    label: 'Save a Copy…',
+    section: 'File',
+    hint: 'Saves a copy under a new name and keeps working on this one'
+  },
   { id: 'saveAll', label: 'Save All', section: 'File', keys: ['Mod+Alt+S'], typing: true },
   { id: 'closeDocument', label: 'Close Document', section: 'File', keys: ['Mod+W'] },
   { id: 'closeProject', label: 'Close Project', section: 'File' },
   { id: 'showBin', label: 'Bin…', section: 'File', hint: 'What was deleted, to restore or delete for good' },
+  {
+    id: 'librarySettings',
+    label: 'Library Settings…',
+    section: 'File',
+    hint: 'The library’s settings, Check Library, and tidying its cache'
+  },
 
   { id: 'undo', label: 'Undo', section: 'Edit', keys: ['Mod+Z'] },
   { id: 'redo', label: 'Redo', section: 'Edit', keys: ['Mod+Shift+Z', 'Mod+Y'] },
@@ -395,6 +407,13 @@ export const CommandTable: readonly CommandSpec[] = [
     hint: 'A guide to Patina, from a library to an export, in the browser'
   },
   { id: 'shortcuts', label: 'Keyboard Shortcuts…', section: 'Help', keys: ['Mod+/'] },
+  {
+    id: 'keyHelper',
+    label: 'Key Helper',
+    section: 'Help',
+    keys: ['F1'],
+    hint: 'Shows over the app every key that works now'
+  },
   { id: 'diagnostics', label: 'Diagnostics…', section: 'Help' },
   { id: 'reportProblem', label: 'Report a Problem…', section: 'Help' },
   { id: 'about', label: 'About Patina', section: 'Help', hint: 'The version, the licences, and whose your work is' }
@@ -434,6 +453,7 @@ export const MenuBar: readonly {
       'newLibrary',
       'openLibrary',
       { native: 'recent' },
+      'librarySettings',
       '-',
       'import',
       'importMaterials',
@@ -445,6 +465,7 @@ export const MenuBar: readonly {
       '-',
       'save',
       'saveAs',
+      'saveCopy',
       'saveAll',
       '-',
       'closeDocument',
@@ -585,7 +606,10 @@ export const MenuBar: readonly {
       { native: 'windowItems' }
     ]
   },
-  { label: 'Help', items: ['documentation', 'shortcuts', '-', 'diagnostics', 'reportProblem', '-', 'about'] }
+  {
+    label: 'Help',
+    items: ['documentation', 'shortcuts', 'keyHelper', '-', 'diagnostics', 'reportProblem', '-', 'about']
+  }
 ];
 
 /** What has focus when a control answers a key itself: a list or tree, the graph canvas, or a text field. */
