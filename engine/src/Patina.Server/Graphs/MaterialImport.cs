@@ -191,7 +191,7 @@ static class MaterialImport {
     ///     linear, so it is taken to linear.
     /// </summary>
     static int Picture(GraphText graph, ImportedSlot slot, string relative, List<string> warnings) {
-        var bitmap = graph.Node("Source/Bitmap", [("Source", relative)]);
+        var bitmap = graph.Node("Source/Bitmap", [("Source", relative), ..Edges(slot.Placement)]);
         var node = Lane(graph, Placed(graph, slot, bitmap, warnings), slot.Lane);
         var colour = slot.Usage == "baseColor";
         float[] factor = [..slot.Value.Take(3)];
@@ -210,6 +210,18 @@ static class MaterialImport {
 
         return colour && scaled ? graph.Chain(node, "Colour/Linear to sRGB") : node;
     }
+
+    /// <summary>
+    ///     What a placed picture's bitmap reads past its edge while it is resampled, so the placement after it reads
+    ///     the picture's own edge (#289): a picture clamped or mirrored holds its edge texel, and a repeated one wraps
+    ///     whether or not the graph tiles. A picture placed as it is follows the graph.
+    /// </summary>
+    static (string Name, string Value)[] Edges(ImportedPlacement? placement) =>
+        placement?.Tiling switch {
+            null => [],
+            "Wrap" => [("Tiling", "Wrap")],
+            _ => [("Tiling", "Clamp")]
+        };
 
     /// <summary>One lane of a picture, alpha too, in red, green and blue, or the picture as it is for none.</summary>
     static int Lane(GraphText graph, int picture, int lane) {
