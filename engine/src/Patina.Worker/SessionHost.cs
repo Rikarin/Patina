@@ -24,6 +24,9 @@ abstract class SessionHost<T> : IDisposable where T : class, IDisposable {
 
     protected bool Holds(string id) => sessions.ContainsKey(id);
 
+    /// <summary>Every session held.</summary>
+    protected IEnumerable<T> Held => sessions.Values;
+
     protected T Find(string id) =>
         sessions.TryGetValue(id, out var session)
             ? session

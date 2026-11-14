@@ -6481,6 +6481,12 @@ export interface components {
       usage: string;
       /** @description What it starts as. */
       default: number[];
+      /**
+       * @description How wide the texels are that a stroke paints it at (#19): one of the vocabulary's formats, Rgba8 unless the set
+       *     says more.
+       * @default Rgba8
+       */
+      format: string;
     };
     /** @description What Apply Channels to All Sets did, one entry for each other texture set of the model. */
     StackChannelsApplied: {
@@ -6575,6 +6581,7 @@ export interface components {
       | components['schemas']['StackCommandStackAddChannel']
       | components['schemas']['StackCommandStackNestLayer']
       | components['schemas']['StackCommandStackRemoveChannel']
+      | components['schemas']['StackCommandStackSetChannelFormat']
       | components['schemas']['StackCommandStackSetSeed']
       | components['schemas']['StackCommandStackDuplicateLayers']
       | components['schemas']['StackCommandStackPasteLayers']
@@ -6828,6 +6835,20 @@ export interface components {
        */
       index: number;
     };
+    /**
+     * @description How wide the texels are that strokes paint a channel at (#19): eight bits a lane, or sixteen or thirty-two bit
+     *     floats, which keep what eight bits round away, for a height above all. One undo step, <i>Channel depth</i>. A
+     *     layer painted before is widened, exactly, by its next stroke, unless a stroke of the session already painted it,
+     *     which holds the pixels it painted over; one wider than the set asks keeps its width, so paint is never rounded.
+     */
+    StackCommandStackSetChannelFormat: {
+      /** @enum {string} */
+      op: 'setChannelFormat';
+      /** @description Which channel, one the set has. */
+      usage: string;
+      /** @description One of the vocabulary's formats. */
+      format: string;
+    };
     /** @description Says how the texture set's height becomes the normal its surface is lit with. */
     StackCommandStackSetHeightNormal: {
       /** @enum {string} */
@@ -7013,6 +7034,8 @@ export interface components {
        *     `Replace`; or `Off`.
        */
       bakedOcclusion?: null | string;
+      /** @description What the set is for, in a person's words (#141), which nothing evaluates or exports. Empty takes it away. */
+      description?: null | string;
     };
     /**
      * @description Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
@@ -8109,6 +8132,11 @@ export interface components {
        * @default 1001
        */
       udim: number;
+      /**
+       * @description What the set is for, in a person's words (#141), or empty.
+       * @default
+       */
+      description: string;
     };
     /** @description Where a stroke's colour comes from, when it is not one colour. */
     StackStrokeSource: {
@@ -8336,6 +8364,8 @@ export interface components {
       tags?: null | components['schemas']['StackTerm'][];
       /** @description The kinds a graph's ports and parameters take: Number for Float, and the rest. */
       kinds?: null | components['schemas']['StackTerm'][];
+      /** @description How wide a channel's painted texels can be (#19): 8-bit, and 16-bit and 32-bit float. */
+      formats?: null | components['schemas']['StackTerm'][];
     };
     /** @description The reply to `GET /api/v1/system`. */
     SystemInfo: {

@@ -82,9 +82,10 @@ public sealed partial class StackProcessTests {
             Assert.True(closed.IsSuccessStatusCode);
         }
 
-        // Read from its file in a new session: 1024 square is larger than a set made 512 by 256, and of another shape.
+        // Read from its file in a new session: 1024 square is of another shape than a set made 8192 by 256, and at the
+        // set's shape it would be 32768 by 1024, past the largest side.
         var again = await OpenAsync(state.Path, deadline.Token);
-        await EditAsync(again.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 4));
+        await EditAsync(again.Id, deadline.Token, new StackSetSettings(TextureSizes.Largest, Side / 4));
         await RefusedAsync(again.Id, "stroke-canvas-larger", line with { Stroke = "shrunk" }, deadline.Token);
         await SaveAsync(again.Id, deadline.Token);
         Assert.Equal("Texture set settings", (await StateAsync(again.Id, deadline.Token)).History.UndoLabel);
@@ -156,12 +157,12 @@ public sealed partial class StackProcessTests {
             deadline.Token
         );
 
-        // Down to 512 by 256: the second paste now holds 1024 square, larger than the set and of another shape, resumed
-        // or not. Of the set's shape it would be painted at its own size (#19).
+        // Down to 512 by 256: the second paste now holds 1024 square, of another shape, which would be enlarged to 2048
+        // by 1024 to be painted at the set's shape (#19); but a stroke of this session began on it, resumed or not.
         await EditAsync(small.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 4));
         await RefusedAsync(
             small.Id,
-            "stroke-canvas-larger",
+            "stroke-canvas-painted-at-size",
             line with { Stroke = "shrunk", Layer = second, Stamps = Line(40, 300, 10), Resume = [34f, 301f] },
             deadline.Token
         );
@@ -229,6 +230,55 @@ public sealed partial class StackProcessTests {
         Assert.NotEqual(canvas.Background, canvas.At(700, 601));
         Assert.Equal(canvas.Background, canvas.At(301, 301));
         Assert.Equal(held.At(110, 101), canvas.At(110, 101));
+    }
+
+    /// <summary>
+    ///     A stroke in the 2D view on a canvas of another shape than its set (#19): 1024 square under a set of 512 by
+    ///     256 is first enlarged to 2048 by 1024, each column repeated, then the stroke drawn at 300 by 100 lands at
+    ///     1200 by 400. The texels it had stay, the set shows it as an evaluation from nothing does, and a second drag
+    ///     in the same session paints the enlarged canvas without being refused. It was refused before.
+    /// </summary>
+    [Fact]
+    public async Task A_stroke_in_the_2d_view_paints_a_larger_canvas_of_another_shape() {
+        using var deadline = Deadline(240);
+        var (_, state) = await StartAsync("Shaped.vxlayers", deadline.Token);
+        var line = new StackStroke("first", "paint", "baseColor", new(30f, 0.3f), Red, Line(100, 100, 10));
+        await EditAsync(state.Id, deadline.Token, line);
+        await SaveAsync(state.Id, deadline.Token);
+        var held = CanvasBeside(state.Path).Channel("baseColor");
+
+        using (var closed = await http.DeleteAsync($"/api/v1/stacks/{state.Id}", deadline.Token)) {
+            Assert.True(closed.IsSuccessStatusCode);
+        }
+
+        var again = await OpenAsync(state.Path, deadline.Token);
+        await EditAsync(again.Id, deadline.Token, new StackSetSettings(Side / 2, Side / 4));
+        var before = await PixelsAsync(again.Id, false, deadline.Token);
+        var flat = new StackStroke("flat", "paint", "baseColor", new(10f, 0.3f), Red, Line(300, 100, 5), true);
+        await EditAsync(again.Id, deadline.Token, flat);
+        await EditAsync(again.Id, deadline.Token, flat with { Stamps = Line(330, 100, 5), Open = false });
+        await EditAsync(
+            again.Id,
+            deadline.Token,
+            flat with { Stroke = "more", Stamps = Line(300, 200, 5), Open = false }
+        );
+
+        var shown = await PixelsAsync(again.Id, false, deadline.Token);
+        Assert.NotEqual(Digest(before, "baseColor"), Digest(shown, "baseColor"));
+        var clean = await PixelsAsync(again.Id, true, deadline.Token);
+        Assert.Equal(Digest(clean, "baseColor"), Digest(shown, "baseColor"));
+        await SaveAsync(again.Id, deadline.Token);
+
+        var canvas = CanvasBeside(state.Path).Channel("baseColor");
+        Assert.Equal((Side * 2, Side), (canvas.Width, canvas.Height));
+        Assert.NotEqual(canvas.Background, canvas.At(1202, 401));
+        Assert.NotEqual(canvas.Background, canvas.At(1400, 401));
+        Assert.NotEqual(canvas.Background, canvas.At(1202, 801));
+        Assert.Equal(canvas.Background, canvas.At(600, 300));
+        for (var x = 100; x < 160; x++) {
+            Assert.Equal(held.At(x, 101), canvas.At(x * 2, 101));
+            Assert.Equal(held.At(x, 101), canvas.At(x * 2 + 1, 101));
+        }
     }
 
     async Task RefusedAsync(string id, string code, StackCommand command, CancellationToken token) {

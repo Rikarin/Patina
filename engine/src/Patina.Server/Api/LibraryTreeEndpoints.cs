@@ -103,11 +103,7 @@ static class LibraryTreeEndpoints {
         library.MapPost("/project/document/copy", CopyDocument)
             .Described("CopyDocument", "Makes a new document with another's content, as Save As and Duplicate do.");
 
-        library.MapGet("/recovery", GetRecovery)
-            .Described("GetRecovery", "Whether a document has work autosaved after its last save.");
-
-        library.MapPost("/recovery", Recover)
-            .Described("RecoverDocument", "Restores or forgets autosaved work. The document has to be closed.");
+        library.MapRecoveryRoutes();
 
         library.MapPatch("/project", RenameProject)
             .Described("RenameProject", "Gives a project a new display name. Its folder stays.");
@@ -358,51 +354,6 @@ static class LibraryTreeEndpoints {
                 library.CopyDocument(request.Project, new(request.Document), request.Name);
                 host.RequestRescan();
                 return TypedResults.Ok(library.Contents(request.Project));
-            }
-        );
-
-    /// <summary>
-    ///     Nothing while a session holds unsaved edits: autosave is only a copy of those, and answering an offer of it
-    ///     would close the session that has the real thing.
-    /// </summary>
-    static Results<Ok<DocumentRecovery>, ProblemHttpResult> GetRecovery(
-        LibraryHost host,
-        StackSessions stacks,
-        GraphSessions graphs,
-        string path
-    ) =>
-        Guarded(
-            host,
-            library => {
-                var file = Path.GetFullPath(path, library.RootPath);
-                var editing = stacks.All.Any(open => open.Path == file && open.Summary.Dirty)
-                    || graphs.All.Any(open => open.Path == file && open.Summary.Dirty);
-                return TypedResults.Ok(new DocumentRecovery(editing ? null : Recovery.Newer(library.RootPath, file)));
-            }
-        );
-
-    static Results<Ok<DocumentRecovery>, ProblemHttpResult> Recover(
-        LibraryHost host,
-        StackSessions stacks,
-        GraphSessions graphs,
-        AutosaveGate autosave,
-        DocumentRecoveryRequest request
-    ) =>
-        Guarded(
-            host,
-            library => {
-                var file = Path.GetFullPath(request.Path, library.RootPath);
-                if (stacks.All.Any(open => open.Path == file) || graphs.All.Any(open => open.Path == file)) {
-                    throw new ProjectRefusedException("Close the document first.");
-                }
-
-                if (request.Restore) {
-                    autosave.Restore(library.RootPath, file);
-                } else {
-                    autosave.Forget(library.RootPath, file);
-                }
-
-                return TypedResults.Ok(new DocumentRecovery(null));
             }
         );
 

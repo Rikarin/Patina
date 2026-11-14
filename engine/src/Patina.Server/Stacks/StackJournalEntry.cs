@@ -70,6 +70,17 @@ public sealed class StackJournalEntry(
     public int Height { get; init; }
 
     /// <summary>
+    ///     How wide the texels are that the stroke paints its channel at (#19), or null for eight bits a lane. In the
+    ///     journal so a replay paints at the width the stroke did, whatever the set asks since.
+    /// </summary>
+    public string? Format { get; init; }
+
+    /// <summary>
+    ///     The colour in full, four numbers, for a stroke at a width the packed colour would round; or null.
+    /// </summary>
+    public IReadOnlyList<float>? Lanes { get; init; }
+
+    /// <summary>
     ///     What the stamps of a stroke in the 2D view are multiplied by to land on a canvas larger than the set (#19),
     ///     which the rest of its drag is carried by too, or null when they are the canvas's texels already.
     /// </summary>

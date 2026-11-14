@@ -58,6 +58,7 @@ class StackState:
             udim (int): The UDIM tile its layout sits on in its UV set (#281), which its exported files are named by: 1001
                 for a set on
                 the first tile, on no mesh, or reaching several, which its problems say. Default: 1001.
+            description (str): What the set is for, in a person's words (#141), or empty. Default: ''.
             evaluation (None | StackEvaluation | Unset):
             mesh_maps (None | str | Unset): The bake its generators read, or null.
             anchors (list[StackAnchor] | None | Unset): The anchor points its set publishes, by name, and who reads each.
@@ -88,6 +89,7 @@ class StackState:
     baked_normal: str = 'Combine'
     baked_occlusion: str = 'Combine'
     udim: int = 1001
+    description: str = ''
     evaluation: None | StackEvaluation | Unset = UNSET
     mesh_maps: None | str | Unset = UNSET
     anchors: list[StackAnchor] | None | Unset = UNSET
@@ -162,6 +164,8 @@ class StackState:
 
         udim = self.udim
 
+        description = self.description
+
         evaluation: dict[str, Any] | None | Unset
         if isinstance(self.evaluation, Unset):
             evaluation = UNSET
@@ -227,6 +231,7 @@ class StackState:
             "bakedNormal": baked_normal,
             "bakedOcclusion": baked_occlusion,
             "udim": udim,
+            "description": description,
         })
         if evaluation is not UNSET:
             field_dict["evaluation"] = evaluation
@@ -319,6 +324,8 @@ class StackState:
         baked_occlusion = d.pop("bakedOcclusion")
 
         udim = d.pop("udim")
+
+        description = d.pop("description")
 
         def _parse_evaluation(data: object) -> None | StackEvaluation | Unset:
             if data is None:
@@ -426,6 +433,7 @@ class StackState:
             baked_normal=baked_normal,
             baked_occlusion=baked_occlusion,
             udim=udim,
+            description=description,
             evaluation=evaluation,
             mesh_maps=mesh_maps,
             anchors=anchors,

@@ -41,6 +41,8 @@ class StackCommandStackSetSettings:
             baked_occlusion (None | str | Unset): How the bake's ambient occlusion reaches the set's: `Combine`, multiplied
                 with what is painted;
                 `Replace`; or `Off`.
+            description (None | str | Unset): What the set is for, in a person's words (#141), which nothing evaluates or
+                exports. Empty takes it away.
      """
 
     op: StackCommandStackSetSettingsOp
@@ -50,6 +52,7 @@ class StackCommandStackSetSettings:
     height_normal: None | str | Unset = UNSET
     baked_normal: None | str | Unset = UNSET
     baked_occlusion: None | str | Unset = UNSET
+    description: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -95,6 +98,12 @@ class StackCommandStackSetSettings:
         else:
             baked_occlusion = self.baked_occlusion
 
+        description: None | str | Unset
+        if isinstance(self.description, Unset):
+            description = UNSET
+        else:
+            description = self.description
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -113,6 +122,8 @@ class StackCommandStackSetSettings:
             field_dict["bakedNormal"] = baked_normal
         if baked_occlusion is not UNSET:
             field_dict["bakedOcclusion"] = baked_occlusion
+        if description is not UNSET:
+            field_dict["description"] = description
 
         return field_dict
 
@@ -186,6 +197,16 @@ class StackCommandStackSetSettings:
         baked_occlusion = _parse_baked_occlusion(d.pop("bakedOcclusion", UNSET))
 
 
+        def _parse_description(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        description = _parse_description(d.pop("description", UNSET))
+
+
         stack_command_stack_set_settings = cls(
             op=op,
             width=width,
@@ -194,6 +215,7 @@ class StackCommandStackSetSettings:
             height_normal=height_normal,
             baked_normal=baked_normal,
             baked_occlusion=baked_occlusion,
+            description=description,
         )
 
 
