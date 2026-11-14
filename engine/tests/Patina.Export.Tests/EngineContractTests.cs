@@ -1,6 +1,8 @@
 using Patina.Export.Materials;
 using Patina.Export.Presets;
 using Vixen.Core.Imaging;
+using Vixen.Core.Imaging.BlockCompression;
+using Vixen.Graphics;
 
 namespace Patina.Export.Tests;
 
@@ -88,7 +90,15 @@ public sealed class EngineContractTests : IDisposable {
         ("blender", "_occlusion", [Occlusion]),
         ("blender", "_alpha", [Opacity]),
         ("blender", "_emission", Srgb(Emissive)),
-        ("blender", "_height", [Height])
+        ("blender", "_height", [Height]),
+        // Vixen's TexturedOrmSurface: colour and alpha in one sRGB BC7 file, a two-lane BC5 normal with green down,
+        // occlusion, roughness and metalness in that order, emission as linear BC6H and height as BC4. Its blocks are
+        // decoded here, so a lane the encoder moved shows.
+        ("vixen", "_baseColor", Colour),
+        ("vixen", "_normal", Down(Normal)[..2]),
+        ("vixen", "_orm", Orm),
+        ("vixen", "_emissive", Emissive),
+        ("vixen", "_height", [Height])
     ];
 
     public static TheoryData<string, string, float[]> Contracts() {
@@ -122,6 +132,26 @@ public sealed class EngineContractTests : IDisposable {
             [ExportMaps.Height] = Constant(ExportMaps.Height, Height)
         };
 
+    /// <summary>
+    ///     A file's first texel as numbers: a picture as Patina reads one, or a KTX2 file's blocks decoded by Vixen's
+    ///     decoder, which an Apple GPU agreed with block for block (ADR 0011), into four lanes.
+    /// </summary>
+    static FloatImage Picture(string path) {
+        if (!path.EndsWith(".ktx2", StringComparison.Ordinal)) {
+            return MapPictures.ReadFile(path);
+        }
+
+        var decoded = BlockCompressor.Decode(Ktx2.Read(File.ReadAllBytes(path)));
+        var bytes = decoded.PixelSpan();
+        var half = decoded.Format == PixelFormat.Rgba16Float;
+        var first = new float[4];
+        for (var lane = 0; lane < first.Length; lane++) {
+            first[lane] = half ? (float)BitConverter.ToHalf(bytes.Slice(lane * 2, 2)) : bytes[lane] / 255f;
+        }
+
+        return new(1, 1, 4, first);
+    }
+
     [Theory]
     [MemberData(nameof(Contracts))]
     public void Each_file_holds_what_its_engine_reads_in_each_lane(string engine, string ending, float[] lanes) {
@@ -131,7 +161,7 @@ public sealed class EngineContractTests : IDisposable {
         var manifest = ExportRun.Run(preset, Maps(), made, null, Token);
 
         var file = Assert.Single(manifest.Files, f => f.Template.EndsWith(ending, StringComparison.Ordinal));
-        var picture = MapPictures.ReadFile(Path.Combine(made, file.File));
+        var picture = Picture(Path.Combine(made, file.File));
         Assert.True(picture.Channels >= lanes.Length, $"{file.Template} has {picture.Channels} lanes.");
         for (var lane = 0; lane < lanes.Length; lane++) {
             Assert.True(
@@ -151,6 +181,7 @@ public sealed class EngineContractTests : IDisposable {
     [InlineData("godot")]
     [InlineData("gltf")]
     [InlineData("blender")]
+    [InlineData("vixen")]
     public void Every_file_of_an_engines_preset_has_a_contract(string engine) {
         var endings = Table().Where(row => row.Engine == engine).Select(static row => row.Ending).ToList();
 

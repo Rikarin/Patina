@@ -265,6 +265,8 @@ Two tests stand in for the engines until someone opens the files in them:
   GPU family. _2026-11-14:_ Blender has its rows too, from its manual's Image Texture, Normal Map and Principled BSDF pages,
   and since Blender reads the files through the USD material beside them, that material is read back and each
   `UsdPreviewSurface` input held to the file its map's row checked, lane red or the whole colour, not inverted, green up.
+  Vixen has its rows as well: its files are block-compressed KTX2, so each is decoded by Vixen's decoder before its lanes are
+  read, which also shows a lane the BC7, BC5, BC6H or BC4 encoder moved.
 - `ContainerHeaderTests` reads every DDS and KTX2 file an export can write (BC1 to BC7, half, float, plain, sRGB and linear, with
   mips) with a parser written from Microsoft's `DDS_HEADER` and `DDS_HEADER_DXT10` and Khronos's KTX 2.0 layout, and checks the
   DXGI and Vulkan format numbers, the level count and each level's size. That covers the BC6H and 16-bit and float DDS no outside
