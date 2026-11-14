@@ -366,7 +366,8 @@ public sealed class StackEvaluator(
                 session.ImageRoots,
                 session.MeshMaps,
                 Newest(held, work.Standing),
-                session.Created
+                session.Created,
+                identity.Library is { } library ? LibraryLayout.ResultsPath(library) : null
             );
             await connection.SendAsync(new() { Type = IpcTypes.StackLoad, StackLoad = load }, cancellationToken);
             state.Document = work.Document;

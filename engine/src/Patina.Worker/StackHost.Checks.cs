@@ -17,10 +17,7 @@ sealed partial class StackHost {
         var stack = Find(session);
 
         // As an export would write them, whatever the proxy (#208).
-        var problems = stack.Prepare(true);
-        if (problems.Count > 0 || stack.Run.Plan is null) {
-            throw new IpcException(string.Join(' ', problems));
-        }
+        var run = stack.Whole();
 
         var (width, height) = stack.Size;
         var model = stack.ModelFile;
@@ -40,8 +37,8 @@ sealed partial class StackHost {
             );
         }
 
-        using var bake = stack.Run.Evaluate();
-        var outputs = stack.Run.Outputs;
+        using var bake = run.Evaluate();
+        var outputs = run.Outputs;
         var wanted = outputs.Where(static output => output.Usage is "baseColor" or "metalness").ToArray();
         var read = bake.Read([..wanted.Select(static output => output.Image)]);
 
