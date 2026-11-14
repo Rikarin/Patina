@@ -35,8 +35,9 @@ public sealed class PlacementNodeTests {
                  [(0f, 0f), (1f, 0f), (0f, 1f), (0.3f, 0.8f), (0.5f, 0.5f)]) {
             var expected = GltfReads(placement, u, v);
             var read = NodeReads(node, u, v);
-            Assert.Equal(expected.U, read.U, 3);
-            Assert.Equal(expected.V, read.V, 3);
+            // Within a tolerance, not rounded to places: two floats a hair apart can round either side of a digit.
+            Assert.Equal(expected.U, read.U, 1e-3f);
+            Assert.Equal(expected.V, read.V, 1e-3f);
         }
     }
 
