@@ -121,8 +121,10 @@ public sealed record PackageImported(string Path, PackageManifest Manifest, bool
 /// </summary>
 /// <param name="From">The picture as the graph's Bitmap nodes name it; not read when a node is named.</param>
 /// <param name="To">The file to read instead: absolute, or below the library.</param>
-/// <param name="Node">One Bitmap node to point at the file, whatever it reads now, or null for every one that reads
-/// <paramref name="From" /> (#292).</param>
+/// <param name="Node">
+///     One Bitmap node to point at the file, whatever it reads now, or null for every one that reads
+///     <paramref name="From" /> (#292).
+/// </param>
 public sealed record GraphRelinkRequest(string From, string To, int? Node = null);
 
 /// <summary>

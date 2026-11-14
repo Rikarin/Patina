@@ -17,8 +17,6 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     readonly Lock createGate = new();
     readonly Lock documentGate = new();
 
-    // Held while bytes go under .revisions or a pin names them, and while unused ones are removed (#292).
-    readonly Lock revisionGate = new();
     int fileSchema;
     LibraryDocument document;
     int rescans;
@@ -476,7 +474,7 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
             file = summary.Path[(LibraryLayout.ProjectsFolder.Length + 1)..];
         }
 
-        lock (revisionGate) {
+        lock (RevisionGate) {
             return Write(() => ProjectFiles.SetPin(RootPath, path, asset, file));
         }
     }
@@ -612,33 +610,11 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         );
     }
 
-    /// <summary>Takes a snapshot of a document, which no purge of unused revisions runs beside.</summary>
-    /// <inheritdoc cref="Snapshots.Take" />
-    public DocumentSnapshot TakeSnapshot(string document, string? name) {
-        lock (revisionGate) {
-            return Snapshots.Take(RootPath, document, name);
-        }
-    }
-
-    /// <summary>Puts a snapshot back, which no purge of unused revisions runs beside.</summary>
-    /// <inheritdoc cref="Snapshots.Restore" />
-    public DocumentSnapshot RestoreSnapshot(string document, Guid id) {
-        lock (revisionGate) {
-            return Snapshots.Restore(RootPath, document, id);
-        }
-    }
-
     /// <summary>
-    ///     Rescans, checks, and removes the kept bytes no snapshot and no pin names (#292), as
-    ///     <c>patina library check --purge-revisions</c> does. No snapshot or pin is taken meanwhile, so nothing this
-    ///     removes can be named by the time it goes.
+    ///     Held while bytes go under <c>.revisions</c> or a pin names them, and while unused ones are removed (#292),
+    ///     which <see cref="LibraryRevisions" /> does.
     /// </summary>
-    /// <returns>How many files went, and how many bytes they held.</returns>
-    public (int Files, long Bytes) PurgeRevisions(CancellationToken cancellationToken = default) {
-        lock (revisionGate) {
-            return RevisionPurge.Run(RootPath, Check(cancellationToken: cancellationToken));
-        }
-    }
+    internal Lock RevisionGate { get; } = new();
 
     public void Dispose() => database.Dispose();
 }

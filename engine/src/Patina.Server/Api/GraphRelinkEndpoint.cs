@@ -52,15 +52,17 @@ static class GraphRelinkEndpoint {
             List<GraphCommand> commands = [
                 ..Bitmaps(session.State.Nodes, request).Select(node => new GraphSetText(node.Id, SourceSetting, name))
             ];
-            return commands.Count == 0
-                ? throw new GraphEditRefusedException(
+            if (commands.Count == 0) {
+                throw new GraphEditRefusedException(
                     request.Node is { } node
                         ? $"Node {node} of this graph is no Bitmap."
                         : $"No Bitmap node of this graph reads '{request.From}'."
-                )
-                : TypedResults.Ok(
-                    session.Apply(new(commands, request.Node is null ? "Relink Picture" : "Choose Picture"))
                 );
+            }
+
+            return TypedResults.Ok(
+                session.Apply(new(commands, request.Node is null ? "Relink Picture" : "Choose Picture"))
+            );
         } catch (GraphEditRefusedException e) {
             return Refusals.Of(e);
         }

@@ -71,7 +71,7 @@ static class LibraryHealthEndpoints {
         }
 
         try {
-            var (files, bytes) = await Task.Run(() => library.PurgeRevisions(cancellationToken), cancellationToken);
+            var (files, bytes) = await Task.Run(() => LibraryRevisions.Purge(library, cancellationToken), cancellationToken);
             return TypedResults.Ok(new LibraryTidied(files, bytes));
         } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
             return problem;

@@ -454,6 +454,42 @@ sealed record LibraryDocumentState(IReadOnlyList<Finding> Findings) {
 }
 
 /// <summary>
+///     Snapshots and the purge of unused revisions in a library a Server holds, which never run beside one another
+///     (#292): a snapshot or a pin taken between a check and its purge would name bytes the purge removes.
+/// </summary>
+public static class LibraryRevisions {
+    /// <summary>Takes a snapshot of a document, which no purge of unused revisions runs beside.</summary>
+    /// <inheritdoc cref="Snapshots.Take" />
+    public static DocumentSnapshot TakeSnapshot(OpenLibrary library, string document, string? name) {
+        ArgumentNullException.ThrowIfNull(library);
+        lock (library.RevisionGate) {
+            return Snapshots.Take(library.RootPath, document, name);
+        }
+    }
+
+    /// <summary>Puts a snapshot back, which no purge of unused revisions runs beside.</summary>
+    /// <inheritdoc cref="Snapshots.Restore" />
+    public static DocumentSnapshot RestoreSnapshot(OpenLibrary library, string document, Guid id) {
+        ArgumentNullException.ThrowIfNull(library);
+        lock (library.RevisionGate) {
+            return Snapshots.Restore(library.RootPath, document, id);
+        }
+    }
+
+    /// <summary>
+    ///     Rescans, checks, and removes the kept bytes no snapshot and no pin names, as
+    ///     <c>patina library check --purge-revisions</c> does. No snapshot or pin is taken meanwhile.
+    /// </summary>
+    /// <returns>How many files went, and how many bytes they held.</returns>
+    public static (int Files, long Bytes) Purge(OpenLibrary library, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(library);
+        lock (library.RevisionGate) {
+            return RevisionPurge.Run(library.RootPath, library.Check(cancellationToken: cancellationToken));
+        }
+    }
+}
+
+/// <summary>
 ///     Removes the kept bytes a check found unused (#270). Only safe holding the <see cref="LibraryLock" />: a snapshot
 ///     taken between the check and this would name bytes this removes.
 /// </summary>

@@ -94,9 +94,12 @@ public sealed class LibraryFilesTests : IDisposable {
         Assert.Equal("name: Rust", File.ReadAllText(Path.Combine(project, "rust.vxtexgraph")));
         Assert.Equal("name: Rust Again", File.ReadAllText(Path.Combine(project, "rust-2.vxtexgraph")));
         Assert.Equal(
-            [(second.Id.Value, "projects/shared-assets/rust-2.vxtexgraph"),
-                (first.Id.Value, "projects/shared-assets/rust.vxtexgraph")],
-            library.Assets(new(null, null, 0, 50)).Items.Select(static a => (a.Id, a.Path))
+            [
+                (second.Id.Value, "projects/shared-assets/rust-2.vxtexgraph"),
+                (first.Id.Value, "projects/shared-assets/rust.vxtexgraph")
+            ],
+            library.Assets(new(null, null, 0, 50))
+                .Items.Select(static a => (a.Id, a.Path))
                 .OrderBy(static a => a.Path, StringComparer.Ordinal)
         );
     }
