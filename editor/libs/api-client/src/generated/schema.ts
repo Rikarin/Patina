@@ -2737,9 +2737,11 @@ export interface components {
     /** @description The curvature map's source and stored range (#148). */
     BakeCurvatureOptions: {
       /**
-       * @description Where the bends come from: `mesh`, the high mesh's own faces where each ray lands; or
+       * @description Where the bends come from: `mesh`, the high mesh's own faces where each ray lands;
        *     `normal-map`, the bends of the baked normal map, which is the high mesh's detail over the low mesh,
-       *     down to its smallest grooves, and none of the low mesh's own shape.
+       *     down to its smallest grooves, and none of the low mesh's own shape; or `rays`, secondary rays
+       *     double BakeCurvatureOptions.Sampling round where each ray lands, a bend at that scale, so a hard edge of a low poly high
+       *     mesh reads as one.
        * @default mesh
        */
       source: string;
@@ -2756,6 +2758,19 @@ export interface components {
        * @default 0.01
        */
       radius: number;
+      /**
+       * Format: double
+       * @description For `rays`: how far round where each ray lands the secondary rays look, in the rays' units, which is
+       *     the radius of the bend read and the finest one told apart.
+       * @default 0.01
+       */
+      sampling: number;
+      /**
+       * Format: int32
+       * @description For `rays`: how many secondary rays each sample casts, 1 to 256.
+       * @default 16
+       */
+      rays: number;
     };
     /** @description One baked map, as a file. */
     BakedMapFile: {

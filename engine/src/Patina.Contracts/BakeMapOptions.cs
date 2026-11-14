@@ -9,12 +9,14 @@ public sealed record BakeCurvatureOptions {
     public static IReadOnlyList<string> Ranges { get; } = ["auto", "custom"];
 
     /// <summary>The words <see cref="Source" /> takes.</summary>
-    public static IReadOnlyList<string> Sources { get; } = ["mesh", "normal-map"];
+    public static IReadOnlyList<string> Sources { get; } = ["mesh", "normal-map", "rays"];
 
     /// <summary>
-    ///     Where the bends come from: <c>mesh</c>, the high mesh's own faces where each ray lands; or
+    ///     Where the bends come from: <c>mesh</c>, the high mesh's own faces where each ray lands;
     ///     <c>normal-map</c>, the bends of the baked normal map, which is the high mesh's detail over the low mesh,
-    ///     down to its smallest grooves, and none of the low mesh's own shape.
+    ///     down to its smallest grooves, and none of the low mesh's own shape; or <c>rays</c>, secondary rays
+    ///     <see cref="Sampling" /> round where each ray lands, a bend at that scale, so a hard edge of a low poly high
+    ///     mesh reads as one.
     /// </summary>
     public string Source { get; set; } = "mesh";
 
@@ -28,12 +30,24 @@ public sealed record BakeCurvatureOptions {
     /// <summary>For <c>custom</c>: the radius of the tightest bend the map tells apart, in the rays' units.</summary>
     public double Radius { get; set; } = 0.01;
 
+    /// <summary>
+    ///     For <c>rays</c>: how far round where each ray lands the secondary rays look, in the rays' units, which is
+    ///     the radius of the bend read and the finest one told apart.
+    /// </summary>
+    public double Sampling { get; set; } = 0.01;
+
+    /// <summary>For <c>rays</c>: how many secondary rays each sample casts, 1 to 256.</summary>
+    public int Rays { get; set; } = 16;
+
     /// <summary>What is wrong, or null.</summary>
     public string? Problem() =>
         !Ranges.Contains(Range, StringComparer.Ordinal) ? $"'{Range}' is not a curvature range."
         : !Sources.Contains(Source, StringComparer.Ordinal) ? $"'{Source}' is not where a curvature map comes from."
         : Range == "custom"
         && !(Radius > 0 && double.IsFinite(Radius)) ? "A custom curvature radius is more than nothing."
+        : Source == "rays" && !(Sampling > 0 && double.IsFinite(Sampling))
+            ? "The curvature's sampling radius is more than nothing."
+        : Source == "rays" && Rays is < 1 or > 256 ? "Curvature by rays casts 1 to 256 rays."
         : null;
 }
 
