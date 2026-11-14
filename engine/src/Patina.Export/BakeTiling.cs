@@ -7,19 +7,19 @@ namespace Patina.Export;
 
 /// <summary>
 ///     A tileable bake (#212): a high-poly patch baked onto a flat low patch so that the maps repeat without a seam.
-///     The high meshes are laid again on each of the eight sides of the patch, one repeat away, so a ray or an occlusion
-///     ray near an edge meets what lies beyond it when the material repeats, as it will on the model.
+///     The high meshes are laid again on each of the eight sides of the patch, one repeat away, so a ray or an
+///     occlusion ray near an edge meets what lies beyond it when the material repeats, as it will on the model.
 /// </summary>
 /// <remarks>
-///     ⚠ <b>One repeat is one unit of the patch's texture coordinates</b>, the step the texture takes when it repeats
-///     (#287). It is measured from the low mesh's layout, so a patch turned on its plane, or laid out over less than the
-///     whole square, tiles along its own sides. A patch whose layout says nothing, every triangle of it flat in the
-///     atlas, falls back to its box's two widest sides. ⚠ <b>Each copy is the same mesh to the ID map</b>: its faces
-///     take the ids of the faces they copy, by every source, so a strip met past the right edge reads the colour it
-///     reads past the left.
+///     ⚠ <b>One repeat is one unit of the patch's texture coordinates</b>, the step the texture takes when it
+///     repeats (#287). It is measured from the low mesh's layout, so a patch turned on its plane, or laid out over less
+///     than the whole square, tiles along its own sides. A patch whose layout says nothing, every triangle of it flat
+///     in the atlas, falls back to its box's two widest sides. ⚠ <b>Each copy is the same mesh to the ID map</b>: its
+///     faces take the ids of the faces they copy, by every source, so a strip met past the right edge reads the colour
+///     it reads past the left.
 /// </remarks>
 public static class BakeTiling {
-    /// <summary>How many copies of the high meshes a tileable bake holds: the patch's own and eight around it.</summary>
+    /// <summary>How many copies of the high meshes a tileable bake holds: the patch's and eight around it.</summary>
     public const int Copies = 9;
 
     /// <summary>The high files, the patch's own first, then a copy moved onto each side of it.</summary>
@@ -78,7 +78,7 @@ public static class BakeTiling {
         return shells ? (BakeIdSource.Groups, false) : ids;
     }
 
-    /// <summary>Whether the first <paramref name="faces" /> carry more than one group, as Vixen's automatic source asks.</summary>
+    /// <summary>Whether the first <paramref name="faces" /> carry several groups, which an automatic ID asks.</summary>
     static bool Several(EditMesh mesh, int faces) {
         for (var face = 1; face < faces; face++) {
             if (mesh.Faces[face].Group != mesh.Faces[0].Group) {

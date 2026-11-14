@@ -9,7 +9,7 @@ namespace Patina.Export.Tests;
 ///     reaches past their parts, and every set otherwise (#151, ADR 0008).
 /// </summary>
 public sealed class BakeHighReadsTests : IDisposable {
-    /// <summary>The low mesh: a bolt on the left half of the atlas and a plate on the right, each its own set.</summary>
+    /// <summary>The low mesh: a bolt on the atlas's left half and a plate on the right, each its own set.</summary>
     const string Low = """
                        o bolt_low
                        v 0 0 0
@@ -144,7 +144,7 @@ public sealed class BakeHighReadsTests : IDisposable {
         Assert.NotEqual(acrossBefore, acrossAfter);
     }
 
-    /// <summary>Anything that reaches past the set's parts reads the high mesh whole, so another part's change rebakes it.</summary>
+    /// <summary>Anything reaching past the set's parts reads the high mesh whole: any change rebakes it.</summary>
     [Theory]
     [InlineData("unmatched")]
     [InlineData("occlusion")]
@@ -160,7 +160,9 @@ public sealed class BakeHighReadsTests : IDisposable {
             "unmatched" => static options => options with { Rays = options.Rays with { MatchByName = false } },
             "occlusion" => static options => options with { Occlusion = options.Occlusion with { WithinPart = false } },
             "rounding" => static options => options with { Rounding = options.Rounding with { Enabled = true } },
-            "edges" => static options => options with { Maps = ["edges"], Edges = options.Edges with { Mesh = "high" } },
+            "edges" => static options => options with {
+                Maps = ["edges"], Edges = options.Edges with { Mesh = "high" }
+            },
             "tileable" => static options => options with { Tileable = true },
             "renamed" => static options => options,
             _ => options => options with { Maps = [what] }
@@ -177,10 +179,13 @@ public sealed class BakeHighReadsTests : IDisposable {
     public void The_low_meshs_edges_stay_within_the_parts() {
         Assert.True(
             BakeHighReads.WithinParts(
-                Request("Bolt", static options => options with { Maps = ["edges", "normal"], Edges = new() { Mesh = "low" } })
+                Request(
+                        "Bolt",
+                        static options => options with { Maps = ["edges", "normal"], Edges = new() { Mesh = "low" } }
+                    )
                     .Options
             )
         );
-        Assert.False(BakeHighReads.WithinParts(new BakeOptions()));
+        Assert.False(BakeHighReads.WithinParts(new()));
     }
 }

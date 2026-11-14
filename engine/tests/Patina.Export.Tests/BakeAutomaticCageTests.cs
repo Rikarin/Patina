@@ -1,4 +1,3 @@
-using Patina.Contracts;
 using Patina.Jobs;
 using Vixen.Core.Imaging;
 
@@ -58,12 +57,7 @@ public sealed class BakeAutomaticCageTests : IDisposable {
                     Format = BakeInputs.Png8,
                     Maps = ["height"],
                     Height = new() { Range = "rays" },
-                    Rays = new() {
-                        Units = "absolute",
-                        Front = 0.05,
-                        Rear = 0.05,
-                        AutomaticCage = automatic
-                    }
+                    Rays = new() { Units = "absolute", Front = 0.05, Rear = 0.05, AutomaticCage = automatic }
                 }
             },
             into,

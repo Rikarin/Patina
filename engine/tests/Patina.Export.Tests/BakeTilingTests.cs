@@ -118,8 +118,8 @@ public sealed class BakeTilingTests : IDisposable {
     }
 
     /// <summary>
-    ///     The repeat follows the patch's texture coordinates, not the axes: a patch turned on its plane tiles along its
-    ///     own sides (#287). Along the axes, the copies landed beside the turned patch's box and missed its edge.
+    ///     The repeat follows the patch's texture coordinates, not the axes: a patch turned on its plane tiles along
+    ///     its own sides (#287). Along the axes, the copies landed beside the turned patch's box and missed its edge.
     /// </summary>
     [Fact]
     public void A_turned_patch_tiles_along_its_own_sides() {

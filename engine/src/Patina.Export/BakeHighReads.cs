@@ -70,7 +70,7 @@ public static class BakeHighReads {
         return Revision.Of(high.Digest(match.Source, matched));
     }
 
-    /// <summary>Whether a bake with these options reads nothing of the high mesh past the parts its own faces match.</summary>
+    /// <summary>Whether a bake with these options reads nothing of the high mesh past its own faces' parts.</summary>
     /// <param name="options">The bake's options.</param>
     /// <returns>Whether narrowing a high-mesh change to the matched parts is safe for it.</returns>
     public static bool WithinParts(BakeOptions options) {
@@ -133,7 +133,7 @@ public static class BakeHighReads {
             return new(mesh.Bounds, normals, parts);
         }
 
-        /// <summary>The digest of the box, every part's name, and the matched parts' faces, by source part number.</summary>
+        /// <summary>The digest of the box, every part's name, and the matched parts' faces, by part number.</summary>
         public byte[] Digest(IReadOnlyList<int> sources, HashSet<int> matched) {
             using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             Add(hash, Bounds.Minimum);
