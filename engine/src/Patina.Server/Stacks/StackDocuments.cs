@@ -436,7 +436,6 @@ public static class StackDocuments {
         return colours.Length == 0 ? null : colours;
     }
 
-    /// <summary>Points a stack that is not open at a mesh, relative to its file.</summary>
     /// <summary>Names a stack's texture set after the material it paints.</summary>
     public static void SetSetName(string path, string name) {
         var document = Parse(SharedFile.ReadAllText(path));
@@ -449,6 +448,7 @@ public static class StackDocuments {
     /// <summary>The side of a stack's maps.</summary>
     public static int Side(string path) => Parse(SharedFile.ReadAllText(path)).BaseWidth;
 
+    /// <summary>Points a stack that is not open at a mesh, relative to its file.</summary>
     public static void SetModel(string path, string model) {
         LibraryFiles.Replace(path, Text(Parse(SharedFile.ReadAllText(path)) with { Model = model }));
     }
