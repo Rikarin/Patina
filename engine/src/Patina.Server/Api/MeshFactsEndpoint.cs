@@ -23,14 +23,11 @@ static class MeshFactsEndpoint {
 
         var file = Path.IsPathFullyQualified(path) ? path : LibraryLayout.Full(library.RootPath, path);
         if (!MeshFormats.IsMesh(file)) {
-            return TypedResults.Problem(
-                $"'{Path.GetFileName(file)}' is not a mesh Patina reads: use {string.Join(", ", MeshFormats.Meshes)}.",
-                statusCode: StatusCodes.Status400BadRequest
-            );
+            return Refusals.WrongKind(file, MeshFormats.Meshes, StatusCodes.Status400BadRequest);
         }
 
         if (!File.Exists(file)) {
-            return TypedResults.Problem($"There is no file '{path}'.", statusCode: StatusCodes.Status404NotFound);
+            return Refusals.NoFile(file);
         }
 
         try {
@@ -41,7 +38,11 @@ static class MeshFactsEndpoint {
             );
             return reply.Facts is { } facts
                 ? TypedResults.Ok(facts)
-                : TypedResults.Problem("The GPU engine said nothing about the mesh.", statusCode: 502);
+                : Refusals.Problem(
+                    "The GPU engine said nothing about the mesh.",
+                    StatusCodes.Status502BadGateway,
+                    Refusals.EngineUnavailable
+                );
         } catch (IpcException e) {
             return Refusals.OfEngine(e, StatusCodes.Status422UnprocessableEntity);
         }

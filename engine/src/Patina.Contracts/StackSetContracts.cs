@@ -30,13 +30,17 @@ public sealed record StackSetHeightNormal(string Method) : StackCommand;
 ///     How the bake's ambient occlusion reaches the set's: <c>Combine</c>, multiplied with what is painted;
 ///     <c>Replace</c>; or <c>Off</c>.
 /// </param>
+/// <param name="Description">
+///     What the set is for, in a person's words (#141), which nothing evaluates or exports. Empty takes it away.
+/// </param>
 public sealed record StackSetSettings(
     int? Width = null,
     int? Height = null,
     int? UvSet = null,
     string? HeightNormal = null,
     string? BakedNormal = null,
-    string? BakedOcclusion = null
+    string? BakedOcclusion = null,
+    string? Description = null
 ) : StackCommand;
 
 /// <summary>

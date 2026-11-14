@@ -185,18 +185,7 @@ static class LibraryCareEndpoints {
             host,
             static library => {
                 var folder = Path.Combine(library.RootPath, LibraryLayout.CacheFolder);
-                var bytes = Directory.Exists(folder)
-                    ? new DirectoryInfo(folder).EnumerateFiles("*", SearchOption.AllDirectories)
-                        .Sum(static file => {
-                                try {
-                                    return file.Length;
-                                } catch (FileNotFoundException) {
-                                    return 0; // gone while counted: the cache trims itself
-                                }
-                            }
-                        )
-                    : 0;
-                return TypedResults.Ok(new CacheInfo(folder, bytes));
+                return TypedResults.Ok(new CacheInfo(folder, FolderSize.Of(folder)));
             }
         );
 }

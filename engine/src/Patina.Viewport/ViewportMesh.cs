@@ -116,12 +116,13 @@ public sealed record ViewportGeometry(
 ///     numbers.
 /// </remarks>
 sealed class ViewportMesh {
-    /// <summary>Position 3, normal 3, texture coordinate 2, tangent 4.</summary>
-    public const int FloatsPerVertex = 12;
+    /// <summary>Position 3, normal 3, texture coordinate 2, tangent 4, vertex colour 4.</summary>
+    public const int FloatsPerVertex = 16;
 
     const int NormalOffset = 3;
     const int CoordinateOffset = 6;
     const int TangentOffset = 8;
+    const int ColourOffset = 12;
 
     ViewportMesh(
         float[] vertices,
@@ -169,7 +170,8 @@ sealed class ViewportMesh {
             ("position", VertexFormat.Float32X3, 0),
             ("normal", VertexFormat.Float32X3, 3 * sizeof(float)),
             ("texCoord", VertexFormat.Float32X2, 6 * sizeof(float)),
-            ("tangent", VertexFormat.Float32X4, 8 * sizeof(float))
+            ("tangent", VertexFormat.Float32X4, TangentOffset * sizeof(float)),
+            ("colour", VertexFormat.Float32X4, ColourOffset * sizeof(float))
         ];
         List<VertexElement> elements = [];
         foreach (var (name, format, offset) in attributes) {
@@ -217,7 +219,11 @@ sealed class ViewportMesh {
     public static ViewportMesh Read(string path, IReadOnlyDictionary<string, int>? uvSets = null) {
         var other = uvSets?.Values.Any(static set => set != 0) ?? false;
         var options = new ModelReadOptions {
-            GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false, ImportAllTexCoords = other
+            GenerateTangents = false,
+            ImportAnimations = false,
+            ImportBlendShapes = false,
+            ImportAllTexCoords = other,
+            ImportVertexColours = true
         };
         var read = ModelReader.Read(
             SharedFile.ReadAllBytes(path),
@@ -424,8 +430,10 @@ sealed class ViewportMesh {
             if (!welded.TryGetValue(key, out var index)) {
                 index = (uint)(vertices.Count / FloatsPerVertex);
                 welded.Add(key, index);
-                vertices.AddRange(Vertices.AsSpan((int)Indices[corner] * FloatsPerVertex, TangentOffset));
+                var at = (int)Indices[corner] * FloatsPerVertex;
+                vertices.AddRange(Vertices.AsSpan(at, TangentOffset));
                 vertices.AddRange([tangents[corner].X, tangents[corner].Y, tangents[corner].Z, tangents[corner].W]);
+                vertices.AddRange(Vertices.AsSpan(at + ColourOffset, FloatsPerVertex - ColourOffset));
             }
 
             indices[corner] = index;
@@ -475,11 +483,12 @@ sealed class ViewportMesh {
                 ? Vector3.Normalize(Matrix4x4.TransformDirection(mesh.Normals[i], normals))
                 : Vector3.UnitY;
             var coordinate = hasCoordinates ? coordinates[i] : default;
+            // A file with no vertex colours shows white, which is what a colour that multiplies nothing is.
+            var colour = mesh.Colours.Length == mesh.Positions.Length ? mesh.Colours[i] : Vector4.One;
             vertices.AddRange(
                 [
                     position.X, position.Y, position.Z, normal.X, normal.Y, normal.Z, coordinate.X, coordinate.Y, 0f,
-                    0f,
-                    0f, 0f
+                    0f, 0f, 0f, colour.X, colour.Y, colour.Z, colour.W
                 ]
             );
             bounds = BoundingBox.Merge(bounds, position);

@@ -16,6 +16,7 @@ static class StackLabels {
             StackSetModel => "Bind mesh",
             StackAddChannel add => $"Add {Terms.Label(add.Usage)}",
             StackRemoveChannel remove => $"Remove {Terms.Label(remove.Usage)}",
+            StackSetChannelFormat => "Channel depth",
             StackSetSeed => "Change seed",
             StackSetHeightNormal => "Height to normal",
             StackSetSettings => "Texture set settings",
@@ -40,6 +41,8 @@ static class StackLabels {
             StackMoveMaskLayer => "Move mask layer",
             StackSetMaskLayer => "Change mask layer",
             StackApplyMask => "Apply mask",
+            StackKeepQuickMask { Outside: true } => "Keep outside quick mask",
+            StackKeepQuickMask => "Keep inside quick mask",
             _ => "Edit"
         };
 

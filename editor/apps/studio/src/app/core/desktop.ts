@@ -61,6 +61,8 @@ export interface DesktopBridge {
   openLook(): Promise<string | null>;
   /** Asks for an export preset someone shared, a <code>.yaml</code> file. */
   openPreset(): Promise<string | null>;
+  /** Asks for a package someone sent, a <code>.zip</code> of its folder. */
+  openPackage(): Promise<string | null>;
   /** Where a file dropped on the window is. */
   pathOf(file: File): string;
 
@@ -90,6 +92,8 @@ export interface DesktopBridge {
   openImage(formats?: readonly string[]): Promise<string | null>;
   /** Asks the user for a folder: its path, or null if they cancelled. */
   openFolder(): Promise<string | null>;
+  /** Asks where a picture goes, as a PNG, starting from a name: its path, or null if they cancelled. */
+  saveImage(name: string): Promise<string | null>;
   /** Asks where a screenshot of the viewport goes, as a PNG: its path, or null if they cancelled. */
   saveScreenshot(): Promise<string | null>;
   /** Tells the app whether quitting would lose anything, which is what decides whether it asks. */

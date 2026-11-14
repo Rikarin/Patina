@@ -50,33 +50,54 @@ static class MaterialImport {
         library.Contents(request.Project);
         var stem = Clean(Path.GetFileNameWithoutExtension(file));
         var pictures = library.ProjectFile(request.Project, $"pictures/{stem}");
-        IReadOnlyList<ImportedMaterial> materials;
+        // A USD package's layer and pictures, read from here and copied into the project like a picture beside a file.
+        var unpacked = Path.Combine(Path.GetTempPath(), $"patina-usdz-{Guid.NewGuid():N}");
+        try {
+            var materials = await ReadAsync(worker, file, new(pictures, unpacked), cancellationToken);
+            if (materials.Count == 0) {
+                throw new ProjectRefusedException($"'{Path.GetFileName(file)}' names no material.");
+            }
+
+            List<string> documents = [];
+            List<string> warnings = [];
+            foreach (var material in materials) {
+                warnings.AddRange(material.Warnings);
+                var name = material.Name.Length > 0 ? material.Name : stem;
+                var text = Graph(name, material, new(pictures, warnings));
+                var graph = library.NewDocumentFile(request.Project, name, LibraryLayout.GraphExtension);
+                File.WriteAllText(library.ProjectFile(request.Project, graph), text);
+                library.AddDocument(request.Project, DocumentKinds.Graph, graph, name, null);
+                documents.Add($"{LibraryLayout.ProjectsFolder}/{request.Project}/{graph}");
+            }
+
+            return new(documents, [..warnings.Distinct(StringComparer.Ordinal)]);
+        } finally {
+            if (Directory.Exists(unpacked)) {
+                Directory.Delete(unpacked, true);
+            }
+        }
+    }
+
+    /// <summary>Where a file's pictures go in the project, and where a USD package is unpacked to read it.</summary>
+    sealed record Folders(string Pictures, string Unpacked);
+
+    /// <summary>A file's materials, read by the reader its kind has.</summary>
+    /// <exception cref="ProjectRefusedException">The reader refused it.</exception>
+    static async Task<IReadOnlyList<ImportedMaterial>> ReadAsync(
+        WorkerLink worker,
+        string file,
+        Folders folders,
+        CancellationToken cancellationToken
+    ) {
         try {
             var extension = Path.GetExtension(file).ToLowerInvariant();
-            materials = extension == MaterialFormats.MaterialX ? MaterialXReader.Read(file)
+            return extension == MaterialFormats.MaterialX ? MaterialXReader.Read(file)
                 : MaterialFormats.Texts.Contains(extension, StringComparer.Ordinal) ? UsdaReader.Read(file)
-                : await ReadModelAsync(worker, file, pictures, cancellationToken);
+                : extension == MaterialFormats.Package ? UsdzReader.Read(file, folders.Unpacked)
+                : await ReadModelAsync(worker, file, folders.Pictures, cancellationToken);
         } catch (InvalidDataException e) {
             throw new ProjectRefusedException(e.Message);
         }
-
-        if (materials.Count == 0) {
-            throw new ProjectRefusedException($"'{Path.GetFileName(file)}' names no material.");
-        }
-
-        List<string> documents = [];
-        List<string> warnings = [];
-        foreach (var material in materials) {
-            warnings.AddRange(material.Warnings);
-            var name = material.Name.Length > 0 ? material.Name : stem;
-            var text = Graph(name, material, new(pictures, warnings));
-            var graph = library.NewDocumentFile(request.Project, name, LibraryLayout.GraphExtension);
-            File.WriteAllText(library.ProjectFile(request.Project, graph), text);
-            library.AddDocument(request.Project, DocumentKinds.Graph, graph, name, null);
-            documents.Add($"{LibraryLayout.ProjectsFolder}/{request.Project}/{graph}");
-        }
-
-        return new(documents, [..warnings.Distinct(StringComparer.Ordinal)]);
     }
 
     static async Task<IReadOnlyList<ImportedMaterial>> ReadModelAsync(
@@ -191,7 +212,7 @@ static class MaterialImport {
     ///     linear, so it is taken to linear.
     /// </summary>
     static int Picture(GraphText graph, ImportedSlot slot, string relative, List<string> warnings) {
-        var bitmap = graph.Node("Source/Bitmap", [("Source", relative)]);
+        var bitmap = graph.Node("Source/Bitmap", [("Source", relative), ..Edges(slot.Placement)]);
         var node = Lane(graph, Placed(graph, slot, bitmap, warnings), slot.Lane);
         var colour = slot.Usage == "baseColor";
         float[] factor = [..slot.Value.Take(3)];
@@ -210,6 +231,18 @@ static class MaterialImport {
 
         return colour && scaled ? graph.Chain(node, "Colour/Linear to sRGB") : node;
     }
+
+    /// <summary>
+    ///     What a placed picture's bitmap reads past its edge while it is resampled, so the placement after it reads
+    ///     the picture's own edge (#289): a picture clamped or mirrored holds its edge texel, and a repeated one wraps
+    ///     whether or not the graph tiles. A picture placed as it is follows the graph.
+    /// </summary>
+    static (string Name, string Value)[] Edges(ImportedPlacement? placement) =>
+        placement?.Tiling switch {
+            null => [],
+            "Wrap" => [("Tiling", "Wrap")],
+            _ => [("Tiling", "Clamp")]
+        };
 
     /// <summary>One lane of a picture, alpha too, in red, green and blue, or the picture as it is for none.</summary>
     static int Lane(GraphText graph, int picture, int lane) {

@@ -1,6 +1,7 @@
 using Patina.Contracts;
 using Vixen.Authoring;
 using Vixen.Texturing.Layers;
+using Vixen.Texturing.Painting;
 
 namespace Patina.Server.Stacks;
 
@@ -27,6 +28,9 @@ static class StackSetEdits {
                 return true;
             case StackRemoveChannel remove:
                 run(RemoveChannel(editor, remove.Usage));
+                return true;
+            case StackSetChannelFormat format:
+                run(ChannelFormat(editor, format.Usage, format.Format));
                 return true;
             default:
                 return false;
@@ -82,6 +86,36 @@ static class StackSetEdits {
         );
     }
 
+    /// <summary>The set with one channel painted at another texel width (#19).</summary>
+    static IAuthoringCommand ChannelFormat(StackEditor editor, string usage, string format) {
+        var chosen = editor.Set;
+        if (chosen.Channels.Find(channel => channel.Usage == usage) is not { } held) {
+            throw new StackEditRefusedException(
+                $"This document has no channel '{usage}'.",
+                Api.Refusals.ChannelMissing,
+                new Dictionary<string, string> { ["channel"] = StackDocuments.ChannelName(usage) }
+            );
+        }
+
+        if (!Enum.TryParse<PaintTexelFormat>(format, false, out var width) || !Enum.IsDefined(width)) {
+            throw new StackEditRefusedException(
+                $"'{format}' is no channel depth. Use {string.Join(", ", Enum.GetNames<PaintTexelFormat>())}.",
+                Api.Refusals.ChannelFormatUnknown,
+                new Dictionary<string, string> { ["format"] = format }
+            );
+        }
+
+        var changed = chosen with {
+            Channels = [
+                ..chosen.Channels.Select(channel => channel == held ? channel with { Format = width } : channel)
+            ]
+        };
+        return editor.Replaced(
+            editor.Document with { Sets = [..editor.Document.Sets.Select(set => set == chosen ? changed : set)] },
+            "Channel depth"
+        );
+    }
+
     /// <summary>The document with the set's settings changed as asked, and everything left out as it was.</summary>
     static LayerStackAsset Changed(StackEditor editor, StackSetSettings settings) {
         var document = editor.Document;
@@ -108,7 +142,8 @@ static class StackSetEdits {
             UvSet = uvSet,
             HeightNormal = settings.HeightNormal is { } method ? Method(method) : set.HeightNormal,
             BakedNormal = settings.BakedNormal is { } normal ? Mix(normal) : set.BakedNormal,
-            BakedOcclusion = settings.BakedOcclusion is { } occlusion ? Mix(occlusion) : set.BakedOcclusion
+            BakedOcclusion = settings.BakedOcclusion is { } occlusion ? Mix(occlusion) : set.BakedOcclusion,
+            Description = settings.Description?.Trim() ?? set.Description
         };
         return document with {
             BaseWidth = width,

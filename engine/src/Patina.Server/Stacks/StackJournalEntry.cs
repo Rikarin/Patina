@@ -70,6 +70,17 @@ public sealed class StackJournalEntry(
     public int Height { get; init; }
 
     /// <summary>
+    ///     How wide the texels are that the stroke paints its channel at (#19), or null for eight bits a lane. In the
+    ///     journal so a replay paints at the width the stroke did, whatever the set asks since.
+    /// </summary>
+    public string? Format { get; init; }
+
+    /// <summary>
+    ///     The colour in full, four numbers, for a stroke at a width the packed colour would round; or null.
+    /// </summary>
+    public IReadOnlyList<float>? Lanes { get; init; }
+
+    /// <summary>
     ///     What the stamps of a stroke in the 2D view are multiplied by to land on a canvas larger than the set (#19),
     ///     which the rest of its drag is carried by too, or null when they are the canvas's texels already.
     /// </summary>
@@ -138,6 +149,21 @@ public sealed class StackJournalEntry(
     /// </summary>
     public static StackJournalEntry Copy(long id, string paint, string from, string model, int width, int height) =>
         new(id, NoStroke, paint, string.Empty, 0u, model, null) { From = from, Width = width, Height = height };
+
+    /// <summary>
+    ///     A copy laid over a colour, which makes it opaque where the colour is: a quick mask copied into a mask entry
+    ///     (#282), which a mask then reads by what it holds and not by what its strokes covered.
+    /// </summary>
+    public static StackJournalEntry CopyOver(
+        long id,
+        (string Paint, string From) canvas,
+        string model,
+        (int Width, int Height) size,
+        uint under
+    ) =>
+        new(id, NoStroke, canvas.Paint, string.Empty, 0u, model, under) {
+            From = canvas.From, Width = size.Width, Height = size.Height
+        };
 
     /// <summary>What an entry that is no stroke is made from: no brush, no colour and nowhere it went.</summary>
     static StackStroke NoStroke => new(string.Empty, string.Empty, string.Empty, new(1f), [0f, 0f, 0f, 0f], []);

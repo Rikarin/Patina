@@ -19,7 +19,6 @@ sealed class ViewportGrid(
     Effect effect,
     ShaderHandle vertex,
     ShaderHandle fragment,
-    PixelFormat colourFormat,
     PixelFormat depthFormat,
     int samples
 ) : IDisposable {
@@ -32,7 +31,15 @@ sealed class ViewportGrid(
     static readonly Vector4 AxisZ = new(0.16f, 0.32f, 0.9f, 0.9f);
 
     readonly VulkanDevice device = device;
-    readonly ViewportLines pass = new(device, (effect, vertex, fragment), colourFormat, depthFormat, samples);
+
+    readonly ViewportLines pass = new(
+        device,
+        (effect, vertex, fragment),
+        ViewportTargets.Light(BlendState.AlphaBlend),
+        depthFormat,
+        samples
+    );
+
     BufferHandle? lines;
     int count;
     BoundingBox drawn;
@@ -73,7 +80,8 @@ sealed class ViewportGrid(
 
     static void Add(List<float> vertices, Vector3 from, Vector3 to, Vector4 colour) {
         foreach (var at in new[] { from, to }) {
-            vertices.AddRange([at.X, at.Y, at.Z, colour.X, colour.Y, colour.Z, colour.W, 0f, 0f, 0f, 0f, 0f]);
+            vertices.AddRange([at.X, at.Y, at.Z, colour.X, colour.Y, colour.Z, colour.W]);
+            vertices.AddRange(new float[ViewportMesh.FloatsPerVertex - 7]);
         }
     }
 

@@ -33,8 +33,9 @@ async function render(channels: readonly string[] = ['baseColor', 'roughness'], 
       heightNormal: 'Smooth',
       bakedNormal: 'Combine',
       bakedOcclusion: 'Combine',
+      description: 'Painted metal',
       meshMaps,
-      channels: channels.map(usage => ({ usage }))
+      channels: channels.map(usage => ({ usage, format: usage === 'height' ? 'Rgba16Float' : 'Rgba8' }))
     }),
     channel: signal('baseColor'),
     vocabulary: signal({
@@ -42,6 +43,11 @@ async function render(channels: readonly string[] = ['baseColor', 'roughness'], 
         { value: 'baseColor', label: 'Base Color' },
         { value: 'roughness', label: 'Roughness' },
         { value: 'occlusion', label: 'Ambient Occlusion' }
+      ],
+      formats: [
+        { value: 'Rgba8', label: '8-bit' },
+        { value: 'Rgba16Float', label: '16-bit float' },
+        { value: 'Rgba32Float', label: '32-bit float' }
       ]
     }),
     // A fill is chosen, which no brush paints: the document's settings are there all the same (#201).
@@ -167,6 +173,39 @@ describe('DocumentSection', () => {
     const { element } = await render(['baseColor', 'height']);
 
     expect(element.querySelector('[data-testid=texture-set-height-normal]')).not.toBeNull();
+  });
+
+  it('paints the channel being painted at another depth, one step (#19)', async () => {
+    const { element, edit, fixture, paint } = await render(['baseColor', 'height']);
+    const depth = () => element.querySelector('[data-testid=paint-channel-depth]');
+    const pressed = () => depth()?.querySelector('[aria-pressed=true], [aria-checked=true]')?.textContent.trim();
+    expect(pressed()).toBe('8-bit');
+
+    const wide = [...(depth()?.querySelectorAll('button') ?? [])].find(
+      button => button.textContent.trim() === '16-bit float'
+    );
+    wide?.click();
+    await fixture.whenStable();
+    expect(edit).toHaveBeenCalledWith({ op: 'setChannelFormat', usage: 'baseColor', format: 'Rgba16Float' });
+
+    paint.channel.set('height');
+    await fixture.whenStable();
+    expect(pressed()).toBe('16-bit float');
+  });
+
+  it('writes what the texture set is for as a set setting, only when it changed (#141)', async () => {
+    const { element, edit } = await render();
+    const description = element.querySelector<HTMLTextAreaElement>('[data-testid=texture-set-description]');
+    expect(description?.value).toBe('Painted metal');
+
+    description?.dispatchEvent(new Event('change'));
+    expect(edit).not.toHaveBeenCalled();
+
+    if (description) {
+      description.value = '  Rust in the seams  ';
+    }
+    description?.dispatchEvent(new Event('change'));
+    expect(edit).toHaveBeenCalledWith({ op: 'setSettings', description: 'Rust in the seams' });
   });
 
   it('offers how the bake shades the set only once there is one', async () => {

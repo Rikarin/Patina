@@ -9,7 +9,7 @@ import { percent, times } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { FileChooser } from './file-chooser';
 import { MeshFactsView } from './mesh-facts';
-import { ProjectStore } from './project-store';
+import { ProjectStore, type SettingsPlace } from './project-store';
 
 /** What a project unwraps with until someone says otherwise, as the Server has it. */
 const DefaultUnwrap: UnwrapOptions = {
@@ -204,8 +204,8 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
         }}.
       </xui-callout>
     }
-    @if (project.settingsFailure(); as failure) {
-      <xui-callout color="error" data-testid="project-settings-failure">{{ failure }}</xui-callout>
+    @if (failure(); as reason) {
+      <xui-callout color="error" data-testid="project-settings-failure">{{ reason }}</xui-callout>
     }
   `
 })
@@ -215,6 +215,8 @@ export class ProjectSettingsForm {
    * again from what the project has.
    */
   readonly shown = input(true);
+  /** Which form this is, so that a failure is said where Apply was pressed and nowhere else (#291). */
+  readonly place = input<SettingsPlace>('properties');
   protected readonly project = inject(ProjectStore);
   private readonly chooser = inject(FileChooser);
   protected readonly mesh = signal('');
@@ -299,18 +301,31 @@ export class ProjectSettingsForm {
 
   private readonly path = computed(() => this.project.current()?.path ?? null);
 
+  /** Why this form's Apply did not apply. */
+  protected readonly failure = computed(() => {
+    const failure = this.project.settingsFailure();
+    return failure?.place === this.place() ? failure.reason : null;
+  });
+
   constructor() {
+    // Properties' form is made again when a failed Apply opens the document again, and must still say why (#291), so
+    // only coming into view again or another project starts the failure over.
+    let made = false;
     effect(() => {
       if (this.shown()) {
         this.path();
-        untracked(() => this.reset());
+        untracked(() => this.reset(made));
+        made = true;
       }
     });
   }
 
-  /** Starts again from what the project has. */
-  reset(): void {
-    this.project.settingsFailure.set(null);
+  /** Starts again from what the project has, and forgets why it last failed unless told to keep it. */
+  reset(forget = true): void {
+    if (forget && this.failure() !== null) {
+      this.project.settingsFailure.set(null);
+    }
+
     this.mesh.set('');
     this.autoUnwrap.set(this.project.current()?.autoUnwrap ?? true);
     this.preservePaint.set(this.project.current()?.preservePaint ?? true);
@@ -344,7 +359,7 @@ export class ProjectSettingsForm {
 
   /** Sends what changed, and starts again from what the project then has. Whether it was applied. */
   async apply(): Promise<boolean> {
-    const applied = await this.project.applySettings(this.settings());
+    const applied = await this.project.applySettings(this.settings(), this.place());
     if (applied) {
       this.reset();
     }

@@ -15,7 +15,11 @@ public sealed record StackCreateRequest(string Path, int Width, int Height);
 /// <summary>A channel a stack writes.</summary>
 /// <param name="Usage">Its usage: baseColor, roughness and so on.</param>
 /// <param name="Default">What it starts as.</param>
-public sealed record StackChannel(string Usage, IReadOnlyList<float> Default);
+/// <param name="Format">
+///     How wide the texels are that a stroke paints it at (#19): one of the vocabulary's formats, Rgba8 unless the set
+///     says more.
+/// </param>
+public sealed record StackChannel(string Usage, IReadOnlyList<float> Default, string Format = "Rgba8");
 
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
 #pragma warning disable SK7005
@@ -327,6 +331,7 @@ public sealed record StackTerm(string Value, string Label);
 /// <param name="Lanes">The lanes of a picture a mask can read.</param>
 /// <param name="Tags">The colors a layer can be marked with, None first.</param>
 /// <param name="Kinds">The kinds a graph's ports and parameters take: Number for Float, and the rest.</param>
+/// <param name="Formats">How wide a channel's painted texels can be (#19): 8-bit, and 16-bit and 32-bit float.</param>
 public sealed record StackVocabulary(
     IReadOnlyList<StackTerm> Blends,
     IReadOnlyList<StackFilterKind> Filters,
@@ -344,7 +349,8 @@ public sealed record StackVocabulary(
     IReadOnlyList<StackFilterKind> Sources,
     IReadOnlyList<StackTerm>? Lanes = null,
     IReadOnlyList<StackTerm>? Tags = null,
-    IReadOnlyList<StackTerm>? Kinds = null
+    IReadOnlyList<StackTerm>? Kinds = null,
+    IReadOnlyList<StackTerm>? Formats = null
 );
 
 /// <summary>What a layer looks like alone.</summary>
@@ -447,6 +453,7 @@ public sealed record StackEvaluation(
 ///     The UDIM tile its layout sits on in its UV set (#281), which its exported files are named by: 1001 for a set on
 ///     the first tile, on no mesh, or reaching several, which its problems say.
 /// </param>
+/// <param name="Description">What the set is for, in a person's words (#141), or empty.</param>
 public sealed record StackState(
     string Id,
     string Path,
@@ -472,7 +479,8 @@ public sealed record StackState(
     string BakedOcclusion = "Combine",
     string? BakeStale = null,
     StackPace? Pace = null,
-    int Udim = 1001
+    int Udim = 1001,
+    string Description = ""
 );
 #pragma warning restore SK7005
 
@@ -513,6 +521,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackStroke), "stroke"), JsonDerivedType(typeof(StackSetModel), "setModel")]
 [JsonDerivedType(typeof(StackAddChannel), "addChannel"), JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
 [JsonDerivedType(typeof(StackRemoveChannel), "removeChannel")]
+[JsonDerivedType(typeof(StackSetChannelFormat), "setChannelFormat")]
 [JsonDerivedType(typeof(StackSetSeed), "setSeed"), JsonDerivedType(typeof(StackDuplicateLayers), "duplicateLayers")]
 [JsonDerivedType(typeof(StackPasteLayers), "pasteLayers")]
 [JsonDerivedType(typeof(StackFlattenLayer), "flattenLayer"),
@@ -525,6 +534,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackSetMaskLayer), "setMaskLayer"), JsonDerivedType(typeof(StackAddInstance), "addInstance")]
 [JsonDerivedType(typeof(StackSetInstance), "setInstance")]
 [JsonDerivedType(typeof(StackApplyMask), "applyMask")]
+[JsonDerivedType(typeof(StackKeepQuickMask), "keepQuickMask")]
 public abstract record StackCommand;
 
 /// <summary>Adds a layer at the top of the stack.</summary>
@@ -660,6 +670,16 @@ public sealed record StackAddChannel(string Usage) : StackCommand;
 /// </summary>
 /// <param name="Usage">Which, one the set has. A set keeps at least one channel.</param>
 public sealed record StackRemoveChannel(string Usage) : StackCommand;
+
+/// <summary>
+///     How wide the texels are that strokes paint a channel at (#19): eight bits a lane, or sixteen or thirty-two bit
+///     floats, which keep what eight bits round away, for a height above all. One undo step, <i>Channel depth</i>. A
+///     layer painted before is widened, exactly, by its next stroke, unless a stroke of the session already painted it,
+///     which holds the pixels it painted over; one wider than the set asks keeps its width, so paint is never rounded.
+/// </summary>
+/// <param name="Usage">Which channel, one the set has.</param>
+/// <param name="Format">One of the vocabulary's formats.</param>
+public sealed record StackSetChannelFormat(string Usage, string Format) : StackCommand;
 
 /// <summary>
 ///     Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:

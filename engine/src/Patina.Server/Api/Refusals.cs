@@ -14,7 +14,7 @@ namespace Patina.Server.Api;
 ///     words and the text can change without breaking one (#198). A refusal with no code is one no client is expected
 ///     to explain, and shows its detail.
 /// </summary>
-public static class Refusals {
+public static partial class Refusals {
     /// <summary>A document with unsaved edits, which closing would throw away.</summary>
     public const string Unsaved = "document-unsaved";
 
@@ -65,24 +65,34 @@ public static class Refusals {
     /// </summary>
     public const string ExportUnbuilt = "export-unbuilt";
 
-    /// <summary>The values of a refusal whose detail is the Server's own sentence, as <c>reason</c>.</summary>
+    /// <summary>
+    ///     The values of a refusal whose detail is the Server's own sentence, as <c>reason</c>, with each full path in
+    ///     it cut to its file's name: where a file is on the Server's machine is not for a person to read (#198).
+    /// </summary>
     public static IReadOnlyDictionary<string, string> Reason(string reason) =>
-        new Dictionary<string, string> { ["reason"] = reason };
+        new Dictionary<string, string> { ["reason"] = Plain(reason) };
 
     /// <summary>
-    ///     A stroke on a canvas larger than its texture set, which painting would make smaller (#19, #241). Values:
-    ///     <c>layer</c>, <c>held</c> (the canvas's size) and <c>size</c> (the set's).
+    ///     A stroke on a canvas of another shape than its texture set, which painting at the set's shape would make
+    ///     larger than the largest side (#19, #241). Values: <c>layer</c>, <c>held</c> (the canvas's size), <c>size</c>
+    ///     (the set's) and <c>target</c> (the size of the set's shape it would be painted at).
     /// </summary>
     public const string CanvasLarger = "stroke-canvas-larger";
 
     /// <summary>
     ///     A stroke at a new size on a canvas a stroke of this session began on at another, whose undo holds the
-    ///     pixels it painted over (#19, #241). Values: <c>layer</c>, <c>held</c> and <c>size</c>.
+    ///     pixels it painted over (#19, #241). Values: <c>layer</c>, <c>held</c>, <c>size</c> and <c>target</c> (the
+    ///     size it would be painted at).
     /// </summary>
     public const string CanvasPaintedAtSize = "stroke-canvas-painted-at-size";
 
     // Here and not among the stroke codes above: SK7020 honours no suppression, and reads an unbroken run of codes as a
     // clone of the Worker's message types.
+    /// <summary>
+    ///     A channel depth that is none of the vocabulary's formats (#19). Values: <c>format</c>, as sent.
+    /// </summary>
+    public const string ChannelFormatUnknown = "channel-format-unknown";
+
     /// <summary>A channel taken off a texture set that does not have it. Values: <c>channel</c>, its name.</summary>
     public const string ChannelMissing = "channel-missing";
 
@@ -138,6 +148,9 @@ public static class Refusals {
 
     /// <summary>A brush on a mask layer that is not painted. Values: <c>layer</c>, <c>source</c>.</summary>
     public const string MaskLayerNotPaint = "mask-layer-not-paint";
+
+    /// <summary>A layer kept to a quick mask nothing has painted (#282). Values: <c>layer</c>.</summary>
+    public const string QuickMaskUnpainted = "quick-mask-unpainted";
 
     /// <summary>An instance of a layer that is not there. Values: <c>layer</c>, <c>set</c>.</summary>
     public const string InstanceSourceMissing = "instance-source-missing";
@@ -281,14 +294,14 @@ public static class Refusals {
 
     /// <summary>A file a request needs that is not there, named by its file name alone.</summary>
     public static ProblemHttpResult Of(FileNotFoundException missing) =>
-        Problem(
-            missing.Message,
-            StatusCodes.Status404NotFound,
-            FileMissing,
-            new Dictionary<string, string> {
-                ["file"] = missing.FileName is { Length: > 0 } name ? Path.GetFileName(name) : "That file"
-            }
-        );
+        missing.FileName is { Length: > 0 } name
+            ? NoFile(name)
+            : Problem(
+                missing.Message,
+                StatusCodes.Status404NotFound,
+                FileMissing,
+                new Dictionary<string, string> { ["file"] = "That file" }
+            );
 
     /// <summary>
     ///     A file or folder another program still had open after the Server waited for it, so the change was not made

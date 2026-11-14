@@ -30,6 +30,7 @@ import { FileConflictDialog } from './core/file-conflict-dialog';
 import { FilePicker } from './core/file-picker';
 import { Links } from './core/help-links';
 import { HistoryPane } from './core/history-pane';
+import { KeyHelper } from './core/key-helper';
 import { percent } from './core/numbers';
 import { PreferencesDialog } from './core/preferences-dialog';
 import { ShortcutsDialog } from './core/shortcuts-dialog';
@@ -58,6 +59,7 @@ import { NodeLibrary } from './graph/node-library';
 import { TextureView } from './graph/texture-view';
 import { LibraryActions } from './library/library-actions';
 import { LibraryPane } from './library/library-pane';
+import { LibrarySettingsDialog } from './library/library-settings-dialog';
 import { LibraryTreeStore } from './library/library-tree-store';
 import { MeshReloadDialog } from './library/mesh-reload-dialog';
 import { PickFileDialog } from './library/pick-file-dialog';
@@ -88,6 +90,8 @@ import { ViewportPane } from './viewport/viewport-pane';
     GraphPane,
     HistoryPane,
     PreferencesDialog,
+    LibrarySettingsDialog,
+    KeyHelper,
     ShortcutsDialog,
     ImageMaterialPane,
     Inspector,
@@ -554,11 +558,24 @@ import { ViewportPane } from './viewport/viewport-pane';
       <ptn-shortcuts [(open)]="keys" />
     }
 
+    @defer (when helping()) {
+      <ptn-key-helper [(open)]="helping" />
+    }
+
     @defer (when preferencesOpen()) {
       <ptn-preferences [(open)]="preferencesOpen" />
     }
 
-    <xui-dialog size="sm" title="Save As" [open]="project.savingAs()" (openChange)="project.savingAs.set($event)">
+    @defer (when librarySettingsOpen()) {
+      <ptn-library-settings [(open)]="librarySettingsOpen" />
+    }
+
+    <xui-dialog
+      size="sm"
+      [title]="project.copying() ? 'Save a Copy' : 'Save As'"
+      [open]="project.savingAs()"
+      (openChange)="project.savingAs.set($event)"
+    >
       <form (submit)="saveAs($event, saveName.value)">
         <xui-dialog-body>
           <input
@@ -673,7 +690,9 @@ export class App {
   });
   private readonly destroyRef = inject(DestroyRef);
   protected readonly keys = signal(false);
+  protected readonly helping = signal(false);
   protected readonly preferencesOpen = signal(false);
+  protected readonly librarySettingsOpen = signal(false);
   protected readonly diagnosing = signal(false);
   protected readonly about = signal(false);
   protected readonly picker = inject(FilePicker);
@@ -816,7 +835,7 @@ export class App {
     event.preventDefault();
     if (name.trim()) {
       this.project.savingAs.set(false);
-      void this.project.saveAs(name.trim());
+      void this.project.saveAs(name.trim(), this.project.copying());
     }
   }
 
@@ -868,7 +887,9 @@ export class App {
     });
     handle('showActivity', { checked: () => this.activity.open(), run: () => this.activity.toggle() });
     handle('shortcuts', { run: () => this.keys.set(true) });
+    handle('keyHelper', { run: () => this.helping.update(shown => !shown) });
     handle('preferences', { run: () => this.preferencesOpen.set(true) });
+    handle('librarySettings', { run: () => this.librarySettingsOpen.set(true) });
     handle('diagnostics', { run: () => this.diagnosing.set(true) });
     handle('documentation', { run: () => globalThis.open(Links.documentation, '_blank') });
     handle('reportProblem', { run: () => globalThis.open(Links.issues, '_blank') });

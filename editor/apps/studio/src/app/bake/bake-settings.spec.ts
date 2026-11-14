@@ -26,6 +26,7 @@ const defaults: ProjectBakeSettings = {
       rear: 0.05,
       units: 'relative',
       ignoreBackfaces: false,
+      automaticCage: false,
       skew: 0,
       skewMap: '',
       distanceMap: '',
@@ -63,7 +64,16 @@ const defaults: ProjectBakeSettings = {
 const mesh: ProjectMeshInfo = { id: 'm1', path: 'projects/a/crate.glb', high: 'projects/a/crate_high.glb' };
 
 function document(name: string, kind: string, material: string | null, onMesh: boolean): ProjectDocumentInfo {
-  return { id: name, kind, name, path: `projects/a/${name}`, mesh: onMesh ? 'm1' : null, material, tags: [] };
+  return {
+    id: name,
+    kind,
+    name,
+    path: `projects/a/${name}`,
+    mesh: onMesh ? 'm1' : null,
+    material,
+    udim: 1001,
+    tags: []
+  };
 }
 
 function contents(documents: ProjectDocumentInfo[], bake = defaults): ProjectContents {

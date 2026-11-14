@@ -26,7 +26,7 @@ public sealed partial class StackProcessTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-stack-");
     readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
     readonly List<Process> started = [];
-    readonly HttpClient http = new();
+    HttpClient http = new();
 
     string Library => Directory.CreateDirectory(Path.Combine(folder.FullName, "Game.ptlib")).FullName;
 
@@ -837,6 +837,12 @@ public sealed partial class StackProcessTests : IDisposable {
         var registry = new InstanceRegistry(DiscoveryFile);
         while (true) {
             if (await registry.FindAsync(Library, token) is { } instance) {
+                // A second Server is a client of its own: one that has sent a request keeps its address.
+                if (http.BaseAddress is not null) {
+                    http.Dispose();
+                    http = new();
+                }
+
                 http.BaseAddress = new($"http://127.0.0.1:{instance.Port}");
                 http.DefaultRequestHeaders.Authorization = new("Bearer", instance.Token);
                 return (instance, await CreateAsync(name, token, size));

@@ -198,6 +198,7 @@ def test_a_blender_shaped_session(session) -> None:
                     rear=0.05,
                     units="relative",
                     ignore_backfaces=False,
+                    automatic_cage=False,
                     skew=0.0,
                     skew_map="",
                     distance_map="",

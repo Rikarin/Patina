@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export;
 using Patina.Export.Builds;
 using Patina.Graphs;
 using Patina.Library;
@@ -66,14 +67,15 @@ static class BuildCommand {
                 name,
                 DateTimeOffset.UtcNow
             );
-            var report = await new BuildPipeline(library, executor, ToolCatalog.Default).RunAsync(
-                journal,
-                request,
-                null,
-                null,
-                TimeProvider.System,
-                stop.Token
-            );
+            var report = await new BuildPipeline(library, executor, ToolCatalog.Default, MeshFileReads.Instance)
+                .RunAsync(
+                    journal,
+                    request,
+                    null,
+                    null,
+                    TimeProvider.System,
+                    stop.Token
+                );
             Console.WriteLine(
                 FormattableString.Invariant($"{report.Projects} projects touched: {report.Built} built, ")
                 + FormattableString.Invariant($"{report.Reused} reused, {report.Fresh} fresh, ")

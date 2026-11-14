@@ -1,3 +1,4 @@
+using Patina.Export;
 using Patina.Library;
 using System.Threading.Channels;
 
@@ -10,8 +11,9 @@ namespace Patina.Server;
 ///     A write through the API asks for another scan the same way: the files change first, and the index catches up
 ///     behind it.
 /// </summary>
-public sealed class LibraryHost(ServerIdentity identity, ILogger<LibraryHost> logger) : BackgroundService {
-    readonly Lazy<OpenLibrary?> library = new(() => Open(identity.Library, logger));
+public sealed class LibraryHost(ServerIdentity identity, MeshSetCache meshes, ILogger<LibraryHost> logger)
+    : BackgroundService {
+    readonly Lazy<OpenLibrary?> library = new(() => Open(identity.Library, meshes, logger));
 
     // One waiting request is enough, whatever else arrives: the scan it starts sees every write made before it starts.
     readonly Channel<bool> rescans = Channel.CreateBounded<bool>(
@@ -52,13 +54,16 @@ public sealed class LibraryHost(ServerIdentity identity, ILogger<LibraryHost> lo
         ServerLog.LibraryIndexed(logger, scan.Files, scan.Changed, scan.Elapsed.TotalSeconds);
     }
 
-    static OpenLibrary? Open(string? root, ILogger logger) {
+    static OpenLibrary? Open(string? root, IMeshSetReads meshes, ILogger logger) {
         if (root is null || !OpenLibrary.Exists(root)) {
             return null;
         }
 
         try {
-            return OpenLibrary.Open(root);
+            var library = OpenLibrary.Open(root);
+            // A set's tile is read through the Worker's facts, never here (ADR 0039).
+            library.Tiles = (mesh, material, uvSet) => SetUdim.Of(meshes, mesh, material, uvSet);
+            return library;
         } catch (LibraryFormatException e) {
             ServerLog.LibraryUnreadable(logger, e.Message);
             return null;

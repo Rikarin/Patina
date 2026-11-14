@@ -55,16 +55,33 @@ A dialog about unsaved changes says *“{Name} has unsaved changes.”* and offe
 
 ## Panes
 
-| Pane | Name | Shows |
-|---|---|---|
-| `viewport` with a mesh | **Viewport** | the model, painted |
-| `viewport` with no mesh | **Preview** | the material on a stand-in shape |
-| `atlas` | **2D View** | the map being painted, flat |
-| `texture` in a texturing or layered material | **Maps** | a mesh map or a channel's map chosen elsewhere |
-| `texture` in a graph | **2D View** | the chosen node's picture |
-| `texture` in an image material | **Result** | what the image material makes |
-| `paint` | **Properties** | the document, the brush and the chosen layer |
-| the status bar's panel | **Activity** | the engine's jobs and everything the app said |
+A pane id is the name the code gives a pane (`contentId` in `core/workspaces.ts`). A person never reads it: they read
+the pane's name, which this table gives for each workspace. One id can have another name in another workspace, where it
+shows another thing; within one workspace each name is one pane. `core/pane-names.spec.ts` fails on a name in a layout
+that this table does not give.
+
+| Pane id | Workspace | Name | Shows |
+|---|---|---|---|
+| `start` | start | **Start** | recent projects, and making or opening one |
+| `library` | all | **Library** | the library's folders, projects and files |
+| `inspector` | all | **Inspector** | what is chosen in the Library, the graph or the image material |
+| `history` | all but start | **History** | the document's undo steps |
+| `shelf` | texturing, layered material | **Materials** | materials, smart materials and smart masks to drop on a layer |
+| `sets` | texturing | **Texture Sets** | the model's texture sets and their sizes |
+| `layers` | texturing, layered material | **Layers** | the layers of the open texture set |
+| `paint` | texturing, layered material | **Properties** | the document, the brush and the chosen layer |
+| `checks` | texturing, layered material | **Checks** | what a check before export found |
+| `viewport` | texturing | **Viewport** | the model, painted |
+| `viewport` | layered material, graph | **Preview** | the material on a stand-in shape |
+| `atlas` | texturing, layered material | **2D View** | the map being painted, flat |
+| `texture` | texturing, layered material | **Maps** | a mesh map or a channel's map chosen elsewhere |
+| `texture` | graph | **2D View** | the chosen node's picture |
+| `texture` | image material | **Result** | what the image material makes |
+| `image` | image material | **Maps** | the pictures the image material is made of, one for each channel |
+| `graph` | graph | **Graph** | the graph's nodes and wires |
+| `beside` | graph | **Second Graph** | another graph of the project, beside the first |
+| `nodes` | graph | **Nodes** | the nodes and compounds to add |
+| the status bar's panel | all | **Activity** | the engine's jobs and everything the app said |
 
 A graph's 2D View and a painted document's are the same kind of view, a flat picture of the work, in workspaces that
 never show both.

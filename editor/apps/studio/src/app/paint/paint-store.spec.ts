@@ -83,7 +83,7 @@ function stack(overrides: Partial<StackState> = {}): StackState {
     revision: 1,
     sequence: 3,
     history: { canUndo: false, canRedo: false, dirty: false },
-    channels: [{ usage: 'baseColor', default: [0, 0, 0, 1] }],
+    channels: [{ usage: 'baseColor', default: [0, 0, 0, 1], format: 'Rgba8' }],
     layers: [layer('base', 'fill'), layer('paint', 'paint')],
     previews: [],
     settled: 0,
@@ -94,6 +94,7 @@ function stack(overrides: Partial<StackState> = {}): StackState {
     bakedOcclusion: 'Combine',
     uvSet: 0,
     udim: 1001,
+    description: '',
     ...overrides
   };
   return state;
@@ -440,6 +441,11 @@ describe('PaintStore', () => {
     store.end();
     await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(inverted));
     expect(sent().at(-1)?.[0]?.quickMask).toBe('outside');
+
+    // A layer no stroke lays, such as a fill, is kept by its mask, outside while the quick mask is inverted (#282).
+    store.layer.set('fill');
+    await store.keepLayerToQuickMask();
+    expect(bodies.at(-1)).toEqual({ commands: [{ op: 'keepQuickMask', layer: 'fill', outside: true }] });
 
     await store.clearQuickMask();
     expect(store.quickMask()).toBe('off');
@@ -1019,8 +1025,8 @@ describe('PaintStore', () => {
           ? Response.json(
               stack({
                 channels: [
-                  { usage: 'baseColor', default: [0, 0, 0, 1] },
-                  { usage: 'roughness', default: [0.5, 0.5, 0.5, 1] }
+                  { usage: 'baseColor', default: [0, 0, 0, 1], format: 'Rgba8' },
+                  { usage: 'roughness', default: [0.5, 0.5, 0.5, 1], format: 'Rgba8' }
                 ]
               })
             )
@@ -1264,8 +1270,8 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
             ...state,
             model: 'crate.glb',
             channels: [
-              { usage: 'baseColor', default: [0, 0, 0, 1] },
-              { usage: 'roughness', default: [0.5, 0.5, 0.5, 1] }
+              { usage: 'baseColor', default: [0, 0, 0, 1], format: 'Rgba8' },
+              { usage: 'roughness', default: [0.5, 0.5, 0.5, 1], format: 'Rgba8' }
             ]
           }
         : state

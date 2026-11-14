@@ -32,7 +32,7 @@ async function render() {
     meshName: signal('crate_low.glb'),
     unwrapping: signal(false),
     settingsOpen: signal(false),
-    settingsFailure: signal<string | null>(null),
+    settingsFailure: signal<{ place: string; reason: string } | null>(null),
     movesMesh: () => false,
     openInside: () => [],
     applySettings
@@ -48,7 +48,7 @@ async function render() {
   });
   const fixture = TestBed.createComponent(ProjectSection);
   await fixture.whenStable();
-  return { element: fixture.nativeElement as HTMLElement, fixture, applySettings };
+  return { element: fixture.nativeElement as HTMLElement, fixture, applySettings, project };
 }
 
 describe('ProjectSection', () => {
@@ -67,7 +67,7 @@ describe('ProjectSection', () => {
     find('paint-project-apply')?.click();
     await fixture.whenStable();
 
-    expect(applySettings).toHaveBeenCalledWith({ mesh: 'D:\\Meshes\\crate_v2.glb', preservePaint: true });
+    expect(applySettings).toHaveBeenCalledWith({ mesh: 'D:\\Meshes\\crate_v2.glb', preservePaint: true }, 'properties');
     expect(find('project-settings-mesh-name')?.textContent.trim()).toBe('crate_low.glb');
     expect(find('paint-project-apply')?.disabled).toBe(true);
   });
@@ -83,5 +83,27 @@ describe('ProjectSection', () => {
 
     expect(find('project-settings-mesh-name')?.textContent.trim()).toBe('crate_low.glb');
     expect(applySettings).not.toHaveBeenCalled();
+  });
+
+  it('says why a failed Apply failed in the section, even once the document is open again (#291)', async () => {
+    const { element, fixture, project } = await render();
+    project.settingsFailure.set({ place: 'properties', reason: 'No such mesh.' });
+    await fixture.whenStable();
+
+    expect(element.querySelector('[data-testid=project-settings-failure]')?.textContent.trim()).toBe('No such mesh.');
+
+    fixture.destroy();
+    const again = TestBed.createComponent(ProjectSection);
+    await again.whenStable();
+    const shown = again.nativeElement as HTMLElement;
+    expect(shown.querySelector('[data-testid=project-settings-failure]')?.textContent.trim()).toBe('No such mesh.');
+  });
+
+  it("leaves Project Settings' failure to the dialog", async () => {
+    const { element, fixture, project } = await render();
+    project.settingsFailure.set({ place: 'dialog', reason: 'No such mesh.' });
+    await fixture.whenStable();
+
+    expect(element.querySelector('[data-testid=project-settings-failure]')).toBeNull();
   });
 });

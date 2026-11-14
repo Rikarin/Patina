@@ -20,8 +20,9 @@ id only some projects have exports those and leaves the rest alone. A file that 
 Files are the truth. The editor sends a document, the Server writes the YAML, reads it back through the same reader as a
 hand-written file, and keeps it only if that reads it (`ExportPresetWriter`): the editor can make nothing a person could
 not write. A hand-written file's comments survive too where they stand above something the writer writes again
-(`PresetComments`): the block at the top, a top-level field's, and a texture's, found again by its `file`; a comment
-inside a texture or after a value is lost. Every field survives, and a property test
+(`PresetComments`): the block at the top, a top-level field's, a texture's, found again by its `file`, and a field's
+inside a texture, found again by the texture's `file` and the field's key (#155); a comment after a value, or above a
+field the edit leaves out, is lost. Every field survives, and a property test
 holds that every factory preset comes back from the editor as it was. Removing a preset deletes its file.
 
 ## The language
@@ -75,7 +76,15 @@ A lane is one of:
 
 The maps are a graph's Output usages and a bake's maps under their own names: `baseColor`, `normal`, `roughness`,
 `metalness`, `occlusion`, `height`, `emissive`, `opacity`, `mask`, `curvature`, `thickness`, `id`, `position`, `world`,
-`bent` and `coverage`. Three more are worked out when a file reads them (`DerivedMaps`), from a metal-roughness set:
+`bent` and `coverage`.
+
+A set's `occlusion` and `normal` are what its stack makes, and the bake lies beneath them when it is set to Combine
+(ADR 0023): `occlusion` is the bake's multiplied into what is painted, a mixed occlusion, and `normal` the bake's combined
+with the painted and height normals. `bakedOcclusion` and `bakedNormal` (#155) are the bake's alone, which a stack's maps
+never replace, for a file of mesh maps; the starter preset **Mesh Maps** (`mesh-maps`) writes them with curvature,
+thickness, world-space normals, position, bent normals and ID, one file each.
+
+Three more are worked out when a file reads them (`DerivedMaps`), from a metal-roughness set:
 
 | Map | What it is | From |
 |---|---|---|
@@ -149,6 +158,12 @@ inside an image: the slots come from the preset's lanes (`MaterialSlots`). A col
 order (`baseColor.r, .g, .b`); a grey slot is lane `r` of the map in any lane, inverted or not, and `glossiness` is
 roughness inverted. Opacity counts only when the set had an opacity map, because its default is opaque and a material
 told an image holds opacity is drawn transparent. A slot a format cannot carry is left out and the report says so.
+
+A set of files merged per UDIM tile (#281) lies on several tiles, and one material file per kind named only the first
+tile's files (#289). Now USD and MaterialX write one file whose texture paths hold the `<UDIM>` token, which both read as
+every tile's number, when the files' names differ only by that number (`{udim}`); glTF has no tiles, so it writes one
+material per tile, `{project}_1001.gltf` and so on, as USD and MaterialX also do when the names say the tile another way
+(`{tile}`'s `u1_v1`) (`TileMaterials`).
 
 | | glTF 2.0 (`gltf`) | USD (`usda`) | MaterialX 1.38 (`mtlx`) |
 |---|---|---|---|

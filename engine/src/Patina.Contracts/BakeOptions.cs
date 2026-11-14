@@ -225,6 +225,12 @@ public sealed record BakeRayOptions {
     /// <summary>Whether a ray passes through a high face turned away from the low mesh's facing.</summary>
     public bool IgnoreBackfaces { get; set; }
 
+    /// <summary>
+    ///     Whether, with no cage file, the rays start on the low mesh pushed out by the front distance and take the
+    ///     first surface they meet, as from a cage, rather than the nearer surface either way (#148).
+    /// </summary>
+    public bool AutomaticCage { get; set; }
+
     /// <summary>How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.</summary>
     public double Skew { get; set; }
 

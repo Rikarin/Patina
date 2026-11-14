@@ -28,6 +28,9 @@ class BakeRayOptions:
             units (str): What the distances here and in BakeOcclusionOptions are in: `relative`, fractions of the
                 high mesh's bounding-box diagonal, or `absolute`, the model's own units.
             ignore_backfaces (bool): Whether a ray passes through a high face turned away from the low mesh's facing.
+            automatic_cage (bool): Whether, with no cage file, the rays start on the low mesh pushed out by the front
+                distance and take the
+                first surface they meet, as from a cage, rather than the nearer surface either way (#148).
             skew (float): How far rays lean from the smoothed direction towards the low mesh's own normal, 0 to 1.
             skew_map (str): A grey image saying where to apply the skew, or empty for everywhere.
             distance_map (str): A grey image correcting how far the rays reach over the atlas, or empty for as set: mid grey
@@ -42,6 +45,7 @@ class BakeRayOptions:
     rear: float
     units: str
     ignore_backfaces: bool
+    automatic_cage: bool
     skew: float
     skew_map: str
     distance_map: str
@@ -63,6 +67,8 @@ class BakeRayOptions:
 
         ignore_backfaces = self.ignore_backfaces
 
+        automatic_cage = self.automatic_cage
+
         skew = self.skew
 
         skew_map = self.skew_map
@@ -83,6 +89,7 @@ class BakeRayOptions:
             "rear": rear,
             "units": units,
             "ignoreBackfaces": ignore_backfaces,
+            "automaticCage": automatic_cage,
             "skew": skew,
             "skewMap": skew_map,
             "distanceMap": distance_map,
@@ -106,6 +113,8 @@ class BakeRayOptions:
 
         ignore_backfaces = d.pop("ignoreBackfaces")
 
+        automatic_cage = d.pop("automaticCage")
+
         skew = d.pop("skew")
 
         skew_map = d.pop("skewMap")
@@ -123,6 +132,7 @@ class BakeRayOptions:
             rear=rear,
             units=units,
             ignore_backfaces=ignore_backfaces,
+            automatic_cage=automatic_cage,
             skew=skew,
             skew_map=skew_map,
             distance_map=distance_map,

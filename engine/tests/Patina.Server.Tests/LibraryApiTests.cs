@@ -1,6 +1,7 @@
 using Patina.Contracts;
 using Patina.Library;
 using System.Net;
+using System.Text.Json;
 
 namespace Patina.Server.Tests;
 
@@ -297,6 +298,8 @@ public sealed class LibraryApiTests : IDisposable {
         var response = await client.GetAsync($"/api/v1/library/projects?{query}", Token);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Token));
+        Assert.Equal("page-refused", problem.RootElement.GetProperty("code").GetString());
     }
 
     [Fact]

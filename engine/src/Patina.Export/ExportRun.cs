@@ -362,19 +362,20 @@ public static class ExportRun {
         foreach (var set in textures.GroupBy(static t => t.File.Set, StringComparer.Ordinal)) {
             var template = several ? NamingTemplate.PerSet("{project}") : "{project}";
             var stem = NamingTemplate.Resolve(template, values.Of(set.Key), string.Empty);
-            var written = MaterialFiles.Write(preset, [..set], target, stem, values.Of(set.Key).Material);
-            files.AddRange(written.Files);
-            foreach (var file in written.Files) {
-                sets[file] = set.Key;
-            }
-
             var named = several ? $"{set.Key}: " : string.Empty;
-            foreach (var warning in written.Warnings) {
-                warnings.Add(named + warning);
+            foreach (var written in TileMaterials.Write(preset, [..set], target, stem, values.Of(set.Key).Material)) {
+                files.AddRange(written.Files);
+                foreach (var file in written.Files) {
+                    sets[file] = set.Key;
+                }
+
+                foreach (var warning in written.Warnings) {
+                    warnings.Add(named + warning);
+                }
             }
         }
 
-        return new(files, warnings, sets);
+        return new(files, [..warnings.Distinct(StringComparer.Ordinal)], sets);
     }
 
     /// <summary>The material files of every set, what a person should know, and each file's set.</summary>

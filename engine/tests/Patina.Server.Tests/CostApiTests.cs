@@ -13,8 +13,8 @@ public sealed partial class LibraryTreeApiTests {
     public async Task The_library_costs_its_documents_maps_by_project_and_names_those_over_a_budget() {
         using var made = await client.PostAsJsonAsync("/api/v1/library/samples", new SampleRequest("Knot"), Token);
         Assert.Equal(HttpStatusCode.OK, made.StatusCode);
-        const long Gold = 2048L * 2048 * 3 * 4;
-        const long Red = 2048L * 1024 * 3 * 4;
+        const long Gold = 1024L * 1024 * 3 * 4;
+        const long Red = 1024L * 512 * 3 * 4;
 
         LibraryCosts? costs = null;
         for (var tries = 0; tries < 200 && costs?.Documents != 2; tries++) {

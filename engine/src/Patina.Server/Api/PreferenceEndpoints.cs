@@ -28,9 +28,14 @@ static class PreferenceEndpoints {
         try {
             return TypedResults.Ok(preferences.Set(request));
         } catch (ArgumentException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status400BadRequest);
+            return Refusals.Problem(
+                e.Message,
+                StatusCodes.Status400BadRequest,
+                Refusals.PreferenceRefused,
+                Refusals.Reason(e.Message)
+            );
         } catch (IOException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+            return Refusals.Busy(e) ?? Refusals.Unwritable(e, StatusCodes.Status409Conflict);
         }
     }
 }

@@ -25,6 +25,10 @@ Everything is a file in the library's folder, so it can sit in version control, 
 deleted but the time to rebuild it. **Your work is yours:** libraries, projects and the textures you export belong to
 you, and Patina's licence does not reach them.
 
+File > Library Settings… shows what new projects start from and looks after the library: **Check Library** lists what
+is wrong or out of date, **Prune** takes out of the cache what nothing has used for a while, and **Clean** removes the
+copies of paint a project keeps each time a new UV layout moves it.
+
 ## Painting and layers
 
 A texturing project opens on its **viewport**, its **2D view** and its **layers**. Pick a tool from the strip down the
@@ -62,6 +66,8 @@ make it.
 
 - Help > Keyboard Shortcuts… lists every command with its keys, and lets you change them. A button's tooltip names its
   key, where it has one.
+- Help > Key Helper, or F1, shows over the app every key that works now, for what is in front, and how to move the view.
+  F1 again, Escape or a click puts it away.
 - Help > Diagnostics… shows what the engine behind the app is doing, and restarts it.
 - Help > Report a Problem… opens a new issue, where a problem or an idea is welcome.
 - Help > About Patina says which version you have and the licences it and its parts come under.

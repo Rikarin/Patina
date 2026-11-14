@@ -42,19 +42,85 @@ public sealed class TexturedFillTests {
         }
     }
 
+    /// <summary>A photo that does not tile lends the hole its grain and not its edge (#290).</summary>
+    /// <remarks>
+    ///     A ramp from black at the left to white at the right is smooth everywhere but over its own edge, where it
+    ///     drops from white to black. The grain is borrowed from the photo moved half way across, which puts that drop
+    ///     down the middle of the hole, and a high pass of a drop is a bright and a dark line. So the hole's columns,
+    ///     which are smooth in the ramp, must stay smooth in the fill.
+    /// </remarks>
+    [Fact]
+    public void A_photo_that_does_not_tile_lends_its_grain_and_not_its_edge() {
+        FactoryCompounds.Register();
+
+        if (!VulkanDevice.TryCreate(new(), out var device, out var refusal)) {
+            Gpu.Skip($"No Vulkan device: {refusal}");
+
+            return;
+        }
+
+        using (device) {
+            var filled = Filled(
+                device,
+                "Photo/Textured Fill",
+                static graph => {
+                    var ramp = graph.Add("Filters/Pixel Processor");
+
+                    ramp.SetText("Expression", "float4(uv.x, uv.x, uv.x, 1f)");
+
+                    return ramp;
+                }
+            );
+            Pictures.Keep("Photo/Textured Fill", filled, " edge");
+
+            var worst = 0.0;
+            var at = 0;
+
+            for (var x = (int)(Side * 0.35); x < (int)(Side * 0.65); x++) {
+                var step = Math.Abs(Column(filled, x + 1) - Column(filled, x));
+
+                if (step > worst) {
+                    (worst, at) = (step, x);
+                }
+            }
+
+            Assert.True(worst < 0.05, $"The fill steps by {worst:0.000} between columns {at} and {at + 1}.");
+        }
+    }
+
+    /// <summary>The mean of red down one column of the middle of the hole.</summary>
+    static double Column(Bitmap picture, int x) {
+        var rows = Enumerable.Range((int)(Side * 0.45), (int)(Side * 0.1));
+
+        return rows.Average(y => picture.Pixels[(y * Side + x) * 4] / 255.0);
+    }
+
     /// <summary>A white noise with a disc a third of the picture across cut out of it, filled by a compound.</summary>
-    static Bitmap Filled(VulkanDevice device, string path) {
+    static Bitmap Filled(VulkanDevice device, string path) =>
+        Filled(
+            device,
+            path,
+            static graph => {
+                var noise = graph.Add("Source/Noise");
+
+                noise.SetText("Basis", "White");
+                noise.SetValue("Scale", 64f);
+
+                return noise;
+            }
+        );
+
+    /// <summary>A picture with a disc a third of the picture across cut out of it, filled by a compound.</summary>
+    static Bitmap Filled(VulkanDevice device, string path, Func<NodeGraphModel, GraphNode> picture) {
         NodeTypeRegistry registry = new();
         NodeTypes.Register(registry);
         var library = TextureCompoundLibrary.Publish(registry, null, new(Side, Side), out _);
         NodeGraphModel graph = new();
-        var noise = graph.Add("Source/Noise");
+        var noise = picture(graph);
         var hole = graph.Add("Source/Shape");
         var used = graph.Add(path);
         var output = graph.Add("Output/Output");
 
-        noise.SetText("Basis", "White");
-        noise.SetValue("Scale", 64f);
         hole.SetText("Kind", "Disc");
         hole.SetValue("Scale", 0.66f);
         hole.SetValue("Falloff", 0f);

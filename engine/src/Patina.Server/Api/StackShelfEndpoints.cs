@@ -37,8 +37,15 @@ static class StackShelfEndpoints {
             var saved = StackSmartAssets.Save(library, session, request);
             library.Rescan();
             return TypedResults.Ok(saved);
-        } catch (Exception e) when (e is StackEditRefusedException or ProjectRefusedException) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+        } catch (StackEditRefusedException e) {
+            return Refusals.Of(e, StatusCodes.Status422UnprocessableEntity);
+        } catch (ProjectRefusedException e) {
+            return Refusals.Problem(
+                e.Message,
+                StatusCodes.Status422UnprocessableEntity,
+                Refusals.LibraryRefused,
+                Refusals.Reason(e.Message)
+            );
         } catch (FileNotFoundException e) {
             return Refusals.Of(e);
         }

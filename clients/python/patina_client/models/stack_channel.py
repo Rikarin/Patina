@@ -26,10 +26,14 @@ class StackChannel:
         Attributes:
             usage (str): Its usage: baseColor, roughness and so on.
             default (list[float]): What it starts as.
+            format_ (str): How wide the texels are that a stroke paints it at (#19): one of the vocabulary's formats, Rgba8
+                unless the set
+                says more. Default: 'Rgba8'.
      """
 
     usage: str
     default: list[float]
+    format_: str = 'Rgba8'
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -43,12 +47,15 @@ class StackChannel:
 
 
 
+        format_ = self.format_
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
             "usage": usage,
             "default": default,
+            "format": format_,
         })
 
         return field_dict
@@ -63,9 +70,12 @@ class StackChannel:
         default = cast(list[float], d.pop("default"))
 
 
+        format_ = d.pop("format")
+
         stack_channel = cls(
             usage=usage,
             default=default,
+            format_=format_,
         )
 
 

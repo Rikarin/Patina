@@ -8,7 +8,8 @@ namespace Patina.Server.Stacks;
 ///     The open stacks. One file has one session, so two clients that open it share its edits and its
 ///     undo.
 /// </summary>
-public sealed class StackSessions(ServerIdentity identity, StackClips clips) : IDisposable {
+public sealed class StackSessions(ServerIdentity identity, StackClips clips, MeshSetCache? meshes = null)
+    : IDisposable {
     readonly SessionTable<StackSession> table = new();
 
     /// <summary>The texture sets of stacks nobody has open, by file, until the file changes.</summary>
@@ -47,7 +48,7 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
                 }
 
                 StackSession session = new(full, SharedFile.ReadAllText(full), table.Wake) {
-                    ImageRoots = LibraryRoot, Clips = clips, Changed = CatchUp
+                    ImageRoots = LibraryRoot, Clips = clips, Changed = CatchUp, Meshes = meshes
                 };
                 session.Siblings = name => Sibling(session, name);
                 return session;
@@ -116,15 +117,24 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
     }
 
     /// <summary>
-    ///     An edit of one set reaches every instance of its layers in another, open in a session of its own.
+    ///     An edit of one set reaches every instance of its layers in another, open in a session of its own: when it is
+    ///     made, and when its strokes reach the Worker, whose sessions read each other's canvases (#108).
     /// </summary>
-    void CatchUp(StackSession changed) {
+    /// <param name="changed">The session whose set changed.</param>
+    public void CatchUp(StackSession changed) {
         foreach (var other in table.All.Where(other => other != changed && other.ReadsOtherSets)) {
             other.Evaluate();
         }
     }
 
-    public void Close(StackSession session) => table.Close(session);
+    /// <summary>
+    ///     Closes a session, and an instance of its layers in another set reads the saved canvases again (#108).
+    /// </summary>
+    /// <param name="session">The session.</param>
+    public void Close(StackSession session) {
+        table.Close(session);
+        CatchUp(session);
+    }
 
     public IReadOnlyList<string> TakeClosed() => table.TakeClosed();
 

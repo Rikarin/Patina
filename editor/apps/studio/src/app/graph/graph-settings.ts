@@ -215,7 +215,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
     <div class="flex flex-col gap-3">
       @for (section of sections(); track section.group) {
         @if (section.group) {
-          <p class="text-foreground-muted -mb-1 text-xs font-semibold" data-testid="parameter-group">
+          <p class="section-label -mb-1" data-testid="parameter-group">
             {{ section.group }}
           </p>
         }

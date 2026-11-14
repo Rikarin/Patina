@@ -19,9 +19,14 @@ was painted, or outside it once inverted. It is a selection, not part of the mat
   entry that emptied it in place would be a step of history that undoing an earlier stroke could not see past. A quick
   mask nothing has painted keeps nothing back, so a client that keeps to an empty one paints as if it had none.
 - **The viewport shows it** in a slot of its own beside the material's maps, sampled by the forward shader in every view
-  and laid over what is shown in red. It never reaches a map of the stack, so no export can include it.
+  and laid over what is shown in red. It never reaches a map of the stack, so no export can include it. The red is laid
+  over the finished picture after the tone curve (#286), so it is the same red however the model is lit.
+- **A layer no stroke lays is kept by its mask** (#282): `keepQuickMask` puts a paint entry on top of the layer's mask
+  that starts as a copy of the quick mask laid over opaque black, multiplied over the mask for inside and subtracted
+  for outside. The copy is a journal entry, so a Worker that takes over makes it again; the entry is the layer's from
+  then and is saved with it, so a fill, a decal or a path stays kept after the quick mask is cleared or the session
+  ends. It is kept to the quick mask as it stood, not as it is painted later, which is what a stroke does too.
 
 ## Not yet
 
 - A quick mask is the texture set's; a stroke in one set is not kept by one painted in another.
-- A fill layer, a decal or a path is not kept to it: only strokes are.

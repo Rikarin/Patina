@@ -52,7 +52,7 @@ async function shot(): Promise<string> {
   return (await canvas().screenshot({ scale: 'css' })).toString('base64');
 }
 
-/** How many pixels of a PNG given as base64 are reddish: red over the mean of green and blue by ten levels. */
+/** How many pixels of a PNG given as base64 are red: red over the mean of green and blue by forty levels. */
 async function red(png: string): Promise<number> {
   return window.evaluate(async data => {
     const bytes = Uint8Array.from(atob(data), character => character.charCodeAt(0));
@@ -68,14 +68,14 @@ async function red(png: string): Promise<number> {
     let count = 0;
     for (let at = 0; at < pixels.length; at += 4) {
       const [r, g, b] = [pixels[at] ?? 0, pixels[at + 1] ?? 0, pixels[at + 2] ?? 0];
-      count += 2 * r - g - b > 20 ? 1 : 0;
+      count += 2 * r - g - b > 80 ? 1 : 0;
     }
 
     return count;
   }, png);
 }
 
-/** How many pixels grew redder than they were: red over the mean of green and blue, up by more than ten levels. */
+/** How many pixels grew redder than they were: red over the mean of green and blue, up by more than forty levels. */
 async function reddened(before: string, after: string): Promise<number> {
   return window.evaluate(
     async ({ first, second }) => {
@@ -96,7 +96,7 @@ async function reddened(before: string, after: string): Promise<number> {
         2 * (pixels[at] ?? 0) - (pixels[at + 1] ?? 0) - (pixels[at + 2] ?? 0);
       let count = 0;
       for (let at = 0; at < one.length; at += 4) {
-        count += redness(two, at) - redness(one, at) > 20 ? 1 : 0;
+        count += redness(two, at) - redness(one, at) > 80 ? 1 : 0;
       }
 
       return count;
@@ -386,9 +386,9 @@ test('the quick mask shows red where it is painted, and a stroke after it reache
   await expect(button).toHaveAttribute('data-quick-mask', 'paint');
   const blank = await shot();
   await drag(0.38, 0.45, 0.62, 0.45);
-  // Red over the model where the quick mask is painted, and the layer left alone. ⚠ Red as green and blue lost, not as
-  // more red: the tint goes on before the tone curve, so on a brightly lit model red barely moves or even falls, and a
-  // count of red that moved by 24 levels found nothing on Linux CI (#274).
+  // Red over the model where the quick mask is painted, and the layer left alone. The red is laid over the finished
+  // picture after the tone curve (#286), so it is as red on a brightly lit model: laid on before it, red barely moved
+  // there, and a count of red that moved by 24 levels found nothing on Linux CI (#274).
   try {
     await expect.poll(async () => reddened(blank, await shot()), { timeout: 60_000 }).toBeGreaterThan(300);
   } catch (failure) {
@@ -561,19 +561,28 @@ test('a dab on the strap paints the top under it only with the occlusion test of
 
   await colour('#e01810');
   const atlas = window.getByTestId('paint-canvas');
+  const map = async () => (await atlas.screenshot()).toString('base64');
+  // ⚠ Each picture is taken once the atlas has moved, not when the viewport is still: under load the viewport can
+  // be still before the dab has reached the atlas, and two pictures of the atlas before it are equal (#284).
+  const blank = await map();
   await window.getByTestId('paint-occlusion').click();
   await expect(window.getByTestId('paint-occlusion')).not.toBeChecked();
   await click(0.5, 0.5);
+  await expect.poll(async () => changed(blank, await map(), 8), { timeout: 60_000 }).toBeGreaterThan(0);
   await settled();
   await window.screenshot({ path: join(shots, 'occlusion-off-window.png') });
   await atlas.screenshot({ path: join(shots, 'occlusion-off-atlas.png') });
   const through = await atlas.screenshot();
 
+  const dabbed = through.toString('base64');
   await window.getByTestId('app-undo').click();
+  await expect.poll(async () => changed(dabbed, await map(), 8), { timeout: 60_000 }).toBeGreaterThan(0);
   await settled();
+  const undone = await map();
   await window.getByTestId('paint-occlusion').click();
   await expect(window.getByTestId('paint-occlusion')).toBeChecked();
   await click(0.5, 0.5);
+  await expect.poll(async () => changed(undone, await map(), 8), { timeout: 60_000 }).toBeGreaterThan(0);
   await settled();
   await window.screenshot({ path: join(shots, 'occlusion-on-window.png') });
   await atlas.screenshot({ path: join(shots, 'occlusion-on-atlas.png') });

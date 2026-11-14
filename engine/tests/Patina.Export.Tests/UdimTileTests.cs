@@ -96,6 +96,43 @@ public sealed class UdimTileTests : IDisposable {
         Assert.True(int.Parse(covered.Split(' ')[0], CultureInfo.InvariantCulture) > 64 * 64 / 2, covered);
     }
 
+    /// <summary>
+    ///     What the Server keeps of a mesh (#285) names each set's tile as reading it alone does, and a set named for
+    ///     no material of the mesh takes the whole mesh's.
+    /// </summary>
+    [Fact]
+    public void One_read_of_every_set_names_each_set_its_tile() {
+        var mesh = TwoSets();
+
+        var all = MeshFileReads.All(mesh);
+        var kept = new Kept(all);
+
+        Assert.Equal(3, all.Sets.Count);
+        Assert.Equal(1002, SetUdim.Of(kept, mesh, "Strap", 0));
+        Assert.Equal(1001, SetUdim.Of(kept, mesh, "Body", 0));
+        Assert.Equal(1001, SetUdim.Of(kept, mesh, "Renamed", 0));
+        foreach (var set in new[] { "Strap", "Body", "Renamed" }) {
+            Assert.Equal(SetUdim.Of(MeshFileReads.Instance, mesh, set, 0), SetUdim.Of(kept, mesh, set, 0));
+        }
+    }
+
+    /// <summary>What a Server keeps of one read, answered as it answers.</summary>
+    sealed class Kept(Contracts.MeshSetsRead read) : Library.IMeshSetReads {
+        public int? Udim(string file, string? material, int uvSet) => Find(material, uvSet)?.Udim;
+
+        public string? Geometry(string file, string? material, int uvSet) => Find(material, uvSet)?.Geometry;
+
+        public IReadOnlyList<string> Pictures(string file) => read.Pictures;
+
+        public IReadOnlyList<string>? PartNames(string file, string? material, int uvSet) =>
+            Find(material, uvSet)?.Parts;
+
+        public Contracts.MeshHighRead? High(string file) => read.High;
+
+        Contracts.MeshSetRead? Find(string? material, int uvSet) =>
+            read.Sets.FirstOrDefault(set => set.UvSet == uvSet && set.Material == (material ?? string.Empty));
+    }
+
     [Theory]
     [InlineData(1001, "u1_v1")]
     [InlineData(1010, "u10_v1")]

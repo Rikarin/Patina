@@ -9,6 +9,29 @@ import { Preferences, type RecentDocument } from './preferences';
 /** How many recent documents Start offers. */
 const RecentShown = 8;
 
+/** How many recent projects Start offers (#162). */
+const RecentProjectsShown = 6;
+
+/** A project worked on lately, by its path below the library and the name its folder gives it. */
+export interface RecentProject {
+  readonly path: string;
+  readonly name: string;
+}
+
+/** The projects of recent documents, each once, newest first: a project is as recent as its newest document. */
+export function recentProjectsOf(documents: readonly RecentDocument[], shown = RecentProjectsShown): RecentProject[] {
+  const seen = new Set<string>();
+  const found: RecentProject[] = [];
+  for (const document of documents) {
+    if (!seen.has(document.project) && found.length < shown) {
+      seen.add(document.project);
+      found.push({ path: document.project, name: document.project.split('/').at(-1) ?? document.project });
+    }
+  }
+
+  return found;
+}
+
 const Kinds = [
   { kind: 'texturing', title: 'Texturing', text: 'Paint and layer materials on a mesh.' },
   { kind: 'layered-material', title: 'Layered Material', text: 'Layer materials into a new one, with no mesh.' },
@@ -40,7 +63,9 @@ const Kinds = [
       </div>
       @if (recentDocuments().length > 0) {
         <section class="flex w-full max-w-3xl flex-col gap-1" aria-labelledby="start-recent-documents-title">
-          <h2 id="start-recent-documents-title" class="text-foreground-muted text-sm font-semibold">Recent</h2>
+          <h2 id="start-recent-documents-title" class="text-foreground-muted text-sm font-semibold">
+            Recent documents
+          </h2>
           @for (recent of recentDocuments(); track recent.path) {
             <button
               type="button"
@@ -53,6 +78,25 @@ const Kinds = [
               <span class="text-foreground-muted truncate">{{ recent.project }}</span>
             </button>
           }
+        </section>
+      }
+      @if (recentProjects().length > 0) {
+        <section class="flex w-full max-w-3xl flex-col gap-1" aria-labelledby="start-recent-projects-title">
+          <h2 id="start-recent-projects-title" class="text-foreground-muted text-sm font-semibold">Recent projects</h2>
+          <div class="flex flex-wrap gap-2">
+            @for (recent of recentProjects(); track recent.path) {
+              <button
+                type="button"
+                xuiButton
+                size="sm"
+                data-testid="start-recent-project"
+                [title]="recent.path"
+                (click)="project.open(recent.path)"
+              >
+                {{ recent.name }}
+              </button>
+            }
+          </div>
         </section>
       }
       @if (samples().length > 0) {
@@ -123,6 +167,14 @@ export class StartPane {
           .recentDocuments()
           .filter(recent => recent.library === state.info.id)
           .slice(0, RecentShown)
+      : [];
+  });
+
+  /** This library's projects worked on last, newest first (#162). */
+  protected readonly recentProjects = computed(() => {
+    const state = this.library.state();
+    return state.kind === 'ready'
+      ? recentProjectsOf(this.preferences.recentDocuments().filter(recent => recent.library === state.info.id))
       : [];
   });
 

@@ -31,4 +31,24 @@ A build script needs no Server for the same thing:
 patina package projects/kit/Rust.vxtexgraph packages/          # gathers its compounds and pictures
 patina graph info packages/Rust.ptpkg                          # inputs, outputs, parameters and presets, as JSON
 patina bake packages/Rust.ptpkg out/ --preset Heavy --param tint=0.3 --seed 7 --size 2048
+patina package projects/kit/Rust.vxtexgraph sent/ --zip      # one file to send: sent/Rust.zip
+patina package import sent/Rust.zip --library Game.ptlib       # and into another library
+```
+
+## Examples
+
+`examples/` holds scripts a person can start from, each run by `tests/test_examples.py` against a real Server and Worker.
+Start a Server for the library first (`patina-server --library <path>`, or open the library in the app): every script finds it
+through the per-user discovery file, as `examples/patina_attach.py` shows, or through `PATINA_DISCOVERY`.
+
+```sh
+.venv/bin/python examples/import_package.py Game.ptlib sent/Rust.zip   # bring a zipped package in, list the shelf's packages
+.venv/bin/python examples/bake_project.py Game.ptlib housing           # bake a project as Quick Bake does, print the maps
+```
+
+`bake_project.py` asks the Server for the project's bake plan, the requests the Bake dialog would send, and queues each one.
+With no Server, one process does the same thing, and `--dry-run` prints the plan as the API answers it:
+
+```sh
+patina bake-maps --project Game.ptlib/projects/housing [--set <material>] [--dry-run]
 ```

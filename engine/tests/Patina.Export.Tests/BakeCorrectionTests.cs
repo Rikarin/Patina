@@ -309,7 +309,7 @@ public sealed class BakeCorrectionTests : IDisposable {
         var request = Request(high, low, static options => options with { Maps = ["normal"] }) with { Material = set };
         return (bytes
                 ? BakeInputs.KeyOf(request, ToolCatalog.Default)
-                : BakeKeyReads.KeyOf(request, ToolCatalog.Default))
+                : BakeKeyReads.KeyOf(request, ToolCatalog.Default, MeshFileReads.Instance))
             .Hex;
     }
 
@@ -350,8 +350,8 @@ public sealed class BakeCorrectionTests : IDisposable {
             Request(low, low, static options => options with { Maps = ["normal"] }) with { Material = "Body" };
 
         Assert.NotEqual(
-            BakeKeyReads.KeyOf(Own(before), ToolCatalog.Default).Hex,
-            BakeKeyReads.KeyOf(Own(after), ToolCatalog.Default).Hex
+            BakeKeyReads.KeyOf(Own(before), ToolCatalog.Default, MeshFileReads.Instance).Hex,
+            BakeKeyReads.KeyOf(Own(after), ToolCatalog.Default, MeshFileReads.Instance).Hex
         );
     }
 
@@ -367,14 +367,14 @@ public sealed class BakeCorrectionTests : IDisposable {
             Material = "Body"
         };
         var cache = new BakeCache(Into("cache"));
-        var key = BakeKeyReads.KeyOf(request, ToolCatalog.Default).Hex;
+        var key = BakeKeyReads.KeyOf(request, ToolCatalog.Default, MeshFileReads.Instance).Hex;
         var manifest = MeshMapBakeRun.Run(request, cache.FolderOf(key), 0, null, TestContext.Current.CancellationToken);
 
         File.WriteAllText(
             before,
             File.ReadAllText(before).Replace("v 1 -1 0", "v 1 -1 0.25", StringComparison.Ordinal)
         );
-        Assert.Equal(key, BakeKeyReads.KeyOf(request, ToolCatalog.Default).Hex);
+        Assert.Equal(key, BakeKeyReads.KeyOf(request, ToolCatalog.Default, MeshFileReads.Instance).Hex);
         cache.Deliver(key, manifest, request, true);
 
         var written = BakeCache.ReadManifestFile(Path.Combine(request.Output, $"before.{BakeCache.ManifestFile}"));
@@ -466,7 +466,7 @@ public sealed class BakeCorrectionTests : IDisposable {
 
         var body = Bake(Set("Body"), "body");
         Assert.Equal("Body", body.Material);
-        Assert.Equal(BakeKeyReads.GeometryOf(low, "Body", 0), body.Geometry);
+        Assert.Equal(MeshFileReads.Instance.Geometry(low, "Body", 0), body.Geometry);
         _ = Bake(Set("Strap"), "strap");
 
         _ = TwoSets("low.obj", 0.25f);
@@ -476,7 +476,7 @@ public sealed class BakeCorrectionTests : IDisposable {
             BakeFit.Geometry = null;
             Assert.Equal(BakeFit.Mesh, BakeFit.Stale(Into("body"), now, new(0), low));
 
-            BakeFit.Geometry = BakeKeyReads.GeometryOf;
+            BakeFit.Geometry = MeshFileReads.Instance.Geometry;
             Assert.Null(BakeFit.Stale(Into("body"), now, new(0), low));
             Assert.Equal(BakeFit.Mesh, BakeFit.Stale(Into("strap"), now, new(0), low));
         } finally {

@@ -16,7 +16,9 @@ import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { BakeStore } from '../bake/bake-store';
 import { Commands } from '../core/commands';
+import { desktop } from '../core/desktop';
 import { termName } from '../core/labels';
+import { messageOf } from '../core/messages';
 import { amount, percent } from '../core/numbers';
 import { ProjectStore } from '../library/project-store';
 import { GraphStore } from './graph-store';
@@ -41,6 +43,8 @@ const channels: readonly XuiSegmentedOption<PictureChannel>[] = [
 interface FullPicture {
   /** The preview it was asked for: a new one means this is out of date. */
   hash: string;
+  /** The full picture's own hash, by which the Server saves it. */
+  file: string;
   url: string;
   width: number;
   height: number;
@@ -250,6 +254,20 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
         >
           {{ copied() === 'copied' ? 'Copied' : copied() === 'refused' ? 'Not Copied' : 'Copy Image' }}
         </button>
+        @if (canSave) {
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            data-testid="texture-save"
+            [disabled]="!full()"
+            [title]="saveTitle()"
+            (click)="saveImage()"
+          >
+            Save Image…
+          </button>
+        }
         <xui-segmented-control
           class="ms-auto min-w-0"
           size="sm"
@@ -463,7 +481,7 @@ export class TextureView {
     this.loadingFull.set(false);
     if (image) {
       const url = URL.createObjectURL(image.blob);
-      this.heldFull.set({ hash, url, width: image.width, height: image.height });
+      this.heldFull.set({ hash, file: image.hash, url, width: image.width, height: image.height });
       this.fullPixels.set(await pixelsOf(url));
     } else {
       // Asked again with the next picture, or on choosing the node again.
@@ -483,6 +501,32 @@ export class TextureView {
     } else {
       // Counted again with the next picture, or on choosing the node again.
       this.countedHash = null;
+    }
+  }
+
+  /** Saving asks where, which only the desktop app can. */
+  protected readonly canSave = desktop() !== undefined;
+  protected readonly saveTitle = computed(
+    () =>
+      this.saveRefusal() ??
+      (this.full() ? 'Saves the picture at the size the graph computes it, as a PNG' : 'Waiting for the full picture')
+  );
+  private readonly saveRefusal = signal<string | null>(null);
+
+  /** Saves the full picture as a PNG where the person says (#184): the Server writes it from its cache. */
+  protected async saveImage(): Promise<void> {
+    const full = this.full();
+    const name = this.store.viewedNode()?.type.split('/').pop() ?? 'Picture';
+    const file = full ? await desktop()?.saveImage(`${name}.png`) : null;
+    if (!full || !file) {
+      return;
+    }
+
+    try {
+      await this.store.savePicture(full.file, file);
+      this.saveRefusal.set(null);
+    } catch (failure) {
+      this.saveRefusal.set(messageOf(failure));
     }
   }
 

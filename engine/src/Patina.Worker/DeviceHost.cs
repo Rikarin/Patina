@@ -1,4 +1,6 @@
+using Patina.Contracts;
 using Patina.Ipc;
+using Patina.Library;
 using Vixen.Graphics.Vulkan;
 using Vixen.TextureGraph;
 
@@ -49,6 +51,25 @@ sealed class DeviceHost : IDisposable {
     /// <param name="deviceMemory">The device's own memory in bytes, or zero when it does not say.</param>
     internal static long ResultBudget(ulong deviceMemory) =>
         deviceMemory == 0 ? MostResults : Math.Min(MostResults, (long)(deviceMemory / 2));
+
+    /// <summary>
+    ///     Keeps the result cache's disk tier in a library's results folder, on a shelf of this adapter's, its
+    ///     driver's and this build's own: a result's key names no device (#208).
+    /// </summary>
+    /// <param name="results">The folder, or null to keep none.</param>
+    public void Keep(string? results) {
+        var cache = Evaluator.Results;
+        if (results is null) {
+            cache.Store = null;
+            return;
+        }
+
+        var adapter = device!.Adapter;
+        var shelf = ResultShelf.For(results, $"{adapter.Name}|{adapter.DriverVersion}|{ProductInfo.Version}");
+        if (cache.Store is not ShelfStore held || held.Shelf.Folder != shelf.Folder) {
+            cache.Store = new ShelfStore(shelf);
+        }
+    }
 
     public void Dispose() {
         evaluator?.Dispose();

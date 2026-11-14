@@ -1,5 +1,7 @@
 using Patina.Contracts;
+using System.IO.Compression;
 using System.Net;
+using System.Text;
 using Vixen.Core.Imaging;
 using Vixen.Core.Yaml;
 using Vixen.NodeGraph;
@@ -129,6 +131,25 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
 
         File.WriteAllText(Path.Combine(source.FullName, "brick.usda"), Usda);
         File.WriteAllText(Path.Combine(source.FullName, "tile.mtlx"), Mtlx);
+        Package("brick.usdz", ("brick.usda", Encoding.UTF8.GetBytes(Usda)));
+        Package("scene.usdz", ("scene.usdc", "PXR-USDC"u8.ToArray()));
+    }
+
+    /// <summary>
+    ///     A USD package: its layer first, as USD reads it, then the pictures it names, stored and not deflated.
+    /// </summary>
+    void Package(string name, (string Name, byte[] Bytes) layer) {
+        using var zip = ZipFile.Open(Path.Combine(source.FullName, name), ZipArchiveMode.Create);
+        List<(string Name, byte[] Bytes)> entries = [layer];
+        foreach (var picture in (string[])["colour", "packed", "normal"]) {
+            var file = Path.Combine(source.FullName, "textures", $"{picture}.png");
+            entries.Add(($"textures/{picture}.png", File.ReadAllBytes(file)));
+        }
+
+        foreach (var (entry, bytes) in entries) {
+            using var stream = zip.CreateEntry(entry, CompressionLevel.NoCompression).Open();
+            stream.Write(bytes);
+        }
     }
 
     public async ValueTask DisposeAsync() {
@@ -154,6 +175,7 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
     [Theory]
     [InlineData("brick.usda", "Brick", new[] { "baseColor", "roughness", "metalness", "normal" })]
     [InlineData("tile.mtlx", "Tile", new[] { "baseColor", "roughness", "metalness" })]
+    [InlineData("brick.usdz", "Brick", new[] { "baseColor", "roughness", "metalness", "normal" })]
     public async Task A_material_file_becomes_a_graph_that_reads_its_pictures(
         string file,
         string name,
@@ -217,6 +239,23 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
         var imported = await ImportAsync("tile.mtlx");
 
         Assert.Contains(imported.Warnings, static w => w.Contains("'noise2d'", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    ///     A USD package whose layer is binary is refused with what to do instead, and nothing it unpacked is left in
+    ///     the project.
+    /// </summary>
+    [Fact]
+    public async Task A_usd_package_whose_layer_is_binary_is_refused_with_what_to_do() {
+        using var response = await client.PostAsJsonAsync(
+            "/api/v1/library/project/materials",
+            new MaterialImportRequest("walls", Path.Combine(source.FullName, "scene.usdz")),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("as .usda", await response.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(server.Library, "projects/walls/pictures/scene")));
     }
 
     [Fact]

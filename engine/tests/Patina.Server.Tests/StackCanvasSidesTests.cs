@@ -28,19 +28,73 @@ public sealed class StackCanvasSidesTests : IDisposable {
         Assert.Equal((2048, 2048), sides.Check("Paint", Canvas(2048, 2048), 1024, 1024));
     }
 
+    /// <summary>
+    ///     A canvas of another shape is painted at the smallest size of the set's shape that holds it, which the Worker
+    ///     enlarges it to, so a stroke is carried onto it by one factor: wider than the set, taller, or both.
+    /// </summary>
+    [Theory]
+    [InlineData(2048, 1024, 1024, 1024, 2048, 2048)]
+    [InlineData(2048, 2048, 2048, 512, 8192, 2048)]
+    [InlineData(1024, 1024, 2048, 512, 4096, 1024)]
+    [InlineData(512, 2048, 1024, 1024, 2048, 2048)]
+    public void A_larger_canvas_of_another_shape_is_painted_at_the_sets_shape_holding_it(
+        int heldWidth,
+        int heldHeight,
+        int width,
+        int height,
+        int paintedWidth,
+        int paintedHeight
+    ) {
+        var sides = new StackCanvasSides(folder.FullName);
+
+        Assert.Equal((paintedWidth, paintedHeight), sides.Check("Paint", Canvas(heldWidth, heldHeight), width, height));
+    }
+
     [Fact]
-    public void A_larger_canvas_of_another_shape_is_refused() {
+    public void A_canvas_smaller_than_its_set_on_both_sides_is_painted_at_the_sets_size() =>
+        Assert.Equal((1024, 512), StackCanvasSides.Holding((512, 512), 1024, 512));
+
+    [Fact]
+    public void A_canvas_of_another_shape_that_would_pass_the_largest_side_is_refused() {
         var sides = new StackCanvasSides(folder.FullName);
 
         var refused = Assert.Throws<StackEditRefusedException>(() => sides.Check(
                 "Paint",
-                Canvas(2048, 1024),
-                1024,
+                Canvas(4096, 4096),
+                4096,
                 1024
             )
         );
 
         Assert.Equal(Refusals.CanvasLarger, refused.Code);
+        Assert.Equal("16384 × 4096", refused.Values["target"]);
+    }
+
+    [Fact]
+    public void A_canvas_of_another_shape_a_stroke_of_the_session_began_on_is_refused() {
+        var sides = new StackCanvasSides(folder.FullName);
+        var paint = Canvas(2048, 2048);
+        sides.Check("Paint", paint, 2048, 2048);
+        sides.Stood(
+            [
+                new(
+                    1,
+                    new("s", "Paint", "baseColor", new(4f), [1f, 1f, 1f, 1f], []),
+                    paint,
+                    "baseColor",
+                    0u,
+                    string.Empty,
+                    null
+                ) { Width = 2048, Height = 2048 }
+            ],
+            2048,
+            2048
+        );
+
+        var refused = Assert.Throws<StackEditRefusedException>(() => sides.Check("Paint", paint, 2048, 512));
+
+        Assert.Equal(Refusals.CanvasPaintedAtSize, refused.Code);
+        Assert.Equal("8192 × 2048", refused.Values["target"]);
     }
 
     [Fact]

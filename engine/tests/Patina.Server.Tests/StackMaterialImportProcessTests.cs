@@ -45,13 +45,13 @@ public sealed partial class StackProcessTests {
         }
 
         // The picture is red on its left half and blue on its right; moved by half, the left reads the right, and
-        // the right reads past the edge, which its sampler clamps. Repeated, it would read red. ⚠ The bitmap's own
-        // bilinear resample wraps, so its last column is half blue and half the first column's red, and a clamp
-        // reads that half.
+        // the right reads past the edge, which its sampler clamps. Repeated, it would read red. ⚠ The bitmap clamps
+        // too while it resamples the picture (#289): a bitmap that wrapped as the graph does had a last column half
+        // blue and half the first column's red, and the clamp held that half.
         var left = Texel("Placed_albedo.png", 0.25f);
         var right = Texel("Placed_albedo.png", 0.75f);
         Assert.True(left[2] > 200 && left[0] < 50, string.Join(",", left));
-        Assert.True(right[2] > 100 && right[0] < 200, string.Join(",", right));
+        Assert.True(right[2] > 200 && right[0] < 50, string.Join(",", right));
         Assert.InRange(left[3], 126, 130);
         // Linear (0.5, 0.25, 0) times a strength of 2 is (1, 0.5, 0), which is sRGB (255, 188, 0).
         var emission = Texel("Placed_emission.png", 0.5f);
