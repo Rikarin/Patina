@@ -10083,6 +10083,7 @@
           "rear",
           "units",
           "ignoreBackfaces",
+          "automaticCage",
           "skew",
           "skewMap",
           "distanceMap",
@@ -10109,6 +10110,10 @@
           "ignoreBackfaces": {
             "type": "boolean",
             "description": "Whether a ray passes through a high face turned away from the low mesh\u0027s facing."
+          },
+          "automaticCage": {
+            "type": "boolean",
+            "description": "Whether, with no cage file, the rays start on the low mesh pushed out by the front distance and take the\nfirst surface they meet, as from a cage, rather than the nearer surface either way (#148)."
           },
           "skew": {
             "type": "number",

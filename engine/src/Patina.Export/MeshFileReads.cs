@@ -61,6 +61,24 @@ public sealed class MeshFileReads : IMeshSetReads {
         }
     }
 
+    /// <inheritdoc />
+    public IReadOnlyList<string>? PartNames(string file, string? material, int uvSet) {
+        try {
+            return [..MeshMapBakeRun.Read(file, material, uvSet).Parts.Select(static part => part.Name)];
+        } catch (Exception e) when (Unreadable(e)) {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public MeshHighRead? High(string file) {
+        try {
+            return BakeHighReads.HighOf(ModelGeometry.Flatten([MeshMapBakeRun.Model(file)]));
+        } catch (Exception e) when (e is ModelFormatException or IOException) {
+            return null; // the bake that reads it says why
+        }
+    }
+
     /// <summary>
     ///     Everything <see cref="IMeshSetReads" /> asks of a file, in one answer: each material and the whole mesh in
     ///     each UV set, and the pictures. The file is read twice at most, once for the first UV set as a bake reads it
@@ -70,6 +88,7 @@ public sealed class MeshFileReads : IMeshSetReads {
     /// <exception cref="ModelFormatException">It is not a readable model.</exception>
     public static MeshSetsRead All(string file) {
         var first = MeshMapBakeRun.Model(file);
+        var high = BakeHighReads.HighOf(ModelGeometry.Flatten([first]));
         // A material no part wears is one the reader added of its own: no texture set stands on it.
         var unique = MaterialNames.Unique(first.Model.Materials);
         string[] names = [
@@ -84,14 +103,16 @@ public sealed class MeshFileReads : IMeshSetReads {
             sets.AddRange(Laid(every, file, names, uvSet));
         }
 
-        return new(sets, BakeColourSources.PicturesNamed(first, file));
+        return new(sets, BakeColourSources.PicturesNamed(first, file)) { High = high };
     }
 
     /// <summary>The whole mesh and each material in one UV set, those that can be laid out in it.</summary>
     static IEnumerable<MeshSetRead> Laid(ReadModel read, string file, string[] names, int uvSet) {
         foreach (var material in names.Prepend(string.Empty).Distinct(StringComparer.Ordinal)) {
             if (Placed(read, file, material.Length == 0 ? null : material, uvSet) is var (model, udim)) {
-                yield return new(material, uvSet, udim, BakeKeyReads.Geometry(model).Text);
+                yield return new(material, uvSet, udim, BakeKeyReads.Geometry(model).Text) {
+                    Parts = [..model.Parts.Select(static part => part.Name)]
+                };
             }
         }
     }

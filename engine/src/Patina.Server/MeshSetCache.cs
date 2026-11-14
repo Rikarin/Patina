@@ -36,6 +36,13 @@ public sealed class MeshSetCache(WorkerLink worker) : IMeshSetReads {
     /// <inheritdoc />
     public IReadOnlyList<string> Pictures(string file) => Known(file).Pictures;
 
+    /// <inheritdoc />
+    public IReadOnlyList<string>? PartNames(string file, string? material, int uvSet) =>
+        Find(file, material, uvSet)?.Parts;
+
+    /// <inheritdoc />
+    public MeshHighRead? High(string file) => Known(file).High;
+
     /// <summary>
     ///     What the Worker reads of a file, waiting up to <paramref name="connecting" /> for a Worker to read it.
     ///     Nothing, for a file that is not there or will not read, or when no Worker came.

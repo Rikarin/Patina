@@ -28,6 +28,7 @@ static class BakeRequestSettings {
             SearchRadius = (float)rays.Front,
             RearDistance = (float)rays.Rear,
             IgnoreBackfaces = rays.IgnoreBackfaces,
+            AutomaticCage = rays.AutomaticCage,
             Maps = Maps(options.Maps),
             OcclusionSamples = occlusion.Rays,
             OcclusionRadius = (float)occlusion.Distance,

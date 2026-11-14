@@ -8,7 +8,9 @@ texture set, and a set's maps are cast from its own low faces, so the low mesh i
 (`BakeKeyReads` in Patina.Export): positions, faces, corner normals and coordinates, smoothing and part names, and not its
 materials. A change to one set's faces rebakes that set, and the others come back from the cache. The high meshes and the cage
 stay keyed by their bytes, because any ray may strike any high face and occlusion reaches across the model, so a change to either
-rebakes every set: the full rebake is the answer whenever it is unclear. A set is not split further. Every map of it rests on the
+rebakes every set: the full rebake is the answer whenever it is unclear. The one exception is a set whose rays match parts by name
+and which bakes nothing that reaches past its parts: its key reads only the high parts it matches, their box and every part's name
+(`BakeHighReads`, and ADR 0008 for the table of which options reach past). A set is not split further. Every map of it rests on the
 same ray, so its maps are made together; and occlusion rays and the gutter both cross any region of the atlas a change could be
 said to have, so no region can be called untouched without baking it again. A bake delivered from the cache names the mesh as it
 is now, so it is not reported out of date.

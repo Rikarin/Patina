@@ -18,9 +18,11 @@ namespace Patina.Export;
 ///         faces did not change keeps its key and comes back from the cache, however the rest of the file changed.
 ///     </para>
 ///     <para>
-///         ⚠ <b>The high meshes and the cage stay keyed by their bytes</b>: any low face's rays may strike any high
-///         face, and occlusion reaches across the whole model, so a change to either is a change to every set. That is
-///         the full rebake, kept as the answer whenever it is unclear.
+///         ⚠ <b>The high meshes and the cage are keyed by their bytes, unless a set reads only its matched parts</b>:
+///         any low face's rays may strike any high face, and occlusion reaches across the whole model, so a change to
+///         either is a change to every set. That is the full rebake, kept as the answer whenever it is unclear. When
+///         rays match parts by name and nothing the set bakes reaches past them, <see cref="BakeHighReads" /> reads
+///         the high meshes as those parts, so a change to another part keeps the set's maps (ADR 0008).
 ///     </para>
 ///     <para>
 ///         ⚠ <b>Not per map and not per region of the atlas.</b> Every map of a set rests on the same ray, so they
@@ -46,11 +48,18 @@ public static class BakeKeyReads {
         ArgumentNullException.ThrowIfNull(meshes);
         Dictionary<string, Revision> reads = new(StringComparer.Ordinal);
 
-        // ⚠ A low mesh that is also a high mesh is still keyed by its bytes in that role, which the rays read whole.
+        // ⚠ A low mesh that is also a high mesh is still keyed by its bytes in that role, which the rays read whole,
+        // unless the set reads only its matched parts of it.
         // One that cannot be read is keyed by its bytes until the bake refuses it with its own words.
         if (meshes.Geometry(request.Low, request.Material, request.UvSet ?? 0) is { } low
             && Revision.TryParse(low, out var geometry)) {
             reads["low"] = geometry;
+        }
+
+        if (BakeHighReads.Matched(request, meshes) is { } high) {
+            for (var at = 0; at < request.High.Count; at++) {
+                reads[at == 0 ? "high" : $"high{at}"] = high; // one revision stands for every file, in order
+            }
         }
 
         var pictures = BakeColourSources.PicturesRead(request, meshes);

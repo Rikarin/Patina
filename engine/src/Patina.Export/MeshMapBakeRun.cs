@@ -52,9 +52,8 @@ public static class MeshMapBakeRun {
         }
 
         var low = Read(request.Low, request.Material, request.UvSet ?? 0);
-        var high = ModelGeometry.Flatten(
-            request.Options.Tileable == true ? BakeTiling.Around(files, low.Mesh.Bounds) : files
-        );
+        var tileable = request.Options.Tileable == true;
+        var high = ModelGeometry.Flatten(tileable ? BakeTiling.Around(files, low.Mesh) : files);
         cancellationToken.ThrowIfCancellationRequested();
 
         if (low.Mesh.TexCoords.Length != low.Mesh.CornerCount) {
@@ -74,7 +73,8 @@ public static class MeshMapBakeRun {
         Describe(request, high, low, log);
 
         var cage = request.Cage is { } path ? Read(path, request.Material, request.UvSet ?? 0).Mesh : null;
-        var (source, colours) = Ids(request.Options.Id.Source, high, files, warnings);
+        var ids = Ids(request.Options.Id.Source, high, files, warnings);
+        var (source, colours) = tileable ? BakeTiling.SameIds(high, ids) : ids;
         var settings = BakeRequestSettings.Of(request, high, low, cage, threads) with {
             IdSource = source,
             GroupsAreColours = colours,
@@ -323,7 +323,8 @@ public static class MeshMapBakeRun {
         var face = 0;
         for (var part = 0; part < high.Parts.Count; part++) {
             for (var end = face + high.Parts[part].Faces; face < end; face++) {
-                high.Mesh.SetGroup(face, labels[part]);
+                // A tileable bake's copies come after the files they copy, part for part.
+                high.Mesh.SetGroup(face, labels[part % labels.Count]);
             }
         }
     }

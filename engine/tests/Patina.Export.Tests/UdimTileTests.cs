@@ -124,6 +124,11 @@ public sealed class UdimTileTests : IDisposable {
 
         public IReadOnlyList<string> Pictures(string file) => read.Pictures;
 
+        public IReadOnlyList<string>? PartNames(string file, string? material, int uvSet) =>
+            Find(material, uvSet)?.Parts;
+
+        public Contracts.MeshHighRead? High(string file) => read.High;
+
         Contracts.MeshSetRead? Find(string? material, int uvSet) =>
             read.Sets.FirstOrDefault(set => set.UvSet == uvSet && set.Material == (material ?? string.Empty));
     }

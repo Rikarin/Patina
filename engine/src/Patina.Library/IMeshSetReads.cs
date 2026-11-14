@@ -1,3 +1,5 @@
+using Patina.Contracts;
+
 namespace Patina.Library;
 
 /// <summary>
@@ -25,4 +27,17 @@ public interface IMeshSetReads {
     /// </summary>
     /// <param name="file">The mesh file.</param>
     IReadOnlyList<string> Pictures(string file);
+
+    /// <summary>
+    ///     The names of one material's parts in a UV set, in order, as matching by name reads them, or null when they
+    ///     cannot be read so.
+    /// </summary>
+    /// <param name="file">The mesh file.</param>
+    /// <param name="material">The material, or null for the whole mesh.</param>
+    /// <param name="uvSet">The UV set.</param>
+    IReadOnlyList<string>? PartNames(string file, string? material, int uvSet);
+
+    /// <summary>The file as the high mesh of a bake meets it, or null when it will not read (#151).</summary>
+    /// <param name="file">The mesh file.</param>
+    MeshHighRead? High(string file);
 }
