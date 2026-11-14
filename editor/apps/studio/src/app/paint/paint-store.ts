@@ -1012,6 +1012,17 @@ export class PaintStore {
     }
   }
 
+  /**
+   * Keeps the chosen layer to the quick mask by its mask (#282): inside what was painted, or outside it when the quick
+   * mask is inverted. A fill, a decal or a path is no stroke, so this is how it is kept as a stroke would be.
+   */
+  async keepLayerToQuickMask(): Promise<void> {
+    const layer = this.layer();
+    if (layer) {
+      await this.edit({ op: 'keepQuickMask', layer, outside: this.quickMaskInverted() });
+    }
+  }
+
   /** Takes the quick mask off and starts the next one empty. */
   async clearQuickMask(): Promise<void> {
     this.quickMaskInverted.set(false);

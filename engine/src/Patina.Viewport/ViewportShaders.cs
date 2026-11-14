@@ -21,6 +21,9 @@ sealed class ViewportShaders(ShaderCache cache) {
     static readonly ImmutableArray<(string Name, string Text)> Shading =
         [..Core, ..Read(static name => name.Contains(".Shading.", StringComparison.Ordinal))];
 
+    /// <summary>Every shader file there is, which <see cref="Own" /> picks Patina's own from.</summary>
+    static readonly ImmutableArray<(string Name, string Text)> Everything = Read(static _ => true);
+
     static readonly ImmutableArray<(string Name, string Text)> PostFx = [
         ..Core,
         ..Read(static name => name.Contains(".Geometry.", StringComparison.Ordinal)),
@@ -46,18 +49,10 @@ sealed class ViewportShaders(ShaderCache cache) {
         );
 
     /// <summary>Lines over the model.</summary>
-    public EffectData Wire() =>
-        cache.Get(
-            EffectKey.Of("ViewportWire"),
-            [..Core, ..Read(static name => name.EndsWith("Shaders.ViewportWire.rvn", StringComparison.Ordinal))]
-        );
+    public EffectData Wire() => Own("ViewportWire", Core);
 
     /// <summary>The floor's grid and the world's axes.</summary>
-    public EffectData Grid() =>
-        cache.Get(
-            EffectKey.Of("ViewportGrid"),
-            [..Core, ..Read(static name => name.EndsWith("Shaders.ViewportGrid.rvn", StringComparison.Ordinal))]
-        );
+    public EffectData Grid() => Own("ViewportGrid", Core);
 
     /// <summary>
     ///     One of Vixen's four bloom passes: 0 keeps the bright light, 1 and 2 halve, 3 adds a level back.
@@ -72,11 +67,17 @@ sealed class ViewportShaders(ShaderCache cache) {
         );
 
     /// <summary>Shapes laid over the model, each vertex with its own colour (<see cref="ViewportOverlay" />).</summary>
-    public EffectData Overlay() =>
-        cache.Get(
-            EffectKey.Of("ViewportOverlay"),
-            [..Core, ..Read(static name => name.EndsWith("Shaders.ViewportOverlay.rvn", StringComparison.Ordinal))]
-        );
+    public EffectData Overlay() => Own("ViewportOverlay", Core);
+
+    /// <summary>The tints laid over the finished picture (<see cref="ViewportTint" />).</summary>
+    public EffectData Tint() => Own("ViewportTint", PostFx);
+
+    /// <summary>One of Patina's own shaders, with no permutations, beside the library files it imports.</summary>
+    EffectData Own(string shader, ImmutableArray<(string Name, string Text)> library) {
+        var file = $"Shaders.{shader}.rvn";
+        var own = Everything.Where(source => source.Name.EndsWith(file, StringComparison.Ordinal));
+        return cache.Get(EffectKey.Of(shader), [..library, ..own]);
+    }
 
     /// <summary>The curve to the screen, one variant per operator, in the order Vixen numbers them.</summary>
     public EffectData Tonemap(ViewportToneMapping curve) =>

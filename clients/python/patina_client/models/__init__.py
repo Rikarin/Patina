@@ -283,6 +283,8 @@ from .stack_command_stack_duplicate_layers import StackCommandStackDuplicateLaye
 from .stack_command_stack_duplicate_layers_op import StackCommandStackDuplicateLayersOp
 from .stack_command_stack_flatten_layer import StackCommandStackFlattenLayer
 from .stack_command_stack_flatten_layer_op import StackCommandStackFlattenLayerOp
+from .stack_command_stack_keep_quick_mask import StackCommandStackKeepQuickMask
+from .stack_command_stack_keep_quick_mask_op import StackCommandStackKeepQuickMaskOp
 from .stack_command_stack_move_layer import StackCommandStackMoveLayer
 from .stack_command_stack_move_layer_op import StackCommandStackMoveLayerOp
 from .stack_command_stack_move_mask_layer import StackCommandStackMoveMaskLayer
@@ -709,6 +711,8 @@ __all__ = (
     "StackCommandStackDuplicateLayersOp",
     "StackCommandStackFlattenLayer",
     "StackCommandStackFlattenLayerOp",
+    "StackCommandStackKeepQuickMask",
+    "StackCommandStackKeepQuickMaskOp",
     "StackCommandStackMoveLayer",
     "StackCommandStackMoveLayerOp",
     "StackCommandStackMoveMaskLayer",

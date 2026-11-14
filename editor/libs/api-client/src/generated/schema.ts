@@ -252,7 +252,7 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** Draws where a symmetry's mirror meets the model, as a line across its surface hidden where the model hides it, for every client. Null draws nothing, and so does a radial symmetry. */
+    /** Draws where a symmetry meets the model, as lines on its surface hidden where the model hides them, for every client: a mirror's plane, or the half-planes between a radial symmetry's copies. Null draws nothing. */
     put: operations['SetViewportSymmetry'];
     post?: never;
     delete?: never;
@@ -6348,7 +6348,8 @@ export interface components {
       | components['schemas']['StackCommandStackSetMaskLayer']
       | components['schemas']['StackCommandStackAddInstance']
       | components['schemas']['StackCommandStackSetInstance']
-      | components['schemas']['StackCommandStackApplyMask'];
+      | components['schemas']['StackCommandStackApplyMask']
+      | components['schemas']['StackCommandStackKeepQuickMask'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
       /** @description The edits, in order. */
@@ -6474,6 +6475,23 @@ export interface components {
       op: 'flattenLayer';
       /** @description The group, or null for the whole stack. */
       layer?: null | string;
+    };
+    /**
+     * @description Keeps a layer to the session's quick mask (#282): a paint entry on top of its mask's stack that starts as a copy
+     *     of the quick mask as it stands, multiplied over the mask beneath, or subtracted from it to keep it outside.
+     *     A fill, a decal or a path, which no stroke paints, is kept so as a stroke is. The entry is the layer's own from
+     *     then, saved with it, and can be painted, changed or removed as any other. The quick mask must have been painted.
+     */
+    StackCommandStackKeepQuickMask: {
+      /** @enum {string} */
+      op: 'keepQuickMask';
+      /** @description The layer to keep. */
+      layer: string;
+      /**
+       * @description Whether to keep it to where the quick mask is not painted.
+       * @default false
+       */
+      outside: boolean;
     };
     /** @description Moves a layer up or down its list. */
     StackCommandStackMoveLayer: {
@@ -8796,8 +8814,9 @@ export interface components {
       symmetry?: null | components['schemas']['StackSymmetry'];
     };
     /**
-     * @description The symmetry a brush paints with, which the viewport draws where its mirror's plane meets the model (#132): the
-     *     line the plane cuts across the surface, hidden where the model hides it. A radial symmetry draws nothing here.
+     * @description The symmetry a brush paints with, which the viewport draws where it meets the model (#132): the line a mirror's
+     *     plane cuts across the surface, or for a radial symmetry the lines the half-planes between its copies cut, each a
+     *     turn apart round its axis, hidden where the model hides them.
      */
     ViewportSymmetry: {
       symmetry?: null | components['schemas']['StackSymmetry'];

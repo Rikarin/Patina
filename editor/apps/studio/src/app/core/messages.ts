@@ -37,6 +37,8 @@ const Words: Readonly<Record<string, string>> = {
   'mask-layer-missing': 'The mask of {layer} has changed since that was asked. Try again.',
   'mask-layer-not-paint':
     'That layer of the mask of {layer} is not painted, so a brush can’t reach it. Add a Paint layer to the mask.',
+  'quick-mask-unpainted':
+    'Nothing is painted on the quick mask yet, so it would hide {layer} everywhere. Paint it first.',
   'instance-source-missing': 'The layer to make an instance of is no longer in {set}.',
   'instance-cycle': 'An instance of {layer} there would stand for itself. Choose another layer.',
   'stack-layer-missing': 'That layer is no longer in the stack. It may have been removed by another client.',

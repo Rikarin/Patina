@@ -149,7 +149,8 @@ sealed class ViewportFocus : IDisposable {
 
     /// <summary>
     ///     Begins the forward pass, cleared to the background: its light resolved into the frame's HDR picture, or with
-    ///     a lens open into the lens's own, with its nearest depth beside it.
+    ///     a lens open into the lens's own, with its nearest depth beside it. The tints are resolved apart, never
+    ///     defocused, since they say what is marked and not what is seen (#286).
     /// </summary>
     public static void BeginForward(
         ICommandList commands,
@@ -161,7 +162,7 @@ sealed class ViewportFocus : IDisposable {
         ArgumentNullException.ThrowIfNull(target);
         commands.BeginRenderPass(
             new(
-                [target.Cleared(behind, lens?.UnfocusedView)],
+                [target.Cleared(behind, lens?.UnfocusedView), target.Tinted],
                 lens?.Depth(target.DepthView)
                 ?? new DepthStencilAttachment(target.DepthView, LoadAction.Clear, StoreAction.DontCare),
                 "viewport forward"

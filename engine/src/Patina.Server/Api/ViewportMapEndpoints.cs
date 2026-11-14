@@ -67,8 +67,9 @@ static class ViewportMapEndpoints {
             .WithName("SetViewportSymmetry")
             .WithTags(Tag)
             .WithSummary(
-                "Draws where a symmetry's mirror meets the model, as a line across its surface hidden where the model "
-                + "hides it, for every client. Null draws nothing, and so does a radial symmetry."
+                "Draws where a symmetry meets the model, as lines on its surface hidden where the model hides them, "
+                + "for every client: a mirror's plane, or the half-planes between a radial symmetry's copies. Null "
+                + "draws nothing."
             )
             .ProducesProblem(Refused);
         api.MapPut("/viewport/bake", ShowBakeAsync)

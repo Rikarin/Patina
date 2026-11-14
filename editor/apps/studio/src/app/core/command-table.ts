@@ -152,6 +152,13 @@ export const CommandTable: readonly CommandSpec[] = [
     hint: 'Keeps the brush to where the quick mask is not painted'
   },
   {
+    id: 'keepLayerToQuickMask',
+    label: 'Keep Layer to Quick Mask',
+    section: 'Painting',
+    area: 'stack',
+    hint: 'Masks the chosen layer by the quick mask, so a fill, decal or path shows only inside it, or outside it when inverted'
+  },
+  {
     id: 'clearQuickMask',
     label: 'Clear Quick Mask',
     section: 'Painting',
@@ -527,6 +534,7 @@ export const MenuBar: readonly {
       'toggleStencil',
       'toggleQuickMask',
       'invertQuickMask',
+      'keepLayerToQuickMask',
       'clearQuickMask',
       'finishPath',
       'pickIdColour',

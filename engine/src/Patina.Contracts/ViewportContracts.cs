@@ -371,8 +371,9 @@ public sealed record ViewportHighlight(IReadOnlyList<string> Parts, IReadOnlyLis
 }
 
 /// <summary>
-///     The symmetry a brush paints with, which the viewport draws where its mirror's plane meets the model (#132): the
-///     line the plane cuts across the surface, hidden where the model hides it. A radial symmetry draws nothing here.
+///     The symmetry a brush paints with, which the viewport draws where it meets the model (#132): the line a mirror's
+///     plane cuts across the surface, or for a radial symmetry the lines the half-planes between its copies cut, each a
+///     turn apart round its axis, hidden where the model hides them.
 /// </summary>
 /// <param name="Symmetry">The symmetry, as a stroke takes it, or null for none.</param>
 public sealed record ViewportSymmetry(StackSymmetry? Symmetry);
