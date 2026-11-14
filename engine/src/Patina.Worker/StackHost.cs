@@ -56,6 +56,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         foreach (var session in viewport.Follow(sessions).Where(Holds)) {
             var stack = Find(session);
             stack.Fed.Clear();
+            stack.QuickMaskFed = null;
             if (stack.Prepare().Count == 0 && stack.Run.Plan is not null) {
                 using var bake = stack.Run.Evaluate();
                 Feed(stack, bake);
@@ -209,6 +210,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             viewport.Live.ClearLive(gone, material);
             stack.Fed.Remove(gone);
         }
+
+        FeedQuickMask(stack, material);
 
         stack.Reported();
     }
@@ -557,6 +560,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                 stale = true;
             }
 
+            QuickMask = sync.QuickMask;
+
             foreach (var id in sync.Forget) {
                 known.Remove(id);
             }
@@ -687,7 +692,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         public bool Compiled { get; private set; }
 
         public void Save(string? to) {
-            foreach (var file in touched) {
+            // A quick mask is the session's: a checkpoint keeps it, for a Worker that takes over, and a save does not.
+            foreach (var file in touched.Where(file => to is not null || !IsQuickMask(file))) {
                 if (canvases.Open(Path.Combine(folder, file)) is not { } canvas) {
                     continue;
                 }
@@ -783,7 +789,8 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                     placement: placement,
                     source: StrokeSources.Source(part, image, coverage, Picture, Composite),
                     stencil: StrokeSources.Stencil(part.Stencil, Picture),
-                    resume: StrokeShapes.Resume(part)
+                    resume: StrokeShapes.Resume(part),
+                    keep: Keep(part, canvas.Width, canvas.Height)
                 ),
                 part.Curve is "free" or "fill" ? null : new()
             ) { Fill = part.Curve == "fill", Outline = part.Outline };

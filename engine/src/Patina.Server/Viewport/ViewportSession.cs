@@ -121,7 +121,8 @@ public sealed class ViewportSession(
                     display.Isolation,
                     node?.Shown,
                     following,
-                    display.Highlight
+                    display.Highlight,
+                    display.Symmetry
                 );
             }
         }
@@ -472,7 +473,8 @@ public sealed class ViewportSession(
                 Isolation = display.Isolation,
                 TexelDensity = display.TexelDensity,
                 Resolution = display.Resolution,
-                Highlight = display.Highlight
+                Highlight = display.Highlight,
+                Symmetry = display.Symmetry
             };
             mapsError = null;
             revision++;
@@ -517,6 +519,16 @@ public sealed class ViewportSession(
         ArgumentNullException.ThrowIfNull(highlight);
         lock (changing) {
             display = display with { Highlight = highlight.None ? null : highlight };
+            revision++;
+        }
+
+        Wake();
+    }
+
+    /// <summary>Draws a symmetry's mirror where it meets the model, for every client and a new Worker.</summary>
+    public void Symmetry(StackSymmetry? symmetry) {
+        lock (changing) {
+            display = display with { Symmetry = symmetry };
             revision++;
         }
 

@@ -75,6 +75,15 @@ public sealed class StackJournalEntry(
     /// </summary>
     public ViewportIsolation? Isolation { get; init; }
 
+    /// <summary>
+    ///     The quick mask this stroke is kept to, as it was when the stroke began (#127), or null. In the journal so a
+    ///     replay reads the same quick mask whatever has been cleared since.
+    /// </summary>
+    public string? Keep { get; init; }
+
+    /// <summary>Whether the stroke is kept to where that quick mask is not painted.</summary>
+    public bool KeepOutside { get; init; }
+
     public List<StackStamp> Stamps { get; } = [..first.Stamps];
 
     public bool Open { get; set; } = first.Open;

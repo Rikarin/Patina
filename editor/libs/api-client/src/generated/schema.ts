@@ -227,6 +227,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/viewport/symmetry': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Draws where a symmetry's mirror meets the model, as a line across its surface hidden where the model hides it, for every client. Null draws nothing, and so does a radial symmetry. */
+    put: operations['SetViewportSymmetry'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/viewport/bake': {
     parameters: {
       query?: never;
@@ -1637,6 +1654,24 @@ export interface paths {
     put?: never;
     /** A picture of a brush: one stroke of it at a size of its own, white on nothing, its pressure rising and falling, drawn by the Worker under /previews with the alphas this stack's strokes read. With stamp, one stamp of it instead, as a cursor shows it: square, the stamp's long half-axis reaching the middle of each side, turned and stretched as the brush is, with no jitter. A brush no stroke could take is refused with its reason. */
     post: operations['PreviewStackBrush'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/quick-mask': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The session's quick mask: whether the viewport lays it over the model, and whether it is painted. */
+    get: operations['GetStackQuickMask'];
+    /** Shows or hides the session's quick mask in the viewport, red where it is painted, or starts a new, empty one. A stroke paints it with quickMask paint, and is kept inside or outside it with inside or outside. It is the session's: no save writes it, and neither change is a step of history. */
+    put: operations['SetStackQuickMask'];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -6631,6 +6666,13 @@ export interface components {
        * @default false
        */
       through: boolean;
+      /**
+       * @description The session's quick mask (#127), or null to leave it out: `paint` paints the quick mask itself, by the red
+       *     of Colour, instead of the layer, which may then be any; `inside` keeps the stroke to
+       *     where the quick mask is painted, and `outside` to where it is not. A quick mask nothing is painted on keeps
+       *     nothing back.
+       */
+      quickMask?: null | string;
     };
     /** @description Takes a flattened group back to its children, which composite again. */
     StackCommandStackUnflattenLayer: {
@@ -7451,6 +7493,24 @@ export interface components {
       severity: string;
       /** @description What is wrong. */
       message: string;
+    };
+    /** @description Shows or hides a stack's quick mask in the viewport, or clears it (#127). */
+    StackQuickMaskRequest: {
+      /** @description Whether the viewport lays the quick mask over the model in red. */
+      shown: boolean;
+      /**
+       * @description Whether to start a new, empty quick mask. Not an undo step: strokes kept to the old one keep what they painted,
+       *     and undoing a stroke on the old one changes nothing a later stroke reads.
+       * @default false
+       */
+      clear: boolean;
+    };
+    /** @description A stack's quick mask. */
+    StackQuickMaskState: {
+      /** @description Whether the viewport lays it over the model. */
+      shown: boolean;
+      /** @description Whether a stroke that stands has painted it, so that a stroke kept to it is kept. */
+      painted: boolean;
     };
     /**
      * @description What every channel of a stack holds at one place on its map, as a material picker takes it up: numbers read
@@ -8502,6 +8562,14 @@ export interface components {
       node?: null | components['schemas']['ViewportNodeShown'];
       following?: null | components['schemas']['ViewportFollow'];
       highlight?: null | components['schemas']['ViewportHighlight'];
+      symmetry?: null | components['schemas']['StackSymmetry'];
+    };
+    /**
+     * @description The symmetry a brush paints with, which the viewport draws where its mirror's plane meets the model (#132): the
+     *     line the plane cuts across the surface, hidden where the model hides it. A radial symmetry draws nothing here.
+     */
+    ViewportSymmetry: {
+      symmetry?: null | components['schemas']['StackSymmetry'];
     };
     /** @description The Worker as the Server sees it. All but `Connected` are null while there is none. */
     WorkerStatus: {
@@ -9005,6 +9073,39 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ViewportState'];
+        };
+      };
+    };
+  };
+  SetViewportSymmetry: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ViewportSymmetry'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ViewportState'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
     };
@@ -13640,6 +13741,72 @@ export interface operations {
       };
       /** @description Service Unavailable */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackQuickMask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackQuickMaskState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetStackQuickMask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackQuickMaskRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackQuickMaskState'];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

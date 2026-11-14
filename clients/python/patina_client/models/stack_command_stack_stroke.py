@@ -71,6 +71,11 @@ class StackCommandStackStroke:
                 its stamps, or null. The stroke starts there without a stamp, as a pen lifted in the middle of one stroke and
                 put down again: its first stamp comes a step along, so nothing is laid twice where the two meet, and a lazy
                 brush keeps its string. Only a free stroke carries one on; it is still an undo step of its own.
+            quick_mask (None | str | Unset): The session's quick mask (#127), or null to leave it out: `paint` paints the
+                quick mask itself, by the red
+                of Colour, instead of the layer, which may then be any; `inside` keeps the stroke to
+                where the quick mask is painted, and `outside` to where it is not. A quick mask nothing is painted on keeps
+                nothing back.
      """
 
     op: StackCommandStackStrokeOp
@@ -92,6 +97,7 @@ class StackCommandStackStroke:
     stencil: None | StackPicture | Unset = UNSET
     fill: None | str | Unset = UNSET
     resume: list[float] | None | Unset = UNSET
+    quick_mask: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -190,6 +196,12 @@ class StackCommandStackStroke:
         else:
             resume = self.resume
 
+        quick_mask: None | str | Unset
+        if isinstance(self.quick_mask, Unset):
+            quick_mask = UNSET
+        else:
+            quick_mask = self.quick_mask
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -221,6 +233,8 @@ class StackCommandStackStroke:
             field_dict["fill"] = fill
         if resume is not UNSET:
             field_dict["resume"] = resume
+        if quick_mask is not UNSET:
+            field_dict["quickMask"] = quick_mask
 
         return field_dict
 
@@ -392,6 +406,16 @@ class StackCommandStackStroke:
         resume = _parse_resume(d.pop("resume", UNSET))
 
 
+        def _parse_quick_mask(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        quick_mask = _parse_quick_mask(d.pop("quickMask", UNSET))
+
+
         stack_command_stack_stroke = cls(
             op=op,
             stroke=stroke,
@@ -412,6 +436,7 @@ class StackCommandStackStroke:
             stencil=stencil,
             fill=fill,
             resume=resume,
+            quick_mask=quick_mask,
         )
 
 

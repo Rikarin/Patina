@@ -58,7 +58,7 @@ public sealed class ViewportMarksTests : IDisposable {
     public void A_dense_mark_is_washed_thinner_and_outlined_whole() {
         var mesh = ViewportMesh.Read(Model());
 
-        var shapes = ViewportMarks.Shapes(mesh, ([], ["painted"]), ([], []), 2);
+        var shapes = ViewportMarks.Shapes(mesh, ([], ["painted"]), ([], []), most: 2);
 
         Assert.Equal(2 * 3 * Floats, shapes.Triangles.Length);
         Assert.Equal(8 * 2 * Floats, shapes.Lines.Length);

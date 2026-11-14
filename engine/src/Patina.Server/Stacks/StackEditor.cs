@@ -63,6 +63,9 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     /// <summary>What the viewport draws alone as the next batch arrives, which a stroke on the mesh keeps.</summary>
     public ViewportIsolation? Isolation { get; set; }
 
+    /// <summary>This session's quick mask (#127), which strokes paint or are kept to.</summary>
+    internal StackQuickMask QuickMask => field ??= new(Path.GetFileNameWithoutExtension(AssetPath), Set.Name);
+
     /// <summary>What a paste finds a copy by, or nothing when it has gone.</summary>
     public Func<string, StackClipContents?> Clip { get; set; } = static _ => null;
 
@@ -237,7 +240,8 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             entry.Open && entry.Stroke == part.Stroke && entry.Layer == part.Layer && Channel(part) == entry.Usage
         );
 
-    static string Channel(StackStroke stroke) => stroke.Mask ? PaintReference.Mask : stroke.Channel;
+    static string Channel(StackStroke stroke) =>
+        stroke.Mask || stroke.QuickMask == StackQuickMasks.Paint ? PaintReference.Mask : stroke.Channel;
 
     /// <summary>
     ///     A step that begins, or an undo, ends the drag before it: a client that vanished cannot hold
@@ -506,23 +510,20 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     }
 
     void Stroke(StackStroke stroke, UndoStep step, string set, Action<IAuthoringCommand> run) {
-        var layer = Require(stroke.Layer);
         if (stroke.Brush.Problem() is { } problem) {
             throw new StackEditRefusedException(problem, Api.Refusals.BrushRefused, Api.Refusals.Reason(problem));
         }
 
-        if (!stroke.Mask) {
+        // A quick mask is the session's and no layer's, so a stroke on it names any layer, or one since removed.
+        var quick = stroke.QuickMask == StackQuickMasks.Paint;
+        var layer = quick ? null : Require(stroke.Layer);
+        if (layer is not null && !stroke.Mask) {
             Writable(stroke, layer);
         }
 
         Aimed(stroke);
 
-        var (paint, start) = stroke switch {
-            { Mask: true, MaskLayer: { } entry } => (StackLayerEdits.MaskLayerCanvas(this, layer, entry, set, run),
-                null),
-            { Mask: true } => MaskCanvas(layer, set, run),
-            _ => (LayerCanvas(layer, set, run), (uint?)null)
-        };
+        var (paint, start) = layer is null ? (QuickMask.Paint, null) : Canvas(stroke, layer, set, run);
 
         // ⚠ Live, two strokes of one batch take turns; replayed, they run one after the other. Where they meet in one
         // channel that is two pictures, and a journal has to be one.
@@ -535,27 +536,43 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
 
         // A Worker refuses to begin one its canvas cannot take at this size, and the stack would fail until it is
         // undone.
-        var (width, height) = canvasSides.Check(
-            layer.Name,
-            paint,
-            Document.BaseWidth,
-            Document.BaseHeight,
-            stroke.View is not null
-        );
+        var (width, height) = layer is null
+            ? (Document.BaseWidth, Document.BaseHeight)
+            : canvasSides.Check(layer.Name, paint, Document.BaseWidth, Document.BaseHeight, stroke.View is not null);
         // A brush sized in texels keeps its size on the model when it paints a larger canvas at its own (#19).
         var painted = width == Document.BaseWidth || stroke.Brush.SizeSpace != "texture"
             ? stroke
             : stroke with { Brush = stroke.Brush with { Radius = stroke.Brush.Radius * width / Document.BaseWidth } };
+
+        // A quick mask nothing has painted keeps nothing back, rather than everything.
+        var kept = stroke.QuickMask is StackQuickMasks.Inside or StackQuickMasks.Outside
+            && QuickMask.Painted(Standing.Concat(step.Strokes));
         step.Strokes.Add(
             new(nextEntry++, painted, paint, Channel(stroke), Packed(stroke.Colour), Document.Model, start) {
                 SourceDocument = StackDocuments.SourceText(stroke.Source, Document, Set),
                 Width = width,
                 Height = height,
                 // Only a stroke on the mesh has faces to keep to; one in the 2D view reaches the whole layout.
-                Isolation = stroke.View is null ? null : Isolation
+                Isolation = stroke.View is null ? null : Isolation,
+                Keep = kept ? QuickMask.Paint : null,
+                KeepOutside = kept && stroke.QuickMask == StackQuickMasks.Outside
             }
         );
     }
+
+    /// <summary>The canvas a stroke on a layer paints, and what it starts as if the stroke makes it.</summary>
+    (string Paint, uint? Start) Canvas(
+        StackStroke stroke,
+        LayerAsset layer,
+        string set,
+        Action<IAuthoringCommand> run
+    ) =>
+        stroke switch {
+            { Mask: true, MaskLayer: { } entry } => (StackLayerEdits.MaskLayerCanvas(this, layer, entry, set, run),
+                null),
+            { Mask: true } => MaskCanvas(layer, set, run),
+            _ => (LayerCanvas(layer, set, run), null)
+        };
 
     /// <summary>Refuses a stroke on a layer's own pixels that would land nowhere, or nowhere that shows.</summary>
     void Writable(StackStroke stroke, LayerAsset layer) {

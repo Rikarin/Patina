@@ -404,6 +404,47 @@ describe('PaintStore', () => {
     expect(store.recentColours()).toEqual([]);
   });
 
+  it('paints the quick mask white in one channel, then keeps strokes inside it, or outside once inverted (#127)', async () => {
+    const { store, bodies, posts } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.colour.set('#0000ff');
+    store.alsoPaints.set(new Map([['roughness', '#808080']]));
+    const sent = () =>
+      bodies.map(body => (body as { commands: { colour: number[]; quickMask: string | null }[] }).commands);
+
+    await store.toggleQuickMask();
+    expect(store.quickMask()).toBe('paint');
+    expect(posts.filter(path => path.endsWith('/quick-mask'))).toHaveLength(1);
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(sent().at(-1)?.[0]?.quickMask).toBe('paint'));
+    expect(sent().at(-1)).toHaveLength(1);
+    expect(sent().at(-1)?.[0]?.colour).toEqual([1, 1, 1, 1]);
+
+    await store.toggleQuickMask();
+    expect(store.quickMask()).toBe('keep');
+    const before = bodies.length;
+    store.begin({ x: 5, y: 6, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(before));
+    expect(
+      sent()
+        .at(-1)
+        ?.every(command => command.quickMask === 'inside')
+    ).toBe(true);
+
+    store.quickMaskInverted.set(true);
+    const inverted = bodies.length;
+    store.begin({ x: 7, y: 8, pressure: 1 });
+    store.end();
+    await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(inverted));
+    expect(sent().at(-1)?.[0]?.quickMask).toBe('outside');
+
+    await store.clearQuickMask();
+    expect(store.quickMask()).toBe('off');
+    expect(store.quickMaskInverted()).toBe(false);
+  });
+
   it('paints an entry of a mask stack by its place, and only a paint entry (#109)', async () => {
     const { store, bodies } = setup();
     await store.open('/a/Crate.vxlayers', false);

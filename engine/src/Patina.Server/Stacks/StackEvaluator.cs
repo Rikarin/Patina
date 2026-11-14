@@ -386,7 +386,8 @@ public sealed class StackEvaluator(
                     work.Document == state.Document ? null : work.Document,
                     [..work.Standing.Select(static entry => entry.Id).Except(state.Base)],
                     parts,
-                    work.Forget
+                    work.Forget,
+                    work.QuickMask
                 )
             },
             cancellationToken

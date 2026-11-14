@@ -124,6 +124,29 @@ export const CommandTable: readonly CommandSpec[] = [
     hint: 'The picture on the viewport masks the brush by its brightness'
   },
   {
+    id: 'toggleQuickMask',
+    label: 'Quick Mask',
+    section: 'Painting',
+    keys: ['T'],
+    area: 'stack',
+    hint: 'Paints a quick mask shown in red, then keeps the brush to it'
+  },
+  {
+    id: 'invertQuickMask',
+    label: 'Invert Quick Mask',
+    section: 'Painting',
+    keys: ['Y'],
+    area: 'stack',
+    hint: 'Keeps the brush to where the quick mask is not painted'
+  },
+  {
+    id: 'clearQuickMask',
+    label: 'Clear Quick Mask',
+    section: 'Painting',
+    area: 'stack',
+    hint: 'Takes the quick mask off, and starts the next one empty'
+  },
+  {
     id: 'moveStencilLeft',
     label: 'Move Stencil Left',
     section: 'Painting',
@@ -474,6 +497,9 @@ export const MenuBar: readonly {
       '-',
       'setCloneSource',
       'toggleStencil',
+      'toggleQuickMask',
+      'invertQuickMask',
+      'clearQuickMask',
       'finishPath',
       'pickIdColour',
       '-',

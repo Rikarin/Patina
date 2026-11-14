@@ -352,9 +352,26 @@ public static class StackBrushes {
             return problem;
         }
 
+        if (stroke.QuickMaskProblem() is { } quick) {
+            return quick;
+        }
+
         return stroke.Mask && stroke.Source?.Kind is "clone" or "material"
             ? "A mask is painted with a grey, a smudge or a picture, and not a material or a clone."
             : null;
+    }
+
+    /// <summary>What is wrong with what a stroke asks of the quick mask (#127), or null.</summary>
+    /// <param name="stroke">The stroke.</param>
+    static string? QuickMaskProblem(this StackStroke stroke) {
+        if (stroke.QuickMask is { } quick && !StackQuickMasks.All.Contains(quick)) {
+            return "A stroke paints the quick mask, or keeps inside or outside it.";
+        }
+
+        return stroke is { QuickMask: StackQuickMasks.Paint }
+            && (stroke.Mask || stroke.Source?.Kind is "clone" or "material")
+                ? "A quick mask is painted with a grey, a smudge or a picture, not a mask, a material or a clone."
+                : null;
     }
 
     /// <summary>What is wrong with a picture on a stroke's picture, or null.</summary>

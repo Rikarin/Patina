@@ -8,10 +8,13 @@ namespace Patina.Worker;
 /// <summary>How a session lays a stroke out: where its stamps land, a line's points, the pictures it reads.</summary>
 sealed partial class StackHost {
     internal sealed partial class Session {
-        /// <summary>Gathers a line's or a path's points, and runs the stroke through them when it ends.</summary>
+        /// <summary>
+        ///     Gathers a line's or a path's points, and runs the stroke through them when it ends: the pen's pressure,
+        ///     tilt and twist at each point, faded between them, as a free stroke takes them (#123).
+        /// </summary>
         void Bend(PaintStroke stroke, PaintPath curve, StackPaintPart part) {
             foreach (var stamp in part.Stamps) {
-                curve.Add(new(stamp.X, stamp.Y), stamp.Pressure);
+                curve.Add(new(stamp.X, stamp.Y), StrokeShapes.Pen(stamp));
             }
 
             if (part.Open) {
@@ -19,10 +22,10 @@ sealed partial class StackHost {
             }
 
             List<Vector2> points = [];
-            List<float> pressures = [];
-            curve.Sample(points, pressures);
-            foreach (var (point, pressure) in points.Zip(pressures)) {
-                stroke.MoveTo(point, dirtied, pressure);
+            List<PaintPen> pens = [];
+            curve.Sample(points, pens);
+            foreach (var (point, pen) in points.Zip(pens)) {
+                stroke.MoveTo(point, dirtied, pen);
             }
         }
 
