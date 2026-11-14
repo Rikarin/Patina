@@ -412,6 +412,7 @@ export const CommandTable: readonly CommandSpec[] = [
     section: 'Window',
     hint: 'Bakes and exports with how far each is, and everything the app has said'
   },
+  { id: 'showLog', label: 'Log', section: 'Window', hint: 'What the engine has said lately, problems and all' },
 
   {
     id: 'documentation',
@@ -617,6 +618,7 @@ export const MenuBar: readonly {
       'showHistory',
       'showChecks',
       'showActivity',
+      'showLog',
       '-',
       { native: 'windowItems' }
     ]

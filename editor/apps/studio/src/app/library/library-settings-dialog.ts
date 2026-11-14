@@ -2,15 +2,18 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, model, si
 import { type components, unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
+import { XuiCheckboxImports } from '@xui/checkbox';
 import { XuiDialogImports } from '@xui/dialog';
+import { XuiInputImports } from '@xui/input';
 import { XuiNumericInputImports } from '@xui/numeric-input';
 import { Activity } from '../core/activity';
 import { messageOf } from '../core/messages';
-import { bytes, count, figure } from '../core/numbers';
+import { bytes, count } from '../core/numbers';
 import { LibraryStore } from './library-store';
 
 type LibraryHealth = components['schemas']['LibraryHealth'];
 type CacheInfo = components['schemas']['CacheInfo'];
+type ExportPresetInfo = components['schemas']['ExportPresetInfo'];
 
 /** What each kind of finding is called, as `patina library check` names them in its report. */
 const FindingWords: Readonly<Record<string, string>> = {
@@ -40,7 +43,14 @@ const PruneDays = 30;
  */
 @Component({
   selector: 'ptn-library-settings',
-  imports: [XuiButtonImports, XuiCalloutImports, XuiDialogImports, XuiNumericInputImports],
+  imports: [
+    XuiButtonImports,
+    XuiCalloutImports,
+    XuiCheckboxImports,
+    XuiDialogImports,
+    XuiInputImports,
+    XuiNumericInputImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <xui-dialog size="md" title="Library Settings" [(open)]="open">
@@ -49,9 +59,20 @@ const PruneDays = 30;
           @if (info(); as library) {
             <section class="flex flex-col gap-2">
               <h3 class="section-label">Library</h3>
-              <dl class="grid grid-cols-[9rem_minmax(0,1fr)] gap-x-3 gap-y-1">
+              <dl class="grid grid-cols-[9rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1">
                 <dt class="text-foreground-muted">Name</dt>
-                <dd data-testid="library-settings-name">{{ library.name }}</dd>
+                <dd>
+                  <input
+                    class="w-full"
+                    xuiInput
+                    size="sm"
+                    autocomplete="off"
+                    aria-label="Library name"
+                    data-testid="library-settings-name"
+                    [value]="library.name"
+                    (change)="rename($event)"
+                  />
+                </dd>
                 <dt class="text-foreground-muted">Folder</dt>
                 <dd class="truncate select-text" [title]="library.path">{{ library.path }}</dd>
                 <dt class="text-foreground-muted">Projects</dt>
@@ -59,18 +80,46 @@ const PruneDays = 30;
                 <dt class="text-foreground-muted">Materials</dt>
                 <dd class="readout">{{ count(library.assetCount) }}</dd>
                 <dt class="text-foreground-muted">Texel density</dt>
-                <dd class="readout" data-testid="library-settings-density">
-                  {{ figure(library.texelDensity) }} texels per metre
+                <dd class="flex items-center gap-2">
+                  <xui-numeric-input
+                    class="w-28"
+                    size="sm"
+                    aria-label="Texel density in texels per metre"
+                    data-testid="library-settings-density"
+                    [min]="1"
+                    [stepSize]="64"
+                    [value]="library.texelDensity"
+                    (valueChange)="keep(library.name, $event ?? library.texelDensity)"
+                  />
+                  <span class="text-foreground-muted text-xs">texels per metre</span>
                 </dd>
                 <dt class="text-foreground-muted">Channels</dt>
                 <dd data-testid="library-settings-channels">{{ listed(library.channels) }}</dd>
-                <dt class="text-foreground-muted">Export presets</dt>
-                <dd data-testid="library-settings-targets">{{ listed(library.exportTargets) }}</dd>
                 <dt class="text-foreground-muted">Shader</dt>
                 <dd>{{ library.defaultShader }}</dd>
               </dl>
               <p class="text-foreground-muted text-xs">
-                New projects start from these. They are kept in the library’s library.yaml.
+                New projects start from these. They are kept in the library’s library.yaml, and its folder keeps its
+                name.
+              </p>
+              <h3 class="section-label pt-1">Build for</h3>
+              <div class="flex flex-col gap-1" data-testid="library-settings-targets">
+                @for (preset of presets(); track preset.id) {
+                  <xui-checkbox
+                    data-testid="library-settings-target"
+                    [attr.data-preset]="preset.id"
+                    [checked]="library.exportTargets.includes(preset.id)"
+                    (checkedChange)="target(preset.id, $event)"
+                  >
+                    {{ preset.name }}
+                  </xui-checkbox>
+                } @empty {
+                  <span class="text-foreground-muted text-xs">{{ listed(library.exportTargets) }}</span>
+                }
+              </div>
+              <p class="text-foreground-muted text-xs">
+                The presets a build of the whole library writes when it names none, such as one for each platform the
+                game ships to.
               </p>
             </section>
 
@@ -157,7 +206,8 @@ const PruneDays = 30;
               </div>
               <div class="flex items-center gap-3">
                 <span class="text-foreground-muted min-w-0 flex-1 text-xs">
-                  Each project keeps a copy of its paint whenever a new UV layout moves it. Clean removes those copies.
+                  Each project keeps a copy of its paint whenever a new UV layout moves it. Clean removes those copies,
+                  and moves the pictures no document uses, saved or open, to the bin.
                 </span>
                 <button
                   type="button"
@@ -205,19 +255,22 @@ export class LibrarySettingsDialog {
   protected readonly health = signal<LibraryHealth | null>(null);
   protected readonly cache = signal<CacheInfo | null>(null);
   protected readonly days = signal(PruneDays);
-  protected readonly busy = signal<'check' | 'prune' | 'clean' | null>(null);
+  protected readonly busy = signal<'check' | 'prune' | 'clean' | 'settings' | null>(null);
+  protected readonly presets = signal<readonly ExportPresetInfo[]>([]);
   protected readonly tidied = signal<string | null>(null);
   protected readonly failure = signal<string | null>(null);
 
   protected readonly count = count;
   protected readonly bytes = bytes;
-  protected readonly figure = figure;
   protected readonly Math = Math;
 
   constructor() {
     effect(() => {
       if (this.open() && this.info()) {
-        untracked(() => void this.readCache());
+        untracked(() => {
+          void this.readCache();
+          void this.readPresets();
+        });
       }
     });
   }
@@ -263,15 +316,54 @@ export class LibrarySettingsDialog {
     });
   }
 
-  /** Takes away the copies of moved paint. */
+  /** Takes away the copies of moved paint, and moves the pictures nothing uses to the bin (#162). */
   async clean(): Promise<void> {
     await this.run('clean', async client => {
       const done = unwrap(await client.POST('/api/v1/library/clean'));
-      this.say(
-        done.removed === 0
-          ? 'There were no copies of moved paint to remove.'
-          : `Removed ${count(done.removed)} copies of moved paint, ${bytes(done.bytes)}.`
-      );
+      const said = [
+        done.removed === 0 ? '' : `Removed ${count(done.removed)} copies of moved paint, ${bytes(done.bytes)}.`,
+        done.pictures === 0
+          ? ''
+          : `Moved ${count(done.pictures)} pictures nothing uses to the bin, ${bytes(done.pictureBytes)}.`
+      ].filter(part => part.length > 0);
+      this.say(said.length === 0 ? 'There was nothing to clean.' : said.join(' '));
+    });
+  }
+
+  /** Renames the library, as its file has it: the folder keeps its name. */
+  protected rename(event: Event): void {
+    const name = (event.target as HTMLInputElement).value.trim();
+    const library = this.info();
+    if (library && name.length > 0 && name !== library.name) {
+      void this.keep(name, library.texelDensity);
+    } else if (library) {
+      (event.target as HTMLInputElement).value = library.name;
+    }
+  }
+
+  /** Keeps the library's name and texel density in its library.yaml (#192). */
+  async keep(name: string, texelDensity: number): Promise<void> {
+    const library = this.info();
+    if (!library || (name === library.name && texelDensity === library.texelDensity)) {
+      return;
+    }
+
+    await this.run('settings', async client => {
+      this.library.settled(unwrap(await client.PUT('/api/v1/library/settings', { body: { name, texelDensity } })));
+    });
+  }
+
+  /** Adds a preset to what a build of the whole library writes, or takes it out. */
+  async target(preset: string, on: boolean): Promise<void> {
+    const library = this.info();
+    if (!library) {
+      return;
+    }
+
+    const kept = library.exportTargets.filter(id => id !== preset);
+    const presets = on ? [...kept, preset] : kept;
+    await this.run('settings', async client => {
+      this.library.settled(unwrap(await client.PUT('/api/v1/library/export/targets', { body: { presets } })));
     });
   }
 
@@ -281,7 +373,7 @@ export class LibrarySettingsDialog {
   }
 
   private async run(
-    what: 'check' | 'prune' | 'clean',
+    what: 'check' | 'prune' | 'clean' | 'settings',
     act: (client: Awaited<ReturnType<LibraryStore['api']>>) => Promise<void>
   ): Promise<void> {
     this.busy.set(what);
@@ -292,6 +384,15 @@ export class LibrarySettingsDialog {
       this.failure.set(messageOf(failure));
     } finally {
       this.busy.set(null);
+    }
+  }
+
+  private async readPresets(): Promise<void> {
+    try {
+      const client = await this.library.api();
+      this.presets.set(unwrap(await client.GET('/api/v1/export/presets', { params: { query: {} } })).presets);
+    } catch {
+      this.presets.set([]); // the targets are still listed by id
     }
   }
 

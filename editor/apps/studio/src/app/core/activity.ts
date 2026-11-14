@@ -126,6 +126,8 @@ export class Activity {
   readonly unread = this.mutableUnread.asReadonly();
   /** Whether the Activity panel is showing. */
   readonly open = signal(false);
+  /** What the panel shows: the jobs and notices, or the engine's log (#192). */
+  readonly view = signal<'activity' | 'log'>('activity');
 
   /** Every job the Server remembers, newest first. */
   readonly jobs = computed(() => this.bakes.jobs().map(activityJob));
@@ -219,6 +221,12 @@ export class Activity {
   show(): void {
     this.open.set(true);
     this.mutableUnread.set(0);
+  }
+
+  /** Shows the panel at the engine's log (#192). */
+  showLog(): void {
+    this.view.set('log');
+    this.show();
   }
 
   hide(): void {

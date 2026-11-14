@@ -21,6 +21,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/log': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The lines the Server logged after a number, the oldest first: Patina's own from information up, the framework's from warnings up. Only the latest thousand are kept; ask after the page's next number to follow along. */
+    get: operations['GetServerLog'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/preferences': {
     parameters: {
       query?: never;
@@ -638,6 +655,23 @@ export interface paths {
      */
     get: operations['GetMeshFacts'];
     put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/settings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps the library's name and the texel density new projects start from in library.yaml. GET /library reads them back; the export presets have routes of their own. */
+    put: operations['SetLibrarySettings'];
     post?: never;
     delete?: never;
     options?: never;
@@ -1427,7 +1461,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it. */
+    /** Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it, and moves the pictures in projects that no document reads, saved or open, into the bin as one entry. */
     post: operations['CleanLibrary'];
     delete?: never;
     options?: never;
@@ -2613,7 +2647,7 @@ export interface components {
        */
       usageCount: number;
     };
-    /** @description How unsaved work is kept. It goes to the library's cache, never over a document. */
+    /** @description How unsaved work is kept. It goes to the library's cache unless a folder is chosen, never over a document. */
     AutosavePreferences: {
       /**
        * Format: int32
@@ -2634,6 +2668,12 @@ export interface components {
        * @default 3
        */
       keep: number;
+      /**
+       * @description The full path of a folder autosaves go to instead of each library's cache, a folder per library inside it,
+       *     or null for the cache (#162). Autosaves the cache kept before one was chosen are still offered and let go
+       *     of; those in a folder chosen earlier stay there and are not.
+       */
+      folder?: null | string;
     };
     /** @description The borders map's width (#121). */
     BakeBorderOptions: {
@@ -3036,7 +3076,10 @@ export interface components {
     BinItem: {
       /** @description The entry, which the bin routes take. */
       id: string;
-      /** @description `project` or `document`. */
+      /**
+       * @description `project`, `document`, or `pictures` for those a Clean found nothing read, each going back to
+       *                 its own place in `projects`.
+       */
       kind: string;
       /** @description Its display name when it was deleted. */
       name: string;
@@ -5105,6 +5148,31 @@ export interface components {
        */
       version: number;
     };
+    /** @description What `POST /api/v1/library/clean` took away (#162). */
+    LibraryCleaned: {
+      /**
+       * Format: int32
+       * @description How many folders of copies of moved paint were deleted.
+       */
+      removed: number;
+      /**
+       * Format: int64
+       * @description The room those freed on disk.
+       */
+      bytes: number;
+      /**
+       * Format: int32
+       * @description How many pictures nothing read went to the bin.
+       */
+      pictures: number;
+      /**
+       * Format: int64
+       * @description The room those take, which emptying the bin frees.
+       */
+      pictureBytes: number;
+      /** @description The bin's entry that holds those pictures, for a Restore, or null when none went. */
+      bin?: null | string;
+    };
     /**
      * @description What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A
      *     document's cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for
@@ -5316,6 +5384,16 @@ export interface components {
       nothing?: null | string;
       /** @description What a running build is on, for a person: a project and an output or a preset. */
       current?: null | string;
+    };
+    /** @description The body of `PUT /api/v1/library/settings` (#192). */
+    LibrarySettingsRequest: {
+      /** @description The library's display name, 1 to 200 characters. Its folder keeps its name. */
+      name: string;
+      /**
+       * Format: double
+       * @description The texel density new projects start from, in texels per metre, above zero.
+       */
+      texelDensity: number;
     };
     /** @description The body of `PUT /api/v1/library/export/targets` (#207). */
     LibraryTargetsRequest: {
@@ -6217,6 +6295,37 @@ export interface components {
       name: string;
       /** @description The folder below `projects/` to make it in, or null for the top. */
       folder?: null | string;
+    };
+    /** @description One line of what the Server said, as `GET /api/v1/log` gives it (#192). */
+    ServerLogEntry: {
+      /**
+       * Format: int64
+       * @description Its number, rising by one from the Server's start.
+       */
+      sequence: number;
+      /**
+       * Format: date-time
+       * @description When it was said.
+       */
+      at: string;
+      /** @description `information`, `warning`, `error` or `critical`. */
+      level: string;
+      /** @description The part of the Server that said it, such as `Patina.Server.Autosave`. */
+      source: string;
+      /** @description What it said, and the exception's message after it when there was one. */
+      text: string;
+    };
+    /** @description The lines of the Server's log after a number, the oldest first (#192). */
+    ServerLogPage: {
+      /** @description The lines, at most int ServerLogPage.Most. */
+      entries: components['schemas']['ServerLogEntry'][];
+      /**
+       * Format: int64
+       * @description The number to ask after next: the last line's, or the one asked after when none came.
+       */
+      next: number;
+      /** @description Whether lines after the one asked after are gone, as only the latest are kept. */
+      dropped: boolean;
     };
     /**
      * @description The Server's settings that belong to the person and not to a library or project, kept in a plain file beside
@@ -9148,6 +9257,28 @@ export interface operations {
       };
     };
   };
+  GetServerLog: {
+    parameters: {
+      query?: {
+        after?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ServerLogPage'];
+        };
+      };
+    };
+  };
   GetPreferences: {
     parameters: {
       query?: never;
@@ -10931,6 +11062,57 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['MeshFacts'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetLibrarySettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LibrarySettingsRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryInfo'];
         };
       };
       /** @description Bad Request */
@@ -13650,7 +13832,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['LibraryTidied'];
+          'application/json': components['schemas']['LibraryCleaned'];
         };
       };
       /** @description Bad Request */

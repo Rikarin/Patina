@@ -45,8 +45,12 @@ import { ProjectStore } from './project-store';
               <span class="min-w-0 flex-1 leading-tight">
                 <span class="block truncate">{{ item.name }}</span>
                 <span class="text-foreground-muted block truncate text-xs" [title]="item.from">
-                  {{ item.kind === 'project' ? 'Project' : 'Document' }} from {{ where(item) }}, deleted
-                  {{ item.deleted | date: 'short' }}
+                  @if (item.kind === 'pictures') {
+                    Pictures nothing used, cleaned {{ item.deleted | date: 'short' }}
+                  } @else {
+                    {{ item.kind === 'project' ? 'Project' : 'Document' }} from {{ where(item) }}, deleted
+                    {{ item.deleted | date: 'short' }}
+                  }
                 </span>
               </span>
               @if (forgetting() === item.id) {

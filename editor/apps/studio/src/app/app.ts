@@ -886,6 +886,7 @@ export class App {
       run: () => this.layout.update(layout => showing(layout, 'checks'))
     });
     handle('showActivity', { checked: () => this.activity.open(), run: () => this.activity.toggle() });
+    handle('showLog', { run: () => this.activity.showLog() });
     handle('shortcuts', { run: () => this.keys.set(true) });
     handle('keyHelper', { run: () => this.helping.update(shown => !shown) });
     handle('preferences', { run: () => this.preferencesOpen.set(true) });
