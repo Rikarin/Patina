@@ -14,6 +14,12 @@ static partial class ServerLog {
     [LoggerMessage(Level = LogLevel.Warning, Message = "Could not autosave {Path}: {Reason}")]
     public static partial void AutosaveFailed(ILogger logger, string path, string reason);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Worker: {Text}")]
+    public static partial void WorkerWarned(ILogger logger, string text);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Worker: {Text}")]
+    public static partial void WorkerFailed(ILogger logger, string text);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Worker link lost: {Reason}")]
     public static partial void WorkerLost(ILogger logger, string reason);
 

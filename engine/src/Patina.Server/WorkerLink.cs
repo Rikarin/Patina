@@ -122,6 +122,17 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
             return IpcMessage.Ok(request.Id);
         }
 
+        if (request is { Type: IpcTypes.WorkerLog, Log: { } line }) {
+            // Into the Server's log, and so into the window on it every client reads (#297).
+            if (line.Error) {
+                ServerLog.WorkerFailed(logger, line.Text);
+            } else {
+                ServerLog.WorkerWarned(logger, line.Text);
+            }
+
+            return IpcMessage.Ok(request.Id);
+        }
+
         return Greet(request, hello);
     }
 

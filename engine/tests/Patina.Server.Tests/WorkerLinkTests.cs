@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Patina.Contracts;
@@ -41,6 +42,41 @@ public sealed class WorkerLinkTests {
 
                 Assert.False((await asked).IsCompleted, $"Round {round} was handed a closed connection.");
             }
+        } finally {
+            await link.StopAsync(Token);
+        }
+    }
+
+    /// <summary>
+    ///     What the Worker logs as a warning or an error reaches the Server's log, which every client reads (#297), and
+    ///     a Worker's line said before its link was up waits for it.
+    /// </summary>
+    [Fact]
+    public async Task The_worker_s_warnings_and_errors_reach_the_server_s_log() {
+        var socketPath = Patina.Testing.TempFolders.NewSocket();
+        var options = new ServerOptions { Worker = { SocketPath = socketPath } };
+        var ring = new LogRing();
+        using var factory = LoggerFactory.Create(builder => builder.AddProvider(ring));
+        using var link = new WorkerLink(Options.Create(options), factory.CreateLogger<WorkerLink>());
+        await link.StartAsync(Token);
+        try {
+            var stream = await IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(5), Token);
+            await using var worker = new IpcConnection(
+                stream,
+                static (request, _) => ValueTask.FromResult(IpcMessage.Ok(request.Id))
+            );
+            worker.Start();
+            var hello = new WorkerHello(IpcMessage.ProtocolVersion, ProductInfo.Version, Environment.ProcessId);
+            await worker.SendAsync(new() { Type = IpcTypes.Hello, Worker = hello }, Token);
+            await worker.SendAsync(new() { Type = IpcTypes.WorkerLog, Log = new(false, "the device is slow") }, Token);
+            await worker.SendAsync(new() { Type = IpcTypes.WorkerLog, Log = new(true, "the device was lost") }, Token);
+
+            var lines = ring.After(0).Entries.Where(static entry => entry.Text.StartsWith("Worker: ", StringComparison.Ordinal));
+
+            Assert.Equal(
+                [("warning", "Worker: the device is slow"), ("error", "Worker: the device was lost")],
+                lines.Select(static entry => (entry.Level, entry.Text))
+            );
         } finally {
             await link.StopAsync(Token);
         }

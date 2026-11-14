@@ -14,6 +14,12 @@ public static class IpcTypes {
     /// <summary>Server to Worker: answers with <see cref="IpcMessage.Health" />.</summary>
     public const string Health = "health";
 
+    /// <summary>
+    ///     Worker to Server: a warning or an error the Worker logged (<see cref="IpcMessage.Log" />), which the Server
+    ///     keeps in its own log for every client to read (#297).
+    /// </summary>
+    public const string WorkerLog = "worker.log";
+
     /// <summary>Server to Worker: read the mesh at <see cref="IpcMessage.Mesh" />.</summary>
     public const string ViewportOpen = "viewport.open";
 
@@ -240,7 +246,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 21;
+    public const int ProtocolVersion = 22;
 
     public string Type { get; set; } = string.Empty;
 
@@ -253,6 +259,9 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to health.</summary>
     public WorkerHealth? Health { get; set; }
+
+    /// <summary>worker.log: what the Worker logged.</summary>
+    public WorkerLogLine? Log { get; set; }
 
     /// <summary>bake.start: what to bake and where it goes.</summary>
     public StackLoad? StackLoad { get; set; }
@@ -509,6 +518,11 @@ public sealed record BuildEnding(BakeTicket Ticket, BuildManifest? Output, Expor
 /// <param name="Fraction">How far through the step, from 0 to 1.</param>
 /// <param name="File">What it is making now, for a person: a preset's file, with its texture set.</param>
 public sealed record BuildProgressNote(BakeTicket Ticket, double Fraction, string File);
+
+/// <summary>A line of the Worker's log that a person may need: a warning, or an error.</summary>
+/// <param name="Error">Whether it is an error, not a warning.</param>
+/// <param name="Text">What the Worker said.</param>
+public sealed record WorkerLogLine(bool Error, string Text);
 
 /// <summary>The Worker's hello.</summary>
 public sealed record WorkerHello(int Protocol, string Version, int ProcessId);
