@@ -81,11 +81,12 @@ public sealed class BakeMapKindsTests : IDisposable {
         var manifest = Bake("self", static options => options with { Maps = ["opacity", "islands"] });
         var opacity = Covered(Picture("self", "opacity"), Picture("self", "islands"));
 
-        // Only the outline misses: a texel a chart claims past its triangle's edge stands off the mesh, at a corner.
+        // The outline too (#287): a texel a chart claims past its triangle's edge is sampled on that edge, where a ray
+        // hit or missed by an ulp, and about one texel in a hundred read 0.
         Assert.NotEmpty(opacity);
-        Assert.True(opacity.Count(static value => value == 255) > opacity.Count * 0.98, "Rays missed the low mesh.");
+        Assert.All(opacity, static value => Assert.Equal(255, value));
         Assert.True(manifest.Result.Covered > 0);
-        Assert.True(manifest.Result.Missed * 50 < manifest.Result.Covered, $"{manifest.Result.Missed} texels missed.");
+        Assert.Equal(0, manifest.Result.Missed);
     }
 
     /// <summary>
