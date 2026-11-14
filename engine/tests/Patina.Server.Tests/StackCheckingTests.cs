@@ -193,6 +193,40 @@ public sealed class StackCheckingTests {
     }
 
     /// <summary>
+    ///     A platform's limits hold a set measured with its preset, each in place of the project's where it sets one,
+    ///     and a set measured with another preset is held to the project's. Nothing measured has no density, layout or
+    ///     values to judge, and says so.
+    /// </summary>
+    [Fact]
+    public void A_platforms_limits_hold_a_set_measured_with_its_preset() {
+        var state = Set("baseColor", "opacity", "roughness", "metalness", "normal", "occlusion");
+        var project = Project(
+            new() { MaxSize = 4096, TexelDensity = 512, Platforms = [new(Unreal.Id) { MaxSize = 512 }] }
+        );
+        var gltf = ExportPresetCatalog.Read(null).Find("gltf")!;
+
+        var forUnreal = StackChecking.Judge(state, null, project, 0, Unreal);
+        var forGltf = StackChecking.Judge(state, null, project, 0, gltf);
+
+        Assert.Equal([CheckCodes.TooLarge], forUnreal.Problems.Select(static problem => problem.Code));
+        Assert.Equal("512", forUnreal.Problems[0].Values["limit"]);
+        Assert.Equal(512, forUnreal.TargetDensity);
+        Assert.DoesNotContain(forGltf.Problems, static problem => problem.Code == CheckCodes.TooLarge);
+        Assert.False(forUnreal.Measured);
+        Assert.Equal(0, forUnreal.TexelDensity);
+        Assert.True(StackChecking.Judge(state, Square, project, 0, Unreal).Measured);
+    }
+
+    /// <summary>A platform names its preset once, and its limits are held to what the project's are.</summary>
+    [Fact]
+    public void A_platforms_limits_are_refused_where_the_projects_would_be() {
+        Assert.Null(new ProjectCheckSettings { Platforms = [new("unreal") { MaxSize = 1024 }] }.Problem());
+        Assert.NotNull(new ProjectCheckSettings { Platforms = [new(" ")] }.Problem());
+        Assert.NotNull(new ProjectCheckSettings { Platforms = [new("unreal"), new("unreal")] }.Problem());
+        Assert.NotNull(new ProjectCheckSettings { Platforms = [new("unreal") { MaxSize = -1 }] }.Problem());
+    }
+
+    /// <summary>
     ///     A value on a few stray texels is not worth a line; on more it is, with the place it was found.
     /// </summary>
     [Fact]
