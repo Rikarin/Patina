@@ -17,7 +17,7 @@ public sealed partial class GraphProcessTests {
 
         using var reply = await http.PutAsJsonAsync(
             "/api/v1/viewport/display",
-            new ViewportDisplay { Environment = sky },
+            new() { Environment = sky },
             ContractsJsonContext.Default.ViewportDisplay,
             deadline.Token
         );
@@ -45,7 +45,7 @@ public sealed partial class GraphProcessTests {
         var sky = GraphTesting.Write(Library, Sky(256, 128), "sky.vxtexgraph");
         using (var lit = await http.PutAsJsonAsync(
                    "/api/v1/viewport/display",
-                   new ViewportDisplay { Environment = sky },
+                   new() { Environment = sky },
                    ContractsJsonContext.Default.ViewportDisplay,
                    deadline.Token
                )) {
@@ -72,7 +72,7 @@ public sealed partial class GraphProcessTests {
 
         using var reply = await http.PutAsJsonAsync(
             "/api/v1/viewport/display",
-            new ViewportDisplay { Environment = file },
+            new() { Environment = file },
             ContractsJsonContext.Default.ViewportDisplay,
             deadline.Token
         );
