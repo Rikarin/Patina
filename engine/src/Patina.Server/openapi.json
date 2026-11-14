@@ -6250,6 +6250,47 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/channels/apply-to-all": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Gives each of the model\u0027s other texture sets the channels this set has and it lacks (#141), each starting as what leaves its material alone. A set open in a session takes them as one undo step of its own, left unsaved; a set nobody has open has them written to its file. Nothing is taken off a set. Says what each set was given, or why it was left alone.",
+        "operationId": "ApplyStackChannelsToAllSets",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackChannelsApplied"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks/{id}/brush-preview": {
       "post": {
         "tags": [
@@ -16566,6 +16607,60 @@
         },
         "description": "A channel a stack writes."
       },
+      "StackChannelsApplied": {
+        "required": [
+          "sets"
+        ],
+        "type": "object",
+        "properties": {
+          "sets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackChannelsSpread"
+            },
+            "description": "The model\u0027s other sets, the open ones first."
+          }
+        },
+        "description": "What Apply Channels to All Sets did, one entry for each other texture set of the model."
+      },
+      "StackChannelsSpread": {
+        "required": [
+          "set",
+          "path",
+          "added",
+          "open"
+        ],
+        "type": "object",
+        "properties": {
+          "set": {
+            "type": "string",
+            "description": "The set, by the material it paints."
+          },
+          "path": {
+            "type": "string",
+            "description": "Its stack file."
+          },
+          "added": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The channels it was given, by usage; none when it had them all or was left alone."
+          },
+          "open": {
+            "type": "boolean",
+            "description": "Whether it is open in a session, which took the channels as an undo step of its own, unsaved. A set nobody has\nopen had them written to its file."
+          },
+          "problem": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why it was left as it was, or null."
+          }
+        },
+        "description": "What Apply Channels to All Sets did to one other texture set of the model (#141)."
+      },
       "StackChecks": {
         "required": [
           "stack",
@@ -20491,7 +20586,7 @@
           },
           "overflow": {
             "type": "string",
-            "description": "What happens when the islands do not fit at that density: \u0060shrink\u0060 scales them all down, and\n\u0060refuse\u0060 stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one\ntile."
+            "description": "What happens when the islands do not fit at that density: \u0060shrink\u0060 scales them all down, and\n\u0060refuse\u0060 stops and says so. Spilling into a second UDIM tile is not offered while a texture set\npaints one tile."
           }
         },
         "description": "How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own."

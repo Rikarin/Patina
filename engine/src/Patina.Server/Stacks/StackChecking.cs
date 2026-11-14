@@ -310,8 +310,8 @@ public static class StackChecking {
             yield return Problem(
                 CheckCodes.UvOutside,
                 Warning,
-                $"{measures.Outside} of {name}'s triangles reach past UDIM tile 1001, which is the only tile Patina "
-                + "paints.",
+                $"{measures.Outside} of {name}'s triangles reach past its UDIM tile, and a texture set paints one "
+                + "tile.",
                 new() { ["count"] = Number(measures.Outside) },
                 At(CheckCodes.UvOutside)
             );

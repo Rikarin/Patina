@@ -38,13 +38,17 @@ public static class ExportSteps {
         return [
             ..sets.Select(set => {
                     Dictionary<string, MapPicture> maps = new(StringComparer.Ordinal);
+                    var udim = OneTile.First;
                     foreach (var source in sources.Where(s => s.Set.Length == 0 || s.Set == set)) {
                         foreach (var map in MapPictures.Read(source.Folder, source.Manifest)) {
                             maps[map.Name] = map;
                         }
+
+                        // The stack's own object says its tile; a bake's says the first (#20).
+                        udim = source.Manifest.Udim != OneTile.First ? source.Manifest.Udim : udim;
                     }
 
-                    return new ExportSet(set, maps);
+                    return new ExportSet(set, maps) { Udim = udim };
                 }
             )
         ];

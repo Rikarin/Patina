@@ -32,8 +32,8 @@ class UnwrapOptions:
             texel_density (float): Texels per world unit every island is scaled to, or zero for each island at its own
                 scale.
             overflow (str): What happens when the islands do not fit at that density: `shrink` scales them all down, and
-                `refuse` stops and says so. Spilling into a second UDIM tile is not offered while Patina paints one
-                tile.
+                `refuse` stops and says so. Spilling into a second UDIM tile is not offered while a texture set
+                paints one tile.
      """
 
     resolution: int

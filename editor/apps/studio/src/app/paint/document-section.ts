@@ -212,7 +212,23 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
             Remove Channel…
           </button>
         }
+        @if (project.textureSets().length > 1) {
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            title="Give the model’s other texture sets the channels this one has. Nothing is taken off them."
+            data-testid="paint-apply-channels"
+            (click)="applyChannels()"
+          >
+            Apply to All Sets
+          </button>
+        }
       </div>
+      @if (applied(); as said) {
+        <p class="text-foreground-muted text-xs" role="status" data-testid="paint-applied-channels">{{ said }}</p>
+      }
     }
 
     <ng-template #channelMenu>
@@ -294,6 +310,22 @@ export class DocumentSection {
     if (!left.includes(this.store.channel()) && left[0]) {
       this.store.showChannel(left[0]);
     }
+  }
+
+  /** What Apply to All Sets did last, one sentence, until the document changes. */
+  protected readonly applied = signal<string | null>(null);
+
+  /** Gives the model's other texture sets this one's channels, and says what each was given (#141). */
+  protected async applyChannels(): Promise<void> {
+    const result = await this.store.applyChannelsToAllSets();
+    const said = result.sets.map(set =>
+      set.problem
+        ? `${set.set || set.path}: ${set.problem}`
+        : set.added.length > 0
+          ? `${set.set} gained ${set.added.map(usage => this.nameOf(usage)).join(', ')}.`
+          : `${set.set} had them all.`
+    );
+    this.applied.set(said.length > 0 ? said.join(' ') : 'The model has no other texture set.');
   }
 
   /** The sides a set can have, from the engine, and the ones it has even if the list has not. */

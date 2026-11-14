@@ -252,6 +252,8 @@ from .stack_brush import StackBrush
 from .stack_brush_preview import StackBrushPreview
 from .stack_brush_terms import StackBrushTerms
 from .stack_channel import StackChannel
+from .stack_channels_applied import StackChannelsApplied
+from .stack_channels_spread import StackChannelsSpread
 from .stack_checks import StackChecks
 from .stack_clip import StackClip
 from .stack_clip_request import StackClipRequest
@@ -659,6 +661,8 @@ __all__ = (
     "StackBrushPreview",
     "StackBrushTerms",
     "StackChannel",
+    "StackChannelsApplied",
+    "StackChannelsSpread",
     "StackChecks",
     "StackClip",
     "StackClipRequest",

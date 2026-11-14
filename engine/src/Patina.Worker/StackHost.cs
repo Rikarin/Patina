@@ -868,6 +868,11 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
                 return;
             }
 
+            // A canvas painted at its own larger size (#19) is dirtied in its own texels, which narrow no map's tiles.
+            if (part.Width > 0 && (part.Width, part.Height) != (document.BaseWidth, document.BaseHeight)) {
+                unknown = true;
+            }
+
             if (stroke.Curve is { } curve) {
                 Bend(stroke.Stroke, curve, part);
             } else if (stroke is { Fill: true, Outline: true }) {

@@ -87,7 +87,7 @@ public static class CheckCodes {
         AlbedoDark, AlbedoBright, MetalDark, MetalPartial
     ];
 
-    /// <summary>Triangles laid out past UDIM tile 1001, which is all Patina paints. Values: <c>count</c>.</summary>
+    /// <summary>Triangles laid out past their texture set's one UDIM tile. Values: <c>count</c>.</summary>
     public const string UvOutside = "uv-outside";
 
     /// <summary>
@@ -161,7 +161,7 @@ public sealed record CheckProblem(
 /// <param name="Triangles">How many triangles the set has.</param>
 /// <param name="SurfaceArea">Their area on the model, in its units squared.</param>
 /// <param name="MapArea">Their area in the layout, where the whole tile is one, counting an overlap each time.</param>
-/// <param name="Outside">Triangles with a corner past UDIM tile 1001.</param>
+/// <param name="Outside">Triangles with a corner past the one UDIM tile the set paints.</param>
 /// <param name="Degenerate">Triangles with area on the model and none in the layout.</param>
 /// <param name="Flipped">Triangles turned over in the layout against most of the set.</param>
 /// <param name="Overlap">The share of the texels the layout covers that more than one triangle covers.</param>
