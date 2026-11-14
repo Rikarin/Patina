@@ -213,8 +213,8 @@ public sealed class BrushApiTests : IAsyncLifetime {
     }
 
     /// <summary>
-    ///     A stamp lies on the picture or on the surface (#123), and the vocabulary offers both, so a client keeps no list
-    ///     of its own; a word for anything else is refused.
+    ///     A stamp lies on the picture or on the surface (#123), and the vocabulary offers both, so a client keeps no
+    ///     list of its own; a word for anything else is refused.
     /// </summary>
     [Fact]
     public void A_stamp_lies_on_the_picture_or_on_the_surface_and_nothing_else() {
