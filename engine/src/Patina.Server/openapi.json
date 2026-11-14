@@ -9363,6 +9363,13 @@
           "colour": {
             "description": "Where the colour map\u0027s colour comes from.",
             "$ref": "#/components/schemas/BakeColourOptions"
+          },
+          "tileable": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether the maps repeat without a seam (#212): a high-poly patch baked onto a flat low patch, the high meshes\nlaid again on each side of the low mesh\u0027s box so a ray near an edge meets what lies beyond it when the\nmaterial repeats. Null or false bakes the high meshes once, as they are."
           }
         },
         "description": "How a bake runs, with no meshes in it: what a project keeps between bakes and every client sends. Each map\u0027s\nown settings are a part of their own."

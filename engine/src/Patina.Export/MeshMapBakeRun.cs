@@ -52,8 +52,10 @@ public static class MeshMapBakeRun {
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        var high = ModelGeometry.Flatten(files);
         var low = Read(request.Low, request.Material, request.UvSet ?? 0);
+        var high = ModelGeometry.Flatten(
+            request.Options.Tileable == true ? BakeTiling.Around(files, low.Mesh.Bounds) : files
+        );
         cancellationToken.ThrowIfCancellationRequested();
 
         if (low.Mesh.TexCoords.Length != low.Mesh.CornerCount) {

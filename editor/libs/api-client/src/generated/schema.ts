@@ -2663,6 +2663,12 @@ export interface components {
       rounding: components['schemas']['BakeRoundingOptions'];
       /** @description Where the colour map's colour comes from. */
       colour: components['schemas']['BakeColourOptions'];
+      /**
+       * @description Whether the maps repeat without a seam (#212): a high-poly patch baked onto a flat low patch, the high meshes
+       *     laid again on each side of the low mesh's box so a ray near an edge meets what lies beyond it when the
+       *     material repeats. Null or false bakes the high meshes once, as they are.
+       */
+      tileable?: null | boolean;
     };
     /** @description How the position map turns a point on the high poly mesh into a value (#148). */
     BakePositionOptions: {
