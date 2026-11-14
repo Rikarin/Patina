@@ -196,7 +196,7 @@ public sealed class ExportPresetTests : IDisposable {
         var decoded = ImageDecoders.BuiltIn.SelectMany(static d => d.Extensions).Append(".exr").ToHashSet();
 
         Assert.Subset(decoded, PictureFormats.Pictures.ToHashSet());
-        Assert.Subset(PictureFormats.Pictures.ToHashSet(), PictureFormats.Environments.ToHashSet());
+        Assert.Subset(PictureFormats.Pictures.ToHashSet(), PictureFormats.Panoramas.ToHashSet());
     }
 
     [Theory]
