@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A radial symmetry is drawn on the model as a mirror's is (#132): a cyan line from its axis across the surface between each of its copies, hidden where the model hides it and left off parts an isolation hides, where only a mirror's plane was drawn before.
+
 - Keep Layer to Quick Mask, in the Tools menu while the quick mask is on (#282): the chosen layer gets a mask entry that is a copy of the quick mask, so a fill, a decal or a path, which no stroke lays, shows only where the quick mask is painted, or only where it is not while it is inverted. The entry is the layer's own and is saved with it, and can be painted or removed as any other. Through the API the stack command `keepQuickMask`.
 
 - Fill past the dilation, a switch in the Bake dialog (#148): the texture past each chart's dilation is filled with a smooth blend of the maps around it, so its smallest mipmaps keep the maps' own values instead of fading to the empty background. Nothing the charts or the dilation wrote changes, and the ID, UV Islands and UV Borders maps keep their background. Through the API the bake option `diffusion`.
