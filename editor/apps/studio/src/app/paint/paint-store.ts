@@ -120,6 +120,18 @@ export type BrushSettings = Omit<StackBrush, 'radius'>;
 
 export type PaintTool = 'brush' | 'eraser' | 'smudge' | 'clone' | 'projection' | 'fill' | 'line' | 'path' | 'picker';
 
+/** What the line and path tools do along themselves (#130): lay the colour, take paint away, or drag what is there. */
+export type CurveAction = 'paint' | 'erase' | 'smudge';
+
+/** The tool a line or a path strokes as, for what it does along itself. */
+export function curveTool(tool: PaintTool, action: CurveAction): PaintTool {
+  if (tool !== 'line' && tool !== 'path') {
+    return tool;
+  }
+
+  return action === 'erase' ? 'eraser' : action === 'smudge' ? 'smudge' : tool;
+}
+
 /** Whether two colours of a selection are one, as an id map's 8-bit texels read back. */
 export function sameColour(left: readonly number[], right: readonly number[]): boolean {
   return [0, 1, 2].every(lane => Math.abs((left[lane] ?? 0) - (right[lane] ?? 0)) < 0.002);
@@ -464,6 +476,8 @@ export class PaintStore {
    * its path, until it is set back to null.
    */
   readonly placing = signal<'decal' | 'path' | null>(null);
+  /** What the line and path tools do along themselves (#130): paint, erase or smudge, as the brush tools do. */
+  readonly curveAction = signal<CurveAction>('paint');
   /**
    * A path copied from a fill, to paste onto another (#130). It is numbers alone, its points in the model's space, so
    * the app holds it rather than the Server.
@@ -1958,7 +1972,7 @@ export class PaintStore {
     since: number,
     outline = false
   ): Promise<void> {
-    const tool = this.tool();
+    const tool = curveTool(this.tool(), this.curveAction());
     const picture = this.screenPicture();
     if (tool === 'projection' && !this.projectsMaterial() && !picture) {
       return;
