@@ -5,9 +5,10 @@ using Patina.Library;
 namespace Patina.Server;
 
 /// <summary>
-///     Holds the open library's cache to the room the person allows it (#189, <see cref="ServerPreferences.CacheBudget" />):
-///     every few minutes, while no bake or build is queued or running, the built objects, bakes and reports used
-///     longest ago go until the cache fits, as Prune would take them. A later build makes them again.
+///     Holds the open library's cache to the room the person allows it (#189,
+///     <see cref="ServerPreferences.CacheBudget" />): every few minutes, while no bake or build is queued or running,
+///     the built objects, bakes and reports used longest ago go until the cache fits, as Prune would take them. A
+///     later build makes them again.
 /// </summary>
 public sealed class CacheBudget(
     LibraryHost host,

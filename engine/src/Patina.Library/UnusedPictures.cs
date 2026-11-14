@@ -107,7 +107,7 @@ public static class UnusedPictures {
     /// <param name="Below">Its path below the library.</param>
     /// <param name="Project">Its project's folder.</param>
     /// <param name="Own">Its name in its own project, as <see cref="LibraryNameReader" /> writes names.</param>
-    /// <param name="Folder">Its project folder's name, which a file elsewhere writes before <paramref name="Own" />.</param>
+    /// <param name="Folder">Its project folder's name, written before <paramref name="Own" /> from elsewhere.</param>
     sealed record Picture(string Below, string Project, string Own, string Folder);
 }
 
@@ -130,7 +130,7 @@ static class LibraryReaders {
     public static Dictionary<string, HashSet<LibraryName>?> ReadAll(string root, IReadOnlyList<string> files) =>
         files.ToDictionary(static file => file, LibraryNameReader.ReadFile, StringComparer.Ordinal);
 
-    /// <summary>Every reader: the open documents by what they hold now, and every file by what it holds saved.</summary>
+    /// <summary>Every reader: the open documents by what they hold now, and every file by what it holds.</summary>
     public static List<LibraryReader> Of(
         string root,
         IReadOnlyDictionary<string, string> open,
@@ -151,7 +151,7 @@ static class LibraryReaders {
         return readers;
     }
 
-    /// <summary>The library's files that are not pictures or paint, outside the cache, the bin, uploads and Git.</summary>
+    /// <summary>The library's files but pictures and paint, outside the cache, the bin, uploads and Git.</summary>
     static List<string> Files(string root) {
         var skipped = Unread.Select(folder => Path.Combine(root, folder) + Path.DirectorySeparatorChar).ToList();
         return [

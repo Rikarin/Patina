@@ -8,13 +8,13 @@ namespace Patina.Library;
 ///     file in the library's uploads, from its folder's name on. Both are lower case, with forward slashes.
 /// </summary>
 /// <param name="Before">The text right before the name, back to a slash, when a slash comes just before it.</param>
-/// <param name="Name">The name, from <c>pictures/</c> or <c>uploads/</c> to the end of a picture's or a mesh's extension.</param>
+/// <param name="Name">The name, from <c>pictures/</c> or <c>uploads/</c> to the end of a known extension.</param>
 readonly record struct LibraryName(string Before, string Name);
 
 /// <summary>
-///     Finds the names of pictures and uploads in a file's text, however it writes them: either slash, a JSON string's
-///     doubled backslash, a link's <c>%20</c> for a space, any case. What it finds errs towards more: every way the text
-///     could end a name with a known extension is one, so a name is found wherever the text holds it.
+///     Finds the names of pictures and uploads in a file's text, however it writes them: either slash, a JSON
+///     string's doubled backslash, a link's <c>%20</c> for a space, any case. What it finds errs towards more: every
+///     way the text could end a name with a known extension is one, so a name is found wherever the text holds it.
 /// </summary>
 static class LibraryNameReader {
     /// <summary>The largest file read for names. A larger one is taken to name anything (null names).</summary>
@@ -35,7 +35,9 @@ static class LibraryNameReader {
     /// <summary>The names a file holds, or null when it is too large to read.</summary>
     public static HashSet<LibraryName>? ReadFile(string file) {
         try {
-            return new FileInfo(file).Length > MostRead ? null : Read(Encoding.UTF8.GetString(SharedFile.ReadAllBytes(file)));
+            return new FileInfo(file).Length > MostRead
+                ? null
+                : Read(Encoding.UTF8.GetString(SharedFile.ReadAllBytes(file)));
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
             return []; // gone as it was read
         }

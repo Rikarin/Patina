@@ -1,5 +1,3 @@
-using Patina.Contracts;
-
 namespace Patina.Library.Tests;
 
 /// <summary>
@@ -86,7 +84,10 @@ public sealed class LibraryCleanTests : IDisposable {
         var openOnly = Upload("dddd", "high.fbx", DateTime.UtcNow.AddDays(-1));
         var crate = Project("crate");
         File.AppendAllText(Path.Combine(crate, LibraryLayout.ProjectFile), $"\nsource: '{used}'\n");
-        Dictionary<string, string> open = new() { [Path.Combine(crate, "crate.vxlayers")] = $$"""{"high":"{{openOnly.Replace("\\", "\\\\", StringComparison.Ordinal)}}"}""" };
+        var escaped = openOnly.Replace("""\""", """\\""", StringComparison.Ordinal);
+        Dictionary<string, string> open = new() {
+            [Path.Combine(crate, "crate.vxlayers")] = $$"""{"high":"{{escaped}}"}"""
+        };
 
         var listed = library.Care.UnusedUploads(open);
 

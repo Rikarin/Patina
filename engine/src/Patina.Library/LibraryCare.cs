@@ -3,9 +3,9 @@ using Patina.Contracts;
 namespace Patina.Library;
 
 /// <summary>
-///     Looking after an open library's room (#162, #297): its bin, and Clean, which takes away the copies of moved paint
-///     and puts the pictures and uploads nothing uses in the bin. Each runs under the library's own write lock, as every
-///     other change to its files does, so a Clean never meets a project being moved or a picture being brought in.
+///     Looking after an open library's room (#162, #297): its bin, and Clean, which takes away the copies of moved
+///     paint and puts the pictures and uploads nothing uses in the bin. Each runs under the library's own write lock,
+///     as every other change to its files does, so a Clean never meets a project being moved or a picture brought in.
 /// </summary>
 public sealed class LibraryCare {
     readonly string root;
@@ -72,7 +72,7 @@ public sealed class LibraryCare {
         }
     }
 
-    /// <summary>Moves the files sent from another computer that nothing names into the bin, as one entry (#297).</summary>
+    /// <summary>Moves the files sent from elsewhere that nothing names to the bin, as one entry (#297).</summary>
     /// <param name="open">The open documents' text by their full path.</param>
     public UploadsCleared ClearUploads(IReadOnlyDictionary<string, string> open) {
         lock (gate) {

@@ -52,7 +52,7 @@ static class TempFolders {
         SweepSockets(cutoff);
     }
 
-    /// <summary>A new socket path for a test's Server and Worker, which <see cref="Sweep" /> knows as a test's.</summary>
+    /// <summary>A new socket path for a test's Server and Worker, which <see cref="Sweep" /> knows.</summary>
     public static string NewSocket() => Path.Combine(Path.GetTempPath(), $"patina-test-{Guid.NewGuid():N}.sock");
 
     /// <summary>

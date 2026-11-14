@@ -158,7 +158,7 @@ public static class Recovery {
     /// </summary>
     /// <param name="from">The place chosen before.</param>
     /// <param name="to">The place chosen now, or null for each library's cache.</param>
-    /// <param name="open">The library open now, which knows its folder in <paramref name="from" /> without a marker.</param>
+    /// <param name="open">The library open now, whose folder in <paramref name="from" /> needs no marker.</param>
     /// <param name="sparing">The autosaves being written.</param>
     /// <returns>How many autosaves moved.</returns>
     public static int Move(string from, string? to, string? open, IReadOnlySet<string> sparing) {
@@ -184,7 +184,7 @@ public static class Recovery {
         return moved;
     }
 
-    /// <summary>Moves one library's autosaves, document by document, and lets go of its folder once it is empty.</summary>
+    /// <summary>Moves one library's autosaves, document by document, and lets go of its emptied folder.</summary>
     static int MoveLibrary(string library, string target, bool marked, IReadOnlySet<string> sparing) {
         var marker = Path.Combine(library, LibraryMarker);
         if (marked && File.Exists(marker)) {
@@ -229,7 +229,7 @@ public static class Recovery {
         SharedFile.MoveFolder(partial, to);
     }
 
-    /// <summary>The library a folder of a chosen place keeps autosaves for, while that library is still there.</summary>
+    /// <summary>The library a folder of a chosen place keeps autosaves for, while that library is there.</summary>
     static string? LibraryOf(string library, string from, string? open) {
         var marker = Path.Combine(library, LibraryMarker);
         var root = File.Exists(marker) ? SharedFile.ReadAllText(marker).Trim()

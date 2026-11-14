@@ -46,8 +46,8 @@ public sealed partial class LibraryTreeApiTests {
     }
 
     /// <summary>
-    ///     A file over the limit is refused with a code before any of it is kept (#297): the Server here takes 1 MiB, the
-    ///     product 4 GiB, by the same check.
+    ///     A file over the limit is refused with a code before any of it is kept (#297): the Server here takes 1 MiB,
+    ///     the product 4 GiB, by the same check.
     /// </summary>
     [Fact]
     public async Task A_file_over_the_limit_is_refused_and_nothing_is_kept() {

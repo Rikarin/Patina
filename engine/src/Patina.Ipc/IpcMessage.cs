@@ -14,10 +14,7 @@ public static class IpcTypes {
     /// <summary>Server to Worker: answers with <see cref="IpcMessage.Health" />.</summary>
     public const string Health = "health";
 
-    /// <summary>
-    ///     Worker to Server: a warning or an error the Worker logged (<see cref="IpcMessage.Log" />), which the Server
-    ///     keeps in its own log for every client to read (#297).
-    /// </summary>
+    /// <summary>Worker to Server: a warning or an error it logged (<see cref="IpcMessage.Log" />).</summary>
     public const string WorkerLog = "worker.log";
 
     /// <summary>Server to Worker: read the mesh at <see cref="IpcMessage.Mesh" />.</summary>
@@ -518,11 +515,6 @@ public sealed record BuildEnding(BakeTicket Ticket, BuildManifest? Output, Expor
 /// <param name="Fraction">How far through the step, from 0 to 1.</param>
 /// <param name="File">What it is making now, for a person: a preset's file, with its texture set.</param>
 public sealed record BuildProgressNote(BakeTicket Ticket, double Fraction, string File);
-
-/// <summary>A line of the Worker's log that a person may need: a warning, or an error.</summary>
-/// <param name="Error">Whether it is an error, not a warning.</param>
-/// <param name="Text">What the Worker said.</param>
-public sealed record WorkerLogLine(bool Error, string Text);
 
 /// <summary>The Worker's hello.</summary>
 public sealed record WorkerHello(int Protocol, string Version, int ProcessId);

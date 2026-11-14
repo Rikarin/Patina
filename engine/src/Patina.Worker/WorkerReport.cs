@@ -24,10 +24,12 @@ sealed class WorkerReport(TextWriter console) {
         console.WriteLineAsync(text.AsMemory(), cancellationToken);
 
     /// <summary>A warning, for the console and the Server.</summary>
-    public Task WarnAsync(string text) => TellAsync(new(false, text));
+    public Task WarnAsync(string text, CancellationToken cancellationToken = default) =>
+        TellAsync(new(false, text), cancellationToken);
 
     /// <summary>An error, for the console and the Server.</summary>
-    public Task FailAsync(string text) => TellAsync(new(true, text));
+    public Task FailAsync(string text, CancellationToken cancellationToken = default) =>
+        TellAsync(new(true, text), cancellationToken);
 
     /// <summary>A writer whose every line is an error, for what takes a writer.</summary>
     public TextWriter Failures => new FailureWriter(this);
@@ -50,21 +52,21 @@ sealed class WorkerReport(TextWriter console) {
     }
 
     /// <summary>Waits a little for what was sent to arrive: the Worker is about to end.</summary>
-    public async Task SentAsync(TimeSpan patience) {
+    public async Task SentAsync(TimeSpan patience, CancellationToken cancellationToken = default) {
         Task last;
         lock (gate) {
             last = sending;
         }
 
         try {
-            await last.WaitAsync(patience).ConfigureAwait(false);
+            await last.WaitAsync(patience, cancellationToken).ConfigureAwait(false);
         } catch (TimeoutException) {
             // Not there in time: the console has it.
         }
     }
 
-    async Task TellAsync(WorkerLogLine line) {
-        await console.WriteLineAsync(line.Text).ConfigureAwait(false);
+    async Task TellAsync(WorkerLogLine line, CancellationToken cancellationToken) {
+        await console.WriteLineAsync(line.Text.AsMemory(), cancellationToken).ConfigureAwait(false);
         lock (gate) {
             if (link is { Closed.IsCompleted: false } connection) {
                 Send(connection, line);
@@ -89,7 +91,9 @@ sealed class WorkerReport(TextWriter console) {
         try {
             await connection.SendAsync(new() { Type = IpcTypes.WorkerLog, Log = line }, CancellationToken.None)
                 .ConfigureAwait(false);
-        } catch (Exception e) when (e is IOException or IpcException or ObjectDisposedException
+        } catch (Exception e) when (e is IOException
+                                        or IpcException
+                                        or ObjectDisposedException
                                         or OperationCanceledException) {
             // The link went as it was said; the console has it.
         }
@@ -99,14 +103,17 @@ sealed class WorkerReport(TextWriter console) {
     sealed class FailureWriter(WorkerReport report) : TextWriter {
         public override Encoding Encoding => Encoding.UTF8;
 
-        public override void WriteLine(string? value) => report.FailAsync(value ?? string.Empty).GetAwaiter().GetResult();
+        public override void WriteLine(string? value) => _ = report.FailAsync(value ?? string.Empty);
 
         public override Task WriteLineAsync(string? value) => report.FailAsync(value ?? string.Empty);
 
-        public override Task WriteLineAsync(ReadOnlyMemory<char> buffer, CancellationToken cancellationToken = default) =>
-            report.FailAsync(buffer.ToString());
+        public override Task WriteLineAsync(
+            ReadOnlyMemory<char> buffer,
+            CancellationToken cancellationToken = default
+        ) =>
+            report.FailAsync(buffer.ToString(), cancellationToken);
 
         public override async Task FlushAsync(CancellationToken cancellationToken) =>
-            await report.SentAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+            await report.SentAsync(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
     }
 }

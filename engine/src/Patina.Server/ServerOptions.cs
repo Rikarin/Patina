@@ -22,8 +22,9 @@ public sealed class ServerOptions {
     public string? DiscoveryFile { get; set; }
 
     /// <summary>
-    ///     The largest file a client may send the library, or null for <see cref="Patina.Library.LibraryUploads.MostBytes" />:
-    ///     a test lowers it to see a file over it refused without sending gigabytes.
+    ///     The largest file a client may send the library, or null for
+    ///     <see cref="Patina.Library.LibraryUploads.MostBytes" />: a test lowers it to see a file over it refused
+    ///     without sending gigabytes.
     /// </summary>
     public long? UploadMostBytes { get; set; }
 

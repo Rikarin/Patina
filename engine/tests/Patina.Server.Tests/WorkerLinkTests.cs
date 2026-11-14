@@ -71,7 +71,8 @@ public sealed class WorkerLinkTests {
             await worker.SendAsync(new() { Type = IpcTypes.WorkerLog, Log = new(false, "the device is slow") }, Token);
             await worker.SendAsync(new() { Type = IpcTypes.WorkerLog, Log = new(true, "the device was lost") }, Token);
 
-            var lines = ring.After(0).Entries.Where(static entry => entry.Text.StartsWith("Worker: ", StringComparison.Ordinal));
+            var lines = ring.After(0)
+                .Entries.Where(static entry => entry.Text.StartsWith("Worker: ", StringComparison.Ordinal));
 
             Assert.Equal(
                 [("warning", "Worker: the device is slow"), ("error", "Worker: the device was lost")],

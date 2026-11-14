@@ -32,7 +32,7 @@ sealed class WorkerLoop(
             try {
                 await RunLinkAsync(socketPath, log, cancellationToken);
             } catch (Exception e) when (e is IOException or IpcException or System.Net.Sockets.SocketException) {
-                await log.WarnAsync($"patina-worker: {e.Message}");
+                await log.WarnAsync($"patina-worker: {e.Message}", CancellationToken.None);
             } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 return;
             }

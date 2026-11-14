@@ -56,7 +56,7 @@ static class UnusedUploads {
         ];
     }
 
-    /// <summary>Moves the uploads nothing names into the bin, as one entry, and lets go of their emptied folders.</summary>
+    /// <summary>Moves the uploads nothing names to the bin, as one entry, and lets go of emptied folders.</summary>
     /// <returns>The entry, or null when every upload is named, how many went, and the room they take.</returns>
     public static (BinItem? Item, int Count, long Bytes) Bin(
         string root,
