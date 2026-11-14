@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A texturing project bakes at the size it was made at (#144): New Project at 1024 or 4096 sets the project's bakes to that width, where every project baked at 2048 whatever its size. Each set's height still follows the set.
 - Properties has the project's settings under the document (#201): a Project section, folded to start with, sets the mesh every texturing document of the project is on, Auto Unwrap and its options, and Preserve Paint, with Apply and Revert of its own, so changing them no longer takes a dialog. Project Settings stays for a project with nothing open, and while it is open the section steps aside.
 - A folder is chosen, never typed, outside the desktop app too (#4): the Bake dialog's output folder, Export's output folder, Export Painted Work and a layer's Export Alone open Choose a Folder, which lists every project's folders, this project's first, and the library's exports folder's, found by name. The desktop app keeps its own folder dialog. Through the API `GET /api/v1/library/files?kind=folder`.
 - A compound's Color parameter can follow the one around it (#272): a compound inside a compound set to `$Tint` takes the outer compound's Color parameter `Tint`, as a Text parameter's `$` reference does. Arithmetic over a color, such as `tint * 0.5`, is refused with a sentence that says a color can't be computed with, instead of an unknown name.
