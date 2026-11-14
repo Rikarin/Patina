@@ -1830,6 +1830,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/graph': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Writes the graph the stack's shown texture set stands for into its project, as a new graph document beside it. The stack is left as it is, and nothing keeps the two in step. */
+    post: operations['WriteStackGraph'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks/{id}/instances': {
     parameters: {
       query?: never;
@@ -7721,6 +7738,26 @@ export interface components {
        * @default false
        */
       tiled: boolean;
+    };
+    /** @description What writing a stack's graph made. */
+    StackGraphMade: {
+      /** @description The graph document, below the library, as a project lists it. */
+      path: string;
+      /** @description The name it was given, with a number when the one asked for was taken. */
+      name: string;
+      /**
+       * @description What the stack had to say as it became a graph, such as a layer whose source is missing: the graph has the
+       *     rest.
+       */
+      problems: string[];
+    };
+    /**
+     * @description Writes the graph a layer stack stands for into its project, beside it, as a new graph document (#205). The stack
+     *     is left as it is: the graph is a copy to take further, and nothing keeps the two in step.
+     */
+    StackGraphRequest: {
+      /** @description What the graph is called. A name the project already has gets a number after it. */
+      name: string;
     };
     /** @description One colour of a stack's id map. */
     StackIdColour: {
@@ -15149,6 +15186,59 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  WriteStackGraph: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackGraphRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackGraphMade'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
         headers: {
           [name: string]: unknown;
         };

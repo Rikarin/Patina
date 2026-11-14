@@ -54,7 +54,7 @@ public static class StackNodeKinds {
     /// <summary>Every node type a stack in <paramref name="folder" /> can run, with its project's compounds.</summary>
     public static IReadOnlyList<NodeTypeDefinition> Types(string? folder) => [..Registry(folder, out _).Types];
 
-    static NodeTypeRegistry Registry(string? folder, out ISubGraphSource compounds) {
+    internal static NodeTypeRegistry Registry(string? folder, out ISubGraphSource compounds) {
         // Patina's own compounds publish beside Vixen's, as they do for the Worker that runs the stack.
         FactoryCompounds.Register();
         NodeTypeRegistry library = new();

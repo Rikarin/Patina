@@ -8,6 +8,7 @@ using Vixen.Interchange;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
 using Vixen.TextureGraph.Drawing;
+using Vixen.Texturing.Painting;
 
 namespace Patina.Graphs;
 
@@ -84,6 +85,8 @@ public sealed class GraphPictures {
 
                 if (reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)) {
                     (stamp, picture) = ReadMeshMap(reference[MeshMapScheme.Length..], meshMaps);
+                } else if (PaintReference.Claims(reference)) {
+                    (stamp, picture) = ReadPaint(reference, roots);
                 } else {
                     stamp = StampOf(Locate(reference, roots));
                     picture = Read(stamp);
@@ -167,6 +170,38 @@ public sealed class GraphPictures {
         // ⚠ At the depth it was baked, as half-floats: read at eight bits, a position map held 256 places across the
         // model and a volume noise finer than that drew stairs.
         return (stamp, Keep(stamp, Widened(BakedMapPicture.ReadDeep(found.Path, found.Map, found.Format))));
+    }
+
+    /// <summary>
+    ///     One channel of a painted canvas, as a layer stack names it and a graph opened from one keeps naming it (#205):
+    ///     the file beside the graph, as it was last saved. A channel never painted is clear, as it is in the stack.
+    /// </summary>
+    (PictureStamp Stamp, Decoded Picture) ReadPaint(string reference, IReadOnlyList<string> roots) {
+        if (!PaintReference.TryParse(reference, out var relative, out var usage)) {
+            throw new InvalidDataException("it does not name both a painted file and one of its channels");
+        }
+
+        var stamp = StampOf(Locate(relative, roots));
+        // One file holds a picture per channel, so each channel is kept under its own name.
+        var key = stamp with { Path = $"{stamp.Path}|{usage}" };
+        if (decoded.TryGetValue(key, out var known)) {
+            return (stamp, known);
+        }
+
+        PaintCanvas canvas;
+        using (var stream = SharedFile.OpenRead(stamp.Path)) {
+            canvas = PaintCanvas.Read(stream);
+        }
+
+        if (!canvas.Has(usage)) {
+            return (stamp, new(1, 1, [0, 0, 0, 0], TextureFormat.Rgba8));
+        }
+
+        var image = canvas.Channel(usage);
+        var format = image.Format == PaintTexelFormat.Rgba8
+            ? TextureFormat.Rgba8
+            : PaintTexelFormats.Texture(image.Format);
+        return (stamp, Keep(key, new(image.Width, image.Height, image.ToTexels(), format)));
     }
 
     static PictureStamp StampOf(string path) {
