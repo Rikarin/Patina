@@ -46,8 +46,8 @@ public sealed class ViewportRenderer : IDisposable {
     /// <summary>The mesh the marks were last made for, so a new one, or a new isolation, makes them again.</summary>
     ViewportMesh? markedOn;
 
-    /// <summary>A symmetry's mirror, whose line across the model is drawn with the marks (#132), or null.</summary>
-    (int Axis, bool Origin, float Offset)? mirror;
+    /// <summary>A symmetry, whose lines across the model are drawn with the marks (#132), or null.</summary>
+    ViewportMirror? mirror;
 
     readonly ViewportShadows shadows;
     readonly ViewportPost post;
@@ -341,11 +341,12 @@ public sealed class ViewportRenderer : IDisposable {
     }
 
     /// <summary>
-    ///     Draws where a symmetry's mirror meets the model (#132), of what is drawn, or nothing for null. It stands
-    ///     against the whole model's box, as a stroke's does, so it is found again on each mesh opened.
+    ///     Draws where a symmetry's mirror, or the half-planes between a radial symmetry's copies, meet the model (#132),
+    ///     of what is drawn, or nothing for null. It stands against the whole model's box, as a stroke's does, so it is
+    ///     found again on each mesh opened.
     /// </summary>
-    /// <param name="next">The plane's axis, 0 to 2, whether it meets the origin, and its offset; or null.</param>
-    public void Mirror((int Axis, bool Origin, float Offset)? next) {
+    /// <param name="next">The symmetry, or null.</param>
+    public void Mirror(ViewportMirror? next) {
         if (mirror == next) {
             return;
         }

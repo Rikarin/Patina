@@ -190,18 +190,22 @@ sealed partial class ViewportHost(string shaderCache, MeshShelf meshes) : IDispo
         return IpcMessage.Ok(request.Id);
     }
 
-    /// <summary>A symmetry's mirror as the viewport draws it across the model (#132); none for a radial one.</summary>
-    static (int Axis, bool Origin, float Offset)? Mirror(StackSymmetry? symmetry) {
-        if (symmetry is not { Kind: "mirror" } mirror) {
+    /// <summary>
+    ///     A symmetry as the viewport draws it across the model (#132): a mirror's plane, or a radial one's half-planes
+    ///     between its copies.
+    /// </summary>
+    static Viewport.ViewportMirror? Mirror(StackSymmetry? symmetry) {
+        if (symmetry is null) {
             return null;
         }
 
-        var axis = mirror.Axis switch {
+        var axis = symmetry.Axis switch {
             "y" => 1,
             "z" => 2,
             _ => 0
         };
-        return (axis, mirror.Centre == "origin", mirror.Offset);
+        var count = symmetry.Kind == "radial" ? Math.Max(symmetry.Count, 2) : 0;
+        return new(axis, symmetry.Centre == "origin", symmetry.Offset, count);
     }
 
     static Viewport.ViewportMapFile? File(Ipc.ViewportMapFile? file) => file is null ? null : new(file.Path, file.Hash);

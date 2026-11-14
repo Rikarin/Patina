@@ -31,27 +31,27 @@ static class ViewportMarks {
 
     /// <summary>
     ///     The shapes that mark these parts and materials, of those an isolation shows, nothing when none are named;
-    ///     and the line where a symmetry's mirror meets what the isolation shows (#132), drawn with them.
+    ///     and the lines where a symmetry meets what the isolation shows (#132), drawn with them.
     /// </summary>
     /// <param name="mesh">The model as the viewport draws it.</param>
     /// <param name="marked">The named meshes and materials marked.</param>
     /// <param name="isolated">The named meshes and materials drawn alone, both empty for the whole model.</param>
-    /// <param name="mirror">The mirror's axis, whether it passes through the origin, and its offset; or null.</param>
+    /// <param name="mirror">The symmetry, a mirror or a radial one, or null.</param>
     /// <param name="most">The most triangles washed.</param>
     public static ViewportShapes Shapes(
         ViewportMesh mesh,
         (string[] Parts, string[] Materials) marked,
         (string[] Parts, string[] Materials) isolated,
-        (int Axis, bool Origin, float Offset)? mirror = null,
+        ViewportMirror? mirror = null,
         int most = MostWashed
     ) {
         var marks = Marks(mesh, marked, isolated, most);
-        if (mirror is not { } held) {
+        if (mirror is null) {
             return marks;
         }
 
         var shown = mesh.Shown(isolated.Parts, isolated.Materials);
-        var slice = ViewportSlice.Shapes(mesh, new(held.Axis, held.Origin, held.Offset), shown);
+        var slice = ViewportSlice.Shapes(mesh, mirror, shown);
         return marks with { Lines = [..marks.Lines, ..slice.Lines] };
     }
 

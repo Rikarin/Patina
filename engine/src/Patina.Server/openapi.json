@@ -627,7 +627,7 @@
         "tags": [
           "Viewport"
         ],
-        "summary": "Draws where a symmetry\u0027s mirror meets the model, as a line across its surface hidden where the model hides it, for every client. Null draws nothing, and so does a radial symmetry.",
+        "summary": "Draws where a symmetry meets the model, as lines across its surface hidden where the model hides them, for every client: a mirror\u0027s plane, or the half-planes between a radial symmetry\u0027s copies. Null draws nothing.",
         "operationId": "SetViewportSymmetry",
         "requestBody": {
           "content": {
@@ -22589,7 +22589,7 @@
             ]
           }
         },
-        "description": "The symmetry a brush paints with, which the viewport draws where its mirror\u0027s plane meets the model (#132): the\nline the plane cuts across the surface, hidden where the model hides it. A radial symmetry draws nothing here."
+        "description": "The symmetry a brush paints with, which the viewport draws where it meets the model (#132): the line a mirror\u0027s\nplane cuts across the surface, or for a radial symmetry the lines the half-planes between its copies cut, each a\nturn apart round its axis, hidden where the model hides them."
       },
       "WorkerStatus": {
         "required": [
