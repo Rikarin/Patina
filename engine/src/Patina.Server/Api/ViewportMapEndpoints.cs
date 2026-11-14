@@ -39,7 +39,8 @@ static class ViewportMapEndpoints {
                 + "lens and effects. No export sees any of it."
             )
             .ProducesProblem(Missing)
-            .ProducesProblem(Refused);
+            .ProducesProblem(Refused)
+            .ProducesProblem(Unavailable);
         api.MapPost("/viewport/screenshot", ScreenshotAsync)
             .WithName("TakeViewportScreenshot")
             .WithTags(Tag)
@@ -137,20 +138,16 @@ static class ViewportMapEndpoints {
         ViewportDisplay request,
         ViewportSession session,
         ServerIdentity identity,
+        Thumbnails thumbnails,
         CancellationToken cancellationToken
     ) {
         if (request.Problem() is { } wrong) {
             return Refusals.BadSettings(wrong, Refused);
         }
 
-        if (!Rooms.Contains(request.Environment)) {
-            if (!PictureFormats.IsEnvironment(request.Environment)) {
-                return Refusals.WrongKind(request.Environment, PictureFormats.Environments, Refused);
-            }
-
-            if (!File.Exists(request.Environment)) {
-                return FileMissing(request.Environment);
-            }
+        var (panorama, unlit) = await LightingAsync(request.Environment, thumbnails, cancellationToken);
+        if (unlit is not null) {
+            return unlit;
         }
 
         if (request.Look is { } table && !table.EndsWith(".cube", StringComparison.OrdinalIgnoreCase)) {
@@ -168,10 +165,44 @@ static class ViewportMapEndpoints {
                 }
             }
 
-            session.SetDisplay(new(request, look, picture));
+            session.SetDisplay(new(request, look, picture) { Environment = panorama });
             return TypedResults.Ok(session.State);
         } catch (FileNotFoundException e) {
             return Refusals.Of(e);
+        }
+    }
+
+    /// <summary>
+    ///     What lights the model, checked: a room, a panorama's file, or a graph's file drawn as a panorama (#180).
+    /// </summary>
+    /// <returns>The graph's panorama, or null for a room or a panorama; or why it cannot light the model.</returns>
+    static async Task<(ViewportMapFile? Panorama, ProblemHttpResult? Refusal)> LightingAsync(
+        string environment,
+        Thumbnails thumbnails,
+        CancellationToken cancellationToken
+    ) {
+        if (Rooms.Contains(environment)) {
+            return (null, null);
+        }
+
+        if (!PictureFormats.IsEnvironment(environment)) {
+            return (null, Refusals.WrongKind(environment, PictureFormats.Environments, Refused));
+        }
+
+        if (!File.Exists(environment)) {
+            return (null, FileMissing(environment));
+        }
+
+        if (!PictureFormats.IsEnvironmentGraph(environment)) {
+            return (null, null);
+        }
+
+        try {
+            return await thumbnails.PanoramaAsync(environment, cancellationToken) is { } panorama
+                ? (panorama, null)
+                : (null, Refusals.NoPanorama(environment));
+        } catch (TimeoutException e) {
+            return (null, Refusals.Of(e, Unavailable));
         }
     }
 

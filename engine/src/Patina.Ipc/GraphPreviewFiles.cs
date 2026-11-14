@@ -7,6 +7,9 @@ public static class GraphPreviewFiles {
     /// <summary>What a drawing of lines is kept as, such as a UV layout.</summary>
     public const string Drawing = ".svg";
 
+    /// <summary>What a picture is kept as with its numbers past one, such as a graph lighting the viewport.</summary>
+    public const string Radiance = ".exr";
+
     public static string PathOf(string folder, string hash, string extension = Extension) =>
         Path.Combine(folder, hash[..2], string.Concat(hash, extension));
 

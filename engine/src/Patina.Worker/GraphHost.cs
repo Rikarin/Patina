@@ -2,6 +2,8 @@ using Patina.Graphs;
 using Patina.Ipc;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Security.Cryptography;
+using Vixen.Core.Imaging;
 using Vixen.Core.Yaml;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
@@ -140,6 +142,10 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
             return Drawn(null);
         }
 
+        if (ask.Deep) {
+            return Drawn(Deep(runner, plan, source.Image, graph.Uploads!.Externals, ask.PreviewFolder));
+        }
+
         var extended = GraphPreviews.Extend(plan, [source], int.MaxValue, []);
         if (extended.Images.Count == 0) {
             return Drawn(null);
@@ -149,6 +155,25 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         using var bake = Timed(runner, extended.Plan, graph.Uploads!.Externals);
         timings.Keep(bake, extended.Plan);
         return Drawn(previews.Write(bake, [extended.Images[0].Image], ask.PreviewFolder)[0].Hash);
+    }
+
+    /// <summary>
+    ///     One picture at the size the graph computes it, kept as a half-float <c>.exr</c> with its numbers as they
+    ///     are, so a sun is still many times brighter than the sky round it (#180).
+    /// </summary>
+    static string Deep(
+        TexturePlanEvaluator runner,
+        TexturePlan plan,
+        int image,
+        IReadOnlyDictionary<int, TextureExternal> externals,
+        string folder
+    ) {
+        using var bake = runner.EvaluateIncremental(GraphPreviews.Full(plan, image), externals);
+        var picture = RawPictures.ToFloat(bake.ReadRaw(image)).Image;
+        var bytes = ExrCodec.Encode(picture, ExrPixels.Half);
+        var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
+        GraphPreviewFiles.Store(folder, hash, bytes, GraphPreviewFiles.Radiance);
+        return hash;
     }
 
     internal static IpcMessage Drawn(string? hash) => new() { Type = IpcTypes.Ok, ThumbnailHash = hash };

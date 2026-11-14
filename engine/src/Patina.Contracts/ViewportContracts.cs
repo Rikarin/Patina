@@ -96,7 +96,9 @@ public static class ViewportToneMappings {
 ///     of a request is the one the viewport opens with.
 /// </summary>
 /// <param name="Environment">
-///     A built-in room (studio, overcast or sunset), or the path of an <c>.hdr</c> or <c>.exr</c> panorama.
+///     A built-in room (studio, overcast or sunset), the path of an <c>.hdr</c> or <c>.exr</c> panorama, or the path
+///     of a graph whose Output, its base colour's if it has one, is drawn as a panorama with its numbers past one
+///     (#180). A graph is drawn again when it is chosen again or saved.
 /// </param>
 /// <param name="EnvironmentRotation">How far the environment has turned around the model. The light stays.</param>
 /// <param name="BackgroundBlur">How blurred the background is, 0 sharp to 1 a haze. Lighting is not blurred.</param>

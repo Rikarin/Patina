@@ -115,6 +115,8 @@ builder.Services.AddSingleton(static services =>
 builder.Services.AddSingleton<GraphEvaluator>();
 builder.Services.AddHostedService(static services => services.GetRequiredService<GraphEvaluator>());
 builder.Services.AddHostedService<GraphFollower>();
+builder.Services.AddSingleton<PanoramaKeeper>();
+builder.Services.AddHostedService(static services => services.GetRequiredService<PanoramaKeeper>());
 builder.Services.AddSingleton<StackClips>();
 builder.Services.AddSingleton<StackSessions>();
 builder.Services.AddSingleton<StackEvaluator>();

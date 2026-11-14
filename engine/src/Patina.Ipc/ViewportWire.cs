@@ -43,7 +43,14 @@ public sealed record ViewportDisplaySet(
     int Resolution = 2048,
     ViewportHighlight? Highlight = null,
     StackSymmetry? Symmetry = null
-);
+) {
+    /// <summary>
+    ///     The panorama that lights the model in place of the file <see cref="ViewportDisplay.Environment" /> names,
+    ///     when that is a graph: its picture as the Server had it drawn into the preview cache (#180). Null to read
+    ///     what the display names.
+    /// </summary>
+    public ViewportMapFile? Environment { get; init; }
+}
 
 /// <summary>
 ///     An orbit around the model and the lens it looks through: radians, a distance in framings, a pan in bounding

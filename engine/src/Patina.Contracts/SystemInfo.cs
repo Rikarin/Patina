@@ -95,13 +95,23 @@ public static class PictureFormats {
     public static IReadOnlyList<string> Pictures { get; } =
         [".png", ".jpg", ".jpeg", ".tga", ".bmp", ".psd", ".gif", ".exr", ".hdr", ".tif", ".tiff", ".webp"];
 
-    public static IReadOnlyList<string> Environments { get; } = [".hdr", ".exr"];
+    /// <summary>
+    ///     What can light the viewport: a panorama, or a graph whose Output is drawn as one (#180), such as a sky made
+    ///     of Environment nodes.
+    /// </summary>
+    public static IReadOnlyList<string> Environments { get; } = [".hdr", ".exr", EnvironmentGraph];
+
+    /// <summary>A graph's extension, which lights the viewport as the panorama its Output draws.</summary>
+    const string EnvironmentGraph = ".vxtexgraph";
 
     /// <summary>Whether a file is a picture Patina reads, by its name.</summary>
     public static bool IsPicture(string path) => Is(path, Pictures);
 
     /// <summary>Whether a file is a panorama Patina reads, by its name.</summary>
     public static bool IsEnvironment(string path) => Is(path, Environments);
+
+    /// <summary>Whether a file that lights the viewport is a graph, whose Output is drawn as a panorama.</summary>
+    public static bool IsEnvironmentGraph(string path) => Is(path, [EnvironmentGraph]);
 
     static bool Is(string path, IReadOnlyList<string> formats) =>
         formats.Contains(Path.GetExtension(path).ToLowerInvariant(), StringComparer.Ordinal);
