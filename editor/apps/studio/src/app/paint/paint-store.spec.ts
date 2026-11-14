@@ -209,6 +209,34 @@ describe('PaintStore refreshes (#274)', () => {
 
     expect(store.state()?.name).toBe('After');
   });
+
+  it('keeps the newest state when an open of the same document is answered after an edit (#295)', async () => {
+    const { store, server } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    let release: (() => void) | null = null;
+    const held = new Promise<void>(resolve => (release = resolve));
+    let opens = 0;
+    server.reply = (method, path) => {
+      if (method === 'POST' && path === '/api/v1/stacks') {
+        opens++;
+        // The open's picture of the stack was taken before the edit, and is answered after it.
+        return held.then(() => Response.json(stack({ name: 'Opened', sequence: 4 })));
+      }
+
+      return method === 'GET' && path === '/api/v1/stacks/s1'
+        ? Response.json(stack({ name: 'Edited', sequence: 5 }))
+        : null;
+    };
+
+    const again = store.open('/a/Crate.vxlayers', false);
+    await vi.waitFor(() => expect(opens).toBe(1));
+    await store.edit({ op: 'setLayer', layer: 'base', name: 'Edited' });
+    expect(store.state()?.name).toBe('Edited');
+    (release as unknown as () => void)();
+    await again;
+
+    expect(store.state()?.name).toBe('Edited');
+  });
 });
 
 describe('PaintStore saving', () => {
