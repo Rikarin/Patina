@@ -256,7 +256,7 @@ export class GraphThumbnail {
   `,
   template: `
     @let current = document();
-    <div class="chrome-bar flex h-9 shrink-0 items-center gap-1 px-2">
+    <div class="pane-bar gap-1 px-2" role="toolbar" aria-label="Graph">
       @for (crumb of store.trail(); track crumb.id) {
         <button
           type="button"

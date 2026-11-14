@@ -31,7 +31,7 @@ static class MaterialImportEndpoint {
             host.RequestRescan();
             return TypedResults.Ok(imported);
         } catch (IpcException e) {
-            return LibraryTreeEndpoints.Problem(e, StatusCodes.Status422UnprocessableEntity);
+            return Refusals.OfEngine(e, StatusCodes.Status422UnprocessableEntity);
         } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
             return problem;
         }

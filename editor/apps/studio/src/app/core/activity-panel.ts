@@ -2,11 +2,12 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
+import { XuiProgressBarImports } from '@xui/progress-bar';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { Activity, type ActivityJob, type NoticeTone } from './activity';
 import { messageOf } from './messages';
-import { percent, toPercent } from './numbers';
+import { percent } from './numbers';
 
 /** A session the engine holds that no tab shows, which only this panel can reach. */
 interface LeftOpen {
@@ -46,7 +47,7 @@ const ToneWords: Readonly<Record<NoticeTone, string>> = {
  */
 @Component({
   selector: 'ptn-activity',
-  imports: [DatePipe, XuiButtonImports],
+  imports: [DatePipe, XuiButtonImports, XuiProgressBarImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'pane fixed right-2 bottom-8 z-40 flex max-h-[60vh] w-[26rem] max-w-[calc(100vw-1rem)] flex-col shadow-lg',
@@ -56,7 +57,7 @@ const ToneWords: Readonly<Record<NoticeTone, string>> = {
     '(keydown.escape)': 'activity.hide()'
   },
   template: `
-    <div class="chrome-bar flex h-8 shrink-0 items-center gap-1 px-2">
+    <div class="pane-bar gap-1 px-2" role="toolbar" aria-label="Activity">
       <span class="min-w-0 flex-1 truncate font-medium">Activity</span>
       <button
         type="button"
@@ -116,16 +117,7 @@ const ToneWords: Readonly<Record<NoticeTone, string>> = {
                 </p>
               }
               @if (job.state === 'running') {
-                <div
-                  class="bg-surface-sunken h-1 overflow-hidden rounded-sm"
-                  role="progressbar"
-                  [attr.aria-label]="job.title"
-                  [attr.aria-valuenow]="percent(job)"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                >
-                  <div class="bg-primary h-full" [style.width.%]="percent(job)"></div>
-                </div>
+                <xui-progress-bar size="sm" [aria-label]="job.title" [value]="job.progress" />
               }
               @if (job.error; as error) {
                 <p class="text-error text-xs break-words">{{ error }}</p>
@@ -221,10 +213,6 @@ export class ActivityPanel {
 
   protected stateText(job: ActivityJob): string {
     return job.state === 'running' ? percent(job.progress) : (StateWords[job.state] ?? job.state);
-  }
-
-  protected percent(job: ActivityJob): number {
-    return toPercent(job.progress);
   }
 
   protected async closeSession(held: LeftOpen): Promise<void> {

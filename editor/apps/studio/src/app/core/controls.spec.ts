@@ -20,6 +20,16 @@ describe('controls written into the code', () => {
     expect(found).toEqual([]);
   });
 
+  it('shows progress with xUI’s progress bar, never a hand-made one (#195)', async () => {
+    const found = (await sources()).flatMap(({ path, text }) =>
+      elementsOf(text, /[a-z]+/u)
+        .filter(element => element.tag !== 'xui-progress-bar' && /\brole="progressbar"/u.test(element.attributes))
+        .map(element => at(path, element.line, `<${element.tag} role=progressbar>`))
+    );
+
+    expect(found).toEqual([]);
+  });
+
   it('labels an xUI control through its aria-label input, which ariaLabel never reaches (#195)', async () => {
     const found = (await sources()).flatMap(({ path, text }) =>
       elementsOf(text, /xui-[a-z-]+/u)

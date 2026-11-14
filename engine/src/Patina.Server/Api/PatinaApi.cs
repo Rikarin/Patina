@@ -138,9 +138,9 @@ static class PatinaApi {
         try {
             return TypedResults.Ok(await session.PickAsync(request, cancellationToken));
         } catch (Patina.Ipc.IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status409Conflict);
+            return Refusals.OfEngine(e, StatusCodes.Status409Conflict);
         } catch (Exception e) when (e is IOException or TimeoutException) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
         }
     }
 

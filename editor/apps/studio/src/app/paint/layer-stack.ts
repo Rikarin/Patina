@@ -149,7 +149,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
     '(document:pointerup)': 'letGo()'
   },
   template: `
-    <div class="chrome-bar flex shrink-0 items-center gap-0.5 px-1 py-0.5" role="toolbar" aria-label="Layers">
+    <div class="pane-bar gap-0.5 px-1" role="toolbar" aria-label="Layers">
       <xui-select
         class="w-24 min-w-0 shrink-0 [&_button]:text-xs"
         style="--control-height-md: 1.375rem; --control-padding-md: 0.375rem"
@@ -343,7 +343,7 @@ const MaskMarks: Readonly<Record<string, string>> = {
     }
 
     @if (maskStackLayer(); as owner) {
-      <div class="chrome-bar flex shrink-0 items-center gap-1 px-1 py-0.5" data-testid="mask-stack-bar">
+      <div class="pane-bar gap-1 px-1" role="toolbar" aria-label="Mask" data-testid="mask-stack-bar">
         <button
           type="button"
           xuiButton

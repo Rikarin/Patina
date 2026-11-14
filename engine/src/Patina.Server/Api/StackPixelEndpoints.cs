@@ -68,7 +68,7 @@ static class StackPixelEndpoints {
         } catch (StackEditRefusedException e) {
             return Refusals.Of(e, Refused);
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
-            return TypedResults.Problem(e.Message, statusCode: Unavailable);
+            return Refusals.Unwritable(e, Unavailable);
         }
     }
 
@@ -123,7 +123,7 @@ static class StackPixelEndpoints {
         } catch (TimeoutException e) {
             return Refusals.Of(e, Unavailable);
         } catch (IpcException e) {
-            return TypedResults.Problem(e.Message, statusCode: Refused);
+            return Refusals.OfEngine(e, Refused);
         }
     }
 }

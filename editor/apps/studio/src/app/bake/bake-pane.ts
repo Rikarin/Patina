@@ -12,6 +12,7 @@ import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiInputImports } from '@xui/input';
 import { XuiNumericInputImports } from '@xui/numeric-input';
+import { XuiProgressBarImports } from '@xui/progress-bar';
 import { XuiSegmentedControlImports } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
@@ -135,6 +136,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
     XuiCalloutImports,
     XuiInputImports,
     XuiNumericInputImports,
+    XuiProgressBarImports,
     XuiSegmentedControlImports,
     XuiSelectImports,
     XuiSliderImports,
@@ -969,16 +971,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
           }
           <span class="readout ms-auto" data-testid="bake-percent">{{ share(progress()) }}</span>
         </div>
-        <div
-          class="bg-surface-sunken h-1.5 shrink-0 overflow-hidden rounded-sm"
-          role="progressbar"
-          aria-label="Bake progress"
-          [attr.aria-valuenow]="toPercent(progress())"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        >
-          <div class="bg-primary h-full" [style.width.%]="toPercent(progress())"></div>
-        </div>
+        <xui-progress-bar class="shrink-0" aria-label="Bake progress" [value]="progress()" />
         @for (each of store.batch(); track each.id) {
           @if (store.batch().length > 1) {
             <p class="section-label mt-1">{{ each.bake?.material }}: {{ stateName(each.state) }}</p>
@@ -1078,7 +1071,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
       </div>
     }
 
-    <footer class="chrome-bar flex h-8 shrink-0 items-center gap-2 px-2">
+    <footer class="pane-bar gap-2 px-2" role="toolbar" aria-label="Bake">
       @if (settings.blocked(); as reason) {
         <span class="text-foreground-muted min-w-0 truncate text-xs" data-testid="bake-blocked" [title]="reason">
           {{ reason }}

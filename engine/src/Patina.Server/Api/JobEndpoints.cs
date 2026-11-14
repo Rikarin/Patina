@@ -70,7 +70,7 @@ static class JobEndpoints {
                 : queue.Enqueue(key, request);
             return TypedResults.Accepted($"/api/v1/jobs/{job.Id}", job);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status404NotFound);
+            return Refusals.Of(e);
         } catch (BakeRefusedException e) {
             return e.Code is { } code
                 ? Refusals.Problem(e.Message, StatusCodes.Status422UnprocessableEntity, code, e.Values)
@@ -97,8 +97,7 @@ static class JobEndpoints {
             ? TypedResults.PhysicalFile(path, "image/png")
             : TypedResults.Problem($"Job '{id}' has no picture of '{map}'.", statusCode: StatusCodes.Status404NotFound);
 
-    static ProblemHttpResult NoJob(string id) =>
-        TypedResults.Problem($"There is no job '{id}'.", statusCode: StatusCodes.Status404NotFound);
+    static ProblemHttpResult NoJob(string id) => Refusals.NoJob(id);
 
     static async Task FollowAsync(HttpContext context, JobQueue queue, long? since = null) {
         if (!context.WebSockets.IsWebSocketRequest) {

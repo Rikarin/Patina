@@ -40,7 +40,7 @@ static class StackShelfEndpoints {
         } catch (Exception e) when (e is StackEditRefusedException or ProjectRefusedException) {
             return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         } catch (FileNotFoundException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status404NotFound);
+            return Refusals.Of(e);
         }
     }
 }
