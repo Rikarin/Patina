@@ -4308,7 +4308,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "The bakes a project\u0027s own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh.",
+        "summary": "The bakes a project\u0027s own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh; output puts the maps in a folder of the Server\u0027s machine instead of the project\u0027s; set, once per texture set, bakes those instead of the ones the project ticks.",
         "operationId": "GetProjectBakePlan",
         "parameters": [
           {
@@ -4324,6 +4324,23 @@
             "in": "query",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "output",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "set",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           }
         ],

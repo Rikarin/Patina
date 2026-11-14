@@ -10,7 +10,7 @@ import type {
 import { SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { BakeSettings } from './bake-settings';
-import { BakeStore } from './bake-store';
+import { type BakePlanQuery, BakeStore } from './bake-store';
 
 const defaults: ProjectBakeSettings = {
   options: {
@@ -99,10 +99,13 @@ function setup(documents: ProjectDocumentInfo[], front: ProjectDocumentInfo | nu
   const current = signal<ProjectContents | null>(contents(documents));
   const written: { project: string; bake: ProjectBakeSettings }[] = [];
   const started: unknown[][] = [];
+  const planned: { query: BakePlanQuery; written: number }[] = [];
+  const planAnswer = [{ material: 'Strap' }];
   const shown: ViewportBakePreview[] = [];
-  const answers: { gate: Promise<void>; refuse?: Error } = { gate: Promise.resolve() };
+  const answers: { gate: Promise<void>; refuse?: Error; refusePlan?: Error } = { gate: Promise.resolve() };
   const project = {
     current,
+    document: signal(front ?? null),
     mesh: signal(front?.mesh ? mesh : null),
     unwrapping: signal(false),
     textureSets: () => (current()?.documents ?? []).filter(each => each.material),
@@ -123,6 +126,10 @@ function setup(documents: ProjectDocumentInfo[], front: ProjectDocumentInfo | nu
         provide: BakeStore,
         useValue: {
           busy: signal(false),
+          plan: (query: BakePlanQuery) => {
+            planned.push({ query, written: written.length });
+            return answers.refusePlan ? Promise.reject(answers.refusePlan) : Promise.resolve(planAnswer);
+          },
           startAll: (requests: unknown[]) => {
             started.push(requests);
             return answers.refuse ? Promise.reject(answers.refuse) : Promise.resolve([]);
@@ -136,7 +143,7 @@ function setup(documents: ProjectDocumentInfo[], front: ProjectDocumentInfo | nu
       }
     ]
   });
-  return { settings: TestBed.inject(BakeSettings), written, started, project, shown, answers };
+  return { settings: TestBed.inject(BakeSettings), written, started, planned, planAnswer, project, shown, answers };
 }
 
 describe('BakeSettings', () => {
@@ -227,18 +234,30 @@ describe('BakeSettings', () => {
     expect(settings.options()?.occlusion.rays).toBe(128);
   });
 
-  it('bakes each ticked texture set into a folder of its own, from the high meshes in order', async () => {
+  it('bakes what the Server plans from the project’s file, once an edit is written to it (#292)', async () => {
     const sets = [document('Body', 'texturing', 'Body', true), document('Strap', 'texturing', 'Strap', true)];
-    const { settings, started } = setup(sets, sets[0]);
+    const { settings, started, planned, planAnswer, written } = setup(sets, sets[0]);
 
     settings.update(bake => ({ ...bake, high: ['/elsewhere/extra.glb'], sets: ['Strap'] }));
     await settings.bake();
 
-    expect(started).toHaveLength(1);
-    const requests = started[0] as { material: string; output: string; high: string[] }[];
-    expect(requests.map(request => request.material)).toEqual(['Strap']);
-    expect(requests[0]?.output).toBe('/lib/projects/a/bakes/maps/Strap');
-    expect(requests[0]?.high).toEqual(['/lib/projects/a/crate_high.glb', '/elsewhere/extra.glb']);
+    // The edit reached the file before the plan was asked for, so the plan bakes it.
+    expect(written.at(-1)?.bake.sets).toEqual(['Strap']);
+    expect(planned).toEqual([{ query: { project: 'a', document: 'projects/a/Body' }, written: 1 }]);
+    expect(started).toEqual([planAnswer]);
+  });
+
+  it('bakes nothing when the project’s file did not take the settings, and says why', async () => {
+    const texturing = document('Crate', 'texturing', null, true);
+    const { settings, started, planned, project } = setup([texturing], texturing);
+    project.setBake = () => Promise.reject(new Error('The project file is read-only.'));
+
+    settings.set(options => ({ ...options, resolution: 512 }));
+
+    expect(await settings.bake()).toBe(false);
+    expect(settings.refused()).toContain('read-only');
+    expect(planned).toEqual([]);
+    expect(started).toEqual([]);
   });
 
   it('Quick Bake starts every chosen set, and a refusal says why and starts nothing (#147)', async () => {
@@ -246,11 +265,16 @@ describe('BakeSettings', () => {
     const { settings, started, answers } = setup(sets, sets[0]);
 
     expect(await settings.bake()).toBe(true);
-    expect((started[0] as { material: string }[]).map(request => request.material)).toEqual(['Body', 'Strap']);
+    expect(started).toHaveLength(1);
 
     answers.refuse = new Error('The low mesh has no UV layout.');
     expect(await settings.bake()).toBe(false);
     expect(settings.refused()).toContain('no UV layout');
+
+    answers.refusePlan = new Error("The mesh has no texture set 'Lid'.");
+    expect(await settings.bake()).toBe(false);
+    expect(settings.refused()).toContain('no texture set');
+    expect(started).toHaveLength(2);
   });
 
   it('marks each set whose bake no longer fits it (#238)', () => {
@@ -267,7 +291,7 @@ describe('BakeSettings', () => {
     const sets = [document('Body', 'texturing', 'Body', true), document('Strap', 'texturing', 'Strap', true)];
     const { settings } = setup(sets, sets[0]);
 
-    expect(settings.requests().map(request => request.material)).toEqual(['Body', 'Strap']);
+    expect(settings.chosen().map(set => set.material)).toEqual(['Body', 'Strap']);
     expect(settings.blocked()).toBeNull();
 
     settings.set(options => ({ ...options, maps: [] }));
@@ -305,7 +329,8 @@ describe('BakeSettings', () => {
 
     expect(settings.blocked()).toBeNull();
     expect(settings.low()).toBe('/lib/projects/a/crate.glb');
-    expect(settings.requests()).toHaveLength(1);
+    // The Server plans onto the project's mesh when the document in front is on none.
+    expect(settings.planQuery()).toEqual({ project: 'a' });
   });
 
   it('keeps a chosen output folder while the project’s contents change, and drops it for another project', () => {
@@ -316,7 +341,7 @@ describe('BakeSettings', () => {
     // Choosing a high poly mesh rereads the project, which is a new object with the same path.
     project.current.set(contents([texturing]));
 
-    expect(settings.requests()[0]?.output).toBe('/chosen');
+    expect(settings.planQuery()).toEqual({ project: 'a', document: 'projects/a/Crate', output: '/chosen' });
 
     project.current.set({ ...contents([texturing]), path: 'b' });
 
@@ -329,6 +354,5 @@ describe('BakeSettings', () => {
     project.current.set({ ...contents([layered]), meshes: [] });
 
     expect(settings.blocked()).toBe('This project has no mesh yet. Choose one in Project Settings.');
-    expect(settings.requests()).toEqual([]);
   });
 });

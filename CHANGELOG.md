@@ -514,6 +514,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Bake and Quick Bake send what the Server plans from the project's file (#292), the requests `GET /api/v1/library/project/bake/plan` answers and `patina bake-maps --project` sends, where the app used to build them itself; settings the file did not take refuse the bake with the reason rather than bake something else. The plan takes `output`, a folder of the Server's machine for the maps, and `set`, once per texture set, as the Bake dialog's output folder and `--out` and `--set` do.
 - Every pane's own bar is one height (#200): Graph, Graph Beside, Layers, the mask under a layer, the 2D view, Library, Snapshots, Checks, Bake and Activity were 28 to 36 pixels tall, so bars side by side in the dock now line up. Each says what it is to a screen reader, as a toolbar or, for the 2D view's readouts, a group.
 - Bake, Export and Activity show progress with xUI's progress bar, striped while it runs (#195).
 - A request the GPU engine refuses, or that finds it gone or slow, says so in the app's words rather than the engine's or the system's (#198), and so do a graph edit the graph cannot take, a save over a file changed outside Patina, a file that cannot be written, and a job that is gone. Through the API these refusals carry the codes `engine-refused`, `engine-unavailable`, `graph-refused`, `file-changed`, `file-unwritable` and `job-missing`; 42 refusals are left without a code, from 80.
