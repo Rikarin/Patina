@@ -62,7 +62,10 @@ sealed class WorkerLoop(
                 or IpcTypes.BakeCancel
                 or IpcTypes.BuildCancel
                 or IpcTypes.StackSupersede,
-            Aside = static type => type is IpcTypes.MeshSets
+            Aside = static type => type is IpcTypes.MeshSets,
+            // ⚠ A frame waits for the request being answered, never behind every evaluation and thumbnail sent before
+            // it: on a software GPU those queue for minutes, and the viewport stopped answering a change (#274).
+            Urgent = static type => type.StartsWith("viewport.", StringComparison.Ordinal)
         };
         await using (connection) {
             connection.Start();

@@ -26,6 +26,7 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
     readonly CancellationTokenSource stop = new();
     readonly TaskCompletionSource closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     readonly Channel<IpcMessage> queued = Channel.CreateUnbounded<IpcMessage>(new() { SingleReader = true });
+    readonly Channel<IpcMessage> ahead = Channel.CreateUnbounded<IpcMessage>(new() { SingleReader = true });
     Task? readLoop;
     Task? queueLoop;
     long nextId;
@@ -41,6 +42,12 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
     ///     queue waits for them, nor they for the queue. For work that touches nothing the queue's work does.
     /// </summary>
     public Func<string, bool>? Aside { get; init; }
+
+    /// <summary>
+    ///     Which queued requests go ahead of the rest of the queue, in their own order: they still wait for the one being
+    ///     answered, never for everything sent before them. For what a person watches, such as the viewport's frames.
+    /// </summary>
+    public Func<string, bool>? Urgent { get; init; }
 
     /// <summary>Completes when the peer has gone or this connection was disposed.</summary>
     public Task Closed => closed.Task;
@@ -114,7 +121,7 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
                 } else if (Aside?.Invoke(message.Type) == true) {
                     _ = Task.Run(() => AnswerAsideAsync(message, cancellationToken), CancellationToken.None);
                 } else if (Immediate is { } immediate && !immediate(message.Type)) {
-                    queued.Writer.TryWrite(message);
+                    (Urgent?.Invoke(message.Type) == true ? ahead : queued).Writer.TryWrite(message);
                 } else {
                     await WriteAsync(
                             await AnswerAsync(message, cancellationToken).ConfigureAwait(false),
@@ -132,6 +139,7 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
             // A peer that went away, or one that broke the framing: the link is over either way.
         } finally {
             queued.Writer.TryComplete();
+            ahead.Writer.TryComplete();
             closed.TrySetResult();
             foreach (var reply in pending.Values) {
                 reply.TrySetException(new IOException("The IPC peer has disconnected."));
@@ -141,11 +149,28 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
 
     async Task QueueLoopAsync(CancellationToken cancellationToken) {
         try {
-            await foreach (var message in queued.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
+            while (await NextAsync(cancellationToken).ConfigureAwait(false) is { } message) {
                 await AnswerAsideAsync(message, cancellationToken).ConfigureAwait(false);
             }
         } catch (OperationCanceledException) {
             // The peer has gone, and the read loop says so.
+        }
+    }
+
+    /// <summary>The next queued request, an urgent one first; null once the link is over and nothing is left.</summary>
+    async Task<IpcMessage?> NextAsync(CancellationToken cancellationToken) {
+        while (true) {
+            if (ahead.Reader.TryRead(out var urgent) || queued.Reader.TryRead(out urgent)) {
+                return urgent;
+            }
+
+            var first = ahead.Reader.WaitToReadAsync(cancellationToken).AsTask();
+            var rest = queued.Reader.WaitToReadAsync(cancellationToken).AsTask();
+            var woke = await Task.WhenAny(first, rest).ConfigureAwait(false);
+            if (!await woke.ConfigureAwait(false)) {
+                // Both close together when the link ends: what is still in either is answered, then nothing.
+                return ahead.Reader.TryRead(out var left) || queued.Reader.TryRead(out left) ? left : null;
+            }
         }
     }
 
