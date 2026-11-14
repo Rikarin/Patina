@@ -303,7 +303,7 @@ public static class ExportMaps {
     // row as a clone of IpcTypes.
     public static IReadOnlyList<string> All { get; } = [
         BaseColor, Normal, Roughness, Metalness, Occlusion, Height, Emissive, Opacity, Mask, Curvature, Thickness, Id,
-        Position, WorldNormal, BentNormal, Coverage, Specular, Diffuse, Glossiness
+        Position, WorldNormal, BentNormal, BakedNormal, BakedOcclusion, Coverage, Specular, Diffuse, Glossiness
     ];
 
     /// <summary>
@@ -332,6 +332,21 @@ public static class ExportMaps {
     public const string BentNormal = "bent";
 
     /// <summary>
+    ///     The bake's normal alone (#155). <see cref="Normal" /> is the set's, with the bake beneath what the layers paint
+    ///     when the bake is set to Combine (ADR 0023), which is a combined normal. A mesh-maps export reads this one.
+    /// </summary>
+    public const string BakedNormal = "bakedNormal";
+
+    /// <summary>
+    ///     The bake's ambient occlusion alone (#155). <see cref="Occlusion" /> is the set's, the bake multiplied into what
+    ///     the layers paint when the bake is set to Combine, which is a mixed occlusion.
+    /// </summary>
+    public const string BakedOcclusion = "bakedOcclusion";
+
+    /// <summary>Whether a map is a tangent-space normal, whose green a target may read either way.</summary>
+    public static bool IsTangentNormal(string map) => map is Normal or BakedNormal;
+
+    /// <summary>
     ///     Which texels a mesh's layout covers, one where it does: what a stack on a mesh makes beside its maps, and
     ///     what padding grows from.
     /// </summary>
@@ -343,9 +358,9 @@ public static class ExportMaps {
     /// </summary>
     public static float Default(string map, int lane) =>
         (map, lane) switch {
-            (Normal or WorldNormal or BentNormal, 2) => 1f,
-            (Normal or WorldNormal or BentNormal, not 3) => 0.5f,
-            (Opacity or Occlusion or Mask or Coverage, _) => 1f,
+            (Normal or WorldNormal or BentNormal or BakedNormal, 2) => 1f,
+            (Normal or WorldNormal or BentNormal or BakedNormal, not 3) => 0.5f,
+            (Opacity or Occlusion or BakedOcclusion or Mask or Coverage, _) => 1f,
             (_, 3) => 1f,
             (BaseColor or Roughness or Height or Curvature or Position or Diffuse or Glossiness, _) => 0.5f,
             (Specular, _) => DerivedMaps.DielectricSrgb,

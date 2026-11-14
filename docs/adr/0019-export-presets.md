@@ -75,7 +75,15 @@ A lane is one of:
 
 The maps are a graph's Output usages and a bake's maps under their own names: `baseColor`, `normal`, `roughness`,
 `metalness`, `occlusion`, `height`, `emissive`, `opacity`, `mask`, `curvature`, `thickness`, `id`, `position`, `world`,
-`bent` and `coverage`. Three more are worked out when a file reads them (`DerivedMaps`), from a metal-roughness set:
+`bent` and `coverage`.
+
+A set's `occlusion` and `normal` are what its stack makes, and the bake lies beneath them when it is set to Combine
+(ADR 0023): `occlusion` is the bake's multiplied into what is painted, a mixed occlusion, and `normal` the bake's combined
+with the painted and height normals. `bakedOcclusion` and `bakedNormal` (#155) are the bake's alone, which a stack's maps
+never replace, for a file of mesh maps; the starter preset **Mesh Maps** (`mesh-maps`) writes them with curvature,
+thickness, world-space normals, position, bent normals and ID, one file each.
+
+Three more are worked out when a file reads them (`DerivedMaps`), from a metal-roughness set:
 
 | Map | What it is | From |
 |---|---|---|
