@@ -77,9 +77,9 @@ def sync_detailed(
     body: ViewportSymmetry,
 
 ) -> Response[ProblemDetails | ViewportState]:
-    """ Draws where a symmetry meets the model, as lines across its surface hidden where the model hides
-    them, for every client: a mirror's plane, or the half-planes between a radial symmetry's copies.
-    Null draws nothing.
+    """ Draws where a symmetry meets the model, as lines on its surface hidden where the model hides them,
+    for every client: a mirror's plane, or the half-planes between a radial symmetry's copies. Null
+    draws nothing.
 
     Args:
         body (ViewportSymmetry): The symmetry a brush paints with, which the viewport draws where
@@ -114,9 +114,9 @@ def sync(
     body: ViewportSymmetry,
 
 ) -> ProblemDetails | ViewportState | None:
-    """ Draws where a symmetry meets the model, as lines across its surface hidden where the model hides
-    them, for every client: a mirror's plane, or the half-planes between a radial symmetry's copies.
-    Null draws nothing.
+    """ Draws where a symmetry meets the model, as lines on its surface hidden where the model hides them,
+    for every client: a mirror's plane, or the half-planes between a radial symmetry's copies. Null
+    draws nothing.
 
     Args:
         body (ViewportSymmetry): The symmetry a brush paints with, which the viewport draws where
@@ -146,9 +146,9 @@ async def asyncio_detailed(
     body: ViewportSymmetry,
 
 ) -> Response[ProblemDetails | ViewportState]:
-    """ Draws where a symmetry meets the model, as lines across its surface hidden where the model hides
-    them, for every client: a mirror's plane, or the half-planes between a radial symmetry's copies.
-    Null draws nothing.
+    """ Draws where a symmetry meets the model, as lines on its surface hidden where the model hides them,
+    for every client: a mirror's plane, or the half-planes between a radial symmetry's copies. Null
+    draws nothing.
 
     Args:
         body (ViewportSymmetry): The symmetry a brush paints with, which the viewport draws where
@@ -183,9 +183,9 @@ async def asyncio(
     body: ViewportSymmetry,
 
 ) -> ProblemDetails | ViewportState | None:
-    """ Draws where a symmetry meets the model, as lines across its surface hidden where the model hides
-    them, for every client: a mirror's plane, or the half-planes between a radial symmetry's copies.
-    Null draws nothing.
+    """ Draws where a symmetry meets the model, as lines on its surface hidden where the model hides them,
+    for every client: a mirror's plane, or the half-planes between a radial symmetry's copies. Null
+    draws nothing.
 
     Args:
         body (ViewportSymmetry): The symmetry a brush paints with, which the viewport draws where

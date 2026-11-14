@@ -627,7 +627,7 @@
         "tags": [
           "Viewport"
         ],
-        "summary": "Draws where a symmetry meets the model, as lines across its surface hidden where the model hides them, for every client: a mirror\u0027s plane, or the half-planes between a radial symmetry\u0027s copies. Null draws nothing.",
+        "summary": "Draws where a symmetry meets the model, as lines on its surface hidden where the model hides them, for every client: a mirror\u0027s plane, or the half-planes between a radial symmetry\u0027s copies. Null draws nothing.",
         "operationId": "SetViewportSymmetry",
         "requestBody": {
           "content": {
@@ -17901,7 +17901,7 @@
             "default": false
           }
         },
-        "description": "Keeps a layer to the session\u0027s quick mask (#282): a paint entry on top of its mask\u0027s stack that starts as a copy\nof the quick mask as it stands, multiplied over the mask beneath, or subtracted from it to keep the layer outside.\nA fill, a decal or a path, which no stroke paints, is kept so as a stroke is. The entry is the layer\u0027s own from\nthen, saved with it, and can be painted, changed or removed as any other. The quick mask must have been painted."
+        "description": "Keeps a layer to the session\u0027s quick mask (#282): a paint entry on top of its mask\u0027s stack that starts as a copy\nof the quick mask as it stands, multiplied over the mask beneath, or subtracted from it to keep it outside.\nA fill, a decal or a path, which no stroke paints, is kept so as a stroke is. The entry is the layer\u0027s own from\nthen, saved with it, and can be painted, changed or removed as any other. The quick mask must have been painted."
       },
       "StackCommandStackMoveLayer": {
         "required": [
