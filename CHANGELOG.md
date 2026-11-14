@@ -351,6 +351,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A library's old `shared/` folder no longer loses files when it is moved into the Shared Assets project (#292): a file at its top and anything with no sidecar was deleted with the folder, a graph with no sidecar was moved but listed nowhere, and a `shared/` that came back after the first move overwrote what that move had kept. Every file now arrives in Shared Assets, a taken name gets a free one beside it, a loose graph or layered material is listed, and a second move adds to the first.
 - A refusal names a file by its name alone on every system (#198): a Server on Linux or macOS left the folders of a Windows path in the sentence and the file's name, since it split a path only at `/`.
 - Export no longer shows the last export's Done and report while the next one is being started (#153): they go as soon as Export is pressed, so a second export from the dialog is never read as finished before it has begun.
 - Checks no longer says a texture set has no Diffuse, Specular or Glossiness channel when its export preset reads one (#159): the export works those out from base color, metalness and roughness, and the files that read them now count toward the set's memory.
