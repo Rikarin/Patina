@@ -5402,6 +5402,67 @@
         }
       }
     },
+    "/api/v1/graphs/{id}/node-types/thumbnails": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Pictures of node types this graph can use, each at its defaults with a noise on its picture inputs, by hash under /previews, drawing those the cache lacks first. A type with no picture has none.",
+        "operationId": "GetGraphNodeTypeThumbnails",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThumbnailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThumbnailList"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/graphs/{id}/compounds": {
       "get": {
         "tags": [
@@ -10356,7 +10417,7 @@
               "null",
               "integer"
             ],
-            "description": "The longest side of every file, 1 to 8192: 2048 makes a 4096 map\u0027s file 2048.",
+            "description": "The longest side of every file, 1 to 8192: 2048 makes a 4096 map\u0027s file 2048. A graph is computed at it\nrather than resampled to it; a bake\u0027s or a layer stack\u0027s maps are resampled.",
             "format": "int32"
           },
           "filter": {

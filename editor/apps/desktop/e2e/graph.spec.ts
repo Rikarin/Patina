@@ -560,7 +560,7 @@ test('finds a node by name, stars a node for the palette, and adds one from seve
   await window.screenshot({ path: join(shots, 'graph-added-from-several.png') });
 });
 
-test('the node library ranks what was typed, as the palette does', async () => {
+test('the node library ranks what was typed, as the palette does, and shows each node drawn', async () => {
   await openGraph();
 
   await window.getByRole('tab', { name: 'Nodes' }).click();
@@ -568,6 +568,15 @@ test('the node library ranks what was typed, as the palette does', async () => {
   await expect(window.getByTestId('node-library-item').first()).toHaveText('Levels');
   await window.getByTestId('node-library-search').fill('Output');
   await expect(window.getByTestId('node-library-item').first()).toHaveText('Output');
+
+  // Each node with a picture shows it, drawn by the engine (#183); an Output has none to show.
+  await window.getByTestId('node-library-search').fill('Levels');
+  await expect(window.getByTestId('node-library-item').first().getByTestId('node-library-picture')).toHaveJSProperty(
+    'naturalWidth',
+    64
+  );
+  await window.getByTestId('node-library-search').fill('Output');
+  await expect(window.getByTestId('node-library-item').first().getByTestId('node-library-picture')).toHaveCount(0);
 });
 
 test('the node library adds a node, and a number becomes a parameter in one step', async () => {

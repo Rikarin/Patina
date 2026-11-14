@@ -168,7 +168,10 @@ public sealed record ExportSetOptions(string Set) {
 ///     Changing one gives the export another key, so it never reuses files made under other settings.
 /// </summary>
 public sealed record ExportOptions {
-    /// <summary>The longest side of every file, 1 to 8192: 2048 makes a 4096 map's file 2048.</summary>
+    /// <summary>
+    ///     The longest side of every file, 1 to 8192: 2048 makes a 4096 map's file 2048. A graph is computed at it
+    ///     rather than resampled to it; a bake's or a layer stack's maps are resampled.
+    /// </summary>
     public int? Size { get; init; }
 
     /// <summary>How a file changes size: box, bilinear or nearest.</summary>
