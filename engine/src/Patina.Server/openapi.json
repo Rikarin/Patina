@@ -14929,7 +14929,7 @@
           },
           "file": {
             "type": "string",
-            "description": "A file on the Server\u0027s machine that describes materials: a glTF (\u0060.gltf\u0060, \u0060.glb\u0060) or another model\nfile, a MaterialX document (\u0060.mtlx\u0060) or a USD layer in its text form (\u0060.usda\u0060)."
+            "description": "A file on the Server\u0027s machine that describes materials: a glTF (\u0060.gltf\u0060, \u0060.glb\u0060) or another model\nfile, a MaterialX document (\u0060.mtlx\u0060), a USD layer in its text form (\u0060.usda\u0060) or a USD package\n(\u0060.usdz\u0060) whose layer is text."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/project/materials\u0060."

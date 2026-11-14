@@ -46,8 +46,12 @@ in the reply's `warnings`, and the rest of the material comes in.
 
 ## What is not done, and why
 
-- **USD's binary forms** (`.usdc`, `.usdz`) need USD's own library, which Patina does not carry. They are refused with the
-  sentence to save the layer as `.usda`.
+- **USD's binary form** (`.usdc`) needs USD's own library, which Patina does not carry. It is refused with the sentence
+  to save the layer as `.usda`. A **USD package** (`.usdz`, #157) is a zip whose first file is its layer: when that
+  layer is text the Server unpacks the package into a temporary folder, reads the layer there and copies its pictures
+  into the project as it copies any picture beside a file (`UsdzReader`); when it is `.usdc`, as most tools write it,
+  it is refused the same way. A crate reader written here from OpenUSD's `crateFile.cpp` (Apache-2.0) is possible, but
+  no `.usdc` file or USD tool was on hand to test one against, so none was written.
 - **A glTF picture's placement** is drawn by `Space/Transform 2D`, whose turn is taken in texels: exact on the square
   graphs an import makes. glTF reads a picture at `M·uv + offset`; the node reads its source at `A⁻¹(o − ½ − t) + ½`, so
   `A = M⁻¹` and `t = A(½ − offset) − ½`, and an uneven scale under a turn needs the node's shear, since `M⁻¹` is then
