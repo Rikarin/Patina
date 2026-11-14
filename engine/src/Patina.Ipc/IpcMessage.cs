@@ -964,8 +964,8 @@ public sealed record GraphResultProblem(string Id, string Message, string Severi
 /// <param name="Previews">Every node's preview.</param>
 /// <param name="Problems">Everything the compiler reported.</param>
 /// <param name="Times">
-///     Each node whose operations ran, and how long they took on the GPU. A node answered from the result cache is not
-///     here.
+///     Each node and how long its operations took on the GPU when they ran, those the result cache answered included,
+///     with the time their results took when they were made.
 /// </param>
 public sealed record GraphResult(
     bool Compiled,

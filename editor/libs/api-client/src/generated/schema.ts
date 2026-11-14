@@ -4283,8 +4283,8 @@ export interface components {
       /** @description Why it did not finish, or null. "No Vulkan" means the Worker has no GPU. */
       error?: null | string;
       /**
-       * @description How long each node whose operations ran took on the GPU. A node answered from the result cache keeps its time
-       *     from before, which the state holds.
+       * @description How long each node's operations took on the GPU when they ran. One answered from the result cache has the time
+       *     its result took when it was made, for a graph or a thumbnail, and is left out when that was never timed.
        */
       times: components['schemas']['GraphNodeTime'][];
     };

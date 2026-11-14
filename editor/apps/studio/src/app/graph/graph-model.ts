@@ -138,7 +138,7 @@ export function applyEvent(document: GraphDocument, event: GraphEvent): GraphDoc
     }
 
     if (event.evaluation.times.length > 0) {
-      // Only what ran is timed, so a node the result cache answered keeps its time.
+      // A node with no time in this evaluation keeps the one it had.
       const times = new Map(next.times);
       for (const time of event.evaluation.times) {
         if (next.nodes.has(time.node)) {

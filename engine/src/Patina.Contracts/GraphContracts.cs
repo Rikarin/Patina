@@ -252,8 +252,8 @@ public sealed record HistoryJump(long? Step);
 /// <param name="Diagnostics">Everything the compiler reported.</param>
 /// <param name="Error">Why it did not finish, or null. "No Vulkan" means the Worker has no GPU.</param>
 /// <param name="Times">
-///     How long each node whose operations ran took on the GPU. A node answered from the result cache keeps its time
-///     from before, which the state holds.
+///     How long each node's operations took on the GPU when they ran. One answered from the result cache has the time
+///     its result took when it was made, for a graph or a thumbnail, and is left out when that was never timed.
 /// </param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
 #pragma warning disable SK7005

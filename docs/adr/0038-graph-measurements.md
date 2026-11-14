@@ -18,8 +18,11 @@ come from the Worker, which holds the picture and the GPU.
 - **A node's cost is the GPU time of the operations it was compiled to.** Vixen times each op it runs with a timestamp
   after it (`TexturePlanEvaluator.TimeOps`), and its compiler names the node each op was emitted for, a compound's inner
   ops being the compound's (`TextureGraphCompiler.OpNodes`). The Worker sums them per node into the evaluation's
-  `times`; the Server keeps each node's newest time in the state, since a node the result cache answers runs nothing and
-  is not timed again.
+  `times`; the Server keeps each node's newest time in the state.
+- **A result the cache answers keeps the time it was made in.** The result cache is the device's, shared by every graph
+  and every shelf thumbnail, so a graph opened after its thumbnail was drawn runs nothing at all. The Worker keeps each
+  op's time by the key of the result it made (`TextureBake.KeyOf`) and reports a reused op with that time; a node shows
+  its time from the first evaluation, wherever its results were made. Thumbnails are timed for that.
 - **A time ranks, it does not add up.** A timestamp records when everything before it finished, so operations that
   overlap on a GPU share their time unevenly. The card's title says so, and the times are not summed anywhere.
 

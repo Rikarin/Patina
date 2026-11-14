@@ -10,27 +10,40 @@ namespace Patina.Server.Tests;
 /// </summary>
 public sealed partial class GraphProcessTests {
     [Fact]
-    public async Task Each_node_that_ran_has_a_gpu_time_and_a_cached_one_keeps_its_last() {
+    public async Task Each_node_has_a_gpu_time_and_a_cached_one_keeps_the_time_its_result_took() {
         using var deadline = Deadline(120);
-        var (_, state, socket, first) = await OpenSampleAsync(GraphTesting.Sample(512), deadline.Token);
+        var sample = GraphTesting.Sample(512);
+        var (instance, state, socket, first) = await OpenSampleAsync(sample, deadline.Token);
+        Dictionary<int, double> made;
         using (socket) {
             // The noise, the blur, the HSL and the invert each ran; times are a ranking, so only their sign is sure.
             Assert.Superset(new HashSet<int> { 1, 2, 3, 5 }, first.Times.Select(static time => time.Node).ToHashSet());
             Assert.All(first.Times, static time => Assert.InRange(time.Milliseconds, 0, 60_000));
             Assert.True(first.Times.Sum(static time => time.Milliseconds) > 0);
+            made = first.Times.ToDictionary(static time => time.Node, static time => time.Milliseconds);
 
             var edit = await http.EditAsync(state.Id, deadline.Token, new GraphSetValue(2, "Hue", [0.25f]));
             var slid = await EvaluatedAsync(socket, edit.Revision, deadline.Token);
 
-            // Only what ran is timed again; the noise and the blur came from the result cache and keep their times.
-            Assert.Equal([2, 3], slid.Times.Select(static time => time.Node).Order());
+            // The HSL and what follows ran again; the noise came from the result cache, with the time it took then.
+            var again = slid.Times.ToDictionary(static time => time.Node, static time => time.Milliseconds);
+            Assert.Subset(again.Keys.ToHashSet(), new HashSet<int> { 2, 3 });
+            Assert.Equal(made[1], again[1]);
             var held = (await http.StateAsync(state.Id, deadline.Token)).Times.ToDictionary(
                 static time => time.Node,
                 static time => time.Milliseconds
             );
-            Assert.Equal(first.Times.Single(static time => time.Node == 1).Milliseconds, held[1]);
-            Assert.Equal(slid.Times.Single(static time => time.Node == 2).Milliseconds, held[2]);
+            Assert.Equal(made[1], held[1]);
+            Assert.Equal(again[2], held[2]);
         }
+
+        // A second copy of the graph, as one opened after its shelf thumbnail was drawn: the cache answers every
+        // operation, so nothing runs, and each node still says what its result took.
+        var copy = await http.OpenAsync(GraphTesting.Write(Library, sample, "copy.vxtexgraph"), deadline.Token);
+        using var followed = await FollowAsync(instance, copy, deadline.Token);
+        var opened = await EvaluatedAsync(followed, copy.Revision, deadline.Token);
+        Assert.Equal(0, opened.Ran);
+        Assert.Equal(made, opened.Times.ToDictionary(static time => time.Node, static time => time.Milliseconds));
     }
 
     [Fact]

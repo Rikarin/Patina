@@ -13104,7 +13104,7 @@
             "items": {
               "$ref": "#/components/schemas/GraphNodeTime"
             },
-            "description": "How long each node whose operations ran took on the GPU. A node answered from the result cache keeps its time\nfrom before, which the state holds."
+            "description": "How long each node\u0027s operations took on the GPU when they ran. One answered from the result cache has the time\nits result took when it was made, for a graph or a thumbnail, and is left out when that was never timed."
           }
         },
         "description": "What one evaluation did."

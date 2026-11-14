@@ -17,6 +17,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
     readonly PreviewWriter previews = new();
     readonly GraphPictures pictures = new();
     readonly CompoundShelf compounds = new();
+    readonly GraphTimes timings = new();
 
     /// <summary>What a histogram counts, in the order <see cref="GraphLevels" /> holds them.</summary>
     static readonly TextureHistogramLane[] Lanes = [
@@ -60,7 +61,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         problems = [
             ..problems, ..graph.Checks.Where(check => check.Failed(bake)).Select(static check => Problem(check.Problem))
         ];
-        var times = GraphTimes.Of(bake.OpMilliseconds, graph.OpNodes);
+        var times = timings.Of(bake, extended.Plan, graph.OpNodes);
         return Reply(new(compiled, true, bake.Ran.Length, bake.Reused, Milliseconds(start), stored, problems, times));
     }
 
@@ -144,7 +145,9 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
             return Drawn(null);
         }
 
-        using var bake = runner.EvaluateIncremental(extended.Plan, graph.Uploads!.Externals);
+        // Timed, so a graph opened after its thumbnail, whose results the cache then holds, still has its times.
+        using var bake = Timed(runner, extended.Plan, graph.Uploads!.Externals);
+        timings.Keep(bake, extended.Plan);
         return Drawn(previews.Write(bake, [extended.Images[0].Image], ask.PreviewFolder)[0].Hash);
     }
 

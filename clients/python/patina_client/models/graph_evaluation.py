@@ -37,9 +37,9 @@ class GraphEvaluation:
             previews (list[GraphPreview]): The previews that differ from the last evaluation's. All of them are in the
                 state.
             diagnostics (list[GraphDiagnostic]): Everything the compiler reported.
-            times (list[GraphNodeTime]): How long each node whose operations ran took on the GPU. A node answered from the
-                result cache keeps its time
-                from before, which the state holds.
+            times (list[GraphNodeTime]): How long each node's operations took on the GPU when they ran. One answered from
+                the result cache has the time
+                its result took when it was made, for a graph or a thumbnail, and is left out when that was never timed.
             error (None | str | Unset): Why it did not finish, or null. "No Vulkan" means the Worker has no GPU.
      """
 
