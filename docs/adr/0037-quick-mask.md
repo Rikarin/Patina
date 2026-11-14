@@ -29,5 +29,5 @@ was painted, or outside it once inverted. It is a selection, not part of the mat
 
 ## Not yet
 
-- A quick mask is the texture set's; a stroke in one set is not kept by one painted in another. ADR 0043 proposes how it
+- A quick mask is the texture set's; a stroke in one set is not kept by one painted in another. ADR 0046 proposes how it
   follows the model.
