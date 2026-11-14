@@ -16,6 +16,13 @@ public static class GraphDocuments {
     /// </summary>
     const string NewGraphBase = "1024";
 
+    /// <summary>
+    ///     How a graph is written: a key whose value is the default is left out (#298), so a node that follows its
+    ///     inputs' size and is not bypassed is its type, its place and what it was given, and a diff shows what a person
+    ///     set. A key left out reads back as the default, so the same document still gives the same bytes.
+    /// </summary>
+    static readonly YamlSerializerOptions Written = new(OmitDefaults: true);
+
     /// <summary>Reads a document from file text.</summary>
     /// <exception cref="GraphEditRefusedException">The text is not a graph.</exception>
     public static NodeGraphAsset Parse(string yaml) {
@@ -41,7 +48,7 @@ public static class GraphDocuments {
         };
 
     /// <summary>The file's text. The same document always gives the same bytes.</summary>
-    public static string Text(NodeGraphAsset document) => YamlSerializer.ToYaml(document);
+    public static string Text(NodeGraphAsset document) => YamlSerializer.ToYaml(document, Written);
 
     /// <summary>
     ///     A document in the order the plan's file rule asks for, so that an edit never reorders a file and undoing an
