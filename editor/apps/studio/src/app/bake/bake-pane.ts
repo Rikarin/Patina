@@ -505,6 +505,23 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 (checkedChange)="setRays({ ignoreBackfaces: $event })"
               />
             </label>
+            <label
+              class="flex items-center justify-between gap-2 text-sm"
+              [title]="
+                settings.settings()?.cage
+                  ? 'The cage file is used instead.'
+                  : 'Rays start on the low poly mesh pushed out by the front distance, and take the first surface they meet, as from a cage. Off, each ray takes the nearer surface in front or behind.'
+              "
+            >
+              Automatic cage
+              <xui-switch
+                aria-label="Automatic cage"
+                data-testid="bake-automatic-cage"
+                [disabled]="!!settings.settings()?.cage"
+                [checked]="options.rays.automaticCage === true"
+                (checkedChange)="setRays({ automaticCage: $event })"
+              />
+            </label>
             <div
               class="flex items-center gap-2"
               title="0% follows the smoothed direction and hides seams at hard edges; 100% follows each face, which keeps detail beside them square."

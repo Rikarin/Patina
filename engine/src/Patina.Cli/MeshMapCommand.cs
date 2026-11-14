@@ -23,12 +23,13 @@ internal static class MeshMapCommand {
         + "        [--ao-within-part] [--ground-plane] [--ground-offset <distance>] [--thickness-raw]\n"
         + "        [--height-range measured|rays|custom] [--height-scale <distance>]\n"
         + "        [--id-source auto|material|material-colour|vertex-colour|mesh|shell]\n"
-        + "        [--id-palette random|hue|grey]\n"
+        + "        [--id-palette random|hue|grey] [--auto-cage]\n"
         + "        [--threads <n>] [--cache <folder>]";
 
     /// <summary>The options that take no value.</summary>
     static readonly HashSet<string> Switches = [
-        "match-by-name", "ignore-backfaces", "ao-ignore-backfaces", "ao-within-part", "ground-plane", "thickness-raw"
+        "match-by-name", "ignore-backfaces", "auto-cage", "ao-ignore-backfaces", "ao-within-part", "ground-plane",
+        "thickness-raw"
     ];
 
     public static int Run(string[] options) {
@@ -162,6 +163,7 @@ internal static class MeshMapCommand {
                     Rear = Fraction("rear", front),
                     Units = Word("units", "relative"),
                     IgnoreBackfaces = on.Contains("ignore-backfaces"),
+                    AutomaticCage = on.Contains("auto-cage"),
                     Skew = Fraction("skew", 0),
                     SkewMap = named.GetValueOrDefault("skew-map") is { } skew ? Path.GetFullPath(skew) : string.Empty,
                     MatchByName = on.Contains("match-by-name"),

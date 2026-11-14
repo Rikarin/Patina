@@ -26,6 +26,7 @@ const defaults: ProjectBakeSettings = {
       rear: 0.05,
       units: 'relative',
       ignoreBackfaces: false,
+      automaticCage: false,
       skew: 0,
       skewMap: '',
       distanceMap: '',
