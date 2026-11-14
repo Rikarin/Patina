@@ -59,6 +59,10 @@ const RoundedEdges = [
   { value: 'angle', label: 'By angle' },
   { value: 'hard', label: 'Hard edges' }
 ];
+const EdgeMeshes = [
+  { value: 'high', label: 'High mesh' },
+  { value: 'low', label: 'Low mesh' }
+];
 const Profiles = [
   { value: 'even', label: 'Round' },
   { value: 'smooth', label: 'Smooth' },
@@ -957,6 +961,17 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   />
                 </div>
                 <div class="flex items-center justify-between gap-2 text-sm">
+                  Mesh
+                  <xui-segmented-control
+                    size="sm"
+                    aria-label="Whose edges are marked"
+                    data-testid="bake-edges-mesh"
+                    [options]="edgeMeshes"
+                    [value]="options.edges.mesh"
+                    (valueChange)="setEdges({ mesh: $event ?? options.edges.mesh })"
+                  />
+                </div>
+                <div class="flex items-center justify-between gap-2 text-sm">
                   Profile
                   <xui-segmented-control
                     size="sm"
@@ -968,8 +983,9 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   />
                 </div>
                 <p class="text-foreground-muted text-xs">
-                  The high mesh’s edges, or the low mesh’s when it bakes onto itself. Round fades evenly away from the
-                  edge, Smooth softly, and Chamfer is white across the whole band.
+                  High mesh marks the edges where the rays land; Low mesh marks the low mesh’s own edges, even under a
+                  high mesh with none. Round fades evenly away from the edge, Smooth softly, and Chamfer is white across
+                  the whole band.
                 </p>
               }
               @case ('thickness') {
@@ -1250,6 +1266,7 @@ export class BakePane {
   protected readonly rowsName = (value: string) => (value ? `${value} texels` : 'Same as width');
   protected readonly canPick = desktop() !== undefined;
   protected readonly roundedEdges = RoundedEdges;
+  protected readonly edgeMeshes = EdgeMeshes;
   protected readonly profiles = Profiles;
   protected readonly curvatureRanges = CurvatureRanges;
   protected readonly colourSources = ColourSources;

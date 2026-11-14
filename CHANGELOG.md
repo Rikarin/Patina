@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The Edges map can mark the low mesh's edges (#278): Mesh, in its section of the Bake dialog, is High mesh, the edges where the rays land, as before, or Low mesh, the low mesh's own hard or sharp edges, so a low poly's edges get a band even under a high mesh that rounds them all. Through the API `edges.mesh`, `high` or `low`.
 - A compound's Color parameter can follow the one around it (#272): a compound inside a compound set to `$Tint` takes the outer compound's Color parameter `Tint`, as a Text parameter's `$` reference does. Arithmetic over a color, such as `tint * 0.5`, is refused with a sentence that says a color can't be computed with, instead of an unknown name.
 - Warp to Geometry follows a surface that turns away on both sides, such as round a cylinder (#263): it measures along the decal's own facing rather than the camera's rays, so it works from any view, in one round trip rather than one per place, and makes a 5 by 5 warp grid where it made a 3 by 3, so each quarter of the picture covers as much of the surface. The Warp handles show whichever grid the decal has. A decal's warp is now any square grid of 2 to 9 points on a side. Through the API `POST /api/v1/viewport/cast` casts up to 1024 rays along one direction at the open mesh, refused with `viewport-cast-refused` or `viewport-mesh-unavailable`.
 - `patina library check` lists the bytes under `.revisions/` that no snapshot and no pin names any more, as a deleted snapshot or document leaves them, with how large each is; `--purge-revisions` removes them, and refuses while a Server has the library open (#270).
@@ -261,6 +262,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A low mesh baked onto itself finds itself everywhere (#278): its rays started on the surface they should strike and did not count it, so most texels took the nearest point instead, Opacity read black over most of the map and the bake's count of texels that found no surface was nearly all of them.
 - Saving a graph, a layer stack or a paint layer, and the engine's own caches, no longer fail on Windows when another program reads the file at that moment (#265): every save that moves a finished file into place waits for the reader, as the library's own writes have since #257.
 - A library change refused because another program still has the file open says so, with the code `file-busy` and the file's name, instead of an uncoded conflict a client can't tell from a name that is taken (#266).
 - Oil Paint's brush ridges tile at any Stroke Angle and at any size (#267): they are a noise smeared along the angle rather than one turned through it.

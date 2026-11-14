@@ -309,6 +309,7 @@ public static class MeshMapBakeRun {
             DistanceMap = rays.DistanceMap is { Length: > 0 } distance ? Mask(distance, "distance map") : null,
             Rounding = BakeEdgeSettings.Rounding(options.Rounding),
             EdgeMap = BakeEdgeSettings.Marked(options.Edges),
+            EdgeMapOf = options.Edges.Mesh == "low" ? BakeMesh.Target : BakeMesh.Source,
             Parts = rays.MatchByName
                 ? BakeParts.ByName(high.Parts, low.Parts, Suffixes(rays.HighSuffix), Suffixes(rays.LowSuffix))
                 : null,

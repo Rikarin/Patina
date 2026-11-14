@@ -2516,6 +2516,11 @@ export interface components {
     /** @description Which edges the edges map marks, and the band it draws along them (#148). */
     BakeEdgeOptions: {
       /**
+       * @description Whose edges are marked: `high`, the high mesh's, where the rays land; or `low`, the low mesh's, at
+       *     the texel, so its hard edges show even under a high mesh with none (#278).
+       */
+      mesh: string;
+      /**
        * @description `hard`, the edges the high mesh's own normals split, or `angle`, every edge whose faces meet at
        *                 double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges.
        */

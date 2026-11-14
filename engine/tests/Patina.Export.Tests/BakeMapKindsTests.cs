@@ -72,6 +72,45 @@ public sealed class BakeMapKindsTests : IDisposable {
     }
 
     /// <summary>
+    ///     The low mesh baked onto itself is struck everywhere: its rays start on the surface they strike, and they used
+    ///     to meet it at zero distance, which did not count, so opacity read black and every texel was missed (#278).
+    /// </summary>
+    [Fact]
+    public void The_low_mesh_baked_onto_itself_is_opaque_everywhere_it_is_charted() {
+        var manifest = Bake("self", static options => options with { Maps = ["opacity", "islands"] });
+        var opacity = Covered(Picture("self", "opacity"), Picture("self", "islands"));
+
+        // Only the outline misses: a texel a chart claims past its triangle's edge stands off the mesh, at a corner.
+        Assert.NotEmpty(opacity);
+        Assert.True(opacity.Count(static value => value == 255) > opacity.Count * 0.98, "Rays missed the low mesh.");
+        Assert.True(manifest.Result.Covered > 0);
+        Assert.True(manifest.Result.Missed * 50 < manifest.Result.Covered, $"{manifest.Result.Missed} texels missed.");
+    }
+
+    /// <summary>
+    ///     The edges map marks the low mesh's edges when asked, measured at the texel, so a bake from the high mesh
+    ///     marks exactly what the low mesh baked onto itself does, and the high mesh's own edges are another map (#278).
+    /// </summary>
+    [Fact]
+    public void The_edges_map_can_mark_the_low_meshs_edges_under_a_high_mesh() {
+        static Func<BakeOptions, BakeOptions> With(string mesh) =>
+            options => options with {
+                Maps = ["edges"],
+                Rays = options.Rays with { Units = "absolute", Front = 0.2, Rear = 0.2 },
+                Edges = new() { Edges = "angle", Width = 0.05, Mesh = mesh }
+            };
+
+        Bake("self", With("low"));
+        Bake("low", With("low"), true);
+        Bake("high", With("high"), true);
+        var self = Picture("self", "edges").Pixels;
+
+        Assert.Equal(self, Picture("low", "edges").Pixels);
+        Assert.NotEqual(self, Picture("high", "edges").Pixels);
+        Assert.Contains("high or low", new BakeOptions { Edges = new() { Mesh = "both" } }.Problem());
+    }
+
+    /// <summary>
     ///     A chamfered band is white all the way across, so its edges map holds no grey; an even one ramps down through
     ///     the greys. The rounded normal turns differently too.
     /// </summary>

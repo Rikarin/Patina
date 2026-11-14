@@ -31,6 +31,15 @@ public sealed record BakeEdgeOptions {
     /// <summary>The words <see cref="Profile" /> and a rounded edge's profile take.</summary>
     public static IReadOnlyList<string> Profiles { get; } = ["even", "smooth", "chamfer"];
 
+    /// <summary>The words <see cref="Mesh" /> takes.</summary>
+    public static IReadOnlyList<string> Meshes { get; } = ["high", "low"];
+
+    /// <summary>
+    ///     Whose edges are marked: <c>high</c>, the high mesh's, where the rays land; or <c>low</c>, the low mesh's, at
+    ///     the texel, so its hard edges show even under a high mesh with none (#278).
+    /// </summary>
+    public string Mesh { get; set; } = "high";
+
     /// <summary>
     ///     <c>hard</c>, the edges the high mesh's own normals split, or <c>angle</c>, every edge whose faces meet at
     ///     <see cref="Angle" /> or more. With no high mesh the low mesh bakes onto itself, so these are its edges.
@@ -53,6 +62,7 @@ public sealed record BakeEdgeOptions {
     public string? Problem() =>
         !BakeRoundingOptions.EdgeWords.Contains(Edges, StringComparer.Ordinal) ? $"'{Edges}' is not angle or hard."
         : !Profiles.Contains(Profile, StringComparer.Ordinal) ? $"'{Profile}' is not a profile."
+        : !Meshes.Contains(Mesh, StringComparer.Ordinal) ? $"'{Mesh}' is not high or low."
         : !(Width > 0 && double.IsFinite(Width)) ? "The edges map needs a width."
         : Angle is < 0 or > 180 ? "The edge angle is 0 to 180 degrees."
         : null;
