@@ -31,6 +31,7 @@ public sealed class MeshCompoundTests {
         "Generators/Sun Fade",
         "Generators/Surface Scratches",
         "Generators/Thin Parts",
+        "Generators/UV Island Checker",
         "Generators/Water Line",
         "Generators/Wrinkles",
         "Stylised/Baked Lighting",
@@ -183,12 +184,13 @@ public sealed class MeshCompoundTests {
     /// <summary>
     ///     Wave 14's single generators pick what they say and leave the rest (#177): the stand-in's thickness climbs
     ///     from thin on the left to thick on the right, its position climbs up the picture, and its ID bake is red on
-    ///     the left and blue on the right.
+    ///     the left and blue on the right, as its UV island bake is, so a checker per island is red on the left alone.
     /// </summary>
     [Theory]
     [InlineData("Generators/Thin Parts", "left")]
     [InlineData("Generators/Water Line", "bottom")]
     [InlineData("Generators/ID Mask", "left")]
+    [InlineData("Generators/UV Island Checker", "left")]
     public void A_generator_picks_its_part_of_the_stand_in_and_leaves_the_rest(string path, string picked) {
         if (Device() is not { } device) {
             return;
@@ -227,6 +229,39 @@ public sealed class MeshCompoundTests {
             Assert.True(mine > theirs * 2 + 0.05, $"{path} covers {mine:0.000} here, {theirs:0.000} there.");
         }
     }
+
+    /// <summary>
+    ///     Patina #120: Mask Editor takes the thin parts and a height on the model too. Each adds only to its own part of
+    ///     the stand-in, where the model is thin, at the top, or at the bottom, and at nought adds nothing.
+    /// </summary>
+    [Theory]
+    [InlineData("thin", "0.6", "left")]
+    [InlineData("height", "0.6", "top")]
+    [InlineData("height", "-0.6", "bottom")]
+    public void Mask_editor_adds_its_part_of_the_stand_in_and_nothing_else(string knob, string value, string part) {
+        if (Device() is not { } device) {
+            return;
+        }
+
+        using (device) {
+            var (compiler, graph) = Containing("Generators/Mask Editor", out var used, out _);
+            var before = Bake(device, compiler, graph)["baseColor"];
+            used.SetText(knob, value);
+            var after = Bake(device, compiler, graph)["baseColor"];
+            var (own, other) = part switch {
+                "left" => (Added(before, after, ..(Side / 5), ..), Added(before, after, ^(Side / 5).., ..)),
+                "top" => (Added(before, after, .., ..(Side / 5)), Added(before, after, .., ^(Side / 5)..)),
+                _ => (Added(before, after, .., ^(Side / 5)..), Added(before, after, .., ..(Side / 5)))
+            };
+
+            Assert.True(own > 0.05, $"{knob} {value} adds {own:0.000} to the {part}.");
+            Assert.True(other < 0.005, $"{knob} {value} adds {other:0.000} away from the {part}.");
+        }
+    }
+
+    /// <summary>How much brighter one picture is than another over some columns and rows, on average.</summary>
+    static double Added(Vixen.Core.Imaging.Bitmap before, Vixen.Core.Imaging.Bitmap after, Range columns, Range rows) =>
+        Mean(after, columns, rows) - Mean(before, columns, rows);
 
     static Vixen.Core.Imaging.Bitmap Drawn(VulkanDevice device, string path, string seed) {
         var (compiler, graph) = Containing(path, out var used, out _);
