@@ -478,6 +478,15 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         return new Release(this);
     }
 
+    /// <summary>Whether something waits for the Worker to reach this stack, which is then evaluated first.</summary>
+    public bool Awaited {
+        get {
+            lock (Changing) {
+                return readers > 0;
+            }
+        }
+    }
+
     void Released() {
         lock (Changing) {
             readers--;

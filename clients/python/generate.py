@@ -5,7 +5,6 @@ A folder of its own and a generator in one pinned version, so that a check is a 
 """
 import filecmp
 import pathlib
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -56,9 +55,20 @@ def main() -> int:
         print("patina_client is up to date")
         return 0
 
-    shutil.rmtree(TARGET, ignore_errors=True)
-    generate(TARGET)
+    replace(TARGET, generate)
     return 0
+
+
+def replace(target: pathlib.Path, make) -> None:
+    """Makes a fresh copy of `target` beside it and only then swaps it in, so a generator that fails or is missing
+    leaves the committed client as it was rather than deleted."""
+    with tempfile.TemporaryDirectory(dir=target.parent, prefix=f".{target.name}-") as scratch:
+        fresh = pathlib.Path(scratch) / target.name
+        make(fresh)
+        old = pathlib.Path(scratch) / f"{target.name}.old"
+        if target.exists():
+            target.rename(old)
+        fresh.rename(target)
 
 
 if __name__ == "__main__":
