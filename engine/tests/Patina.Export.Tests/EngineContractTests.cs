@@ -1,3 +1,4 @@
+using Patina.Export.Materials;
 using Patina.Export.Presets;
 using Vixen.Core.Imaging;
 
@@ -77,7 +78,17 @@ public sealed class EngineContractTests : IDisposable {
         ("gltf", "_baseColor", Colour),
         ("gltf", "_normal", Normal),
         ("gltf", "_occlusionRoughnessMetallic", Orm),
-        ("gltf", "_emissive", Srgb(Emissive))
+        ("gltf", "_emissive", Srgb(Emissive)),
+        // Blender's manual: an Image Texture node reads a colour picture as sRGB and a data map as Non-Color, the
+        // Normal Map node reads tangent space with green up (OpenGL), and Emission Color is a colour.
+        ("blender", "_base_color", BaseColor),
+        ("blender", "_normal", Normal),
+        ("blender", "_roughness", [Roughness]),
+        ("blender", "_metallic", [Metalness]),
+        ("blender", "_occlusion", [Occlusion]),
+        ("blender", "_alpha", [Opacity]),
+        ("blender", "_emission", Srgb(Emissive)),
+        ("blender", "_height", [Height])
     ];
 
     public static TheoryData<string, string, float[]> Contracts() {
@@ -139,6 +150,7 @@ public sealed class EngineContractTests : IDisposable {
     [InlineData("unity-urp")]
     [InlineData("godot")]
     [InlineData("gltf")]
+    [InlineData("blender")]
     public void Every_file_of_an_engines_preset_has_a_contract(string engine) {
         var endings = Table().Where(row => row.Engine == engine).Select(static row => row.Ending).ToList();
 
@@ -148,5 +160,42 @@ public sealed class EngineContractTests : IDisposable {
             files,
             file => !endings.Exists(ending => file.EndsWith(ending, StringComparison.Ordinal))
         );
+    }
+
+    /// <summary>
+    ///     Blender reads the preset's files through the USD material beside them (#46): its importer turns a
+    ///     <c>UsdPreviewSurface</c> into a Principled BSDF, input by input. So the material file is held to the schema:
+    ///     read back, each input names the file the table above checked for its map, the whole colour or lane red, not
+    ///     inverted, and the normal with its green up as Blender's Normal Map node reads it. Occlusion is in the file
+    ///     too, which the schema has and Blender leaves unwired.
+    /// </summary>
+    [Fact]
+    public void Blenders_usd_material_wires_each_file_to_the_input_that_reads_it() {
+        var preset = ExportPresetCatalog.Read(null).Find("blender")!;
+        var made = Path.Combine(folder.FullName, "made");
+        var target = Path.Combine(folder.FullName, "out");
+        var manifest = ExportRun.Run(preset, Maps(), made, null, Token);
+
+        var delivered = ExportRun.Deliver("key", made, manifest, target, new("Crate", "blender"), preset: preset);
+
+        Assert.Empty(delivered.Warnings);
+        var usd = Assert.Single(delivered.Files, static f => f.EndsWith(".usda", StringComparison.Ordinal));
+        var material = Assert.Single(UsdaReader.Read(usd));
+        var slots = material.Slots.ToDictionary(static s => s.Usage, StringComparer.Ordinal);
+        (string Usage, string Ending, int Lane)[] wired = [
+            (ExportMaps.BaseColor, "_base_color", -1), (ExportMaps.Normal, "_normal", -1),
+            (ExportMaps.Roughness, "_roughness", 0), (ExportMaps.Metalness, "_metallic", 0),
+            (ExportMaps.Occlusion, "_occlusion", 0), (ExportMaps.Opacity, "_alpha", 0),
+            (ExportMaps.Emissive, "_emission", -1), (ExportMaps.Height, "_height", 0)
+        ];
+        Assert.Equal(wired.Select(static w => w.Usage).Order(), slots.Keys.Order());
+        foreach (var (usage, ending, lane) in wired) {
+            var slot = slots[usage];
+            Assert.EndsWith(ending, Path.GetFileNameWithoutExtension(slot.Texture), StringComparison.Ordinal);
+            Assert.True(File.Exists(slot.Texture), slot.Texture);
+            Assert.Equal((lane, false), (slot.Lane, slot.Inverted));
+        }
+
+        Assert.True(slots[ExportMaps.Normal].GreenUp);
     }
 }

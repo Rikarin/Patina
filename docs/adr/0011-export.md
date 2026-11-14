@@ -262,7 +262,9 @@ Two tests stand in for the engines until someone opens the files in them:
   every file back, holding each lane to a table written from the engines' pages and not from the presets: what each importer reads
   in each lane, the green it reads and whether the file holds sRGB or linear numbers. A file added to a preset fails until its
   engine's row is written. This is the golden per preset, as numbers rather than pictures, so it needs no GPU and no tolerance per
-  GPU family.
+  GPU family. _2026-11-14:_ Blender has its rows too, from its manual's Image Texture, Normal Map and Principled BSDF pages,
+  and since Blender reads the files through the USD material beside them, that material is read back and each
+  `UsdPreviewSurface` input held to the file its map's row checked, lane red or the whole colour, not inverted, green up.
 - `ContainerHeaderTests` reads every DDS and KTX2 file an export can write (BC1 to BC7, half, float, plain, sRGB and linear, with
   mips) with a parser written from Microsoft's `DDS_HEADER` and `DDS_HEADER_DXT10` and Khronos's KTX 2.0 layout, and checks the
   DXGI and Vulkan format numbers, the level count and each level's size. That covers the BC6H and 16-bit and float DDS no outside
@@ -289,6 +291,8 @@ What only a person with the engine can check, one import per engine, recorded he
 - **Unity URP and HDRP:** that the importer's tangents agree with the bake's on a curved surface, and that occlusion is read from
   green of a one-lane file (it is grey, so it cannot be wrong, but no one has looked).
 - **Godot 4:** that ORMMaterial3D reads the `_orm` file in glTF's order.
+- **Blender:** that File > Import > USD makes a Principled BSDF with each picture on the input the material names, the colour
+  pictures as sRGB and the rest as Non-Color, and that the height reaches displacement.
 - **Every engine:** that BC1, BC3, BC4 and BC5 decode as the encoder meant on a GPU, and that the Vixen target's tangents match on
   curved surfaces (its importer uses Assimp's).
 - **Scale:** the 10,000-project numbers used stand-in 2×2 maps; real pixels stop at 500 projects.
