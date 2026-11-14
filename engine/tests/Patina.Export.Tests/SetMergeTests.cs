@@ -262,7 +262,7 @@ public sealed class SetMergeTests : IDisposable {
             .Order(StringComparer.Ordinal);
 
         string[] apart = ["Crate_1001.mtlx", "Crate_1001.usda", "Crate_1002.mtlx", "Crate_1002.usda"];
-        string[] wanted = [..(token ? ["Crate.mtlx", "Crate.usda"] : apart), "Crate_1001.gltf", "Crate_1002.gltf"];
+        string[] wanted = [..token ? ["Crate.mtlx", "Crate.usda"] : apart, "Crate_1001.gltf", "Crate_1002.gltf"];
         Assert.Equal(wanted.Order(StringComparer.Ordinal), delivered);
         // glTF reads the normal and not a roughness alone in red, so the normal is what names the tile.
         var second = File.ReadAllText(Path.Combine(target, "Crate_1002.gltf"));
