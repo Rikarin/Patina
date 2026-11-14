@@ -459,6 +459,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a word. The Bake dialog says so under the field and will not bake, and the Server, `patina bake-maps` and the engine refuse it,
   with the code `bake-occluder-minimum` for clients. Thickness reads only the occluder distance, so it still bakes.
 - Paint says when it has lost Patina's engine, as Graph does: Layers shows that the stack comes back when the engine reconnects, and warns when the GPU engine is not running.
+- A failed Apply in Properties' Project section says why beside its own Apply, where it landed in the app-wide bar, and still says so once the document has opened again (#291). A failure in Project Settings stays in the dialog.
+- A Server takes no room for viewport frames until it draws one (#291), so one that never shows a viewport, a test's or a script's, starts on a full disk. When the frames cannot be made, the viewport says where and how much room they wanted, where it said only "not enough space".
+- The Python client's tests run the engine under the `dotnet` that holds .NET 11, `DOTNET_ROOT` first and then `~/.dotnet`, as the desktop app does, so an older `dotnet` first on PATH no longer fails them with 0x80008096 (#291).
 
 ### Changed
 

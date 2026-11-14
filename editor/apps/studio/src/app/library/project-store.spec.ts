@@ -890,8 +890,20 @@ describe('ProjectStore', () => {
 
     expect(await store.applySettings({ mesh: '/nowhere.glb' })).toBe(false);
 
-    expect(store.settingsFailure()).toBe('No such mesh.');
+    expect(store.settingsFailure()).toEqual({ place: 'dialog', reason: 'No such mesh.' });
     expect(store.failure()).toBeNull();
+  });
+
+  it("says why Properties' Project section did not apply in that section, not app-wide (#291)", async () => {
+    const { store, client } = harness();
+    await store.open('a');
+    (client as unknown as { PATCH: unknown }).PATCH = vi.fn(() => Promise.reject(new Error('No such mesh.')));
+
+    expect(await store.applySettings({ mesh: '/nowhere.glb' }, 'properties')).toBe(false);
+
+    expect(store.settingsFailure()).toEqual({ place: 'properties', reason: 'No such mesh.' });
+    expect(store.failure()).toBeNull();
+    expect(store.active()?.path).toBe(paths.texturing);
   });
 
   it('says why settings did not apply from outside the dialog, after the document is back', async () => {

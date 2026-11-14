@@ -27,6 +27,15 @@ import { FileChooser } from './file-chooser';
 import { LibraryStore } from './library-store';
 
 /** An open document. Its session stays on the Server while another tab is in front, with all its edits and history. */
+/** Where the project's settings were applied from: Project Settings, or the Project section in Properties. */
+export type SettingsPlace = 'dialog' | 'properties';
+
+/** Why the project's settings could not apply, said in the form they were applied from. */
+export interface SettingsFailure {
+  place: SettingsPlace;
+  reason: string;
+}
+
 export interface DocumentTab {
   path: string;
   name: string;
@@ -109,8 +118,11 @@ export class ProjectStore {
   private readonly mutableNewKind = signal<{ kind: string } | null>(null);
   /** The Project Settings dialog is up. */
   readonly settingsOpen = signal(false);
-  /** Why Project Settings could not apply. It is said in the dialog, which covers everything else. */
-  readonly settingsFailure = signal<string | null>(null);
+  /**
+   * Why the project's settings could not apply, and which form they were applied from: the dialog covers everything
+   * else, and Properties' Project section says its own beside its Apply (#291).
+   */
+  readonly settingsFailure = signal<SettingsFailure | null>(null);
   private readonly mutableUnwrapping = signal(false);
   /** A mesh is being given a UV layout, which can take a while on a large one. */
   readonly unwrapping = this.mutableUnwrapping.asReadonly();
@@ -593,14 +605,17 @@ export class ProjectStore {
    * Sets what the whole project shares. A mesh rewrites what its documents stand on, so they close first and the one in
    * front opens again on it. That costs them their undo, and a document with unsaved edits has to be saved.
    */
-  async applySettings(settings: {
-    mesh?: string | null;
-    high?: string | null;
-    autoUnwrap?: boolean;
-    preservePaint?: boolean;
-    unwrap?: UnwrapOptions;
-    reassign?: Record<string, string>;
-  }): Promise<boolean> {
+  async applySettings(
+    settings: {
+      mesh?: string | null;
+      high?: string | null;
+      autoUnwrap?: boolean;
+      preservePaint?: boolean;
+      unwrap?: UnwrapOptions;
+      reassign?: Record<string, string>;
+    },
+    from?: SettingsPlace
+  ): Promise<boolean> {
     // A tab on its way to the front lets go of the viewport's mesh as it comes (#237), and settings that move the mesh
     // close and open its documents again, so they wait for it and apply to the project it brings.
     await this.inFront();
@@ -645,7 +660,12 @@ export class ProjectStore {
         await this.openDocument(project.path, front);
       }
 
-      this.fail(messageOf(failure));
+      if (from) {
+        this.settingsFailure.set({ place: from, reason: messageOf(failure) });
+      } else {
+        this.fail(messageOf(failure));
+      }
+
       return false;
     } finally {
       this.mutableUnwrapping.set(false);
@@ -1130,7 +1150,11 @@ export class ProjectStore {
 
   /** Says what went wrong where it can be read: nothing shows through the Project Settings dialog. */
   private fail(reason: string): void {
-    (this.settingsOpen() ? this.settingsFailure : this.mutableFailure).set(reason);
+    if (this.settingsOpen()) {
+      this.settingsFailure.set({ place: 'dialog', reason });
+    } else {
+      this.mutableFailure.set(reason);
+    }
   }
 
   private isShowing(tab: DocumentTab): boolean {

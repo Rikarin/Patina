@@ -583,13 +583,37 @@ public sealed class FrameMemoryTests : IDisposable {
     }
 
     [Fact]
-    public void A_stopped_server_leaves_no_file_behind() {
+    public async Task A_stopped_server_leaves_no_file_behind() {
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.frames");
         var own = new FrameMemory(Options.Create(new ServerOptions { Worker = new() { FramesPath = path } }));
+        (await own.RentAsync(TestContext.Current.CancellationToken)).Release();
         Assert.True(File.Exists(path));
 
         own.Dispose();
 
         Assert.False(File.Exists(path));
+    }
+
+    /// <summary>A Server that never draws takes no room for frames, so one on a full disk still starts (#291).</summary>
+    [Fact]
+    public void A_server_takes_no_room_for_frames_until_it_draws_one() {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.frames");
+        using var own = new FrameMemory(Options.Create(new ServerOptions { Worker = new() { FramesPath = path } }));
+
+        Assert.False(File.Exists(path));
+    }
+
+    /// <summary>When the file cannot be made, the refusal says where and how much room it wanted (#291).</summary>
+    [Fact]
+    public async Task Frames_that_cannot_be_made_say_where_and_how_much_room_they_wanted() {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}", "gone", "x.frames");
+        using var own = new FrameMemory(Options.Create(new ServerOptions { Worker = new() { FramesPath = path } }));
+
+        var refused = await Assert.ThrowsAsync<FramesUnavailableException>(
+            () => own.RentAsync(TestContext.Current.CancellationToken)
+        );
+
+        Assert.Contains(path, refused.Message, StringComparison.Ordinal);
+        Assert.Contains($"{FrameMemory.FileBytes / (1024 * 1024)} MB", refused.Message, StringComparison.Ordinal);
     }
 }
