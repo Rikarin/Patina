@@ -3,7 +3,9 @@ namespace Patina.Ipc.Tests;
 public sealed class IpcSocketSweepTests : IDisposable {
     readonly string folder = Path.Combine(Path.GetTempPath(), $"patina-sockets-{Guid.NewGuid():N}");
 
-    public IpcSocketSweepTests() => Directory.CreateDirectory(folder);
+    public IpcSocketSweepTests() {
+        Directory.CreateDirectory(folder);
+    }
 
     public void Dispose() => Patina.Testing.TempFolders.Delete(folder);
 
