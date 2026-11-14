@@ -51,7 +51,9 @@ public sealed class BrushApiTests : IAsyncLifetime {
         var paint = new ProjectPaintSettings {
             RecentColours = ["#d9401a", "#203040"],
             Palette = ["#ffffff"],
-            Brush = StackBrushes.Default with { Radius = 40f, Aspect = 3f, SizeSpace = "texture", Alignment = "tangent" },
+            Brush = StackBrushes.Default with {
+                Radius = 40f, Aspect = 3f, SizeSpace = "texture", Alignment = "tangent"
+            },
             Symmetry = new("radial", "y", Count: 6)
         };
 
@@ -222,7 +224,11 @@ public sealed class BrushApiTests : IAsyncLifetime {
         Assert.Equal(["Camera", "Tangent"], terms.Alignments.Select(static term => term.Label));
         Assert.Equal("camera", terms.Default.Alignment);
         Assert.Null((StackBrushes.Default with { Alignment = "tangent" }).Problem());
-        Assert.Contains("lies on", (StackBrushes.Default with { Alignment = "uv" }).Problem(), StringComparison.Ordinal);
+        Assert.Contains(
+            "lies on",
+            (StackBrushes.Default with { Alignment = "uv" }).Problem(),
+            StringComparison.Ordinal
+        );
     }
 
     /// <summary>
