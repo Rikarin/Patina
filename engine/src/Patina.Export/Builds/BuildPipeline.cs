@@ -117,6 +117,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         var exportsFresh = plan.Projects.Sum(static p => p.Exports.Count(static e => e.Fresh));
         var steps = Math.Max(1, plan.Steps);
         var done = 0;
+        Fresh(journal, plan);
 
         try {
             await RunPlanAsync();
@@ -179,6 +180,46 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                 }
             }
         }
+    }
+
+    /// <summary>
+    ///     Journals what the plan found fresh (#280): each output whose key already has a result, and each export
+    ///     already delivered under its key, with the files and digests its delivery kept. Without it a build reported
+    ///     only the projects it touched, and a comparison could not tell a fresh project from one not in the build.
+    /// </summary>
+    void Fresh(BuildJournal journal, BuildPlan plan) {
+        foreach (var project in plan.Projects) {
+            var identity = new ProjectIdentity(project.Project.Id.Value, project.Project.Name, project.Project.Path);
+            var stale = project.Stale.Select(static o => o.Output.Name).ToHashSet(StringComparer.Ordinal);
+            foreach (var output in project.Project.Outputs) {
+                if (output.Key is { } key && !stale.Contains(output.Output.Name) && objects.Contains(key)) {
+                    journal.Fresh(
+                        identity,
+                        new(output.Output.Name, output.Output.Tool, key.Hex, BuildStatuses.Fresh, 0, null),
+                        null
+                    );
+                }
+            }
+
+            foreach (var export in project.Exports.Where(static e => e.Fresh)) {
+                journal.Fresh(identity, null, FreshExport(export));
+            }
+        }
+    }
+
+    /// <summary>A fresh export as its delivery left it: its files, absolute, and their digests where it kept them.</summary>
+    static ExportReport FreshExport(PlannedExport export) {
+        var delivery = BuildObjects.Delivered(export.Target);
+        var files = delivery?.Files ?? [];
+        return new ExportReport(
+            export.Preset.Id,
+            BuildStatuses.Fresh,
+            export.Target,
+            [..files.Select(file => Path.Combine(export.Target, file))],
+            [],
+            [],
+            null
+        ) { Digests = [..files.Select(file => delivery?.Digests?.GetValueOrDefault(file) ?? string.Empty)] };
     }
 
     /// <summary>Reports a project's outputs that cannot be built, and says whether there were any.</summary>
@@ -340,7 +381,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
                     manifest.Skipped,
                     [..manifest.Warnings, ..delivered.Warnings],
                     null
-                ) { Digests = BuildComparisons.Digests(delivered.Files) }
+                ) { Digests = delivered.Digests }
             );
         } catch (BuildStepFailedException e) {
             journal.Ended(step, identity, FailedExport(preset.Id, e.Message));

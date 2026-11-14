@@ -230,14 +230,17 @@ public sealed class BuildProcessTests : IDisposable {
             static e => Assert.Equal(e.Files.Count, e.Digests.Count)
         );
 
-        // The second build touched nothing, so every project is as the first left it (#217).
+        // The second build touched nothing and found every project fresh, so each is in both, its files the same
+        // (#217, #280). Before fresh exports were reported, each read as the first build's alone.
         var compared = await http.GetFromJsonAsync(
             $"/api/v1/builds/{again.Id}/compare?before={job.Id}",
             ContractsJsonContext.Default.BuildComparison,
             deadline.Token
         );
         Assert.Equal(Projects, compared!.Projects.Count);
-        Assert.All(compared.Projects, static p => Assert.Equal(BuildComparisons.Touched.Before, p.Touched));
+        Assert.All(compared.Projects, static p => Assert.Equal(BuildComparisons.Touched.Both, p.Touched));
+        Assert.Equal((0, compared.SameFiles), (compared.ChangedFiles, compared.Projects.Sum(static p => p.Files.Count)));
+        Assert.True(compared.SameFiles > 0);
 
         // A fast runner can finish the last step before the kill lands. A step that was lost makes a second attempt,
         // and a lost step that was not retried would have failed above, so one attempt means nothing was lost.

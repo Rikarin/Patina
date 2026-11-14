@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export.Builds;
 using Patina.Export.Materials;
 using Patina.Export.Presets;
 using Patina.Jobs;
@@ -19,7 +20,10 @@ public sealed record ExportSet(string Name, IReadOnlyDictionary<string, MapPictu
 /// <summary>What a delivery put in a folder.</summary>
 /// <param name="Files">The files, absolute.</param>
 /// <param name="Warnings">What a person should know: a material slot left out, and why.</param>
-public sealed record ExportDelivered(IReadOnlyList<string> Files, IReadOnlyList<string> Warnings);
+public sealed record ExportDelivered(IReadOnlyList<string> Files, IReadOnlyList<string> Warnings) {
+    /// <summary>Each of <see cref="Files" />' SHA-256, in the same order.</summary>
+    public IReadOnlyList<string> Digests { get; init; } = [];
+}
 
 /// <summary>
 ///     An export of some of a project's texture sets into the folder of all of them: it replaces only these sets'
@@ -284,6 +288,12 @@ public static class ExportRun {
         }
 
         var relative = delivered.Select(path => Path.GetRelativePath(target, path)).ToList();
+        var digests = BuildComparisons.Digests(delivered);
+        Dictionary<string, string> kept = new(StringComparer.Ordinal);
+        for (var at = 0; at < relative.Count; at++) {
+            kept[relative[at]] = digests[at];
+        }
+
         var placed = before?.Sets ?? new Dictionary<string, string>();
         foreach (var old in before?.Files.Except(relative, StringComparer.Ordinal).ToList() ?? []) {
             var set = placed.GetValueOrDefault(old);
@@ -292,6 +302,10 @@ public static class ExportRun {
                 relative.Add(old);
                 if (set is not null) {
                     sets[old] = set;
+                }
+
+                if (before?.Digests?.GetValueOrDefault(old) is { } digest) {
+                    kept[old] = digest;
                 }
 
                 continue;
@@ -304,11 +318,11 @@ public static class ExportRun {
         LibraryFiles.Replace(
             Path.Combine(target, BuildObjects.DeliveredFile),
             JsonSerializer.SerializeToUtf8Bytes(
-                new(key, relative) { Sets = sets },
+                new(key, relative) { Sets = sets, Digests = kept },
                 ContractsJsonContext.Default.ExportDelivery
             )
         );
-        return new(delivered, materials.Warnings);
+        return new(delivered, materials.Warnings) { Digests = digests };
     }
 
     /// <summary>
