@@ -2,7 +2,9 @@ using Patina.Contracts;
 
 namespace Patina.Library;
 
-/// <summary>Reads the UDIM tile a texture set's layout sits on, which needs a mesh reader the library does not have.</summary>
+/// <summary>
+///     Reads the UDIM tile a texture set's layout sits on, which needs a mesh reader the library does not have.
+/// </summary>
 /// <param name="mesh">The mesh file, absolute.</param>
 /// <param name="material">The set's material, or null for the whole mesh.</param>
 /// <param name="uvSet">The UV set it is laid out in.</param>

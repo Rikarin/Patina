@@ -229,8 +229,9 @@ public sealed class SetMergeTests : IDisposable {
     }
 
     /// <summary>
-    ///     A merged export on two tiles names every tile's files (#289): USD and MaterialX through the <c>&lt;UDIM&gt;</c>
-    ///     token when the names differ only by the tile's number, and glTF, which has no tiles, a material per tile.
+    ///     A merged export on two tiles names every tile's files (#289): USD and MaterialX through the
+    ///     <c>&lt;UDIM&gt;</c> token when the names differ only by the tile's number, and glTF, which has no tiles, a
+    ///     material per tile.
     ///     One material file for both tiles named only the first tile's files.
     /// </summary>
     [Theory]

@@ -135,7 +135,9 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
         Package("scene.usdz", ("scene.usdc", "PXR-USDC"u8.ToArray()));
     }
 
-    /// <summary>A USD package: its layer first, as USD reads it, then the pictures it names, stored, not deflated.</summary>
+    /// <summary>
+    ///     A USD package: its layer first, as USD reads it, then the pictures it names, stored and not deflated.
+    /// </summary>
     void Package(string name, (string Name, byte[] Bytes) layer) {
         using var zip = ZipFile.Open(Path.Combine(source.FullName, name), ZipArchiveMode.Create);
         List<(string Name, byte[] Bytes)> entries = [layer];

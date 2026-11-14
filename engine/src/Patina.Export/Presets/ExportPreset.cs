@@ -332,14 +332,15 @@ public static class ExportMaps {
     public const string BentNormal = "bent";
 
     /// <summary>
-    ///     The bake's normal alone (#155). <see cref="Normal" /> is the set's, with the bake beneath what the layers paint
-    ///     when the bake is set to Combine (ADR 0023), which is a combined normal. A mesh-maps export reads this one.
+    ///     The bake's normal alone (#155). <see cref="Normal" /> is the set's, with the bake beneath what the layers
+    ///     paint when the bake is set to Combine (ADR 0023), which is a combined normal. A mesh-maps export reads this
+    ///     one.
     /// </summary>
     public const string BakedNormal = "bakedNormal";
 
     /// <summary>
-    ///     The bake's ambient occlusion alone (#155). <see cref="Occlusion" /> is the set's, the bake multiplied into what
-    ///     the layers paint when the bake is set to Combine, which is a mixed occlusion.
+    ///     The bake's ambient occlusion alone (#155). <see cref="Occlusion" /> is the set's, the bake multiplied into
+    ///     what the layers paint when the bake is set to Combine, which is a mixed occlusion.
     /// </summary>
     public const string BakedOcclusion = "bakedOcclusion";
 

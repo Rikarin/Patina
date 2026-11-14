@@ -7,8 +7,8 @@ using Vixen.Core.Imaging;
 namespace Patina.Export.Tests;
 
 /// <summary>
-///     The bake's own normal and occlusion beside the set's (#155): a set's <c>occlusion</c> is the bake multiplied into
-///     the paint, a mixed occlusion, and its <c>normal</c> the combined one, so a mesh-maps export reads
+///     The bake's own normal and occlusion beside the set's (#155): a set's <c>occlusion</c> is the bake multiplied
+///     into the paint, a mixed occlusion, and its <c>normal</c> the combined one, so a mesh-maps export reads
 ///     <c>bakedOcclusion</c> and <c>bakedNormal</c>, which a stack's maps do not replace.
 /// </summary>
 public sealed class MeshMapsPresetTests : IDisposable {

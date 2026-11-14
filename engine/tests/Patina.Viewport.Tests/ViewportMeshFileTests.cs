@@ -45,9 +45,10 @@ public sealed class ViewportMeshFileTests : IDisposable {
 
         static HashSet<(float, float, float)> Colours(ViewportMesh mesh) => [
             ..Enumerable.Range(0, mesh.Vertices.Length / ViewportMesh.FloatsPerVertex)
-                .Select(vertex => vertex * ViewportMesh.FloatsPerVertex + 12)
+                .Select(static vertex => vertex * ViewportMesh.FloatsPerVertex + 12)
                 .Select(at => (MathF.Round(mesh.Vertices[at], 2), MathF.Round(mesh.Vertices[at + 1], 2),
-                    MathF.Round(mesh.Vertices[at + 2], 2)))
+                        MathF.Round(mesh.Vertices[at + 2], 2))
+                )
         ];
 
         var painted = ViewportMesh.Read(path);

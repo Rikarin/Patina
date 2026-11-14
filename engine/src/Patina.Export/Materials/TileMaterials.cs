@@ -36,7 +36,9 @@ public static class TileMaterials {
 
         List<MaterialFiles.Written> written = [];
         var tokened = Tokened(tiles);
-        var shared = tokened is null ? [] : preset.Materials.Where(static kind => kind != ExportMaterials.Gltf).ToList();
+        var shared = tokened is null
+            ? []
+            : preset.Materials.Where(static kind => kind != ExportMaterials.Gltf).ToList();
         if (tokened is not null && shared.Count > 0) {
             written.Add(MaterialFiles.Write(preset with { Materials = shared }, tokened, folder, stem, material));
         }
@@ -86,9 +88,10 @@ public static class TileMaterials {
         return [
             ..tiles[0]
                 .Select(f => (f.File, Path.Combine(
-                    Path.GetDirectoryName(f.Path)!,
-                    Path.GetFileName(f.Path).Replace(first, Token, StringComparison.Ordinal)
-                )))
+                        Path.GetDirectoryName(f.Path)!,
+                        Path.GetFileName(f.Path).Replace(first, Token, StringComparison.Ordinal)
+                    ))
+                )
         ];
     }
 }

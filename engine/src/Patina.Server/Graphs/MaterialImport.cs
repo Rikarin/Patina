@@ -50,7 +50,7 @@ static class MaterialImport {
         library.Contents(request.Project);
         var stem = Clean(Path.GetFileNameWithoutExtension(file));
         var pictures = library.ProjectFile(request.Project, $"pictures/{stem}");
-        // A USD package's layer and pictures, read from here and copied into the project like any picture beside a file.
+        // A USD package's layer and pictures, read from here and copied into the project like a picture beside a file.
         var unpacked = Path.Combine(Path.GetTempPath(), $"patina-usdz-{Guid.NewGuid():N}");
         try {
             var materials = await ReadAsync(worker, file, new(pictures, unpacked), cancellationToken);
