@@ -18,6 +18,7 @@ const defaults: ProjectBakeSettings = {
     format: 'png16',
     supersampling: 1,
     gutter: 4,
+    diffusion: false,
     maps: ['normal', 'height', 'ao'],
     space: 'tangent',
     rays: {

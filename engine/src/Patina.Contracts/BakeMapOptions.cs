@@ -72,11 +72,15 @@ public sealed record BakeEdgeOptions {
     public string Profile { get; set; } = "even";
 
     /// <summary>What is wrong, or null.</summary>
-    public string? Problem() =>
-        !BakeRoundingOptions.EdgeWords.Contains(Edges, StringComparer.Ordinal) ? $"'{Edges}' is not angle or hard."
-        : !Profiles.Contains(Profile, StringComparer.Ordinal) ? $"'{Profile}' is not a profile."
-        : !Meshes.Contains(Mesh, StringComparer.Ordinal) ? $"'{Mesh}' is not high or low."
-        : !(Width > 0 && double.IsFinite(Width)) ? "The edges map needs a width."
-        : Angle is < 0 or > 180 ? "The edge angle is 0 to 180 degrees."
-        : null;
+    public string? Problem() {
+        (bool Wrong, string Why)[] checks = [
+            (!BakeRoundingOptions.EdgeWords.Contains(Edges, StringComparer.Ordinal),
+                $"'{Edges}' is not angle or hard."),
+            (!Profiles.Contains(Profile, StringComparer.Ordinal), $"'{Profile}' is not a profile."),
+            (!Meshes.Contains(Mesh, StringComparer.Ordinal), $"'{Mesh}' is not high or low."),
+            (!(Width > 0 && double.IsFinite(Width)), "The edges map needs a width."),
+            (Angle is < 0 or > 180, "The edge angle is 0 to 180 degrees.")
+        ];
+        return checks.FirstOrDefault(static check => check.Wrong).Why;
+    }
 }

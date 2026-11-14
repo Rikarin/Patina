@@ -72,8 +72,9 @@ public sealed class BakeMapKindsTests : IDisposable {
     }
 
     /// <summary>
-    ///     The low mesh baked onto itself is struck everywhere: its rays start on the surface they strike, and they used
-    ///     to meet it at zero distance, which did not count, so opacity read black and every texel was missed (#278).
+    ///     The low mesh baked onto itself is struck everywhere: its rays start on the surface they strike, and they
+    ///     used to meet it at zero distance, which did not count, so opacity read black and every texel was missed
+    ///     (#278).
     /// </summary>
     [Fact]
     public void The_low_mesh_baked_onto_itself_is_opaque_everywhere_it_is_charted() {
@@ -89,7 +90,8 @@ public sealed class BakeMapKindsTests : IDisposable {
 
     /// <summary>
     ///     The edges map marks the low mesh's edges when asked, measured at the texel, so a bake from the high mesh
-    ///     marks exactly what the low mesh baked onto itself does, and the high mesh's own edges are another map (#278).
+    ///     marks exactly what the low mesh baked onto itself does, and the high mesh's own edges are another map
+    ///     (#278).
     /// </summary>
     [Fact]
     public void The_edges_map_can_mark_the_low_meshs_edges_under_a_high_mesh() {
@@ -124,9 +126,10 @@ public sealed class BakeMapKindsTests : IDisposable {
         var islands = Picture("narrow", "islands");
         var narrow = Covered(Picture("narrow", "borders"), islands);
         var wide = Covered(Picture("wide", "borders"), islands);
-        var outside = Picture("narrow", "borders").Pixels.Where((_, at) =>
-            at % 4 == 0 && islands.Pixels[at] + islands.Pixels[at + 1] + islands.Pixels[at + 2] == 0
-        );
+        var outside = Picture("narrow", "borders")
+            .Pixels.Where((_, at) =>
+                at % 4 == 0 && islands.Pixels[at] + islands.Pixels[at + 1] + islands.Pixels[at + 2] == 0
+            );
 
         Assert.Equal(["islands", "borders"], manifest.Result.Maps.Select(static map => map.Map).ToArray());
         Assert.Contains(narrow, static value => value == 0);
