@@ -19,7 +19,13 @@ public sealed record StackCreateRequest(string Path, int Width, int Height);
 ///     How wide the texels are that a stroke paints it at (#19): one of the vocabulary's formats, Rgba8 unless the set
 ///     says more.
 /// </param>
-public sealed record StackChannel(string Usage, IReadOnlyList<float> Default, string Format = "Rgba8");
+public sealed record StackChannel(string Usage, IReadOnlyList<float> Default, string Format = "Rgba8") {
+    /// <summary>What a person named a user channel (#141), such as Dirt; empty for the usage's own label.</summary>
+    public string Name { get; init; } = string.Empty;
+
+    /// <summary>Whether a user channel holds a color rather than one number (#141); false for any other channel.</summary>
+    public bool Colour { get; init; }
+}
 
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
 #pragma warning disable SK7005
@@ -522,6 +528,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackAddChannel), "addChannel"), JsonDerivedType(typeof(StackNestLayer), "nestLayer")]
 [JsonDerivedType(typeof(StackRemoveChannel), "removeChannel")]
 [JsonDerivedType(typeof(StackSetChannelFormat), "setChannelFormat")]
+[JsonDerivedType(typeof(StackSetUserChannel), "setUserChannel")]
 [JsonDerivedType(typeof(StackSetSeed), "setSeed"), JsonDerivedType(typeof(StackDuplicateLayers), "duplicateLayers")]
 [JsonDerivedType(typeof(StackPasteLayers), "pasteLayers")]
 [JsonDerivedType(typeof(StackFlattenLayer), "flattenLayer"),
@@ -680,6 +687,16 @@ public sealed record StackRemoveChannel(string Usage) : StackCommand;
 /// <param name="Usage">Which channel, one the set has.</param>
 /// <param name="Format">One of the vocabulary's formats.</param>
 public sealed record StackSetChannelFormat(string Usage, string Format) : StackCommand;
+
+/// <summary>
+///     Names a user channel and says whether it holds a color (#141), as one undo step, <i>User channel</i>. A user
+///     channel, <c>user0</c> to <c>user7</c>, means nothing to the material: its name is what a person reads, and its
+///     usage stays what a preset and a graph name it by. What is left out stays as it is.
+/// </summary>
+/// <param name="Usage">Which channel, a user channel the set has.</param>
+/// <param name="Name">What it is called; empty for its usage's own label.</param>
+/// <param name="Colour">Whether it holds a color, painted and chosen as one, rather than one number.</param>
+public sealed record StackSetUserChannel(string Usage, string? Name = null, bool? Colour = null) : StackCommand;
 
 /// <summary>
 ///     Duplicates layers, each just above itself, with everything inside it. A painted canvas is copied, never shared:

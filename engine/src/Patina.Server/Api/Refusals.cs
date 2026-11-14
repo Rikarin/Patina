@@ -102,6 +102,12 @@ public static partial class Refusals {
     public const string ChannelLast = "channel-last";
 
     /// <summary>
+    ///     A name or a color flag given to a channel that is no user channel (#141), whose usage already says what it
+    ///     is. Values: <c>channel</c>.
+    /// </summary>
+    public const string ChannelNotUser = "channel-not-user";
+
+    /// <summary>
     ///     Paint carried from the UV set the texture set is laid out in already, which would only resample it (#210).
     ///     Values: <c>uvSet</c>, counted from 1 as a person counts them.
     /// </summary>

@@ -106,6 +106,11 @@ public static class Terms {
             return named;
         }
 
+        // A user channel (#141), user0 to user7, is User 0 to User 7.
+        if (Vixen.Texturing.Layers.ChannelAsset.IsUser(value)) {
+            return $"User {value[4..]}";
+        }
+
         var name = value[(value.LastIndexOf('/') + 1)..];
         StringBuilder words = new(name.Length + 4);
         for (var at = 0; at < name.Length; at++) {

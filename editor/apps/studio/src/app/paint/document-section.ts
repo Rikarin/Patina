@@ -6,7 +6,7 @@ import { XuiMenuImports } from '@xui/menu';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSwitchImports } from '@xui/switch';
-import { labelIn } from '../core/labels';
+import { isUserChannel, labelIn, userChannelName } from '../core/labels';
 import { count } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from '../library/library-store';
@@ -153,6 +153,29 @@ const BakedOcclusions: readonly XuiSegmentedOption[] = [
               [options]="heightNormals"
               [value]="method"
               (valueChange)="setHeightNormal($event)"
+            />
+          </dd>
+        }
+        @if (userChannel(); as user) {
+          <dt class="text-foreground-muted" [title]="userHint">{{ termOf(user.usage) }} name</dt>
+          <dd [title]="userHint">
+            <input
+              class="w-full"
+              xuiInput
+              aria-label="User channel name"
+              data-testid="paint-user-channel-name"
+              [placeholder]="termOf(user.usage)"
+              [value]="user.name"
+              (change)="nameUserChannel(user.usage, $event)"
+            />
+          </dd>
+          <dt class="text-foreground-muted" [title]="colourHint">Holds a color</dt>
+          <dd [title]="colourHint">
+            <xui-switch
+              aria-label="User channel holds a color"
+              data-testid="paint-user-channel-colour"
+              [checked]="user.colour"
+              (checkedChange)="store.edit({ op: 'setUserChannel', usage: user.usage, colour: $event })"
             />
           </dd>
         }
@@ -359,9 +382,33 @@ export class DocumentSection {
   /** What the engine read of the document's mesh, for its UV sets and the row that says what it is. */
   private readonly facts = signal<MeshFacts | null>(null);
 
-  /** A channel by the label the vocabulary carries for it. */
+  /** A channel by what it is called: a user channel's own name, else the label the vocabulary carries for it. */
   protected nameOf(usage: string): string {
+    return userChannelName(usage) ?? this.termOf(usage);
+  }
+
+  /** A channel by the vocabulary's label alone, such as User 2, whatever somebody named it. */
+  protected termOf(usage: string): string {
     return labelIn(this.store.vocabulary()?.usages, usage);
+  }
+
+  protected readonly userHint =
+    'What this user channel is called in Patina. Presets and graphs still name it by its number, such as user2.';
+  protected readonly colourHint =
+    'Whether this user channel holds a color, chosen with a color picker, rather than one number chosen with a slider.';
+
+  /** The channel being painted when it is a user channel (#141), which takes a name and a color flag. */
+  protected readonly userChannel = computed(() => {
+    const painted = this.store.state()?.channels.find(channel => channel.usage === this.store.channel());
+    return painted && isUserChannel(painted.usage) ? painted : null;
+  });
+
+  /** Names a user channel, one undo step, only when the name changed. */
+  protected nameUserChannel(usage: string, event: Event): void {
+    const name = (event.target as HTMLInputElement).value.trim();
+    if (name !== this.userChannel()?.name) {
+      void this.store.edit({ op: 'setUserChannel', usage, name });
+    }
   }
 
   /** The channels the vocabulary has that this document does not. */
