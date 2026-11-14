@@ -88,6 +88,7 @@ builder.Services.AddOpenApi(static o => {
 builder.Services.AddSingleton(new ServerIdentity(library, token));
 builder.Services.AddSingleton<WorkerLink>();
 builder.Services.AddSingleton<MeshSetCache>();
+builder.Services.AddSingleton(static s => new MeshFactsCache(s.GetRequiredService<WorkerLink>()));
 builder.Services.AddHostedService(static s => s.GetRequiredService<WorkerLink>());
 builder.Services.AddSingleton<LibraryHost>();
 builder.Services.AddHostedService(static s => s.GetRequiredService<LibraryHost>());
