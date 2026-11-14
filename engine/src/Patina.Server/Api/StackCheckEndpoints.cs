@@ -100,7 +100,7 @@ static class StackCheckEndpoints {
         List<StackChecks> sets = [];
         foreach (var document in contents.Documents.Where(static document => IsStack(document.Kind))) {
             var file = Path.GetFullPath(document.Path, library.RootPath);
-            if (await StandingAsync(file, sessions, evaluator, cancellationToken) is var (state, measured)) {
+            if (await StandingAsync(file, sessions, evaluator, cancellationToken) is ({ } state, var measured)) {
                 var judged = StackChecking.Judge(state, measured, contents, density, chosen!.Preset);
                 sets.Add(judged with { Document = document.Path });
             }
