@@ -4,28 +4,38 @@ package Patina.Viewport
 
 import Vixen.Shaders.Core
 
-// Shapes laid over the model that are not the model: a bake's reach, its high mesh and which parts match. Each vertex
-// carries its own colour and opacity, so one pass draws them all; they are lifted towards the eye as the wireframe is,
-// so a shape lying on the model is seen over it rather than fighting it for the same depth.
+// Shapes laid over the model that are not the model: a bake's reach, its high mesh and which parts match, and the marks
+// a client points at. Each vertex carries its own colour and opacity, so one pass draws them all; they are lifted
+// towards the eye as the wireframe is, so a shape lying on the model is seen over it rather than fighting it for the
+// same depth.
 
 shader ViewportOverlay {
     var viewProjection: mat4
     var cameraPosition: float3
     var lift: float
 
-    stream var tint: float4
+    stream var shade: float4
+
+    // The forward pass's two targets, the light and the tints laid over the finished picture (#286). Both get the same
+    // colour, and a pipeline writes only the one its shapes belong to: a bake's shapes are light, a mark is a tint.
+    struct Drawn {
+        var light: float4
+        var tint: float4
+    }
 
     [VertexShader]
     [Semantic("SV_Position")]
     func Vertex(position: float3, color: float4): float4 {
-        tint = color
+        shade = color
         val toward = Math.SafeNormalize(cameraPosition - position)
         return viewProjection * float4(position + toward * lift, 1f)
     }
 
     [FragmentShader]
-    [Semantic("SV_Target")]
-    func Fragment(): float4 {
-        return tint
+    func Fragment(): Drawn {
+        var drawn: Drawn
+        drawn.light = shade
+        drawn.tint = shade
+        return drawn
     }
 }

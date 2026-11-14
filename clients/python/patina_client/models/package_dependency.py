@@ -31,12 +31,16 @@ class PackageDependency:
             name (str): The node type, or the picture as the graph names it.
             file (None | str | Unset): Where it was found, below the library when it is in one, or null when it was not.
             problem (None | str | Unset): Why it cannot be brought, or null when it can.
+            in_ (None | str | Unset): The compound that names it, or null when the graph itself does, which is when
+                relinking the graph's Bitmap
+                nodes (`POST /api/v1/graphs/{id}/relink`) reaches it.
      """
 
     kind: str
     name: str
     file: None | str | Unset = UNSET
     problem: None | str | Unset = UNSET
+    in_: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -60,6 +64,12 @@ class PackageDependency:
         else:
             problem = self.problem
 
+        in_: None | str | Unset
+        if isinstance(self.in_, Unset):
+            in_ = UNSET
+        else:
+            in_ = self.in_
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -71,6 +81,8 @@ class PackageDependency:
             field_dict["file"] = file
         if problem is not UNSET:
             field_dict["problem"] = problem
+        if in_ is not UNSET:
+            field_dict["in"] = in_
 
         return field_dict
 
@@ -103,11 +115,22 @@ class PackageDependency:
         problem = _parse_problem(d.pop("problem", UNSET))
 
 
+        def _parse_in_(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        in_ = _parse_in_(d.pop("in", UNSET))
+
+
         package_dependency = cls(
             kind=kind,
             name=name,
             file=file,
             problem=problem,
+            in_=in_,
         )
 
 

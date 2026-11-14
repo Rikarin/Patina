@@ -11,7 +11,7 @@ namespace Patina.Server;
 ///     the reports are here, and every pixel is the Worker's. A lost Worker puts the job back in the queue, and running
 ///     it again plans again, so a finished step is simply no longer in the plan.
 /// </summary>
-sealed class BuildRunner(LibraryHost libraries, ToolCatalog tools) {
+public sealed class BuildRunner(LibraryHost libraries, ToolCatalog tools, IMeshSetReads meshes) {
     static readonly TimeSpan StopPatience = TimeSpan.FromSeconds(30);
 
     readonly Lock waiting = new();
@@ -57,7 +57,7 @@ sealed class BuildRunner(LibraryHost libraries, ToolCatalog tools) {
     ) {
         var library = libraries.Library ?? throw new BuildRefusedException("The Server was started with no library.");
         var ticket = new BakeTicket(job.Id, job.Attempts);
-        var pipeline = new BuildPipeline(library, new Executor(this, connection, ticket), tools);
+        var pipeline = new BuildPipeline(library, new Executor(this, connection, ticket), tools, meshes);
         var journal = new BuildJournal(FolderOf(library.RootPath, job.Id), job.Id, job.Created);
         return Task.Run(
             () => pipeline.RunAsync(

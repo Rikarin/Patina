@@ -1,3 +1,5 @@
+using Vixen.Core.Mathematics;
+
 namespace Patina.Viewport.Tests;
 
 /// <summary>
@@ -61,5 +63,31 @@ public sealed class ViewportSliceTests : IDisposable {
         Assert.Equal(5 * 2 * Floats, ViewportSlice.Shapes(mesh, across, mesh.Parts).Lines.Length);
         var strip = ViewportSlice.Shapes(mesh, across, mesh.Shown(["strip"], []));
         Assert.Equal(4 * 2 * Floats, strip.Lines.Length);
+    }
+
+    /// <summary>
+    ///     A radial symmetry is cut by its half-planes (#132): round y through the middle of a flat square in the
+    ///     x-z plane, four copies draw four spokes from the centre, along +z, +x, -z and -x, reaching the
+    ///     square's edge, and none crosses to the other side of the centre. A mirror along x draws one line through it.
+    /// </summary>
+    [Fact]
+    public void A_radial_symmetry_draws_a_spoke_between_each_of_its_copies() {
+        var path = Path.Combine(folder.FullName, "floor.obj");
+        File.WriteAllLines(path, ["v -1 0 -1", "v 1 0 -1", "v 1 0 1", "v -1 0 1", "f 1 3 2", "f 1 4 3"]);
+        var mesh = ViewportMesh.Read(path);
+
+        var radial = ViewportSlice.Shapes(mesh, new ViewportMirror(1, false, 0f, 4), mesh.Parts).Lines;
+        var ends = Enumerable.Range(0, radial.Length / Floats)
+            .Select(at => new Vector3(radial[at * Floats], radial[at * Floats + 1], radial[at * Floats + 2]))
+            .ToList();
+        Assert.NotEmpty(ends);
+        // Every end lies on one of the four spokes, never past the centre on the other side of its own.
+        Assert.All(ends, static end => Assert.True(MathF.Abs(end.X) < 1e-4f || MathF.Abs(end.Z) < 1e-4f, $"{end}"));
+        Vector3[] tips = [Vector3.UnitZ, Vector3.UnitX, -Vector3.UnitZ, -Vector3.UnitX];
+        Assert.All(tips, tip => Assert.Contains(ends, end => Vector3.Distance(end, tip) < 1e-4f));
+
+        var mirror = ViewportSlice.Shapes(mesh, new ViewportMirror(0, false, 0f), mesh.Parts).Lines;
+        Assert.All(Enumerable.Range(0, mirror.Length / Floats), at => Assert.Equal(0f, mirror[at * Floats], 4));
+        Assert.True(radial.Length > mirror.Length, "The radial symmetry drew no more than one line.");
     }
 }

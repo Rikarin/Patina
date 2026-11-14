@@ -37,6 +37,8 @@ const Words: Readonly<Record<string, string>> = {
   'mask-layer-missing': 'The mask of {layer} has changed since that was asked. Try again.',
   'mask-layer-not-paint':
     'That layer of the mask of {layer} is not painted, so a brush can’t reach it. Add a Paint layer to the mask.',
+  'quick-mask-unpainted':
+    'Nothing is painted on the quick mask yet, so it would hide {layer} everywhere. Paint it first.',
   'instance-source-missing': 'The layer to make an instance of is no longer in {set}.',
   'instance-cycle': 'An instance of {layer} there would stand for itself. Choose another layer.',
   'stack-layer-missing': 'That layer is no longer in the stack. It may have been removed by another client.',
@@ -79,7 +81,25 @@ const Words: Readonly<Record<string, string>> = {
   'file-unwritable': 'Patina couldn’t write or read the file there. {reason}',
   'document-newer':
     'This document was saved by a newer version of Patina, so it isn’t opened here: saving it would lose what is new. Open it in that version or a later one.',
-  'stack-proxy-refused': 'Choose Full, Half, Quarter or Eighth size.'
+  'stack-proxy-refused': 'Choose Full, Half, Quarter or Eighth size.',
+  'page-refused': 'Patina asked for more of that list at once than it gives. Try again.',
+  'size-refused': 'That size can’t be used. Choose one from {least} to {most}.',
+  'file-kind-wrong': '{file} can’t be used here. Choose a {wanted} file.',
+  'settings-refused': 'Those settings can’t be kept. {reason}',
+  'project-missing': 'That project isn’t in the library any more. It may have been moved or deleted outside Patina.',
+  'preview-missing': 'That preview isn’t kept any more. It is made again the next time it is shown.',
+  'build-refused': 'That can’t be built as the export settings are. {reason}',
+  'build-report-missing': 'That build’s report isn’t kept any more, or the build didn’t finish.',
+  'bake-refused': 'That bake can’t run as it is set up. {reason}',
+  'job-unfinished': 'That bake hasn’t finished yet. Show it once it has.',
+  'bake-map-missing': 'That bake made no {map} map. Add it to the maps and bake again.',
+  'bake-object-space':
+    'This bake is in object space, and the material reads tangent-space normals. Show one map on its own, or bake in tangent space.',
+  'bake-needs-high': 'Choose a high mesh to bake from. It may be the low mesh itself.',
+  'node-unevaluated': 'That node has no picture yet. Try again once the graph has updated.',
+  'viewport-no-mesh': 'There is no mesh in the viewport. Open a document, or choose a mesh, first.',
+  'preference-refused': 'That preference can’t be kept. {reason}',
+  'request-invalid': 'Patina asked the engine for something it doesn’t take, which is a fault in Patina. {reason}'
 };
 
 const KindWords: Readonly<Record<string, string>> = { Fill: 'fill', Filter: 'filter', Group: 'folder', Paint: 'paint' };

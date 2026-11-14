@@ -89,7 +89,7 @@ static class PresetEndpoints {
                 new Dictionary<string, string> { ["project"] = request.Project }
             );
         } catch (Exception e) when (e is BuildRefusedException or InvalidDataException) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.BadBuild(e);
         } finally {
             Compressing.Release();
         }
@@ -102,10 +102,7 @@ static class PresetEndpoints {
 
         return ExportPreviews.PictureOf(library.RootPath, id, picture) is { } path
             ? TypedResults.PhysicalFile(path, "image/png")
-            : TypedResults.Problem(
-                $"There is no picture '{picture}' of preview '{id}'.",
-                statusCode: StatusCodes.Status404NotFound
-            );
+            : Refusals.NoPreview($"There is no picture '{picture}' of preview '{id}'.");
     }
 
     static Results<Ok<ExportPresetSource>, ProblemHttpResult> Get(string id, LibraryHost host, string? project = null) {
@@ -180,7 +177,11 @@ static class PresetEndpoints {
             : Missing(id);
     }
 
-    static Results<Ok<ExportPresetCheck>, ProblemHttpResult> Check(ExportPresetCheckRequest request, LibraryHost host) {
+    static Results<Ok<ExportPresetCheck>, ProblemHttpResult> Check(
+        ExportPresetCheckRequest request,
+        LibraryHost host,
+        MeshSetCache meshes
+    ) {
         if (host.Library is not { } library) {
             return Refusals.NoLibraryOpen();
         }
@@ -192,7 +193,7 @@ static class PresetEndpoints {
         var text = ExportPresetWriter.Text(request.Preset);
         try {
             var preset = ExportPresetWriter.Check(request.Preset);
-            return TypedResults.Ok(new ExportPresetCheck(null, Names(library, request.Project, preset), text));
+            return TypedResults.Ok(new ExportPresetCheck(null, Names(library, request.Project, preset, meshes), text));
         } catch (ExportPresetException e) {
             return TypedResults.Ok(new ExportPresetCheck(e.Message, [], text));
         }
@@ -208,10 +209,7 @@ static class PresetEndpoints {
         }
 
         if (!File.Exists(request.File)) {
-            return TypedResults.Problem(
-                $"There is no file '{request.File}'.",
-                statusCode: StatusCodes.Status404NotFound
-            );
+            return Refusals.NoFile(request.File);
         }
 
         try {
@@ -231,11 +229,16 @@ static class PresetEndpoints {
     ///     Each file a preset writes for a project, named as a build would name it: every set, and the set's name in
     ///     the file when there are several. With no project, a project called by the preset's id.
     /// </summary>
-    static List<ExportPresetFileName> Names(OpenLibrary library, string? project, ExportPreset preset) {
+    static List<ExportPresetFileName> Names(
+        OpenLibrary library,
+        string? project,
+        ExportPreset preset,
+        IMeshSetReads meshes
+    ) {
         var contents = project is null ? null : library.Contents(project);
         var values = contents is null
             ? new NamingValues(preset.Id, preset.Id)
-            : ProjectNaming.Of(library, project!, contents.Name, preset.Id);
+            : ProjectNaming.Of(library, project!, contents.Name, preset.Id, meshes);
         var sets = contents is { ExportSets.Count: > 0 } ? contents.ExportSets : [string.Empty];
         var several = sets.Count > 1;
         return [
@@ -276,8 +279,7 @@ static class PresetEndpoints {
         }
     }
 
-    static ProblemHttpResult NoProject(string? project) =>
-        TypedResults.Problem($"There is no project '{project}'.", statusCode: StatusCodes.Status404NotFound);
+    static ProblemHttpResult NoProject(string? project) => Refusals.NoProject(project);
 
     static ProblemHttpResult Missing(string id) =>
         Refusals.Problem(

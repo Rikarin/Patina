@@ -29,6 +29,9 @@ class ProjectDocumentInfo:
             kind (str): `texturing`, `layered-material`, `image-material` or `graph`.
             name (str): Its display name.
             path (str): Its path below the library, which the graph and stack routes take.
+            udim (int): For a texturing document on a mesh, the UDIM tile its layout sits on in the UV set it chose (#289),
+                which
+                its exported files are named by: 1001 for one on the first tile, on several, on no mesh, or of another kind.
             tags (list[str]): What it can be searched by, sorted.
             id (None | Unset | UUID): Its GUID. Null until the project lists it.
             mesh (None | Unset | UUID): The id of the mesh it is on.
@@ -44,6 +47,7 @@ class ProjectDocumentInfo:
     kind: str
     name: str
     path: str
+    udim: int
     tags: list[str]
     id: None | Unset | UUID = UNSET
     mesh: None | Unset | UUID = UNSET
@@ -63,6 +67,8 @@ class ProjectDocumentInfo:
         name = self.name
 
         path = self.path
+
+        udim = self.udim
 
         tags = self.tags
 
@@ -115,6 +121,7 @@ class ProjectDocumentInfo:
             "kind": kind,
             "name": name,
             "path": path,
+            "udim": udim,
             "tags": tags,
         })
         if id is not UNSET:
@@ -142,6 +149,8 @@ class ProjectDocumentInfo:
         name = d.pop("name")
 
         path = d.pop("path")
+
+        udim = d.pop("udim")
 
         tags = cast(list[str], d.pop("tags"))
 
@@ -230,6 +239,7 @@ class ProjectDocumentInfo:
             kind=kind,
             name=name,
             path=path,
+            udim=udim,
             tags=tags,
             id=id,
             mesh=mesh,

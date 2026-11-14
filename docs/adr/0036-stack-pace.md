@@ -19,9 +19,11 @@ controls help, and both are how a session evaluates, not what the document is.
   `paced` event, so a second client (Blender) shows the same.
 - **Anything that reads pixels is never paused and never smaller.** A save, an autosave, an export, a check, a sample
   and a read of the pixels hold the session evaluating while they wait (`StackSession.Reading`), so a pause cannot keep a
-  save waiting. The Worker compiles the full-size plan for each of them whatever the proxy, and goes back to the proxy for
-  the next edit. That costs a compile each way, which is cheap beside the evaluation and keeps one rule: what is written
-  is what the stack is, at its size.
+  save waiting. The Worker evaluates each of them at full size whatever the proxy, and keeps one rule: what is written
+  is what the stack is, at its size. (Amended for #288.) Under a proxy the full-size stack is a second evaluator kept
+  beside the proxy's, rather than the proxy's plan compiled at full size and back: that cost a compile pair per
+  autosave on a big stack, and the stroke after an autosave waited for the second. The second evaluator uploads the
+  canvases again, and is let go when the proxy goes back to full size.
 - **A proxy repairs in tiles too** (amended for #279). A canvas at full size feeding a plan at a quarter is of
   another extent than the op that reads it. Only `Bitmap` reads a picture of another size, and it samples each texel of
   the plan at its centre scaled into the canvas, one texel across, so Vixen scales the rectangles a stroke changed into
@@ -31,8 +33,15 @@ controls help, and both are how a session evaluates, not what the document is.
 - **Not per layer.** A layer at its own proxy would make its composite with the layers around it a resample at every
   boundary, and the evaluator's content keys would differ by layer. The document-wide divisor gives most of the win.
 
-## Not yet
+## A cache per layer that survives a save and a restart (#208)
 
-- A cache of each layer's result that survives a save and a restart, kept out of the project file. The evaluator's
-  results live in GPU memory and go with the Worker; keeping them needs the plan's content keys written beside the
-  result in `.ptcache`, which is evaluator work in Vixen.
+- **What each layer hands the next is kept in `.ptcache/results`, by its content key.** Vixen's result cache has a
+  disk tier the host places (`ITextureResultStore`): the evaluator asks it for any result it wants and does not hold,
+  and uploads what it finds instead of running the op. A save writes the stack's outputs and its handovers (each image
+  one layer's op writes and another layer's op reads), at full size, so a stack opened in a later session, or on a
+  Worker that replaced a lost one, runs only the layers an edit has changed since.
+- **Written at a save, never per edit.** A write is a read-back per result, which is what the GPU cache exists to keep
+  off a stroke. Under a proxy a save keeps nothing unless the full-size stack is already evaluated beside it.
+- **One shelf per adapter, driver and build.** A key names no device, and byte identity is only proved on one, so the
+  folder is named after all three. Each result is a small header and the texels, compressed; the shelf lets the least
+  recently used go past 8 GiB. It is a cache: deleting it costs time and nothing else, and no project file names it.

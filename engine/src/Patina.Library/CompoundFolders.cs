@@ -42,6 +42,24 @@ public static class CompoundFolders {
         return (library ?? LibraryAround(parent)) is { } root ? [parent, Path.GetFullPath(root)] : [parent];
     }
 
+    /// <summary>
+    ///     How a graph names a picture so that its <see cref="PictureRoots" /> find it: below the first root holding
+    ///     it, with forward slashes, which travels with the graph and the library; else its whole path.
+    /// </summary>
+    /// <param name="roots">The graph's picture roots, in order.</param>
+    /// <param name="picture">The picture's file.</param>
+    public static string PictureName(IReadOnlyList<string> roots, string picture) {
+        ArgumentNullException.ThrowIfNull(roots);
+        var full = Path.GetFullPath(picture);
+        foreach (var root in roots.Select(Path.GetFullPath)) {
+            if (full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
+                return LibraryLayout.Relative(root, full);
+            }
+        }
+
+        return full;
+    }
+
     static string? LibraryAround(string folder) {
         for (var at = folder; at is not null; at = Path.GetDirectoryName(at)) {
             if (File.Exists(Path.Combine(at, LibraryLayout.LibraryFile))) {

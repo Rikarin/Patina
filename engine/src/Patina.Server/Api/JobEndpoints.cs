@@ -56,12 +56,17 @@ static class JobEndpoints {
         LibraryHost host,
         StackSessions stacks,
         BakeLinks links,
+        MeshSetCache meshes,
         CancellationToken cancellationToken
     ) {
         try {
             BakeInputs.Check(request);
             request = BakeLayouts.Resolved(host.Library, request, stacks);
-            var key = (await Task.Run(() => BakeKeyReads.KeyOf(request, ToolCatalog.Default), cancellationToken)).Hex;
+            // The low mesh's faces and the pictures the high meshes name are what the Worker read of them (#285).
+            var key = (await Task.Run(
+                () => BakeKeyReads.KeyOf(request, ToolCatalog.Default, meshes),
+                cancellationToken
+            )).Hex;
             var job = cache.Find(key) is { } manifest
                 ? queue.Finished(
                     key,
@@ -75,7 +80,12 @@ static class JobEndpoints {
         } catch (BakeRefusedException e) {
             return e.Code is { } code
                 ? Refusals.Problem(e.Message, StatusCodes.Status422UnprocessableEntity, code, e.Values)
-                : TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+                : Refusals.Problem(
+                    e.Message,
+                    StatusCodes.Status422UnprocessableEntity,
+                    Refusals.BakeRefused,
+                    Refusals.Reason(e.Message)
+                );
         }
     }
 
@@ -109,7 +119,7 @@ static class JobEndpoints {
     ) =>
         queue.Find(id) is { } job && cache.Preview(job.Key, map) is { } path
             ? TypedResults.PhysicalFile(path, "image/png")
-            : TypedResults.Problem($"Job '{id}' has no picture of '{map}'.", statusCode: StatusCodes.Status404NotFound);
+            : Refusals.NoPreview($"Job '{id}' has no picture of '{map}'.");
 
     static ProblemHttpResult NoJob(string id) => Refusals.NoJob(id);
 

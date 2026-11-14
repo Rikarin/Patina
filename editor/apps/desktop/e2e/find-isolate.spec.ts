@@ -101,9 +101,9 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
     .toBeGreaterThan(0);
 
   /**
-   * How many pixels of the composited canvas are a quad's pale grey, which the sky never is; or marked orange. ⚠ The wash
-   * is light: a pale quad washed is about (205, 180, 155), red only 50 over blue, so "50 over" passed on Windows by a hair
-   * and failed on Linux CI's software GPU with none counted (#274). Unmarked grey is within 5 everywhere.
+   * How many pixels of the composited canvas are a quad's pale grey, which the sky never is; or marked orange. The wash
+   * is laid over the finished picture after the tone curve (#286), red about 85 over blue on a pale quad; laid on before
+   * it, red was only 50 over, and a count that asked for that failed on Linux CI (#274). Unmarked grey is within 5.
    */
   const quads = async (marked = false): Promise<number> => {
     const box = await viewport.boundingBox();
@@ -132,7 +132,7 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
         let pale = 0;
         for (let i = 0; i < pixels.length; i += 4) {
           const [r, g, b] = [pixels[i] ?? 0, pixels[i + 1] ?? 0, pixels[i + 2] ?? 0];
-          pale += (orange ? r > 120 && r > b + 25 : r > 140 && g > 140 && b > 140) ? 1 : 0;
+          pale += (orange ? r > 120 && r > b + 60 : r > 140 && g > 140 && b > 140) ? 1 : 0;
         }
 
         return pale;
@@ -184,6 +184,9 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
   frames = Number(await viewport.getAttribute('data-frames'));
   await isolate.click();
   await expect(isolate).toHaveAttribute('aria-pressed', 'false');
+  // Off the row again: wood's mark takes its quad's blue under the pale grey this counts, now the wash is the orange
+  // a person sees (#286).
+  await viewport.hover();
   await drawn(viewport, 'isolation', [], frames);
   await expect.poll(quads, { timeout: 30_000 }).toBeGreaterThan(whole * 0.9);
   await viewport.screenshot({ path: join(shots, 'isolate-3-whole-again.png') });

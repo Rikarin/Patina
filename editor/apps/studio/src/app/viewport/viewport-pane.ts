@@ -57,7 +57,8 @@ const ViewNames: Readonly<Record<string, string>> = {
   lit: 'Lit',
   clay: 'Clay',
   unlit: 'Unlit',
-  texelDensity: 'Texel density'
+  texelDensity: 'Texel density',
+  vertexColours: 'Vertex colors'
 };
 
 const Views: readonly string[] = [
@@ -71,7 +72,8 @@ const Views: readonly string[] = [
   'occlusion',
   'emissive',
   'opacity',
-  'texelDensity'
+  'texelDensity',
+  'vertexColours'
 ];
 
 /** The viewport's own commands, for the keys a screen reader is told about. */
@@ -448,12 +450,7 @@ export class ViewportPane implements AfterViewInit {
   protected readonly gesture = new StrokeGesture(this.paint, () => this.aim());
   /** A click or a rectangle that picks a layer's meshes on the model (#110). */
   protected readonly marquee = new PartMarquee(this.paint, () => this.aim());
-  protected readonly curve = computed(() =>
-    this.gesture
-      .points()
-      .map(point => `${point.x},${point.y}`)
-      .join(' ')
-  );
+  protected readonly curve = this.gesture.polyline;
 
   protected readonly milliseconds = milliseconds;
   protected readonly stampTimes = computed(() => this.paint.stampTimes().join(','));

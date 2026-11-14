@@ -102,7 +102,33 @@ public sealed class BakeHighReadsTests : IDisposable {
         };
     }
 
-    string Key(BakeRequest request) => BakeKeyReads.KeyOf(request, tools).Hex;
+    /// <summary>
+    ///     The key as the Server works it out, from what the Worker read of each file (#285), and checked against the key
+    ///     the command line works out reading the files itself.
+    /// </summary>
+    string Key(BakeRequest request) {
+        var key = BakeKeyReads.KeyOf(request, tools, new WorkerRead()).Hex;
+        Assert.Equal(key, BakeKeyReads.KeyOf(request, tools, MeshFileReads.Instance).Hex);
+        return key;
+    }
+
+    /// <summary>What a Server keeps of the Worker's read of each file, answered as it answers, read afresh each time.</summary>
+    sealed class WorkerRead : IMeshSetReads {
+        public int? Udim(string file, string? material, int uvSet) => Find(file, material, uvSet)?.Udim;
+
+        public string? Geometry(string file, string? material, int uvSet) => Find(file, material, uvSet)?.Geometry;
+
+        public IReadOnlyList<string> Pictures(string file) => MeshFileReads.All(file).Pictures;
+
+        public IReadOnlyList<string>? PartNames(string file, string? material, int uvSet) =>
+            Find(file, material, uvSet)?.Parts;
+
+        public MeshHighRead? High(string file) => MeshFileReads.All(file).High;
+
+        static MeshSetRead? Find(string file, string? material, int uvSet) =>
+            MeshFileReads.All(file)
+                .Sets.FirstOrDefault(set => set.UvSet == uvSet && set.Material == (material ?? string.Empty));
+    }
 
     [Fact]
     public void A_change_to_another_part_keeps_a_sets_key_and_a_change_to_its_own_does_not() {

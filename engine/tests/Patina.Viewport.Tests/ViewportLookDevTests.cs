@@ -1,4 +1,7 @@
 using Vixen.Core.Imaging;
+using Vixen.Core.Mathematics;
+using Vixen.Geometry;
+using Vixen.Interchange;
 
 namespace Patina.Viewport.Tests;
 
@@ -198,6 +201,50 @@ public sealed partial class ViewportDisplayTests {
 
         renderer.SetLive(ViewportSlot.BaseColor, Map, Map, Solid(200, 200, 200));
         Assert.True(Leads(Middle(32f), 1), $"At its map's own size it was {Middle(32f)}.");
+    }
+
+    /// <summary>
+    ///     The vertex colours view shows the file's colour per vertex as stored (#146): a square whose four corners are
+    ///     red, green, blue and white reads each near its own corner, with no light or curve, whatever its material.
+    /// </summary>
+    [Fact]
+    public void The_vertex_colours_view_shows_each_corners_colour_as_stored() {
+        using var renderer = Open();
+        var path = In("painted.glb");
+        ModelWriter.Write(
+            path,
+            [
+                new MeshData {
+                    Name = "square",
+                    Positions = [new(-1f, -1f, 0f), new(1f, -1f, 0f), new(1f, 1f, 0f), new(-1f, 1f, 0f)],
+                    Normals = [Vector3.UnitZ, Vector3.UnitZ, Vector3.UnitZ, Vector3.UnitZ],
+                    TexCoords = [new(0f, 1f), new(1f, 1f), new(1f, 0f), new(0f, 0f)],
+                    Colours = [new(1f, 0f, 0f, 1f), new(0f, 1f, 0f, 1f), new(0f, 0f, 1f, 1f), Vector4.One],
+                    Indices = [0, 1, 2, 0, 2, 3]
+                }
+            ],
+            "painted"
+        );
+        renderer.OpenMesh(path);
+        renderer.SetLive(ViewportSlot.BaseColor, Map, Map, Solid(40, 40, 40));
+        renderer.Shading = new() { View = ViewportView.VertexColours };
+
+        var frame = Render(renderer, new(0f, 0f, 0.5f), 64, 64);
+
+        // The square fills the frame; near each corner its own lane leads the others, the colours being interpolated
+        // across each triangle. The material's grey would lead none of them.
+        void Leads(int x, int y, int lane, string corner) {
+            var (r, g, b) = At(frame, 64, x, y);
+            int[] lanes = [r, g, b];
+            Assert.True(
+                lanes.Where((_, at) => at != lane).All(other => lanes[lane] > other + 100),
+                $"The {corner} corner was ({r}, {g}, {b})."
+            );
+        }
+
+        Leads(2, 61, 0, "red");
+        Leads(61, 61, 1, "green");
+        Leads(61, 2, 2, "blue");
     }
 
     /// <summary>

@@ -34,55 +34,40 @@ public static class BakeKeyReads {
     /// <summary>The key of what a request would make, reading each input for what the bake uses of it.</summary>
     /// <param name="request">The bake.</param>
     /// <param name="tools">The tools' versions.</param>
+    /// <param name="meshes">What reads the meshes: the files themselves, or in the Server what the Worker read.</param>
     /// <returns>The key.</returns>
-    public static BuildKey KeyOf(BakeRequest request, ToolCatalog tools) => Jobs.BakeInputs.KeyOf(request, tools, Of);
+    public static BuildKey KeyOf(BakeRequest request, ToolCatalog tools, IMeshSetReads meshes) =>
+        Jobs.BakeInputs.KeyOf(request, tools, each => Of(each, meshes));
 
     /// <summary>Revisions standing in for bytes or adding to them, by role. A file not read keeps its bytes.</summary>
     /// <param name="request">The bake.</param>
+    /// <param name="meshes">What reads the meshes.</param>
     /// <returns>The low mesh's geometry for its texture set, and the pictures a colour bake reads.</returns>
-    public static IReadOnlyDictionary<string, Revision> Of(BakeRequest request) {
+    public static IReadOnlyDictionary<string, Revision> Of(BakeRequest request, IMeshSetReads meshes) {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(meshes);
         Dictionary<string, Revision> reads = new(StringComparer.Ordinal);
 
-        // ⚠ A low mesh that is also a high mesh is still keyed by its bytes in that role, which the rays read whole.
-        try {
-            var low = MeshMapBakeRun.Read(request.Low, request.Material, request.UvSet ?? 0);
-            reads["low"] = Geometry(low);
-            if (BakeHighReads.Matched(request, low) is { } high) {
-                for (var at = 0; at < request.High.Count; at++) {
-                    reads[at == 0 ? "high" : $"high{at}"] = high; // one revision stands for every file, in order
-                }
-            }
-        } catch (Exception e) when (e is ModelFormatException or InvalidDataException or IOException) {
-            // The bake refuses it with its own words; the bytes key it until then.
+        // ⚠ A low mesh that is also a high mesh is still keyed by its bytes in that role, which the rays read whole,
+        // unless the set reads only its matched parts of it.
+        // One that cannot be read is keyed by its bytes until the bake refuses it with its own words.
+        if (meshes.Geometry(request.Low, request.Material, request.UvSet ?? 0) is { } low
+            && Revision.TryParse(low, out var geometry)) {
+            reads["low"] = geometry;
         }
 
-        try {
-            var pictures = BakeColourSources.PicturesRead(request);
-            for (var at = 0; at < pictures.Count; at++) {
-                reads[$"picture{at}"] = Revision.OfFile(pictures[at]);
+        if (BakeHighReads.Matched(request, meshes) is { } high) {
+            for (var at = 0; at < request.High.Count; at++) {
+                reads[at == 0 ? "high" : $"high{at}"] = high; // one revision stands for every file, in order
             }
-        } catch (Exception e) when (e is ModelFormatException or IOException) {
-            // A high mesh that cannot be read fails the bake, which says so.
+        }
+
+        var pictures = BakeColourSources.PicturesRead(request, meshes);
+        for (var at = 0; at < pictures.Count; at++) {
+            reads[$"picture{at}"] = Revision.OfFile(pictures[at]);
         }
 
         return reads;
-    }
-
-    /// <summary>
-    ///     The revision of one texture set's faces in a mesh file, as a bake of it records them, or null when the file
-    ///     cannot be read so. This is what <see cref="BakeFit.Geometry" /> asks.
-    /// </summary>
-    /// <param name="file">The mesh file.</param>
-    /// <param name="material">The set's material, or null for the whole mesh.</param>
-    /// <param name="uvSet">The UV set the faces are laid out in.</param>
-    /// <returns>The revision's text, or null.</returns>
-    public static string? GeometryOf(string file, string? material, int uvSet) {
-        try {
-            return Geometry(MeshMapBakeRun.Read(file, material, uvSet)).Text;
-        } catch (Exception e) when (e is ModelFormatException or InvalidDataException or IOException) {
-            return null; // a set that cannot be read in it any more does not fit its bake
-        }
     }
 
     /// <summary>A revision of everything a bake reads of a mesh it bakes onto, and nothing it does not.</summary>

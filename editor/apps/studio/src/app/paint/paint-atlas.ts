@@ -233,12 +233,7 @@ export class PaintAtlas {
   /** The picture's box in texels, which a fill's outline is drawn in. */
   protected readonly viewBox = computed(() => `0 0 ${this.side()[0]} ${this.side()[1]}`);
   /** A fill's rectangle or lasso as it is dragged, in texels. */
-  protected readonly outline = computed(() =>
-    this.gesture
-      .points()
-      .map(point => `${point.x},${point.y}`)
-      .join(' ')
-  );
+  protected readonly outline = this.gesture.polyline;
   protected readonly commands = inject(Commands);
 
   constructor() {

@@ -4,6 +4,7 @@ using Patina.Ipc;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
 using Patina.Server.Viewport;
+using System.Globalization;
 
 namespace Patina.Server.Api;
 
@@ -231,7 +232,12 @@ static class StackEndpoints {
         }
 
         if (request.Width <= 0 || request.Height <= 0) {
-            return TypedResults.Problem("A document has a size.", statusCode: Refused);
+            return Refusals.BadSize(
+                "A document's size",
+                "1",
+                TextureSizes.Largest.ToString(CultureInfo.InvariantCulture),
+                Refused
+            );
         }
 
         StackDocuments.Create(path, request.Width, request.Height);

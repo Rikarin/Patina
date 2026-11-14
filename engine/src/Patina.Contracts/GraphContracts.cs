@@ -694,6 +694,10 @@ public sealed record GraphImageRequest(int Node, string Port);
 /// <param name="Height">The PNG's size in pixels.</param>
 public sealed record GraphImage(string Hash, int Width, int Height);
 
+/// <summary>The body of <c>POST /api/v1/previews/{hash}/save</c>.</summary>
+/// <param name="File">The PNG to write, as a whole path on the Server's machine, in a folder that exists.</param>
+public sealed record PreviewSaveRequest(string File);
+
 /// <summary>
 ///     A node's picture counted into a histogram per channel, on the GPU, at the size the graph computes it. Each list
 ///     is 256 shares of the picture's texels, summing to one: bin <c>b</c> holds the values <c>v</c> with

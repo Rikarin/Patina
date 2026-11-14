@@ -252,7 +252,7 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    /** Draws where a symmetry's mirror meets the model, as a line across its surface hidden where the model hides it, for every client. Null draws nothing, and so does a radial symmetry. */
+    /** Draws where a symmetry meets the model, as lines on its surface hidden where the model hides them, for every client: a mirror's plane, or the half-planes between a radial symmetry's copies. Null draws nothing. */
     put: operations['SetViewportSymmetry'];
     post?: never;
     delete?: never;
@@ -324,6 +324,23 @@ export interface paths {
     /** Keeps a graph on the viewport: its Output nodes, or with node the node its selection views, laid on the mesh again after each evaluation and each change of selection, until something else is laid there. A null graph stops. */
     put: operations['FollowGraphInViewport'];
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/previews/{hash}/save': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Writes a picture the Server has written, by its hash, to a PNG file on the Server's machine, replacing one there. POST /graphs/{id}/images writes a node's picture at full size first. */
+    post: operations['SavePreview'];
     delete?: never;
     options?: never;
     head?: never;
@@ -655,6 +672,23 @@ export interface paths {
     get?: never;
     /** Keeps in library.yaml the export preset a project's export starts from when it has kept none, and that checks measure against. Null forgets it, which leaves the Starter glTF preset. GET /export/presets says which preset that comes to. */
     put: operations['SetLibraryDefaultPreset'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/export/targets': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps in library.yaml the export presets a build of the library writes when its request names none: the platforms the library ships to, each once. GET /library reads them back as exportTargets. */
+    put: operations['SetLibraryExportTargets'];
     post?: never;
     delete?: never;
     options?: never;
@@ -1074,6 +1108,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/packages/import': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings a package into the library's packages folder from a zip of it or from its folder, replacing one of its name, once all of it has been read as a package this Patina can use. */
+    post: operations['ImportPackage'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/project/bake/plan': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The bakes a project's own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh. */
+    get: operations['GetProjectBakePlan'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/snapshots': {
     parameters: {
       query?: never;
@@ -1432,6 +1500,23 @@ export interface paths {
     put?: never;
     /** Applies a batch of edits, whole or not at all, as one undo step. */
     post: operations['ApplyGraphCommands'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/relink': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Points every Bitmap node that reads a picture at another file, as one undo step. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
+    post: operations['RelinkGraphPicture'];
     delete?: never;
     options?: never;
     head?: never;
@@ -4716,6 +4801,13 @@ export interface components {
        */
       height: number;
     };
+    /** @description The body of `POST /api/v1/graphs/{id}/relink`: a picture the graph reads, and the file it is now. */
+    GraphRelinkRequest: {
+      /** @description The picture as the graph's Bitmap nodes name it. */
+      from: string;
+      /** @description The file to read instead: absolute, or below the library. */
+      to: string;
+    };
     /**
      * @description The nodes chosen in a graph session, and the one kept on view whatever is chosen. A session has one selection,
      *     whichever client made it last, so a client that follows it, such as the viewport, needs no editor (#244).
@@ -5120,6 +5212,14 @@ export interface components {
       /** @description What a running build is on, for a person: a project and an output or a preset. */
       current?: null | string;
     };
+    /** @description The body of `PUT /api/v1/library/export/targets` (#207). */
+    LibraryTargetsRequest: {
+      /**
+       * @description The ids of the presets a build of the library writes when its request names none, such as one for each platform
+       *     the library ships to. Empty, such a build writes nothing.
+       */
+      presets: string[];
+    };
     /** @description A graph rendered to a picture a brush stamps. */
     MaterialBrush: {
       /** @description The picture, relative to the project's stacks, as a brush names it. */
@@ -5131,7 +5231,8 @@ export interface components {
       project: string;
       /**
        * @description A file on the Server's machine that describes materials: a glTF (`.gltf`, `.glb`) or another model
-       *     file, a MaterialX document (`.mtlx`) or a USD layer in its text form (`.usda`).
+       *     file, a MaterialX document (`.mtlx`), a USD layer in its text form (`.usda`) or a USD package
+       *     (`.usdz`) whose layer is text.
        */
       file: string;
     };
@@ -5317,6 +5418,11 @@ export interface components {
       file?: null | string;
       /** @description Why it cannot be brought, or null when it can. */
       problem?: null | string;
+      /**
+       * @description The compound that names it, or null when the graph itself does, which is when relinking the graph's Bitmap
+       *     nodes (`POST /api/v1/graphs/{id}/relink`) reaches it.
+       */
+      in?: null | string;
     };
     /** @description A picture a package carries. */
     PackageFile: {
@@ -5324,6 +5430,20 @@ export interface components {
       path: string;
       /** @description How the graph named it before it was published. */
       from: string;
+    };
+    /** @description A package that has been brought into a library. */
+    PackageImported: {
+      /** @description Its folder, below the library. */
+      path: string;
+      /** @description What its `package.yaml` says. */
+      manifest: components['schemas']['PackageManifest'];
+      /** @description True when a package of its name was there, and this one replaced it. */
+      replaced: boolean;
+    };
+    /** @description The body of `POST /api/v1/library/packages/import`. */
+    PackageImportRequest: {
+      /** @description The package to bring in: a zip of one, or its `.ptpkg` folder, as a path on the machine the Server runs on. */
+      source: string;
     };
     /**
      * @description A package's `package.yaml` (ADR 0027): what a `.ptpkg` folder holds besides its graph, and what made
@@ -5380,6 +5500,11 @@ export interface components {
       /** @description What it is used as, or null for the role its project gives it. */
       role?: null | string;
     };
+    /** @description The body of `POST /api/v1/previews/{hash}/save`. */
+    PreviewSaveRequest: {
+      /** @description The PNG to write, as a whole path on the Server's machine, in a folder that exists. */
+      file: string;
+    };
     ProblemDetails: {
       type?: null | string;
       title?: null | string;
@@ -5387,6 +5512,18 @@ export interface components {
       status?: null | number;
       detail?: null | string;
       instance?: null | string;
+    };
+    /**
+     * @description The bakes a project's own settings ask for (#186): one request per texture set to bake, or one for the whole
+     *     mesh, as the Bake dialog sends them. `GET /api/v1/library/project/bake/plan` answers it, and
+     *     `patina bake-maps --project … --dry-run` prints it, so a script bakes a project the way the editor does
+     *     without working the requests out itself.
+     */
+    ProjectBakePlan: {
+      /** @description The project's folder. */
+      project: string;
+      /** @description What to send to `POST /api/v1/jobs/bakes`, one at a time or all at once. */
+      requests: components['schemas']['BakeRequest'][];
     };
     /** @description The body of `PUT /api/v1/library/project/bake`. */
     ProjectBakeRequest: {
@@ -5579,6 +5716,12 @@ export interface components {
        *     of another shape than its Width by Height (#262).
        */
       bakeStale?: null | string;
+      /**
+       * Format: int32
+       * @description For a texturing document on a mesh, the UDIM tile its layout sits on in the UV set it chose (#289), which
+       *     its exported files are named by: 1001 for one on the first tile, on several, on no mesh, or of another kind.
+       */
+      udim: number;
       /** @description What it can be searched by, sorted. */
       tags: string[];
     };
@@ -6328,7 +6471,8 @@ export interface components {
       | components['schemas']['StackCommandStackSetMaskLayer']
       | components['schemas']['StackCommandStackAddInstance']
       | components['schemas']['StackCommandStackSetInstance']
-      | components['schemas']['StackCommandStackApplyMask'];
+      | components['schemas']['StackCommandStackApplyMask']
+      | components['schemas']['StackCommandStackKeepQuickMask'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
       /** @description The edits, in order. */
@@ -6454,6 +6598,23 @@ export interface components {
       op: 'flattenLayer';
       /** @description The group, or null for the whole stack. */
       layer?: null | string;
+    };
+    /**
+     * @description Keeps a layer to the session's quick mask (#282): a paint entry on top of its mask's stack that starts as a copy
+     *     of the quick mask as it stands, multiplied over the mask beneath, or subtracted from it to keep it outside.
+     *     A fill, a decal or a path, which no stroke paints, is kept so as a stroke is. The entry is the layer's own from
+     *     then, saved with it, and can be painted, changed or removed as any other. The quick mask must have been painted.
+     */
+    StackCommandStackKeepQuickMask: {
+      /** @enum {string} */
+      op: 'keepQuickMask';
+      /** @description The layer to keep. */
+      layer: string;
+      /**
+       * @description Whether to keep it to where the quick mask is not painted.
+       * @default false
+       */
+      outside: boolean;
     };
     /** @description Moves a layer up or down its list. */
     StackCommandStackMoveLayer: {
@@ -8776,8 +8937,9 @@ export interface components {
       symmetry?: null | components['schemas']['StackSymmetry'];
     };
     /**
-     * @description The symmetry a brush paints with, which the viewport draws where its mirror's plane meets the model (#132): the
-     *     line the plane cuts across the surface, hidden where the model hides it. A radial symmetry draws nothing here.
+     * @description The symmetry a brush paints with, which the viewport draws where it meets the model (#132): the line a mirror's
+     *     plane cuts across the surface, or for a radial symmetry the lines the half-planes between its copies cut, each a
+     *     turn apart round its axis, hidden where the model hides them.
      */
     ViewportSymmetry: {
       symmetry?: null | components['schemas']['StackSymmetry'];
@@ -9560,6 +9722,48 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SavePreview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        hash: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PreviewSaveRequest'];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
         headers: {
           [name: string]: unknown;
         };
@@ -10671,6 +10875,57 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['LibraryPresetRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryInfo'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetLibraryExportTargets: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LibraryTargetsRequest'];
       };
     };
     responses: {
@@ -12130,6 +12385,107 @@ export interface operations {
       };
     };
   };
+  ImportPackage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PackageImportRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PackageImported'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetProjectBakePlan: {
+    parameters: {
+      query: {
+        project: string;
+        document?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectBakePlan'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetDocumentSnapshots: {
     parameters: {
       query: {
@@ -13372,6 +13728,50 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['GraphCommandBatch'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphEditResult'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  RelinkGraphPicture: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphRelinkRequest'];
       };
     };
     responses: {

@@ -228,6 +228,54 @@ public sealed class SetMergeTests : IDisposable {
         );
     }
 
+    /// <summary>
+    ///     A merged export on two tiles names every tile's files (#289): USD and MaterialX through the
+    ///     <c>&lt;UDIM&gt;</c> token when the names differ only by the tile's number, and glTF, which has no tiles, a
+    ///     material per tile.
+    ///     One material file for both tiles named only the first tile's files.
+    /// </summary>
+    [Theory]
+    [InlineData("T_{project}_N.{udim}", true)]
+    [InlineData("T_{project}_N_{tile}", false)]
+    public void A_merged_export_on_two_tiles_names_every_tiles_files_in_its_materials(string normal, bool token) {
+        var preset = ExportOverrides.Apply(
+            ExportPresetReader.Read(Preset.Replace("T_{project}_R", "T_{project}_R.{udim}"), "p"),
+            new() { Merge = true }
+        );
+        preset = preset with {
+            Textures = [preset.Textures[0], preset.Textures[1] with { File = normal }],
+            Materials = ["gltf", "usda", "mtlx"]
+        };
+        var made = Path.Combine(folder.FullName, "made");
+        var target = Path.Combine(folder.FullName, "out");
+        var manifest = ExportRun.Run(
+            preset,
+            [Set("Body", true, 0.25f), Set("Head", true, 0.5f) with { Udim = 1002 }],
+            made,
+            null,
+            Token
+        );
+
+        var delivered = ExportRun.Deliver("key", made, manifest, target, new("Crate", "p"), preset: preset)
+            .Files.Select(Path.GetFileName)
+            .Where(static f => !f!.EndsWith(".png", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal);
+
+        string[] apart = ["Crate_1001.mtlx", "Crate_1001.usda", "Crate_1002.mtlx", "Crate_1002.usda"];
+        string[] wanted = [..token ? ["Crate.mtlx", "Crate.usda"] : apart, "Crate_1001.gltf", "Crate_1002.gltf"];
+        Assert.Equal(wanted.Order(StringComparer.Ordinal), delivered);
+        // glTF reads the normal and not a roughness alone in red, so the normal is what names the tile.
+        var second = File.ReadAllText(Path.Combine(target, "Crate_1002.gltf"));
+        Assert.Contains(token ? "T_Crate_N.1002.png" : "T_Crate_N_u2_v1.png", second, StringComparison.Ordinal);
+        Assert.DoesNotContain(token ? "1001" : "u1_v1", second, StringComparison.Ordinal);
+        if (token) {
+            Assert.Contains("@T_Crate_R.<UDIM>.png@", File.ReadAllText(Path.Combine(target, "Crate.usda")));
+            Assert.Contains("T_Crate_N.&lt;UDIM&gt;.png", File.ReadAllText(Path.Combine(target, "Crate.mtlx")));
+        } else {
+            Assert.Contains("T_Crate_N_u2_v1.png", File.ReadAllText(Path.Combine(target, "Crate_1002.usda")));
+        }
+    }
+
     /// <summary>A name without the tile is one file for two tiles, so the sets stay apart and it says how.</summary>
     [Fact]
     public void Sets_on_two_tiles_stay_apart_when_a_file_does_not_name_the_tile() {

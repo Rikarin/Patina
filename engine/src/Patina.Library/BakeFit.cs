@@ -29,13 +29,11 @@ public static class BakeFit {
     static readonly ConcurrentDictionary<string, (long Length, DateTime Written, string Digest)> Digests =
         new(StringComparer.Ordinal);
 
-    static readonly ConcurrentDictionary<FacesKey, FacesRead> Faces = new();
-
     /// <summary>
     ///     Reads the revision of one texture set's faces in a mesh file, as a bake records them in
     ///     <see cref="BakeManifest.Geometry" />, or null when it cannot: the file, the set's material or null for the
-    ///     whole mesh, and the UV set. The Server sets it, since reading a mesh is not this library's. Unset, any
-    ///     change to the mesh's file is a change to every set on it.
+    ///     whole mesh, and the UV set. The Server sets it to what the Worker read (#285), since reading a mesh is not
+    ///     this library's, nor the Server's. Unset, any change to the mesh's file is a change to every set on it.
     /// </summary>
     public static Func<string, string?, int, string?>? Geometry { get; set; }
 
@@ -113,28 +111,9 @@ public static class BakeFit {
             && FacesOf(meshFile, manifest.Material, manifest.UvSet) == geometry;
     }
 
-    /// <summary>The revision of a set's faces, read again only when the file's length or time changes.</summary>
-    static string? FacesOf(string file, string? material, int uvSet) {
-        if (Geometry is not { } read) {
-            return null;
-        }
-
-        FileInfo info = new(file);
-        if (!info.Exists) {
-            return null;
-        }
-
-        FacesKey key = new(file, material, uvSet);
-        if (Faces.TryGetValue(key, out var known)
-            && known.Length == info.Length
-            && known.Written == info.LastWriteTimeUtc) {
-            return known.Geometry;
-        }
-
-        var geometry = read(file, material, uvSet);
-        Faces[key] = new(info.Length, info.LastWriteTimeUtc, geometry);
-        return geometry;
-    }
+    /// <summary>The revision of a set's faces, as whoever set <see cref="Geometry" /> keeps it.</summary>
+    static string? FacesOf(string file, string? material, int uvSet) =>
+        Geometry is { } read && File.Exists(file) ? read(file, material, uvSet) : null;
 
     /// <summary>A file's digest, read again only when its length or time changes. Null when it is not there.</summary>
     static string? DigestOf(string? file) {
@@ -176,8 +155,4 @@ public static class BakeFit {
     /// <param name="Width">Its width, or zero when not known, which leaves its shape out.</param>
     /// <param name="Height">Its height, the same.</param>
     public readonly record struct SetLayout(int UvSet, int Width = 0, int Height = 0);
-
-    readonly record struct FacesKey(string File, string? Material, int UvSet);
-
-    readonly record struct FacesRead(long Length, DateTime Written, string? Geometry);
 }

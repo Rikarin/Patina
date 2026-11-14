@@ -525,6 +525,7 @@ public sealed record StackSummary(string Id, string Path, string Name, long Revi
 [JsonDerivedType(typeof(StackSetMaskLayer), "setMaskLayer"), JsonDerivedType(typeof(StackAddInstance), "addInstance")]
 [JsonDerivedType(typeof(StackSetInstance), "setInstance")]
 [JsonDerivedType(typeof(StackApplyMask), "applyMask")]
+[JsonDerivedType(typeof(StackKeepQuickMask), "keepQuickMask")]
 public abstract record StackCommand;
 
 /// <summary>Adds a layer at the top of the stack.</summary>

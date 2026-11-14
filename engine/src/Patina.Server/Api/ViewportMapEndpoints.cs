@@ -67,8 +67,9 @@ static class ViewportMapEndpoints {
             .WithName("SetViewportSymmetry")
             .WithTags(Tag)
             .WithSummary(
-                "Draws where a symmetry's mirror meets the model, as a line across its surface hidden where the model "
-                + "hides it, for every client. Null draws nothing, and so does a radial symmetry."
+                "Draws where a symmetry meets the model, as lines on its surface hidden where the model hides them, "
+                + "for every client: a mirror's plane, or the half-planes between a radial symmetry's copies. Null "
+                + "draws nothing."
             )
             .ProducesProblem(Refused);
         api.MapPut("/viewport/bake", ShowBakeAsync)
@@ -130,13 +131,7 @@ static class ViewportMapEndpoints {
     }
 
     /// <summary>A file a request named that is not there, by its name: where it was is the asker's.</summary>
-    static ProblemHttpResult FileMissing(string file) =>
-        Refusals.Problem(
-            $"There is no file at '{file}'.",
-            Missing,
-            Refusals.FileMissing,
-            new Dictionary<string, string> { ["file"] = Path.GetFileName(file) }
-        );
+    static ProblemHttpResult FileMissing(string file) => Refusals.NoFile(file);
 
     static async Task<Results<Ok<ViewportState>, ProblemHttpResult>> SetDisplayAsync(
         ViewportDisplay request,
@@ -145,16 +140,12 @@ static class ViewportMapEndpoints {
         CancellationToken cancellationToken
     ) {
         if (request.Problem() is { } wrong) {
-            return TypedResults.Problem(wrong, statusCode: Refused);
+            return Refusals.BadSettings(wrong, Refused);
         }
 
         if (!Rooms.Contains(request.Environment)) {
             if (!PictureFormats.IsEnvironment(request.Environment)) {
-                return TypedResults.Problem(
-                    $"'{request.Environment}' is no room and no "
-                    + $"{string.Join(" or ", PictureFormats.Environments)} file.",
-                    statusCode: Refused
-                );
+                return Refusals.WrongKind(request.Environment, PictureFormats.Environments, Refused);
             }
 
             if (!File.Exists(request.Environment)) {
@@ -163,7 +154,7 @@ static class ViewportMapEndpoints {
         }
 
         if (request.Look is { } table && !table.EndsWith(".cube", StringComparison.OrdinalIgnoreCase)) {
-            return TypedResults.Problem($"'{table}' is not a .cube table.", statusCode: Refused);
+            return Refusals.WrongKind(table, [".cube"], Refused);
         }
 
         try {
@@ -191,24 +182,25 @@ static class ViewportMapEndpoints {
     ) {
         if (!request.Path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
             || !Path.IsPathFullyQualified(request.Path)) {
-            return TypedResults.Problem(
-                $"'{request.Path}' is not a full path to a .png file.",
-                statusCode: Refused
-            );
+            return Refusals.WrongKind(request.Path, [".png"], Refused);
         }
 
         if (request is { Width: < 2 }
             or { Height: < 2 }
             or { Width: > FrameMemory.MaxWidth }
             or { Height: > FrameMemory.MaxHeight }) {
-            return TypedResults.Problem(
-                $"A screenshot is 2 to {FrameMemory.MaxWidth} pixels across and 2 to {FrameMemory.MaxHeight} down.",
-                statusCode: Refused
+            return Refusals.BadSize(
+                "A screenshot",
+                "2 × 2",
+                $"{FrameMemory.MaxWidth} × {FrameMemory.MaxHeight}",
+                Refused
             );
         }
 
         try {
             return TypedResults.Ok(await session.ScreenshotAsync(request, cancellationToken));
+        } catch (ViewportNoMeshException e) {
+            return Refusals.Of(e);
         } catch (IpcException e) {
             return Refusals.OfEngine(e, Refused);
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
@@ -230,7 +222,7 @@ static class ViewportMapEndpoints {
     ) {
         if (request.Low.Length > 0) {
             if (request.Problem() is { } wrong) {
-                return TypedResults.Problem(wrong, statusCode: Refused);
+                return Refusals.BadSettings(wrong, Refused);
             }
 
             string[] files =
@@ -240,9 +232,10 @@ static class ViewportMapEndpoints {
             }
 
             if (request.High.Count == 0) {
-                return TypedResults.Problem(
+                return Refusals.Problem(
                     "A bake needs a high mesh, which may be the low mesh itself.",
-                    statusCode: Refused
+                    Refused,
+                    Refusals.BakeNeedsHigh
                 );
             }
         }
@@ -292,21 +285,27 @@ static class ViewportMapEndpoints {
         }
 
         if (job is not { State: JobStates.Done, Result: { } result }) {
-            return TypedResults.Problem($"Job '{request.Job}' has not finished.", statusCode: Refused);
+            return Refusals.Problem(
+                $"Job '{request.Job}' has not finished.",
+                Refused,
+                Refusals.JobUnfinished,
+                new Dictionary<string, string> { ["id"] = request.Job }
+            );
         }
 
         string? Of(string map) => result.Maps.FirstOrDefault(file => file.Map == map)?.Path;
 
         var tangent = job.Bake!.Options.Space == "tangent";
         if (request.Map is { } wanted && Of(wanted) is null) {
-            return TypedResults.Problem($"Job '{request.Job}' made no '{wanted}' map.", statusCode: Missing);
+            return Refusals.NoBakeMap(request.Job, wanted);
         }
 
         // ⚠ One map alone is shown as stored, which any map can be; on the material only a tangent space normal reads.
         if (!tangent && request.Map is null) {
-            return TypedResults.Problem(
+            return Refusals.Problem(
                 "This bake is in object space, and the viewport reads tangent-space maps.",
-                statusCode: Refused
+                Refused,
+                Refusals.BakeObjectSpace
             );
         }
 
@@ -349,9 +348,10 @@ static class ViewportMapEndpoints {
             GraphOnMesh shown;
             if (request.Node is { } node) {
                 if (GraphOnMesh.PortOf(graph, node, request.Port) is not { } port) {
-                    return TypedResults.Problem(
+                    return Refusals.Problem(
                         $"Node {node} has no picture yet. Ask again once the graph has evaluated it.",
-                        statusCode: Conflict
+                        Conflict,
+                        Refusals.NodeUnevaluated
                     );
                 }
 

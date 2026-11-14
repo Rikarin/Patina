@@ -25,9 +25,6 @@ var builder = WebApplication.CreateSlimBuilder(
     }
 );
 
-// A texture set's bake fits it while its own faces are the ones baked on, whatever else in the mesh changed (#151).
-BakeFit.Geometry = Patina.Export.BakeKeyReads.GeometryOf;
-
 string? library = null;
 if (builder.Configuration["library"] is { Length: > 0 } path) {
     library = InstanceRegistry.NormaliseLibrary(path);
@@ -90,6 +87,7 @@ builder.Services.AddOpenApi(static o => {
 );
 builder.Services.AddSingleton(new ServerIdentity(library, token));
 builder.Services.AddSingleton<WorkerLink>();
+builder.Services.AddSingleton<MeshSetCache>();
 builder.Services.AddHostedService(static s => s.GetRequiredService<WorkerLink>());
 builder.Services.AddSingleton<LibraryHost>();
 builder.Services.AddHostedService(static s => s.GetRequiredService<LibraryHost>());
@@ -120,11 +118,21 @@ builder.Services.AddSingleton(static services => new BakeCache(
 );
 builder.Services.AddSingleton<BakeLinks>();
 builder.Services.AddSingleton<PicturePreviews>();
+builder.Services.AddSingleton(static services => new BuildRunner(
+        services.GetRequiredService<LibraryHost>(),
+        ToolCatalog.Default,
+        services.GetRequiredService<MeshSetCache>()
+    )
+);
 builder.Services.AddHostedService<JobRunner>();
 builder.Services.AddHostedService<Autosave>();
 builder.Services.AddHostedService<DiscoveryPublisher>();
 
 var app = builder.Build();
+
+// A texture set's bake fits it while its own faces are the ones baked on, whatever else in the mesh changed (#151). The
+// faces are what the Worker read: the Server never parses a mesh (#285).
+BakeFit.Geometry = app.Services.GetRequiredService<MeshSetCache>().Geometry;
 if (bool.TryParse(builder.Configuration["Patina:WatchStdin"], out var watchStdin) && watchStdin) {
     // Started by the desktop app: stop when it is gone, however it ended (Patina.Ipc.StdinWatch).
     StdinWatch.Start(Console.OpenStandardInput(), app.Lifetime.StopApplication);

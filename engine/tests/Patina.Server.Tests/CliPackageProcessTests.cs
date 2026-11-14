@@ -134,4 +134,40 @@ public sealed class CliPackageProcessTests : IDisposable {
         Assert.Equal(red, await BakedAsync("set", "--param", "redness=1"));
         Assert.Equal(plain, await BakedAsync("again", "--param", "redness=0.25"));
     }
+
+    [Fact]
+    public async Task A_zipped_package_goes_out_as_one_file_and_comes_back_into_a_library() {
+        WriteGraph();
+        var sent = Path.Combine(folder.FullName, "sent");
+        var zipped = await PatinaAsync(
+            "package",
+            Path.Combine(folder.FullName, "work", "Banded.vxtexgraph"),
+            sent,
+            "--zip"
+        );
+        Assert.True(zipped.Exit == 0, zipped.Error);
+        var zip = Path.Combine(sent, "Banded.zip");
+        Assert.StartsWith(zip + Environment.NewLine, zipped.Out, StringComparison.Ordinal);
+        Assert.Equal(["Banded.zip"], Directory.GetFileSystemEntries(sent).Select(Path.GetFileName));
+
+        var library = Path.Combine(folder.FullName, "library");
+        var imported = await PatinaAsync("package", "import", zip, "--library", library);
+        Assert.True(imported.Exit == 0, imported.Error);
+        var package = Path.Combine(library, "packages", "Banded.ptpkg");
+        Assert.Equal(package, imported.Out.Trim());
+        Assert.True(File.Exists(Path.Combine(package, "Compounds", "Packages", "Banded", "Soften.vxtexgraph")));
+
+        var info = await PatinaAsync("graph", "info", package);
+        Assert.Equal("Banded", JsonSerializer.Deserialize(info.Out, PackageJsonContext.Default.GraphFacts)!.Name);
+        var wrong = await PatinaAsync(
+            "package",
+            "import",
+            Path.Combine(folder.FullName, "work", "Banded.vxtexgraph"),
+            "--into",
+            library
+        );
+        Assert.Equal(1, wrong.Exit);
+        Assert.Equal(2, (await PatinaAsync("package", "import", zip)).Exit);
+        Assert.Contains("package import", (await PatinaAsync("help")).Out, StringComparison.Ordinal);
+    }
 }

@@ -167,6 +167,7 @@ from .graph_port_range import GraphPortRange
 from .graph_preset_state import GraphPresetState
 from .graph_preset_state_values import GraphPresetStateValues
 from .graph_preview import GraphPreview
+from .graph_relink_request import GraphRelinkRequest
 from .graph_selection import GraphSelection
 from .graph_setting_condition import GraphSettingCondition
 from .graph_setting_definition import GraphSettingDefinition
@@ -190,6 +191,7 @@ from .library_move_request import LibraryMoveRequest
 from .library_moved import LibraryMoved
 from .library_preset_request import LibraryPresetRequest
 from .library_report import LibraryReport
+from .library_targets_request import LibraryTargetsRequest
 from .material_brush import MaterialBrush
 from .material_import_request import MaterialImportRequest
 from .material_import_result import MaterialImportResult
@@ -205,11 +207,15 @@ from .output_report import OutputReport
 from .package_compound import PackageCompound
 from .package_dependency import PackageDependency
 from .package_file import PackageFile
+from .package_import_request import PackageImportRequest
+from .package_imported import PackageImported
 from .package_manifest import PackageManifest
 from .package_plan import PackagePlan
 from .package_published import PackagePublished
 from .package_request import PackageRequest
+from .preview_save_request import PreviewSaveRequest
 from .problem_details import ProblemDetails
+from .project_bake_plan import ProjectBakePlan
 from .project_bake_request import ProjectBakeRequest
 from .project_bake_settings import ProjectBakeSettings
 from .project_check_settings import ProjectCheckSettings
@@ -282,6 +288,8 @@ from .stack_command_stack_duplicate_layers import StackCommandStackDuplicateLaye
 from .stack_command_stack_duplicate_layers_op import StackCommandStackDuplicateLayersOp
 from .stack_command_stack_flatten_layer import StackCommandStackFlattenLayer
 from .stack_command_stack_flatten_layer_op import StackCommandStackFlattenLayerOp
+from .stack_command_stack_keep_quick_mask import StackCommandStackKeepQuickMask
+from .stack_command_stack_keep_quick_mask_op import StackCommandStackKeepQuickMaskOp
 from .stack_command_stack_move_layer import StackCommandStackMoveLayer
 from .stack_command_stack_move_layer_op import StackCommandStackMoveLayerOp
 from .stack_command_stack_move_mask_layer import StackCommandStackMoveMaskLayer
@@ -592,6 +600,7 @@ __all__ = (
     "GraphPresetState",
     "GraphPresetStateValues",
     "GraphPreview",
+    "GraphRelinkRequest",
     "GraphSelection",
     "GraphSettingCondition",
     "GraphSettingDefinition",
@@ -615,6 +624,7 @@ __all__ = (
     "LibraryMoveRequest",
     "LibraryPresetRequest",
     "LibraryReport",
+    "LibraryTargetsRequest",
     "MaterialBrush",
     "MaterialImportRequest",
     "MaterialImportResult",
@@ -630,11 +640,15 @@ __all__ = (
     "PackageCompound",
     "PackageDependency",
     "PackageFile",
+    "PackageImported",
+    "PackageImportRequest",
     "PackageManifest",
     "PackagePlan",
     "PackagePublished",
     "PackageRequest",
+    "PreviewSaveRequest",
     "ProblemDetails",
+    "ProjectBakePlan",
     "ProjectBakeRequest",
     "ProjectBakeSettings",
     "ProjectCheckSettings",
@@ -707,6 +721,8 @@ __all__ = (
     "StackCommandStackDuplicateLayersOp",
     "StackCommandStackFlattenLayer",
     "StackCommandStackFlattenLayerOp",
+    "StackCommandStackKeepQuickMask",
+    "StackCommandStackKeepQuickMaskOp",
     "StackCommandStackMoveLayer",
     "StackCommandStackMoveLayerOp",
     "StackCommandStackMoveMaskLayer",

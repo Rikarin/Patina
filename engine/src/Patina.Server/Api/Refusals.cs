@@ -14,7 +14,7 @@ namespace Patina.Server.Api;
 ///     words and the text can change without breaking one (#198). A refusal with no code is one no client is expected
 ///     to explain, and shows its detail.
 /// </summary>
-public static class Refusals {
+public static partial class Refusals {
     /// <summary>A document with unsaved edits, which closing would throw away.</summary>
     public const string Unsaved = "document-unsaved";
 
@@ -65,9 +65,12 @@ public static class Refusals {
     /// </summary>
     public const string ExportUnbuilt = "export-unbuilt";
 
-    /// <summary>The values of a refusal whose detail is the Server's own sentence, as <c>reason</c>.</summary>
+    /// <summary>
+    ///     The values of a refusal whose detail is the Server's own sentence, as <c>reason</c>, with each full path in
+    ///     it cut to its file's name: where a file is on the Server's machine is not for a person to read (#198).
+    /// </summary>
     public static IReadOnlyDictionary<string, string> Reason(string reason) =>
-        new Dictionary<string, string> { ["reason"] = reason };
+        new Dictionary<string, string> { ["reason"] = Plain(reason) };
 
     /// <summary>
     ///     A stroke on a canvas larger than its texture set, which painting would make smaller (#19, #241). Values:
@@ -138,6 +141,9 @@ public static class Refusals {
 
     /// <summary>A brush on a mask layer that is not painted. Values: <c>layer</c>, <c>source</c>.</summary>
     public const string MaskLayerNotPaint = "mask-layer-not-paint";
+
+    /// <summary>A layer kept to a quick mask nothing has painted (#282). Values: <c>layer</c>.</summary>
+    public const string QuickMaskUnpainted = "quick-mask-unpainted";
 
     /// <summary>An instance of a layer that is not there. Values: <c>layer</c>, <c>set</c>.</summary>
     public const string InstanceSourceMissing = "instance-source-missing";
@@ -281,14 +287,14 @@ public static class Refusals {
 
     /// <summary>A file a request needs that is not there, named by its file name alone.</summary>
     public static ProblemHttpResult Of(FileNotFoundException missing) =>
-        Problem(
-            missing.Message,
-            StatusCodes.Status404NotFound,
-            FileMissing,
-            new Dictionary<string, string> {
-                ["file"] = missing.FileName is { Length: > 0 } name ? Path.GetFileName(name) : "That file"
-            }
-        );
+        missing.FileName is { Length: > 0 } name
+            ? NoFile(name)
+            : Problem(
+                missing.Message,
+                StatusCodes.Status404NotFound,
+                FileMissing,
+                new Dictionary<string, string> { ["file"] = "That file" }
+            );
 
     /// <summary>
     ///     A file or folder another program still had open after the Server waited for it, so the change was not made

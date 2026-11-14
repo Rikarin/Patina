@@ -62,8 +62,8 @@ static class BuildEndpoints {
         ExportPresetCatalog.Found found;
         try {
             found = ExportPresetCatalog.Read(library.RootPath, project);
-        } catch (ArgumentException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status404NotFound);
+        } catch (ArgumentException) {
+            return Refusals.NoProject(project);
         }
 
         return TypedResults.Ok(
@@ -143,7 +143,7 @@ static class BuildEndpoints {
             );
             return TypedResults.Ok(plan.Preview(offset, limit));
         } catch (BuildRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.BadBuild(e);
         }
     }
 
@@ -159,9 +159,11 @@ static class BuildEndpoints {
         var catalog = ExportPresetCatalog.Read(library.RootPath);
         if ((request.Presets ?? library.Document.ExportTargets).FirstOrDefault(id => catalog.Find(id) is null
             ) is { } bad) {
-            return TypedResults.Problem(
+            return Refusals.Problem(
                 $"There is no preset '{bad}'.",
-                statusCode: StatusCodes.Status422UnprocessableEntity
+                StatusCodes.Status422UnprocessableEntity,
+                Refusals.PresetMissing,
+                new Dictionary<string, string> { ["preset"] = bad }
             );
         }
 
@@ -223,11 +225,12 @@ static class BuildEndpoints {
     static ProblemHttpResult NoLibrary() => Refusals.NoLibraryOpen();
 
     static ProblemHttpResult NoReport(string id) =>
-        TypedResults.Problem($"Build '{id}' has no report.", statusCode: StatusCodes.Status404NotFound);
-
-    static ProblemHttpResult BadPage() =>
-        TypedResults.Problem(
-            $"The offset cannot be negative and the limit is 1 to {MaxLimit}.",
-            statusCode: StatusCodes.Status400BadRequest
+        Refusals.Problem(
+            $"Build '{id}' has no report.",
+            StatusCodes.Status404NotFound,
+            Refusals.BuildReportMissing,
+            new Dictionary<string, string> { ["id"] = id }
         );
+
+    static ProblemHttpResult BadPage() => Refusals.BadPage(MaxLimit);
 }

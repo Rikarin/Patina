@@ -18,24 +18,40 @@ sealed class ViewportWire(
     (Effect Effect, ShaderHandle Vertex, ShaderHandle Fragment) edges,
     (Effect Effect, ShaderHandle Vertex, ShaderHandle Fragment) floor,
     (Effect Effect, ShaderHandle Vertex, ShaderHandle Fragment) shapes,
-    PixelFormat colourFormat,
     PixelFormat depthFormat,
     int samples
 ) : IDisposable {
     /// <summary>How far the edges are lifted towards the eye, in bounding radii.</summary>
     const float Lift = 0.002f;
 
-    readonly ViewportLines lines = new(device, edges, colourFormat, depthFormat, samples);
+    readonly ViewportLines lines =
+        new(device, edges, ViewportTargets.Light(BlendState.AlphaBlend), depthFormat, samples);
 
-    readonly ViewportGrid grid =
-        new(device, floor.Effect, floor.Vertex, floor.Fragment, colourFormat, depthFormat, samples);
+    readonly ViewportGrid grid = new(device, floor.Effect, floor.Vertex, floor.Fragment, depthFormat, samples);
 
-    readonly ViewportOverlay overlay =
-        new(device, shapes.Effect, shapes.Vertex, shapes.Fragment, colourFormat, depthFormat, samples);
+    readonly ViewportOverlay overlay = new(
+        device,
+        shapes.Effect,
+        shapes.Vertex,
+        shapes.Fragment,
+        ViewportTargets.Light(BlendState.AlphaBlend),
+        depthFormat,
+        samples
+    );
 
-    /// <summary>What a client points at on the model (<see cref="ViewportMarks" />), under the overlay.</summary>
-    readonly ViewportOverlay highlight =
-        new(device, shapes.Effect, shapes.Vertex, shapes.Fragment, colourFormat, depthFormat, samples);
+    /// <summary>
+    ///     What a client points at on the model (<see cref="ViewportMarks" />), under the overlay. It is a tint, laid
+    ///     over the picture after the curve in the colours a person sees (#286), so a bright light cannot fade it.
+    /// </summary>
+    readonly ViewportOverlay highlight = new(
+        device,
+        shapes.Effect,
+        shapes.Vertex,
+        shapes.Fragment,
+        ViewportTargets.Tinting(BlendState.AlphaBlend),
+        depthFormat,
+        samples
+    );
 
     /// <summary>The frame's camera, and how far a line stands off its surface for a model of this size.</summary>
     public void Write(Matrix4x4 viewProjection, Vector3 eye, float radius) {

@@ -157,8 +157,8 @@ sealed class ViewportPost : IDisposable {
     /// </summary>
     /// <param name="commands">The frame's commands.</param>
     /// <param name="target">The frame.</param>
-    /// <returns>The picture the last stage wrote, as a colour target.</returns>
-    public TextureHandle Record(ICommandList commands, ViewportTargets target) {
+    /// <returns>The picture the last stage wrote, still a colour target, and its view.</returns>
+    public (TextureHandle Picture, TextureViewHandle View) Record(ICommandList commands, ViewportTargets target) {
         var (reading, readingView) = (target.Hdr, target.HdrView);
         if (blooms && bloom.Result is { } bloomed) {
             bloom.Record(commands, target);
@@ -187,7 +187,7 @@ sealed class ViewportPost : IDisposable {
             (reading, readingView) = (writing, writingView);
         }
 
-        return reading;
+        return (reading, readingView);
     }
 
     /// <summary>Lets go of every set that reads a picture of the old size, and the bloom's chain.</summary>

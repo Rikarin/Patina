@@ -1,5 +1,6 @@
 using Patina.Contracts;
 using Patina.Export.Presets;
+using Patina.Library;
 
 namespace Patina.Export.Builds;
 
@@ -42,6 +43,9 @@ public static class ExportSteps {
                     foreach (var source in sources.Where(s => s.Set.Length == 0 || s.Set == set)) {
                         foreach (var map in MapPictures.Read(source.Folder, source.Manifest)) {
                             maps[map.Name] = map;
+                            if (Baked(source.Manifest.Tool, map.Name) is { } alone) {
+                                maps[alone] = map with { Name = alone };
+                            }
                         }
 
                         // The stack's own object says its tile; a bake's says the first (#20).
@@ -53,4 +57,17 @@ public static class ExportSteps {
             )
         ];
     }
+
+    /// <summary>
+    ///     The name a bake's normal or occlusion also goes by (#155), which a stack's own map of the same name does not
+    ///     replace, or null for any other map or a source that is not a bake.
+    /// </summary>
+    static string? Baked(string tool, string map) =>
+        tool is BakeKeys.Tool or BuildTools.BakedMaps
+            ? map switch {
+                ExportMaps.Normal => ExportMaps.BakedNormal,
+                ExportMaps.Occlusion => ExportMaps.BakedOcclusion,
+                _ => null
+            }
+            : null;
 }

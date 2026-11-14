@@ -23,8 +23,42 @@ def dll(folder: str, assembly: str) -> str:
     return str(path)
 
 
+FRAMEWORKS = ("Microsoft.NETCore.App", "Microsoft.AspNetCore.App")
+
+
+def holds_runtime(root: pathlib.Path) -> bool:
+    """Whether a .NET install holds the runtimes the engine needs: `net11.0`, and the Server is ASP.NET Core."""
+    try:
+        return all(
+            any(version.name.startswith("11.") for version in (root / "shared" / framework).iterdir())
+            for framework in FRAMEWORKS
+        )
+    except OSError:
+        return False
+
+
+def dotnet_host(env: dict[str, str] | None = None, home: pathlib.Path | None = None) -> tuple[str, dict[str, str]]:
+    """The `dotnet` to run the engine with, found as the desktop app finds it (`dotnet.ts`, #249, #291).
+
+    `DOTNET_ROOT` first, then `~/.dotnet`, where `dotnet-install` and CI put the SDK without putting it first on PATH,
+    and only then whatever `dotnet` is on PATH, which may be an older one with no .NET 11 (it fails with 0x80008096).
+    A root found here is passed on as `DOTNET_ROOT`, so the Server finds the runtime for the Worker as well.
+    """
+    env = dict(os.environ if env is None else env)
+    home = pathlib.Path.home() if home is None else home
+    executable = "dotnet.exe" if os.name == "nt" else "dotnet"
+    for root in (env.get("DOTNET_ROOT"), str(home / ".dotnet")):
+        if root and (pathlib.Path(root) / executable).exists() and holds_runtime(pathlib.Path(root)):
+            env["DOTNET_ROOT"] = root
+            return str(pathlib.Path(root) / executable), env
+    return "dotnet", env
+
+
+DOTNET, DOTNET_ENV = dotnet_host()
+
+
 def run(*arguments: str) -> None:
-    subprocess.run(["dotnet", *arguments], check=True, stdout=subprocess.DEVNULL)
+    subprocess.run([DOTNET, *arguments], check=True, stdout=subprocess.DEVNULL, env=DOTNET_ENV)
 
 
 class Session:
@@ -42,7 +76,8 @@ class Session:
 
     def start(self, *command: str) -> subprocess.Popen:
         process = subprocess.Popen(
-            ["dotnet", *command],
+            [DOTNET, *command],
+            env=DOTNET_ENV,
             stdin=subprocess.PIPE,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

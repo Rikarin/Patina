@@ -175,8 +175,17 @@ public static class MeshMapBakeRun {
         string? material,
         int uvSet,
         ViewportIsolation? shown = null
+    ) =>
+        Placed(Model(path, uvSet != 0), path, material, uvSet, shown);
+
+    /// <summary>The same, of a file already read, whose parts and coordinates it changes.</summary>
+    internal static (FlatModel Model, int Udim) Placed(
+        ReadModel read,
+        string path,
+        string? material,
+        int uvSet,
+        ViewportIsolation? shown = null
     ) {
-        var read = Model(path, uvSet != 0);
         var names = MaterialNames.Unique(read.Model.Materials);
         if (shown is { Whole: false }) {
             read.Model.Parts = [

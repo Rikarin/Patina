@@ -23,6 +23,12 @@ sealed partial class StackHost {
             /// </summary>
             public (PaintProjection From, PaintProjection To)? Carry { get; init; }
 
+            /// <summary>
+            ///     A colour the copy is laid over by its alpha, or null to copy as it is: a quick mask copied
+            ///     into a mask entry is laid over opaque black (#282), so the entry is read by what it holds.
+            /// </summary>
+            public uint? Under { get; init; }
+
             public void Do(ICommandContext context) {
                 var into = Target();
                 var from = canvases.Open(source);
@@ -44,6 +50,24 @@ sealed partial class StackHost {
                 foreach (var usage in from?.Channels ?? []) {
                     into.Channel(usage).CopyFrom(from!.Channel(usage));
                 }
+
+                if (Under is { } under) {
+                    foreach (var usage in into.Channels) {
+                        Over(into.Channel(usage), under);
+                    }
+                }
+            }
+
+            /// <summary>Every texel laid over a colour by its own alpha: opaque wherever the colour is.</summary>
+            static void Over(PaintImage image, uint under) {
+                var texels = image.ToTexels();
+                for (var at = 0; at < texels.Length; at += 4) {
+                    var opaque = PaintImage.Pack(texels[at] / 255f, texels[at + 1] / 255f, texels[at + 2] / 255f, 1f);
+                    var mixed = PaintImage.Mix(under, opaque, texels[at + 3] / 255f);
+                    System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(texels.AsSpan(at), mixed);
+                }
+
+                image.CopyFrom(texels);
             }
 
             /// <summary>
