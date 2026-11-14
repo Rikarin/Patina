@@ -34,8 +34,7 @@ sealed class ViewportTargets : IDisposable {
     public static ColourTargetState[] Light(BlendState blend) => [new(HdrFormat, blend), new(TintFormat, Untouched)];
 
     /// <summary>The forward pass's targets for a draw that writes tints, blended so, and leaves the light.</summary>
-    public static ColourTargetState[] Tinting(BlendState blend) =>
-        [new(HdrFormat, Untouched), new(TintFormat, blend)];
+    public static ColourTargetState[] Tinting(BlendState blend) => [new(HdrFormat, Untouched), new(TintFormat, blend)];
 
     /// <summary>A draw added to what is there: the sky over the background colour the frame is cleared to.</summary>
     public static BlendState Added => new(true, BlendFactor.One, BlendFactor.One, BlendOperation.Add, BlendFactor.One);

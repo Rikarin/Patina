@@ -100,7 +100,8 @@ public sealed class ViewportRenderer : IDisposable {
         cleanup.Add(shadows.Dispose);
 
         // The model writes its light and its quick mask's tint (#286).
-        ColourTargetState[] both = [new(HdrFormat, BlendState.Opaque), new(ViewportTargets.TintFormat, BlendState.Opaque)];
+        ColourTargetState[] both =
+            [new(HdrFormat, BlendState.Opaque), new(ViewportTargets.TintFormat, BlendState.Opaque)];
         forward = Pipeline(shaders.Forward(), both, Samples, DepthStencilState.Default, DepthFormat, true);
         // The sky is added to the background colour the frame is cleared to, each scaled by its share.
         sky = Pipeline(
@@ -341,7 +342,7 @@ public sealed class ViewportRenderer : IDisposable {
     }
 
     /// <summary>
-    ///     Draws where a symmetry's mirror, or the half-planes between a radial symmetry's copies, meet the model (#132),
+    ///     Draws where a symmetry's mirror, or the half-planes between a radial one's copies, meet the model (#132),
     ///     of what is drawn, or nothing for null. It stands against the whole model's box, as a stroke's does, so it is
     ///     found again on each mesh opened.
     /// </summary>

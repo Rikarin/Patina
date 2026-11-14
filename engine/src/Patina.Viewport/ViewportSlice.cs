@@ -33,7 +33,7 @@ readonly record struct ViewportPlane(int Axis, float At);
 ///     </para>
 ///     <para>
 ///         A radial symmetry of n copies is cut by n half-planes from its axis, a turn of 1/n apart, the first towards
-///         the next axis round (y for x, z for y, x for z): each is a plane's cut kept to the side of the axis it leaves
+///         the next axis round (y, z or x for x, y or z): each is a plane's cut kept to the side of the axis it leaves
 ///         on. Which of the turns comes first does not matter, since the copies repeat every turn of 1/n.
 ///     </para>
 /// </remarks>
@@ -157,7 +157,7 @@ static class ViewportSlice {
         /// <summary>How far in front of the plane a point is.</summary>
         public float Side(Vector3 point) => Vector3.Dot(Normal, point - Through);
 
-        /// <summary>A segment on the plane cut to the half the plane is kept to, or false for none of it there.</summary>
+        /// <summary>A segment on the plane cut to the half kept, or false for none of it there.</summary>
         public bool Kept(ref Vector3 from, ref Vector3 to) {
             if (Leaving is not { } way) {
                 return true;

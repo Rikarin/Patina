@@ -31,6 +31,7 @@ sealed class ViewportGrid(
     static readonly Vector4 AxisZ = new(0.16f, 0.32f, 0.9f, 0.9f);
 
     readonly VulkanDevice device = device;
+
     readonly ViewportLines pass = new(
         device,
         (effect, vertex, fragment),
@@ -38,6 +39,7 @@ sealed class ViewportGrid(
         depthFormat,
         samples
     );
+
     BufferHandle? lines;
     int count;
     BoundingBox drawn;

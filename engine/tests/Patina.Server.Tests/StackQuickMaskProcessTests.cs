@@ -86,11 +86,11 @@ public sealed partial class StackProcessTests {
         Assert.True(whole > disc * 20, $"The fill covers {whole} texels against {disc} for the disc.");
 
         using (var refused = await http.PostAsJsonAsync(
-            $"/api/v1/stacks/{state.Id}/commands",
-            new StackCommandBatch([new StackKeepQuickMask(fill)]),
-            ContractsJsonContext.Default.StackCommandBatch,
-            deadline.Token
-        )) {
+                   $"/api/v1/stacks/{state.Id}/commands",
+                   new StackCommandBatch([new StackKeepQuickMask(fill)]),
+                   ContractsJsonContext.Default.StackCommandBatch,
+                   deadline.Token
+               )) {
             Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, refused.StatusCode);
             Assert.Contains(Api.Refusals.QuickMaskUnpainted, await refused.Content.ReadAsStringAsync(deadline.Token));
         }

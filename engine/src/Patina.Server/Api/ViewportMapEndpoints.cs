@@ -67,7 +67,7 @@ static class ViewportMapEndpoints {
             .WithName("SetViewportSymmetry")
             .WithTags(Tag)
             .WithSummary(
-                "Draws where a symmetry meets the model, as lines across its surface hidden where the model hides them, "
+                "Draws where a symmetry meets the model, as lines on its surface hidden where the model hides them, "
                 + "for every client: a mirror's plane, or the half-planes between a radial symmetry's copies. Null "
                 + "draws nothing."
             )

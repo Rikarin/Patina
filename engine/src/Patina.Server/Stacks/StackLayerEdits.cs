@@ -15,8 +15,21 @@ static class StackLayerEdits {
     public static string Label(StackCommand command, Func<string, LayerAsset?> layer) => StackLabels.Of(command, layer);
 
     /// <summary>Applies an instance or mask-stack command, or says it is neither.</summary>
-    public static bool Run(StackEditor editor, StackCommand command, string set, Action<IAuthoringCommand> run) {
+    /// <param name="editor">The stack.</param>
+    /// <param name="command">The command.</param>
+    /// <param name="step">The texture set, and the step's journal, which a copy a command makes joins.</param>
+    /// <param name="run">Runs the document's change.</param>
+    public static bool Run(
+        StackEditor editor,
+        StackCommand command,
+        (string Set, List<StackJournalEntry> Journal) step,
+        Action<IAuthoringCommand> run
+    ) {
+        var set = step.Set;
         switch (command) {
+            case StackKeepQuickMask keep:
+                new StackQuickMaskKeep(editor, set).Run(keep, run, step.Journal);
+                return true;
             case StackAddInstance instance:
                 run(new StackInstanceEdits(editor).AddInstance(instance.Source, instance.Above, set).Command);
                 return true;

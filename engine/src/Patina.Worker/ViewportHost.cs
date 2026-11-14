@@ -194,7 +194,7 @@ sealed partial class ViewportHost(string shaderCache, MeshShelf meshes) : IDispo
     ///     A symmetry as the viewport draws it across the model (#132): a mirror's plane, or a radial one's half-planes
     ///     between its copies.
     /// </summary>
-    static Viewport.ViewportMirror? Mirror(StackSymmetry? symmetry) {
+    static ViewportMirror? Mirror(StackSymmetry? symmetry) {
         if (symmetry is null) {
             return null;
         }

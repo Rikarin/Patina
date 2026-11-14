@@ -6,17 +6,17 @@ using Vixen.Texturing.Layers;
 namespace Patina.Server.Stacks;
 
 /// <summary>
-///     A layer kept to the session's quick mask (#282): a fill, a decal or a path is no stroke, so nothing keeps it as it
-///     lands, and it is kept by its mask instead. A paint entry on top of the mask's stack starts as a copy of the quick
-///     mask as it stands, laid over black, multiplied over what is beneath, or subtracted from it to keep the layer
-///     outside. The copy is a journal entry, so a Worker that takes over makes it after the strokes that painted the
-///     quick mask, and the canvas is the layer's from then, saved with it, though the quick mask never is.
+///     A layer kept to the session's quick mask (#282): a fill, a decal or a path is no stroke, so nothing keeps it
+///     as it lands, and it is kept by its mask instead. A paint entry on top of the mask's stack starts as a copy of
+///     the quick mask as it stands, laid over black, multiplied over what is beneath, or subtracted from it to keep the
+///     layer outside. The copy is a journal entry, so a Worker that takes over makes it after the strokes that painted
+///     the quick mask, and the canvas is the layer's from then, saved with it, though the quick mask never is.
 /// </summary>
 /// <param name="editor">The stack.</param>
 /// <param name="set">The texture set.</param>
 sealed class StackQuickMaskKeep(StackEditor editor, string set) {
     /// <summary>Gives the layer its entry, as one change of the layer, and journals the copy that fills it.</summary>
-    /// <exception cref="StackEditRefusedException">There is no such layer, or the quick mask has not been painted.</exception>
+    /// <exception cref="StackEditRefusedException">No such layer, or the quick mask is unpainted.</exception>
     public void Run(StackKeepQuickMask keep, Action<IAuthoringCommand> run, List<StackJournalEntry> journal) {
         var layer = editor.Require(keep.Layer);
         var quick = editor.QuickMask;

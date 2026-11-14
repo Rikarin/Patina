@@ -317,11 +317,9 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             case StackCarryPaint carry:
                 Carry(carry, step, set, Do);
                 break;
-            case StackKeepQuickMask keep:
-                new StackQuickMaskKeep(this, set).Run(keep, Do, step.Strokes);
-                break;
             default:
-                if (!StackLayerEdits.Run(this, command, set, Do) && !StackSetEdits.Run(this, command, Do)) {
+                if (!StackLayerEdits.Run(this, command, (set, step.Strokes), Do)
+                    && !StackSetEdits.Run(this, command, Do)) {
                     throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.");
                 }
 

@@ -24,7 +24,7 @@ sealed partial class StackHost {
             public (PaintProjection From, PaintProjection To)? Carry { get; init; }
 
             /// <summary>
-            ///     A colour the copy is laid over, straight alpha over it, or null to copy as it is: a quick mask copied
+            ///     A colour the copy is laid over by its alpha, or null to copy as it is: a quick mask copied
             ///     into a mask entry is laid over opaque black (#282), so the entry is read by what it holds.
             /// </summary>
             public uint? Under { get; init; }
