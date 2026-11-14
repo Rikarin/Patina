@@ -225,4 +225,31 @@ public sealed partial class LibraryTreeApiTests {
         Assert.Equal(HttpStatusCode.UnprocessableEntity, served.StatusCode);
         Assert.Contains("picture-unreadable", await served.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
     }
+
+    /// <summary>
+    ///     A texturing project made at a size bakes at that size until someone says otherwise (#144), where every
+    ///     project baked at 2048 whatever it was made at; one made at the default size keeps nothing in its file.
+    /// </summary>
+    [Fact]
+    public async Task A_project_bakes_at_the_size_it_was_made_at() {
+        var mesh = Path.Combine(files.FullName, "crate.glb");
+        File.WriteAllText(mesh, "mesh");
+
+        foreach (var (name, side) in new[] { ("Small", 1024), ("Large", 4096), ("Plain", 2048) }) {
+            using var created = await client.PostAsJsonAsync(
+                "/api/v1/library/projects",
+                new ProjectCreateRequest(name, Mesh: mesh, Resolution: side),
+                Token
+            );
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        }
+
+        async Task<int> BakeSide(string path) =>
+            (await client.GetFromJsonAsync<ProjectContents>($"/api/v1/library/project?path={path}", Token))!
+            .Bake.Options.Resolution;
+
+        Assert.Equal((1024, 4096, 2048), (await BakeSide("small"), await BakeSide("large"), await BakeSide("plain")));
+        var plain = await File.ReadAllTextAsync(Path.Combine(server.Library, "projects/plain/project.yaml"), Token);
+        Assert.DoesNotContain("bake", plain, StringComparison.Ordinal);
+    }
 }

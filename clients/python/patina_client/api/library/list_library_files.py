@@ -97,8 +97,9 @@ def sync_detailed(
     project: str | Unset = UNSET,
 
 ) -> Response[LibraryFileList | ProblemDetails]:
-    """ The pictures or meshes the library's projects hold, a project's own first: what a client offers to
-    pick from, where a dialog of its own machine cannot see this one's disk.
+    """ The pictures, meshes or folders the library's projects hold, a project's own first: what a client
+    offers to pick from, where a dialog of its own machine cannot see this one's disk. Folders are those
+    a client can write into: every project's and the ones in it, then the exports folder's.
 
     Args:
         kind (str):
@@ -132,8 +133,9 @@ def sync(
     project: str | Unset = UNSET,
 
 ) -> LibraryFileList | ProblemDetails | None:
-    """ The pictures or meshes the library's projects hold, a project's own first: what a client offers to
-    pick from, where a dialog of its own machine cannot see this one's disk.
+    """ The pictures, meshes or folders the library's projects hold, a project's own first: what a client
+    offers to pick from, where a dialog of its own machine cannot see this one's disk. Folders are those
+    a client can write into: every project's and the ones in it, then the exports folder's.
 
     Args:
         kind (str):
@@ -162,8 +164,9 @@ async def asyncio_detailed(
     project: str | Unset = UNSET,
 
 ) -> Response[LibraryFileList | ProblemDetails]:
-    """ The pictures or meshes the library's projects hold, a project's own first: what a client offers to
-    pick from, where a dialog of its own machine cannot see this one's disk.
+    """ The pictures, meshes or folders the library's projects hold, a project's own first: what a client
+    offers to pick from, where a dialog of its own machine cannot see this one's disk. Folders are those
+    a client can write into: every project's and the ones in it, then the exports folder's.
 
     Args:
         kind (str):
@@ -197,8 +200,9 @@ async def asyncio(
     project: str | Unset = UNSET,
 
 ) -> LibraryFileList | ProblemDetails | None:
-    """ The pictures or meshes the library's projects hold, a project's own first: what a client offers to
-    pick from, where a dialog of its own machine cannot see this one's disk.
+    """ The pictures, meshes or folders the library's projects hold, a project's own first: what a client
+    offers to pick from, where a dialog of its own machine cannot see this one's disk. Folders are those
+    a client can write into: every project's and the ones in it, then the exports folder's.
 
     Args:
         kind (str):
