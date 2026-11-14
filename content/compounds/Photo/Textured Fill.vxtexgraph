@@ -1,44 +1,95 @@
 version: 1
 name: Textured Fill
 nodes:
-  - { id: 1, type: Sub-graph/Input, x: -1600, y: 0 }
-  - { id: 2, type: Photo/Fill Holes, x: -1280, y: 0 }
-  - { id: 3, type: Space/Transform 2D, x: -960, y: 200, texts: { Tiling: Wrap, '=Offset X': '0.5f + seed * 0.1373f', '=Offset Y': '0.5f + seed * 0.0721f' } }
-  - { id: 4, type: Space/Transform 2D, x: -960, y: 360, texts: { Tiling: Wrap, '=Offset X': '0.5f + seed * 0.1373f', '=Offset Y': '0.5f + seed * 0.0721f' } }
-  - { id: 5, type: Space/Transform 2D, x: -960, y: 520, texts: { Tiling: Wrap, '=Offset X': '0.5f - seed * 0.0911f', '=Offset Y': 'seed * 0.1093f' } }
-  - { id: 6, type: Colour/Invert, x: -640, y: 360 }
-  - { id: 7, type: Colour/Mix, x: -320, y: 200 }
-  - { id: 8, type: Filters/Blur HQ, x: 0, y: 320, texts: { '=Sigma': '2f + grain * 14f' } }
+  - { id: 1, type: Sub-graph/Input, x: -1920, y: 0 }
+  - { id: 2, type: Photo/Fill Holes, x: -1600, y: 0 }
+  - { id: 24, type: Filters/Blur HQ, x: -2240, y: 640, texts: { '=Sigma': '8f' } }
+  - id: 12
+    type: Filters/Pixel Processor
+    x: -1920
+    y: 640
+    texts:
+      Format: Grey
+      Expression: 'float4(max((1f - step(0.5f, float(min(coord.x, size.x - 1 - coord.x)))) * saturate((length((ReadA(int2(min(8, size.x - 1), coord.y)) - ReadA(int2(max(size.x - 9, 0), coord.y))).xyz) * 0.57735f - 0.1f) * 5f), (1f - step(0.5f, float(min(coord.y, size.y - 1 - coord.y)))) * saturate((length((ReadA(int2(coord.x, min(8, size.y - 1))) - ReadA(int2(coord.x, max(size.y - 9, 0)))).xyz) * 0.57735f - 0.1f) * 5f)), 0f, 0f, 1f)'
+  - { id: 16, type: Filters/Blur HQ, x: -1600, y: 640, texts: { '=Sigma': '2f + grain * 14f' } }
+  - id: 20
+    type: Filters/Pixel Processor
+    x: -1600
+    y: 480
+    texts:
+      Format: Grey
+      Expression: 'float4(max(step(0.5f, a.x), step(0.005f, b.x)), 0f, 0f, 1f)'
+  - { id: 3, type: Space/Transform 2D, x: -1280, y: 200, texts: { Tiling: Wrap, '=Offset X': '0.5f + seed * 0.1373f', '=Offset Y': '0.5f + seed * 0.0721f' } }
+  - { id: 5, type: Space/Transform 2D, x: -1280, y: 400, texts: { Tiling: Wrap, '=Offset X': '0.25f - seed * 0.0911f', '=Offset Y': '0.75f + seed * 0.1093f' } }
+  - { id: 4, type: Space/Transform 2D, x: -1280, y: 600, texts: { Tiling: Wrap, '=Offset X': '0.5f + seed * 0.1373f', '=Offset Y': '0.5f + seed * 0.0721f' } }
+  - { id: 13, type: Space/Transform 2D, x: -1280, y: 800, texts: { Tiling: Wrap, '=Offset X': '0.25f - seed * 0.0911f', '=Offset Y': '0.75f + seed * 0.1093f' } }
+  - { id: 8, type: Filters/Blur HQ, x: -960, y: 200, texts: { '=Sigma': '2f + grain * 14f' } }
+  - { id: 18, type: Filters/Blur HQ, x: -960, y: 400, texts: { '=Sigma': '2f + grain * 14f' } }
   - id: 9
     type: Filters/Pixel Processor
-    x: 320
+    x: -640
     y: 200
     texts:
       Expression: 'float4(a.xyz - b.xyz, 1f) * 0.5f + float4(0.5f, 0.5f, 0.5f, 0.5f)'
+  - id: 19
+    type: Filters/Pixel Processor
+    x: -640
+    y: 400
+    texts:
+      Expression: 'float4(a.xyz - b.xyz, 1f) * 0.5f + float4(0.5f, 0.5f, 0.5f, 0.5f)'
+  - id: 21
+    type: Filters/Pixel Processor
+    x: -320
+    y: 200
+    texts:
+      Expression: 'float4((a.xyz - 0.5f) * (1f - b.x) + 0.5f, 1f - b.x)'
+  - id: 22
+    type: Filters/Pixel Processor
+    x: -320
+    y: 400
+    texts:
+      Expression: 'float4((a.xyz - 0.5f) * (1f - b.x) + 0.5f, 1f)'
+  - id: 23
+    type: Filters/Pixel Processor
+    x: 0
+    y: 300
+    texts:
+      Expression: 'float4(b.xyz + (a.xyz - b.xyz) * a.w, 1f)'
   - id: 10
     type: Filters/Pixel Processor
-    x: 640
+    x: 320
     y: 0
     texts:
       Expression: 'float4(a.xyz + (b.xyz - 0.5f) * 2f * x, a.w)'
       '=X': detail
-  - { id: 11, type: Colour/Mix, x: 960, y: 0 }
-  - { id: 99, type: Sub-graph/Output, x: 1280, y: 0 }
+  - { id: 11, type: Colour/Mix, x: 640, y: 0 }
+  - { id: 99, type: Sub-graph/Output, x: 960, y: 0 }
 edges:
   - { fromNode: 1, fromPort: Input, toNode: 2, toPort: Input }
   - { fromNode: 1, fromPort: Mask, toNode: 2, toPort: Mask }
+  - { fromNode: 2, fromPort: Out, toNode: 24, toPort: Input }
+  - { fromNode: 24, fromPort: Out, toNode: 12, toPort: A }
+  - { fromNode: 12, fromPort: Out, toNode: 16, toPort: Input }
+  - { fromNode: 1, fromPort: Mask, toNode: 20, toPort: A }
+  - { fromNode: 16, fromPort: Out, toNode: 20, toPort: B }
   - { fromNode: 2, fromPort: Out, toNode: 3, toPort: Input }
-  - { fromNode: 1, fromPort: Mask, toNode: 4, toPort: Input }
   - { fromNode: 2, fromPort: Out, toNode: 5, toPort: Input }
-  - { fromNode: 4, fromPort: Out, toNode: 6, toPort: Input }
-  - { fromNode: 5, fromPort: Out, toNode: 7, toPort: Background }
-  - { fromNode: 3, fromPort: Out, toNode: 7, toPort: Foreground }
-  - { fromNode: 6, fromPort: Out, toNode: 7, toPort: Mask }
-  - { fromNode: 7, fromPort: Out, toNode: 8, toPort: Input }
-  - { fromNode: 7, fromPort: Out, toNode: 9, toPort: A }
+  - { fromNode: 20, fromPort: Out, toNode: 4, toPort: Input }
+  - { fromNode: 20, fromPort: Out, toNode: 13, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 8, toPort: Input }
+  - { fromNode: 5, fromPort: Out, toNode: 18, toPort: Input }
+  - { fromNode: 3, fromPort: Out, toNode: 9, toPort: A }
   - { fromNode: 8, fromPort: Out, toNode: 9, toPort: B }
+  - { fromNode: 5, fromPort: Out, toNode: 19, toPort: A }
+  - { fromNode: 18, fromPort: Out, toNode: 19, toPort: B }
+  - { fromNode: 9, fromPort: Out, toNode: 21, toPort: A }
+  - { fromNode: 4, fromPort: Out, toNode: 21, toPort: B }
+  - { fromNode: 19, fromPort: Out, toNode: 22, toPort: A }
+  - { fromNode: 13, fromPort: Out, toNode: 22, toPort: B }
+  - { fromNode: 21, fromPort: Out, toNode: 23, toPort: A }
+  - { fromNode: 22, fromPort: Out, toNode: 23, toPort: B }
   - { fromNode: 2, fromPort: Out, toNode: 10, toPort: A }
-  - { fromNode: 9, fromPort: Out, toNode: 10, toPort: B }
+  - { fromNode: 23, fromPort: Out, toNode: 10, toPort: B }
   - { fromNode: 1, fromPort: Input, toNode: 11, toPort: Background }
   - { fromNode: 10, fromPort: Out, toNode: 11, toPort: Foreground }
   - { fromNode: 1, fromPort: Mask, toNode: 11, toPort: Mask }
@@ -53,7 +104,7 @@ settings:
   baseWidth: '1024'
   baseHeight: '1024'
   seed: '1'
-  summary: 'Fills the masked part of a photo and keeps its texture: the tone comes from around the hole, as Fill Holes gives it, and the grain from a clear part of the photo half way across it, or from a second one where the first is a hole too. A photo that does not tile carries its edge into the grain.'
+  summary: 'Fills the masked part of a photo and keeps its texture: the tone comes from around the hole, as Fill Holes gives it, and the grain from a clear part of the photo half way across it, or from a second part where the first is a hole or within a blur of the photo''s edge. Each part''s grain is taken on its own, so the edge of a photo that does not tile is never borrowed.'
 parameters:
   - { name: detail, label: Detail, default: '1', summary: 'How much of the photo''s grain is laid over the fill. Nought is the smooth fill alone.', kind: Float, minimum: 0, maximum: 2, group: Fill }
   - { name: grain, label: Grain Size, default: '0.3', summary: 'How coarse the grain carried into the hole is: low keeps the fine grain alone, high carries larger features too.', kind: Float, minimum: 0, maximum: 1, group: Fill }

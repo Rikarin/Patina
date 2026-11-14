@@ -448,12 +448,7 @@ export class ViewportPane implements AfterViewInit {
   protected readonly gesture = new StrokeGesture(this.paint, () => this.aim());
   /** A click or a rectangle that picks a layer's meshes on the model (#110). */
   protected readonly marquee = new PartMarquee(this.paint, () => this.aim());
-  protected readonly curve = computed(() =>
-    this.gesture
-      .points()
-      .map(point => `${point.x},${point.y}`)
-      .join(' ')
-  );
+  protected readonly curve = this.gesture.polyline;
 
   protected readonly milliseconds = milliseconds;
   protected readonly stampTimes = computed(() => this.paint.stampTimes().join(','));
