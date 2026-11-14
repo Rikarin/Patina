@@ -80,7 +80,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         var selection = new OutputSelection(
             request.Asset is { } asset ? AssetId.From(asset) : null,
             request.Projects?.Select(ProjectId.From).ToList()
-        ) { Documents = request.Documents, Sizes = SizesOf(request.Options) };
+        ) { Documents = request.Documents, Sizes = SizesOf(request.Options), SizesFor = presets.SizesFor };
         var scan = library.ScanOutputs(selection, tools, cancellationToken);
         presets.Refuse(scan.Projects.Select(static p => p.Path));
         return BuildPlan.Make(
