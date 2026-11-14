@@ -43,7 +43,10 @@ public enum ViewportView {
     ///     Texels per unit of the model against the project's density: green on it, blue at half or less, red at twice
     ///     or more, under a checker of 32 texels that shows stretch.
     /// </summary>
-    TexelDensity
+    TexelDensity,
+
+    /// <summary>The mesh's vertex colours as stored, with no light; white where the file has none (#146).</summary>
+    VertexColours
 }
 
 /// <summary>The curve that takes the frame's light to the screen: Vixen's four, and a clamp.</summary>

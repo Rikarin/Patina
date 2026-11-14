@@ -5,7 +5,9 @@ import { XuiCalloutImports } from '@xui/callout';
 import { XuiDialogImports } from '@xui/dialog';
 import { XuiSelectImports } from '@xui/select';
 import { Activity } from '../core/activity';
+import { desktop } from '../core/desktop';
 import { messageOf } from '../core/messages';
+import { SystemStatus } from '../core/system-status';
 import { GraphStore } from './graph-store';
 
 /** What a package can be used as, which decides where the shelf puts it. */
@@ -76,6 +78,24 @@ const KindHints: Readonly<Record<string, string>> = {
                 } @else {
                   <span class="text-foreground-muted shrink-0">{{ hintOf(dependency) }}</span>
                 }
+                @if (dependency.kind === 'picture') {
+                  @if (dependency.in) {
+                    <span class="text-foreground-muted shrink-0">In {{ dependency.in }}</span>
+                  } @else if (canRelink) {
+                    <button
+                      type="button"
+                      xuiButton
+                      size="sm"
+                      variant="ghost"
+                      data-testid="publish-package-relink"
+                      [disabled]="relinking()"
+                      [title]="'Point every Bitmap that reads ' + dependency.name + ' at another picture'"
+                      (click)="relink(dependency)"
+                    >
+                      Relink…
+                    </button>
+                  }
+                }
               </li>
             } @empty {
               <li class="text-foreground-muted px-2 py-0.5">Nothing but Patina’s own nodes.</li>
@@ -113,6 +133,12 @@ const KindHints: Readonly<Record<string, string>> = {
 export class PublishPackageDialog {
   protected readonly store = inject(GraphStore);
   private readonly activity = inject(Activity);
+  private readonly status = inject(SystemStatus);
+  private readonly bridge = desktop();
+
+  /** Relinking asks for a file, which only the desktop app can. */
+  protected readonly canRelink = this.bridge !== undefined;
+  protected readonly relinking = signal(false);
 
   readonly open = model(false);
 
@@ -146,6 +172,27 @@ export class PublishPackageDialog {
 
   protected hintOf(dependency: PackageDependency): string {
     return KindHints[dependency.kind] ?? '';
+  }
+
+  /**
+   * Asks for the picture a dependency should be, points the graph's Bitmap nodes at it as one undo step, saves, and
+   * looks again, since a package is published from what is saved.
+   */
+  protected async relink(dependency: PackageDependency): Promise<void> {
+    const file = await this.bridge?.openImage(this.status.pictures());
+    if (!file) {
+      return;
+    }
+
+    this.relinking.set(true);
+    try {
+      await this.store.relinkPicture(dependency.name, file);
+      await this.look();
+    } catch (failure) {
+      this.refused.set(messageOf(failure));
+    } finally {
+      this.relinking.set(false);
+    }
   }
 
   private async look(): Promise<void> {

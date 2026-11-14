@@ -344,6 +344,31 @@ describe('ProjectStore', () => {
     expect(client.POST).not.toHaveBeenCalledWith('/api/v1/library/project/document/copy', expect.anything());
   });
 
+  it('keeps the document in front for Save a Copy, and says where the copy went (#162)', async () => {
+    const { store, client } = harness();
+    await store.open('a');
+    const copied = {
+      ...contents,
+      documents: [
+        ...contents.documents,
+        { id: 'c', kind: 'texturing', name: 'A Copy', path: 'projects/a/c.yaml', mesh: 'm' }
+      ]
+    };
+    client.POST.mockImplementation(((route: string) =>
+      Promise.resolve({
+        data: route === '/api/v1/library/project/document/copy' ? copied : { items: [] },
+        response: new Response()
+      })) as never);
+
+    await store.saveAs('A Copy', true);
+
+    expect(client.POST).toHaveBeenCalledWith('/api/v1/library/project/document/copy', {
+      body: { project: 'a', document: 'd', name: 'A Copy' }
+    });
+    expect(store.active()?.path).toBe(paths.texturing);
+    expect(store.notice()).toBe('Saved a copy as A Copy, and kept A in front.');
+  });
+
   it('reopens on what was last in front', async () => {
     const held = memoryStorage();
     storage = () => held;
@@ -890,8 +915,20 @@ describe('ProjectStore', () => {
 
     expect(await store.applySettings({ mesh: '/nowhere.glb' })).toBe(false);
 
-    expect(store.settingsFailure()).toBe('No such mesh.');
+    expect(store.settingsFailure()).toEqual({ place: 'dialog', reason: 'No such mesh.' });
     expect(store.failure()).toBeNull();
+  });
+
+  it("says why Properties' Project section did not apply in that section, not app-wide (#291)", async () => {
+    const { store, client } = harness();
+    await store.open('a');
+    (client as unknown as { PATCH: unknown }).PATCH = vi.fn(() => Promise.reject(new Error('No such mesh.')));
+
+    expect(await store.applySettings({ mesh: '/nowhere.glb' }, 'properties')).toBe(false);
+
+    expect(store.settingsFailure()).toEqual({ place: 'properties', reason: 'No such mesh.' });
+    expect(store.failure()).toBeNull();
+    expect(store.active()?.path).toBe(paths.texturing);
   });
 
   it('says why settings did not apply from outside the dialog, after the document is back', async () => {

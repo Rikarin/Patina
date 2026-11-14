@@ -39,7 +39,16 @@ export class StrokeGesture {
    * The points of a line or a path so far, or the corners of a fill's rectangle or lasso, for the pane to draw over
    * itself. Nothing has been sent for these.
    */
-  readonly points = signal<readonly StackStamp[]>([]);
+  readonly points = signal<readonly StackStamp[]>([], { equal: () => false });
+
+  /**
+   * The points as an SVG polyline's `points`, grown a corner at a time with them: a lasso of thousands of corners was
+   * copied and written out again at every corner, which made drawing one quadratic (#290).
+   */
+  readonly polyline = signal('');
+
+  /** The points under way, which a lasso grows in place; `points` hands out this array and is told it changed. */
+  private corners: StackStamp[] = [];
 
   /** Whether the points are a fill's outline, which the pane draws closed. */
   readonly outlining = signal(false);
@@ -91,10 +100,12 @@ export class StrokeGesture {
 
     if (tool === 'line') {
       this.placedOn = this.aim();
-      this.points.set([stamp, stamp]);
+      this.place([stamp, stamp]);
     } else if (tool === 'path') {
-      this.placedOn = this.points().length > 0 ? this.placedOn : this.aim();
-      this.points.update(points => (sameSpot(points.at(-1), stamp) ? points : [...points, stamp]));
+      this.placedOn = this.corners.length > 0 ? this.placedOn : this.aim();
+      if (!sameSpot(this.corners.at(-1), stamp)) {
+        this.extend(stamp);
+      }
     }
   }
 
@@ -148,7 +159,8 @@ export class StrokeGesture {
     }
 
     if (tool === 'line') {
-      this.points.update(([start]) => (start ? [start, stamp] : []));
+      const [start] = this.corners;
+      this.place(start ? [start, stamp] : []);
     }
   }
 
@@ -181,7 +193,7 @@ export class StrokeGesture {
     this.pressed = false;
     this.outlining.set(false);
     this.corner = null;
-    this.points.set([]);
+    this.place([]);
     this.store.picking.set(null);
   }
 
@@ -197,19 +209,19 @@ export class StrokeGesture {
     this.placedOn = this.aim();
     this.corner = stamp;
     this.outlining.set(true);
-    this.points.set(shape === 'rectangle' ? box(stamp, stamp) : [stamp]);
+    this.place(shape === 'rectangle' ? box(stamp, stamp) : [stamp]);
   }
 
   /** The outline as the pointer drags it: a rectangle from its first corner, or a lasso along the pointer's path. */
   private outline(stamp: StackStamp): void {
     if (this.store.fillShape() === 'rectangle' && this.corner) {
-      this.points.set(box(this.corner, stamp));
+      this.place(box(this.corner, stamp));
       return;
     }
 
-    const last = this.points().at(-1);
+    const last = this.corners.at(-1);
     if (!last || Math.hypot(stamp.x - last.x, stamp.y - last.y) >= LassoStep) {
-      this.points.update(points => [...points, stamp]);
+      this.extend(stamp);
     }
   }
 
@@ -218,13 +230,12 @@ export class StrokeGesture {
    * with no room inside fills nothing.
    */
   private fillOutline(): void {
-    const points = this.points();
+    const points = this.corners;
     const corner = this.corner;
     this.outlining.set(false);
     this.corner = null;
-    this.points.set([]);
-    const [xs, ys] = [points.map(point => point.x), points.map(point => point.y)];
-    const reach = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+    this.place([]);
+    const reach = spanOf(points);
     if (reach < ClickReach) {
       if (corner && this.store.fillShape() === 'rectangle') {
         void this.store.fillAt(corner, this.placedOn);
@@ -238,9 +249,23 @@ export class StrokeGesture {
     }
   }
 
+  /** Starts the points afresh from these, in an array of their own. */
+  private place(points: readonly StackStamp[]): void {
+    this.corners = [...points];
+    this.points.set(this.corners);
+    this.polyline.set(this.corners.map(point => `${point.x},${point.y}`).join(' '));
+  }
+
+  /** Adds one point to those under way without copying them. */
+  private extend(stamp: StackStamp): void {
+    this.corners.push(stamp);
+    this.points.set(this.corners);
+    this.polyline.update(line => (line ? `${line} ${stamp.x},${stamp.y}` : `${stamp.x},${stamp.y}`));
+  }
+
   private commit(curve: 'line' | 'path'): void {
-    const points = this.points();
-    this.points.set([]);
+    const points = this.corners;
+    this.place([]);
     const last = points.at(-1);
     if (last && points.length > 1) {
       this.ended = { stamp: last, aim: this.placedOn, layer: this.store.layer() };
@@ -253,6 +278,17 @@ export class StrokeGesture {
 /** A rectangle's four corners, from one corner and the one across from it. */
 export function box(from: StackStamp, to: StackStamp): StackStamp[] {
   return [from, { ...from, x: to.x }, to, { ...from, y: to.y }];
+}
+
+/** The longer side of the box round some points, found in one pass: a spread of thousands overflows the stack. */
+function spanOf(points: readonly StackStamp[]): number {
+  let [left, top, right, bottom] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const point of points) {
+    [left, right] = [Math.min(left, point.x), Math.max(right, point.x)];
+    [top, bottom] = [Math.min(top, point.y), Math.max(bottom, point.y)];
+  }
+
+  return points.length > 0 ? Math.max(right - left, bottom - top) : 0;
 }
 
 /** A double click is two presses in one place, and a second point there adds nothing. */

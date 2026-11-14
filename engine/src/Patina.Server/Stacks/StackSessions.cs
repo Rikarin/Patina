@@ -8,7 +8,8 @@ namespace Patina.Server.Stacks;
 ///     The open stacks. One file has one session, so two clients that open it share its edits and its
 ///     undo.
 /// </summary>
-public sealed class StackSessions(ServerIdentity identity, StackClips clips) : IDisposable {
+public sealed class StackSessions(ServerIdentity identity, StackClips clips, MeshSetCache? meshes = null)
+    : IDisposable {
     readonly SessionTable<StackSession> table = new();
 
     /// <summary>The texture sets of stacks nobody has open, by file, until the file changes.</summary>
@@ -47,7 +48,7 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips) : I
                 }
 
                 StackSession session = new(full, SharedFile.ReadAllText(full), table.Wake) {
-                    ImageRoots = LibraryRoot, Clips = clips, Changed = CatchUp
+                    ImageRoots = LibraryRoot, Clips = clips, Changed = CatchUp, Meshes = meshes
                 };
                 session.Siblings = name => Sibling(session, name);
                 return session;

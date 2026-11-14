@@ -25,6 +25,7 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(FolderList))]
 [JsonSerializable(typeof(FolderSummary))]
 [JsonSerializable(typeof(LibraryPresetRequest))]
+[JsonSerializable(typeof(LibraryTargetsRequest))]
 [JsonSerializable(typeof(MaterialImportRequest))]
 [JsonSerializable(typeof(MaterialImportResult))]
 [JsonSerializable(typeof(FolderCreateRequest), TypeInfoPropertyName = nameof(FolderCreateRequest))]

@@ -27,6 +27,15 @@ import { FileChooser } from './file-chooser';
 import { LibraryStore } from './library-store';
 
 /** An open document. Its session stays on the Server while another tab is in front, with all its edits and history. */
+/** Where the project's settings were applied from: Project Settings, or the Project section in Properties. */
+export type SettingsPlace = 'dialog' | 'properties';
+
+/** Why the project's settings could not apply, said in the form they were applied from. */
+export interface SettingsFailure {
+  place: SettingsPlace;
+  reason: string;
+}
+
 export interface DocumentTab {
   path: string;
   name: string;
@@ -109,8 +118,11 @@ export class ProjectStore {
   private readonly mutableNewKind = signal<{ kind: string } | null>(null);
   /** The Project Settings dialog is up. */
   readonly settingsOpen = signal(false);
-  /** Why Project Settings could not apply. It is said in the dialog, which covers everything else. */
-  readonly settingsFailure = signal<string | null>(null);
+  /**
+   * Why the project's settings could not apply, and which form they were applied from: the dialog covers everything
+   * else, and Properties' Project section says its own beside its Apply (#291).
+   */
+  readonly settingsFailure = signal<SettingsFailure | null>(null);
   private readonly mutableUnwrapping = signal(false);
   /** A mesh is being given a UV layout, which can take a while on a large one. */
   readonly unwrapping = this.mutableUnwrapping.asReadonly();
@@ -593,14 +605,17 @@ export class ProjectStore {
    * Sets what the whole project shares. A mesh rewrites what its documents stand on, so they close first and the one in
    * front opens again on it. That costs them their undo, and a document with unsaved edits has to be saved.
    */
-  async applySettings(settings: {
-    mesh?: string | null;
-    high?: string | null;
-    autoUnwrap?: boolean;
-    preservePaint?: boolean;
-    unwrap?: UnwrapOptions;
-    reassign?: Record<string, string>;
-  }): Promise<boolean> {
+  async applySettings(
+    settings: {
+      mesh?: string | null;
+      high?: string | null;
+      autoUnwrap?: boolean;
+      preservePaint?: boolean;
+      unwrap?: UnwrapOptions;
+      reassign?: Record<string, string>;
+    },
+    from?: SettingsPlace
+  ): Promise<boolean> {
     // A tab on its way to the front lets go of the viewport's mesh as it comes (#237), and settings that move the mesh
     // close and open its documents again, so they wait for it and apply to the project it brings.
     await this.inFront();
@@ -645,7 +660,12 @@ export class ProjectStore {
         await this.openDocument(project.path, front);
       }
 
-      this.fail(messageOf(failure));
+      if (from) {
+        this.settingsFailure.set({ place: from, reason: messageOf(failure) });
+      } else {
+        this.fail(messageOf(failure));
+      }
+
       return false;
     } finally {
       this.mutableUnwrapping.set(false);
@@ -821,6 +841,8 @@ export class ProjectStore {
 
   /** A name for Save As is being asked for. */
   readonly savingAs = signal(false);
+  /** The name asked for is a copy's, which Save a Copy leaves where it is (#162). */
+  readonly copying = signal(false);
 
   clearFailure(): void {
     this.mutableFailure.set(null);
@@ -829,8 +851,11 @@ export class ProjectStore {
   /** Autosaved work for the document in front, which is offered until it is taken or refused. */
   readonly recoverable = signal<{ path: string; saved: string } | null>(null);
 
-  /** Saves what is in front, then carries on in a copy under a new name. */
-  async saveAs(name: string): Promise<void> {
+  /**
+   * Saves what is in front, then carries on in a copy under a new name. Save a Copy (#162) stays on the document in
+   * front, and says where the copy went.
+   */
+  async saveAs(name: string, stay = false): Promise<void> {
     const tab = this.active();
     const project = tab?.project;
     const document = this.documentOf(tab);
@@ -850,7 +875,9 @@ export class ProjectStore {
       this.mutableContents.update(all => new Map(all).set(project, contents));
       const copy = contents.documents.at(-1);
       this.library.refreshSoon();
-      if (copy) {
+      if (copy && stay) {
+        this.mutableNotice.set(`Saved a copy as ${copy.name}, and kept ${tab.name} in front.`);
+      } else if (copy) {
         await this.openDocument(project, copy.path);
       }
     } catch (failure) {
@@ -1130,7 +1157,11 @@ export class ProjectStore {
 
   /** Says what went wrong where it can be read: nothing shows through the Project Settings dialog. */
   private fail(reason: string): void {
-    (this.settingsOpen() ? this.settingsFailure : this.mutableFailure).set(reason);
+    if (this.settingsOpen()) {
+      this.settingsFailure.set({ place: 'dialog', reason });
+    } else {
+      this.mutableFailure.set(reason);
+    }
   }
 
   private isShowing(tab: DocumentTab): boolean {

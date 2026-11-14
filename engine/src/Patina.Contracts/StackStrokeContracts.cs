@@ -252,3 +252,13 @@ public sealed record StackQuickMaskRequest(bool Shown, bool Clear = false);
 /// <param name="Shown">Whether the viewport lays it over the model.</param>
 /// <param name="Painted">Whether a stroke that stands has painted it, so that a stroke kept to it is kept.</param>
 public sealed record StackQuickMaskState(bool Shown, bool Painted);
+
+/// <summary>
+///     Keeps a layer to the session's quick mask (#282): a paint entry on top of its mask's stack that starts as a copy
+///     of the quick mask as it stands, multiplied over the mask beneath, or subtracted from it to keep it outside.
+///     A fill, a decal or a path, which no stroke paints, is kept so as a stroke is. The entry is the layer's own from
+///     then, saved with it, and can be painted, changed or removed as any other. The quick mask must have been painted.
+/// </summary>
+/// <param name="Layer">The layer to keep.</param>
+/// <param name="Outside">Whether to keep it to where the quick mask is not painted.</param>
+public sealed record StackKeepQuickMask(string Layer, bool Outside = false) : StackCommand;

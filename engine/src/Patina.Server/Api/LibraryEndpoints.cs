@@ -26,6 +26,7 @@ static class LibraryEndpoints {
 
         api.MapLibraryTreeApi();
         api.MapLibraryCareApi();
+        api.MapLibraryHealthApi();
         api.MapPreferenceApi();
 
         library.MapGet("/projects", GetProjects)
@@ -315,10 +316,7 @@ static class LibraryEndpoints {
 
     static ProblemHttpResult? BadPage(int offset, int limit) =>
         offset < 0 || limit is < 1 or > MaxLimit
-            ? TypedResults.Problem(
-                $"Offset must not be negative, and limit is 1 to {MaxLimit}.",
-                statusCode: StatusCodes.Status400BadRequest
-            )
+            ? Refusals.BadPage(MaxLimit)
             : null;
 
     static ProblemHttpResult NoLibrary() => Refusals.NoLibraryOpen();

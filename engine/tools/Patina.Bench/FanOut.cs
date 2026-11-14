@@ -69,7 +69,7 @@ static class FanOut {
         Row("first rescan", timer, string.Empty);
 
         var executor = new StandIn();
-        var build = new BuildPipeline(library, executor, ToolCatalog.Default);
+        var build = new BuildPipeline(library, executor, ToolCatalog.Default, MeshFileReads.Instance);
         var first = await Build(build, root, "first", new() { Presets = presets });
         Report("first build (stand-in maps, real export of them)", first);
 
@@ -114,7 +114,7 @@ static class FanOut {
             using var library = OpenLibrary.Open(root);
             var popular = Popular(root);
             var executor = new Real_(new(() => evaluator, static work => work()));
-            var build = new BuildPipeline(library, executor, ToolCatalog.Default);
+            var build = new BuildPipeline(library, executor, ToolCatalog.Default, MeshFileReads.Instance);
             Report("first build", await Build(build, root, "first", new() { Presets = presets }));
 
             Edit(popular);

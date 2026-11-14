@@ -22,7 +22,7 @@ static class ProjectSettingsEndpoint {
         }
 
         if (request.Unwrap?.Problem() is { } wrong) {
-            return TypedResults.Problem(wrong, statusCode: StatusCodes.Status400BadRequest);
+            return Refusals.BadSettings(wrong, StatusCodes.Status400BadRequest);
         }
 
         var kept = request.SameLayout == true;

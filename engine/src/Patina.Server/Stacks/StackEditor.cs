@@ -318,7 +318,8 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
                 Carry(carry, step, set, Do);
                 break;
             default:
-                if (!StackLayerEdits.Run(this, command, set, Do) && !StackSetEdits.Run(this, command, Do)) {
+                if (!StackLayerEdits.Run(this, command, (set, step.Strokes), Do)
+                    && !StackSetEdits.Run(this, command, Do)) {
                     throw new StackEditRefusedException($"Unknown command '{command.GetType().Name}'.");
                 }
 

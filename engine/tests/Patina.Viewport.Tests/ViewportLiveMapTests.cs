@@ -148,14 +148,18 @@ public sealed class ViewportLiveMapTests : IDisposable {
     /// <summary>
     ///     A quick mask is red over the model where it is painted and nowhere else (#127), and taken off leaves the
     ///     picture as it was. On Linux CI the e2e that paints one saw no red (#274); this says whether the renderer
-    ///     draws it there. ⚠ On a brightly lit model the tint is faint, since it is laid on before the tone curve: a
-    ///     square near white comes out about (227, 209, 208) where it is painted, red lower than unmasked and under
-    ///     twenty levels over the mean of green and blue, so red is what green and blue lost and not a level of red.
+    ///     draws it there. The red is laid over the finished picture after the tone curve (#286), so it is as red on a
+    ///     square near white, and with the exposure three stops up, as anywhere: red about 115 levels over the mean of
+    ///     green and blue whatever is beneath. Laid on before the curve, as it was, it came out about (227, 209, 208)
+    ///     there, under twenty levels over, and pink to the eye.
     /// </summary>
-    [Fact]
-    public void A_quick_mask_is_red_where_it_is_painted() {
+    [Theory]
+    [InlineData(0f)]
+    [InlineData(3f)]
+    public void A_quick_mask_is_red_where_it_is_painted(float exposure) {
         using var renderer = Open();
         renderer.OpenMesh(Square("square.glb", Vector3.Zero, 1f));
+        renderer.Shading = new() { Exposure = exposure };
         var plain = Render(renderer, Near);
 
         // White on the left half of the map, nothing on the right.
@@ -163,12 +167,13 @@ public sealed class ViewportLiveMapTests : IDisposable {
         renderer.SetLive(ViewportSlot.QuickMask, Map, Map, white);
         var masked = Render(renderer, Near);
 
+        // Red seventy-five levels over the mean of green and blue, which grey never is and the tint always is.
         static int Red(byte[] pixels, int from, int to) {
             var count = 0;
             for (var y = 0; y < Height; y++) {
                 for (var x = from; x < to; x++) {
                     var at = (y * Width + x) * 4;
-                    count += pixels[at] * 2 > pixels[at + 1] + pixels[at + 2] + 20 ? 1 : 0;
+                    count += pixels[at] * 2 > pixels[at + 1] + pixels[at + 2] + 150 ? 1 : 0;
                 }
             }
 

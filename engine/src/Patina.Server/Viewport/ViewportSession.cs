@@ -581,6 +581,10 @@ public sealed partial class ViewportSession(
                 try {
                     await DrawAsync(work, cancellationToken);
                     rendered = wanted;
+                } catch (FramesUnavailableException e) {
+                    // No room for frames is not a lost Worker: say why, and try again on the next change.
+                    Fail(e.Message);
+                    rendered = wanted;
                 } catch (Exception e) when (e is IOException or TimeoutException) {
                     // The Worker died mid-frame. Nothing is lost: the next one is told everything and this frame runs
                     // again.
@@ -610,7 +614,8 @@ public sealed partial class ViewportSession(
     ///     not
     ///     know, renders into a frame slot no viewer is offered, and the Server writes the slot's pixels to the file.
     /// </summary>
-    /// <exception cref="IpcException">No mesh is open, or the Worker cannot draw it.</exception>
+    /// <exception cref="ViewportNoMeshException">No mesh is open.</exception>
+    /// <exception cref="IpcException">The Worker cannot draw the mesh.</exception>
     /// <exception cref="IOException">The Worker went, or the file cannot be written.</exception>
     public async Task<ViewportScreenshot> ScreenshotAsync(
         ViewportScreenshotRequest request,
@@ -620,7 +625,7 @@ public sealed partial class ViewportSession(
         Work work;
         lock (changing) {
             if (mesh is null) {
-                throw new IpcException("Open a mesh first: there is nothing to take a picture of.");
+                throw new ViewportNoMeshException("Open a mesh first: there is nothing to take a picture of.");
             }
 
             work = new(

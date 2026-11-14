@@ -129,14 +129,15 @@ public sealed class BuildPropertyTests {
             name,
             DateTimeOffset.UnixEpoch
         );
-        return await new BuildPipeline(library, executor, ToolCatalog.Default).RunAsync(
-            journal,
-            new(),
-            null,
-            null,
-            TimeProvider.System,
-            Token
-        );
+        return await new BuildPipeline(library, executor, ToolCatalog.Default, MeshFileReads.Instance)
+            .RunAsync(
+                journal,
+                new(),
+                null,
+                null,
+                TimeProvider.System,
+                Token
+            );
     }
 
     static Dictionary<ProjectId, string?> Keys(OpenLibrary library) =>
@@ -271,14 +272,15 @@ public sealed class BuildPropertyTests {
         var lost = 0;
         while (report is null) {
             try {
-                report = await new BuildPipeline(library, executor, ToolCatalog.Default).RunAsync(
-                    new(folder, "crashing", DateTimeOffset.UnixEpoch),
-                    new(),
-                    null,
-                    null,
-                    TimeProvider.System,
-                    Token
-                );
+                report = await new BuildPipeline(library, executor, ToolCatalog.Default, MeshFileReads.Instance)
+                    .RunAsync(
+                        new(folder, "crashing", DateTimeOffset.UnixEpoch),
+                        new(),
+                        null,
+                        null,
+                        TimeProvider.System,
+                        Token
+                    );
             } catch (BuildExecutorLostException) {
                 lost++;
             }
@@ -299,14 +301,15 @@ public sealed class BuildPropertyTests {
         var executor = new StoppingExecutor(new FakeExecutor(), stop);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            new BuildPipeline(library, executor, ToolCatalog.Default).RunAsync(
-                new(folder, "stopped", DateTimeOffset.UnixEpoch),
-                new(),
-                null,
-                null,
-                TimeProvider.System,
-                stop.Token
-            )
+            new BuildPipeline(library, executor, ToolCatalog.Default, MeshFileReads.Instance)
+                .RunAsync(
+                    new(folder, "stopped", DateTimeOffset.UnixEpoch),
+                    new(),
+                    null,
+                    null,
+                    TimeProvider.System,
+                    stop.Token
+                )
         );
 
         var report = BuildJournal.ReadLibrary(folder);

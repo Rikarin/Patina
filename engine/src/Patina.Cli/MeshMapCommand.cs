@@ -43,6 +43,12 @@ internal static class MeshMapCommand {
             return 2;
         }
 
+        return Bake(request, threads, cacheFolder);
+    }
+
+    /// <summary>One bake, from the cache when it holds it, with its maps' paths on standard output.</summary>
+    /// <returns>0, or 1 when it failed, or 130 when it was stopped.</returns>
+    public static int Bake(BakeRequest request, int threads, string? cacheFolder) {
         using var stop = new CancellationTokenSource();
         Console.CancelKeyPress += (_, args) => {
             args.Cancel = true;
@@ -52,7 +58,7 @@ internal static class MeshMapCommand {
         var scratch = cacheFolder is null ? Directory.CreateTempSubdirectory("patina-bake-") : null;
         var cache = new BakeCache(cacheFolder ?? scratch!.FullName);
         try {
-            var key = BakeKeyReads.KeyOf(request, ToolCatalog.Default).Hex;
+            var key = BakeKeyReads.KeyOf(request, ToolCatalog.Default, MeshFileReads.Instance).Hex;
             var manifest = cache.Find(key);
             var cached = manifest is not null;
             manifest ??= MeshMapBakeRun.Run(request, cache.FolderOf(key), threads, Progress(), stop.Token);

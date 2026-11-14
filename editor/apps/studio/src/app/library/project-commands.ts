@@ -1,8 +1,12 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
+import { unwrap } from '@patina/api-client';
+import { Activity } from '../core/activity';
 import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
+import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { GraphViews } from '../graph/graph-views';
+import { LibraryStore } from './library-store';
 import { ProjectStore } from './project-store';
 
 /**
@@ -16,6 +20,9 @@ export class ProjectCommands {
   private readonly project = inject(ProjectStore);
   private readonly status = inject(SystemStatus);
   private readonly graphs = inject(GraphViews);
+  private readonly library = inject(LibraryStore);
+  /** Asked for when there is something to report, so that installing the commands starts nothing. */
+  private readonly injector = inject(Injector);
   private installed = false;
 
   install(): void {
@@ -51,6 +58,14 @@ export class ProjectCommands {
       }
     );
     handle(
+      'importPackage',
+      () => bridge !== undefined,
+      async () => {
+        const path = await bridge?.openPackage();
+        return path ? this.importPackage(path) : undefined;
+      }
+    );
+    handle(
       'reloadMesh',
       () => project.mesh() !== null || arriving(),
       () => inFront(() => (project.mesh() ? project.reloadMesh() : undefined))
@@ -82,7 +97,20 @@ export class ProjectCommands {
     handle(
       'saveAs',
       () => project.active() !== null || arriving(),
-      () => inFront(() => project.savingAs.set(project.active() !== null))
+      () =>
+        inFront(() => {
+          project.copying.set(false);
+          project.savingAs.set(project.active() !== null);
+        })
+    );
+    handle(
+      'saveCopy',
+      () => project.active() !== null || arriving(),
+      () =>
+        inFront(() => {
+          project.copying.set(true);
+          project.savingAs.set(project.active() !== null);
+        })
     );
     handle(
       'saveAll',
@@ -103,5 +131,26 @@ export class ProjectCommands {
       () => (project.active()?.project ?? null) !== null || arriving(),
       () => project.closeProject()
     );
+  }
+
+  /**
+   * Brings a zipped package into the library's packages (#185). The Server reads all of it before writing any of it,
+   * and says why when it will not; every project's shelf offers it once it is in.
+   */
+  private async importPackage(path: string): Promise<void> {
+    try {
+      const client = await this.library.api();
+      const imported = unwrap(await client.POST('/api/v1/library/packages/import', { body: { source: path } }));
+      const name = imported.manifest.name;
+      this.injector.get(Activity).report({
+        tone: 'done',
+        source: 'Packages',
+        text: imported.replaced
+          ? `${name} replaced the package of its name, and every project’s shelf offers it.`
+          : `${name} is in the library’s packages, and every project’s shelf offers it.`
+      });
+    } catch (failure) {
+      this.injector.get(Activity).report({ tone: 'error', source: 'Packages', text: messageOf(failure) });
+    }
   }
 }

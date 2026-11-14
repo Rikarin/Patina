@@ -83,7 +83,7 @@ public static class ChannelPacker {
             return;
         }
 
-        var turn = name == ExportMaps.Normal && source.Lane == 1 && picture.Green != green;
+        var turn = ExportMaps.IsTangentNormal(name) && source.Lane == 1 && picture.Green != green;
         var image = picture.Image;
         var scaled = image.Width != width || image.Height != height;
         ForEach(

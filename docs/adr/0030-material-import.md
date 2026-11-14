@@ -21,7 +21,7 @@ one minus a lane, or a constant, and for a normal which way its green runs. The 
 | an emissive picture | `sRGB to Linear`: every format stores it sRGB, and a graph's emissive is linear (ADR 0011) |
 | a normal whose green runs up | a mix turning green over, since a graph's runs down (ADR 0011), and an export turns it back for a target that reads it up |
 | a number | `Source/Uniform`, a base colour taken to sRGB |
-| a picture placed by glTF's `KHR_texture_transform` | `Space/Transform 2D` straight after it (`PlacementNode`) |
+| a picture placed by glTF's `KHR_texture_transform` | `Space/Transform 2D` straight after it (`PlacementNode`), and the bitmap's own Tiling set to what the sampler says: `Clamp` for a clamped or mirrored picture, `Wrap` for a repeated one (#289) |
 | glTF's emissive factor and `KHR_materials_emissive_strength` | the emission's factor, their product; a constant when there is no picture |
 | glTF's alpha, masked or blended | an `opacity` output from the base colour picture's alpha lane times the factor's alpha |
 
@@ -46,13 +46,26 @@ in the reply's `warnings`, and the rest of the material comes in.
 
 ## What is not done, and why
 
-- **USD's binary forms** (`.usdc`, `.usdz`) need USD's own library, which Patina does not carry. They are refused with the
-  sentence to save the layer as `.usda`.
+- **USD's binary form** (`.usdc`) needs USD's own library, which Patina does not carry. It is refused with the sentence
+  to save the layer as `.usda`. A **USD package** (`.usdz`, #157) is a zip whose first file is its layer: when that
+  layer is text the Server unpacks the package into a temporary folder, reads the layer there and copies its pictures
+  into the project as it copies any picture beside a file (`UsdzReader`); when it is `.usdc`, as most tools write it,
+  it is refused the same way. A crate reader written here from OpenUSD's `crateFile.cpp` (Apache-2.0) is possible, but
+  no `.usdc` file or USD tool was on hand to test one against, so none was written.
 - **A glTF picture's placement** is drawn by `Space/Transform 2D`, whose turn is taken in texels: exact on the square
   graphs an import makes. glTF reads a picture at `M·uv + offset`; the node reads its source at `A⁻¹(o − ½ − t) + ½`, so
   `A = M⁻¹` and `t = A(½ − offset) − ½`, and an uneven scale under a turn needs the node's shear, since `M⁻¹` is then
   not a turn times a scale. A property test holds the node's own mapping to glTF's at every point. Vixen's reader gives
   glTF's numbers back from Assimp's, which are moved to its lower-left origin and turned the other way.
+- **A placed picture's bitmap reads its own edges** (#289). A bitmap resamples its picture into the graph's size, and in a
+  tiling graph its bilinear read wrapped, so a picture clamped by its sampler had its edge column half blended with the
+  opposite edge before the Transform 2D held it. `Source/Bitmap` now has a Tiling of `Graph` (as before), `Clamp` or
+  `Wrap`, and an import sets it from the sampler. There is no `Mirror`: a bilinear read reaches one texel past the edge, and
+  a mirrored picture's next texel is the edge texel, which `Clamp` reads.
+- **A glTF normal flip** stays undefined (#146, #289). A flip could mean the green lane (Y+ against Y−) or the triangles'
+  winding, and the two are different defects in a file. The green lane is already read from the format (glTF, USD and
+  MaterialX are Y+ and turned to the graph's Y−), and no file has been seen that needs either flip. Nothing is built until
+  a file shows which one is wanted.
 - **A picture read through a second coordinate set** comes in on the first, and is named in the warnings, as is a
   mask's cutoff, which is the export's to say. The normal's scale is said, not applied.
 - **glTF's emission is black unless the file says otherwise**, so an emissive picture with no factor brings no emission.

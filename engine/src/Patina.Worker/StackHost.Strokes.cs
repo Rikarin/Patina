@@ -25,7 +25,7 @@ sealed partial class StackHost {
                     : (document.BaseWidth, document.BaseHeight);
                 Made(file, made);
                 CanvasCopy copy = new(canvases, file, Path.GetFullPath(from, folder), made.Item1, made.Item2) {
-                    Carry = Layouts(part.Model, part.Carry)
+                    Carry = Layouts(part.Model, part.Carry), Under = part.Start
                 };
                 return known[part.Id] = new(part.Id, null, null) { Copy = copy };
             }
@@ -147,7 +147,7 @@ sealed partial class StackHost {
             var enlarged = canvas.Enlarged(width, height);
             canvases.Adopt(file, enlarged);
             // The plan holds the smaller one's texture, which the larger one's tiles do not fit.
-            stale = true;
+            Restale();
             return enlarged;
         }
 
@@ -181,8 +181,8 @@ sealed partial class StackHost {
 
             var widened = canvas.Formatted(part.Usage, asked);
             canvases.Adopt(file, widened);
-            // The plan holds the narrower channel's texture, which the wider one's tiles do not fit.
-            stale = true;
+            // The plans hold the narrower channel's texture, which the wider one's tiles do not fit.
+            Restale();
             return widened;
         }
 
@@ -209,7 +209,7 @@ sealed partial class StackHost {
 
             canvas = new(side.Width, side.Height);
             canvases.Adopt(file, canvas);
-            stale = true;
+            Restale();
             return canvas;
         }
 

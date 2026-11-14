@@ -262,7 +262,11 @@ Two tests stand in for the engines until someone opens the files in them:
   every file back, holding each lane to a table written from the engines' pages and not from the presets: what each importer reads
   in each lane, the green it reads and whether the file holds sRGB or linear numbers. A file added to a preset fails until its
   engine's row is written. This is the golden per preset, as numbers rather than pictures, so it needs no GPU and no tolerance per
-  GPU family.
+  GPU family. _2026-11-14:_ Blender has its rows too, from its manual's Image Texture, Normal Map and Principled BSDF pages,
+  and since Blender reads the files through the USD material beside them, that material is read back and each
+  `UsdPreviewSurface` input held to the file its map's row checked, lane red or the whole colour, not inverted, green up.
+  Vixen has its rows as well: its files are block-compressed KTX2, so each is decoded by Vixen's decoder before its lanes are
+  read, which also shows a lane the BC7, BC5, BC6H or BC4 encoder moved.
 - `ContainerHeaderTests` reads every DDS and KTX2 file an export can write (BC1 to BC7, half, float, plain, sRGB and linear, with
   mips) with a parser written from Microsoft's `DDS_HEADER` and `DDS_HEADER_DXT10` and Khronos's KTX 2.0 layout, and checks the
   DXGI and Vulkan format numbers, the level count and each level's size. That covers the BC6H and 16-bit and float DDS no outside
@@ -273,6 +277,14 @@ Two tests stand in for the engines until someone opens the files in them:
   BC1 and BC3 were read with theirs moved to the UNORM twin, which is the same blocks. It reads no half, float or 16-bit plain
   DDS (DXGI 10, 2 and 11), so those still have only their layout checked. This was run once by hand, since CI has no Pillow: it
   is evidence that the files decode as the encoder meant on the CPU, and not on a GPU.
+- _2026-11-14 (#289):_ BC6H on a ramp from 0 to 4 was measured again, as the worst texel's error in value, at each level:
+  across 8, 16, 32 and 64 texels the worst is 0.073, 0.049, 0.057 and 0.021 at Balanced, the same to three places at Best,
+  and 0.115, 0.111, 0.060 and 0.022 at Fast. The 0.125 seen in wave 14 was not reproduced at Balanced; it is near Fast's.
+  **Best's search of every partition and endpoint walk buys nothing here: the search is not the limit.** The worst texel
+  is always in the block that starts at zero. BC6H interpolates half-float bit patterns, which grow with the logarithm of
+  the value, so a block running from 0 to 0.8 has a palette crowded near zero and a gap of about 0.4 at its top, and the
+  encoder's error is measured in those patterns, which is a relative error and right for light. Measuring it in values
+  instead would trade the dark end of every HDR picture for the bright end of this one; that is not done.
 
 What only a person with the engine can check, one import per engine, recorded here when done:
 
@@ -281,6 +293,8 @@ What only a person with the engine can check, one import per engine, recorded he
 - **Unity URP and HDRP:** that the importer's tangents agree with the bake's on a curved surface, and that occlusion is read from
   green of a one-lane file (it is grey, so it cannot be wrong, but no one has looked).
 - **Godot 4:** that ORMMaterial3D reads the `_orm` file in glTF's order.
+- **Blender:** that File > Import > USD makes a Principled BSDF with each picture on the input the material names, the colour
+  pictures as sRGB and the rest as Non-Color, and that the height reaches displacement.
 - **Every engine:** that BC1, BC3, BC4 and BC5 decode as the encoder meant on a GPU, and that the Vixen target's tangents match on
   curved surfaces (its importer uses Assimp's).
 - **Scale:** the 10,000-project numbers used stand-in 2×2 maps; real pixels stop at 500 projects.

@@ -81,6 +81,37 @@ public sealed partial class StackProcessTests {
         Assert.Equal(1, (await StateAsync(state.Id, deadline.Token)).Pace!.Proxy);
     }
 
+    /// <summary>
+    ///     Under a proxy a full-size read is evaluated beside the proxy's plan rather than in place of it, so the edit
+    ///     after a read, an autosave's or an export's, goes on at the proxy without a compile (#288). It used to
+    ///     compile the full plan for the read and the proxy's back for the next stroke.
+    /// </summary>
+    [Fact]
+    public async Task A_full_size_read_under_a_proxy_compiles_nothing_for_the_next_stroke() {
+        using var deadline = Deadline(240);
+        var (instance, state) = await StartAsync("Beside.vxlayers", deadline.Token);
+        using var socket = await FollowAsync(instance, state, deadline.Token);
+        var made = await PaintAsync(state.Id, "a", Line(100, 100, 10), false, deadline.Token);
+        await EvaluatedAsync(socket, made.Revision, deadline.Token);
+
+        await PaceAsync(state.Id, new(Proxy: 4), deadline.Token);
+        var begun = await PaintAsync(state.Id, "b", Line(300, 300, 10), true, deadline.Token);
+        await EvaluatedAsync(socket, begun.Revision, deadline.Token);
+
+        var read = await PixelsAsync(state.Id, false, deadline.Token);
+        Assert.All(read, static map => Assert.Equal(Side, map.Width));
+
+        var part = await PaintAsync(state.Id, "b", Line(400, 300, 10), false, deadline.Token);
+        var after = await EvaluatedAsync(socket, part.Revision, deadline.Token);
+        Assert.False(after.Compiled, "The stroke after a full-size read compiled the proxy's plan again.");
+
+        // The read beside it follows the strokes: the next one holds the part painted since.
+        var again = await PixelsAsync(state.Id, false, deadline.Token);
+        Assert.NotEqual(Digest(read, "baseColor"), Digest(again, "baseColor"));
+        var clean = await PixelsAsync(state.Id, true, deadline.Token);
+        Assert.All(clean, map => Assert.Equal(map.Digest, Digest(again, map.Usage)));
+    }
+
     async Task<StackPace> PaceAsync(string id, StackPaceChange change, CancellationToken token) {
         using var response = await http.PutAsJsonAsync(
             $"/api/v1/stacks/{id}/pace",

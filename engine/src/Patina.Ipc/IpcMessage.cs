@@ -105,6 +105,14 @@ public static class IpcTypes {
 
     public const string StackEvaluate = "stack.evaluate";
 
+    /// <summary>
+    ///     Server to Worker, answered at once: stop the evaluation <see cref="IpcMessage.StackSupersede" /> names,
+    ///     at the next of its parts (#275, ADR 0040). Its strokes stay in the canvases; only the picture is not
+    ///     finished, and its answer says <see cref="IpcMessage.Superseded" />. One that has ended, or not begun, is
+    ///     left alone.
+    /// </summary>
+    public const string StackSupersede = "stack.supersede";
+
     public const string StackSave = "stack.save";
 
     /// <summary>Writes some canvases of a stack, as they stand, to a folder a paste reads them from.</summary>
@@ -133,6 +141,14 @@ public static class IpcTypes {
 
     /// <summary>Server to Worker: say what the mesh at <see cref="IpcMessage.MeshFile" /> is (#146).</summary>
     public const string MeshFacts = "mesh.facts";
+
+    /// <summary>
+    ///     Server to Worker: read the texture sets of the mesh at <see cref="IpcMessage.MeshFile" />, each material in
+    ///     each UV set, for the tiles and faces the Server keeps (#285); answered in
+    ///     <see cref="IpcMessage.MeshSets" />.
+    ///     Uses no device, and is answered beside the Worker's queue, never behind an evaluation.
+    /// </summary>
+    public const string MeshSets = "mesh.sets";
 
     public const string MeshPartMask = "mesh.part-mask";
 
@@ -232,6 +248,15 @@ public sealed class IpcMessage {
     public StackEvaluate? StackEvaluate { get; set; }
 
     public StackResult? StackResult { get; set; }
+
+    /// <summary>The evaluation to stop, for <see cref="IpcTypes.StackSupersede" />.</summary>
+    public StackSupersede? StackSupersede { get; set; }
+
+    /// <summary>
+    ///     In the answer to <see cref="IpcTypes.StackEvaluate" />: it was stopped before its picture was finished, so
+    ///     it says nothing, and the stack is to be evaluated again.
+    /// </summary>
+    public bool? Superseded { get; set; }
 
     public StackSave? StackSave { get; set; }
 
@@ -357,6 +382,9 @@ public sealed class IpcMessage {
 
     /// <summary>What a mesh is, in the answer to <see cref="IpcTypes.MeshFacts" />.</summary>
     public MeshFacts? Facts { get; set; }
+
+    /// <summary>A mesh's texture sets, in the answer to <see cref="IpcTypes.MeshSets" />.</summary>
+    public MeshSetsRead? MeshSets { get; set; }
 
     public MaterialReadAsk? MaterialRead { get; set; }
 
@@ -615,6 +643,10 @@ public sealed record MaterialThumbnailAsk(
 ///     Paint files this session's strokes made. A journal starts before them, so what a save left in them is not a
 ///     base.
 /// </param>
+/// <param name="Results">
+///     Where the library keeps evaluation results between sessions, <c>.ptcache/results</c>, or null for nowhere
+///     (#208).
+/// </param>
 public sealed record StackLoad(
     string Session,
     string Path,
@@ -624,7 +656,8 @@ public sealed record StackLoad(
     IReadOnlyList<string> ImageRoots,
     string? MeshMaps,
     string? Checkpoint,
-    IReadOnlyList<string> Created
+    IReadOnlyList<string> Created,
+    string? Results = null
 );
 
 #pragma warning restore SK7005
@@ -644,7 +677,10 @@ public sealed record StackLoad(
 /// <param name="View">The camera of a stroke on the mesh, or null for one in the atlas.</param>
 /// <param name="Curve">free, line, path or fill.</param>
 /// <param name="Symmetry">The copies the stroke makes of itself on the mesh, or null.</param>
-/// <param name="Start">What a canvas this stroke is the first on starts as, packed like the colour, or null.</param>
+/// <param name="Start">
+///     What a canvas this stroke is the first on starts as, packed like the colour, or null. With
+///     <paramref name="From" />, the colour the copy is laid over by its alpha (#282).
+/// </param>
 /// <param name="From">
 ///     For no stroke at all: the canvas, relative to the stack or absolute, that <paramref name="Paint" /> becomes a
 ///     copy of, every channel of it. Undone, the copy goes.
@@ -757,7 +793,19 @@ public sealed record StackSync(
 ///     What the stack's sides are divided by while it is edited (#208): 1 for full size. Its pixels, its checks and
 ///     its samples are read at full size whatever this is.
 /// </param>
-public sealed record StackEvaluate(string Session, int PreviewSide, string PreviewFolder, int Proxy = 1);
+/// <param name="Revision">The revision of the stack this evaluates, which a supersede names.</param>
+public sealed record StackEvaluate(
+    string Session,
+    int PreviewSide,
+    string PreviewFolder,
+    int Proxy = 1,
+    long Revision = 0
+);
+
+/// <summary>Which evaluation to stop.</summary>
+/// <param name="Session">The session.</param>
+/// <param name="Revision">The revision it evaluates: a later evaluation of the session is left alone.</param>
+public sealed record StackSupersede(string Session, long Revision);
 
 // SK7005: a message record's constructor is its wire shape, one parameter per field.
 #pragma warning disable SK7005

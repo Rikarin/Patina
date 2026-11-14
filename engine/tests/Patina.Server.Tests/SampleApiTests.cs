@@ -45,7 +45,7 @@ public sealed partial class LibraryTreeApiTests {
         var project = await made.Content.ReadFromJsonAsync<ProjectSummary>(Token);
         var folder = Path.Combine(server.Library, "projects", project!.Path);
 
-        foreach (var (file, set, width, height) in new[] { ("Gold", "Gold", 2048, 2048), ("Red", "Red", 2048, 1024) }) {
+        foreach (var (file, set, width, height) in new[] { ("Gold", "Gold", 1024, 1024), ("Red", "Red", 1024, 512) }) {
             var stack = StackDocuments.Parse(
                 await File.ReadAllTextAsync(Path.Combine(folder, $"{file}.vxlayers"), Token)
             );

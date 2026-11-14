@@ -13,14 +13,16 @@ public sealed class IpcConnectionTests : IDisposable {
     async Task<(IpcConnection Left, IpcConnection Right)> ConnectAsync(
         IpcHandler left,
         IpcHandler right,
-        Func<string, bool>? immediate = null
+        Func<string, bool>? immediate = null,
+        Func<string, bool>? aside = null,
+        Func<string, bool>? urgent = null
     ) {
         using var listener = IpcSocket.Listen(socketPath);
         var accept = listener.AcceptAsync(Token).AsTask();
         var client = await IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(5), Token);
         var leftEnd = new IpcConnection(client, left);
         var rightEnd = new IpcConnection(new System.Net.Sockets.NetworkStream(await accept, true), right) {
-            Immediate = immediate
+            Immediate = immediate, Aside = aside, Urgent = urgent
         };
         leftEnd.Start();
         rightEnd.Start();
@@ -121,6 +123,83 @@ public sealed class IpcConnectionTests : IDisposable {
                 Assert.False(slow.IsCompleted);
                 release.SetResult();
                 Assert.Equal(IpcTypes.Ok, (await slow.WaitAsync(TimeSpan.FromSeconds(5), Token)).Type);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     A mesh read the Server waits on is answered beside the queue (#285): neither an evaluation ahead of it nor
+    ///     another read keeps it waiting.
+    /// </summary>
+    [Fact]
+    public async Task A_request_aside_is_answered_while_the_queue_and_another_aside_wait() {
+        var release = new TaskCompletionSource();
+        var (left, right) = await ConnectAsync(
+            Reply,
+            async (request, _) => {
+                if (request.MeshFile is "held") {
+                    await release.Task;
+                }
+
+                return IpcMessage.Ok(request.Id);
+            },
+            static type => type == IpcTypes.Health,
+            static type => type == IpcTypes.MeshSets
+        );
+        await using (left) {
+            await using (right) {
+                var queued = left.SendAsync(new() { Type = IpcTypes.StackEvaluate, MeshFile = "held" }, Token);
+                var held = left.SendAsync(new() { Type = IpcTypes.MeshSets, MeshFile = "held" }, Token);
+
+                var read = await left.SendAsync(new() { Type = IpcTypes.MeshSets, MeshFile = "free" }, Token)
+                    .WaitAsync(TimeSpan.FromSeconds(5), Token);
+
+                Assert.Equal(IpcTypes.Ok, read.Type);
+                Assert.False(queued.IsCompleted || held.IsCompleted);
+                release.SetResult();
+                await Task.WhenAll(queued, held).WaitAsync(TimeSpan.FromSeconds(5), Token);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     A viewport frame waits for the request being answered and goes ahead of the rest of the queue (#274): on a
+    ///     software GPU the requests queued before it took longer than anyone watching would wait.
+    /// </summary>
+    [Fact]
+    public async Task An_urgent_request_goes_ahead_of_the_queue_but_not_of_the_one_being_answered() {
+        var release = new TaskCompletionSource();
+        var started = new TaskCompletionSource();
+        List<string> answered = [];
+        var (left, right) = await ConnectAsync(
+            Reply,
+            async (request, _) => {
+                if (request.MeshFile is "first") {
+                    started.TrySetResult();
+                    await release.Task;
+                }
+
+                lock (answered) {
+                    answered.Add(request.MeshFile ?? string.Empty);
+                }
+
+                return IpcMessage.Ok(request.Id);
+            },
+            static type => type == IpcTypes.Health,
+            urgent: static type => type == IpcTypes.ViewportRender
+        );
+        await using (left) {
+            await using (right) {
+                var first = left.SendAsync(new() { Type = IpcTypes.StackEvaluate, MeshFile = "first" }, Token);
+                await started.Task.WaitAsync(TimeSpan.FromSeconds(5), Token);
+                var later = left.SendAsync(new() { Type = IpcTypes.StackEvaluate, MeshFile = "later" }, Token);
+                var frame = left.SendAsync(new() { Type = IpcTypes.ViewportRender, MeshFile = "frame" }, Token);
+                await Task.Delay(100, Token);
+
+                Assert.False(frame.IsCompleted);
+                release.SetResult();
+                await Task.WhenAll(first, later, frame).WaitAsync(TimeSpan.FromSeconds(5), Token);
+                Assert.Equal(["first", "frame", "later"], answered);
             }
         }
     }

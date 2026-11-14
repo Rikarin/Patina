@@ -49,8 +49,12 @@ public static class ViewportViews {
     /// </summary>
     public const string TexelDensity = "texelDensity";
 
+    /// <summary>The mesh's vertex colours as stored, with no light; white where the file has none (#146).</summary>
+    public const string VertexColours = "vertexColours";
+
     /// <summary>Every view, in the order the Worker numbers them.</summary>
-    public static IReadOnlyList<string> All { get; } = [Lit, Clay, Unlit, ..Channels, Picture, TexelDensity];
+    public static IReadOnlyList<string> All { get; } =
+        [Lit, Clay, Unlit, ..Channels, Picture, TexelDensity, VertexColours];
 }
 
 /// <summary>The lanes <see cref="ViewportDisplay.PictureLane" /> takes: the colour, or one lane as a grey.</summary>
@@ -371,8 +375,9 @@ public sealed record ViewportHighlight(IReadOnlyList<string> Parts, IReadOnlyLis
 }
 
 /// <summary>
-///     The symmetry a brush paints with, which the viewport draws where its mirror's plane meets the model (#132): the
-///     line the plane cuts across the surface, hidden where the model hides it. A radial symmetry draws nothing here.
+///     The symmetry a brush paints with, which the viewport draws where it meets the model (#132): the line a mirror's
+///     plane cuts across the surface, or for a radial symmetry the lines the half-planes between its copies cut, each a
+///     turn apart round its axis, hidden where the model hides them.
 /// </summary>
 /// <param name="Symmetry">The symmetry, as a stroke takes it, or null for none.</param>
 public sealed record ViewportSymmetry(StackSymmetry? Symmetry);

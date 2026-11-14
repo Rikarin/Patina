@@ -9,8 +9,8 @@ namespace Patina.Export.Materials;
 ///     <c>UsdPreviewSurface</c>, whose inputs are a value or a connection to a <c>UsdUVTexture</c>'s output. It reads
 ///     what <see cref="UsdMaterialFile" /> writes and what other tools write of the same schema: a texture's
 ///     <c>scale</c> and <c>bias</c> say a lane holds one minus the map, a normal's green runs down or a factor
-///     multiplies it. USD's binary forms (<c>.usdc</c>, <c>.usdz</c>) need USD's own library, which Patina does not
-///     carry; a <c>.usd</c> file is read when it is text.
+///     multiplies it. USD's binary form (<c>.usdc</c>) needs USD's own library, which Patina does not
+///     carry; a <c>.usd</c> file is read when it is text, and a <c>.usdz</c> package through <see cref="UsdzReader" />.
 /// </summary>
 public sealed class UsdaReader {
     readonly string folder;
@@ -30,7 +30,7 @@ public sealed class UsdaReader {
         var text = SharedFile.ReadAllText(path);
         if (!text.TrimStart().StartsWith("#usda", StringComparison.Ordinal)) {
             throw new InvalidDataException(
-                $"'{Path.GetFileName(path)}' is not a USD text layer. A .usdc or .usdz needs USD's own library; "
+                $"'{Path.GetFileName(path)}' is not a USD text layer. A .usdc needs USD's own library; "
                 + "save it as .usda to bring its materials in."
             );
         }

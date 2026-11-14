@@ -131,6 +131,12 @@ public sealed record ProjectDocumentInfo(
     /// </summary>
     public string? BakeStale { get; init; }
 
+    /// <summary>
+    ///     For a texturing document on a mesh, the UDIM tile its layout sits on in the UV set it chose (#289), which
+    ///     its exported files are named by: 1001 for one on the first tile, on several, on no mesh, or of another kind.
+    /// </summary>
+    public int Udim { get; init; } = 1001;
+
     /// <summary>What it can be searched by, sorted.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
 }
@@ -314,6 +320,13 @@ public sealed record LibraryExportRequest(ProjectExportSettings Export);
 ///     The id of the preset a project's export starts from when it has kept none, or null for the Starter glTF preset.
 /// </param>
 public sealed record LibraryPresetRequest(string? Preset);
+
+/// <summary>The body of <c>PUT /api/v1/library/export/targets</c> (#207).</summary>
+/// <param name="Presets">
+///     The ids of the presets a build of the library writes when its request names none, such as one for each platform
+///     the library ships to. Empty, such a build writes nothing.
+/// </param>
+public sealed record LibraryTargetsRequest(IReadOnlyList<string> Presets);
 
 /// <summary>The body of <c>PUT /api/v1/library/project/viewport</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>

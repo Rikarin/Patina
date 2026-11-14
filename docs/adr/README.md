@@ -36,3 +36,5 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0034](0034-3d-mouse.md): accepted: a 3D mouse is read as plain HID through WebHID, with no vendor SDK, and moves the viewport's camera as a drag does.
 - [0037](0037-quick-mask.md): accepted: a quick mask is a journaled canvas the session holds, kept to in the atlas, and never saved.
 - [0038](0038-graph-measurements.md): accepted: a picture's histogram is counted on the GPU at full size and sent as numbers, and a node's cost is the GPU time of its operations, kept per node.
+- [0039](0039-server-reads-no-mesh.md): accepted: the Server reads no mesh; the Worker reads each file's texture sets once, beside its queue, and the Server keeps the answer until the file changes.
+- [0040](0040-superseded-evaluations.md): accepted: an evaluation a save waits behind is stopped between parts of its run, and nothing it began is trusted.

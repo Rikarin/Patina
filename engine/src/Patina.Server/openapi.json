@@ -627,7 +627,7 @@
         "tags": [
           "Viewport"
         ],
-        "summary": "Draws where a symmetry\u0027s mirror meets the model, as a line across its surface hidden where the model hides it, for every client. Null draws nothing, and so does a radial symmetry.",
+        "summary": "Draws where a symmetry meets the model, as lines on its surface hidden where the model hides them, for every client: a mirror\u0027s plane, or the half-planes between a radial symmetry\u0027s copies. Null draws nothing.",
         "operationId": "SetViewportSymmetry",
         "requestBody": {
           "content": {
@@ -895,6 +895,60 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/previews/{hash}/save": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Writes a picture the Server has written, by its hash, to a PNG file on the Server\u0027s machine, replacing one there. POST /graphs/{id}/images writes a node\u0027s picture at full size first.",
+        "operationId": "SavePreview",
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -2334,6 +2388,67 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/LibraryPresetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/export/targets": {
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps in library.yaml the export presets a build of the library writes when its request names none: the platforms the library ships to, each once. GET /library reads them back as exportTargets.",
+        "operationId": "SetLibraryExportTargets",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryTargetsRequest"
               }
             }
           },
@@ -4127,6 +4242,135 @@
         }
       }
     },
+    "/api/v1/library/packages/import": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings a package into the library\u0027s packages folder from a zip of it or from its folder, replacing one of its name, once all of it has been read as a package this Patina can use.",
+        "operationId": "ImportPackage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackageImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackageImported"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/project/bake/plan": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The bakes a project\u0027s own settings ask for, one per texture set to bake or one for its mesh, ready for POST /jobs/bakes. A document, by its path below the library, chooses the mesh.",
+        "operationId": "GetProjectBakePlan",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectBakePlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/snapshots": {
       "get": {
         "tags": [
@@ -5214,6 +5458,175 @@
         }
       }
     },
+    "/api/v1/library/check": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Rescans, then reports the library\u0027s health by kind of finding, errors first, as patina library check prints it. Changes nothing.",
+        "operationId": "CheckLibrary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryHealth"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/cache/prune": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Removes built objects, bakes and reports nothing has touched for a number of days, 30 by default. A later build makes them again. Refused while a bake or build is queued or running.",
+        "operationId": "PruneCache",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CachePruneRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryTidied"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/clean": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it.",
+        "operationId": "CleanLibrary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryTidied"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/graphs": {
       "get": {
         "tags": [
@@ -5680,6 +6093,67 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/GraphCommandBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/relink": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Points every Bitmap node that reads a picture at another file, as one undo step. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
+        "operationId": "RelinkGraphPicture",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphRelinkRequest"
               }
             }
           },
@@ -10284,6 +10758,20 @@
         },
         "description": "The library\u0027s cache: what deleting it would cost is time, and nothing else."
       },
+      "CachePruneRequest": {
+        "required": [
+          "days"
+        ],
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "description": "How long a built object or report may go untouched before it goes, 0 or more.",
+            "format": "int32"
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/cache/prune\u0060."
+      },
       "CheckProblem": {
         "required": [
           "code",
@@ -13992,6 +14480,24 @@
         },
         "description": "Where a node\u0027s picture is: \u0060GET /api/v1/previews/{hash}\u0060. Pixels never cross JSON."
       },
+      "GraphRelinkRequest": {
+        "required": [
+          "from",
+          "to"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "The picture as the graph\u0027s Bitmap nodes name it."
+          },
+          "to": {
+            "type": "string",
+            "description": "The file to read instead: absolute, or below the library."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/graphs/{id}/relink\u0060: a picture the graph reads, and the file it is now."
+      },
       "GraphSelection": {
         "required": [
           "nodes"
@@ -14665,6 +15171,96 @@
         },
         "description": "The answer to \u0060GET /api/v1/library/files\u0060."
       },
+      "LibraryFinding": {
+        "required": [
+          "path",
+          "detail"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The file or project it concerns, relative to the library."
+          },
+          "detail": {
+            "type": "string",
+            "description": "The specifics."
+          }
+        },
+        "description": "One thing a library check found."
+      },
+      "LibraryFindingGroup": {
+        "required": [
+          "kind",
+          "isError",
+          "count",
+          "findings"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "What was found, such as \u0060MissingReference\u0060 or \u0060StaleOutput\u0060."
+          },
+          "isError": {
+            "type": "boolean",
+            "description": "Whether the library is wrong, as opposed to having work to do or room to tidy."
+          },
+          "count": {
+            "type": "integer",
+            "description": "How many there are in all.",
+            "format": "int32"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LibraryFinding"
+            },
+            "description": "The first of them, at most int LibraryHealth.FindingsPerKind."
+          }
+        },
+        "description": "What one kind of finding of a library check came to, as \u0060patina library check\u0060 prints it."
+      },
+      "LibraryHealth": {
+        "required": [
+          "projects",
+          "assets",
+          "outputs",
+          "errors",
+          "groups"
+        ],
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "integer",
+            "description": "The projects checked.",
+            "format": "int32"
+          },
+          "assets": {
+            "type": "integer",
+            "description": "The shared assets checked.",
+            "format": "int32"
+          },
+          "outputs": {
+            "type": "integer",
+            "description": "The outputs checked.",
+            "format": "int32"
+          },
+          "errors": {
+            "type": "integer",
+            "description": "How many findings say the library is wrong.",
+            "format": "int32"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LibraryFindingGroup"
+            },
+            "description": "The findings by kind, errors first."
+          }
+        },
+        "description": "The health of a library, from \u0060POST /api/v1/library/check\u0060."
+      },
       "LibraryInfo": {
         "required": [
           "id",
@@ -14903,6 +15499,42 @@
         },
         "description": "What a whole build did."
       },
+      "LibraryTargetsRequest": {
+        "required": [
+          "presets"
+        ],
+        "type": "object",
+        "properties": {
+          "presets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The ids of the presets a build of the library writes when its request names none, such as one for each platform\nthe library ships to. Empty, such a build writes nothing."
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/library/export/targets\u0060 (#207)."
+      },
+      "LibraryTidied": {
+        "required": [
+          "removed",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "removed": {
+            "type": "integer",
+            "description": "How many entries or folders went.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The room that freed on disk.",
+            "format": "int64"
+          }
+        },
+        "description": "What tidying the library took away."
+      },
       "MaterialBrush": {
         "required": [
           "alpha"
@@ -14929,7 +15561,7 @@
           },
           "file": {
             "type": "string",
-            "description": "A file on the Server\u0027s machine that describes materials: a glTF (\u0060.gltf\u0060, \u0060.glb\u0060) or another model\nfile, a MaterialX document (\u0060.mtlx\u0060) or a USD layer in its text form (\u0060.usda\u0060)."
+            "description": "A file on the Server\u0027s machine that describes materials: a glTF (\u0060.gltf\u0060, \u0060.glb\u0060) or another model\nfile, a MaterialX document (\u0060.mtlx\u0060), a USD layer in its text form (\u0060.usda\u0060) or a USD package\n(\u0060.usdz\u0060) whose layer is text."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/project/materials\u0060."
@@ -15361,6 +15993,13 @@
               "string"
             ],
             "description": "Why it cannot be brought, or null when it can."
+          },
+          "in": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The compound that names it, or null when the graph itself does, which is when relinking the graph\u0027s Bitmap\nnodes (\u0060POST /api/v1/graphs/{id}/relink\u0060) reaches it."
           }
         },
         "description": "Something a graph reads that publishing it as a package has to bring, or cannot."
@@ -15382,6 +16021,42 @@
           }
         },
         "description": "A picture a package carries."
+      },
+      "PackageImported": {
+        "required": [
+          "path",
+          "manifest",
+          "replaced"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its folder, below the library."
+          },
+          "manifest": {
+            "description": "What its \u0060package.yaml\u0060 says.",
+            "$ref": "#/components/schemas/PackageManifest"
+          },
+          "replaced": {
+            "type": "boolean",
+            "description": "True when a package of its name was there, and this one replaced it."
+          }
+        },
+        "description": "A package that has been brought into a library."
+      },
+      "PackageImportRequest": {
+        "required": [
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "The package to bring in: a zip of one, or its \u0060.ptpkg\u0060 folder, as a path on the machine the Server runs on."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/packages/import\u0060."
       },
       "PackageManifest": {
         "required": [
@@ -15523,6 +16198,19 @@
         },
         "description": "The body of \u0060POST /api/v1/library/packages\u0060."
       },
+      "PreviewSaveRequest": {
+        "required": [
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "The PNG to write, as a whole path on the Server\u0027s machine, in a folder that exists."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/previews/{hash}/save\u0060."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -15558,6 +16246,27 @@
             ]
           }
         }
+      },
+      "ProjectBakePlan": {
+        "required": [
+          "project",
+          "requests"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project\u0027s folder."
+          },
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BakeRequest"
+            },
+            "description": "What to send to \u0060POST /api/v1/jobs/bakes\u0060, one at a time or all at once."
+          }
+        },
+        "description": "The bakes a project\u0027s own settings ask for (#186): one request per texture set to bake, or one for the whole\nmesh, as the Bake dialog sends them. \u0060GET /api/v1/library/project/bake/plan\u0060 answers it, and\n\u0060patina bake-maps --project \u2026 --dry-run\u0060 prints it, so a script bakes a project the way the editor does\nwithout working the requests out itself."
       },
       "ProjectBakeRequest": {
         "required": [
@@ -15947,10 +16656,11 @@
       },
       "ProjectDocumentInfo": {
         "required": [
+          "tags",
           "kind",
           "name",
           "path",
-          "tags"
+          "udim"
         ],
         "type": "object",
         "properties": {
@@ -16009,6 +16719,11 @@
               "string"
             ],
             "description": "Why that bake no longer fits it, so its maps need baking again, or null: \u0060mesh\u0060, made on a mesh it no\nlonger stands on, \u0060uvSet\u0060, laid out in another UV set than the one it chose (#238), or \u0060shape\u0060,\nof another shape than its Width by Height (#262)."
+          },
+          "udim": {
+            "type": "integer",
+            "description": "For a texturing document on a mesh, the UDIM tile its layout sits on in the UV set it chose (#289), which\nits exported files are named by: 1001 for one on the first tile, on several, on no mesh, or of another kind.",
+            "format": "int32"
           },
           "tags": {
             "type": "array",
@@ -17575,6 +18290,9 @@
           },
           {
             "$ref": "#/components/schemas/StackCommandStackApplyMask"
+          },
+          {
+            "$ref": "#/components/schemas/StackCommandStackKeepQuickMask"
           }
         ],
         "description": "One edit of a stack. A batch of these is one undo step.",
@@ -17605,7 +18323,8 @@
             "setMaskLayer": "#/components/schemas/StackCommandStackSetMaskLayer",
             "addInstance": "#/components/schemas/StackCommandStackAddInstance",
             "setInstance": "#/components/schemas/StackCommandStackSetInstance",
-            "applyMask": "#/components/schemas/StackCommandStackApplyMask"
+            "applyMask": "#/components/schemas/StackCommandStackApplyMask",
+            "keepQuickMask": "#/components/schemas/StackCommandStackKeepQuickMask"
           }
         }
       },
@@ -17882,6 +18601,32 @@
           }
         },
         "description": "Flattens a group into a canvas that composites what its children did, keeping them, unread, as the way back. The\nwhole stack is flattened by gathering every layer into one group first. Undoing it takes the canvas away."
+      },
+      "StackCommandStackKeepQuickMask": {
+        "required": [
+          "layer",
+          "op",
+          "outside"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "keepQuickMask"
+            ],
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "The layer to keep."
+          },
+          "outside": {
+            "type": "boolean",
+            "description": "Whether to keep it to where the quick mask is not painted.",
+            "default": false
+          }
+        },
+        "description": "Keeps a layer to the session\u0027s quick mask (#282): a paint entry on top of its mask\u0027s stack that starts as a copy\nof the quick mask as it stands, multiplied over the mask beneath, or subtracted from it to keep it outside.\nA fill, a decal or a path, which no stroke paints, is kept so as a stroke is. The entry is the layer\u0027s own from\nthen, saved with it, and can be painted, changed or removed as any other. The quick mask must have been painted."
       },
       "StackCommandStackMoveLayer": {
         "required": [
@@ -22617,7 +23362,7 @@
             ]
           }
         },
-        "description": "The symmetry a brush paints with, which the viewport draws where its mirror\u0027s plane meets the model (#132): the\nline the plane cuts across the surface, hidden where the model hides it. A radial symmetry draws nothing here."
+        "description": "The symmetry a brush paints with, which the viewport draws where it meets the model (#132): the line a mirror\u0027s\nplane cuts across the surface, or for a radial symmetry the lines the half-planes between its copies cut, each a\nturn apart round its axis, hidden where the model hides them."
       },
       "WorkerStatus": {
         "required": [

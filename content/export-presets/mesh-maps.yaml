@@ -1,0 +1,42 @@
+# The baked mesh maps alone, one file per map, for another texturing tool or a game that shades with them. The normal
+# and the ambient occlusion are the bake's own, not the set's with paint on them (bakedNormal, bakedOcclusion); a
+# project with no bake writes none of them. See docs/adr/0019-export-presets.md.
+version: 1
+id: mesh-maps
+name: Mesh Maps
+engine: Any
+normal: y-up
+padding: infinite
+textures:
+  - file: "{project}_{set}_normal_base"
+    format: png16
+    space: linear
+    channels: [bakedNormal.r, bakedNormal.g, bakedNormal.b]
+  - file: "{project}_{set}_ambient_occlusion"
+    format: png8
+    space: linear
+    channels: [bakedOcclusion.r]
+  - file: "{project}_{set}_curvature"
+    format: png8
+    space: linear
+    channels: [curvature.r]
+  - file: "{project}_{set}_thickness"
+    format: png8
+    space: linear
+    channels: [thickness.r]
+  - file: "{project}_{set}_world_space_normals"
+    format: png16
+    space: linear
+    channels: [world.r, world.g, world.b]
+  - file: "{project}_{set}_position"
+    format: png16
+    space: linear
+    channels: [position.r, position.g, position.b]
+  - file: "{project}_{set}_bent_normals"
+    format: png16
+    space: linear
+    channels: [bent.r, bent.g, bent.b]
+  - file: "{project}_{set}_id"
+    format: png8
+    space: linear
+    channels: [id.r, id.g, id.b]

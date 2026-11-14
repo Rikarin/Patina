@@ -80,18 +80,19 @@ public sealed class ExportPreviewBuildTests : IDisposable {
     }
 
     Task<LibraryReport> Build(OpenLibrary library, BuildRequest request, Maps? maps = null) =>
-        new BuildPipeline(library, maps ?? new Maps(), ToolCatalog.Default).RunAsync(
-            new(
-                Path.Combine(LibraryLayout.ReportsPath(Root), Guid.NewGuid().ToString("N")),
-                "b",
-                DateTimeOffset.UnixEpoch
-            ),
-            request,
-            null,
-            null,
-            TimeProvider.System,
-            Token
-        );
+        new BuildPipeline(library, maps ?? new Maps(), ToolCatalog.Default, MeshFileReads.Instance)
+            .RunAsync(
+                new(
+                    Path.Combine(LibraryLayout.ReportsPath(Root), Guid.NewGuid().ToString("N")),
+                    "b",
+                    DateTimeOffset.UnixEpoch
+                ),
+                request,
+                null,
+                null,
+                TimeProvider.System,
+                Token
+            );
 
     /// <summary>
     ///     A project's own preset exports that project, and one nothing has is refused before anything runs.

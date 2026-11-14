@@ -185,7 +185,7 @@ public static class ExportEncoder {
     }
 
     static MipOptions Options(ExportTexture texture) {
-        if (texture.Maps.Contains(ExportMaps.Normal, StringComparer.Ordinal)) {
+        if (texture.Maps.Any(ExportMaps.IsTangentNormal)) {
             return MipOptions.NormalMap;
         }
 

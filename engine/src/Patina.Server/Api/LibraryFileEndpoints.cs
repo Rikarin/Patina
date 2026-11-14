@@ -112,10 +112,7 @@ static class LibraryFileEndpoints {
         if (!file.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)
             || !PictureFormats.IsPicture(file)
             || !File.Exists(file)) {
-            return TypedResults.Problem(
-                $"The library holds no picture '{path}'.",
-                statusCode: StatusCodes.Status404NotFound
-            );
+            return Refusals.NoFile(path);
         }
 
         if (side is null) {

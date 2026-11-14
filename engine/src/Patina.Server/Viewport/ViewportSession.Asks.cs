@@ -7,7 +7,8 @@ namespace Patina.Server.Viewport;
 public sealed partial class ViewportSession {
     /// <summary>What is under a position on the picture, through the Worker.</summary>
     /// <exception cref="IOException">The Worker went.</exception>
-    /// <exception cref="IpcException">No mesh is open, or it cannot be read.</exception>
+    /// <exception cref="ViewportNoMeshException">No mesh is open.</exception>
+    /// <exception cref="IpcException">The mesh cannot be read.</exception>
     public async Task<ViewportPick> PickAsync(ViewportPickRequest request, CancellationToken cancellationToken) {
         var ask = Ask(request.X, request.Y, request.Camera, request.Width, request.Height, "pick");
         var reply = await AskWorkerAsync(new() { Type = IpcTypes.ViewportPick, Pick = ask }, cancellationToken);
@@ -16,7 +17,8 @@ public sealed partial class ViewportSession {
 
     /// <summary>The named meshes that show inside a rectangle on the picture, through the Worker (#110).</summary>
     /// <exception cref="IOException">The Worker went.</exception>
-    /// <exception cref="IpcException">No mesh is open, or it cannot be read.</exception>
+    /// <exception cref="ViewportNoMeshException">No mesh is open.</exception>
+    /// <exception cref="IpcException">The mesh cannot be read.</exception>
     public async Task<ViewportMarquee> MarqueeAsync(
         ViewportMarqueeRequest request,
         CancellationToken cancellationToken
@@ -29,10 +31,10 @@ public sealed partial class ViewportSession {
     }
 
     /// <summary>A question about a place on the picture, through the camera asked about or the viewport's.</summary>
-    /// <exception cref="IpcException">No mesh is open.</exception>
+    /// <exception cref="ViewportNoMeshException">No mesh is open.</exception>
     ViewportPickAsk Ask(double x, double y, ViewportCameraState? asked, int? across, int? down, string verb) {
         lock (changing) {
-            var path = mesh ?? throw new IpcException($"Open a mesh first: there is nothing to {verb}.");
+            var path = mesh ?? throw new ViewportNoMeshException($"Open a mesh first: there is nothing to {verb}.");
             var laidOut = layouts.Count == 0 ? null : new Dictionary<string, int>(layouts, StringComparer.Ordinal);
             return new(x, y, Lens(asked ?? camera, display.Display), across ?? width, down ?? height, path, laidOut);
         }
@@ -42,7 +44,7 @@ public sealed partial class ViewportSession {
     public async Task<ViewportCast> CastAsync(ViewportCastRequest request, CancellationToken cancellationToken) {
         string path;
         lock (changing) {
-            path = mesh ?? throw new IpcException("Open a mesh first: there is nothing to cast at.");
+            path = mesh ?? throw new ViewportNoMeshException("Open a mesh first: there is nothing to cast at.");
         }
 
         var cast = new IpcMessage {
