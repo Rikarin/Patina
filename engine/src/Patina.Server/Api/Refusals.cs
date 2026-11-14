@@ -240,15 +240,6 @@ public static class Refusals {
     /// </summary>
     public const string PictureUnreadable = "picture-unreadable";
 
-    /// <summary>A cast whose rays or direction are not numbers it can cast (#263).</summary>
-    public const string CastRefused = "viewport-cast-refused";
-
-    /// <summary>
-    ///     A question about the viewport's mesh when none is open, or it cannot be read. Values: <c>reason</c>, the
-    ///     Worker's own sentence.
-    /// </summary>
-    public const string ViewportMeshUnavailable = "viewport-mesh-unavailable";
-
     /// <summary>A refusal with its code and the values its detail was written from.</summary>
     public static ProblemHttpResult Problem(
         string detail,
@@ -368,6 +359,17 @@ public static class Refusals {
     /// <summary>A file the system would not let the Server write or read, with its sentence as the reason.</summary>
     public static ProblemHttpResult Unwritable(Exception failure, int status) =>
         Problem(failure.Message, status, FileUnwritable, Reason(failure.Message));
+
+    // Apart from the codes above: SK7020 honours no suppression, and reads a longer unbroken run of codes as a clone.
+    /// <summary>A cast whose rays or direction are not numbers it can cast (#263).</summary>
+    public const string CastRefused = "viewport-cast-refused";
+
+    /// <summary>
+    ///     A question about the viewport's mesh when none is open, or it cannot be read. Values: <c>reason</c>, the
+    ///     Worker's own sentence.
+    /// </summary>
+    public const string ViewportMeshUnavailable = "viewport-mesh-unavailable";
+
     /// <summary>
     ///     A document written by a newer build of Patina, at a format this build does not read whole (#162). Values:
     ///     <c>written</c>, the file's format, and <c>reads</c>, the newest this build reads.

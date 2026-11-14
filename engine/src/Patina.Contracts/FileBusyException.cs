@@ -22,7 +22,8 @@ public sealed class FileBusyException : IOException {
     /// <param name="inner">The last refusal of the move.</param>
     public static FileBusyException Of(string path, Exception inner) =>
         new(
-            $"'{System.IO.Path.GetFileName(path)}' is in use by another program, so it could not be changed. Try again.",
+            $"'{System.IO.Path.GetFileName(path)}' is in use by another program, so it could not be changed. "
+            + "Try again.",
             path,
             inner
         );
