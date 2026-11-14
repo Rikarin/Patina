@@ -14,7 +14,9 @@ namespace Patina.Server.Graphs;
 ///     published into the project.
 /// </summary>
 public static class ShelfCompounds {
-    /// <summary>What a shipped compound's source starts with, before its node type: <c>compound:Grunges/Speckle</c>.</summary>
+    /// <summary>
+    ///     What a shipped compound's source starts with, before its node type: <c>compound:Grunges/Speckle</c>.
+    /// </summary>
     public const string Prefix = "compound:";
 
     const string Origin = "shipped";
@@ -60,7 +62,9 @@ public static class ShelfCompounds {
         return found;
     }
 
-    /// <summary>A mask for a compound that draws one picture from nothing, a filter for one that changes what it reads.</summary>
+    /// <summary>
+    ///     A mask for a compound that draws one picture from nothing, a filter for one that changes what it reads.
+    /// </summary>
     static string? RoleOf(NodeTypeDefinition type) {
         var reads = type.Ports.Count(static port => port is { Direction: PortDirection.Input, Kind: PortKind.Image });
         var writes = type.Ports.Count(static port => port is { Direction: PortDirection.Output, Kind: PortKind.Image });

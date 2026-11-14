@@ -212,7 +212,7 @@ public sealed record StackMask(
 /// <param name="Opacity">How much of it composites, 0 to 1.</param>
 /// <param name="Enabled">Whether it composites at all.</param>
 /// <param name="Lane">Which lane of its picture it reads: Red, Green, Blue or Alpha.</param>
-/// <param name="Output">Which picture of a generator entry that writes several it reads, or empty for its only one.</param>
+/// <param name="Output">Which picture of a generator entry that writes several it reads, or empty for its one.</param>
 public sealed record StackMaskLayer(
     string Source,
     float Value = 1f,

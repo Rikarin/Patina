@@ -62,10 +62,12 @@ public sealed class StackGeneratorOutputTests : IDisposable {
     public void A_mask_entrys_chosen_picture_reaches_the_file_and_another_generator_starts_from_none() {
         var editor = Editor();
         editor.Apply(
-            new([
-                new StackAddMaskLayer("paint", "Generator", Generator: Generator),
-                new StackSetMaskLayer("paint", 0, Output: "Mask")
-            ])
+            new(
+                [
+                    new StackAddMaskLayer("paint", "Generator", Generator: Generator),
+                    new StackSetMaskLayer("paint", 0, Output: "Mask")
+                ]
+            )
         );
 
         Assert.Equal("Mask", Layer(editor).Mask.Layers[0].GeneratorOutput);
@@ -85,14 +87,16 @@ public sealed class StackGeneratorOutputTests : IDisposable {
         editor.Apply(new([new StackAddLayer("filter", "Warp", FilterNode: "Filters/Warp")]));
         var warp = editor.Document.Sets[0].Layers[^1].Id;
         editor.Apply(
-            new([
-                new StackSetLayer(
-                    warp,
-                    Inputs: new Dictionary<string, StackInput> {
-                        ["Warp"] = new("Generator", Generator: Generator, Output: "Edge")
-                    }
-                )
-            ])
+            new(
+                [
+                    new StackSetLayer(
+                        warp,
+                        Inputs: new Dictionary<string, StackInput> {
+                            ["Warp"] = new("Generator", Generator: Generator, Output: "Edge")
+                        }
+                    )
+                ]
+            )
         );
 
         var saved = LayerStackYaml.Read(LayerStackYaml.Write(editor.Document)).Sets[0].Layers[^1];

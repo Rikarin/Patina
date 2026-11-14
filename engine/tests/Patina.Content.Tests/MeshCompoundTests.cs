@@ -231,8 +231,8 @@ public sealed class MeshCompoundTests {
     }
 
     /// <summary>
-    ///     Patina #120: Mask Editor takes the thin parts and a height on the model too. Each adds only to its own part of
-    ///     the stand-in, where the model is thin, at the top, or at the bottom, and at nought adds nothing.
+    ///     Patina #120: Mask Editor takes the thin parts and a height on the model too. Each adds only to its own part
+    ///     of the stand-in, where the model is thin, at the top, or at the bottom, and at nought adds nothing.
     /// </summary>
     [Theory]
     [InlineData("thin", "0.6", "left")]
