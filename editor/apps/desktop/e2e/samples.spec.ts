@@ -46,7 +46,7 @@ test('Start opens the Knot sample, a texture set for each of its materials', asy
 });
 
 /**
- * ⚠ Not on the sample: it ships at 2048 by 2048 with grunges in its masks, and a restore saves first, which evaluates it.
+ * ⚠ Not on the sample: it ships at 1024 by 1024 with grunges in its masks, and a restore saves first, which evaluates it.
  * CI's software GPU takes minutes over that, where a new project's document draws in seconds.
  */
 test('a snapshot is taken and put back, keeping how the document stood before', async () => {

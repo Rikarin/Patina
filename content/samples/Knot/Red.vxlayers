@@ -1,8 +1,8 @@
 version: 1
 name: Red
 model: knot.glb
-baseWidth: 2048
-baseHeight: 1024
+baseWidth: 1024
+baseHeight: 512
 sets:
   - name: Red
     channels:

@@ -30,6 +30,9 @@ public sealed class StackEvaluator(
     static readonly TimeSpan LostWorkerPause = TimeSpan.FromMilliseconds(20);
     static readonly TimeSpan WorkerPatience = TimeSpan.FromSeconds(30);
 
+    /// <summary>How often a running evaluation is asked whether something more urgent waits behind it.</summary>
+    static readonly TimeSpan SupersedeLook = TimeSpan.FromMilliseconds(50);
+
     readonly Dictionary<string, Told> told = new(StringComparer.Ordinal);
     readonly ConcurrentDictionary<string, Marks> marks = new(StringComparer.Ordinal);
     int untilTrim = TrimInterval;
@@ -402,10 +405,20 @@ public sealed class StackEvaluator(
             && work.Standing.Any(static entry => entry is { Open: true, View: not null })
                 ? 0
                 : PreviewSide;
-        var reply = await connection.SendAsync(
-            new() { Type = IpcTypes.StackEvaluate, StackEvaluate = new(session.Id, side, store.Root, work.Proxy) },
+        var evaluating = connection.SendAsync(
+            new() {
+                Type = IpcTypes.StackEvaluate,
+                StackEvaluate = new(session.Id, side, store.Root, work.Proxy, work.Revision)
+            },
             cancellationToken
         );
+        await SupersedeAsync(session, work, connection, evaluating, cancellationToken);
+        var reply = await evaluating;
+        if (reply.Superseded is true) {
+            // Nothing is published: the stack is still behind, and the next pass evaluates what waits first.
+            return;
+        }
+
         session.Publish(work, reply.StackResult!);
         viewport.Repainted(session.Id, work.Revision);
         viewport.Laid(session.Id, session.Set, session.UvSet);
@@ -413,6 +426,37 @@ public sealed class StackEvaluator(
         await CheckpointAsync(session, connection, work, held, state, cancellationToken);
         TrimNow();
     }
+
+    /// <summary>
+    ///     Stops an evaluation that a save or a read waits behind (#275, ADR 0040): one of another stack while a stack
+    ///     that is waited on is behind, or of an older revision of a stack that is waited on. It looks again every
+    ///     <see cref="SupersedeLook" /> while the evaluation runs, and asks once. A drag nobody waits on is never
+    ///     stopped, so the viewport keeps finishing its pictures.
+    /// </summary>
+    async Task SupersedeAsync(
+        StackSession session,
+        StackWork work,
+        IpcConnection connection,
+        Task evaluating,
+        CancellationToken cancellationToken
+    ) {
+        while (!evaluating.IsCompleted) {
+            await Task.WhenAny(evaluating, Task.Delay(SupersedeLook, cancellationToken));
+            if (evaluating.IsCompleted || !Superseded(session, work)) {
+                continue;
+            }
+
+            await connection.SendAsync(
+                new() { Type = IpcTypes.StackSupersede, StackSupersede = new(session.Id, work.Revision) },
+                cancellationToken
+            );
+            return;
+        }
+    }
+
+    bool Superseded(StackSession session, StackWork work) =>
+        session.WaitedBehind(work.Revision)
+        || sessions.All.Any(other => !ReferenceEquals(other, session) && other.WaitedBehind(null));
 
     /// <summary>
     ///     Bounds what a new Worker has to stamp again. Only between strokes: a canvas in the middle of a drag is a

@@ -4,6 +4,7 @@ using Patina.Graphs;
 using Patina.Ipc;
 using Patina.Library;
 using Patina.Viewport;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using Vixen.Authoring;
@@ -36,6 +37,10 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
     readonly PreviewWriter previews = new();
     readonly CompoundShelf compounds = new();
     readonly GraphPictures pictures = new();
+
+    /// <summary>Each stack's evaluation under way, and the revision it evaluates, for a supersede to stop.</summary>
+    readonly ConcurrentDictionary<string, (long Revision, CancellationTokenSource Stop)> running =
+        new(StringComparer.Ordinal);
 
     protected override string Kind => "stack";
 
@@ -87,8 +92,38 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         return IpcMessage.Ok(request.Id);
     }
 
+    /// <summary>
+    ///     Composites a stack, unless the Server supersedes it first (#275, ADR 0040): then it stops at the next of its
+    ///     parts and says so, and Vixen has filed nothing a later evaluation would trust.
+    /// </summary>
     public IpcMessage Evaluate(IpcMessage request) {
         var ask = request.StackEvaluate ?? throw new IpcException("stack.evaluate says nothing to evaluate.");
+        using CancellationTokenSource stop = new();
+        running[ask.Session] = (ask.Revision, stop);
+        try {
+            return Evaluate(request, ask, stop.Token);
+        } catch (OperationCanceledException) when (stop.IsCancellationRequested) {
+            return new() { Type = IpcTypes.Ok, Id = request.Id, Superseded = true };
+        } finally {
+            running.TryRemove(ask.Session, out _);
+        }
+    }
+
+    /// <summary>Stops a stack's evaluation of one revision, if it is the one running. Answered at once.</summary>
+    public IpcMessage Supersede(IpcMessage request) {
+        var ask = request.StackSupersede ?? throw new IpcException("stack.supersede names nothing.");
+        if (running.TryGetValue(ask.Session, out var held) && held.Revision == ask.Revision) {
+            try {
+                held.Stop.Cancel();
+            } catch (ObjectDisposedException) {
+                // It ended as this arrived.
+            }
+        }
+
+        return IpcMessage.Ok(request.Id);
+    }
+
+    IpcMessage Evaluate(IpcMessage request, StackEvaluate ask, CancellationToken stop) {
         var start = Stopwatch.GetTimestamp();
         var stack = Find(ask.Session);
         stack.Proxy = ask.Proxy;
@@ -102,7 +137,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
         // ⚠ The plan and not the extension: only the plan's outputs are sure to be readable afterwards, and
         // what the viewport needs is what this repair rewrote.
         if (viewport.Follows(ask.Session)) {
-            using var bake = stack.Run.Evaluate();
+            using var bake = stack.Run.EvaluateCancellable(null, stop);
             Feed(stack, bake);
             (ran, repaired, reused) = (bake.Ran.Length, bake.Repaired, bake.Reused);
         }
@@ -130,7 +165,7 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             ask.PreviewSide,
             []
         );
-        using var thumbnails = stack.Run.Evaluate(extended.Plan);
+        using var thumbnails = stack.Run.EvaluateCancellable(extended.Plan, stop);
         var stored = previews.Write(
             thumbnails,
             [..extended.Images.Select(static image => image.Image)],

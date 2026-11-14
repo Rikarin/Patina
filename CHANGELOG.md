@@ -299,6 +299,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A save, a copy, a find or a read of a document's pixels no longer waits for the engine to finish a picture nobody needs (#275, ADR 0040): an evaluation of another document, or of an older version of the one waited on, stops between parts of its work, and the document waited on goes first. Strokes are never dropped; only the stale picture is. And the Knot sample opens at 1024, so it evaluates in seconds on a machine without a GPU.
 - A mesh file that crashes the engine's mesh reader takes down only the GPU engine, which restarts, never the Server with every open document (#285, ADR 0039). A texture set's UDIM tile, whether its bake still fits its faces, and a bake's key were read from the mesh inside the Server; the GPU engine now reads each mesh once for all of them, beside its queue so nothing waits behind an evaluation, and the Server keeps the answer until the file changes. A file that took the engine down is not read again until it changes.
 - Restoring a snapshot, or taking one, of a document with edits just made no longer fails without saying why (#284): the engine is asked whether the document has unsaved edits, rather than trusting a tab that had not caught up, and they are saved first.
 - Saving a picture, a graph or the engine's shader caches no longer fails on Windows while the engine's shared graph and paint code is reading the file (#277): every read there lets another program write or delete the file meanwhile, as Patina's own reads already did.

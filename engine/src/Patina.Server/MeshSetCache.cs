@@ -5,8 +5,8 @@ using Patina.Library;
 namespace Patina.Server;
 
 /// <summary>
-///     What the Worker read of each mesh file's texture sets, kept until the file's bytes change (#285). The Server never
-///     parses a mesh (plan §3.1): a bad file may crash the native parser, and that must take down the Worker, which
+///     What the Worker read of each mesh file's texture sets, kept until the file's bytes change (#285). The Server
+///     never parses a mesh (plan §3.1): a bad file may crash the native parser, and that must take down the Worker, which
 ///     can die at any time, never the Server, which holds every session.
 /// </summary>
 /// <remarks>

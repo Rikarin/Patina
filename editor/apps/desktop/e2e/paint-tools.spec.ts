@@ -561,19 +561,26 @@ test('a dab on the strap paints the top under it only with the occlusion test of
 
   await colour('#e01810');
   const atlas = window.getByTestId('paint-canvas');
+  const map = async () => (await atlas.screenshot()).toString('base64');
+  // ⚠ Each picture is taken once the atlas has moved, not when the viewport is still: under load the viewport can
+  // be still before the dab has reached the atlas, and two pictures of the atlas before it are equal (#284).
+  const blank = await map();
   await window.getByTestId('paint-occlusion').click();
   await expect(window.getByTestId('paint-occlusion')).not.toBeChecked();
   await click(0.5, 0.5);
+  await expect.poll(async () => changed(blank, await map(), 8), { timeout: 60_000 }).toBeGreaterThan(0);
   await settled();
   await window.screenshot({ path: join(shots, 'occlusion-off-window.png') });
   await atlas.screenshot({ path: join(shots, 'occlusion-off-atlas.png') });
   const through = await atlas.screenshot();
 
   await window.getByTestId('app-undo').click();
+  await expect.poll(async () => changed(blank, await map(), 8), { timeout: 60_000 }).toBe(0);
   await settled();
   await window.getByTestId('paint-occlusion').click();
   await expect(window.getByTestId('paint-occlusion')).toBeChecked();
   await click(0.5, 0.5);
+  await expect.poll(async () => changed(blank, await map(), 8), { timeout: 60_000 }).toBeGreaterThan(0);
   await settled();
   await window.screenshot({ path: join(shots, 'occlusion-on-window.png') });
   await atlas.screenshot({ path: join(shots, 'occlusion-on-atlas.png') });

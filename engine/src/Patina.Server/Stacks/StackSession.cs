@@ -89,7 +89,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         }
     }
 
-    /// <summary>What the Worker read of the mesh's texture sets (#285), for the set's tile. None, the first tile.</summary>
+    /// <summary>What the Worker read of the mesh's texture sets (#285), for the set's tile. None: tile 1001.</summary>
     public IMeshSetReads? Meshes { get; init; }
 
     /// <summary>Whether this history copies a canvas out of a folder, which then has to stay.</summary>
@@ -297,8 +297,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                 );
             }
 
-            // ⚠ Outside the lock: after a mesh change this waits for the Worker to read the mesh once for the set's faces
-            // (#151) and its tile (#281), and strokes and edits must not wait on that.
+            // ⚠ Outside the lock: after a mesh change this waits for the Worker to read the mesh once for the set's
+            // faces (#151) and its tile (#281), and strokes and edits must not wait on that.
             return state with {
                 BakeStale = BakeFit.OfModel(bake.Folder, bake.Model, bake.Set),
                 Udim = Meshes is { } meshes ? SetUdim.Of(meshes, bake.Model, state.Set, bake.Set.UvSet) : OneTile.First
@@ -491,6 +491,19 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
             lock (Changing) {
                 return readers > 0;
             }
+        }
+    }
+
+    /// <summary>
+    ///     Whether something waits for this stack and the Worker is behind it: a save or a read that an evaluation of
+    ///     another stack, or of an older revision of this one, should not keep waiting (#275).
+    /// </summary>
+    /// <param name="evaluating">The revision being evaluated, or null when it is another stack's evaluation.</param>
+    public bool WaitedBehind(long? evaluating) {
+        lock (Changing) {
+            return readers > 0
+                && !closed
+                && (evaluating is { } running ? revision > running : settled != revision || forced);
         }
     }
 

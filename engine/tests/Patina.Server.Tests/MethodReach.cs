@@ -76,7 +76,7 @@ sealed class MethodReach : IDisposable {
         }
     }
 
-    /// <summary>What runs without being called by name: a type's static constructor, and an async method's body.</summary>
+    /// <summary>What runs without being called by name: a type's static constructor, an async method's body.</summary>
     void Companions(Method method) {
         var reader = method.Module.Reader;
         var type = reader.GetTypeDefinition(method.Definition.GetDeclaringType());
@@ -94,9 +94,11 @@ sealed class MethodReach : IDisposable {
         }
 
         if (reader.StringComparer.Equals(method.Definition.Name, ".ctor")) {
-            ReachAll(method.Module, method.Definition.GetDeclaringType(), method, static d => (d.Attributes & MethodAttributes.Virtual) != 0);
+            ReachAll(method.Module, method.Definition.GetDeclaringType(), method, static d => Virtual(d));
         }
     }
+
+    static bool Virtual(MethodDefinition method) => (method.Attributes & MethodAttributes.Virtual) != 0;
 
     void ReachAll(Module module, TypeDefinitionHandle type, Method by, Func<MethodDefinition, bool> which) {
         foreach (var handle in module.Reader.GetTypeDefinition(type).GetMethods()) {

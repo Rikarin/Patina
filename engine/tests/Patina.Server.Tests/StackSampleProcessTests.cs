@@ -53,7 +53,7 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
-    ///     Draws a sample's document at an eighth of its side, its shape kept. ⚠ The sample ships at 2048 by 2048, and
+    ///     Draws a sample's document at an eighth of its side, its shape kept. ⚠ The sample ships at 1024 by 1024, and
     ///     its grunges' splatters and slope blur at that size outlast the deadline on CI's software GPU: the plan is
     ///     the same at any size, and only the pixels it covers differ.
     /// </summary>

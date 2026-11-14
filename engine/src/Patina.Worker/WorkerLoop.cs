@@ -57,7 +57,11 @@ sealed class WorkerLoop(
         var stream = await IpcSocket.ConnectAsync(socketPath, ConnectTimeout, cancellationToken);
         IpcConnection? connection = null;
         connection = new(stream, (request, token) => AnswerAsync(connection!, request, token)) {
-            Immediate = static type => type is IpcTypes.Health or IpcTypes.BakeCancel or IpcTypes.BuildCancel,
+            Immediate = static type => type
+                is IpcTypes.Health
+                or IpcTypes.BakeCancel
+                or IpcTypes.BuildCancel
+                or IpcTypes.StackSupersede,
             Aside = static type => type is IpcTypes.MeshSets
         };
         await using (connection) {
@@ -126,6 +130,7 @@ sealed class WorkerLoop(
                 IpcTypes.MeshUvWire => UvWires.Answer(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),
+                IpcTypes.StackSupersede => stacks.Supersede(request),
                 IpcTypes.BuildStart => builds.Start(request, link),
                 IpcTypes.BuildCancel => builds.Cancel(request),
                 _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
