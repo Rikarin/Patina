@@ -23,7 +23,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { Activity } from '../core/activity';
 import { colourName } from '../core/colour-names';
 import { IconImports } from '../core/icons';
-import { blendName, channelName, isUserChannel, labelsOf, termName, valuesOf } from '../core/labels';
+import { blendName, channelName, isScalarChannel, labelsOf, termName, valuesOf } from '../core/labels';
 import { amount, percent, toDegrees, toRadians } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from '../library/library-store';
@@ -43,17 +43,6 @@ const Axes: readonly string[] = ['X', 'Y', 'Z'];
 
 /** The projections that decide where a fill covers: a decal and a path (#130, #133). */
 const SurfaceProjections: ReadonlySet<string> = new Set(['Decal', 'Path']);
-
-/** Four numbers as a swatch's value. */
-/** Channels that hold one number, which a slider says better than a colour. */
-const ScalarChannels: ReadonlySet<string> = new Set([
-  'roughness',
-  'metalness',
-  'height',
-  'occlusion',
-  'opacity',
-  'mask'
-]);
 
 /** What a graph is called by a layer: its file's name without the extension. */
 function stemOf(source: string): string | undefined {
@@ -1174,11 +1163,9 @@ export class LayerPanel {
     void this.store.edit({ op: 'setLayer', layer: layer.id, values: { [usage]: colourOf(hex) } });
   }
 
-  /** Whether a channel holds one number: a standard channel by its usage, a user channel unless it holds a color (#141). */
+  /** Whether a channel holds one number, which a slider sets. */
   protected isScalar(usage: string): boolean {
-    return isUserChannel(usage)
-      ? !this.store.state()?.channels.some(channel => channel.usage === usage && channel.colour)
-      : ScalarChannels.has(usage);
+    return isScalarChannel(usage, this.store.state()?.channels ?? []);
   }
 
   /** A grey channel's value, or what the hand says while it is on the slider. */

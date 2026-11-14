@@ -2,7 +2,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { leave, newLibrary, newProject, removeScratch } from './projects';
+import { leave, newLibrary, newProject, pick, removeScratch, showDocumentSettings } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const shots = resolve(__dirname, '../../../dist/e2e-results');
@@ -52,6 +52,7 @@ test('a mesh says what it is, and a texture set changes its size in Properties',
   await expect(window.getByTestId('texture-sets')).toBeVisible({ timeout: 60_000 });
 
   // The open set's size, in Properties' document section, which the change reaches the Texture Sets readout of.
+  await showDocumentSettings(window);
   const settings = window.getByTestId('texture-set-settings');
   await expect(settings).toBeVisible({ timeout: 30_000 });
   await expect(window.getByTestId('paint-document-mesh-facts')).toContainText('2 triangles');
@@ -76,6 +77,7 @@ test('a mesh says what it is, and a texture set changes its size in Properties',
 test('a user channel is added, named and painted as a color, and the engine evaluates it (#141)', async () => {
   test.setTimeout(180_000);
   await newProject(app, window, 'Users', twoColouredQuads());
+  await showDocumentSettings(window);
   await expect(window.getByTestId('texture-set-settings')).toBeVisible({ timeout: 60_000 });
 
   await window.getByTestId('paint-add-channel').click();
@@ -98,11 +100,20 @@ test('a user channel is added, named and painted as a color, and the engine eval
   // The engine compiles and evaluates the set with the user channel, so the open set says nothing is wrong with it.
   await expect(window.getByTestId('paint-picture')).toBeVisible({ timeout: 60_000 });
   await window.getByTestId('paint-document').screenshot({ path: join(shots, 'sets-5-user-channel.png') });
+
+  // The material's shading never shows a user channel, so the viewport's view list shows it on its own (#298).
+  const view = window.getByTestId('viewport-view');
+  await pick(window, 'viewport-view', 'Channel · Wetness');
+  await expect(view).toContainText('Channel · Wetness', { timeout: 60_000 });
+  await window.screenshot({ path: join(shots, 'sets-6-user-channel-on-mesh.png') });
+  await pick(window, 'viewport-view', 'Lit');
+  await expect(view).toContainText('Lit', { timeout: 30_000 });
 });
 
 test('the 2D view of a set that is not square is the set’s shape, and reads and fits as one', async () => {
   test.setTimeout(180_000);
   await newProject(app, window, 'Wide', twoColouredQuads());
+  await showDocumentSettings(window);
   await expect(window.getByTestId('texture-set-settings')).toBeVisible({ timeout: 60_000 });
   await window.getByTestId('texture-set-height').click();
   await window.getByRole('option', { name: '512', exact: true }).click();
