@@ -284,7 +284,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
                                 channel.Usage,
                                 channel.Default,
                                 channel.Format.ToString()
-                            )
+                            ) { Name = channel.Name, Colour = channel.Colour }
                         )
                     ],
                     StackDocuments.Layers(set.Layers),

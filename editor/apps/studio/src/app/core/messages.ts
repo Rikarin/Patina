@@ -20,6 +20,7 @@ const Words: Readonly<Record<string, string>> = {
   'stroke-repeated-channel': 'That stroke could not be painted. Try it again.',
   'channel-missing': 'This texture set has no {channel} channel. It may have been removed by another client.',
   'channel-last': '{channel} is this texture set’s only channel, so it can’t be removed. Add another channel first.',
+  'channel-not-user': '{channel} says what it is already, so only a user channel takes a name or a color flag.',
   'stroke-brush-refused': 'That brush can’t be used. {reason}',
   'stroke-canvas-larger':
     '{layer} holds {held} texels, of another shape than the texture set’s {size}, and painting it at the set’s shape would make it {target}, past the largest side. Set the size back to that shape to paint it.',

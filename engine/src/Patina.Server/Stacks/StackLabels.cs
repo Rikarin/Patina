@@ -17,6 +17,7 @@ static class StackLabels {
             StackAddChannel add => $"Add {Terms.Label(add.Usage)}",
             StackRemoveChannel remove => $"Remove {Terms.Label(remove.Usage)}",
             StackSetChannelFormat => "Channel depth",
+            StackSetUserChannel => "User channel",
             StackSetSeed => "Change seed",
             StackSetHeightNormal => "Height to normal",
             StackSetSettings => "Texture set settings",

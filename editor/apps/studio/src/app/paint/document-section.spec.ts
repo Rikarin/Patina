@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { chooseIn } from '../core/select-testing';
+import { learnChannels } from '../core/labels';
 import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
@@ -202,6 +203,39 @@ describe('DocumentSection', () => {
     }
     description?.dispatchEvent(new Event('change'));
     expect(edit).toHaveBeenCalledWith({ op: 'setSettings', description: 'Rust in the seams' });
+  });
+
+  it('names a user channel and marks it as a color, each only when it changed, and names it by that (#141)', async () => {
+    const { element, edit, fixture, paint } = await render();
+    expect(element.querySelector('[data-testid=paint-user-channel-name]')).toBeNull();
+
+    paint.state.set({
+      ...paint.state(),
+      channels: [...paint.state().channels, { usage: 'user2', format: 'Rgba8', name: 'Wetness', colour: false }]
+    } as never);
+    learnChannels([{ usage: 'user2', name: 'Wetness' }]);
+    paint.channel.set('user2');
+    await fixture.whenStable();
+    const name = element.querySelector<HTMLInputElement>('[data-testid=paint-user-channel-name]');
+    expect(name?.value).toBe('Wetness');
+    expect(element.querySelector('[data-testid=paint-channel-user2]')?.textContent.trim()).toBe('Wetness');
+
+    name?.dispatchEvent(new Event('change'));
+    expect(edit).not.toHaveBeenCalled();
+    if (name) {
+      name.value = ' Dirt ';
+    }
+    name?.dispatchEvent(new Event('change'));
+    expect(edit).toHaveBeenCalledWith({ op: 'setUserChannel', usage: 'user2', name: 'Dirt' });
+
+    element
+      .querySelector<HTMLElement>(
+        '[data-testid=paint-user-channel-colour] button, [data-testid=paint-user-channel-colour]'
+      )
+      ?.click();
+    await fixture.whenStable();
+    expect(edit).toHaveBeenCalledWith({ op: 'setUserChannel', usage: 'user2', colour: true });
+    learnChannels([]);
   });
 
   it('offers how the bake shades the set only once there is one', async () => {

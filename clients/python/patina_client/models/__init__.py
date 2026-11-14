@@ -333,6 +333,8 @@ from .stack_command_stack_set_seed import StackCommandStackSetSeed
 from .stack_command_stack_set_seed_op import StackCommandStackSetSeedOp
 from .stack_command_stack_set_settings import StackCommandStackSetSettings
 from .stack_command_stack_set_settings_op import StackCommandStackSetSettingsOp
+from .stack_command_stack_set_user_channel import StackCommandStackSetUserChannel
+from .stack_command_stack_set_user_channel_op import StackCommandStackSetUserChannelOp
 from .stack_command_stack_stroke import StackCommandStackStroke
 from .stack_command_stack_stroke_op import StackCommandStackStrokeOp
 from .stack_command_stack_unflatten_layer import StackCommandStackUnflattenLayer
@@ -775,6 +777,8 @@ __all__ = (
     "StackCommandStackSetSeedOp",
     "StackCommandStackSetSettings",
     "StackCommandStackSetSettingsOp",
+    "StackCommandStackSetUserChannel",
+    "StackCommandStackSetUserChannelOp",
     "StackCommandStackStroke",
     "StackCommandStackStrokeOp",
     "StackCommandStackUnflattenLayer",

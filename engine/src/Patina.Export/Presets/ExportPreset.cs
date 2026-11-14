@@ -299,11 +299,19 @@ public static class ExportMaps {
     public const string Opacity = "opacity";
     public const string Mask = "mask";
 
+    /// <summary>
+    ///     The user channels (#141), <c>user0</c> to <c>user7</c>, which a texture set writes under those names. They
+    ///     are Vixen's <c>ChannelAsset.UserUsages</c>, which this library does not reference; a Server test holds the
+    ///     two equal.
+    /// </summary>
+    public static IReadOnlyList<string> Users { get; } = [..Enumerable.Range(0, 8).Select(static at => $"user{at}")];
+
     // Between the two groups, as in ExportCompressions: SK7020 honours no suppression, and reads fifteen constants in a
     // row as a clone of IpcTypes.
     public static IReadOnlyList<string> All { get; } = [
         BaseColor, Normal, Roughness, Metalness, Occlusion, Height, Emissive, Opacity, Mask, Curvature, Thickness, Id,
-        Position, WorldNormal, BentNormal, BakedNormal, BakedOcclusion, Coverage, Specular, Diffuse, Glossiness
+        Position, WorldNormal, BentNormal, BakedNormal, BakedOcclusion, Coverage, Specular, Diffuse, Glossiness,
+        ..Users
     ];
 
     /// <summary>

@@ -23,7 +23,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { Activity } from '../core/activity';
 import { colourName } from '../core/colour-names';
 import { IconImports } from '../core/icons';
-import { blendName, channelName, labelsOf, termName, valuesOf } from '../core/labels';
+import { blendName, channelName, isUserChannel, labelsOf, termName, valuesOf } from '../core/labels';
 import { amount, percent, toDegrees, toRadians } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from '../library/library-store';
@@ -1111,8 +1111,11 @@ export class LayerPanel {
     void this.store.edit({ op: 'setLayer', layer: layer.id, values: { [usage]: colourOf(hex) } });
   }
 
+  /** Whether a channel holds one number: a standard channel by its usage, a user channel unless it holds a color (#141). */
   protected isScalar(usage: string): boolean {
-    return ScalarChannels.has(usage);
+    return isUserChannel(usage)
+      ? !this.store.state()?.channels.some(channel => channel.usage === usage && channel.colour)
+      : ScalarChannels.has(usage);
   }
 
   /** A grey channel's value, or what the hand says while it is on the slider. */

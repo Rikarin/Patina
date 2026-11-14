@@ -11,6 +11,7 @@ import {
   type ExportPresetDocument,
   type ExportPresetInfo,
   type ExportPresetSource,
+  type ExportSetOptions,
   type JobState,
   type LibraryReport,
   type PatinaClient,
@@ -39,10 +40,44 @@ export interface FileChoice {
   mips?: boolean | null;
 }
 
-/** One texture set's own changes over the whole export's: so far, its size. */
+/** One texture set's own changes over the whole export's: its size and its padding. */
 export interface SetChoice {
   /** The longest side of the set's files, or null for the export's. */
   size: number | null;
+  /**
+   * What fills the empty texels of the set's layout, and how far its islands grow first, or absent for the export's
+   * padding (#141). A color fill takes the export's color.
+   */
+  padding?: SetPadding | null;
+}
+
+/** A texture set's own padding: a mode and, for a mode that grows the islands first, how far. */
+export interface SetPadding {
+  mode: string;
+  distance: number;
+}
+
+/** Whether a set's choice changes anything over the export's. */
+function changesSet(choice: SetChoice): boolean {
+  return choice.size !== null || !!choice.padding;
+}
+
+/** A set's choice as the export's options and the project keep it: only what it changes. */
+function setOptionsOf(set: string, choice: SetChoice, colour: readonly number[]): ExportSetOptions {
+  const padding = choice.padding;
+  return {
+    set,
+    ...(choice.size !== null ? { size: choice.size } : {}),
+    ...(padding
+      ? {
+          padding: {
+            mode: padding.mode,
+            distance: usesDistance(padding.mode) ? padding.distance : 0,
+            colour: padding.mode === 'colour' ? [...colour] : []
+          }
+        }
+      : {})
+  };
 }
 
 /**
@@ -119,8 +154,8 @@ export function storedOf(settings: ExportSettings): ProjectExportSettings {
       }))
     ),
     perSet: Object.entries(settings.perSet)
-      .filter(([, choice]) => choice.size !== null)
-      .map(([set, choice]) => ({ set, size: choice.size }))
+      .filter(([, choice]) => changesSet(choice))
+      .map(([set, choice]) => setOptionsOf(set, choice, settings.colour))
   };
 }
 
@@ -146,7 +181,10 @@ export function settingsOf(stored: ProjectExportSettings, preset: ExportPresetIn
   }
   const perSet: Record<string, SetChoice> = {};
   for (const set of stored.perSet) {
-    perSet[set.set] = { size: set.size ?? null };
+    perSet[set.set] = {
+      size: set.size ?? null,
+      ...(set.padding ? { padding: { mode: set.padding.mode, distance: set.padding.distance } } : {})
+    };
   }
 
   return {
@@ -223,10 +261,10 @@ export function requestFor(
   if (merging) {
     options.merge = true;
   }
-  // Merged sets are one set of files at the export's size; a set's own size is kept for when they are not merged.
+  // Merged sets are one set of files at the export's size and padding; a set's own are kept for when they are not.
   const perSet = Object.entries(settings.perSet)
-    .filter(([set, choice]) => !merging && choice.size !== null && (!scope.sets || scope.sets.includes(set)))
-    .map(([set, choice]) => ({ set, size: choice.size }));
+    .filter(([set, choice]) => !merging && changesSet(choice) && (!scope.sets || scope.sets.includes(set)))
+    .map(([set, choice]) => setOptionsOf(set, choice, settings.colour));
   if (perSet.length > 0) {
     options.perSet = perSet;
   }

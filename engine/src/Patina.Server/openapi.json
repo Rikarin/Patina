@@ -18190,7 +18190,9 @@
         "required": [
           "usage",
           "default",
-          "format"
+          "format",
+          "name",
+          "colour"
         ],
         "type": "object",
         "properties": {
@@ -18210,6 +18212,14 @@
             "type": "string",
             "description": "How wide the texels are that a stroke paints it at (#19): one of the vocabulary\u0027s formats, Rgba8 unless the set\nsays more.",
             "default": "Rgba8"
+          },
+          "name": {
+            "type": "string",
+            "description": "What a person named a user channel (#141), such as Dirt; empty for the usage\u0027s own label."
+          },
+          "colour": {
+            "type": "boolean",
+            "description": "Whether a user channel holds a color rather than one number (#141); false for any other."
           }
         },
         "description": "A channel a stack writes."
@@ -18420,6 +18430,9 @@
             "$ref": "#/components/schemas/StackCommandStackSetChannelFormat"
           },
           {
+            "$ref": "#/components/schemas/StackCommandStackSetUserChannel"
+          },
+          {
             "$ref": "#/components/schemas/StackCommandStackSetSeed"
           },
           {
@@ -18482,6 +18495,7 @@
             "nestLayer": "#/components/schemas/StackCommandStackNestLayer",
             "removeChannel": "#/components/schemas/StackCommandStackRemoveChannel",
             "setChannelFormat": "#/components/schemas/StackCommandStackSetChannelFormat",
+            "setUserChannel": "#/components/schemas/StackCommandStackSetUserChannel",
             "setSeed": "#/components/schemas/StackCommandStackSetSeed",
             "duplicateLayers": "#/components/schemas/StackCommandStackDuplicateLayers",
             "pasteLayers": "#/components/schemas/StackCommandStackPasteLayers",
@@ -19536,6 +19550,40 @@
           }
         },
         "description": "Changes the texture set\u0027s settings, any of them, as one undo step. What is left out stays as it is. Together\nwith its channels and its name these are the set\u0027s settings, and the stack file is the one place they live."
+      },
+      "StackCommandStackSetUserChannel": {
+        "required": [
+          "usage",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "setUserChannel"
+            ],
+            "type": "string"
+          },
+          "usage": {
+            "type": "string",
+            "description": "Which channel, a user channel the set has."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What it is called; empty for its usage\u0027s own label."
+          },
+          "colour": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether it holds a color, painted and chosen as one, rather than one number."
+          }
+        },
+        "description": "Names a user channel and says whether it holds a color (#141), as one undo step, \u003Ci\u003EUser channel\u003C/i\u003E. A user\nchannel, \u0060user0\u0060 to \u0060user7\u0060, means nothing to the material: its name is what a person reads, and its\nusage stays what a preset and a graph name it by. What is left out stays as it is."
       },
       "StackCommandStackStroke": {
         "required": [

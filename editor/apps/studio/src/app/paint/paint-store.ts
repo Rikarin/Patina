@@ -36,7 +36,7 @@ import {
   unwrap
 } from '@patina/api-client';
 import { type AutosaveNote, autosaveNote } from '../core/autosave-note';
-import { learnTerms } from '../core/labels';
+import { learnChannels, learnTerms } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { milliseconds, toRadians } from '../core/numbers';
 import { RecoveryOffers } from '../core/recovery-offers';
@@ -976,6 +976,7 @@ export class PaintStore {
     this.link.set('live');
     this.notice.set(null);
     this.state.set(null);
+    learnChannels([]);
     this.worn.set(false);
     this.picture.set(null);
     clearTimeout(this.thumbnailWait);
@@ -2145,6 +2146,7 @@ export class PaintStore {
 
   private adopt(state: StackState): void {
     this.state.set(state);
+    learnChannels(state.channels);
     this.sequence = state.sequence;
     this.channel.update(channel =>
       state.channels.some(c => c.usage === channel) ? channel : (state.channels[0]?.usage ?? channel)

@@ -195,6 +195,47 @@ public sealed class StackEditorPropertyTests {
     }
 
     /// <summary>
+    ///     A user channel (#141) is added as any channel is, labelled User 2 until somebody names it, and its name and
+    ///     color flag are one undo step that the file keeps; a standard channel takes neither, refused by code.
+    /// </summary>
+    [Fact]
+    public void A_user_channel_takes_a_name_and_a_color_flag_and_a_standard_one_does_not() {
+        var session = new StackSession("/tmp/User.vxlayers", StackDocuments.Text(Sample()), static () => { });
+        Assert.Contains(StackDocuments.Vocabulary.Usages, static term => term is { Value: "user2", Label: "User 2" });
+
+        session.Apply(new([new StackAddChannel("user2")]));
+        session.Apply(new([new StackSetUserChannel("user2", "  Wetness ", true)]));
+
+        var user = session.State.Channels.Single(static channel => channel.Usage == "user2");
+        Assert.Equal(("Wetness", true, "User channel"), (user.Name, user.Colour, session.Steps.Done[^1].Label));
+        Assert.Equal([0f, 0f, 0f, 1f], user.Default);
+        Assert.Contains("name: \"Wetness\"", session.Text, StringComparison.Ordinal);
+
+        session.Apply(new([new StackSetUserChannel("user2", Colour: false)]));
+        var kept = session.State.Channels.Single(static channel => channel.Usage == "user2");
+        Assert.Equal(("Wetness", false), (kept.Name, kept.Colour));
+
+        session.Undo();
+        session.Undo();
+        Assert.Equal(string.Empty, session.State.Channels.Single(static channel => channel.Usage == "user2").Name);
+        var standard = session.State.Channels[0].Usage;
+        var refused = Assert.Throws<StackEditRefusedException>(() =>
+            session.Apply(new([new StackSetUserChannel(standard, "Paint")]))
+        );
+        Assert.Equal(Refusals.ChannelNotUser, refused.Code);
+        Assert.Equal(
+            Refusals.ChannelMissing,
+            Assert.Throws<StackEditRefusedException>(() => session.Apply(new([new StackSetUserChannel("user5")])))
+                .Code
+        );
+    }
+
+    /// <summary>The user channels an export reads are the ones a texture set writes, under the same names.</summary>
+    [Fact]
+    public void An_export_reads_every_user_channel_a_set_writes() =>
+        Assert.Equal(ChannelAsset.UserUsages, Patina.Export.Presets.ExportMaps.Users);
+
+    /// <summary>
     ///     A stack's history is a list with labels, and a jump through it is one event that lands where single steps
     ///     would.
     /// </summary>

@@ -6537,6 +6537,10 @@ export interface components {
        * @default Rgba8
        */
       format: string;
+      /** @description What a person named a user channel (#141), such as Dirt; empty for the usage's own label. */
+      name: string;
+      /** @description Whether a user channel holds a color rather than one number (#141); false for any other. */
+      colour: boolean;
     };
     /** @description What Apply Channels to All Sets did, one entry for each other texture set of the model. */
     StackChannelsApplied: {
@@ -6634,6 +6638,7 @@ export interface components {
       | components['schemas']['StackCommandStackNestLayer']
       | components['schemas']['StackCommandStackRemoveChannel']
       | components['schemas']['StackCommandStackSetChannelFormat']
+      | components['schemas']['StackCommandStackSetUserChannel']
       | components['schemas']['StackCommandStackSetSeed']
       | components['schemas']['StackCommandStackDuplicateLayers']
       | components['schemas']['StackCommandStackPasteLayers']
@@ -7088,6 +7093,21 @@ export interface components {
       bakedOcclusion?: null | string;
       /** @description What the set is for, in a person's words (#141), which nothing evaluates or exports. Empty takes it away. */
       description?: null | string;
+    };
+    /**
+     * @description Names a user channel and says whether it holds a color (#141), as one undo step, <i>User channel</i>. A user
+     *     channel, `user0` to `user7`, means nothing to the material: its name is what a person reads, and its
+     *     usage stays what a preset and a graph name it by. What is left out stays as it is.
+     */
+    StackCommandStackSetUserChannel: {
+      /** @enum {string} */
+      op: 'setUserChannel';
+      /** @description Which channel, a user channel the set has. */
+      usage: string;
+      /** @description What it is called; empty for its usage's own label. */
+      name?: null | string;
+      /** @description Whether it holds a color, painted and chosen as one, rather than one number. */
+      colour?: null | boolean;
     };
     /**
      * @description Part of a stroke: where the brush went, never what it left behind. A drag sends several of these with one
