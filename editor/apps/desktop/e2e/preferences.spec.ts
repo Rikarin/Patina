@@ -1,7 +1,8 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { removeScratch } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const softwareWebGl = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
@@ -29,7 +30,7 @@ test.beforeEach(async () => {
 
 test.afterEach(async () => {
   await app.close();
-  rmSync(scratch, { recursive: true, force: true });
+  removeScratch(scratch);
 });
 
 test('Preferences opens from its key, changes the theme and keeps autosave with the engine', async () => {

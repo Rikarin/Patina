@@ -48,11 +48,7 @@ public sealed partial class BakeProcessTests : IDisposable {
         http.Dispose();
         restarted.Dispose();
         File.Delete(socketPath);
-        try {
-            folder.Delete(true);
-        } catch (IOException) {
-            // A Worker's last write can land while the folder is going, and a temp folder left behind is no failure.
-        }
+        Patina.Testing.TempFolders.Delete(folder.FullName);
     }
 
     Process Start(string dll, params string[] arguments) {

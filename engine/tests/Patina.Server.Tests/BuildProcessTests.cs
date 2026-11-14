@@ -39,11 +39,7 @@ public sealed class BuildProcessTests : IDisposable {
         http.Dispose();
         restarted.Dispose();
         File.Delete(socketPath);
-        try {
-            folder.Delete(true);
-        } catch (IOException) {
-            // A Worker's last write can land while the folder is going.
-        }
+        Patina.Testing.TempFolders.Delete(folder.FullName);
     }
 
     Process Start(string dll, params string[] arguments) {

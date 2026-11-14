@@ -1,5 +1,6 @@
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 
 /** Answers the system's next save dialog, which a test cannot click. */
@@ -149,6 +150,37 @@ export function ending(app: ElectronApplication, waitMs = 30_000): Promise<void>
       resolve();
     });
   });
+}
+
+/**
+ * Removes a test's scratch folder once {@link leave} has ended the app. A file the engine's processes or the system's
+ * scanner still hold can outlast a five-second retry (`layers.spec.ts` failed its cleanup with EPERM, #294), so this
+ * retries for longer, and a folder that still will not go is left for {@link sweepScratch} rather than failing a test
+ * whose work is done.
+ */
+export function removeScratch(folder: string): void {
+  try {
+    rmSync(folder, { recursive: true, force: true, maxRetries: 80, retryDelay: 250 });
+  } catch (error) {
+    test.info().annotations.push({ type: 'scratch left', description: `${folder}: ${(error as Error).message}` });
+  }
+}
+
+/** Removes the scratch folders e2e runs over a day ago left in the temp folder (#294); none is in use by now. */
+export function sweepScratch(): void {
+  // As mkdtempSync names them; a name ending in a number is a running Server's own folder.
+  const made = /^patina-[a-z0-9-]+-[A-Za-z0-9]{6}$/u;
+  const before = Date.now() - 24 * 60 * 60 * 1000;
+  for (const name of readdirSync(tmpdir())) {
+    const folder = join(tmpdir(), name);
+    try {
+      if (made.test(name) && !/-\d+$/u.test(name) && statSync(folder).mtimeMs < before) {
+        rmSync(folder, { recursive: true, force: true });
+      }
+    } catch {
+      // In use or gone: the next run tries again.
+    }
+  }
 }
 
 /** Ends the app with no one to answer its question about unsaved paint. */

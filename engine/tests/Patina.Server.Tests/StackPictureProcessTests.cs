@@ -4,7 +4,7 @@ using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
 
-/// <summary>A library picture, decoded by the real Worker and served by the Server, which decodes none (#293).</summary>
+/// <summary>A library picture, decoded by the real Worker and served by a Server that decodes none (#293).</summary>
 public sealed partial class StackProcessTests {
     [Fact]
     public async Task A_library_picture_is_decoded_by_the_Worker_and_a_broken_one_refused() {

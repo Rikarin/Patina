@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { pick, ProjectKinds } from './projects';
+import { pick, ProjectKinds, removeScratch } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -27,7 +27,7 @@ test.beforeAll(() => {
 });
 
 test.afterAll(() => {
-  rmSync(scratch, { recursive: true, force: true });
+  removeScratch(scratch);
 });
 
 test.beforeEach(async () => {
