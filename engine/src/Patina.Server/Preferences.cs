@@ -64,7 +64,7 @@ public sealed class Preferences {
     public ServerPreferences Set(ServerPreferences preferences) {
         ArgumentNullException.ThrowIfNull(preferences);
         Check(preferences.Autosave);
-        preferences = preferences with { Autosave = Placed(preferences.Autosave) };
+        preferences = new(Placed(preferences.Autosave));
         lock (gate) {
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
             LibraryFiles.Replace(
