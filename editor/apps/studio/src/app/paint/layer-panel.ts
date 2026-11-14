@@ -560,6 +560,18 @@ function stemOf(source: string): string | undefined {
                     </span>
                   </ng-template>
                 </xui-select>
+                @if (resultsOf(entry.layer.generator); as results) {
+                  <xui-select
+                    aria-label="Mask layer generator result"
+                    data-testid="paint-mask-layer-result"
+                    placeholder="Choose a result"
+                    title="Which of the generator’s results the mask reads"
+                    [filterable]="false"
+                    [items]="results"
+                    [value]="entry.layer.output || null"
+                    (valueChange)="setEntry(layer, entry.index, { output: $event ?? '' })"
+                  />
+                }
                 <ptn-setting-knobs
                   testId="paint-mask-layer-knob-"
                   [parameters]="knobsOf(entry.layer.generator)"
@@ -738,6 +750,18 @@ function stemOf(source: string): string | undefined {
                   </span>
                 </ng-template>
               </xui-select>
+              @if (resultsOf(layer.mask.generator); as results) {
+                <xui-select
+                  aria-label="Generator result"
+                  data-testid="paint-mask-result"
+                  placeholder="Choose a result"
+                  title="Which of the generator’s results the mask reads"
+                  [filterable]="false"
+                  [items]="results"
+                  [value]="layer.mask.output || null"
+                  (valueChange)="setMask(layer, { output: $event ?? '' })"
+                />
+              }
               <ptn-setting-knobs
                 testId="paint-mask-knob-"
                 [parameters]="knobsOf(layer.mask.generator)"
@@ -1373,6 +1397,11 @@ export class LayerPanel {
   }
 
   /** Sets one knob of a generator layer in a mask; the Server keeps the others. */
+  /** The results of a generator that writes several, which a mask names the one of (#120); null for one. */
+  protected resultsOf(generator: string): readonly string[] | null {
+    return this.store.kindOf(generator)?.outputs ?? null;
+  }
+
   protected setEntryKnob(layer: StackLayer, index: number, name: string, value: string): void {
     this.setEntry(layer, index, { parameters: { [name]: value } });
   }

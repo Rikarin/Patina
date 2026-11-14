@@ -38,6 +38,9 @@ class StackFilterKind:
                 reads.
             settings (list[GraphSettingDefinition]): What it takes as text.
             inputs (list[StackFilterInput] | None | Unset): The images it reads, its subject first. Empty for a generator.
+            outputs (list[str] | None | Unset): The pictures it writes, by name, when it writes more than one, so a
+                generator read for one picture is told which
+                (#120); null when it writes one.
      """
 
     node: str
@@ -47,6 +50,7 @@ class StackFilterKind:
     ports: list[GraphPortDefinition]
     settings: list[GraphSettingDefinition]
     inputs: list[StackFilterInput] | None | Unset = UNSET
+    outputs: list[str] | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -92,6 +96,16 @@ class StackFilterKind:
         else:
             inputs = self.inputs
 
+        outputs: list[str] | None | Unset
+        if isinstance(self.outputs, Unset):
+            outputs = UNSET
+        elif isinstance(self.outputs, list):
+            outputs = self.outputs
+
+
+        else:
+            outputs = self.outputs
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -105,6 +119,8 @@ class StackFilterKind:
         })
         if inputs is not UNSET:
             field_dict["inputs"] = inputs
+        if outputs is not UNSET:
+            field_dict["outputs"] = outputs
 
         return field_dict
 
@@ -169,6 +185,24 @@ class StackFilterKind:
         inputs = _parse_inputs(d.pop("inputs", UNSET))
 
 
+        def _parse_outputs(data: object) -> list[str] | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                outputs_type_1 = cast(list[str], data)
+
+                return outputs_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(list[str] | None | Unset, data)
+
+        outputs = _parse_outputs(d.pop("outputs", UNSET))
+
+
         stack_filter_kind = cls(
             node=node,
             name=name,
@@ -177,6 +211,7 @@ class StackFilterKind:
             ports=ports,
             settings=settings,
             inputs=inputs,
+            outputs=outputs,
         )
 
 

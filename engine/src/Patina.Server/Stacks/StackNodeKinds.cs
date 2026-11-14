@@ -12,7 +12,7 @@ namespace Patina.Server.Stacks;
 ///     The nodes a stack can run, as a client is offered them: its filters, its sources, its mask effects, and what
 ///     each takes, read from the registry and compounds its compile reads.
 /// </summary>
-static class StackNodeKinds {
+public static class StackNodeKinds {
     /// <summary>
     ///     Every adjustment a stack can run, read from the same registry and compounds its compile reads, each with
     ///     what its node declares, so that a client shows what will run.
@@ -21,11 +21,11 @@ static class StackNodeKinds {
 
     /// <summary>
     ///     What an image input can read as a generator: every node and shipped compound that reads no image and writes
-    ///     one, less the two an input names by their own sources, an image and a mesh map.
+    ///     at least one, less the two an input names by their own sources, an image and a mesh map.
     /// </summary>
     public static IReadOnlyList<StackFilterKind> Sources() =>
         Kinds(static type => type.Path is not ("Source/Bitmap" or "Source/Mesh Map")
-            && type.Ports.Count(static port => port is { Direction: PortDirection.Output, Kind: PortKind.Image }) == 1
+            && Pictures(type).Count > 0
             && !type.Ports.Any(static port => port is { Direction: PortDirection.Input, Kind: PortKind.Image })
         );
 
@@ -88,8 +88,15 @@ static class StackNodeKinds {
                             input.Channel
                         )
                     )
-            ]
+            ],
+            Pictures(type) is { Count: > 1 } pictures ? pictures : null
         );
+
+    /// <summary>The pictures a node writes, by port name, in the order it declares them.</summary>
+    static List<string> Pictures(NodeTypeDefinition type) => [
+        ..type.Ports.Where(static port => port is { Direction: PortDirection.Output, Kind: PortKind.Image })
+            .Select(static port => port.Name)
+    ];
 
     /// <summary>The usages an Output node takes, which is the one list of what a channel can be.</summary>
     public static IReadOnlyList<string> Usages() {
@@ -98,6 +105,7 @@ static class StackNodeKinds {
         return [..registry.Get("Output/Output").Setting("Usage")!.Accepted];
     }
 
+    /// <summary>The knobs of each shipped generator, by its path.</summary>
     public static Dictionary<string, IReadOnlyList<GraphSettingDefinition>> GeneratorParameters() {
         var library = LayerStackCompiler.Library(out _);
         return TextureCompoundLibrary.Shipped

@@ -46,6 +46,9 @@ class StackMask:
                 its mask for when it is switched on again, and still keeps to the meshes it is limited to. Default: True.
             inside (float): With colours, what the mask is where they are: its output value, 0 to 1. Default: 1.0.
             outside (float): With colours, what the mask is everywhere else: its background, 0 to 1. Default: 0.0.
+            output (str): Which picture of a generator that writes several is the mask, by its name in the generator's
+                Outputs, or empty
+                for its only one. Another generator starts from empty. Default: ''.
             anchor (None | StackAnchorRef | Unset):
             colours (list[list[float]] | None | Unset): The colours a bake or texture mask selects from its picture, each
                 three numbers, or null for all of it. A texel
@@ -72,6 +75,7 @@ class StackMask:
     enabled: bool = True
     inside: float = 1.0
     outside: float = 0.0
+    output: str = ''
     anchor: None | StackAnchorRef | Unset = UNSET
     colours: list[list[float]] | None | Unset = UNSET
     effects: list[StackMaskEffect] | None | Unset = UNSET
@@ -112,6 +116,8 @@ class StackMask:
         inside = self.inside
 
         outside = self.outside
+
+        output = self.output
 
         anchor: dict[str, Any] | None | Unset
         if isinstance(self.anchor, Unset):
@@ -203,6 +209,7 @@ class StackMask:
             "enabled": enabled,
             "inside": inside,
             "outside": outside,
+            "output": output,
         })
         if anchor is not UNSET:
             field_dict["anchor"] = anchor
@@ -252,6 +259,8 @@ class StackMask:
         inside = d.pop("inside")
 
         outside = d.pop("outside")
+
+        output = d.pop("output")
 
         def _parse_anchor(data: object) -> None | StackAnchorRef | Unset:
             if data is None:
@@ -416,6 +425,7 @@ class StackMask:
             enabled=enabled,
             inside=inside,
             outside=outside,
+            output=output,
             anchor=anchor,
             colours=colours,
             effects=effects,
