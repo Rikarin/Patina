@@ -41,6 +41,7 @@ export type ViewportFollow = components['schemas']['ViewportFollow'];
 export type ViewportScreenshot = components['schemas']['ViewportScreenshot'];
 export type StackChecks = components['schemas']['StackChecks'];
 export type CheckProblem = components['schemas']['CheckProblem'];
+export type CheckFile = components['schemas']['CheckFile'];
 export type CheckTarget = components['schemas']['CheckTarget'];
 export type ProjectCheckSettings = components['schemas']['ProjectCheckSettings'];
 export type GraphState = components['schemas']['GraphState'];

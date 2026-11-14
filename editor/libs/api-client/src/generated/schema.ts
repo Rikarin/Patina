@@ -3268,6 +3268,32 @@ export interface components {
        */
       days: number;
     };
+    /** @description One file an export writes for a texture set, and what it takes on a GPU (#159). */
+    CheckFile: {
+      /** @description Its name as the export writes it, with its extension. */
+      file: string;
+      /** @description Its format, one of the export formats. */
+      format: string;
+      /** @description What its blocks hold, or `none`. */
+      compression: string;
+      /**
+       * Format: int32
+       * @description Its width, in texels, as it is written.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height.
+       */
+      height: number;
+      /** @description Whether it carries a mip chain. */
+      mips: boolean;
+      /**
+       * Format: int64
+       * @description The GPU memory it takes, its mips included.
+       */
+      bytes: number;
+    };
     /** @description One problem a texture set has before it is exported. */
     CheckProblem: {
       /** @description One of CheckCodes. */
@@ -6552,6 +6578,8 @@ export interface components {
        *     first.
        */
       problems: components['schemas']['CheckProblem'][];
+      /** @description Each file the export writes for the set, with the GPU memory it takes. */
+      files: components['schemas']['CheckFile'][];
     };
     /** @description Layers copied out of a stack, which a StackPasteLayers names. */
     StackClip: {

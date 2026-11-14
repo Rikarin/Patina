@@ -11,6 +11,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.check_file import CheckFile
   from ..models.check_problem import CheckProblem
 
 
@@ -38,6 +39,7 @@ class StackChecks:
             problems (list[CheckProblem]): What is wrong, in the order of IReadOnlyList&lt;string&gt; CheckCodes.All, which
                 puts the project's limits, the errors,
                 first.
+            files (list[CheckFile]): Each file the export writes for the set, with the GPU memory it takes.
      """
 
     stack: str
@@ -50,6 +52,7 @@ class StackChecks:
     memory_budget: int
     preset: str
     problems: list[CheckProblem]
+    files: list[CheckFile]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -57,6 +60,7 @@ class StackChecks:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.check_file import CheckFile # noqa: PLC0415
         from ..models.check_problem import CheckProblem # noqa: PLC0415
         stack = self.stack
 
@@ -83,6 +87,13 @@ class StackChecks:
 
 
 
+        files = []
+        for files_item_data in self.files:
+            files_item = files_item_data.to_dict()
+            files.append(files_item)
+
+
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -97,6 +108,7 @@ class StackChecks:
             "memoryBudget": memory_budget,
             "preset": preset,
             "problems": problems,
+            "files": files,
         })
 
         return field_dict
@@ -105,6 +117,7 @@ class StackChecks:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.check_file import CheckFile # noqa: PLC0415
         from ..models.check_problem import CheckProblem # noqa: PLC0415
         d = dict(src_dict)
         stack = d.pop("stack")
@@ -135,6 +148,16 @@ class StackChecks:
             problems.append(problems_item)
 
 
+        files = []
+        _files = d.pop("files")
+        for files_item_data in (_files):
+            files_item = CheckFile.from_dict(files_item_data)
+
+
+
+            files.append(files_item)
+
+
         stack_checks = cls(
             stack=stack,
             set_=set_,
@@ -146,6 +169,7 @@ class StackChecks:
             memory_budget=memory_budget,
             preset=preset,
             problems=problems,
+            files=files,
         )
 
 

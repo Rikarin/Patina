@@ -152,6 +152,12 @@ const CheckWords: Readonly<Record<string, string>> = {
   'texture-over-budget': 'Takes {bytes} of GPU memory as {preset} writes it, over the budget of {budget}.',
   'texture-too-large': 'Is {width} × {height} texels, larger than the limit of {limit}.',
   'channel-missing': '{preset} reads {channel} into {file}, and this set has no {channel}, so a default fills it.',
+  'packing-mixed': '{file} packs {color} with {data}, so one of them is held in the other’s encoding.',
+  'space-data-srgb': '{file} holds {channel} in sRGB, which an engine reads as color, not as data.',
+  'space-color-linear': '{file} holds {channel} as 8-bit linear numbers, which band in the darks.',
+  'compression-normal':
+    '{file} holds a normal in {compression} blocks, which show on a lit surface. BC5 or BC7 keep it.',
+  'mips-missing': '{file} has no mips, so an engine samples it as it is and it shimmers at a distance.',
   'density-low': 'Has {density} texels per unit, short of the {target} the project asks for.',
   'density-high': 'Has {density} texels per unit, more than the {target} the project asks for.',
   'bake-stale':
