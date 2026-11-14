@@ -190,7 +190,13 @@ test('a graph its texturing project does not ship exports on its own from the Do
     await expect(window.getByTestId('export-scope')).toHaveText(scope);
     await window.getByTestId('export-preset').click();
     await window.getByRole('option', { name: 'glTF 2.0' }).click();
+    // The last export's Done stays on screen until the page draws again, so this one is told apart by its build.
+    const progress = window.getByTestId('export-progress');
+    const last = (await progress.count()) > 0 ? await progress.getAttribute('data-build') : null;
     await window.getByTestId('export-start').click();
+    if (last !== null) {
+      await expect(progress).not.toHaveAttribute('data-build', last);
+    }
     await expect(window.getByTestId('export-state')).toHaveText('Done', { timeout: 120_000 });
     await expect(window.getByTestId('export-report-failed')).toHaveText('0');
     await window.keyboard.press('Escape');

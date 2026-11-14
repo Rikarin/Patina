@@ -671,7 +671,7 @@ function lanesOf(hex: string): number[] {
           }
 
           @if (store.build(); as build) {
-            <div class="flex flex-col gap-1.5" data-testid="export-progress">
+            <div class="flex flex-col gap-1.5" data-testid="export-progress" [attr.data-build]="build.id">
               <div class="flex items-center gap-2 text-xs">
                 <span class="readout" data-testid="export-state">{{ stateName(build.state) }}</span>
                 <span class="text-foreground-muted min-w-0 flex-1 truncate" data-testid="export-current">

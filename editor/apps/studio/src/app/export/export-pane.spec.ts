@@ -195,6 +195,26 @@ describe('ExportPane', () => {
     expect(text('export-report-built')).toEqual(['1']);
   });
 
+  it('names the build its progress follows, so the next export’s Done is never read as the last one’s', async () => {
+    const ids = ['b1', 'b2'];
+    const { fixture, store, hear } = setup({
+      'POST builds': () => Response.json({ ...build, id: ids.shift() }, { status: 202 })
+    });
+    const progress = () =>
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('[data-testid="export-progress"]')
+        ?.getAttribute('data-build');
+    await store.start({ presets: ['unreal'] });
+    hear({ ...build, state: 'done', progress: 1 });
+    await settled(fixture);
+    expect(progress()).toBe('b1');
+
+    // Until the page draws again the last build's Done is still there, under the last build's id.
+    await store.start({ presets: ['unreal'] });
+    await settled(fixture);
+    expect(progress()).toBe('b2');
+  });
+
   it('stays quiet when a build refused at the start has no report', async () => {
     const { fixture, text, store, hear } = setup({
       'GET builds/b1/report': () => Response.json({ detail: 'no report' }, { status: 404 })
