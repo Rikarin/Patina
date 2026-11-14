@@ -47,7 +47,7 @@ public static partial class Refusals {
 
     /// <summary>A file that is not one of <paramref name="wanted" />: named by its name, never where it is.</summary>
     public static ProblemHttpResult WrongKind(string file, IEnumerable<string> wanted, int status) {
-        var name = Path.GetFileName(file);
+        var name = LastPart(file);
         var kinds = string.Join(" or ", wanted);
         return Problem(
             $"'{name}' is not a {kinds} file.",
@@ -60,10 +60,10 @@ public static partial class Refusals {
     /// <summary>A file a request named that is not there, by its name alone: where it was is the asker's.</summary>
     public static ProblemHttpResult NoFile(string file, int status = StatusCodes.Status404NotFound) =>
         Problem(
-            $"There is no file '{Path.GetFileName(file)}'.",
+            $"There is no file '{LastPart(file)}'.",
             status,
             FileMissing,
-            new Dictionary<string, string> { ["file"] = Path.GetFileName(file) }
+            new Dictionary<string, string> { ["file"] = LastPart(file) }
         );
 
     /// <summary>
@@ -170,9 +170,18 @@ public static partial class Refusals {
             .Replace(
                 sentence,
                 static match => match.Groups[1].Value
-                    + Path.GetFileName(match.Groups[2].Value.TrimEnd('\\', '/'))
+                    + LastPart(match.Groups[2].Value)
                     + match.Groups[1].Value
             );
+
+    /// <summary>
+    ///     The last part of a path written on any system: a Server on Linux reads a Windows path in a sentence too,
+    ///     where <see cref="Path.GetFileName(string)" /> splits only at <c>/</c>.
+    /// </summary>
+    internal static string LastPart(string path) {
+        var trimmed = path.TrimEnd('\\', '/');
+        return trimmed[(trimmed.LastIndexOfAny(['\\', '/']) + 1)..];
+    }
 
     /// <summary>A path in quotes that starts at a drive, a share or the root, and has a folder in it.</summary>
     [GeneratedRegex("""(['"])((?:[A-Za-z]:[\\/]|\\\\|/)[^'"]*[\\/][^'"]*)\1""")]

@@ -325,7 +325,7 @@ public static partial class Refusals {
             e.Message,
             StatusCodes.Status409Conflict,
             FileBusy,
-            new Dictionary<string, string> { ["file"] = path is { Length: > 0 } ? Path.GetFileName(path) : "That file" }
+            new Dictionary<string, string> { ["file"] = path is { Length: > 0 } ? LastPart(path) : "That file" }
         );
     }
 
