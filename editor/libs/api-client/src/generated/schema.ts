@@ -304,7 +304,7 @@ export interface paths {
     };
     /** The bake setup the viewport shows, and the key to its colors. */
     get: operations['GetBakePreview'];
-    /** Lays a bake's setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. An empty low mesh takes it off. */
+    /** Lays a bake's setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. A project takes the meshes, cage and options from its own bake settings, as its bake plan does. An empty low mesh with no project takes it off. */
     put: operations['PreviewBakeInViewport'];
     post?: never;
     delete?: never;
@@ -8903,13 +8903,24 @@ export interface components {
     };
     /**
      * @description A bake's setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,
-     *     and what of it to draw. Paths on the Server's machine, as in a bake request.
+     *     and what of it to draw. Paths on the Server's machine, as in a bake request, or a project whose own settings the
+     *     Server reads them from, as it plans that project's bake (#296).
      */
     ViewportBakePreview: {
+      /**
+       * @description A project, by its path below `projects/`, whose own bake settings give the meshes, the cage and the
+       *     options in place of those sent, as `GET /library/project/bake/plan` works them out; null to send them.
+       */
+      project?: null | string;
+      /**
+       * @description With a project, a document by its path below the library, whose mesh the bake is onto; null for the mesh
+       *     the project's bake plan takes.
+       */
+      document?: null | string;
       /** @description The detailed meshes, in order. */
       high: string[];
       /**
-       * @description The mesh baked onto, or empty to take the preview off.
+       * @description The mesh baked onto, or empty with no project to take the preview off.
        * @default
        */
       low: string;
@@ -10175,6 +10186,15 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['BakePreviewState'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
       /** @description Not Found */

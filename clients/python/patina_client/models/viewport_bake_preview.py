@@ -25,11 +25,12 @@ T = TypeVar("T", bound="ViewportBakePreview")
 @_attrs_define
 class ViewportBakePreview:
     """ A bake's setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,
-    and what of it to draw. Paths on the Server's machine, as in a bake request.
+    and what of it to draw. Paths on the Server's machine, as in a bake request, or a project whose own settings the
+    Server reads them from, as it plans that project's bake (#296).
 
         Attributes:
             high (list[str]): The detailed meshes, in order.
-            low (str): The mesh baked onto, or empty to take the preview off. Default: ''.
+            low (str): The mesh baked onto, or empty with no project to take the preview off. Default: ''.
             options (BakeOptions): How a bake runs, with no meshes in it: what a project keeps between bakes and every
                 client sends. Each map's
                 own settings are a part of their own.
@@ -46,6 +47,12 @@ class ViewportBakePreview:
             shell_opacity (float): How opaque the shell of the reach is, 0 to 1: its fill, not its edges or rays. Default:
                 0.12.
             high_opacity (float): How opaque the high mesh is, 0 to 1, in its parts' colours or plain. Default: 0.25.
+            project (None | str | Unset): A project, by its path below `projects/`, whose own bake settings give the meshes,
+                the cage and the
+                options in place of those sent, as `GET /library/project/bake/plan` works them out; null to send them.
+            document (None | str | Unset): With a project, a document by its path below the library, whose mesh the bake is
+                onto; null for the mesh
+                the project's bake plan takes.
             cage (None | str | Unset): A cage, or null for the ray distances.
             material (None | str | Unset): The texture set of the low mesh, or null for the whole mesh.
      """
@@ -60,6 +67,8 @@ class ViewportBakePreview:
     neutral: bool = True
     shell_opacity: float = 0.12
     high_opacity: float = 0.25
+    project: None | str | Unset = UNSET
+    document: None | str | Unset = UNSET
     cage: None | str | Unset = UNSET
     material: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -92,6 +101,18 @@ class ViewportBakePreview:
 
         high_opacity = self.high_opacity
 
+        project: None | str | Unset
+        if isinstance(self.project, Unset):
+            project = UNSET
+        else:
+            project = self.project
+
+        document: None | str | Unset
+        if isinstance(self.document, Unset):
+            document = UNSET
+        else:
+            document = self.document
+
         cage: None | str | Unset
         if isinstance(self.cage, Unset):
             cage = UNSET
@@ -119,6 +140,10 @@ class ViewportBakePreview:
             "shellOpacity": shell_opacity,
             "highOpacity": high_opacity,
         })
+        if project is not UNSET:
+            field_dict["project"] = project
+        if document is not UNSET:
+            field_dict["document"] = document
         if cage is not UNSET:
             field_dict["cage"] = cage
         if material is not UNSET:
@@ -156,6 +181,26 @@ class ViewportBakePreview:
 
         high_opacity = d.pop("highOpacity")
 
+        def _parse_project(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        project = _parse_project(d.pop("project", UNSET))
+
+
+        def _parse_document(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        document = _parse_document(d.pop("document", UNSET))
+
+
         def _parse_cage(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -187,6 +232,8 @@ class ViewportBakePreview:
             neutral=neutral,
             shell_opacity=shell_opacity,
             high_opacity=high_opacity,
+            project=project,
+            document=document,
             cage=cage,
             material=material,
         )

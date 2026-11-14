@@ -137,7 +137,7 @@ function setup(documents: ProjectDocumentInfo[], front: ProjectDocumentInfo | nu
           showSetup: async (preview: ViewportBakePreview) => {
             shown.push(preview);
             await answers.gate;
-            return { preview: preview.low ? preview : null, parts: [], warnings: [] };
+            return { preview: preview.project || preview.low ? preview : null, parts: [], warnings: [] };
           }
         }
       }
@@ -151,24 +151,46 @@ describe('BakeSettings', () => {
     vi.useRealTimers();
   });
 
-  it('shows the setup a bake would be sent, follows an edit while shown, and takes it off with no low mesh', async () => {
+  it('shows the setup of the project’s bake, follows an edit once the file has it, and takes it off (#296)', async () => {
     vi.useFakeTimers();
     const texturing = document('Crate', 'texturing', null, true);
-    const { settings, shown } = setup([texturing], texturing);
+    const { settings, shown, written } = setup([texturing], texturing);
 
     await settings.setPreviewing(true);
     expect(settings.previewing()).toBe(true);
-    expect(shown[0]?.low).toBe('/lib/projects/a/crate.glb');
-    expect(shown[0]?.high).toEqual(['/lib/projects/a/crate_high.glb']);
-    expect(shown[0]?.options.rays.front).toBe(0.05);
+    // The Server reads the meshes from the project, as it plans the bake, so the client sends no paths.
+    expect(shown[0]).toMatchObject({ project: 'a', document: 'projects/a/Crate', low: '', high: [] });
 
     settings.set(options => ({ ...options, rays: { ...options.rays, front: 0.2 } }));
     await vi.advanceTimersByTimeAsync(1_000);
     expect(shown.at(-1)?.options.rays.front).toBe(0.2);
+    expect(written.at(-1)?.bake.options.rays.front).toBe(0.2);
 
     await settings.setPreviewing(false);
-    expect(shown.at(-1)?.low).toBe('');
+    expect(shown.at(-1)).toMatchObject({ project: null, low: '' });
     expect(settings.previewing()).toBe(false);
+  });
+
+  it('writes an edit before the preview asks the Server to read the project (#296)', async () => {
+    const texturing = document('Crate', 'texturing', null, true);
+    const { settings, shown, written, project } = setup([texturing], texturing);
+    const order: string[] = [];
+    const setBake = project.setBake;
+    project.setBake = (path: string, bake: ProjectBakeSettings) => {
+      order.push('write');
+      return setBake(path, bake);
+    };
+    const showSetup = shown.push.bind(shown);
+    shown.push = (...previews: ViewportBakePreview[]) => {
+      order.push('shown');
+      return showSetup(...previews);
+    };
+
+    settings.set(options => ({ ...options, rays: { ...options.rays, rear: 0.4 } }));
+    await settings.setPreviewing(true);
+
+    expect(order).toEqual(['write', 'shown']);
+    expect(written.at(-1)?.bake.options.rays.rear).toBe(0.4);
   });
 
   it('shows an edit made while the Server was still reading the meshes for the first time', async () => {
@@ -180,6 +202,7 @@ describe('BakeSettings', () => {
     });
 
     const showing = settings.setPreviewing(true);
+    await vi.waitFor(() => expect(shown).toHaveLength(1));
     settings.set(options => ({ ...options, rays: { ...options.rays, front: 0.3 } }));
     answer();
     await showing;
@@ -258,6 +281,23 @@ describe('BakeSettings', () => {
     expect(settings.refused()).toContain('read-only');
     expect(planned).toEqual([]);
     expect(started).toEqual([]);
+  });
+
+  it('writes settings the file did not take again when Bake is pressed, with no edit between (#296)', async () => {
+    const texturing = document('Crate', 'texturing', null, true);
+    const { settings, started, written, project } = setup([texturing], texturing);
+    const setBake = project.setBake;
+    project.setBake = () => Promise.reject(new Error('The project file is in use.'));
+
+    settings.set(options => ({ ...options, resolution: 512 }));
+    expect(await settings.bake()).toBe(false);
+    expect(settings.failure()).toContain('in use');
+
+    project.setBake = setBake;
+    expect(await settings.bake()).toBe(true);
+    expect(settings.failure()).toBeNull();
+    expect(written.at(-1)?.bake.options.resolution).toBe(512);
+    expect(started).toHaveLength(1);
   });
 
   it('Quick Bake starts every chosen set, and a refusal says why and starts nothing (#147)', async () => {

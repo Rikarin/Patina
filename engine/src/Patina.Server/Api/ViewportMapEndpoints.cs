@@ -83,8 +83,11 @@ static class ViewportMapEndpoints {
             .WithTags(Tag)
             .WithSummary(
                 "Lays a bake's setup over the model before it runs: where its rays start and how far they reach, the "
-                + "high meshes see-through, and which parts match by name. An empty low mesh takes it off."
+                + "high meshes see-through, and which parts match by name. A project takes the meshes, cage and "
+                + "options from its own bake settings, as its bake plan does. An empty low mesh with no project takes "
+                + "it off."
             )
+            .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(Missing)
             .ProducesProblem(Refused)
             .ProducesProblem(Unavailable);
@@ -215,11 +218,23 @@ static class ViewportMapEndpoints {
     ///     shown is a bake that could run.
     /// </summary>
     static async Task<Results<Ok<BakePreviewState>, ProblemHttpResult>> PreviewBakeAsync(
-        ViewportBakePreview request,
+        ViewportBakePreview asked,
         BakePreviewSession preview,
         ViewportSession session,
+        LibraryHost host,
         CancellationToken cancellationToken
     ) {
+        if (asked.Project is not null && host.Library is null) {
+            return LibraryTreeEndpoints.NoLibrary();
+        }
+
+        ViewportBakePreview request;
+        try {
+            request = host.Library is { } library ? ProjectBakePlanEndpoint.Resolved(library, asked) : asked;
+        } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
+            return problem;
+        }
+
         if (request.Low.Length > 0) {
             if (request.Problem() is { } wrong) {
                 return Refusals.BadSettings(wrong, Refused);

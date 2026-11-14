@@ -195,31 +195,40 @@ export class BakeSettings {
   private previewTimer: ReturnType<typeof setTimeout> | null = null;
   private lastSetup: ViewportBakePreview | null = null;
 
-  /** The setup the viewport would show, built as a bake request is, for the whole low mesh. */
-  readonly setup = computed<ViewportBakePreview | null>(() => {
-    const settings = this.settings();
-    const low = this.low();
-    if (!settings || low === '') {
-      return null;
-    }
+  /**
+   * The setup the viewport would show, for the whole low mesh. It names the project and the document in front, and the
+   * Server reads the meshes, cage and options from the project's file as it plans the bake (#296), so the preview is
+   * the bake that would run. It is made again on each edit, which is shown once the file has it.
+   */
+  readonly setup = computed<ViewportBakePreview | null>(
+    () => {
+      const settings = this.settings();
+      const query = this.planQuery();
+      if (!settings || !query || this.low() === '') {
+        return null;
+      }
 
-    const shows = this.previewShows();
-    const opacity = this.previewOpacity();
-    return {
-      high: this.high(),
-      low,
-      cage: settings.cage.trim() || null,
-      material: null,
-      options: settings.options,
-      reach: shows.reach,
-      highMesh: shows.highMesh,
-      matches: shows.matches,
-      seams: shows.seams,
-      neutral: shows.neutral,
-      shellOpacity: opacity.shell,
-      highOpacity: opacity.high
-    };
-  });
+      const shows = this.previewShows();
+      const opacity = this.previewOpacity();
+      return {
+        project: query.project,
+        document: query.document ?? null,
+        high: [],
+        low: '',
+        material: null,
+        options: settings.options,
+        reach: shows.reach,
+        highMesh: shows.highMesh,
+        matches: shows.matches,
+        seams: shows.seams,
+        neutral: shows.neutral,
+        shellOpacity: opacity.shell,
+        highOpacity: opacity.high
+      };
+      // Rereading the project after a write makes the same setup again, which is no change to show.
+    },
+    { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) }
+  );
 
   /** Reads what the viewport shows now, as another client may have left it. */
   async readPreview(): Promise<void> {
@@ -232,7 +241,12 @@ export class BakeSettings {
 
   /** Shows the setup in the viewport, or takes it off. */
   async setPreviewing(on: boolean): Promise<void> {
-    // Off is the same body with no low mesh, which the last setup gives when the project has closed.
+    // The Server reads the setup from the project's file, so an edit waiting to be written goes first.
+    if (on) {
+      await this.flush();
+    }
+
+    // Off is the same body with no project, which the last setup gives when the project has closed.
     const setup = this.setup() ?? this.lastSetup;
     if (!setup) {
       return;
@@ -241,7 +255,7 @@ export class BakeSettings {
     this.lastSetup = setup;
     try {
       this.previewFailure.set(null);
-      this.preview.set(await this.bakes.showSetup(on ? setup : { ...setup, low: '' }));
+      this.preview.set(await this.bakes.showSetup(on ? setup : { ...setup, project: null, document: null }));
     } catch (error) {
       this.previewFailure.set(messageOf(error));
       return;
@@ -324,12 +338,13 @@ export class BakeSettings {
       try {
         await this.project.setBake(pending.project, pending.bake);
         this.failure.set(null);
-      } catch (error) {
-        this.failure.set(messageOf(error));
-      } finally {
         if (this.pending === pending) {
           this.pending = null;
         }
+      } catch (error) {
+        // ⚠ The edit stays waiting, so the next flush, which Bake makes, writes it again (#296): dropping it left Bake
+        // refused by a failure nothing would clear until the next edit.
+        this.failure.set(messageOf(error));
       }
     });
     this.writing = write;

@@ -751,7 +751,7 @@
         "tags": [
           "Viewport"
         ],
-        "summary": "Lays a bake\u0027s setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. An empty low mesh takes it off.",
+        "summary": "Lays a bake\u0027s setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. A project takes the meshes, cage and options from its own bake settings, as its bake plan does. An empty low mesh with no project takes it off.",
         "operationId": "PreviewBakeInViewport",
         "requestBody": {
           "content": {
@@ -770,6 +770,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BakePreviewState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -23078,6 +23088,20 @@
         ],
         "type": "object",
         "properties": {
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A project, by its path below \u0060projects/\u0060, whose own bake settings give the meshes, the cage and the\noptions in place of those sent, as \u0060GET /library/project/bake/plan\u0060 works them out; null to send them."
+          },
+          "document": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "With a project, a document by its path below the library, whose mesh the bake is onto; null for the mesh\nthe project\u0027s bake plan takes."
+          },
           "high": {
             "type": "array",
             "items": {
@@ -23087,7 +23111,7 @@
           },
           "low": {
             "type": "string",
-            "description": "The mesh baked onto, or empty to take the preview off.",
+            "description": "The mesh baked onto, or empty with no project to take the preview off.",
             "default": ""
           },
           "cage": {
@@ -23146,7 +23170,7 @@
             "default": 0.25
           }
         },
-        "description": "A bake\u0027s setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,\nand what of it to draw. Paths on the Server\u0027s machine, as in a bake request."
+        "description": "A bake\u0027s setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,\nand what of it to draw. Paths on the Server\u0027s machine, as in a bake request, or a project whose own settings the\nServer reads them from, as it plans that project\u0027s bake (#296)."
       },
       "ViewportBakeRequest": {
         "required": [

@@ -351,6 +351,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A bake no longer refuses texture sets the project ticks on another of its meshes (#296): a bake onto one mesh bakes the ticked sets that are on it, and is refused only when none is, saying which sets the mesh has. Sets named for one bake, with `set` or `--set`, must still all be on the mesh.
+- Bake writes the settings again when the project's file did not take them (#296), where the failure refused every Bake until the next edit.
 - A refusal names a file by its name alone on every system (#198): a Server on Linux or macOS left the folders of a Windows path in the sentence and the file's name, since it split a path only at `/`.
 - Export no longer shows the last export's Done and report while the next one is being started (#153): they go as soon as Export is pressed, so a second export from the dialog is never read as finished before it has begun.
 - Checks no longer says a texture set has no Diffuse, Specular or Glossiness channel when its export preset reads one (#159): the export works those out from base color, metalness and roughness, and the files that read them now count toward the set's memory.
@@ -540,6 +542,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The Bake dialog's Preview shows the bake its project would run (#296): the engine reads the meshes, the cage and the options from the project's file as it plans that bake, where the app worked them out itself. Through the API `project` and `document` in `PUT /api/v1/viewport/bake-preview`, which any client can send in place of the paths.
 - The densest panes, reviewed in the bezel skin (#13, `docs/04-design-review.md`): a channel's depth in Properties is a list that keeps to one line, where its three labels wrapped; Texture Sets starts tall enough to show the first part; Export's Choose… and Preview and Preferences' Keyboard Shortcuts… no longer look like each dialog's main action; and the Bake dialog's Height says "Each set's own" while each set's shape decides it, where it asked to select.
 - Bake and Quick Bake send what the Server plans from the project's file (#292), the requests `GET /api/v1/library/project/bake/plan` answers and `patina bake-maps --project` sends, where the app used to build them itself; settings the file did not take refuse the bake with the reason rather than bake something else. The plan takes `output`, a folder of the Server's machine for the maps, and `set`, once per texture set, as the Bake dialog's output folder and `--out` and `--set` do.
 - A bake's key carries the baker's own revision as well as Patina's version (#294), so a fix to how maps bake reaches every bake made before it instead of being answered from the cache. Each bake is made once more after this update.

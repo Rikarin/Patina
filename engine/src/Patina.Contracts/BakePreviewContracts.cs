@@ -2,13 +2,26 @@ namespace Patina.Contracts;
 
 /// <summary>
 ///     A bake's setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,
-///     and what of it to draw. Paths on the Server's machine, as in a bake request.
+///     and what of it to draw. Paths on the Server's machine, as in a bake request, or a project whose own settings the
+///     Server reads them from, as it plans that project's bake (#296).
 /// </summary>
 public sealed record ViewportBakePreview {
+    /// <summary>
+    ///     A project, by its path below <c>projects/</c>, whose own bake settings give the meshes, the cage and the
+    ///     options in place of those sent, as <c>GET /library/project/bake/plan</c> works them out; null to send them.
+    /// </summary>
+    public string? Project { get; set; }
+
+    /// <summary>
+    ///     With a project, a document by its path below the library, whose mesh the bake is onto; null for the mesh
+    ///     the project's bake plan takes.
+    /// </summary>
+    public string? Document { get; set; }
+
     /// <summary>The detailed meshes, in order.</summary>
     public IReadOnlyList<string> High { get; set; } = [];
 
-    /// <summary>The mesh baked onto, or empty to take the preview off.</summary>
+    /// <summary>The mesh baked onto, or empty with no project to take the preview off.</summary>
     public string Low { get; set; } = string.Empty;
 
     /// <summary>A cage, or null for the ray distances.</summary>
