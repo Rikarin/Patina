@@ -48,3 +48,24 @@ public sealed record MeshPartFacts(string Name, string Material, int Triangles, 
 ///     The texture coordinate sets every one of its parts has, so a texture set can paint and bake on any of them.
 /// </param>
 public sealed record MeshMaterialFacts(string Name, int Triangles, int Parts, int UvSets);
+
+/// <summary>
+///     What the Server needs of a mesh file's texture sets, read by the Worker (#285): the Server never parses a mesh,
+///     since a bad file may crash the native parser. It travels between the processes only.
+/// </summary>
+/// <param name="Sets">
+///     Each material, and the whole mesh as the empty name, in each UV set it can be laid out in. One that cannot be
+///     read so is missing.
+/// </param>
+/// <param name="Pictures">The base colour pictures beside the file that its materials name, by full path.</param>
+public sealed record MeshSetsRead(IReadOnlyList<MeshSetRead> Sets, IReadOnlyList<string> Pictures) {
+    /// <summary>What a file that will not read has: nothing.</summary>
+    public static MeshSetsRead None { get; } = new([], []);
+}
+
+/// <summary>One texture set's faces in one UV set, as a bake and an export read them.</summary>
+/// <param name="Material">The material, or empty for the whole mesh.</param>
+/// <param name="UvSet">The UV set, by the file's number.</param>
+/// <param name="Udim">The UDIM tile the layout sits on: 1001 when it is the first, or when it reaches several.</param>
+/// <param name="Geometry">The revision of the faces, as a bake records it in its manifest.</param>
+public sealed record MeshSetRead(string Material, int UvSet, int Udim, string Geometry);

@@ -177,7 +177,11 @@ static class PresetEndpoints {
             : Missing(id);
     }
 
-    static Results<Ok<ExportPresetCheck>, ProblemHttpResult> Check(ExportPresetCheckRequest request, LibraryHost host) {
+    static Results<Ok<ExportPresetCheck>, ProblemHttpResult> Check(
+        ExportPresetCheckRequest request,
+        LibraryHost host,
+        MeshSetCache meshes
+    ) {
         if (host.Library is not { } library) {
             return Refusals.NoLibraryOpen();
         }
@@ -189,7 +193,7 @@ static class PresetEndpoints {
         var text = ExportPresetWriter.Text(request.Preset);
         try {
             var preset = ExportPresetWriter.Check(request.Preset);
-            return TypedResults.Ok(new ExportPresetCheck(null, Names(library, request.Project, preset), text));
+            return TypedResults.Ok(new ExportPresetCheck(null, Names(library, request.Project, preset, meshes), text));
         } catch (ExportPresetException e) {
             return TypedResults.Ok(new ExportPresetCheck(e.Message, [], text));
         }
@@ -225,11 +229,16 @@ static class PresetEndpoints {
     ///     Each file a preset writes for a project, named as a build would name it: every set, and the set's name in
     ///     the file when there are several. With no project, a project called by the preset's id.
     /// </summary>
-    static List<ExportPresetFileName> Names(OpenLibrary library, string? project, ExportPreset preset) {
+    static List<ExportPresetFileName> Names(
+        OpenLibrary library,
+        string? project,
+        ExportPreset preset,
+        IMeshSetReads meshes
+    ) {
         var contents = project is null ? null : library.Contents(project);
         var values = contents is null
             ? new NamingValues(preset.Id, preset.Id)
-            : ProjectNaming.Of(library, project!, contents.Name, preset.Id);
+            : ProjectNaming.Of(library, project!, contents.Name, preset.Id, meshes);
         var sets = contents is { ExportSets.Count: > 0 } ? contents.ExportSets : [string.Empty];
         var several = sets.Count > 1;
         return [

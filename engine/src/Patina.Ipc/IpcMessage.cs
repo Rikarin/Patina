@@ -105,6 +105,14 @@ public static class IpcTypes {
 
     public const string StackEvaluate = "stack.evaluate";
 
+    /// <summary>
+    ///     Server to Worker, answered at once: stop the evaluation <see cref="IpcMessage.StackSupersede" /> names,
+    ///     at the next of its parts (#275, ADR 0040). Its strokes stay in the canvases; only the picture is not
+    ///     finished, and its answer says <see cref="IpcMessage.Superseded" />. One that has ended, or not begun, is
+    ///     left alone.
+    /// </summary>
+    public const string StackSupersede = "stack.supersede";
+
     public const string StackSave = "stack.save";
 
     /// <summary>Writes some canvases of a stack, as they stand, to a folder a paste reads them from.</summary>
@@ -133,6 +141,14 @@ public static class IpcTypes {
 
     /// <summary>Server to Worker: say what the mesh at <see cref="IpcMessage.MeshFile" /> is (#146).</summary>
     public const string MeshFacts = "mesh.facts";
+
+    /// <summary>
+    ///     Server to Worker: read the texture sets of the mesh at <see cref="IpcMessage.MeshFile" />, each material in
+    ///     each UV set, for the tiles and faces the Server keeps (#285); answered in
+    ///     <see cref="IpcMessage.MeshSets" />.
+    ///     Uses no device, and is answered beside the Worker's queue, never behind an evaluation.
+    /// </summary>
+    public const string MeshSets = "mesh.sets";
 
     public const string MeshPartMask = "mesh.part-mask";
 
@@ -210,7 +226,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 19;
+    public const int ProtocolVersion = 20;
 
     public string Type { get; set; } = string.Empty;
 
@@ -232,6 +248,15 @@ public sealed class IpcMessage {
     public StackEvaluate? StackEvaluate { get; set; }
 
     public StackResult? StackResult { get; set; }
+
+    /// <summary>The evaluation to stop, for <see cref="IpcTypes.StackSupersede" />.</summary>
+    public StackSupersede? StackSupersede { get; set; }
+
+    /// <summary>
+    ///     In the answer to <see cref="IpcTypes.StackEvaluate" />: it was stopped before its picture was finished, so
+    ///     it says nothing, and the stack is to be evaluated again.
+    /// </summary>
+    public bool? Superseded { get; set; }
 
     public StackSave? StackSave { get; set; }
 
@@ -357,6 +382,9 @@ public sealed class IpcMessage {
 
     /// <summary>What a mesh is, in the answer to <see cref="IpcTypes.MeshFacts" />.</summary>
     public MeshFacts? Facts { get; set; }
+
+    /// <summary>A mesh's texture sets, in the answer to <see cref="IpcTypes.MeshSets" />.</summary>
+    public MeshSetsRead? MeshSets { get; set; }
 
     public MaterialReadAsk? MaterialRead { get; set; }
 
@@ -750,7 +778,19 @@ public sealed record StackSync(
 ///     What the stack's sides are divided by while it is edited (#208): 1 for full size. Its pixels, its checks and
 ///     its samples are read at full size whatever this is.
 /// </param>
-public sealed record StackEvaluate(string Session, int PreviewSide, string PreviewFolder, int Proxy = 1);
+/// <param name="Revision">The revision of the stack this evaluates, which a supersede names.</param>
+public sealed record StackEvaluate(
+    string Session,
+    int PreviewSide,
+    string PreviewFolder,
+    int Proxy = 1,
+    long Revision = 0
+);
+
+/// <summary>Which evaluation to stop.</summary>
+/// <param name="Session">The session.</param>
+/// <param name="Revision">The revision it evaluates: a later evaluation of the session is left alone.</param>
+public sealed record StackSupersede(string Session, long Revision);
 
 // SK7005: a message record's constructor is its wire shape, one parameter per field.
 #pragma warning disable SK7005

@@ -57,7 +57,15 @@ sealed class WorkerLoop(
         var stream = await IpcSocket.ConnectAsync(socketPath, ConnectTimeout, cancellationToken);
         IpcConnection? connection = null;
         connection = new(stream, (request, token) => AnswerAsync(connection!, request, token)) {
-            Immediate = static type => type is IpcTypes.Health or IpcTypes.BakeCancel or IpcTypes.BuildCancel
+            Immediate = static type => type
+                is IpcTypes.Health
+                or IpcTypes.BakeCancel
+                or IpcTypes.BuildCancel
+                or IpcTypes.StackSupersede,
+            Aside = static type => type is IpcTypes.MeshSets,
+            // ⚠ A frame waits for the request being answered, never behind every evaluation and thumbnail sent before
+            // it: on a software GPU those queue for minutes, and the viewport stopped answering a change (#274).
+            Urgent = static type => type.StartsWith("viewport.", StringComparison.Ordinal)
         };
         await using (connection) {
             connection.Start();
@@ -113,22 +121,31 @@ sealed class WorkerLoop(
                     or IpcTypes.StackClose
                     or IpcTypes.MaterialThumbnail
                     or IpcTypes.ViewportStack => OnDevice(request),
-                IpcTypes.MeshUnwrap => Unwrap(request),
-                IpcTypes.MeshMovePaint => MovePaint(request),
-                IpcTypes.MeshSameLayout => SameLayout(request),
-                IpcTypes.MeshMaterials => Materials(request),
-                IpcTypes.MeshParts => Parts(request),
-                IpcTypes.MeshFacts => Facts(request),
                 IpcTypes.MaterialRead => ReadMaterials(request),
-                IpcTypes.MeshPartMask => PartMask(request),
-                IpcTypes.MeshUvWire => UvWires.Answer(request),
+                _ when request.Type.StartsWith("mesh.", StringComparison.Ordinal) => Mesh(request),
                 IpcTypes.BakeStart => bakes.Start(request, link),
                 IpcTypes.BakeCancel => bakes.Cancel(request),
+                IpcTypes.StackSupersede => stacks.Supersede(request),
                 IpcTypes.BuildStart => builds.Start(request, link),
                 IpcTypes.BuildCancel => builds.Cancel(request),
                 _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
             }
         );
+
+    /// <summary>What reads or rewrites a mesh file: none of it uses the device.</summary>
+    IpcMessage Mesh(IpcMessage request) =>
+        request.Type switch {
+            IpcTypes.MeshUnwrap => Unwrap(request),
+            IpcTypes.MeshMovePaint => MovePaint(request),
+            IpcTypes.MeshSameLayout => SameLayout(request),
+            IpcTypes.MeshMaterials => Materials(request),
+            IpcTypes.MeshParts => Parts(request),
+            IpcTypes.MeshFacts => Facts(request),
+            IpcTypes.MeshSets => Sets(request),
+            IpcTypes.MeshPartMask => PartMask(request),
+            IpcTypes.MeshUvWire => UvWires.Answer(request),
+            _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
+        };
 
     /// <summary>Uses no device, but this link waits for it: nothing else can be asked while a mesh is cut.</summary>
     static IpcMessage Unwrap(IpcMessage request) {
@@ -174,6 +191,15 @@ sealed class WorkerLoop(
     static IpcMessage Facts(IpcMessage request) {
         var file = request.MeshFile ?? throw new IpcException("mesh.facts names no file.");
         return Reading(file, () => new() { Type = IpcTypes.Ok, Id = request.Id, Facts = MeshFactsReader.Read(file) });
+    }
+
+    /// <summary>
+    ///     A mesh's texture sets, for what the Server keeps of them (#285). Uses no device and keeps nothing, so it is
+    ///     answered beside the queue.
+    /// </summary>
+    static IpcMessage Sets(IpcMessage request) {
+        var file = request.MeshFile ?? throw new IpcException("mesh.sets names no file.");
+        return Reading(file, () => new() { Type = IpcTypes.Ok, Id = request.Id, MeshSets = MeshFileReads.All(file) });
     }
 
     /// <summary>A model's materials as maps (#157). Uses no device; Assimp is native, so it runs here.</summary>

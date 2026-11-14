@@ -110,4 +110,28 @@ public sealed class BakeUvSetTests : IDisposable {
 
         Assert.Contains("UV set 3", refused.Message, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    ///     The Worker's one read of a file for the Server (#285) says, for each set in each UV set, what reading that
+    ///     set alone says, and leaves out a UV set the mesh does not have.
+    /// </summary>
+    [Fact]
+    public void One_read_of_every_set_says_what_reading_each_alone_does() {
+        var mesh = TwoLayouts();
+
+        var all = MeshFileReads.All(mesh);
+
+        Assert.Equal(4, all.Sets.Count);
+        foreach (var set in all.Sets) {
+            var material = set.Material.Length == 0 ? null : set.Material;
+            Assert.Equal(MeshFileReads.Instance.Geometry(mesh, material, set.UvSet), set.Geometry);
+            Assert.Equal(MeshFileReads.Instance.Udim(mesh, material, set.UvSet), set.Udim);
+        }
+
+        Assert.NotEqual(
+            Assert.Single(all.Sets, static set => set is { Material: "Body", UvSet: 0 }).Geometry,
+            Assert.Single(all.Sets, static set => set is { Material: "Body", UvSet: 1 }).Geometry
+        );
+        Assert.DoesNotContain(all.Sets, static set => set.UvSet == 2);
+    }
 }
