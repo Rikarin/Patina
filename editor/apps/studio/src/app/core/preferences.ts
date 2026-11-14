@@ -58,6 +58,45 @@ export interface PreferenceValues {
    * null for Patina's (#189).
    */
   viewportStart: DisplayStart | null;
+  /** Searches of the shelf kept to come back to (#203), in the order they were kept. */
+  shelfSearches: readonly ShelfSearch[];
+}
+
+/** A search of the shelf kept to come back to: its words, its type and its origin, `all` for any. */
+export interface ShelfSearch {
+  search: string;
+  role: string;
+  origin: string;
+}
+
+/** How many searches the shelf keeps. */
+export const ShelfSearchLimit = 32;
+
+/** Kept searches as a file holds them: each whole, each once, as many as it may keep. */
+function shelfSearchesOf(value: unknown): readonly ShelfSearch[] {
+  const read: ShelfSearch[] = [];
+  for (const item of Array.isArray(value) ? (value as unknown[]) : []) {
+    const { search, role, origin } = (typeof item === 'object' && item !== null ? item : {}) as Record<string, unknown>;
+    if (typeof search !== 'string' || typeof role !== 'string' || typeof origin !== 'string' || !role || !origin) {
+      continue;
+    }
+
+    const kept = { search: search.trim(), role, origin };
+    if (!read.some(held => sameSearch(held, kept))) {
+      read.push(kept);
+    }
+  }
+
+  return read.slice(0, ShelfSearchLimit);
+}
+
+/** Whether two searches of the shelf find the same: the same words, whatever their case, type and origin. */
+export function sameSearch(a: ShelfSearch, b: ShelfSearch): boolean {
+  return (
+    a.search.trim().toLocaleLowerCase() === b.search.trim().toLocaleLowerCase() &&
+    a.role === b.role &&
+    a.origin === b.origin
+  );
 }
 
 /** A document someone worked on, by where it is in its library. */
@@ -113,7 +152,8 @@ export const DefaultPreferences: PreferenceValues = {
   recentNodes: [],
   favouriteMaterials: [],
   recentDocuments: [],
-  viewportStart: null
+  viewportStart: null,
+  shelfSearches: []
 };
 
 /** How many node types each list keeps, so a hand-edited file cannot grow the palette without end. */
@@ -125,7 +165,7 @@ const DarkQuery = '(prefers-color-scheme: dark)';
 
 const Choices: {
   [
-    K in Exclude<keyof PreferenceValues, ListPreference | 'recentDocuments' | 'viewportStart'>
+    K in Exclude<keyof PreferenceValues, ListPreference | 'recentDocuments' | 'viewportStart' | 'shelfSearches'>
   ]: readonly PreferenceValues[K][];
 } = {
   theme: ['dark', 'light', 'system'],
@@ -178,6 +218,7 @@ export function readPreferences(value: unknown): PreferenceValues {
 
   read.recentDocuments = recentDocumentsOf(held['recentDocuments']);
   read.viewportStart = displayStartOf(held['viewportStart']);
+  read.shelfSearches = shelfSearchesOf(held['shelfSearches']);
 
   return read;
 }
@@ -208,6 +249,7 @@ export class Preferences {
   readonly favouriteMaterials = computed(() => this.values().favouriteMaterials);
   readonly recentDocuments = computed(() => this.values().recentDocuments);
   readonly viewportStart = computed(() => this.values().viewportStart);
+  readonly shelfSearches = computed(() => this.values().shelfSearches);
   /** Whether the app is dark now: the theme chosen, or the system's for `system`. */
   readonly dark = computed(() => {
     const theme = this.theme();

@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The shelf keeps searches and adds several materials at once (#203): Keep This Search, beside the search box, keeps its words, type and origin to come back to from the same menu, and Forget This Search lets one go. Ctrl-click (Command-click on a Mac) chooses materials rather than adding them, and Add All adds the chosen ones in the shelf's order.
 - The viewport's display can be made your own (#189): Make Default in Display keeps its light, background color, grid and finish in your preferences, and every project that has kept no display of its own opens with it. Preferences says whether a new project's display is Patina's or your own, with Use Patina's to go back.
 - A texturing project bakes at the size it was made at (#144): New Project at 1024 or 4096 sets the project's bakes to that width, where every project baked at 2048 whatever its size. Each set's height still follows the set.
 - Properties has the project's settings under the document (#201): a Project section, folded to start with, sets the mesh every texturing document of the project is on, Auto Unwrap and its options, and Preserve Paint, with Apply and Revert of its own, so changing them no longer takes a dialog. Project Settings stays for a project with nothing open, and while it is open the section steps aside.
