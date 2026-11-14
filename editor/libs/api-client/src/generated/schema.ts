@@ -2740,6 +2740,7 @@ export interface components {
        * @description Where the bends come from: `mesh`, the high mesh's own faces where each ray lands; or
        *     `normal-map`, the bends of the baked normal map, which is the high mesh's detail over the low mesh,
        *     down to its smallest grooves, and none of the low mesh's own shape.
+       * @default mesh
        */
       source: string;
       /**

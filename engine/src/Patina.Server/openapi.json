@@ -9953,7 +9953,8 @@
         "properties": {
           "source": {
             "type": "string",
-            "description": "Where the bends come from: \u0060mesh\u0060, the high mesh\u0027s own faces where each ray lands; or\n\u0060normal-map\u0060, the bends of the baked normal map, which is the high mesh\u0027s detail over the low mesh,\ndown to its smallest grooves, and none of the low mesh\u0027s own shape."
+            "description": "Where the bends come from: \u0060mesh\u0060, the high mesh\u0027s own faces where each ray lands; or\n\u0060normal-map\u0060, the bends of the baked normal map, which is the high mesh\u0027s detail over the low mesh,\ndown to its smallest grooves, and none of the low mesh\u0027s own shape.",
+            "default": "mesh"
           },
           "range": {
             "type": "string",
