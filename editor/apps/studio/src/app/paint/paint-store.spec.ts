@@ -441,6 +441,11 @@ describe('PaintStore', () => {
     await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(inverted));
     expect(sent().at(-1)?.[0]?.quickMask).toBe('outside');
 
+    // A layer no stroke lays, such as a fill, is kept by its mask, outside while the quick mask is inverted (#282).
+    store.layer.set('fill');
+    await store.keepLayerToQuickMask();
+    expect(bodies.at(-1)).toEqual({ commands: [{ op: 'keepQuickMask', layer: 'fill', outside: true }] });
+
     await store.clearQuickMask();
     expect(store.quickMask()).toBe('off');
     expect(store.quickMaskInverted()).toBe(false);

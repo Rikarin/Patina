@@ -25,7 +25,7 @@ sealed partial class StackHost {
                     : (document.BaseWidth, document.BaseHeight);
                 Made(file, made);
                 CanvasCopy copy = new(canvases, file, Path.GetFullPath(from, folder), made.Item1, made.Item2) {
-                    Carry = Layouts(part.Model, part.Carry)
+                    Carry = Layouts(part.Model, part.Carry), Under = part.Start
                 };
                 return known[part.Id] = new(part.Id, null, null) { Copy = copy };
             }

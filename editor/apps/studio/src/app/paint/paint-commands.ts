@@ -86,6 +86,10 @@ export class PaintCommands {
       checked: () => this.paint.quickMaskInverted(),
       run: () => this.paint.quickMaskInverted.set(!this.paint.quickMaskInverted())
     });
+    this.commands.handle('keepLayerToQuickMask', {
+      enabled: () => open() && this.paint.quickMask() !== 'off' && this.paint.layer() !== null,
+      run: () => void this.paint.keepLayerToQuickMask()
+    });
     this.commands.handle('clearQuickMask', {
       enabled: () => open() && this.paint.quickMask() !== 'off',
       run: () => void this.paint.clearQuickMask()

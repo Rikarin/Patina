@@ -59,6 +59,63 @@ public sealed partial class StackProcessTests {
         Assert.Empty(beside);
     }
 
+    /// <summary>
+    ///     A fill is kept to the quick mask by its mask (#282): kept inside, it covers the quick mask's disc, as a dab
+    ///     of that size would; kept outside, the rest; and the two cover the fill's whole map. A quick mask nothing has
+    ///     painted refuses to keep anything.
+    /// </summary>
+    [Fact]
+    public async Task A_fill_is_kept_inside_or_outside_the_quick_mask() {
+        using var deadline = Deadline(300);
+        var (_, state) = await StartAsync("QuickFill.vxlayers", deadline.Token);
+        var disc = await CountAfterAsync(
+            state.Id,
+            "disc",
+            new("disc", "paint", "baseColor", new(30f, Falloff: 0f), Red, [new(400, 400)]),
+            Reddish,
+            deadline.Token
+        );
+
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackAddLayer("fill", "Red", new Dictionary<string, IReadOnlyList<float>> { ["baseColor"] = Red })
+        );
+        var fill = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        var whole = await CountAsync(state.Id, "whole", Reddish, deadline.Token);
+        Assert.True(whole > disc * 20, $"The fill covers {whole} texels against {disc} for the disc.");
+
+        using (var refused = await http.PostAsJsonAsync(
+            $"/api/v1/stacks/{state.Id}/commands",
+            new StackCommandBatch([new StackKeepQuickMask(fill)]),
+            ContractsJsonContext.Default.StackCommandBatch,
+            deadline.Token
+        )) {
+            Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+            Assert.Contains(Api.Refusals.QuickMaskUnpainted, await refused.Content.ReadAsStringAsync(deadline.Token));
+        }
+
+        StackStroke quick = new(
+            "quick",
+            "paint",
+            "baseColor",
+            new(30f, Falloff: 0f),
+            [1f, 1f, 1f, 1f],
+            [new(400, 400)],
+            QuickMask: StackQuickMasks.Paint
+        );
+        await EditAsync(state.Id, deadline.Token, quick);
+
+        await EditAsync(state.Id, deadline.Token, new StackKeepQuickMask(fill));
+        var inside = await CountAsync(state.Id, "inside", Reddish, deadline.Token);
+        await ActAsync(state.Id, "undo", deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackKeepQuickMask(fill, true));
+        var outside = await CountAsync(state.Id, "outside", Reddish, deadline.Token);
+
+        Assert.InRange(inside, disc * 0.9, disc * 1.1);
+        Assert.InRange(inside + outside, whole * 0.98, whole * 1.01);
+    }
+
     /// <summary>A stroke on the quick mask may not paint a layer's mask, and a quick mask takes three words.</summary>
     [Fact]
     public async Task A_quick_mask_stroke_is_refused_what_it_cannot_paint() {

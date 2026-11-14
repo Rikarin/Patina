@@ -40,6 +40,8 @@ static class StackLabels {
             StackMoveMaskLayer => "Move mask layer",
             StackSetMaskLayer => "Change mask layer",
             StackApplyMask => "Apply mask",
+            StackKeepQuickMask { Outside: true } => "Keep outside quick mask",
+            StackKeepQuickMask => "Keep inside quick mask",
             _ => "Edit"
         };
 

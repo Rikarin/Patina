@@ -6323,7 +6323,8 @@ export interface components {
       | components['schemas']['StackCommandStackSetMaskLayer']
       | components['schemas']['StackCommandStackAddInstance']
       | components['schemas']['StackCommandStackSetInstance']
-      | components['schemas']['StackCommandStackApplyMask'];
+      | components['schemas']['StackCommandStackApplyMask']
+      | components['schemas']['StackCommandStackKeepQuickMask'];
     /** @description Edits applied whole or not at all, as one undo step. */
     StackCommandBatch: {
       /** @description The edits, in order. */
@@ -6449,6 +6450,23 @@ export interface components {
       op: 'flattenLayer';
       /** @description The group, or null for the whole stack. */
       layer?: null | string;
+    };
+    /**
+     * @description Keeps a layer to the session's quick mask (#282): a paint entry on top of its mask's stack that starts as a copy
+     *     of the quick mask as it stands, multiplied over the mask beneath, or subtracted from it to keep the layer outside.
+     *     A fill, a decal or a path, which no stroke paints, is kept so as a stroke is. The entry is the layer's own from
+     *     then, saved with it, and can be painted, changed or removed as any other. The quick mask must have been painted.
+     */
+    StackCommandStackKeepQuickMask: {
+      /** @enum {string} */
+      op: 'keepQuickMask';
+      /** @description The layer to keep. */
+      layer: string;
+      /**
+       * @description Whether to keep it to where the quick mask is not painted.
+       * @default false
+       */
+      outside: boolean;
     };
     /** @description Moves a layer up or down its list. */
     StackCommandStackMoveLayer: {
