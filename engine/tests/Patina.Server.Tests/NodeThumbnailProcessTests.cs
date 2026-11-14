@@ -42,9 +42,44 @@ public sealed partial class StackProcessTests {
         Assert.Equal(System.Net.HttpStatusCode.NotFound, missing.StatusCode);
     }
 
-    async Task<string?[]> NodePicturesAsync(string graph, IReadOnlyList<string> types, CancellationToken token) {
+    /// <summary>
+    ///     A stack's node types are drawn as a graph's palette draws them, keyed the same, so the layer panel's lists
+    ///     can show each (#290). A generator reads mesh maps, so a stack with none has no picture of it; the bake test
+    ///     draws one from a stack's bake.
+    /// </summary>
+    [Fact]
+    public async Task A_stacks_node_types_have_the_pictures_a_graphs_palette_has() {
+        using var deadline = Deadline(240);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var (_, stack) = await StartAsync("Generators.vxlayers", deadline.Token);
+        await PixelsAsync(stack.Id, false, deadline.Token);
+        var graph = await http.OpenAsync(GraphTesting.Write(Library, GraphTesting.Sample()), deadline.Token);
+        string[] types = ["Source/Noise", "Grunges/Grunge 01", Generator, "Output/Output", "Nobody/Here"];
+
+        var drawn = await NodePicturesAsync(stack.Id, types, deadline.Token, "stacks");
+
+        Assert.All(drawn[..2], static hash => Assert.Matches("^[0-9a-f]{64}$", hash));
+        Assert.All(drawn[2..], Assert.Null);
+        Assert.Equal(drawn, await NodePicturesAsync(graph.Id, types, deadline.Token));
+
+        using var missing = await http.PostAsJsonAsync(
+            "/api/v1/stacks/nobody/node-types/thumbnails",
+            new { sources = types },
+            deadline.Token
+        );
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, missing.StatusCode);
+    }
+
+    const string Generator = "Generators/Dirt";
+
+    async Task<string?[]> NodePicturesAsync(
+        string document,
+        IReadOnlyList<string> types,
+        CancellationToken token,
+        string kind = "graphs"
+    ) {
         using var reply = await http.PostAsJsonAsync(
-            $"/api/v1/graphs/{graph}/node-types/thumbnails",
+            $"/api/v1/{kind}/{document}/node-types/thumbnails",
             new { sources = types },
             token
         );

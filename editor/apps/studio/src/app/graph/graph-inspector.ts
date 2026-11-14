@@ -38,6 +38,7 @@ import {
 import { edgeKey } from './graph-model';
 import { GraphNoteInspector, GraphSelection, GraphSettings } from './graph-settings';
 import { GraphStore } from './graph-store';
+import { type NodeSize, NodeSizes, sizeOf, sizeable } from './node-size';
 
 type NumberField = Extract<GraphField, { control: 'number' }>;
 type ColourField = Extract<GraphField, { control: 'colour' }>;
@@ -92,6 +93,23 @@ export { keptLanes } from './graph-fields';
       >
         Open compound
       </button>
+    }
+    @if (sizeable()) {
+      <div
+        class="mb-3 flex flex-col gap-1"
+        data-testid="node-size"
+        title="The size this node is computed at. A radius stays the same part of the picture at any size."
+      >
+        <span class="text-foreground-muted text-xs">Size</span>
+        <xui-select
+          aria-label="Size"
+          [disabled]="!store.editable()"
+          [itemText]="sizeLabel"
+          [items]="sizes"
+          [value]="size()"
+          (valueChange)="setSize($event)"
+        />
+      </div>
     }
     @if (presets().length > 0) {
       <div class="mb-3 flex flex-col gap-1" data-testid="node-presets">
@@ -460,6 +478,17 @@ export class GraphInspector {
   /** A compound's presets, which set this node's settings. */
   protected readonly presets = computed(() => this.type()?.presets ?? []);
   protected readonly presetName = (preset: GraphPresetState): string => preset.name;
+
+  protected readonly sizes = NodeSizes;
+  protected readonly sizeLabel = (size: NodeSize): string => size.label;
+  protected readonly sizeable = computed(() => sizeable(this.node().type));
+  protected readonly size = computed(() => sizeOf(this.node().level));
+
+  protected setSize(size: NodeSize | null): void {
+    if (size && size.level !== (this.node().level ?? null)) {
+      this.store.setLevel([this.node().id], size.level);
+    }
+  }
 
   protected choosePreset(preset: GraphPresetState | null): void {
     if (preset) {

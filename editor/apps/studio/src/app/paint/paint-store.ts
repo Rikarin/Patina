@@ -43,6 +43,7 @@ import { RecoveryOffers } from '../core/recovery-offers';
 import { EngineRestarts, RestartedNotice, SessionReturn } from '../core/session-return';
 import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
 import { GRAPH_SOCKET, type GraphSocket } from '../graph/graph-store';
+import { NodePictures } from '../graph/node-pictures';
 import { type PartCombine, combinedParts } from './mesh-selection';
 import {
   type Vector,
@@ -977,6 +978,7 @@ export class PaintStore {
     this.notice.set(null);
     this.state.set(null);
     learnChannels([]);
+    this.nodePictures.forget();
     this.worn.set(false);
     this.picture.set(null);
     clearTimeout(this.thumbnailWait);
@@ -1453,6 +1455,8 @@ export class PaintStore {
     try {
       const client = await this.api();
       unwrap(await client.PUT('/api/v1/stacks/{id}/mesh-maps', { params: { path: { id } }, body: { folder } }));
+      // A generator's picture is drawn from the bake, so another bake is another picture.
+      this.nodePictures.forget();
       await this.refresh();
     } catch (failure) {
       this.failure.set(messageOf(failure));
@@ -2195,6 +2199,31 @@ export class PaintStore {
       void this.load(preview.hash);
     }
   }
+
+  /**
+   * Small pictures of the node types the layer panel's lists name, such as each generator drawn from this stack's mesh
+   * maps (#290). A picture is a nicety: with no Worker or no bake a generator keeps its name alone.
+   */
+  readonly nodePictures = new NodePictures({
+    draw: async types => {
+      const id = this.state()?.id;
+      if (!id) {
+        return null;
+      }
+
+      const client = await this.api();
+      const { data } = await client.POST('/api/v1/stacks/{id}/node-types/thumbnails', {
+        params: { path: { id } },
+        body: { sources: [...types] }
+      });
+      return data?.items ?? null;
+    },
+    fetch: async hash =>
+      (await (await this.api()).GET('/api/v1/previews/{hash}', { params: { path: { hash } }, parseAs: 'blob' })).data ??
+      null,
+    url: blob => URL.createObjectURL(blob),
+    revoke: url => URL.revokeObjectURL(url)
+  });
 
   /** The fills drawn alone, once the stack has been quiet for a moment. */
   readonly thumbnails = signal<ReadonlyMap<string, string>>(new Map());

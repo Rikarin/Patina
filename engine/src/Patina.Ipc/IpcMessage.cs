@@ -226,7 +226,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 20;
+    public const int ProtocolVersion = 21;
 
     public string Type { get; set; } = string.Empty;
 
@@ -607,6 +607,9 @@ public static class MaterialThumbnailKinds {
     public const string Stack = "stack";
 }
 
+// SK7005: a message record's constructor is its wire shape, one parameter per field.
+#pragma warning disable SK7005
+
 /// <summary>A material to draw small, once, with nothing kept but the picture.</summary>
 /// <param name="Kind">What the document is: <c>graph</c> or <c>stack</c>.</param>
 /// <param name="Path">Its file, which paint and pictures are found beside. A shipped one names a place for it.</param>
@@ -616,6 +619,10 @@ public static class MaterialThumbnailKinds {
 /// <param name="Node">A graph's Output node to draw. A stack ignores it.</param>
 /// <param name="Usage">The map to draw: an Output's usage, or a stack's channel.</param>
 /// <param name="PreviewFolder">The content-addressed cache the PNG is written to.</param>
+/// <param name="MeshMaps">
+///     The folder of baked maps a graph's Mesh Map nodes read, or null for none, as for a node type drawn for a
+///     document painted on a mesh.
+/// </param>
 public sealed record MaterialThumbnailAsk(
     string Kind,
     string Path,
@@ -624,11 +631,9 @@ public sealed record MaterialThumbnailAsk(
     IReadOnlyList<string> ImageRoots,
     int Node,
     string Usage,
-    string PreviewFolder
+    string PreviewFolder,
+    string? MeshMaps = null
 );
-
-// SK7005: a message record's constructor is its wire shape, one parameter per field.
-#pragma warning disable SK7005
 
 /// <summary>A stack for a Worker to hold.</summary>
 /// <param name="Session">The session.</param>

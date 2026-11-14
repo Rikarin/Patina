@@ -542,7 +542,24 @@ function stemOf(source: string): string | undefined {
                   [items]="generatorsWith(entry.layer.generator)"
                   [value]="entry.layer.generator"
                   (valueChange)="setEntry(layer, entry.index, { generator: $event ?? '' })"
-                />
+                >
+                  <ng-template xuiSelectOption let-item>
+                    <span class="flex min-w-0 items-center gap-2" data-testid="generator-item">
+                      @let picture = generatorPicture(item);
+                      @if (picture) {
+                        <img
+                          class="size-6 shrink-0 rounded-xs"
+                          alt=""
+                          data-testid="generator-picture"
+                          [src]="picture"
+                        />
+                      } @else {
+                        <span class="size-6 shrink-0" aria-hidden="true"></span>
+                      }
+                      <span class="truncate">{{ generatorName(item) }}</span>
+                    </span>
+                  </ng-template>
+                </xui-select>
                 <ptn-setting-knobs
                   testId="paint-mask-layer-knob-"
                   [parameters]="knobsOf(entry.layer.generator)"
@@ -708,7 +725,19 @@ function stemOf(source: string): string | undefined {
                 [items]="generatorsWith(layer.mask.generator)"
                 [value]="layer.mask.generator"
                 (valueChange)="setMask(layer, { generator: $event ?? '' })"
-              />
+              >
+                <ng-template xuiSelectOption let-item>
+                  <span class="flex min-w-0 items-center gap-2" data-testid="generator-item">
+                    @let picture = generatorPicture(item);
+                    @if (picture) {
+                      <img class="size-6 shrink-0 rounded-xs" alt="" data-testid="generator-picture" [src]="picture" />
+                    } @else {
+                      <span class="size-6 shrink-0" aria-hidden="true"></span>
+                    }
+                    <span class="truncate">{{ generatorName(item) }}</span>
+                  </span>
+                </ng-template>
+              </xui-select>
               <ptn-setting-knobs
                 testId="paint-mask-knob-"
                 [parameters]="knobsOf(layer.mask.generator)"
@@ -1037,6 +1066,16 @@ export class LayerPanel {
   protected readonly scalarDraft = signal<{ usage: string; value: number } | null>(null);
 
   constructor() {
+    // A mask that runs a generator lists them all, each with its picture on this stack's mesh (#290).
+    effect(() => {
+      const mask = this.store.chosen()?.mask;
+      const runs = mask?.source === 'Generator' || mask?.layers?.some(entry => entry.source === 'Generator');
+      const generators = this.generators();
+      if (runs && this.store.state()) {
+        untracked(() => this.store.nodePictures.want(generators));
+      }
+    });
+
     effect(() => {
       const layer = this.store.chosen();
       const wanted = layer?.fill === 'Graph' || layer?.graph || layer?.filterNode;
@@ -1353,6 +1392,15 @@ export class LayerPanel {
 
     return [...groups].map(([category, effects]) => ({ category, effects }));
   });
+
+  /** A generator's picture on this stack's mesh, or null while there is none. An option's item is untyped. */
+  protected generatorPicture(generator: unknown): string | null {
+    return typeof generator === 'string' ? (this.store.nodePictures.url(generator) ?? null) : null;
+  }
+
+  protected generatorName(generator: unknown): string {
+    return typeof generator === 'string' ? termName(generator) : '';
+  }
 
   protected generatorsWith(chosen: string): readonly string[] {
     const named = this.generators();

@@ -47,16 +47,24 @@ static class StackNodeKinds {
     /// <param name="folder">The folder of the stack, whose compounds folder the stack's Worker also reads.</param>
     /// <returns>It, or null when neither the shipped nodes nor the project's compounds have it.</returns>
     public static StackFilterKind? Kind(string node, string? folder) {
+        var library = Registry(folder, out var compounds);
+        return library.TryGet(node.Trim(), out var type) ? Kind(type, library, compounds) : null;
+    }
+
+    /// <summary>Every node type a stack in <paramref name="folder" /> can run, with its project's compounds.</summary>
+    public static IReadOnlyList<NodeTypeDefinition> Types(string? folder) => [..Registry(folder, out _).Types];
+
+    static NodeTypeRegistry Registry(string? folder, out ISubGraphSource compounds) {
         // Patina's own compounds publish beside Vixen's, as they do for the Worker that runs the stack.
         FactoryCompounds.Register();
         NodeTypeRegistry library = new();
         NodeTypes.Register(library);
-        var compounds = TextureCompoundLibrary.Publish(
+        compounds = TextureCompoundLibrary.Publish(
             library,
             folder is null ? null : Path.Combine(folder, LibraryLayout.CompoundsFolder),
             out _
         );
-        return library.TryGet(node.Trim(), out var type) ? Kind(type, library, compounds) : null;
+        return library;
     }
 
     static StackFilterKind Kind(NodeTypeDefinition type, NodeTypeRegistry library, ISubGraphSource compounds) =>

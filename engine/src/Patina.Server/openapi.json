@@ -7818,6 +7818,67 @@
         }
       }
     },
+    "/api/v1/stacks/{id}/node-types/thumbnails": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Pictures of node types this stack can name, such as its generators, each at its defaults with a noise on its picture inputs, by hash under /previews, as a graph\u0027s palette draws them. A generator is drawn from the stack\u0027s mesh maps, so it shows what it makes on this mesh. A type with no picture, or none this stack knows, has none.",
+        "operationId": "GetStackNodeTypeThumbnails",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThumbnailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThumbnailList"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stacks": {
       "get": {
         "tags": [
@@ -12546,6 +12607,9 @@
             "$ref": "#/components/schemas/GraphCommandGraphSetSetting"
           },
           {
+            "$ref": "#/components/schemas/GraphCommandGraphSetLevel"
+          },
+          {
             "$ref": "#/components/schemas/GraphCommandGraphAddParameter"
           },
           {
@@ -12613,6 +12677,7 @@
             "setValue": "#/components/schemas/GraphCommandGraphSetValue",
             "setText": "#/components/schemas/GraphCommandGraphSetText",
             "setSetting": "#/components/schemas/GraphCommandGraphSetSetting",
+            "setLevel": "#/components/schemas/GraphCommandGraphSetLevel",
             "addParameter": "#/components/schemas/GraphCommandGraphAddParameter",
             "setParameter": "#/components/schemas/GraphCommandGraphSetParameter",
             "removeParameter": "#/components/schemas/GraphCommandGraphRemoveParameter",
@@ -13311,6 +13376,38 @@
           }
         },
         "description": "Changes what the graph says about itself: anything left null stays as it is."
+      },
+      "GraphCommandGraphSetLevel": {
+        "required": [
+          "nodes",
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "enum": [
+              "setLevel"
+            ],
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "The nodes."
+          },
+          "level": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "From -2 (four times the graph\u0027s size) to 4 (a sixteenth of it), or null to follow the inputs.",
+            "format": "int32"
+          }
+        },
+        "description": "Sets the size nodes are computed at, relative to their graph\u0027s; see GraphNodeState. A radius\nstays the same part of the picture at any level, because it is counted in the graph\u0027s base."
       },
       "GraphCommandGraphSetParameter": {
         "required": [
@@ -14495,6 +14592,14 @@
             "type": "boolean",
             "description": "True when it is switched off: what feeds its first input of an output\u0027s kind passes straight through, and a\nnode with no such input passes nothing.",
             "default": false
+          },
+          "level": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The size it is computed at, in halvings of its graph\u0027s size: 1 is half the width and height, -1 twice them, 0\nthe graph\u0027s own. Null follows the finest image arriving at it. On a compound it applies to every node inside.",
+            "format": "int32"
           }
         },
         "description": "A node as a document holds it."

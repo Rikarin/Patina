@@ -39,17 +39,42 @@ public sealed partial class Thumbnails {
     /// <param name="cancellationToken">Stops it between pictures.</param>
     /// <returns>Each type with its picture's hash, or none for a type with no picture output or none at all.</returns>
     /// <exception cref="TimeoutException">No Worker came to draw what had to be drawn.</exception>
-    public async Task<IReadOnlyList<Thumbnail>> DrawNodesAsync(
+    public Task<IReadOnlyList<Thumbnail>> DrawNodesAsync(
         GraphSession session,
         IReadOnlyList<string> types,
         CancellationToken cancellationToken
     ) {
         ArgumentNullException.ThrowIfNull(session);
+        return DrawNodesAsync(
+            new NodePictureScope(session.Path, session.Folder, session.ImageRoots, session.NodeTypes) {
+                MeshMaps = session.MeshMaps
+            },
+            types,
+            cancellationToken
+        );
+    }
+
+    /// <summary>The pictures of some node types a document can use, drawing those the cache lacks.</summary>
+    /// <param name="scope">The document, whose compounds and pictures a type may be made of, and its types.</param>
+    /// <param name="types">The types, by path.</param>
+    /// <param name="cancellationToken">Stops it between pictures.</param>
+    /// <returns>Each type with its picture's hash, or none for a type with no picture output or none at all.</returns>
+    /// <exception cref="TimeoutException">No Worker came to draw what had to be drawn.</exception>
+    /// <remarks>
+    ///     A type is keyed the same whichever document asks, so a layer's generator and the same node in a graph's
+    ///     palette are one picture (#290).
+    /// </remarks>
+    public async Task<IReadOnlyList<Thumbnail>> DrawNodesAsync(
+        NodePictureScope scope,
+        IReadOnlyList<string> types,
+        CancellationToken cancellationToken
+    ) {
+        ArgumentNullException.ThrowIfNull(scope);
         ArgumentNullException.ThrowIfNull(types);
-        var known = session.NodeTypes.ToDictionary(static type => type.Path, StringComparer.Ordinal);
+        var known = scope.Types.ToDictionary(static type => type.Path, StringComparer.Ordinal);
         List<Thumbnail> drawn = [];
         foreach (var path in types.Distinct(StringComparer.Ordinal)) {
-            var ask = known.TryGetValue(path, out var type) ? OfNode(session, type) : null;
+            var ask = known.TryGetValue(path, out var type) ? OfNode(scope, type) : null;
             var hash = ask is null ? null : await HashAsync(ask.Value.Key, ask.Value.Ask, cancellationToken);
             drawn.Add(new(path, hash));
         }
@@ -61,7 +86,7 @@ public sealed partial class Thumbnails {
     ///     A graph of one node at its defaults, its first picture output drawn small. A type with no picture output,
     ///     such as an Output or a number, has nothing to draw.
     /// </summary>
-    (string Key, MaterialThumbnailAsk Ask)? OfNode(GraphSession session, NodeTypeDefinition type) {
+    (string Key, MaterialThumbnailAsk Ask)? OfNode(NodePictureScope scope, NodeTypeDefinition type) {
         if (type.Ports.FirstOrDefault(static port => port.Direction == PortDirection.Output && IsPicture(port.Kind))
             is not { } output) {
             return null;
@@ -69,19 +94,27 @@ public sealed partial class Thumbnails {
 
         var document = GraphDocuments.Text(Alone(type));
         // A project's own compound is made of the files in its folder, which may hold the compounds it holds.
-        var own = session.Folder is { } folder
+        var own = scope.Folder is { } folder
             && GraphSessions.Compounds(folder).Any(c => !c.ReadOnly && c.Type == type.Path);
-        var compound = own ? Stamps(Files(session.Folder!, true)) : [];
-        var key = Key(MaterialThumbnailKinds.Graph, $"{Builds}|{type.Path}", document, [NodeVersion, ..compound]);
+        var compound = own ? Stamps(Files(scope.Folder!, true)) : [];
+        // A generator reads the mesh maps, so the bake it was drawn from is part of what it looks like.
+        var bake = scope.MeshMaps is { } maps ? Stamps(Files(maps, false)) : [];
+        var key = Key(
+            MaterialThumbnailKinds.Graph,
+            $"{Builds}|{type.Path}",
+            document,
+            [NodeVersion, ..compound, ..bake]
+        );
         var ask = new MaterialThumbnailAsk(
             MaterialThumbnailKinds.Graph,
-            session.Path,
+            scope.Path,
             document,
-            session.Folder,
-            session.ImageRoots,
+            scope.Folder,
+            scope.ImageRoots,
             DrawnNode,
             output.Name,
-            store.Root
+            store.Root,
+            scope.MeshMaps
         );
         return (key, ask);
     }
@@ -110,4 +143,19 @@ public sealed partial class Thumbnails {
 
     static string Informational(Assembly assembly) =>
         assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+}
+
+/// <summary>Where node types are drawn for: a graph or a layer stack, and the types it can use.</summary>
+/// <param name="Path">Its file, which pictures are found beside.</param>
+/// <param name="Folder">The folder its own compounds come from, or null.</param>
+/// <param name="ImageRoots">The folders a relative picture is read from, in order.</param>
+/// <param name="Types">The node types it can use.</param>
+public sealed record NodePictureScope(
+    string Path,
+    string? Folder,
+    IReadOnlyList<string> ImageRoots,
+    IReadOnlyList<NodeTypeDefinition> Types
+) {
+    /// <summary>The folder of baked maps its Mesh Map nodes read, or null for none.</summary>
+    public string? MeshMaps { get; init; }
 }

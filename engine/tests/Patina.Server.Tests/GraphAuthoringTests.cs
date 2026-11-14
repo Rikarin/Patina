@@ -59,6 +59,52 @@ public sealed class GraphAuthoringTests {
         Assert.False(NodeOf(editor, 2).Bypassed);
     }
 
+    /// <summary>A node's size is an edit that undoes, and the Worker compiles it rather than refreshing.</summary>
+    [Fact]
+    public void Sizing_a_node_is_one_undo_and_the_worker_is_told_the_whole_document() {
+        var editor = Editor();
+        var before = editor.Document;
+
+        editor.Apply(new([new GraphSetLevel([2], 1)]));
+
+        Assert.Equal(1, NodeOf(editor, 2).Level);
+        Assert.Equal("Set Size", editor.History.UndoLabel);
+        Assert.Contains("level: 1", GraphDocuments.Text(editor.Document), StringComparison.Ordinal);
+        Assert.Null(GraphDocuments.Values(before, editor.Document));
+        Assert.Contains(
+            GraphDocuments.Delta(before, editor.Document).Nodes,
+            static node => node is { Id: 2, Level: 1 }
+        );
+
+        editor.Apply(new([new GraphSetLevel([2], null)]));
+        Assert.Null(NodeOf(editor, 2).Level);
+
+        editor.Undo();
+        editor.Undo();
+
+        Assert.Null(NodeOf(editor, 2).Level);
+        Assert.Equal(GraphDocuments.Text(before), GraphDocuments.Text(editor.Document));
+    }
+
+    /// <summary>A size past what a node may be, or on a node that has none of its own, is refused.</summary>
+    [Fact]
+    public void A_size_out_of_range_or_on_an_output_or_a_reroute_is_refused() {
+        var editor = Editor();
+        var created = editor.Apply(new([new GraphAddNode(Reroutes.Type, 0, 0, -1)]));
+        var output = editor.Document.Nodes.First(static node => node.Type.StartsWith(
+                "Output/",
+                StringComparison.Ordinal
+            )
+        );
+
+        Assert.Throws<GraphEditRefusedException>(() => editor.Apply(new([new GraphSetLevel([2], 5)])));
+        Assert.Throws<GraphEditRefusedException>(() => editor.Apply(new([new GraphSetLevel([2], -3)])));
+        Assert.Throws<GraphEditRefusedException>(() => editor.Apply(new([new GraphSetLevel([created[0].Node], 1)])));
+        Assert.Throws<GraphEditRefusedException>(() => editor.Apply(new([new GraphSetLevel([output.Id], 1)])));
+        Assert.Throws<GraphEditRefusedException>(() => editor.Apply(new([new GraphSetLevel([], 1)])));
+        Assert.Null(NodeOf(editor, 2).Level);
+    }
+
     [Fact]
     public void A_boundary_node_or_a_reroute_has_nothing_to_switch_off() {
         var editor = Editor();

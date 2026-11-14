@@ -2018,6 +2018,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/stacks/{id}/node-types/thumbnails': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Pictures of node types this stack can name, such as its generators, each at its defaults with a noise on its picture inputs, by hash under /previews, as a graph's palette draws them. A generator is drawn from the stack's mesh maps, so it shows what it makes on this mesh. A type with no picture, or none this stack knows, has none. */
+    post: operations['GetStackNodeTypeThumbnails'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/stacks': {
     parameters: {
       query?: never;
@@ -4012,6 +4029,7 @@ export interface components {
       | components['schemas']['GraphCommandGraphSetValue']
       | components['schemas']['GraphCommandGraphSetText']
       | components['schemas']['GraphCommandGraphSetSetting']
+      | components['schemas']['GraphCommandGraphSetLevel']
       | components['schemas']['GraphCommandGraphAddParameter']
       | components['schemas']['GraphCommandGraphSetParameter']
       | components['schemas']['GraphCommandGraphRemoveParameter']
@@ -4309,6 +4327,21 @@ export interface components {
        * @description Its height, the same way. The two are set together.
        */
       physicalHeight?: null | number;
+    };
+    /**
+     * @description Sets the size nodes are computed at, relative to their graph's; see GraphNodeState. A radius
+     *     stays the same part of the picture at any level, because it is counted in the graph's base.
+     */
+    GraphCommandGraphSetLevel: {
+      /** @enum {string} */
+      op: 'setLevel';
+      /** @description The nodes. */
+      nodes: number[];
+      /**
+       * Format: int32
+       * @description From -2 (four times the graph's size) to 4 (a sixteenth of it), or null to follow the inputs.
+       */
+      level?: null | number;
     };
     /** @description Replaces a parameter where it stands. Dragging its default sends this on every step. */
     GraphCommandGraphSetParameter: {
@@ -4845,6 +4878,12 @@ export interface components {
        * @default false
        */
       bypassed: boolean;
+      /**
+       * Format: int32
+       * @description The size it is computed at, in halvings of its graph's size: 1 is half the width and height, -1 twice them, 0
+       *     the graph's own. Null follows the finest image arriving at it. On a compound it applies to every node inside.
+       */
+      level?: null | number;
     };
     /** @description How long one node's operations took on the GPU, the last time an evaluation ran them. */
     GraphNodeTime: {
@@ -15479,6 +15518,50 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackNodeTypeThumbnails: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ThumbnailRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ThumbnailList'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown;
         };

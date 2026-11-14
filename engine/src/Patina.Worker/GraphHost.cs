@@ -131,7 +131,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
     ///     set the graph's size to the picture's, so nothing is computed larger than it is shown.
     /// </summary>
     public IpcMessage Thumbnail(MaterialThumbnailAsk ask) {
-        var load = new GraphLoad(ThumbnailSession, ask.Document, ask.Folder, ask.ImageRoots);
+        var load = new GraphLoad(ThumbnailSession, ask.Document, ask.Folder, ask.ImageRoots, ask.MeshMaps);
         using Loaded graph = new(load, compounds.Of(ask.Folder), pictures);
         var runner = gpu.Evaluator;
         graph.Prepare(runner, out _);
