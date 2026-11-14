@@ -9700,11 +9700,16 @@
       },
       "BakeCurvatureOptions": {
         "required": [
+          "source",
           "range",
           "radius"
         ],
         "type": "object",
         "properties": {
+          "source": {
+            "type": "string",
+            "description": "Where the bends come from: \u0060mesh\u0060, the high mesh\u0027s own faces where each ray lands; or\n\u0060normal-map\u0060, the bends of the baked normal map, which is the high mesh\u0027s detail over the low mesh,\ndown to its smallest grooves, and none of the low mesh\u0027s own shape."
+          },
           "range": {
             "type": "string",
             "description": "\u0060auto\u0060, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or\n            \u0060custom\u0060, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a crease, so every\n            bake made with it agrees."
@@ -9715,7 +9720,7 @@
             "format": "double"
           }
         },
-        "description": "The curvature map\u0027s stored range (#148)."
+        "description": "The curvature map\u0027s source and stored range (#148)."
       },
       "BakedMapFile": {
         "required": [

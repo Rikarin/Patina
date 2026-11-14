@@ -48,7 +48,7 @@ const defaults: ProjectBakeSettings = {
       groundOffset: 0
     },
     thickness: { normalised: true },
-    curvature: { range: 'auto', radius: 0.01 },
+    curvature: { source: 'mesh', range: 'auto', radius: 0.01 },
     edges: { edges: 'hard', width: 0.01, angle: 30, profile: 'even', mesh: 'high' },
     borders: { width: 0.02 },
     position: { range: 'box' },

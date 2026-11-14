@@ -1,12 +1,22 @@
 namespace Patina.Contracts;
 
-/// <summary>The curvature map's stored range (#148).</summary>
+/// <summary>The curvature map's source and stored range (#148).</summary>
 /// <remarks>
 ///     Settable for the reason <see cref="BakeOptions" /> is: a client that leaves a member out keeps its default.
 /// </remarks>
 public sealed record BakeCurvatureOptions {
     /// <summary>The words <see cref="Range" /> takes.</summary>
     public static IReadOnlyList<string> Ranges { get; } = ["auto", "custom"];
+
+    /// <summary>The words <see cref="Source" /> takes.</summary>
+    public static IReadOnlyList<string> Sources { get; } = ["mesh", "normal-map"];
+
+    /// <summary>
+    ///     Where the bends come from: <c>mesh</c>, the high mesh's own faces where each ray lands; or
+    ///     <c>normal-map</c>, the bends of the baked normal map, which is the high mesh's detail over the low mesh,
+    ///     down to its smallest grooves, and none of the low mesh's own shape.
+    /// </summary>
+    public string Source { get; set; } = "mesh";
 
     /// <summary>
     ///     <c>auto</c>, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or
@@ -21,6 +31,7 @@ public sealed record BakeCurvatureOptions {
     /// <summary>What is wrong, or null.</summary>
     public string? Problem() =>
         !Ranges.Contains(Range, StringComparer.Ordinal) ? $"'{Range}' is not a curvature range."
+        : !Sources.Contains(Source, StringComparer.Ordinal) ? $"'{Source}' is not where a curvature map comes from."
         : Range == "custom"
         && !(Radius > 0 && double.IsFinite(Radius)) ? "A custom curvature radius is more than nothing."
         : null;

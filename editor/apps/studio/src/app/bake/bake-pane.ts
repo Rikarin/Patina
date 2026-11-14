@@ -72,6 +72,10 @@ const Profiles = [
   { value: 'smooth', label: 'Smooth' },
   { value: 'chamfer', label: 'Chamfer' }
 ];
+const CurvatureSources = [
+  { value: 'mesh', label: 'Mesh' },
+  { value: 'normal-map', label: 'Normal map' }
+];
 const CurvatureRanges = [
   { value: 'auto', label: 'Automatic' },
   { value: 'custom', label: 'Custom' }
@@ -932,6 +936,22 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               }
               @case ('curvature') {
                 <div class="flex items-center justify-between gap-2 text-sm">
+                  From
+                  <xui-segmented-control
+                    size="sm"
+                    aria-label="Curvature from"
+                    data-testid="bake-curvature-source"
+                    [options]="curvatureSources"
+                    [value]="options.curvature.source"
+                    (valueChange)="setCurvature({ source: $event ?? options.curvature.source })"
+                  />
+                </div>
+                <p class="text-foreground-muted text-xs">
+                  Mesh reads the bends of the high poly mesh’s faces. Normal map reads the bends the baked normal map
+                  carries: the high poly detail over the low poly mesh, down to its finest grooves, without the low poly
+                  mesh’s own shape.
+                </p>
+                <div class="flex items-center justify-between gap-2 text-sm">
                   Range
                   <xui-segmented-control
                     size="sm"
@@ -1329,6 +1349,7 @@ export class BakePane {
   protected readonly edgeMeshes = EdgeMeshes;
   protected readonly profiles = Profiles;
   protected readonly curvatureRanges = CurvatureRanges;
+  protected readonly curvatureSources = CurvatureSources;
   protected readonly colourSources = ColourSources;
   protected readonly colourSourceName = (value: string) => ColourSourceNames[value] ?? value;
   protected readonly previewParts = PreviewParts;
