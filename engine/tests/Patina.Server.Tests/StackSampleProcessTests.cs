@@ -44,7 +44,7 @@ public sealed partial class StackProcessTests {
                 ContractsJsonContext.Default.StackState,
                 deadline.Token
             );
-            Assert.Equal(256, state!.Width);
+            Assert.Equal(128, state!.Width);
             using var socket = await FollowAsync(instance, state, deadline.Token);
             var evaluation = await EvaluatedAsync(socket, state.Revision, deadline.Token);
             Assert.Empty(evaluation.Problems);
