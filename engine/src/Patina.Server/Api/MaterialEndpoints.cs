@@ -90,10 +90,7 @@ static class MaterialEndpoints {
 
         var full = Path.GetFullPath(request.Source, library.RootPath);
         if (!File.Exists(full)) {
-            return TypedResults.Problem(
-                $"There is no graph '{request.Source}'.",
-                statusCode: StatusCodes.Status404NotFound
-            );
+            return Refusals.NoFile(request.Source);
         }
 
         var held = graphs.All.Any(open => open.Path == full);
@@ -111,11 +108,17 @@ static class MaterialEndpoints {
             File.Copy(previews.Find(picture.Hash)!, file, true);
             return TypedResults.Ok(new MaterialBrush(alpha));
         } catch (ProjectRefusedException e) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.Problem(
+                e.Message,
+                StatusCodes.Status422UnprocessableEntity,
+                Refusals.LibraryRefused,
+                Refusals.Reason(e.Message)
+            );
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            return TypedResults.Problem(
+            return Refusals.Problem(
                 "The graph did not render in time.",
-                statusCode: StatusCodes.Status503ServiceUnavailable
+                StatusCodes.Status503ServiceUnavailable,
+                Refusals.EngineUnavailable
             );
         } finally {
             if (!held) {

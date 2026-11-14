@@ -47,7 +47,7 @@ public sealed class StackEvaluator(
         KeepBase(session);
         await ReachedAsync(session, cancellationToken);
         if (session.EvaluationError is { } failed) {
-            throw new IpcException($"The stack did not evaluate, so saving would lose work: {failed}");
+            throw new IpcException($"The document did not update, so saving would lose work: {failed}");
         }
 
         var connection = await ConnectionAsync(cancellationToken);
@@ -276,7 +276,7 @@ public sealed class StackEvaluator(
             new() { Type = IpcTypes.StackCheck, StackCheck = session.Id },
             cancellationToken
         );
-        return reply.StackMeasured ?? throw new IpcException("The Worker measured nothing.");
+        return reply.StackMeasured ?? throw new IpcException("The GPU engine measured nothing.");
     }
 
     /// <summary>Each fill of a stack alone, which the Worker keeps until the layer changes.</summary>

@@ -89,7 +89,7 @@ static class PresetEndpoints {
                 new Dictionary<string, string> { ["project"] = request.Project }
             );
         } catch (Exception e) when (e is BuildRefusedException or InvalidDataException) {
-            return TypedResults.Problem(e.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Refusals.BadBuild(e);
         } finally {
             Compressing.Release();
         }
@@ -102,10 +102,7 @@ static class PresetEndpoints {
 
         return ExportPreviews.PictureOf(library.RootPath, id, picture) is { } path
             ? TypedResults.PhysicalFile(path, "image/png")
-            : TypedResults.Problem(
-                $"There is no picture '{picture}' of preview '{id}'.",
-                statusCode: StatusCodes.Status404NotFound
-            );
+            : Refusals.NoPreview($"There is no picture '{picture}' of preview '{id}'.");
     }
 
     static Results<Ok<ExportPresetSource>, ProblemHttpResult> Get(string id, LibraryHost host, string? project = null) {
@@ -208,10 +205,7 @@ static class PresetEndpoints {
         }
 
         if (!File.Exists(request.File)) {
-            return TypedResults.Problem(
-                $"There is no file '{request.File}'.",
-                statusCode: StatusCodes.Status404NotFound
-            );
+            return Refusals.NoFile(request.File);
         }
 
         try {
@@ -276,8 +270,7 @@ static class PresetEndpoints {
         }
     }
 
-    static ProblemHttpResult NoProject(string? project) =>
-        TypedResults.Problem($"There is no project '{project}'.", statusCode: StatusCodes.Status404NotFound);
+    static ProblemHttpResult NoProject(string? project) => Refusals.NoProject(project);
 
     static ProblemHttpResult Missing(string id) =>
         Refusals.Problem(

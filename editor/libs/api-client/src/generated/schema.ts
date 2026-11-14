@@ -662,6 +662,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/export/targets': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Keeps in library.yaml the export presets a build of the library writes when its request names none: the platforms the library ships to, each once. GET /library reads them back as exportTargets. */
+    put: operations['SetLibraryExportTargets'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/export': {
     parameters: {
       query?: never;
@@ -5114,6 +5131,14 @@ export interface components {
       nothing?: null | string;
       /** @description What a running build is on, for a person: a project and an output or a preset. */
       current?: null | string;
+    };
+    /** @description The body of `PUT /api/v1/library/export/targets` (#207). */
+    LibraryTargetsRequest: {
+      /**
+       * @description The ids of the presets a build of the library writes when its request names none, such as one for each platform
+       *     the library ships to. Empty, such a build writes nothing.
+       */
+      presets: string[];
     };
     /** @description A graph rendered to a picture a brush stamps. */
     MaterialBrush: {
@@ -10666,6 +10691,57 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['LibraryPresetRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryInfo'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SetLibraryExportTargets: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LibraryTargetsRequest'];
       };
     };
     responses: {

@@ -14,7 +14,7 @@ namespace Patina.Server.Api;
 ///     words and the text can change without breaking one (#198). A refusal with no code is one no client is expected
 ///     to explain, and shows its detail.
 /// </summary>
-public static class Refusals {
+public static partial class Refusals {
     /// <summary>A document with unsaved edits, which closing would throw away.</summary>
     public const string Unsaved = "document-unsaved";
 
@@ -65,9 +65,12 @@ public static class Refusals {
     /// </summary>
     public const string ExportUnbuilt = "export-unbuilt";
 
-    /// <summary>The values of a refusal whose detail is the Server's own sentence, as <c>reason</c>.</summary>
+    /// <summary>
+    ///     The values of a refusal whose detail is the Server's own sentence, as <c>reason</c>, with each full path in
+    ///     it cut to its file's name: where a file is on the Server's machine is not for a person to read (#198).
+    /// </summary>
     public static IReadOnlyDictionary<string, string> Reason(string reason) =>
-        new Dictionary<string, string> { ["reason"] = reason };
+        new Dictionary<string, string> { ["reason"] = Plain(reason) };
 
     /// <summary>
     ///     A stroke on a canvas larger than its texture set, which painting would make smaller (#19, #241). Values:
@@ -281,14 +284,14 @@ public static class Refusals {
 
     /// <summary>A file a request needs that is not there, named by its file name alone.</summary>
     public static ProblemHttpResult Of(FileNotFoundException missing) =>
-        Problem(
-            missing.Message,
-            StatusCodes.Status404NotFound,
-            FileMissing,
-            new Dictionary<string, string> {
-                ["file"] = missing.FileName is { Length: > 0 } name ? Path.GetFileName(name) : "That file"
-            }
-        );
+        missing.FileName is { Length: > 0 } name
+            ? NoFile(name)
+            : Problem(
+                missing.Message,
+                StatusCodes.Status404NotFound,
+                FileMissing,
+                new Dictionary<string, string> { ["file"] = "That file" }
+            );
 
     /// <summary>
     ///     A file or folder another program still had open after the Server waited for it, so the change was not made

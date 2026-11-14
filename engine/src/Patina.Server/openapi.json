@@ -2383,6 +2383,67 @@
         }
       }
     },
+    "/api/v1/library/export/targets": {
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps in library.yaml the export presets a build of the library writes when its request names none: the platforms the library ships to, each once. GET /library reads them back as exportTargets.",
+        "operationId": "SetLibraryExportTargets",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryTargetsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/export": {
       "put": {
         "tags": [
@@ -14902,6 +14963,22 @@
           }
         },
         "description": "What a whole build did."
+      },
+      "LibraryTargetsRequest": {
+        "required": [
+          "presets"
+        ],
+        "type": "object",
+        "properties": {
+          "presets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The ids of the presets a build of the library writes when its request names none, such as one for each platform\nthe library ships to. Empty, such a build writes nothing."
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/library/export/targets\u0060 (#207)."
       },
       "MaterialBrush": {
         "required": [

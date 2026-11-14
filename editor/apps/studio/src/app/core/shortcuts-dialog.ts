@@ -72,7 +72,7 @@ interface Refused {
 
           @for (section of sections; track section.name) {
             <section class="flex flex-col gap-0.5" [attr.aria-label]="section.name">
-              <h3 class="text-foreground-muted text-xs font-semibold uppercase">{{ section.name }}</h3>
+              <h3 class="section-label">{{ section.name }}</h3>
               @for (command of section.commands; track command.id) {
                 <div class="flex items-center gap-2" [attr.data-command]="command.id">
                   <span class="min-w-0 flex-1 truncate text-sm">{{ command.label }}</span>
@@ -110,7 +110,7 @@ interface Refused {
           }
 
           <section class="flex flex-col gap-0.5" aria-label="Mouse">
-            <h3 class="text-foreground-muted text-xs font-semibold uppercase">Mouse in the viewport</h3>
+            <h3 class="section-label">Mouse in the viewport</h3>
             @for (row of mouse(); track row.label) {
               <div class="flex items-center gap-2 text-sm">
                 <span class="min-w-0 flex-1">{{ row.label }}</span>
@@ -121,7 +121,7 @@ interface Refused {
 
           @for (section of fixed; track section.name) {
             <section class="flex flex-col gap-0.5" [attr.aria-label]="section.name">
-              <h3 class="text-foreground-muted text-xs font-semibold uppercase">{{ section.name }}</h3>
+              <h3 class="section-label">{{ section.name }}</h3>
               @for (row of section.rows; track row.label) {
                 <div class="flex items-center gap-2 text-sm">
                   <span class="min-w-0 flex-1">{{ row.label }}</span>

@@ -315,6 +315,13 @@ public sealed record LibraryExportRequest(ProjectExportSettings Export);
 /// </param>
 public sealed record LibraryPresetRequest(string? Preset);
 
+/// <summary>The body of <c>PUT /api/v1/library/export/targets</c> (#207).</summary>
+/// <param name="Presets">
+///     The ids of the presets a build of the library writes when its request names none, such as one for each platform
+///     the library ships to. Empty, such a build writes nothing.
+/// </param>
+public sealed record LibraryTargetsRequest(IReadOnlyList<string> Presets);
+
 /// <summary>The body of <c>PUT /api/v1/library/project/viewport</c>.</summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>
 /// <param name="Viewport">

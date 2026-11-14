@@ -48,31 +48,24 @@ public sealed class RefusalWordsTests {
     }
 
     /// <summary>
-    ///     How many refusals still go out with no code, and so show the Server's own sentence. Each that gains a code
-    ///     takes one off; none may be added, since a client can only say a refusal in its words by its code (#198).
-    /// </summary>
-    const int Uncoded = 42;
-
-    /// <summary>
-    ///     A new refusal goes out through <see cref="Refusals.Problem" />, with a code the app has words for.
+    ///     Every refusal goes out through <see cref="Refusals.Problem" />, with a code the app has words for: none is
+    ///     made with <c>TypedResults.Problem</c> outside Refusals.cs, where it would carry no code (#198).
     /// </summary>
     [Fact]
-    public void No_new_refusal_goes_out_without_a_code() {
+    public void No_refusal_goes_out_without_a_code() {
         var server = Path.Combine(Engine.Root, "src", "Patina.Server");
         var found = Directory.EnumerateFiles(server, "*.cs", SearchOption.AllDirectories)
             .Where(static file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
             .Where(static file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
             .Where(static file => Path.GetFileName(file) != "Refusals.cs")
-            .Sum(static file => File.ReadAllText(file).Split("TypedResults.Problem(").Length - 1);
+            .Where(static file => File.ReadAllText(file).Contains("Results.Problem(", StringComparison.Ordinal))
+            .Select(file => Path.GetRelativePath(server, file))
+            .ToList();
 
         Assert.True(
-            found <= Uncoded,
-            $"{found} refusals go out with no code, more than the {Uncoded} there were: send a new one through "
-            + "Refusals.Problem with a code, and give the code words in messages.ts."
-        );
-        Assert.True(
-            found >= Uncoded,
-            $"{found} refusals go out with no code, fewer than the {Uncoded} there were: lower Uncoded to {found}."
+            found.Count == 0,
+            $"{string.Join(", ", found)} send a refusal with no code: send it through Refusals.Problem with a code, "
+            + "and give the code words in messages.ts."
         );
     }
 }
