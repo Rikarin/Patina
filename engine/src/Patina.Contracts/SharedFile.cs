@@ -90,7 +90,8 @@ public static class SharedFile {
     ///     open, with "Access to the path is denied", and sharing delete does not help: a library scan that read a
     ///     project's <c>project.yaml</c> just as a client tagged the project turned the save into a 409 (#257). A
     ///     read is short, so the move is tried again until <see cref="Patience" /> has passed. On Linux and macOS
-    ///     the first try succeeds.
+    ///     the first try succeeds. A move still refused then throws <see cref="FileBusyException" />, which a client
+    ///     is told is a busy file rather than a conflict (#266).
     /// </remarks>
     /// <param name="from">The finished file, which is gone afterwards.</param>
     /// <param name="to">Where it goes, replacing what is there.</param>
@@ -114,18 +115,30 @@ public static class SharedFile {
         var waited = Stopwatch.StartNew();
         for (var pause = 1;; pause = Math.Min(pause * 2, LongestPause)) {
             try {
-                if (folder) {
-                    Directory.Move(from, to);
-                } else {
-                    File.Move(from, to, true);
-                }
-
+                Move(from, to, folder);
                 return;
-            } catch (Exception e) when (Held(e) && waited.Elapsed < Patience && Possible(from, to, folder)) {
+            } catch (Exception e) when (waited.Elapsed < Patience && Held(e) && Possible(from, to, folder)) {
                 Thread.Sleep(pause);
+            } catch (Exception e) when (Busy(e) && Held(e) && Possible(from, to, folder)) {
+                throw FileBusyException.Of(folder ? from : to, e);
             }
         }
     }
+
+    /// <summary>One try of the move, overwriting a file and never a folder.</summary>
+    static void Move(string from, string to, bool folder) {
+        if (folder) {
+            Directory.Move(from, to);
+        } else {
+            File.Move(from, to, true);
+        }
+    }
+
+    /// <summary>
+    ///     Whether a failure is one somebody else holding the file makes: access refused, or a sharing or lock
+    ///     violation (Win32 errors 32 and 33).
+    /// </summary>
+    static bool Busy(Exception e) => e is UnauthorizedAccessException || (e.HResult & 0xFFFF) is 32 or 33;
 
     /// <summary>Whether a failed move can still succeed: what moves is there, and a folder's place free.</summary>
     static bool Possible(string from, string to, bool folder) =>

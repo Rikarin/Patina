@@ -79,7 +79,10 @@ public sealed partial class SharedFileTests : IDisposable {
         Assert.Throws<IOException>(() => SharedFile.MoveFolder(to, taken));
     }
 
-    /// <summary>A move over a file held for longer than the wait fails, rather than never returning.</summary>
+    /// <summary>
+    ///     A move over a file held for longer than the wait fails, rather than never returning, and says the file is
+    ///     busy, naming it, so a client is told to try again rather than that something is in the way (#266).
+    /// </summary>
     [Fact]
     public void A_move_over_a_file_held_too_long_gives_up() {
         Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows refuses a rename onto an open file.");
@@ -89,7 +92,9 @@ public sealed partial class SharedFileTests : IDisposable {
         File.WriteAllText(part, "name: Ramp");
 
         using (SharedFile.OpenRead(file)) {
-            Assert.Throws<UnauthorizedAccessException>(() => SharedFile.MoveOver(part, file));
+            var busy = Assert.Throws<FileBusyException>(() => SharedFile.MoveOver(part, file));
+            Assert.Equal(file, busy.Path);
+            Assert.IsType<UnauthorizedAccessException>(busy.InnerException);
         }
 
         Assert.Equal("name: Slope", File.ReadAllText(file));

@@ -284,6 +284,32 @@ public static class Refusals {
             }
         );
 
+    /// <summary>
+    ///     A file or folder another program still had open after the Server waited for it, so the change was not made
+    ///     (#266). Trying again usually works; nothing is in the way as with a <see cref="LibraryConflict" />. Values:
+    ///     <c>file</c>, its name.
+    /// </summary>
+    public const string FileBusy = "file-busy";
+
+    /// <summary>
+    ///     A library write that failed because somebody else had the file open: one <see cref="SharedFile" /> waited
+    ///     for and gave up on, or a sharing or lock violation (Win32 errors 32 and 33) from a write that does not
+    ///     wait. Null for any other failure.
+    /// </summary>
+    public static ProblemHttpResult? Busy(Exception e) {
+        if (e is not FileBusyException && !(e is IOException && (e.HResult & 0xFFFF) is 32 or 33)) {
+            return null;
+        }
+
+        var path = (e as FileBusyException)?.Path;
+        return Problem(
+            e.Message,
+            StatusCodes.Status409Conflict,
+            FileBusy,
+            new Dictionary<string, string> { ["file"] = path is { Length: > 0 } ? Path.GetFileName(path) : "That file" }
+        );
+    }
+
     public static ProblemHttpResult NoLibraryOpen() =>
         Problem("The Server was started with no library.", StatusCodes.Status404NotFound, NoLibrary);
 

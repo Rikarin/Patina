@@ -461,6 +461,7 @@ static class LibraryTreeEndpoints {
                 Refusals.LibraryConflict,
                 Refusals.Reason(e.Message)
             ),
+            _ when Refusals.Busy(e) is { } busy => busy,
             IOException or UnauthorizedAccessException => Refusals.Unwritable(e, StatusCodes.Status409Conflict),
             _ => null
         };
