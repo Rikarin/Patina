@@ -6,8 +6,8 @@ using System.Net;
 namespace Patina.Server.Tests;
 
 /// <summary>
-///     <c>POST /previews/{hash}/save</c> (#184): Save Image in the 2D View writes a picture the Server has, by its hash,
-///     to a file, with no GPU and no pixels in JSON.
+///     <c>POST /previews/{hash}/save</c> (#184): Save Image in the 2D View writes a picture the Server has, by its
+///     hash, to a file, with no GPU and no pixels in JSON.
 /// </summary>
 public sealed class PreviewSaveApiTests : IAsyncLifetime {
     readonly ServerFixture server = new();
