@@ -51,6 +51,7 @@ public sealed class ViewportRenderer : IDisposable {
 
     readonly ViewportShadows shadows;
     readonly ViewportPost post;
+    readonly ViewportTint tint;
     readonly ViewportShaders shaders;
 
     /// <summary>The depth of field, made the first time a frame asks for it.</summary>
@@ -98,12 +99,13 @@ public sealed class ViewportRenderer : IDisposable {
         );
         cleanup.Add(shadows.Dispose);
 
-        var hdr = new[] { new ColourTargetState(HdrFormat, BlendState.Opaque) };
-        forward = Pipeline(shaders.Forward(), hdr, Samples, DepthStencilState.Default, DepthFormat, true);
+        // The model writes its light and its quick mask's tint (#286).
+        ColourTargetState[] both = [new(HdrFormat, BlendState.Opaque), new(ViewportTargets.TintFormat, BlendState.Opaque)];
+        forward = Pipeline(shaders.Forward(), both, Samples, DepthStencilState.Default, DepthFormat, true);
         // The sky is added to the background colour the frame is cleared to, each scaled by its share.
         sky = Pipeline(
             shaders.Sky(),
-            [new(HdrFormat, ViewportTargets.Added)],
+            ViewportTargets.Light(ViewportTargets.Added),
             Samples,
             DepthStencilState.Disabled,
             DepthFormat,
@@ -117,11 +119,20 @@ public sealed class ViewportRenderer : IDisposable {
             (wireEffect, Module(wireEffect, ShaderStage.Vertex), Module(wireEffect, ShaderStage.Fragment)),
             (gridEffect, Module(gridEffect, ShaderStage.Vertex), Module(gridEffect, ShaderStage.Fragment)),
             (overlayEffect, Module(overlayEffect, ShaderStage.Vertex), Module(overlayEffect, ShaderStage.Fragment)),
-            HdrFormat,
             DepthFormat,
             Samples
         );
         cleanup.Add(wire.Dispose);
+        var tinting = Pipeline(
+            shaders.Tint(),
+            ViewportTint.Targets,
+            1,
+            DepthStencilState.Disabled,
+            PixelFormat.Undefined,
+            false
+        );
+        tint = new(device, (tinting.Effect, tinting.Pipeline));
+        cleanup.Add(tint.Dispose);
         post = new(
             device,
             shaders,
@@ -371,6 +382,7 @@ public sealed class ViewportRenderer : IDisposable {
         if (targets is not { } current || current.Width != width || current.Height != height) {
             targets?.Dispose();
             post.Forget();
+            tint.Forget();
             focus?.Forget();
             current = targets = new(device, width, height);
         }
@@ -522,7 +534,9 @@ public sealed class ViewportRenderer : IDisposable {
                 [
                     new(target.HdrSamples, ResourceState.Undefined, ResourceState.ColourTarget),
                     ..lens?.Resolving() ?? [new(target.Hdr, ResourceState.Undefined, ResourceState.ColourTarget)],
-                    new(target.Depth, ResourceState.Undefined, ResourceState.DepthStencilWrite)
+                    new(target.Depth, ResourceState.Undefined, ResourceState.DepthStencilWrite),
+                    new(target.TintSamples, ResourceState.Undefined, ResourceState.ColourTarget),
+                    new(target.Tint, ResourceState.Undefined, ResourceState.ColourTarget)
                 ]
             )
         );
@@ -555,7 +569,8 @@ public sealed class ViewportRenderer : IDisposable {
         commands.EndRenderPass();
 
         lens?.Record(commands, target);
-        var reading = post.Record(commands, target);
+        var (reading, view) = post.Record(commands, target);
+        tint.Record(commands, target, view);
         commands.Barrier(new BarrierGroup([], [new(reading, ResourceState.ColourTarget, ResourceState.CopySource)]));
         commands.CopyTextureToBuffer(new(reading), new(target.Width, target.Height, 1), target.Readback, 0);
     }

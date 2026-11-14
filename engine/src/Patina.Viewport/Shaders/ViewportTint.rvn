@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package Patina.Viewport
+
+import Vixen.Shaders.Core
+import Vixen.Shaders.PostFx
+
+// The tints laid over the finished picture, after the curve and every effect (#286): the quick mask's red and the marks'
+// wash, which the forward pass wrote in the colours a person sees, premultiplied by how much they cover. The pipeline
+// blends this over the picture as premultiplied alpha, so where nothing is tinted the picture is left as it was.
+
+shader ViewportTint {
+    var tint: Texture2D
+    var tintSampler: Sampler
+
+    stream var uv: float2
+
+    [VertexShader]
+    [Semantic("SV_Position")]
+    func Vertex([Semantic("SV_VertexID")] vertexIndex: int): float4 {
+        uv = Fullscreen.Uv(vertexIndex)
+        return Fullscreen.Position(vertexIndex)
+    }
+
+    [FragmentShader]
+    [Semantic("SV_Target")]
+    func Fragment(): float4 {
+        return tint.Sample(tintSampler, uv)
+    }
+}

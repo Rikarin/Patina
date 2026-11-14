@@ -21,7 +21,7 @@ sealed class ViewportLines : IDisposable {
     public ViewportLines(
         VulkanDevice device,
         (Effect Effect, ShaderHandle Vertex, ShaderHandle Fragment) shader,
-        PixelFormat colourFormat,
+        ColourTargetState[] targets,
         PixelFormat depthFormat,
         int samples,
         VertexBufferLayout? layout = null,
@@ -34,7 +34,7 @@ sealed class ViewportLines : IDisposable {
                 vertex,
                 fragment,
                 effect.Layout,
-                [new(colourFormat, BlendState.AlphaBlend)],
+                targets,
                 [layout ?? ViewportMesh.Layout(effect)],
                 topology,
                 RasterizerState.TwoSided,

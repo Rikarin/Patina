@@ -185,12 +185,16 @@ public sealed class ViewportRendererTests : IDisposable {
     /// <summary>
     ///     The model find-isolate's e2e marks (#274): two grey quads side by side, each its own material, from an OBJ
     ///     with no library and no normals. Marking one washes it orange and outlines it, and leaves the other grey. On
-    ///     Linux CI that e2e saw no orange at all; this says whether the renderer draws it there.
+    ///     Linux CI that e2e saw no orange at all; this says whether the renderer draws it there. The wash is laid over
+    ///     the finished picture after the tone curve (#286), so it is as orange with the exposure three stops up.
     ///     <c>PATINA_PICTURES</c> keeps the frames.
     /// </summary>
-    [Fact]
-    public void A_marked_quad_of_two_is_washed_orange_and_the_other_is_not() {
+    [Theory]
+    [InlineData(0f)]
+    [InlineData(3f)]
+    public void A_marked_quad_of_two_is_washed_orange_and_the_other_is_not(float exposure) {
         using var renderer = Open();
+        renderer.Shading = new() { Exposure = exposure };
         var mesh = Path.Combine(cache.FullName, "sets.obj");
         File.WriteAllLines(
             mesh,
@@ -210,11 +214,11 @@ public sealed class ViewportRendererTests : IDisposable {
         var marked = Render(renderer, camera);
         renderer.Highlight([], []);
         var unmarked = Render(renderer, camera);
-        Keep("sets-whole.png", whole);
-        Keep("sets-wood-marked.png", marked);
+        Keep($"sets-whole-{exposure}.png", whole);
+        Keep($"sets-wood-marked-{exposure}.png", marked);
 
-        // The e2e's test for orange. ⚠ The wash is light, about (205, 180, 155) on a pale quad, so a margin of 50 over
-        // blue passed by a hair and missed on Linux (#274).
+        // The e2e's test for orange. Laid on before the curve, the wash was about (205, 180, 155) on a pale quad, and a
+        // margin of 50 over blue passed by a hair and missed on Linux (#274); after it, red is about 85 over blue.
         static int Orange(byte[] pixels) => Enumerable.Range(0, Width * Height).Count(i => Warm(pixels, i));
 
         Assert.Equal(0, Orange(whole));
@@ -231,7 +235,7 @@ public sealed class ViewportRendererTests : IDisposable {
     }
 
     /// <summary>Whether a pixel is orange: red over blue by a margin the grey quads and sky never reach.</summary>
-    static bool Warm(byte[] pixels, int i) => pixels[i * 4] > 120 && pixels[i * 4] > pixels[i * 4 + 2] + 25;
+    static bool Warm(byte[] pixels, int i) => pixels[i * 4] > 120 && pixels[i * 4] > pixels[i * 4 + 2] + 60;
 
     static void Keep(string name, byte[] pixels) {
         if (Environment.GetEnvironmentVariable("PATINA_PICTURES") is { Length: > 0 } pictures) {

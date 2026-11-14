@@ -78,6 +78,13 @@ sealed class ViewportShaders(ShaderCache cache) {
             [..Core, ..Read(static name => name.EndsWith("Shaders.ViewportOverlay.rvn", StringComparison.Ordinal))]
         );
 
+    /// <summary>The tints laid over the finished picture (<see cref="ViewportTint" />).</summary>
+    public EffectData Tint() =>
+        cache.Get(
+            EffectKey.Of("ViewportTint"),
+            [..PostFx, ..Read(static name => name.EndsWith("Shaders.ViewportTint.rvn", StringComparison.Ordinal))]
+        );
+
     /// <summary>The curve to the screen, one variant per operator, in the order Vixen numbers them.</summary>
     public EffectData Tonemap(ViewportToneMapping curve) =>
         cache.Get(

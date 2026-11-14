@@ -299,6 +299,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The quick mask's red and the orange a texture set or part is marked with are laid over the viewport's finished picture, after the tone curve (#286), so they are the same red and orange however brightly the model is lit or exposed. On a bright model the quick mask turned faintly pink and the mark was pale.
+
 - Restoring a snapshot, or taking one, of a document with edits just made no longer fails without saying why (#284): the engine is asked whether the document has unsaved edits, rather than trusting a tab that had not caught up, and they are saved first.
 - Saving a picture, a graph or the engine's shader caches no longer fails on Windows while the engine's shared graph and paint code is reading the file (#277): every read there lets another program write or delete the file meanwhile, as Patina's own reads already did.
 - Saving, autosaving, restoring a snapshot and reading a layer stack's pixels no longer fail with "No GPU process reached this stack" when the GPU is merely slow (#275): they wait for as long as a GPU process is connected and working, and give up only when none comes. The stack they wait on is evaluated before other open documents.

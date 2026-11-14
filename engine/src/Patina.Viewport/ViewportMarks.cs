@@ -14,8 +14,11 @@ namespace Patina.Viewport;
 ///     wherever a UV seam or a hard edge runs, and an edge between two marked faces across a seam is no outline.
 /// </remarks>
 static class ViewportMarks {
-    /// <summary>The wash over a marked face.</summary>
-    static readonly Vector4 Wash = new(1f, 0.42f, 0.05f, 0.3f);
+    /// <summary>
+    ///     The wash over a marked face. Marks are tints, in the colours a person sees, laid over the finished picture
+    ///     after the tone curve (#286), so this is the orange on screen however bright the model is lit.
+    /// </summary>
+    static readonly Vector4 Wash = new(1f, 0.42f, 0.05f, 0.35f);
 
     /// <summary>The line round what is marked.</summary>
     static readonly Vector4 Edge = new(1f, 0.55f, 0.1f, 1f);
