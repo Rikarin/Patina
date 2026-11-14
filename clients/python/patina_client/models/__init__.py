@@ -5,6 +5,8 @@ from .asset_page import AssetPage
 from .asset_summary import AssetSummary
 from .autosave_preferences import AutosavePreferences
 from .bake_colour_options import BakeColourOptions
+from .bake_curvature_options import BakeCurvatureOptions
+from .bake_edge_options import BakeEdgeOptions
 from .bake_height_options import BakeHeightOptions
 from .bake_id_options import BakeIdOptions
 from .bake_occlusion_options import BakeOcclusionOptions
@@ -410,7 +412,9 @@ __all__ = (
     "AssetSummary",
     "AutosavePreferences",
     "BakeColourOptions",
+    "BakeCurvatureOptions",
     "BakedMapFile",
+    "BakeEdgeOptions",
     "BakeHeightOptions",
     "BakeIdOptions",
     "BakeOcclusionOptions",

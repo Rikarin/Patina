@@ -19,6 +19,9 @@ public static class MeshMapFiles {
             MeshMapKind.WorldNormal => "world",
             MeshMapKind.Id => "id",
             MeshMapKind.Colour => "colour",
+            MeshMapKind.Opacity => "opacity",
+            MeshMapKind.Edges => "edges",
+            MeshMapKind.Islands => "islands",
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Not a map.")
         };
 

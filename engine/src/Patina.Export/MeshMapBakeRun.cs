@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using Vixen.Core.Imaging;
+using Vixen.Core.Mathematics;
 using Vixen.Geometry;
 using Vixen.Geometry.Remeshing;
 using Vixen.Interchange;
@@ -86,13 +87,21 @@ public static class MeshMapBakeRun {
 
         progress?.Invoke(ReadingShare);
 
-        var maps = MapBaker.Bake(
+        var baked = MapBaker.Bake(
             high.Mesh,
             low.Mesh,
             settings,
             fraction => progress?.Invoke(ReadingShare + (1 - ReadingShare) * fraction),
             cancellationToken
         );
+        var bounds = high.Mesh.Bounds;
+        var maps = baked with {
+            CurvatureRange = BakeEdgeSettings.CurvatureScale(
+                baked.CurvatureRange,
+                request.Options,
+                Vector3.Distance(bounds.Minimum, bounds.Maximum)
+            )
+        };
 
         log.Add(
             string.Create(
@@ -282,22 +291,13 @@ public static class MeshMapBakeRun {
             Skew = (float)rays.Skew,
             SkewMap = rays.SkewMap is { Length: > 0 } map ? Mask(map, "skew map") : null,
             DistanceMap = rays.DistanceMap is { Length: > 0 } distance ? Mask(distance, "distance map") : null,
-            Rounding = Rounding(options.Rounding),
+            Rounding = BakeEdgeSettings.Rounding(options.Rounding),
+            EdgeMap = BakeEdgeSettings.Marked(options.Edges),
             Parts = rays.MatchByName
                 ? BakeParts.ByName(high.Parts, low.Parts, Suffixes(rays.HighSuffix), Suffixes(rays.LowSuffix))
                 : null,
             Threads = threads
         };
-    }
-
-    /// <summary>The edges to round, or null when rounding is off.</summary>
-    static BakeRounding? Rounding(BakeRoundingOptions rounding) {
-        if (!rounding.Enabled) {
-            return null;
-        }
-
-        var edges = rounding.Edges == "hard" ? RoundedEdges.Hard : RoundedEdges.Angle;
-        return new((float)rounding.Width, edges, (float)rounding.Angle);
     }
 
     /// <summary>A name ending as the matching takes it: one ending, or none for an empty field.</summary>
@@ -315,6 +315,9 @@ public static class MeshMapBakeRun {
                 "world" => MeshMaps.WorldNormal,
                 "id" => MeshMaps.Id,
                 "colour" => MeshMaps.Colour,
+                "opacity" => MeshMaps.Opacity,
+                "edges" => MeshMaps.Edges,
+                "islands" => MeshMaps.Islands,
                 _ => MeshMaps.None
             };
         }

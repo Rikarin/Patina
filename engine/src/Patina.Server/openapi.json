@@ -8728,6 +8728,25 @@
         },
         "description": "Where a colour map\u0027s colour comes from."
       },
+      "BakeCurvatureOptions": {
+        "required": [
+          "range",
+          "radius"
+        ],
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "string",
+            "description": "\u0060auto\u0060, scaled so 99 texels in a hundred keep their gradient, which differs from mesh to mesh; or\n            \u0060custom\u0060, where a bend as tight as double BakeCurvatureOptions.Radius reads white, or black for a crease, so every\n            bake made with it agrees."
+          },
+          "radius": {
+            "type": "number",
+            "description": "For \u0060custom\u0060: the radius of the tightest bend the map tells apart, in the rays\u0027 units.",
+            "format": "double"
+          }
+        },
+        "description": "The curvature map\u0027s stored range (#148)."
+      },
       "BakedMapFile": {
         "required": [
           "map",
@@ -8765,6 +8784,36 @@
           }
         },
         "description": "One baked map, as a file."
+      },
+      "BakeEdgeOptions": {
+        "required": [
+          "edges",
+          "width",
+          "angle",
+          "profile"
+        ],
+        "type": "object",
+        "properties": {
+          "edges": {
+            "type": "string",
+            "description": "\u0060hard\u0060, the edges the high mesh\u0027s own normals split, or \u0060angle\u0060, every edge whose faces meet at\n            double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges."
+          },
+          "width": {
+            "type": "number",
+            "description": "How far either side of an edge the band reaches, in the rays\u0027 units.",
+            "format": "double"
+          },
+          "angle": {
+            "type": "number",
+            "description": "For \u0060angle\u0060: the least angle between two faces that is an edge, in degrees.",
+            "format": "double"
+          },
+          "profile": {
+            "type": "string",
+            "description": "How the band falls from white on the edge to black at its side: \u0060even\u0060, a straight ramp; \u0060smooth\u0060,\na smoothstep; or \u0060chamfer\u0060, white all the way across."
+          }
+        },
+        "description": "Which edges the edges map marks, and the band it draws along them (#148)."
       },
       "BakeHeightOptions": {
         "required": [
@@ -8879,6 +8928,8 @@
           "position",
           "occlusion",
           "thickness",
+          "curvature",
+          "edges",
           "id",
           "rounding",
           "colour"
@@ -8924,7 +8975,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Which maps to write: \u0060normal\u0060, \u0060height\u0060, \u0060ao\u0060, \u0060bent\u0060, \u0060curvature\u0060,\n\u0060thickness\u0060, \u0060position\u0060, \u0060world\u0060, \u0060id\u0060, \u0060colour\u0060. The default is what a project\u0027s\nmasks read."
+            "description": "Which maps to write: \u0060normal\u0060, \u0060height\u0060, \u0060ao\u0060, \u0060bent\u0060, \u0060curvature\u0060,\n\u0060thickness\u0060, \u0060position\u0060, \u0060world\u0060, \u0060id\u0060, \u0060colour\u0060, \u0060opacity\u0060 (where a ray\nfound the high mesh), \u0060edges\u0060 (a band along its sharp or hard edges) and \u0060islands\u0060 (a color per UV\nisland of the low mesh). The default is what a project\u0027s masks read."
           },
           "space": {
             "type": "string",
@@ -8949,6 +9000,14 @@
           "thickness": {
             "description": "The thickness map\u0027s own settings.",
             "$ref": "#/components/schemas/BakeThicknessOptions"
+          },
+          "curvature": {
+            "description": "The curvature map\u0027s stored range.",
+            "$ref": "#/components/schemas/BakeCurvatureOptions"
+          },
+          "edges": {
+            "description": "Which edges the edges map marks, how wide and in what profile.",
+            "$ref": "#/components/schemas/BakeEdgeOptions"
           },
           "id": {
             "description": "What the ID map labels and how it colours them.",
@@ -9218,7 +9277,8 @@
           "enabled",
           "width",
           "edges",
-          "angle"
+          "angle",
+          "profile"
         ],
         "type": "object",
         "properties": {
@@ -9239,6 +9299,10 @@
             "type": "number",
             "description": "For \u0060angle\u0060: the least angle between two faces that is an edge, in degrees.",
             "format": "double"
+          },
+          "profile": {
+            "type": "string",
+            "description": "How the normal turns across the bevel: \u0060even\u0060, a round fillet; \u0060smooth\u0060, flat at the bevel\u0027s side\nand turning fastest near the edge; or \u0060chamfer\u0060, one flat face at the halfway angle."
           }
         },
         "description": "Edges baked round into the normal map, the bevel a hard-surface model was not modelled with."
