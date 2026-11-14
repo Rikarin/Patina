@@ -137,6 +137,8 @@ builder.Services.AddSingleton(static services => new BuildRunner(
 );
 builder.Services.AddHostedService<JobRunner>();
 builder.Services.AddHostedService<Autosave>();
+builder.Services.AddSingleton<CacheBudget>();
+builder.Services.AddHostedService(static services => services.GetRequiredService<CacheBudget>());
 builder.Services.AddHostedService<DiscoveryPublisher>();
 
 var app = builder.Build();

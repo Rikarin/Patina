@@ -14,6 +14,12 @@ static partial class ServerLog {
     [LoggerMessage(Level = LogLevel.Warning, Message = "Could not autosave {Path}: {Reason}")]
     public static partial void AutosaveFailed(ILogger logger, string path, string reason);
 
+    [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "The cache was over its budget: {Removed} entries nothing used lately went, {Bytes} bytes"
+    )]
+    public static partial void CacheTrimmed(ILogger logger, int removed, long bytes);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Worker: {Text}")]
     public static partial void WorkerWarned(ILogger logger, string text);
 

@@ -162,6 +162,42 @@ public sealed class LibraryFolderTests : IDisposable {
         Assert.True(File.Exists(fresh));
     }
 
+    /// <summary>
+    ///     A cache over its budget loses what was used longest ago until it fits (#189), and never what is not built,
+    ///     such as an autosave.
+    /// </summary>
+    [Fact]
+    public void A_cache_over_its_budget_loses_the_oldest_built_objects_first() {
+        var objects = LibraryLayout.ObjectsPath(root);
+        var reports = LibraryLayout.ReportsPath(root);
+        Directory.CreateDirectory(objects);
+        Directory.CreateDirectory(reports);
+        Directory.CreateDirectory(LibraryLayout.AutosavePath(root));
+        var oldest = Built(objects, "oldest.bin", 400, 3);
+        var older = Built(reports, "older.json", 400, 2);
+        var newest = Built(objects, "newest.bin", 400, 1);
+        File.WriteAllBytes(Path.Combine(LibraryLayout.AutosavePath(root), "kept"), new byte[400]);
+
+        // What else the cache holds, such as the index, counts as well.
+        var rest = FolderSize.Of(Path.Combine(root, LibraryLayout.CacheFolder)) - 1600;
+
+        Assert.Equal((0, 0L), CacheSweep.Trim(root, rest + 1600));
+        Assert.Equal((2, 800L), CacheSweep.Trim(root, rest + 900));
+
+        Assert.False(File.Exists(oldest));
+        Assert.False(File.Exists(older));
+        Assert.True(File.Exists(newest));
+        Assert.Equal((1, 400L), CacheSweep.Trim(root, 0));
+        Assert.True(File.Exists(Path.Combine(LibraryLayout.AutosavePath(root), "kept")));
+    }
+
+    static string Built(string folder, string name, int size, int daysAgo) {
+        var file = Path.Combine(folder, name);
+        File.WriteAllBytes(file, new byte[size]);
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddDays(-daysAgo));
+        return file;
+    }
+
     [Fact]
     public void A_copy_of_a_stack_paints_on_its_own_file() {
         var made = library.CreateProject(new("Crate"));

@@ -2739,7 +2739,7 @@ export interface components {
       /**
        * @description The full path of a folder autosaves go to instead of each library's cache, a folder per library inside it,
        *     or null for the cache (#162). Autosaves the cache kept before one was chosen are still offered and let go
-       *     of; those in a folder chosen earlier stay there and are not.
+       *     of, and those in a folder chosen earlier move to the folder chosen now, or to each library's cache (#297).
        */
       folder?: null | string;
     };
@@ -6545,6 +6545,12 @@ export interface components {
       /** @description How unsaved work is kept. */
       autosave: components['schemas']['AutosavePreferences'];
       bake?: null | components['schemas']['BakeOptions'];
+      /**
+       * Format: int64
+       * @description The most room each library's cache may take, in bytes, or null for no limit (#189). Over it, the built
+       *     objects, bakes and reports used longest ago go, as Prune takes them, while nothing is building.
+       */
+      cacheBudget?: null | number;
     };
     /** @description Puts a document back as a snapshot holds it, or forgets a snapshot. */
     SnapshotRequest: {

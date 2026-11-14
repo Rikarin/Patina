@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A budget for the cache, in Preferences > Cache (#189): each library's cache takes at most so many gigabytes, and No Limit lets it grow again. Over it, the engine takes out the built objects, bakes and reports used longest ago every few minutes while nothing is building, as Prune does, and they are built again when needed; autosaves and the index are never taken. Through the API `cacheBudget` in `PUT /api/v1/preferences`, in bytes, refused with `preference-refused` under 256 MiB.
+
 - Clear Uploads, in Library Settings under Tidy (#297): the files sent from another computer that nothing in the library names any more, saved or open, go to the bin as one entry, which Restore puts back; Library Settings says how many there are and the room they take. A project whose mesh came from an upload names it, and one sent in the last hour counts as in use. Through the API `GET /api/v1/library/uploads/unused` and `POST /api/v1/library/uploads/clear`.
 - The Worker's warnings and errors are in the Log (#297), as `Worker: …` lines from the engine, so a person sees why the Worker lost its device or its link from any app attached to the engine. A line said while the Worker had no engine waits for the next.
 

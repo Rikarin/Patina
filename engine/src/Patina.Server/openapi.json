@@ -10005,7 +10005,7 @@
               "null",
               "string"
             ],
-            "description": "The full path of a folder autosaves go to instead of each library\u0027s cache, a folder per library inside it,\nor null for the cache (#162). Autosaves the cache kept before one was chosen are still offered and let go\nof; those in a folder chosen earlier stay there and are not."
+            "description": "The full path of a folder autosaves go to instead of each library\u0027s cache, a folder per library inside it,\nor null for the cache (#162). Autosaves the cache kept before one was chosen are still offered and let go\nof, and those in a folder chosen earlier move to the folder chosen now, or to each library\u0027s cache (#297)."
           }
         },
         "description": "How unsaved work is kept. It goes to the library\u0027s cache unless a folder is chosen, never over a document."
@@ -18250,6 +18250,14 @@
                 "$ref": "#/components/schemas/BakeOptions"
               }
             ]
+          },
+          "cacheBudget": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The most room each library\u0027s cache may take, in bytes, or null for no limit (#189). Over it, the built\nobjects, bakes and reports used longest ago go, as Prune takes them, while nothing is building.",
+            "format": "int64"
           }
         },
         "description": "The Server\u0027s settings that belong to the person and not to a library or project, kept in a plain file beside\nthe discovery file, which anyone can read and edit."
