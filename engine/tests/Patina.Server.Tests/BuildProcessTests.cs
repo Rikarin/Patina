@@ -239,7 +239,10 @@ public sealed class BuildProcessTests : IDisposable {
         );
         Assert.Equal(Projects, compared!.Projects.Count);
         Assert.All(compared.Projects, static p => Assert.Equal(BuildComparisons.Touched.Both, p.Touched));
-        Assert.Equal((0, compared.SameFiles), (compared.ChangedFiles, compared.Projects.Sum(static p => p.Files.Count)));
+        Assert.Equal(
+            (0, compared.SameFiles),
+            (compared.ChangedFiles, compared.Projects.Sum(static p => p.Files.Count))
+        );
         Assert.True(compared.SameFiles > 0);
 
         // A fast runner can finish the last step before the kill lands. A step that was lost makes a second attempt,

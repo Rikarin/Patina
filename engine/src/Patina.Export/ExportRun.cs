@@ -289,11 +289,6 @@ public static class ExportRun {
 
         var relative = delivered.Select(path => Path.GetRelativePath(target, path)).ToList();
         var digests = BuildComparisons.Digests(delivered);
-        Dictionary<string, string> kept = new(StringComparer.Ordinal);
-        for (var at = 0; at < relative.Count; at++) {
-            kept[relative[at]] = digests[at];
-        }
-
         var placed = before?.Sets ?? new Dictionary<string, string>();
         foreach (var old in before?.Files.Except(relative, StringComparer.Ordinal).ToList() ?? []) {
             var set = placed.GetValueOrDefault(old);
@@ -302,10 +297,6 @@ public static class ExportRun {
                 relative.Add(old);
                 if (set is not null) {
                     sets[old] = set;
-                }
-
-                if (before?.Digests?.GetValueOrDefault(old) is { } digest) {
-                    kept[old] = digest;
                 }
 
                 continue;
@@ -318,11 +309,34 @@ public static class ExportRun {
         LibraryFiles.Replace(
             Path.Combine(target, BuildObjects.DeliveredFile),
             JsonSerializer.SerializeToUtf8Bytes(
-                new(key, relative) { Sets = sets, Digests = kept },
+                new(key, relative) { Sets = sets, Digests = Digested(relative, digests, before?.Digests) },
                 ContractsJsonContext.Default.ExportDelivery
             )
         );
         return new(delivered, materials.Warnings) { Digests = digests };
+    }
+
+    /// <summary>
+    ///     Each delivered file's digest, by file (#280): the files this delivery wrote come first and take
+    ///     <paramref name="made" /> in order, and another set's file kept after them takes what the delivery before
+    ///     said, where it said.
+    /// </summary>
+    static Dictionary<string, string> Digested(
+        IReadOnlyList<string> files,
+        IEnumerable<string> made,
+        IReadOnlyDictionary<string, string>? before
+    ) {
+        Dictionary<string, string> digests = new(StringComparer.Ordinal);
+        using var written = made.GetEnumerator();
+        foreach (var file in files) {
+            if (written.MoveNext()) {
+                digests[file] = written.Current;
+            } else if (before?.GetValueOrDefault(file) is { } digest) {
+                digests[file] = digest;
+            }
+        }
+
+        return digests;
     }
 
     /// <summary>

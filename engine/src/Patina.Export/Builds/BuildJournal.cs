@@ -110,7 +110,8 @@ public sealed class BuildJournal {
             Started = started,
             Finished = finished,
             Projects = projects.Values.Count(static p => p.Outputs.Exists(static o => o.Status != BuildStatuses.Fresh)
-                || p.Exports.Exists(static e => e.Status != BuildStatuses.Fresh)),
+                || p.Exports.Exists(static e => e.Status != BuildStatuses.Fresh)
+            ),
             Built = outputs.Count(static o => o.Status == BuildStatuses.Built),
             Reused = outputs.Count(static o => o.Status == BuildStatuses.Reused),
             Fresh = fresh,

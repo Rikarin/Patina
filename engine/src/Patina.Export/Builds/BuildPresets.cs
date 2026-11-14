@@ -43,10 +43,10 @@ public sealed class BuildPresets {
     }
 
     /// <summary>
-    ///     The side a project's graphs are computed at for its presets' own size (#280, ADR 0028): the size every preset
-    ///     it exports through names, so the export finds maps already that size and resamples none. Null when a preset
-    ///     names none or two disagree, since a build computes a project's graphs once for all its presets; those
-    ///     presets resample as before.
+    ///     The side a project's graphs are computed at for its presets' own size (#280, ADR 0028): the size every
+    ///     preset it exports through names, so the export finds maps already that size and resamples none. Null when a
+    ///     preset names none or two disagree, since a build computes a project's graphs once for all its presets;
+    ///     those presets resample as before.
     /// </summary>
     public GraphSizes? SizesFor(string project) {
         var sizes = For(project).Select(static preset => preset.Size).Distinct().ToList();

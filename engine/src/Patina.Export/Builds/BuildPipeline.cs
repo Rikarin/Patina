@@ -207,7 +207,7 @@ public sealed class BuildPipeline(OpenLibrary library, IBuildExecutor executor, 
         }
     }
 
-    /// <summary>A fresh export as its delivery left it: its files, absolute, and their digests where it kept them.</summary>
+    /// <summary>A fresh export as its delivery left it: its files, absolute, and their digests where kept.</summary>
     static ExportReport FreshExport(PlannedExport export) {
         var delivery = BuildObjects.Delivered(export.Target);
         var files = delivery?.Files ?? [];

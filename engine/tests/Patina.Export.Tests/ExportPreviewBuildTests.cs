@@ -174,7 +174,7 @@ public sealed class ExportPreviewBuildTests : IDisposable {
     public async Task A_presets_own_size_computes_a_graph_at_it() {
         using var library = Library();
         var unreal = ExportPresetCatalog.Read(null).Find("unreal")!;
-        foreach (var (id, size) in (IEnumerable<(string, int)>) [("sized", 64), ("smaller", 16)]) {
+        foreach (var (id, size) in (IEnumerable<(string, int)>)[("sized", 64), ("smaller", 16)]) {
             ExportPresetWriter.Save(
                 ExportPresetCatalog.ProjectFolder(Root, "crate"),
                 ExportPresetWriter.DocumentOf(unreal) with { Id = id, Name = id, Size = size }

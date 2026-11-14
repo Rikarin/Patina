@@ -202,10 +202,16 @@ public sealed class ModelMaterialsTests : IDisposable {
         Assert.Equal("Mirror", glow.Slots.Single(static s => s.Usage == "baseColor").Placement!.Tiling);
         Assert.DoesNotContain(glow.Warnings, static w => w.Contains("wraps", StringComparison.Ordinal));
 
-        File.WriteAllText(path, File.ReadAllText(path).Replace("\"sampler\": 0", "\"sampler\": 1", StringComparison.Ordinal));
+        File.WriteAllText(
+            path,
+            File.ReadAllText(path).Replace("\"sampler\": 0", "\"sampler\": 1", StringComparison.Ordinal)
+        );
         var mixed = ModelMaterials.Read(path, Path.Combine(folder.FullName, "pictures"))[0];
         Assert.Equal("Wrap", mixed.Slots.Single(static s => s.Usage == "baseColor").Placement!.Tiling);
-        Assert.Contains(mixed.Warnings, static w => w.Contains("wraps Clamp across and Wrap down", StringComparison.Ordinal));
+        Assert.Contains(
+            mixed.Warnings,
+            static w => w.Contains("wraps Clamp across and Wrap down", StringComparison.Ordinal)
+        );
     }
 
     /// <summary>

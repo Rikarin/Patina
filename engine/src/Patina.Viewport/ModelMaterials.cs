@@ -64,18 +64,7 @@ public static class ModelMaterials {
         Source source
     ) {
         List<string> warnings = [];
-        // Each picture once, however many slots read it: glTF packs roughness and metalness in one, and alpha rides
-        // in the base color's.
-        Dictionary<ModelTexture, string?> files = new(ReferenceEqualityComparer.Instance);
-        foreach (var (texture, stem) in (IEnumerable<(ModelTexture?, string)>) [
-                     (textures.BaseColor, "baseColor"), (textures.MetallicRoughness, "metallicRoughness"),
-                     (textures.Normal, "normal"), (textures.Occlusion, "occlusion"), (textures.Emissive, "emissive"),
-                     (textures.Opacity, "opacity")
-                 ]) {
-            if (texture is not null && !files.ContainsKey(texture)) {
-                files[texture] = Picture(texture, source, $"{name}_{stem}", warnings);
-            }
-        }
+        var files = Files(name, textures, source, warnings);
 
         ImportedSlot Slot(string usage, ModelTexture? texture, int lane, float[] factor) =>
             Placed(usage, texture is null ? null : files[texture], texture, lane, factor);
@@ -101,19 +90,59 @@ public static class ModelMaterials {
             slots.Add(emissive);
         }
 
-        if (source.Gltf && textures.AlphaMode != ModelAlphaMode.Opaque) {
-            slots.Add(Slot(ExportMap.Opacity, textures.BaseColor, 3, [colour.W]));
-        } else if (!source.Gltf && (textures.Opacity is not null || textures.OpacityFactor < 1f - 1e-4f)) {
-            // An opacity picture that is the base color's is its alpha; one of its own is grey, read in red.
-            var alpha = textures.Opacity is not null
-                && textures.BaseColor is not null
-                && files[textures.Opacity] is { } picture
-                && picture == files[textures.BaseColor];
-            slots.Add(Slot(ExportMap.Opacity, textures.Opacity, alpha ? 3 : 0, [textures.OpacityFactor]));
+        if (Opacity(textures, colour.W, source.Gltf, files) is { } opacity) {
+            slots.Add(Slot(ExportMap.Opacity, opacity.Texture, opacity.Lane, [opacity.Factor]));
         }
 
         Said(name, textures, warnings);
         return new(name, slots, warnings);
+    }
+
+    /// <summary>
+    ///     Each picture a material names, as a file, once however many slots read it: glTF packs roughness and
+    ///     metalness in one, and alpha rides in the base color's.
+    /// </summary>
+    static Dictionary<ModelTexture, string?> Files(
+        string name,
+        ModelMaterialTextures textures,
+        Source source,
+        List<string> warnings
+    ) {
+        Dictionary<ModelTexture, string?> files = new(ReferenceEqualityComparer.Instance);
+        foreach (var (texture, stem) in (IEnumerable<(ModelTexture?, string)>) [
+                     (textures.BaseColor, "baseColor"), (textures.MetallicRoughness, "metallicRoughness"),
+                     (textures.Normal, "normal"), (textures.Occlusion, "occlusion"), (textures.Emissive, "emissive"),
+                     (textures.Opacity, "opacity")
+                 ]) {
+            if (texture is not null && !files.ContainsKey(texture)) {
+                files[texture] = Picture(texture, source, $"{name}_{stem}", warnings);
+            }
+        }
+
+        return files;
+    }
+
+    /// <summary>
+    ///     Where a material's opacity is read, or null for none. glTF's is its base color's alpha unless the material
+    ///     is opaque. Another format's is its own picture and factor (#280): a picture that is the base color's is
+    ///     read in alpha, and one of its own is grey, read in red.
+    /// </summary>
+    static (ModelTexture? Texture, int Lane, float Factor)? Opacity(
+        ModelMaterialTextures textures,
+        float alpha,
+        bool gltf,
+        Dictionary<ModelTexture, string?> files
+    ) {
+        if (gltf) {
+            return textures.AlphaMode == ModelAlphaMode.Opaque ? null : (textures.BaseColor, 3, alpha);
+        }
+
+        if (textures.Opacity is not { } picture) {
+            return textures.OpacityFactor < 1f - 1e-4f ? (null, 0, textures.OpacityFactor) : null;
+        }
+
+        var shared = textures.BaseColor is { } colour && files[picture] is { } file && file == files[colour];
+        return (picture, shared ? 3 : 0, textures.OpacityFactor);
     }
 
     /// <summary>
