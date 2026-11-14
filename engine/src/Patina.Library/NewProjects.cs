@@ -74,6 +74,20 @@ static class NewProjects {
             : trimmed;
     }
 
+    /// <summary>A library's display name, trimmed, once it and its texel density can be kept (#192).</summary>
+    /// <exception cref="ProjectRefusedException">The name or the density cannot be kept.</exception>
+    internal static string LibrarySettings(string name, double texelDensity) {
+        ArgumentNullException.ThrowIfNull(name);
+        var trimmed = name.Trim();
+        if (trimmed.Length is 0 or > MaxNameLength || trimmed.Any(char.IsControl)) {
+            throw new ProjectRefusedException($"A library's name is 1 to {MaxNameLength} characters of text.");
+        }
+
+        return texelDensity > 0 && double.IsFinite(texelDensity)
+            ? trimmed
+            : throw new ProjectRefusedException("A texel density is a number of texels per metre above zero.");
+    }
+
     /// <summary>The path below the library, with forward slashes, for <paramref name="graph" />.</summary>
     /// <exception cref="ProjectRefusedException">The request breaks one of the rules.</exception>
     public static string GraphPath(NewGraph graph) {

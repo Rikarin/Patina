@@ -50,6 +50,7 @@ static class PatinaApi {
             .WithName("GetSystem")
             .WithTags("System")
             .WithSummary("The Server's version, its library, the machine it runs on and the state of its Worker.");
+        api.MapLogApi();
         api.MapLibraryApi();
 
         api.MapGet("/viewport", static (ViewportSession session) => TypedResults.Ok(session.State))

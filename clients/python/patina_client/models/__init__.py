@@ -183,6 +183,7 @@ from .impacted_project import ImpactedProject
 from .job_event import JobEvent
 from .job_page import JobPage
 from .job_state import JobState
+from .library_cleaned import LibraryCleaned
 from .library_costs import LibraryCosts
 from .library_export_request import LibraryExportRequest
 from .library_file import LibraryFile
@@ -195,6 +196,7 @@ from .library_move_request import LibraryMoveRequest
 from .library_moved import LibraryMoved
 from .library_preset_request import LibraryPresetRequest
 from .library_report import LibraryReport
+from .library_settings_request import LibrarySettingsRequest
 from .library_targets_request import LibraryTargetsRequest
 from .library_tidied import LibraryTidied
 from .material_brush import MaterialBrush
@@ -260,6 +262,8 @@ from .project_tags_request import ProjectTagsRequest
 from .project_viewport_request import ProjectViewportRequest
 from .sample_list import SampleList
 from .sample_request import SampleRequest
+from .server_log_entry import ServerLogEntry
+from .server_log_page import ServerLogPage
 from .server_preferences import ServerPreferences
 from .snapshot_request import SnapshotRequest
 from .snapshot_take_request import SnapshotTakeRequest
@@ -623,6 +627,7 @@ __all__ = (
     "JobEvent",
     "JobPage",
     "JobState",
+    "LibraryCleaned",
     "LibraryCosts",
     "LibraryExportRequest",
     "LibraryFile",
@@ -635,6 +640,7 @@ __all__ = (
     "LibraryMoveRequest",
     "LibraryPresetRequest",
     "LibraryReport",
+    "LibrarySettingsRequest",
     "LibraryTargetsRequest",
     "LibraryTidied",
     "MaterialBrush",
@@ -700,6 +706,8 @@ __all__ = (
     "ProjectViewportRequest",
     "SampleList",
     "SampleRequest",
+    "ServerLogEntry",
+    "ServerLogPage",
     "ServerPreferences",
     "SnapshotRequest",
     "SnapshotTakeRequest",

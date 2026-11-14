@@ -24,6 +24,7 @@ static class RecoveryEndpoints {
         LibraryHost host,
         StackSessions stacks,
         GraphSessions graphs,
+        AutosaveGate autosave,
         string path
     ) =>
         LibraryTreeEndpoints.Guarded(
@@ -32,7 +33,7 @@ static class RecoveryEndpoints {
                 var file = Path.GetFullPath(path, library.RootPath);
                 var editing = stacks.All.Any(open => open.Path == file && open.Summary.Dirty)
                     || graphs.All.Any(open => open.Path == file && open.Summary.Dirty);
-                return TypedResults.Ok(new DocumentRecovery(editing ? null : Recovery.Newer(library.RootPath, file)));
+                return TypedResults.Ok(new DocumentRecovery(editing ? null : autosave.Newer(library.RootPath, file)));
             }
         );
 

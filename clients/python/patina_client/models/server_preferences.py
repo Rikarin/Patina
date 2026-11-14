@@ -27,7 +27,8 @@ class ServerPreferences:
     the discovery file, which anyone can read and edit.
 
         Attributes:
-            autosave (AutosavePreferences): How unsaved work is kept. It goes to the library's cache, never over a document.
+            autosave (AutosavePreferences): How unsaved work is kept. It goes to the library's cache unless a folder is
+                chosen, never over a document.
      """
 
     autosave: AutosavePreferences

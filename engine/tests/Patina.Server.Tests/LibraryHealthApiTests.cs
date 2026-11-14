@@ -85,10 +85,85 @@ public sealed class LibraryHealthApiTests : IAsyncLifetime {
         await File.WriteAllBytesAsync(Path.Combine(backup, "base.png"), new byte[500], Token);
 
         var cleaned = await client.PostAsync("/api/v1/library/clean", null, Token);
-        var tidied = await cleaned.Content.ReadFromJsonAsync<LibraryTidied>(Token);
+        var tidied = await cleaned.Content.ReadFromJsonAsync<LibraryCleaned>(Token);
 
-        Assert.Equal(new(1, 500), tidied);
+        Assert.Equal(new(1, 500, 0, 0, null), tidied);
         Assert.False(Directory.Exists(Path.Combine(crate, LibraryLayout.PaintBackupFolder)));
         Assert.True(File.Exists(Path.Combine(crate, LibraryLayout.ProjectFile)));
+    }
+
+    /// <summary>
+    ///     Clean moves the pictures no document reads into the bin as one entry, and Restore puts them back (#162). A
+    ///     document names its own project's picture by <c>pictures/…</c>, and another project's by that project's
+    ///     folder too, so a name alike in another project keeps nothing.
+    /// </summary>
+    [Fact]
+    public async Task Clean_bins_the_pictures_nothing_reads_and_restore_brings_them_back() {
+        await MakeAsync("Crate");
+        await MakeAsync("Barrel");
+        var projects = Path.Combine(server.Library, LibraryLayout.ProjectsFolder);
+        var pictures = Path.Combine(projects, "crate", "pictures");
+        Directory.CreateDirectory(Path.Combine(pictures, "scan"));
+        foreach (var name in new[] { "used.png", "shared.png", "alike.png", "scan/left.jpg" }) {
+            await File.WriteAllBytesAsync(Path.Combine(pictures, name), new byte[100], Token);
+        }
+
+        await File.AppendAllTextAsync(Graph("crate"), "# pictures/used.png\n", Token);
+        await File.AppendAllTextAsync(Graph("barrel"), "# ../crate/pictures/shared.png pictures/alike.png\n", Token);
+
+        var cleaned = await CleanAsync();
+
+        Assert.Equal((2, 200), (cleaned.Pictures, cleaned.PictureBytes));
+        Assert.True(File.Exists(Path.Combine(pictures, "used.png")));
+        Assert.True(File.Exists(Path.Combine(pictures, "shared.png")));
+        Assert.False(File.Exists(Path.Combine(pictures, "alike.png")));
+        Assert.False(File.Exists(Path.Combine(pictures, "scan", "left.jpg")));
+        var bin = await client.GetFromJsonAsync<BinList>("/api/v1/library/bin", Token);
+        Assert.Equal(LibraryBin.PicturesKind, Assert.Single(bin!.Items).Kind);
+
+        var restored = await client.PostAsJsonAsync(
+            "/api/v1/library/bin/restore",
+            new BinRestoreRequest(cleaned.Bin!),
+            Token
+        );
+
+        restored.EnsureSuccessStatusCode();
+        Assert.True(File.Exists(Path.Combine(pictures, "alike.png")));
+        Assert.True(File.Exists(Path.Combine(pictures, "scan", "left.jpg")));
+        Assert.Empty((await client.GetFromJsonAsync<BinList>("/api/v1/library/bin", Token))!.Items);
+        Assert.Equal(2, (await CleanAsync()).Pictures);
+
+        string Graph(string project) => Directory.GetFiles(Path.Combine(projects, project), "*.vxtexgraph")[0];
+    }
+
+    /// <summary>
+    ///     Library Settings edits the name and the texel density (#192): kept in library.yaml, read back by GET
+    ///     /library, and refused when blank or not above zero, with the file as it was.
+    /// </summary>
+    [Fact]
+    public async Task The_library_settings_are_kept_in_its_file_and_refused_out_of_range() {
+        var set = await client.PutAsJsonAsync(
+            "/api/v1/library/settings",
+            new LibrarySettingsRequest("  Ember  ", 512),
+            Token
+        );
+
+        var info = await set.Content.ReadFromJsonAsync<LibraryInfo>(Token);
+        Assert.Equal(("Ember", 512d), (info!.Name, info.TexelDensity));
+        var file = Path.Combine(server.Library, LibraryLayout.LibraryFile);
+        var kept = await File.ReadAllTextAsync(file, Token);
+        Assert.Contains("texelDensity: 512", kept, StringComparison.Ordinal);
+        foreach (var refused in new LibrarySettingsRequest[] { new(" ", 512), new("Ember", 0), new("Ember", -1) }) {
+            using var answer = await client.PutAsJsonAsync("/api/v1/library/settings", refused, Token);
+            Assert.Equal(HttpStatusCode.BadRequest, answer.StatusCode);
+        }
+
+        Assert.Equal(kept, await File.ReadAllTextAsync(file, Token));
+        Assert.Equal("Ember", (await client.GetFromJsonAsync<LibraryInfo>("/api/v1/library", Token))!.Name);
+    }
+
+    async Task<LibraryCleaned> CleanAsync() {
+        using var cleaned = await client.PostAsync("/api/v1/library/clean", null, Token);
+        return (await cleaned.Content.ReadFromJsonAsync<LibraryCleaned>(Token))!;
     }
 }

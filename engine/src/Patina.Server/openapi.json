@@ -31,6 +31,38 @@
         }
       }
     },
+    "/api/v1/log": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "The lines the Server logged after a number, the oldest first: Patina\u0027s own from information up, the framework\u0027s from warnings up. Only the latest thousand are kept; ask after the page\u0027s next number to follow along.",
+        "operationId": "GetServerLog",
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerLogPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/preferences": {
       "get": {
         "tags": [
@@ -2278,6 +2310,67 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MeshFacts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/settings": {
+      "put": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps the library\u0027s name and the texel density new projects start from in library.yaml. GET /library reads them back; the export presets have routes of their own.",
+        "operationId": "SetLibrarySettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibrarySettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryInfo"
                 }
               }
             }
@@ -5581,7 +5674,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it.",
+        "summary": "Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it, and moves the pictures in projects that no document reads, saved or open, into the bin as one entry.",
         "operationId": "CleanLibrary",
         "responses": {
           "200": {
@@ -5589,7 +5682,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LibraryTidied"
+                  "$ref": "#/components/schemas/LibraryCleaned"
                 }
               }
             }
@@ -9645,9 +9738,16 @@
             "description": "How many autosaves of a document are kept, the latest first. Restoring takes the latest.",
             "format": "int32",
             "default": 3
+          },
+          "folder": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The full path of a folder autosaves go to instead of each library\u0027s cache, a folder per library inside it,\nor null for the cache (#162). Autosaves the cache kept before one was chosen are still offered and let go\nof; those in a folder chosen earlier stay there and are not."
           }
         },
-        "description": "How unsaved work is kept. It goes to the library\u0027s cache, never over a document."
+        "description": "How unsaved work is kept. It goes to the library\u0027s cache unless a folder is chosen, never over a document."
       },
       "BakeBorderOptions": {
         "required": [
@@ -10330,7 +10430,7 @@
           },
           "kind": {
             "type": "string",
-            "description": "\u0060project\u0060 or \u0060document\u0060."
+            "description": "\u0060project\u0060, \u0060document\u0060, or \u0060pictures\u0060 for those a Clean found nothing read, each going back to\n            its own place in \u0060projects\u0060."
           },
           "name": {
             "type": "string",
@@ -15086,6 +15186,45 @@
         },
         "description": "A piece of work the Server owns, which outlives the Worker running it and the Server itself."
       },
+      "LibraryCleaned": {
+        "required": [
+          "removed",
+          "bytes",
+          "pictures",
+          "pictureBytes"
+        ],
+        "type": "object",
+        "properties": {
+          "removed": {
+            "type": "integer",
+            "description": "How many folders of copies of moved paint were deleted.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The room those freed on disk.",
+            "format": "int64"
+          },
+          "pictures": {
+            "type": "integer",
+            "description": "How many pictures nothing read went to the bin.",
+            "format": "int32"
+          },
+          "pictureBytes": {
+            "type": "integer",
+            "description": "The room those take, which emptying the bin frees.",
+            "format": "int64"
+          },
+          "bin": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The bin\u0027s entry that holds those pictures, for a Restore, or null when none went."
+          }
+        },
+        "description": "What \u0060POST /api/v1/library/clean\u0060 took away (#162)."
+      },
       "LibraryCosts": {
         "required": [
           "folder",
@@ -15503,6 +15642,25 @@
           }
         },
         "description": "What a whole build did."
+      },
+      "LibrarySettingsRequest": {
+        "required": [
+          "name",
+          "texelDensity"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The library\u0027s display name, 1 to 200 characters. Its folder keeps its name."
+          },
+          "texelDensity": {
+            "type": "number",
+            "description": "The texel density new projects start from, in texels per metre, above zero.",
+            "format": "double"
+          }
+        },
+        "description": "The body of \u0060PUT /api/v1/library/settings\u0060 (#192)."
       },
       "LibraryTargetsRequest": {
         "required": [
@@ -17599,6 +17757,68 @@
           }
         },
         "description": "Makes a project from a sample."
+      },
+      "ServerLogEntry": {
+        "required": [
+          "sequence",
+          "at",
+          "level",
+          "source",
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "description": "Its number, rising by one from the Server\u0027s start.",
+            "format": "int64"
+          },
+          "at": {
+            "type": "string",
+            "description": "When it was said.",
+            "format": "date-time"
+          },
+          "level": {
+            "type": "string",
+            "description": "\u0060information\u0060, \u0060warning\u0060, \u0060error\u0060 or \u0060critical\u0060."
+          },
+          "source": {
+            "type": "string",
+            "description": "The part of the Server that said it, such as \u0060Patina.Server.Autosave\u0060."
+          },
+          "text": {
+            "type": "string",
+            "description": "What it said, and the exception\u0027s message after it when there was one."
+          }
+        },
+        "description": "One line of what the Server said, as \u0060GET /api/v1/log\u0060 gives it (#192)."
+      },
+      "ServerLogPage": {
+        "required": [
+          "entries",
+          "next",
+          "dropped"
+        ],
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerLogEntry"
+            },
+            "description": "The lines, at most int ServerLogPage.Most."
+          },
+          "next": {
+            "type": "integer",
+            "description": "The number to ask after next: the last line\u0027s, or the one asked after when none came.",
+            "format": "int64"
+          },
+          "dropped": {
+            "type": "boolean",
+            "description": "Whether lines after the one asked after are gone, as only the latest are kept."
+          }
+        },
+        "description": "The lines of the Server\u0027s log after a number, the oldest first (#192)."
       },
       "ServerPreferences": {
         "required": [

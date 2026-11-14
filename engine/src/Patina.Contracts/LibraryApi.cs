@@ -315,6 +315,11 @@ public sealed record ProjectExportRequest(string Project, ProjectExportSettings 
 /// <param name="Export">What an export of the whole library is set to now.</param>
 public sealed record LibraryExportRequest(ProjectExportSettings Export);
 
+/// <summary>The body of <c>PUT /api/v1/library/settings</c> (#192).</summary>
+/// <param name="Name">The library's display name, 1 to 200 characters. Its folder keeps its name.</param>
+/// <param name="TexelDensity">The texel density new projects start from, in texels per metre, above zero.</param>
+public sealed record LibrarySettingsRequest(string Name, double TexelDensity);
+
 /// <summary>The body of <c>PUT /api/v1/library/export/preset</c>.</summary>
 /// <param name="Preset">
 ///     The id of the preset a project's export starts from when it has kept none, or null for the Starter glTF preset.
