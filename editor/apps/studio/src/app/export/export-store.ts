@@ -430,13 +430,15 @@ export class ExportStore {
 
   /** Starts a build. Throws the Server's refusal, which is what the panel shows. */
   async start(request: BuildRequest): Promise<void> {
-    const client = await this.api();
-    const job = unwrap(await client.POST('/api/v1/builds', { body: request }));
-    this.jobs.track(job);
+    // The last build's Done and report go at once, not when the Server answers, so they are never read as this one's.
+    this.currentId.set(null);
     this.report.set(null);
     this.projects.set([]);
     this.projectCount.set(0);
     this.comparison.set(null);
+    const client = await this.api();
+    const job = unwrap(await client.POST('/api/v1/builds', { body: request }));
+    this.jobs.track(job);
     this.currentId.set(job.id);
   }
 

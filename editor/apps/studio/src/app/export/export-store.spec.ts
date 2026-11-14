@@ -116,6 +116,23 @@ describe('ExportStore', () => {
     expect(store.build()?.progress).toBe(0.5);
   });
 
+  it('lets the last build go as soon as another starts, before the Server answers', async () => {
+    const ids = ['b1', 'b2'];
+    const { store, hear } = setup({
+      ...jobs,
+      'POST builds': () => Response.json({ ...build, id: ids.shift() }, { status: 202 })
+    });
+    await store.start({ presets: ['unreal'] });
+    hear({ ...build, state: 'succeeded', progress: 1 });
+    expect(store.build()?.state).toBe('succeeded');
+
+    // A Done left on screen while the next build is being asked for would read as that build's.
+    const next = store.start({ presets: ['unreal'] });
+    expect(store.build()).toBeNull();
+    await next;
+    expect(store.build()).toMatchObject({ id: 'b2', state: 'queued' });
+  });
+
   it('reads a report and its first page of projects', async () => {
     const { store } = setup({
       ...jobs,

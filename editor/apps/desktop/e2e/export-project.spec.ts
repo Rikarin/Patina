@@ -1,6 +1,6 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { answerOpen, leave, newLibrary, newProject } from './projects';
@@ -105,11 +105,12 @@ test('the dialog exports the document in front as TGA, transparent past its padd
     await window.screenshot({ path: join(shots, 'export-done.png') });
   }
 
-  // The dialog's settings are the project's, in its own file, where the next export starts.
-  const project = readFileSync(join(library, 'projects', 'housing', 'project.yaml'), 'utf8');
-  expect(project).toContain('export:');
-  expect(project).toContain('format: tga');
-  expect(project).toContain('mode: transparent');
+  // The dialog's settings are the project's, in its own file, where the next export starts. The dialog keeps them a
+  // moment after the last change, which a quick export can finish before.
+  const project = () => readFileSync(join(library, 'projects', 'housing', 'project.yaml'), 'utf8');
+  await expect.poll(project, { timeout: 10_000 }).toContain('export:');
+  expect(project()).toContain('format: tga');
+  expect(project()).toContain('mode: transparent');
 
   const albedo = join(library, 'exports', 'godot', 'housing', 'Housing_albedo.tga');
   expect(existsSync(albedo)).toBe(true);
@@ -146,10 +147,8 @@ def Material "Brick"
 }
 `;
 
-test('Import Materials brings a USD file’s material into the project as a graph that reads its picture', async () => {
-  const library = join(scratch, 'Ember.ptlib');
-  await newLibrary(app, window, library);
-  await newProject(app, window, 'Housing', join(scratch, 'meshes', 'housing_low.glb'));
+/** Imports `brick` into the open project through Import Materials, and gives the graph file it makes. */
+async function importBrick(library: string): Promise<string> {
   // A one-pixel PNG, which is all the graph needs to read.
   const pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
   writeFileSync(join(scratch, 'brick.png'), Buffer.from(pixel, 'base64'));
@@ -163,6 +162,61 @@ test('Import Materials brings a USD file’s material into the project as a grap
   // The file is named as every new document's is, in lower case, which Linux tells apart from Brick.vxtexgraph.
   const graph = join(library, 'projects', 'housing', 'brick.vxtexgraph');
   await expect.poll(() => existsSync(graph), { timeout: 30_000 }).toBe(true);
+  return graph;
+}
+
+test('Import Materials brings a USD file’s material into the project as a graph that reads its picture', async () => {
+  const library = join(scratch, 'Ember.ptlib');
+  await newLibrary(app, window, library);
+  await newProject(app, window, 'Housing', join(scratch, 'meshes', 'housing_low.glb'));
+
+  const graph = await importBrick(library);
   expect(readFileSync(graph, 'utf8')).toContain('pictures/brick/brick.png');
   expect(existsSync(join(library, 'projects', 'housing', 'pictures', 'brick', 'brick.png'))).toBe(true);
+});
+
+/**
+ * A graph in a texturing project is none of the sets the project ships, and the Document scope exports it on its own
+ * (#153), under its own name, leaving the project's own files alone.
+ */
+test('a graph its texturing project does not ship exports on its own from the Document scope', async () => {
+  // Its export may take the 120 s its wait allows, so the test's own 120 s limit would cut it off first.
+  test.setTimeout(300_000);
+  const library = join(scratch, 'Ember.ptlib');
+  await newLibrary(app, window, library);
+  await newProject(app, window, 'Housing', join(scratch, 'meshes', 'housing_low.glb'));
+  const exportGltf = async (scope: string) => {
+    await window.getByTestId('open-export').click();
+    await expect(window.getByTestId('export-scope')).toHaveText(scope);
+    await window.getByTestId('export-preset').click();
+    await window.getByRole('option', { name: 'glTF 2.0' }).click();
+    await window.getByTestId('export-start').click();
+    await expect(window.getByTestId('export-state')).toHaveText('Done', { timeout: 120_000 });
+    await expect(window.getByTestId('export-report-failed')).toHaveText('0');
+    await window.keyboard.press('Escape');
+  };
+  const exported = join(library, 'exports', 'gltf', 'housing');
+  await exportGltf('The texture set Housing of Housing');
+  expect(readdirSync(exported)).toContain('Housing_baseColor.png');
+  await importBrick(library);
+
+  const layout = window.getByTestId('library-layout');
+  if ((await layout.getAttribute('data-layout')) !== 'list') {
+    await layout.click();
+  }
+  const project = window.locator('[data-testid=tree-row][data-kind=project]').filter({ hasText: 'Housing' });
+  if ((await project.getAttribute('aria-expanded')) !== 'true') {
+    await project.getByTestId('tree-toggle').click();
+  }
+  const document = window.locator('[data-testid=tree-row][data-kind=document]').filter({ hasText: 'Brick' });
+  await expect(document).toBeVisible({ timeout: 30_000 });
+  await document.dblclick();
+  await expect(window.getByTestId('document-tab-name').filter({ hasText: 'Brick' })).toBeVisible({ timeout: 60_000 });
+
+  await exportGltf('Brick on its own, as a texture set of Housing');
+
+  // Its textures take its own name beside the set the project ships, whose files its export left where they were.
+  const written = readdirSync(exported);
+  expect(written).toContain('Brick_baseColor.png');
+  expect(written).toContain('Housing_baseColor.png');
 });

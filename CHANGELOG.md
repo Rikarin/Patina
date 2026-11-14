@@ -331,6 +331,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Export no longer shows the last export's Done and report while the next one is being started (#153): they go as soon as Export is pressed, so a second export from the dialog is never read as finished before it has begun.
 - Checks no longer says a texture set has no Diffuse, Specular or Glossiness channel when its export preset reads one (#159): the export works those out from base color, metalness and roughness, and the files that read them now count toward the set's memory.
 - A document opened again after the engine restarted shows what its file holds and takes strokes (#108, #226): the GPU engine kept the documents of the engine that had stopped and lent their unsaved paint to the ones opened again, so a stroke thrown away came back and the first new stroke on that layer never showed.
 - A bake no longer misses texels on a mesh's outline or along its edges (#287): a ray through an edge two triangles share could miss both, and a texel a chart claims past its triangle's edge could miss the mesh, so about one texel in a hundred of a low mesh baked onto itself read opacity 0 and took the nearest point. A texel whose centre lies in the triangle next to the one that claimed it now reads its own point at one sample per texel too, where it read the shared edge.
