@@ -262,6 +262,7 @@ public static class MeshMapBakeRun {
             Resolution = options.Resolution,
             Height = options.Rows,
             Gutter = options.Gutter,
+            Diffusion = options.Diffusion,
             Space = options.Space == "object" ? BakeSpace.Object : BakeSpace.Tangent,
             Units = rays.Units == "absolute" ? BakeUnits.Absolute : BakeUnits.Relative,
             SearchRadius = (float)rays.Front,
@@ -309,6 +310,8 @@ public static class MeshMapBakeRun {
             DistanceMap = rays.DistanceMap is { Length: > 0 } distance ? Mask(distance, "distance map") : null,
             Rounding = BakeEdgeSettings.Rounding(options.Rounding),
             EdgeMap = BakeEdgeSettings.Marked(options.Edges),
+            EdgeMapOf = options.Edges.Mesh == "low" ? BakeMesh.Target : BakeMesh.Source,
+            BorderWidth = (float)options.Borders.Width,
             Parts = rays.MatchByName
                 ? BakeParts.ByName(high.Parts, low.Parts, Suffixes(rays.HighSuffix), Suffixes(rays.LowSuffix))
                 : null,
@@ -334,6 +337,7 @@ public static class MeshMapBakeRun {
                 "opacity" => MeshMaps.Opacity,
                 "edges" => MeshMaps.Edges,
                 "islands" => MeshMaps.Islands,
+                "borders" => MeshMaps.Borders,
                 _ => MeshMaps.None
             };
         }

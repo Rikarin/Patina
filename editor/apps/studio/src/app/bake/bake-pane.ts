@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import type {
+  BakeBorderOptions,
   BakeColourOptions,
   BakeCurvatureOptions,
   BakeEdgeOptions,
@@ -53,11 +54,19 @@ const Maps: readonly { name: string; about: string }[] = [
     about: 'White where a ray found the high mesh and black where it found none, for cards and cut-outs.'
   },
   { name: 'edges', about: 'A band along the sharp or hard edges, white on the edge, for wear that follows them.' },
-  { name: 'islands', about: 'A flat color per UV island of the low mesh, for a variation per island.' }
+  { name: 'islands', about: 'A flat color per UV island of the low mesh, for a variation per island.' },
+  {
+    name: 'borders',
+    about: 'Black on the border of each UV island of the low mesh and white inside it, to fade a pattern before a seam.'
+  }
 ];
 const RoundedEdges = [
   { value: 'angle', label: 'By angle' },
   { value: 'hard', label: 'Hard edges' }
+];
+const EdgeMeshes = [
+  { value: 'high', label: 'High mesh' },
+  { value: 'low', label: 'Low mesh' }
 ];
 const Profiles = [
   { value: 'even', label: 'Round' },
@@ -412,6 +421,18 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 />
               </div>
             </div>
+            <label
+              class="flex items-center justify-between gap-2 text-sm"
+              title="Fills the rest of the texture past the dilation with a smooth blend of the maps around it, so the smallest mipmaps keep their values. ID, UV Islands and UV Borders keep their background."
+            >
+              Fill past the dilation
+              <xui-switch
+                aria-label="Fill past the dilation"
+                data-testid="bake-diffusion"
+                [checked]="options.diffusion"
+                (checkedChange)="set({ diffusion: $event })"
+              />
+            </label>
             <label
               class="flex items-center justify-between gap-2 text-sm"
               title="A texture set wider than it is tall bakes at its own shape at this width, so a wide set and a square one bake together without stretching."
@@ -957,6 +978,17 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   />
                 </div>
                 <div class="flex items-center justify-between gap-2 text-sm">
+                  Mesh
+                  <xui-segmented-control
+                    size="sm"
+                    aria-label="Whose edges are marked"
+                    data-testid="bake-edges-mesh"
+                    [options]="edgeMeshes"
+                    [value]="options.edges.mesh"
+                    (valueChange)="setEdges({ mesh: $event ?? options.edges.mesh })"
+                  />
+                </div>
+                <div class="flex items-center justify-between gap-2 text-sm">
                   Profile
                   <xui-segmented-control
                     size="sm"
@@ -968,8 +1000,28 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                   />
                 </div>
                 <p class="text-foreground-muted text-xs">
-                  The high mesh’s edges, or the low mesh’s when it bakes onto itself. Round fades evenly away from the
-                  edge, Smooth softly, and Chamfer is white across the whole band.
+                  High mesh marks the edges where the rays land; Low mesh marks the low mesh’s own edges, even under a
+                  high mesh with none. Round fades evenly away from the edge, Smooth softly, and Chamfer is white across
+                  the whole band.
+                </p>
+              }
+              @case ('borders') {
+                <div class="flex items-center justify-between gap-2 text-sm">
+                  <span>Width, % of the texture</span>
+                  <xui-numeric-input
+                    size="sm"
+                    aria-label="Border width"
+                    data-testid="bake-borders-width"
+                    [max]="100"
+                    [min]="0.1"
+                    [stepSize]="0.5"
+                    [value]="toPercent(options.borders.width, 1)"
+                    (valueChange)="setBorders({ width: fromPercent($event ?? 2) })"
+                  />
+                </div>
+                <p class="text-foreground-muted text-xs">
+                  How far inside an island the map turns white. It measures along the UV layout, so a seam fades the
+                  same on every island.
                 </p>
               }
               @case ('thickness') {
@@ -1250,6 +1302,7 @@ export class BakePane {
   protected readonly rowsName = (value: string) => (value ? `${value} texels` : 'Same as width');
   protected readonly canPick = desktop() !== undefined;
   protected readonly roundedEdges = RoundedEdges;
+  protected readonly edgeMeshes = EdgeMeshes;
   protected readonly profiles = Profiles;
   protected readonly curvatureRanges = CurvatureRanges;
   protected readonly colourSources = ColourSources;
@@ -1408,6 +1461,10 @@ export class BakePane {
 
   protected setCurvature(change: Partial<BakeCurvatureOptions>): void {
     this.settings.set(options => ({ ...options, curvature: { ...options.curvature, ...change } }));
+  }
+
+  protected setBorders(change: Partial<BakeBorderOptions>): void {
+    this.settings.set(options => ({ ...options, borders: { ...options.borders, ...change } }));
   }
 
   protected setEdges(change: Partial<BakeEdgeOptions>): void {

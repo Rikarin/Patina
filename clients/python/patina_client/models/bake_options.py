@@ -12,6 +12,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.bake_border_options import BakeBorderOptions
   from ..models.bake_colour_options import BakeColourOptions
   from ..models.bake_curvature_options import BakeCurvatureOptions
   from ..models.bake_edge_options import BakeEdgeOptions
@@ -41,6 +42,10 @@ class BakeOptions:
             format_ (str): `png8`, `png16`, `exr16` or `exr32`.
             supersampling (int): How many samples along each side of a texel.
             gutter (int): How many texels of dilation surround each chart.
+            diffusion (bool): Whether the texels past the dilation are filled too, each a smooth blend of the charts around
+                it, so the
+                smallest mipmaps keep the maps' own values rather than fading to the empty texture's (#148). Labels, the ID
+                and UV Islands maps, and UV Borders keep their background.
             maps (list[str]): Which maps to write: `normal`, `height`, `ao`, `bent`, `curvature`,
                 `thickness`, `position`, `world`, `id`, `colour`, `opacity` (where a ray
                 found the high mesh), `edges` (a band along its sharp or hard edges) and `islands` (a color per UV
@@ -54,6 +59,7 @@ class BakeOptions:
             thickness (BakeThicknessOptions): The thickness map's own settings.
             curvature (BakeCurvatureOptions): The curvature map's stored range (#148).
             edges (BakeEdgeOptions): Which edges the edges map marks, and the band it draws along them (#148).
+            borders (BakeBorderOptions): The borders map's width (#121).
             id (BakeIdOptions): What an ID map labels, and how it colours the labels.
             rounding (BakeRoundingOptions): Edges baked round into the normal map, the bevel a hard-surface model was not
                 modelled with.
@@ -73,6 +79,7 @@ class BakeOptions:
     format_: str
     supersampling: int
     gutter: int
+    diffusion: bool
     maps: list[str]
     space: str
     rays: BakeRayOptions
@@ -82,6 +89,7 @@ class BakeOptions:
     thickness: BakeThicknessOptions
     curvature: BakeCurvatureOptions
     edges: BakeEdgeOptions
+    borders: BakeBorderOptions
     id: BakeIdOptions
     rounding: BakeRoundingOptions
     colour: BakeColourOptions
@@ -94,6 +102,7 @@ class BakeOptions:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.bake_border_options import BakeBorderOptions # noqa: PLC0415
         from ..models.bake_colour_options import BakeColourOptions # noqa: PLC0415
         from ..models.bake_curvature_options import BakeCurvatureOptions # noqa: PLC0415
         from ..models.bake_edge_options import BakeEdgeOptions # noqa: PLC0415
@@ -111,6 +120,8 @@ class BakeOptions:
         supersampling = self.supersampling
 
         gutter = self.gutter
+
+        diffusion = self.diffusion
 
         maps = self.maps
 
@@ -131,6 +142,8 @@ class BakeOptions:
         curvature = self.curvature.to_dict()
 
         edges = self.edges.to_dict()
+
+        borders = self.borders.to_dict()
 
         id = self.id.to_dict()
 
@@ -158,6 +171,7 @@ class BakeOptions:
             "format": format_,
             "supersampling": supersampling,
             "gutter": gutter,
+            "diffusion": diffusion,
             "maps": maps,
             "space": space,
             "rays": rays,
@@ -167,6 +181,7 @@ class BakeOptions:
             "thickness": thickness,
             "curvature": curvature,
             "edges": edges,
+            "borders": borders,
             "id": id,
             "rounding": rounding,
             "colour": colour,
@@ -182,6 +197,7 @@ class BakeOptions:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.bake_border_options import BakeBorderOptions # noqa: PLC0415
         from ..models.bake_colour_options import BakeColourOptions # noqa: PLC0415
         from ..models.bake_curvature_options import BakeCurvatureOptions # noqa: PLC0415
         from ..models.bake_edge_options import BakeEdgeOptions # noqa: PLC0415
@@ -200,6 +216,8 @@ class BakeOptions:
         supersampling = d.pop("supersampling")
 
         gutter = d.pop("gutter")
+
+        diffusion = d.pop("diffusion")
 
         maps = cast(list[str], d.pop("maps"))
 
@@ -237,6 +255,11 @@ class BakeOptions:
 
 
         edges = BakeEdgeOptions.from_dict(d.pop("edges"))
+
+
+
+
+        borders = BakeBorderOptions.from_dict(d.pop("borders"))
 
 
 
@@ -281,6 +304,7 @@ class BakeOptions:
             format_=format_,
             supersampling=supersampling,
             gutter=gutter,
+            diffusion=diffusion,
             maps=maps,
             space=space,
             rays=rays,
@@ -290,6 +314,7 @@ class BakeOptions:
             thickness=thickness,
             curvature=curvature,
             edges=edges,
+            borders=borders,
             id=id,
             rounding=rounding,
             colour=colour,

@@ -2465,6 +2465,15 @@ export interface components {
        */
       keep: number;
     };
+    /** @description The borders map's width (#121). */
+    BakeBorderOptions: {
+      /**
+       * Format: double
+       * @description How far inside its UV island a texel reads white, as a share of the texture: black on the island's border,
+       *     rising evenly to white this far in.
+       */
+      width: number;
+    };
     /** @description Where a colour map's colour comes from. */
     BakeColourOptions: {
       /**
@@ -2515,6 +2524,11 @@ export interface components {
     };
     /** @description Which edges the edges map marks, and the band it draws along them (#148). */
     BakeEdgeOptions: {
+      /**
+       * @description Whose edges are marked: `high`, the high mesh's, where the rays land; or `low`, the low mesh's, at
+       *     the texel, so its hard edges show even under a high mesh with none (#278).
+       */
+      mesh: string;
       /**
        * @description `hard`, the edges the high mesh's own normals split, or `angle`, every edge whose faces meet at
        *                 double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges.
@@ -2635,6 +2649,12 @@ export interface components {
        */
       gutter: number;
       /**
+       * @description Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the
+       *     smallest mipmaps keep the maps' own values rather than fading to the empty texture's (#148). Labels, the ID
+       *     and UV Islands maps, and UV Borders keep their background.
+       */
+      diffusion: boolean;
+      /**
        * @description Which maps to write: `normal`, `height`, `ao`, `bent`, `curvature`,
        *     `thickness`, `position`, `world`, `id`, `colour`, `opacity` (where a ray
        *     found the high mesh), `edges` (a band along its sharp or hard edges) and `islands` (a color per UV
@@ -2657,6 +2677,8 @@ export interface components {
       curvature: components['schemas']['BakeCurvatureOptions'];
       /** @description Which edges the edges map marks, how wide and in what profile. */
       edges: components['schemas']['BakeEdgeOptions'];
+      /** @description How far inside a UV island the borders map turns white. */
+      borders: components['schemas']['BakeBorderOptions'];
       /** @description What the ID map labels and how it colours them. */
       id: components['schemas']['BakeIdOptions'];
       /** @description Edges baked round into the normal, with no high poly to give them a bevel. */

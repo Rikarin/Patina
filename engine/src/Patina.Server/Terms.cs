@@ -29,6 +29,7 @@ public static class Terms {
         ["world"] = "World Normal",
         ["id"] = "ID",
         ["islands"] = "UV Islands",
+        ["borders"] = "UV Borders",
 
         // Port and parameter kinds.
         ["Float"] = "Number",

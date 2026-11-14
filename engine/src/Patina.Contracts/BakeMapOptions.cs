@@ -26,10 +26,32 @@ public sealed record BakeCurvatureOptions {
         : null;
 }
 
+/// <summary>The borders map's width (#121).</summary>
+public sealed record BakeBorderOptions {
+    /// <summary>
+    ///     How far inside its UV island a texel reads white, as a share of the texture: black on the island's border,
+    ///     rising evenly to white this far in.
+    /// </summary>
+    public double Width { get; set; } = 0.02;
+
+    /// <summary>What is wrong, or null.</summary>
+    public string? Problem() =>
+        Width is > 0 and <= 1 ? null : "The borders map's width is more than nothing and at most the whole texture.";
+}
+
 /// <summary>Which edges the edges map marks, and the band it draws along them (#148).</summary>
 public sealed record BakeEdgeOptions {
     /// <summary>The words <see cref="Profile" /> and a rounded edge's profile take.</summary>
     public static IReadOnlyList<string> Profiles { get; } = ["even", "smooth", "chamfer"];
+
+    /// <summary>The words <see cref="Mesh" /> takes.</summary>
+    public static IReadOnlyList<string> Meshes { get; } = ["high", "low"];
+
+    /// <summary>
+    ///     Whose edges are marked: <c>high</c>, the high mesh's, where the rays land; or <c>low</c>, the low mesh's, at
+    ///     the texel, so its hard edges show even under a high mesh with none (#278).
+    /// </summary>
+    public string Mesh { get; set; } = "high";
 
     /// <summary>
     ///     <c>hard</c>, the edges the high mesh's own normals split, or <c>angle</c>, every edge whose faces meet at
@@ -50,10 +72,15 @@ public sealed record BakeEdgeOptions {
     public string Profile { get; set; } = "even";
 
     /// <summary>What is wrong, or null.</summary>
-    public string? Problem() =>
-        !BakeRoundingOptions.EdgeWords.Contains(Edges, StringComparer.Ordinal) ? $"'{Edges}' is not angle or hard."
-        : !Profiles.Contains(Profile, StringComparer.Ordinal) ? $"'{Profile}' is not a profile."
-        : !(Width > 0 && double.IsFinite(Width)) ? "The edges map needs a width."
-        : Angle is < 0 or > 180 ? "The edge angle is 0 to 180 degrees."
-        : null;
+    public string? Problem() {
+        (bool Wrong, string Why)[] checks = [
+            (!BakeRoundingOptions.EdgeWords.Contains(Edges, StringComparer.Ordinal),
+                $"'{Edges}' is not angle or hard."),
+            (!Profiles.Contains(Profile, StringComparer.Ordinal), $"'{Profile}' is not a profile."),
+            (!Meshes.Contains(Mesh, StringComparer.Ordinal), $"'{Mesh}' is not high or low."),
+            (!(Width > 0 && double.IsFinite(Width)), "The edges map needs a width."),
+            (Angle is < 0 or > 180, "The edge angle is 0 to 180 degrees.")
+        ];
+        return checks.FirstOrDefault(static check => check.Wrong).Why;
+    }
 }

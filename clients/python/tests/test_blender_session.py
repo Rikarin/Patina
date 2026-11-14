@@ -39,6 +39,7 @@ from patina_client.api.viewport import (
     show_graph_in_viewport,
 )
 from patina_client.models import (
+    BakeBorderOptions,
     BakeColourOptions,
     BakeCurvatureOptions,
     BakeEdgeOptions,
@@ -189,6 +190,7 @@ def test_a_blender_shaped_session(session) -> None:
                 format_="png16",
                 supersampling=1,
                 gutter=4,
+                diffusion=False,
                 maps=["normal", "height", "ao"],
                 space="tangent",
                 rays=BakeRayOptions(
@@ -220,7 +222,8 @@ def test_a_blender_shaped_session(session) -> None:
                 thickness=BakeThicknessOptions(normalised=True),
                 id=BakeIdOptions(source="auto", palette="random"),
                 curvature=BakeCurvatureOptions(range_="auto", radius=0.01),
-                edges=BakeEdgeOptions(edges="hard", width=0.01, angle=30.0, profile="even"),
+                edges=BakeEdgeOptions(mesh="high", edges="hard", width=0.01, angle=30.0, profile="even"),
+                borders=BakeBorderOptions(width=0.02),
                 rounding=BakeRoundingOptions(enabled=False, width=0.01, edges="angle", angle=30.0, profile="even"),
                 colour=BakeColourOptions(source="auto", texture=""),
             ),

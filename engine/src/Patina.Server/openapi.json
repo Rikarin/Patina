@@ -9053,6 +9053,20 @@
         },
         "description": "How unsaved work is kept. It goes to the library\u0027s cache, never over a document."
       },
+      "BakeBorderOptions": {
+        "required": [
+          "width"
+        ],
+        "type": "object",
+        "properties": {
+          "width": {
+            "type": "number",
+            "description": "How far inside its UV island a texel reads white, as a share of the texture: black on the island\u0027s border,\nrising evenly to white this far in.",
+            "format": "double"
+          }
+        },
+        "description": "The borders map\u0027s width (#121)."
+      },
       "BakeColourOptions": {
         "required": [
           "source",
@@ -9130,6 +9144,7 @@
       },
       "BakeEdgeOptions": {
         "required": [
+          "mesh",
           "edges",
           "width",
           "angle",
@@ -9137,6 +9152,10 @@
         ],
         "type": "object",
         "properties": {
+          "mesh": {
+            "type": "string",
+            "description": "Whose edges are marked: \u0060high\u0060, the high mesh\u0027s, where the rays land; or \u0060low\u0060, the low mesh\u0027s, at\nthe texel, so its hard edges show even under a high mesh with none (#278)."
+          },
           "edges": {
             "type": "string",
             "description": "\u0060hard\u0060, the edges the high mesh\u0027s own normals split, or \u0060angle\u0060, every edge whose faces meet at\n            double BakeEdgeOptions.Angle or more. With no high mesh the low mesh bakes onto itself, so these are its edges."
@@ -9264,6 +9283,7 @@
           "format",
           "supersampling",
           "gutter",
+          "diffusion",
           "maps",
           "space",
           "rays",
@@ -9273,6 +9293,7 @@
           "thickness",
           "curvature",
           "edges",
+          "borders",
           "id",
           "rounding",
           "colour"
@@ -9313,6 +9334,10 @@
             "description": "How many texels of dilation surround each chart.",
             "format": "int32"
           },
+          "diffusion": {
+            "type": "boolean",
+            "description": "Whether the texels past the dilation are filled too, each a smooth blend of the charts around it, so the\nsmallest mipmaps keep the maps\u0027 own values rather than fading to the empty texture\u0027s (#148). Labels, the ID\nand UV Islands maps, and UV Borders keep their background."
+          },
           "maps": {
             "type": "array",
             "items": {
@@ -9351,6 +9376,10 @@
           "edges": {
             "description": "Which edges the edges map marks, how wide and in what profile.",
             "$ref": "#/components/schemas/BakeEdgeOptions"
+          },
+          "borders": {
+            "description": "How far inside a UV island the borders map turns white.",
+            "$ref": "#/components/schemas/BakeBorderOptions"
           },
           "id": {
             "description": "What the ID map labels and how it colours them.",
