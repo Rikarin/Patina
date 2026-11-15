@@ -150,39 +150,67 @@ test('a texture set shows alone in the viewport, and the whole model comes back'
   const unmarked = await quads(true);
   let frames = Number(await viewport.getAttribute('data-frames'));
   const row = window.getByTestId('texture-set-wood');
+  // Every time the window says the pointer left a row, and where it says the pointer went, for a failure to show.
+  await window.evaluate(() => {
+    const held = globalThis as unknown as { leaves?: string[] };
+    held.leaves = [];
+    document.addEventListener(
+      'pointerleave',
+      event => {
+        const left = event.target instanceof HTMLElement ? event.target.dataset['set'] : undefined;
+        if (left !== undefined) {
+          const into = event.relatedTarget instanceof HTMLElement ? event.relatedTarget.tagName : 'outside';
+          held.leaves?.push(`${left} at ${event.clientX},${event.clientY} into ${into}, trusted ${event.isTrusted}`);
+        }
+      },
+      true
+    );
+  });
   await row.hover();
   await drawn(viewport, 'highlight', ['wood'], frames);
+  frames = Number(await viewport.getAttribute('data-frames'));
+  await viewport.hover();
+  await drawn(viewport, 'highlight', [], frames);
+
   /**
-   * The orange, pointing at wood again first if the mark went: the row unmarks when the pointer leaves it, and a list
-   * that moves under a still pointer leaves it (#295). Each time is said, so a run shows whether that happened.
+   * The orange is counted with wood marked through the keyboard, which marks a row while it has focus as the pointer
+   * does while it is on it. On Linux CI the window said the pointer left the row within a second of every hover, with
+   * nothing moving it, and the row unmarked as it should (#295). With the pointer on the viewport and focus in the row,
+   * the count waits on nothing a still pointer has to hold.
    */
-  const pointed = async (): Promise<number> => {
+  frames = Number(await viewport.getAttribute('data-frames'));
+  await row.focus();
+  await drawn(viewport, 'highlight', ['wood'], frames);
+  const focused = async (): Promise<number> => {
     const held = await marks();
     if (held.join() !== 'wood') {
-      const hovered = await row.evaluate(element => element.closest('[data-set]')?.matches(':hover') ?? false);
-      console.warn(`The mark was ${held.join() || 'off'} while wood was pointed at (row hovered: ${hovered})`);
-      await row.hover();
+      const kept = await row.evaluate(element => element === document.activeElement);
+      console.warn(`The mark was ${held.join() || 'off'} while wood had focus (focus kept: ${kept})`);
+      await row.blur();
+      await row.focus();
     }
 
     return quads(true);
   };
   try {
     await expect
-      .poll(pointed, { timeout: 30_000, message: 'The mark on wood is drawn orange' })
+      .poll(focused, { timeout: 30_000, message: 'The mark on wood is drawn orange' })
       .toBeGreaterThan(unmarked + 1_000);
   } catch (failure) {
     // Whether the Worker drew the mark and the app lost it, or the Worker never drew it, and what the Server marks.
     const drawn = await count(await serverPicture(window, join(shots, 'isolate-0-wood-marked-server.png')), true);
     const held = (await marks()).join() || 'nothing';
+    const leaves = await window.evaluate(() => (globalThis as unknown as { leaves?: string[] }).leaves ?? []);
     throw new Error(
-      `${String(failure)}\nThe Server's own picture of the viewport has ${drawn} orange pixels, and it marks ${held}.`,
+      `${String(failure)}\nThe Server's own picture of the viewport has ${drawn} orange pixels, and it marks ${held}.` +
+        `\nThe pointer left a row: ${leaves.join('; ') || 'never'}.`,
       { cause: failure }
     );
   }
 
   await viewport.screenshot({ path: join(shots, 'isolate-0-wood-marked.png') });
   frames = Number(await viewport.getAttribute('data-frames'));
-  await viewport.hover();
+  await row.blur();
   await drawn(viewport, 'highlight', [], frames);
   await expect.poll(() => quads(true), { timeout: 30_000 }).toBeLessThan(unmarked + 200);
 
