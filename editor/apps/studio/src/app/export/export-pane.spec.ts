@@ -93,8 +93,8 @@ const formats = [
   { id: 'tga', label: 'TGA 8-bit', extension: '.tga', lanes: [1, 3, 4], linear: false, container: false }
 ];
 
-function setup(routes: Record<string, (request: Request) => Response> = {}) {
-  const all: Record<string, (request: Request) => Response> = {
+function setup(routes: Record<string, (request: Request) => Response | Promise<Response>> = {}) {
+  const all: Record<string, (request: Request) => Response | Promise<Response>> = {
     'GET jobs': () => Response.json({ jobs: [], sequence: 0 }),
     'GET library': () => Response.json({ id: 'l', name: 'Library' }),
     'GET export/presets': () =>
@@ -391,6 +391,46 @@ describe('ExportPane settings', () => {
         files: [{ preset: 'unreal', template: 'T_{project}_R', enabled: true, format: 'png8' }]
       }
     });
+  });
+
+  it('keeps a change made while the project’s settings are still being read, and writes it', async () => {
+    const puts: { export: { dither: boolean; padding: { distance: number } } }[] = [];
+    let read: () => void = () => undefined;
+    const answered = new Promise<void>(resolve => (read = resolve));
+    const kept = {
+      preset: 'unreal',
+      folder: null,
+      padding: { mode: 'transparent', distance: 8, colour: [] },
+      dither: false,
+      skipped: [],
+      perSet: [],
+      files: []
+    };
+    const { fixture, selection } = setup({
+      'GET library/project': () =>
+        answered.then(() => Response.json({ id: 'p', name: 'Crate', path: 'crate', export: kept, exportSets: [] })),
+      'PUT library/project/export': request => {
+        void request.json().then(body => puts.push(body as (typeof puts)[number]));
+        return Response.json({ id: 'p', name: 'Crate', path: 'crate' });
+      }
+    });
+    selection.select({ kind: 'project', project: { id: 'p', name: 'Crate', path: 'crate' } } as never);
+    await settled(fixture);
+    const page = fixture.nativeElement as HTMLElement;
+    const dither = page.querySelector<HTMLElement>(
+      '[data-testid="export-dither"] button, [data-testid="export-dither"]'
+    );
+    const before = dither?.querySelector('[role="switch"]')?.getAttribute('aria-checked') ?? 'false';
+
+    // The switch is turned before the project's file answers, as a quick hand or a slow Server does.
+    dither?.click();
+    read();
+    await settled(fixture);
+    await settled(fixture);
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    expect(puts).toHaveLength(1);
+    expect(puts[0]?.export.dither).toBe(before !== 'true');
   });
 
   it('keeps a library export’s settings in the library, where a scope change finds them again (#227)', async () => {
