@@ -107,4 +107,27 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
   await expect(window.getByTestId('viewport-view')).toContainText('Texel density');
   await expect.poll(blue, { timeout: 30_000 }).toBeGreaterThan(before + 2000);
   await window.screenshot({ path: join(shots, 'checks.png'), scale: 'css' });
+
+  // One platform keeps limits of its own beside the project's: a largest side of 16 texels for Godot is one the set
+  // breaks when it is checked for Godot.
+  await window.getByTestId('checks-platform').click();
+  await window.getByRole('option', { name: 'Godot' }).click();
+  await expect(window.getByTestId('checks-limits').locator('summary')).toHaveText('Limits for Godot');
+  await window.getByTestId('checks-limit-maxSize').fill('16');
+  await window.getByTestId('checks-limit-maxSize').press('Enter');
+  await window.getByTestId('checks-limit-maxSize').blur();
+  const large = window.locator('[data-testid="checks-problem"][data-code="texture-too-large"]');
+  await expect(large).toBeVisible({ timeout: 120_000 });
+  await expect
+    .poll(() => readFileSync(projectFile(), 'utf8'), { timeout: 10_000 })
+    .toMatch(/platforms:[\s\S]*maxSize: 16/u);
+
+  // Every set of the mesh at once, each held to the same limit, and measured where it is open.
+  await window.getByRole('radio', { name: 'All sets' }).click();
+  await window.getByTestId('checks-run').click();
+  const sets = window.getByTestId('checks-set');
+  await expect(sets).toHaveCount(2, { timeout: 120_000 });
+  await expect(window.getByTestId('checks-project-memory')).toHaveText(/ MB for 2 sets with Godot/u);
+  await expect(sets.locator('[data-code="texture-too-large"]')).toHaveCount(2);
+  await expect(sets.filter({ hasText: 'Gold' }).getByTestId('checks-unmeasured')).toHaveCount(0);
 });

@@ -28,16 +28,16 @@ public sealed class LibraryCareTests : IDisposable {
         var binned = library.TrashProject(made.Path);
 
         Assert.False(Directory.Exists(Path.Combine(root, "projects", "Props", "crate")));
-        var item = Assert.Single(library.Bin().Items);
+        var item = Assert.Single(library.Care.Bin().Items);
         Assert.Equal(
             (binned.Id, "project", "Crate", "projects/Props/crate"),
             (item.Id, item.Kind, item.Name, item.From)
         );
-        Assert.True(library.Bin().Bytes > 0);
+        Assert.True(library.Care.Bin().Bytes > 0);
 
-        Assert.Equal("projects/Props/crate", library.Restore(item.Id));
+        Assert.Equal("projects/Props/crate", library.Care.Restore(item.Id));
 
-        Assert.Empty(library.Bin().Items);
+        Assert.Empty(library.Care.Bin().Items);
         Assert.Equal(made.Id, library.Contents("Props/crate").Id);
     }
 
@@ -69,7 +69,7 @@ public sealed class LibraryCareTests : IDisposable {
 
         held.Join();
         Assert.False(Directory.Exists(Path.Combine(root, "projects", "crate")));
-        Assert.Single(library.Bin().Items);
+        Assert.Single(library.Care.Bin().Items);
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public sealed class LibraryCareTests : IDisposable {
         var binned = library.TrashProject(made.Path);
         library.CreateProject(new("Crate"));
 
-        Assert.Equal("projects/crate-2", library.Restore(binned.Id));
+        Assert.Equal("projects/crate-2", library.Care.Restore(binned.Id));
         Assert.Equal(made.Id, library.Contents("crate-2").Id);
     }
 
@@ -98,7 +98,7 @@ public sealed class LibraryCareTests : IDisposable {
         Assert.False(File.Exists(Path.Combine(project, "worn.a.vxpaint")));
         Assert.Empty(library.Contents(made.Path).Documents);
 
-        Assert.Equal("projects/crate/worn.vxlayers", library.Restore(binned.Id));
+        Assert.Equal("projects/crate/worn.vxlayers", library.Care.Restore(binned.Id));
 
         var back = Assert.Single(library.Contents(made.Path).Documents);
         Assert.Equal((document.Id.Value, "Worn"), (back.Id, back.Name));
@@ -114,10 +114,10 @@ public sealed class LibraryCareTests : IDisposable {
         var lone = library.TrashDocument(made.Path, document.Id);
         var whole = library.TrashProject(made.Path);
 
-        Assert.Throws<ProjectRefusedException>(() => library.Restore(lone.Id));
+        Assert.Throws<ProjectRefusedException>(() => library.Care.Restore(lone.Id));
 
-        library.Restore(whole.Id);
-        library.Restore(lone.Id);
+        library.Care.Restore(whole.Id);
+        library.Care.Restore(lone.Id);
         Assert.Equal("Wood", Assert.Single(library.Contents(made.Path).Documents).Name);
     }
 
@@ -125,13 +125,13 @@ public sealed class LibraryCareTests : IDisposable {
     public void Emptying_the_bin_deletes_for_good() {
         var first = library.TrashProject(library.CreateProject(new("Crate")).Path);
         library.TrashProject(library.CreateProject(new("Barrel")).Path);
-        library.DeleteFromBin(first.Id);
-        Assert.Single(library.Bin().Items);
+        library.Care.DeleteFromBin(first.Id);
+        Assert.Single(library.Care.Bin().Items);
 
-        Assert.Equal(1, library.EmptyBin());
+        Assert.Equal(1, library.Care.EmptyBin());
 
-        Assert.Empty(library.Bin().Items);
-        Assert.Throws<FileNotFoundException>(() => library.Restore(first.Id));
+        Assert.Empty(library.Care.Bin().Items);
+        Assert.Throws<FileNotFoundException>(() => library.Care.Restore(first.Id));
         Assert.Contains(".trash/", File.ReadAllText(Path.Combine(root, ".gitignore")), StringComparison.Ordinal);
     }
 

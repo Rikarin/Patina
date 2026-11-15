@@ -433,6 +433,44 @@ public sealed class PresetLanguageTests : IDisposable {
     }
 
     /// <summary>
+    ///     An OpenPBR material (#142) is a MaterialX 1.39 document whose <c>open_pbr_surface</c> takes OpenPBR's
+    ///     inputs, beside a standard surface one of the same name, and reads back as the maps it was written from.
+    /// </summary>
+    [Fact]
+    public void An_openpbr_document_names_openpbrs_inputs_beside_a_standard_surface() {
+        var unreal = ExportPresetCatalog.Read(null).Find("unreal")! with { Materials = ["mtlx", "openpbr"] };
+        var manifest = ExportRun.Run(unreal, Surface(), Path("object"), null, Token);
+
+        var delivered = ExportRun.Deliver(
+            "key",
+            Path("object"),
+            manifest,
+            Path("out"),
+            new("Crate", "unreal"),
+            preset: unreal
+        );
+
+        Assert.Contains(Path("out/Crate.mtlx"), delivered.Files);
+        Assert.Contains(Path("out/Crate.openpbr.mtlx"), delivered.Files);
+        var root = XDocument.Load(Path("out/Crate.openpbr.mtlx")).Root!;
+        Assert.Equal("1.39", root.Attribute("version")!.Value);
+        Assert.Null(root.Element("standard_surface"));
+        var inputs = root.Element("open_pbr_surface")!.Elements("input")
+            .Select(static i => i.Attribute("name")!.Value)
+            .ToList();
+        Assert.All(
+            (string[])["base_color", "specular_roughness", "base_metalness", "geometry_normal"],
+            input => Assert.Contains(input, inputs)
+        );
+        Assert.DoesNotContain("metalness", inputs);
+        Assert.DoesNotContain("normal", inputs);
+        var read = Assert.Single(MaterialXReader.Read(Path("out/Crate.openpbr.mtlx")));
+        var slots = read.Slots.Where(static s => s.Texture is not null).Select(static s => s.Usage).ToList();
+        Assert.Contains("metalness", slots);
+        Assert.Contains("normal", slots);
+    }
+
+    /// <summary>
     ///     What a USD or MaterialX file says comes back as the maps it was written from (#157): each grey map is the
     ///     lane of the packed file it was put in, a Y- normal is read as one whose green runs down, and Unity's
     ///     smoothness is roughness turned over.

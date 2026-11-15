@@ -11,7 +11,7 @@ public sealed class ProcessTests : IDisposable {
     static readonly HttpClient Http = new();
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-process-");
-    readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
+    readonly string socketPath = Patina.Testing.TempFolders.NewSocket();
     readonly List<Process> started = [];
 
     string Library => Directory.CreateDirectory(Path.Combine(folder.FullName, "Game.ptlib")).FullName;

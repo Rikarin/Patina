@@ -17,6 +17,12 @@ public static class Recovery {
     const string DocumentFile = "document";
     const string StampFormat = "D19";
 
+    /// <summary>
+    ///     The file in a library's folder of a chosen place that says which library it is, so that its autosaves can go
+    ///     back to that library's cache when the person stops choosing a place (#297).
+    /// </summary>
+    const string LibraryMarker = "library.txt";
+
     /// <summary>Where a document's autosaves go, a folder for each.</summary>
     /// <param name="root">The library.</param>
     /// <param name="file">The document.</param>
@@ -38,6 +44,10 @@ public static class Recovery {
 
     /// <summary>A new, empty autosave of a document, for its paint and then its text to go in.</summary>
     public static string Begin(string root, string file, string? away = null) {
+        if (away is not null) {
+            Mark(away, root);
+        }
+
         var folder = Folder(root, file, away);
         var stamp = DateTime.UtcNow.Ticks;
         var generation = Path.Combine(folder, stamp.ToString(StampFormat, CultureInfo.InvariantCulture));
@@ -137,6 +147,110 @@ public static class Recovery {
 
         if (!Directory.EnumerateFileSystemEntries(folder).Any()) {
             Directory.Delete(folder);
+        }
+    }
+
+    /// <summary>
+    ///     Moves the autosaves kept in a place the person chose to where autosaves go now (#297), so changing the place
+    ///     strands none: each library's folder to the new place, or with no place chosen now, to each library's cache.
+    ///     A library's folder that cannot say which library it is stays, as does one whose library is gone; generations
+    ///     in <paramref name="sparing" /> are being written and stay too.
+    /// </summary>
+    /// <param name="from">The place chosen before.</param>
+    /// <param name="to">The place chosen now, or null for each library's cache.</param>
+    /// <param name="open">The library open now, whose folder in <paramref name="from" /> needs no marker.</param>
+    /// <param name="sparing">The autosaves being written.</param>
+    /// <returns>How many autosaves moved.</returns>
+    public static int Move(string from, string? to, string? open, IReadOnlySet<string> sparing) {
+        ArgumentNullException.ThrowIfNull(sparing);
+        if (!Directory.Exists(from) || (to is not null && SamePlace(from, to))) {
+            return 0;
+        }
+
+        var moved = 0;
+        foreach (var library in Directory.GetDirectories(from)) {
+            var target = to is not null
+                ? Path.Combine(to, Path.GetFileName(library))
+                : LibraryOf(library, from, open) is { } root
+                    ? LibraryLayout.AutosavePath(root)
+                    : null;
+            if (target is null) {
+                continue;
+            }
+
+            moved += MoveLibrary(library, target, to is not null, sparing);
+        }
+
+        return moved;
+    }
+
+    /// <summary>Moves one library's autosaves, document by document, and lets go of its emptied folder.</summary>
+    static int MoveLibrary(string library, string target, bool marked, IReadOnlySet<string> sparing) {
+        var marker = Path.Combine(library, LibraryMarker);
+        if (marked && File.Exists(marker)) {
+            Directory.CreateDirectory(target);
+            File.Copy(marker, Path.Combine(target, LibraryMarker), true);
+        }
+
+        var moved = 0;
+        foreach (var document in Directory.GetDirectories(library)) {
+            foreach (var generation in Directory.GetDirectories(document).Where(path => !sparing.Contains(path))) {
+                var into = Path.Combine(target, Path.GetFileName(document), Path.GetFileName(generation));
+                if (!Directory.Exists(into)) {
+                    CopyFolder(generation, into);
+                    moved++;
+                }
+
+                Directory.Delete(generation, true);
+            }
+
+            if (!Directory.EnumerateFileSystemEntries(document).Any()) {
+                Directory.Delete(document);
+            }
+        }
+
+        if (Directory.GetDirectories(library).Length == 0) {
+            Directory.Delete(library, true);
+        }
+
+        return moved;
+    }
+
+    /// <summary>
+    ///     Copies an autosave's files: a chosen place may be on another drive, where a folder cannot simply be moved.
+    /// </summary>
+    static void CopyFolder(string from, string to) {
+        var partial = to + ".partial";
+        Directory.CreateDirectory(partial);
+        foreach (var file in Directory.GetFiles(from)) {
+            File.Copy(file, Path.Combine(partial, Path.GetFileName(file)), true);
+        }
+
+        SharedFile.MoveFolder(partial, to);
+    }
+
+    /// <summary>The library a folder of a chosen place keeps autosaves for, while that library is there.</summary>
+    static string? LibraryOf(string library, string from, string? open) {
+        var marker = Path.Combine(library, LibraryMarker);
+        var root = File.Exists(marker) ? SharedFile.ReadAllText(marker).Trim()
+            : open is not null && SamePlace(Away(from, open), library) ? open
+            : null;
+        return root is not null && File.Exists(Path.Combine(root, LibraryLayout.LibraryFile)) ? root : null;
+    }
+
+    static bool SamePlace(string one, string other) =>
+        string.Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(one)),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(other)),
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal
+        );
+
+    /// <summary>Says which library a folder of a chosen place is for, once.</summary>
+    static void Mark(string away, string root) {
+        var marker = Path.Combine(away, LibraryMarker);
+        if (!File.Exists(marker)) {
+            Directory.CreateDirectory(away);
+            LibraryFiles.Replace(marker, Path.GetFullPath(root));
         }
     }
 

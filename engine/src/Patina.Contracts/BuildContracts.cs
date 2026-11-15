@@ -6,7 +6,14 @@ namespace Patina.Contracts;
 /// <param name="Width">Its width.</param>
 /// <param name="Height">Its height.</param>
 /// <param name="Green">For a normal, which way its green runs: up or down. Null for anything else.</param>
-public sealed record BuiltMap(string Map, string File, int Width, int Height, string? Green);
+public sealed record BuiltMap(string Map, string File, int Width, int Height, string? Green) {
+    /// <summary>
+    ///     How many bits a lane it holds as made (#141): 8, 16 or 32. A stack's map is as deep as its channel is
+    ///     painted, a graph's as it computed, and a bake's as it was baked. 0 for an object built before this was said,
+    ///     which is read from its file.
+    /// </summary>
+    public int Depth { get; init; }
+}
 
 /// <summary>What an output's object holds.</summary>
 /// <param name="Tool">What built it.</param>

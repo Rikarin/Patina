@@ -49,6 +49,13 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx2.Re
 
         return response_200
 
+    if response.status_code == 400:
+        response_400 = ProblemDetails.from_dict(response.json())
+
+
+
+        return response_400
+
     if response.status_code == 404:
         response_404 = ProblemDetails.from_dict(response.json())
 
@@ -92,12 +99,15 @@ def sync_detailed(
 
 ) -> Response[BakePreviewState | ProblemDetails]:
     """ Lays a bake's setup over the model before it runs: where its rays start and how far they reach, the
-    high meshes see-through, and which parts match by name. An empty low mesh takes it off.
+    high meshes see-through, and which parts match by name. A project takes the meshes, cage and options
+    from its own bake settings, as its bake plan does. An empty low mesh with no project takes it off.
 
     Args:
         body (ViewportBakePreview): A bake's setup to show in the viewport before it runs (#149):
             the meshes and the options a bake would be sent,
-            and what of it to draw. Paths on the Server's machine, as in a bake request.
+            and what of it to draw. Paths on the Server's machine, as in a bake request, or a project
+            whose own settings the
+            Server reads them from, as it plans that project's bake (#296).
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -126,12 +136,15 @@ def sync(
 
 ) -> BakePreviewState | ProblemDetails | None:
     """ Lays a bake's setup over the model before it runs: where its rays start and how far they reach, the
-    high meshes see-through, and which parts match by name. An empty low mesh takes it off.
+    high meshes see-through, and which parts match by name. A project takes the meshes, cage and options
+    from its own bake settings, as its bake plan does. An empty low mesh with no project takes it off.
 
     Args:
         body (ViewportBakePreview): A bake's setup to show in the viewport before it runs (#149):
             the meshes and the options a bake would be sent,
-            and what of it to draw. Paths on the Server's machine, as in a bake request.
+            and what of it to draw. Paths on the Server's machine, as in a bake request, or a project
+            whose own settings the
+            Server reads them from, as it plans that project's bake (#296).
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -155,12 +168,15 @@ async def asyncio_detailed(
 
 ) -> Response[BakePreviewState | ProblemDetails]:
     """ Lays a bake's setup over the model before it runs: where its rays start and how far they reach, the
-    high meshes see-through, and which parts match by name. An empty low mesh takes it off.
+    high meshes see-through, and which parts match by name. A project takes the meshes, cage and options
+    from its own bake settings, as its bake plan does. An empty low mesh with no project takes it off.
 
     Args:
         body (ViewportBakePreview): A bake's setup to show in the viewport before it runs (#149):
             the meshes and the options a bake would be sent,
-            and what of it to draw. Paths on the Server's machine, as in a bake request.
+            and what of it to draw. Paths on the Server's machine, as in a bake request, or a project
+            whose own settings the
+            Server reads them from, as it plans that project's bake (#296).
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -189,12 +205,15 @@ async def asyncio(
 
 ) -> BakePreviewState | ProblemDetails | None:
     """ Lays a bake's setup over the model before it runs: where its rays start and how far they reach, the
-    high meshes see-through, and which parts match by name. An empty low mesh takes it off.
+    high meshes see-through, and which parts match by name. A project takes the meshes, cage and options
+    from its own bake settings, as its bake plan does. An empty low mesh with no project takes it off.
 
     Args:
         body (ViewportBakePreview): A bake's setup to show in the viewport before it runs (#149):
             the meshes and the options a bake would be sent,
-            and what of it to draw. Paths on the Server's machine, as in a bake request.
+            and what of it to draw. Paths on the Server's machine, as in a bake request, or a project
+            whose own settings the
+            Server reads them from, as it plans that project's bake (#296).
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

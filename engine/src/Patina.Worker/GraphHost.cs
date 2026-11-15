@@ -2,6 +2,8 @@ using Patina.Graphs;
 using Patina.Ipc;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Security.Cryptography;
+using Vixen.Core.Imaging;
 using Vixen.Core.Yaml;
 using Vixen.NodeGraph;
 using Vixen.TextureGraph;
@@ -99,6 +101,26 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         };
     }
 
+    /// <summary>
+    ///     One texel of one picture as the graph stored it, from the plan the last evaluation ran (#184). The result
+    ///     cache usually holds the picture, so only the read runs.
+    /// </summary>
+    public IpcMessage Sample(IpcMessage request) {
+        var ask = request.GraphSample ?? throw new IpcException("graph.sample says nothing to read.");
+        var graph = Find(ask.Session);
+        var (plan, image) = Picture(graph, ask.Node, ask.Port);
+        var size = plan.SizeOf(image);
+        var x = Math.Clamp((int)(ask.U * size.X), 0, size.X - 1);
+        var y = Math.Clamp((int)(ask.V * size.Y), 0, size.Y - 1);
+        using var bake = gpu.Evaluator.EvaluateIncremental(GraphPreviews.Full(plan, image), graph.Uploads!.Externals);
+        var format = bake.Plan.Images[image].Format;
+        var texel = bake.ReadTexels(image, [new(x, y, 1, 1)])[0];
+        return new() {
+            Type = IpcTypes.Ok,
+            GraphSampled = new(x, y, size.X, size.Y, format.ToString(), StackSampling.Stored(texel, format))
+        };
+    }
+
     /// <summary>The plan the last evaluation ran and the image one node's port wrote in it.</summary>
     static (TexturePlan Plan, int Image) Picture(Loaded graph, int node, string port) {
         if (graph.Plan is not { } plan) {
@@ -140,6 +162,10 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
             return Drawn(null);
         }
 
+        if (ask.Deep) {
+            return Drawn(Deep(runner, plan, source.Image, graph.Uploads!.Externals, ask.PreviewFolder));
+        }
+
         var extended = GraphPreviews.Extend(plan, [source], int.MaxValue, []);
         if (extended.Images.Count == 0) {
             return Drawn(null);
@@ -149,6 +175,25 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         using var bake = Timed(runner, extended.Plan, graph.Uploads!.Externals);
         timings.Keep(bake, extended.Plan);
         return Drawn(previews.Write(bake, [extended.Images[0].Image], ask.PreviewFolder)[0].Hash);
+    }
+
+    /// <summary>
+    ///     One picture at the size the graph computes it, kept as a half-float <c>.exr</c> with its numbers as they
+    ///     are, so a sun is still many times brighter than the sky round it (#180).
+    /// </summary>
+    static string Deep(
+        TexturePlanEvaluator runner,
+        TexturePlan plan,
+        int image,
+        IReadOnlyDictionary<int, TextureExternal> externals,
+        string folder
+    ) {
+        using var bake = runner.EvaluateIncremental(GraphPreviews.Full(plan, image), externals);
+        var picture = RawPictures.ToFloat(bake.ReadRaw(image)).Image;
+        var bytes = ExrCodec.Encode(picture, ExrPixels.Half);
+        var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
+        GraphPreviewFiles.Store(folder, hash, bytes, GraphPreviewFiles.Radiance);
+        return hash;
     }
 
     internal static IpcMessage Drawn(string? hash) => new() { Type = IpcTypes.Ok, ThumbnailHash = hash };

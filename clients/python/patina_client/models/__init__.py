@@ -10,6 +10,9 @@ from .bake_curvature_options import BakeCurvatureOptions
 from .bake_edge_options import BakeEdgeOptions
 from .bake_height_options import BakeHeightOptions
 from .bake_id_options import BakeIdOptions
+from .bake_import_map import BakeImportMap
+from .bake_import_request import BakeImportRequest
+from .bake_imported import BakeImported
 from .bake_occlusion_options import BakeOcclusionOptions
 from .bake_options import BakeOptions
 from .bake_position_options import BakePositionOptions
@@ -172,6 +175,8 @@ from .graph_preset_state import GraphPresetState
 from .graph_preset_state_values import GraphPresetStateValues
 from .graph_preview import GraphPreview
 from .graph_relink_request import GraphRelinkRequest
+from .graph_sample import GraphSample
+from .graph_sample_request import GraphSampleRequest
 from .graph_selection import GraphSelection
 from .graph_setting_condition import GraphSettingCondition
 from .graph_setting_definition import GraphSettingDefinition
@@ -223,12 +228,14 @@ from .package_manifest import PackageManifest
 from .package_plan import PackagePlan
 from .package_published import PackagePublished
 from .package_request import PackageRequest
+from .platform_check_limits import PlatformCheckLimits
 from .preview_save_request import PreviewSaveRequest
 from .problem_details import ProblemDetails
 from .project_bake_plan import ProjectBakePlan
 from .project_bake_request import ProjectBakeRequest
 from .project_bake_settings import ProjectBakeSettings
 from .project_check_settings import ProjectCheckSettings
+from .project_checks import ProjectChecks
 from .project_checks_request import ProjectChecksRequest
 from .project_comparison import ProjectComparison
 from .project_contents import ProjectContents
@@ -358,6 +365,8 @@ from .stack_filter_kind import StackFilterKind
 from .stack_find_request import StackFindRequest
 from .stack_found import StackFound
 from .stack_frame import StackFrame
+from .stack_graph_made import StackGraphMade
+from .stack_graph_request import StackGraphRequest
 from .stack_id_colour import StackIdColour
 from .stack_id_colours import StackIdColours
 from .stack_input import StackInput
@@ -421,10 +430,13 @@ from .tag_page import TagPage
 from .thumbnail import Thumbnail
 from .thumbnail_list import ThumbnailList
 from .thumbnail_request import ThumbnailRequest
+from .unused_file import UnusedFile
+from .unused_upload_list import UnusedUploadList
 from .unwrap_options import UnwrapOptions
 from .unwrap_report import UnwrapReport
 from .unwrap_set import UnwrapSet
 from .uploaded_file import UploadedFile
+from .uploads_cleared import UploadsCleared
 from .viewport_bake_preview import ViewportBakePreview
 from .viewport_bake_request import ViewportBakeRequest
 from .viewport_camera_state import ViewportCameraState
@@ -462,6 +474,9 @@ __all__ = (
     "BakeEdgeOptions",
     "BakeHeightOptions",
     "BakeIdOptions",
+    "BakeImported",
+    "BakeImportMap",
+    "BakeImportRequest",
     "BakeOcclusionOptions",
     "BakeOptions",
     "BakePositionOptions",
@@ -623,6 +638,8 @@ __all__ = (
     "GraphPresetStateValues",
     "GraphPreview",
     "GraphRelinkRequest",
+    "GraphSample",
+    "GraphSampleRequest",
     "GraphSelection",
     "GraphSettingCondition",
     "GraphSettingDefinition",
@@ -674,11 +691,13 @@ __all__ = (
     "PackagePlan",
     "PackagePublished",
     "PackageRequest",
+    "PlatformCheckLimits",
     "PreviewSaveRequest",
     "ProblemDetails",
     "ProjectBakePlan",
     "ProjectBakeRequest",
     "ProjectBakeSettings",
+    "ProjectChecks",
     "ProjectCheckSettings",
     "ProjectChecksRequest",
     "ProjectComparison",
@@ -809,6 +828,8 @@ __all__ = (
     "StackFindRequest",
     "StackFound",
     "StackFrame",
+    "StackGraphMade",
+    "StackGraphRequest",
     "StackIdColour",
     "StackIdColours",
     "StackInput",
@@ -872,10 +893,13 @@ __all__ = (
     "Thumbnail",
     "ThumbnailList",
     "ThumbnailRequest",
+    "UnusedFile",
+    "UnusedUploadList",
     "UnwrapOptions",
     "UnwrapReport",
     "UnwrapSet",
     "UploadedFile",
+    "UploadsCleared",
     "ViewportBakePreview",
     "ViewportBakeRequest",
     "ViewportCameraState",

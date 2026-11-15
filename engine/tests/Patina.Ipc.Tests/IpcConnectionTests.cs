@@ -1,7 +1,7 @@
 namespace Patina.Ipc.Tests;
 
 public sealed class IpcConnectionTests : IDisposable {
-    readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
+    readonly string socketPath = Patina.Testing.TempFolders.NewSocket();
 
     CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -200,6 +200,56 @@ public sealed class IpcConnectionTests : IDisposable {
                 release.SetResult();
                 await Task.WhenAll(first, later, frame).WaitAsync(TimeSpan.FromSeconds(5), Token);
                 Assert.Equal(["first", "frame", "later"], answered);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     The Worker's own lane (#295): a frame and what it needs go ahead, but wearing a stack keeps its place behind
+    ///     the stack's load and sync sent before it, or the viewport wore a stack the Worker did not hold yet.
+    /// </summary>
+    [Fact]
+    public async Task Wearing_a_stack_waits_for_the_stack_and_a_frame_does_not() {
+        var release = new TaskCompletionSource();
+        var started = new TaskCompletionSource();
+        List<string> answered = [];
+        var (left, right) = await ConnectAsync(
+            Reply,
+            async (request, _) => {
+                if (request.Type == IpcTypes.StackEvaluate) {
+                    started.TrySetResult();
+                    await release.Task;
+                }
+
+                lock (answered) {
+                    answered.Add(request.Type);
+                }
+
+                return IpcMessage.Ok(request.Id);
+            },
+            static type => type == IpcTypes.Health,
+            urgent: IpcTypes.Urgent
+        );
+        await using (left) {
+            await using (right) {
+                var busy = left.SendAsync(new() { Type = IpcTypes.StackEvaluate }, Token);
+                await started.Task.WaitAsync(TimeSpan.FromSeconds(5), Token);
+                string[] sent = [
+                    IpcTypes.StackLoad, IpcTypes.StackSync, IpcTypes.ViewportStack, IpcTypes.ViewportDisplay,
+                    IpcTypes.ViewportCamera, IpcTypes.ViewportRender
+                ];
+                var rest = sent.Select(type => left.SendAsync(new() { Type = type }, Token)).ToArray();
+                await Task.Delay(100, Token);
+                release.SetResult();
+                await Task.WhenAll([busy, ..rest]).WaitAsync(TimeSpan.FromSeconds(5), Token);
+
+                Assert.Equal(
+                    [
+                        IpcTypes.StackEvaluate, IpcTypes.ViewportDisplay, IpcTypes.ViewportCamera,
+                        IpcTypes.ViewportRender, IpcTypes.StackLoad, IpcTypes.StackSync, IpcTypes.ViewportStack
+                    ],
+                    answered
+                );
             }
         }
     }

@@ -61,7 +61,7 @@ public sealed class GraphCatalogueProcessTests : IDisposable {
     };
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-catalogue-");
-    readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
+    readonly string socketPath = Patina.Testing.TempFolders.NewSocket();
     readonly List<Process> started = [];
     readonly HttpClient http = new();
     readonly List<string> flat = [];

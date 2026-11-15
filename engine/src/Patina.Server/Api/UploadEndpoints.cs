@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Patina.Contracts;
 using Patina.Library;
 using System.Globalization;
@@ -27,6 +28,7 @@ static class UploadEndpoints {
 
     static async Task<Results<Ok<UploadedFile>, ProblemHttpResult>> Upload(
         LibraryHost host,
+        IOptions<ServerOptions> options,
         HttpRequest request,
         string name,
         CancellationToken cancellationToken
@@ -45,7 +47,13 @@ static class UploadEndpoints {
         }
 
         try {
-            var kept = await LibraryUploads.KeepAsync(library.RootPath, name, request.Body, cancellationToken);
+            var kept = await LibraryUploads.KeepAsync(
+                library.RootPath,
+                name,
+                request.Body,
+                cancellationToken,
+                options.Value.UploadMostBytes ?? LibraryUploads.MostBytes
+            );
             return TypedResults.Ok(new UploadedFile(kept));
         } catch (Exception e) when (e is UploadTooLargeException or BadHttpRequestException) {
             return TooLarge();

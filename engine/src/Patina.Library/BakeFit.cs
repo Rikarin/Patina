@@ -79,13 +79,14 @@ public static class BakeFit {
     }
 
     /// <summary>
-    ///     Whether a bake's maps are as tall as the set's shape makes them at their width. A set of no known shape, and
-    ///     a bake that lists no maps, fit.
+    ///     Whether a bake's maps are as tall as the set's shape makes them at their width. A set of no known shape, a
+    ///     bake that lists no maps, and maps of no known size, as maps brought in are (#144), fit.
     /// </summary>
     static bool OfShape(BakeManifest manifest, SetLayout set) =>
         set.Width <= 0
         || set.Height <= 0
         || manifest.Result.Maps.Count == 0
+        || manifest.Result.Maps[0].Resolution <= 0
         || RowsOf(manifest.Result.Maps[0]) == RowsAt(manifest.Result.Maps[0].Resolution, set.Width, set.Height);
 
     /// <summary>A map's height when it is not square.</summary>

@@ -41,6 +41,7 @@ class StackBrushTerms:
             maximum_aspect (float): The longest a stamp can be, against its width.
             maximum_count (int): The most strokes a radial symmetry makes.
             material_projections (list[StackTerm]): How a material brush can lay its maps on the mesh.
+            alignments (list[StackTerm]): What a stamp seen through a camera can lie on.
      """
 
     default: StackBrush
@@ -57,6 +58,7 @@ class StackBrushTerms:
     maximum_aspect: float
     maximum_count: int
     material_projections: list[StackTerm]
+    alignments: list[StackTerm]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -144,6 +146,13 @@ class StackBrushTerms:
 
 
 
+        alignments = []
+        for alignments_item_data in self.alignments:
+            alignments_item = alignments_item_data.to_dict()
+            alignments.append(alignments_item)
+
+
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -162,6 +171,7 @@ class StackBrushTerms:
             "maximumAspect": maximum_aspect,
             "maximumCount": maximum_count,
             "materialProjections": material_projections,
+            "alignments": alignments,
         })
 
         return field_dict
@@ -284,6 +294,16 @@ class StackBrushTerms:
             material_projections.append(material_projections_item)
 
 
+        alignments = []
+        _alignments = d.pop("alignments")
+        for alignments_item_data in (_alignments):
+            alignments_item = StackTerm.from_dict(alignments_item_data)
+
+
+
+            alignments.append(alignments_item)
+
+
         stack_brush_terms = cls(
             default=default,
             falloffs=falloffs,
@@ -299,6 +319,7 @@ class StackBrushTerms:
             maximum_aspect=maximum_aspect,
             maximum_count=maximum_count,
             material_projections=material_projections,
+            alignments=alignments,
         )
 
 

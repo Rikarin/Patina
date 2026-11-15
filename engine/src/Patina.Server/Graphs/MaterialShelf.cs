@@ -37,12 +37,18 @@ public static class MaterialShelf {
 
     /// <summary>The types a shelf narrows to, and where a material can be from.</summary>
     static readonly string[] Roles =
-        [GraphRoles.Material, GraphRoles.Mask, GraphRoles.Filter, GraphRoles.Brush, PresetRole];
+        [GraphRoles.Material, GraphRoles.Mask, GraphRoles.Filter, GraphRoles.Brush, PresetRole, PictureRole];
 
     /// <summary>
     ///     The type of a brush or tool preset on the shelf, which a client takes up rather than adds (#124).
     /// </summary>
     public const string PresetRole = "preset";
+
+    /// <summary>
+    ///     The type of a picture of the project's on the shelf (#203): its source is the file's path below the library,
+    ///     which a picture slot, a decal and a fill take as a picture chosen any other way.
+    /// </summary>
+    public const string PictureRole = "picture";
 
     static readonly string[] Origins = ["shipped", PackageOrigin, "project", ElsewhereOrigin];
 
@@ -73,10 +79,20 @@ public static class MaterialShelf {
         found.AddRange(ShelfCompounds.All);
         found.AddRange(Packaged(library));
         if (project is not null) {
+            var contents = library.Contents(project);
+            found.AddRange(contents.Documents.Select(document => Described(library, document)).OfType<MaterialInfo>());
             found.AddRange(
-                library.Contents(project)
-                    .Documents.Select(document => Described(library, document))
-                    .OfType<MaterialInfo>()
+                contents.Pictures.Select(picture => new MaterialInfo(
+                        Path.GetFileNameWithoutExtension(picture.Name),
+                        picture.Kind,
+                        picture.Path,
+                        PictureRole,
+                        "project",
+                        [],
+                        Project: contents.Name,
+                        Tags: [Path.GetExtension(picture.Name).TrimStart('.').ToUpperInvariant()]
+                    )
+                )
             );
         }
 

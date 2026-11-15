@@ -210,6 +210,11 @@ public sealed partial class StackProcessTests {
         Assert.True(dragged > two * 1.1, $"A smudge across the red left {dragged} red texels of {two}.");
         await ActAsync(state.Id, "undo", deadline.Token);
         Assert.Equal(before, Digest(await PixelsAsync(state.Id, false, deadline.Token), "baseColor"));
+
+        // A path smudges along itself as a drag does (#130).
+        await EditAsync(state.Id, deadline.Token, smear with { Stroke = "along", Curve = "path" });
+        var along = await CountAsync(state.Id, "along", Reddish, deadline.Token);
+        Assert.True(along > two * 1.1, $"A smudge along a path left {along} red texels of {two}.");
     }
 
     /// <summary>

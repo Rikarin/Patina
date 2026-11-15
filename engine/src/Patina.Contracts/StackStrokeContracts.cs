@@ -87,6 +87,12 @@ public sealed record StackStamp(
 ///     How much of the radius a pen held upright takes off, 0 to 1: a pen laid over paints the whole radius, as a
 ///     pencil's side paints wider. A mouse is upright, so a brush with any of this paints smaller under one.
 /// </param>
+/// <param name="Alignment">
+///     What a stamp seen through a camera lies on: <c>camera</c>, the picture, so on a face that turns away it
+///     stretches along the slope; or <c>tangent</c>, the plane that touches the surface under its middle, so it is the
+///     same size and shape on the model however the face is turned. A stroke with no view is measured along the
+///     surface already, and takes no notice.
+/// </param>
 public sealed record StackBrush(
     float Radius,
     float Flow = 1f,
@@ -113,7 +119,8 @@ public sealed record StackBrush(
     float OcclusionTolerance = 2f,
     float Facing = StackBrushes.AnyFacing,
     bool Resume = false,
-    float TiltSize = 0f
+    float TiltSize = 0f,
+    string Alignment = "camera"
 );
 #pragma warning restore SK7005
 

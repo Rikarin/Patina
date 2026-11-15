@@ -32,6 +32,27 @@ static class StackSampling {
         }
     }
 
+    /// <summary>
+    ///     A texel's lanes exactly as stored (#184): eight-bit lanes as fractions of 255, floats as they are, nothing
+    ///     clamped and no lane made up, so a height below zero or a light above one reads as it is.
+    /// </summary>
+    /// <param name="texel">The texel's bytes.</param>
+    /// <param name="format">How they are laid out.</param>
+    public static IReadOnlyList<double> Stored(byte[] texel, TextureFormat format) =>
+        format switch {
+            TextureFormat.R8 => [texel[0] / 255d],
+            TextureFormat.Rg8 => [texel[0] / 255d, texel[1] / 255d],
+            TextureFormat.R16Float => [(double)BitConverter.ToHalf(texel, 0)],
+            TextureFormat.Rgba16Float => [
+                ..Enumerable.Range(0, 4).Select(lane => (double)BitConverter.ToHalf(texel, lane * 2))
+            ],
+            TextureFormat.R32Float => [BitConverter.ToSingle(texel, 0)],
+            TextureFormat.Rgba32Float => [
+                ..Enumerable.Range(0, 4).Select(lane => (double)BitConverter.ToSingle(texel, lane * 4))
+            ],
+            _ => [..texel.Take(4).Select(static lane => lane / 255d)]
+        };
+
     static float[] Grey(float value) {
         var unit = Unit(value);
         return [unit, unit, unit, 1f];

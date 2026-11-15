@@ -73,6 +73,42 @@ public static class CacheSweep {
         return old.Count;
     }
 
+    /// <summary>
+    ///     Removes the built objects, bakes and reports used longest ago until the cache takes no more than
+    ///     <paramref name="budget" /> bytes (#189), or nothing of that kind is left. A later build makes them again.
+    /// </summary>
+    /// <returns>How many it removed, and the room that freed.</returns>
+    public static (int Removed, long Bytes) Trim(string root, long budget) {
+        var cache = Path.Combine(root, LibraryLayout.CacheFolder);
+        var total = FolderSize.Of(cache);
+        if (total <= budget) {
+            return (0, 0);
+        }
+
+        var bakes = LibraryLayout.BakesPath(root);
+        var oldest = new[] { LibraryLayout.ObjectsPath(root), bakes, LibraryLayout.ReportsPath(root) }
+            .Where(Directory.Exists)
+            .SelectMany(static folder => new DirectoryInfo(folder).EnumerateFileSystemInfos())
+            .Where(entry => entry.FullName != bakes)
+            .OrderBy(static entry => entry.LastWriteTimeUtc)
+            .ToList();
+        var (removed, freed) = (0, 0L);
+        foreach (var entry in oldest) {
+            if (total - freed <= budget) {
+                break;
+            }
+
+            var size = entry is DirectoryInfo folder ? FolderSize.Of(folder.FullName) : ((FileInfo)entry).Length;
+            Remove(entry.FullName);
+            if (!Path.Exists(entry.FullName)) {
+                removed++;
+                freed += size;
+            }
+        }
+
+        return (removed, freed);
+    }
+
     static int RemoveParts(string folder) {
         var found = Directory.EnumerateFileSystemEntries(folder, PartPattern, SearchOption.AllDirectories).ToList();
         foreach (var part in found) {

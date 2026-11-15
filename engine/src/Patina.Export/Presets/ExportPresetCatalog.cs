@@ -65,6 +65,33 @@ public static class ExportPresetCatalog {
         return new([..presets.Values.OrderBy(static p => p.Id, StringComparer.Ordinal)], problems);
     }
 
+    /// <summary>
+    ///     Whether any project of a library has a preset of its own with this id, which a build exports those
+    ///     projects through (ADR 0019) though the library has none.
+    /// </summary>
+    /// <param name="libraryRoot">The library.</param>
+    /// <param name="id">The preset's id.</param>
+    public static bool AnyProjectHas(string libraryRoot, string id) {
+        var projects = LibraryLayout.Full(libraryRoot, LibraryLayout.ProjectsFolder);
+        if (!Directory.Exists(projects)) {
+            return false;
+        }
+
+        foreach (var folder in Directory.EnumerateDirectories(
+                     projects,
+                     LibraryLayout.PresetsFolder,
+                     SearchOption.AllDirectories
+                 )) {
+            Dictionary<string, ExportPreset> presets = new(StringComparer.Ordinal);
+            ReadFolder(folder, Origins.Project, presets, []);
+            if (presets.ContainsKey(id)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>The folder a library's own presets are in.</summary>
     public static string LibraryFolder(string libraryRoot) => Path.Combine(libraryRoot, LibraryLayout.PresetsFolder);
 

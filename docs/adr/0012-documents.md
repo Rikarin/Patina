@@ -136,7 +136,10 @@ Nothing has to be promoted, and there is no `shared/` folder: any document in an
 it already has. The shelf lists them all. Using one records a reference, so pins, the impact preview and batch rebuild work as they
 did, and a saved edit reaches it through its `.source`. A Layered Material brings the compounds its fills read. A graph made with no
 project gets a project of its own, export presets are in `export-presets/` at the top of the library, and a library that still has
-`shared/` turns it into a project called Shared Assets when it opens, keeping every GUID.
+`shared/` turns it into a project called Shared Assets when it opens, keeping every GUID. The move runs at every open, so a
+`shared/` that comes back (an old clone, a file written there by hand) joins the same project: a taken name gets a free one beside
+it, a graph or layered material with no sidecar is listed under a new GUID, and nothing in the folder is deleted (#292). The scan
+never reads `shared/`, so a file put there while the library is open is in no list until the next open.
 
 ### 4. The shell
 

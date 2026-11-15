@@ -11,6 +11,7 @@ import {
   NewBrush,
   PaintStore,
   colourOf,
+  curveTool,
   hexOf,
   paintsOverMask,
   penOf,
@@ -209,6 +210,73 @@ describe('PaintStore refreshes (#274)', () => {
 
     expect(store.state()?.name).toBe('After');
   });
+
+  it('keeps the newest state when an open of the same document is answered after an edit (#295)', async () => {
+    const { store, server } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    let release: (() => void) | null = null;
+    const held = new Promise<void>(resolve => (release = resolve));
+    let opens = 0;
+    server.reply = (method, path) => {
+      if (method === 'POST' && path === '/api/v1/stacks') {
+        opens++;
+        // The open's picture of the stack was taken before the edit, and is answered after it.
+        return held.then(() => Response.json(stack({ name: 'Opened', sequence: 4 })));
+      }
+
+      return method === 'GET' && path === '/api/v1/stacks/s1'
+        ? Response.json(stack({ name: 'Edited', sequence: 5 }))
+        : null;
+    };
+
+    const again = store.open('/a/Crate.vxlayers', false);
+    await vi.waitFor(() => expect(opens).toBe(1));
+    await store.edit({ op: 'setLayer', layer: 'base', name: 'Edited' });
+    expect(store.state()?.name).toBe('Edited');
+    (release as unknown as () => void)();
+    await again;
+
+    expect(store.state()?.name).toBe('Edited');
+  });
+
+  it('ends a drag on its own stack when its last part leaves after the document went behind another', async () => {
+    const { store, bodies, posts, server } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    let release: (() => void) | null = null;
+    const held = new Promise<void>(resolve => (release = resolve));
+    // The first part is slow to answer, as on CI's busy runner, and the other document is slow to open.
+    let parts = 0;
+    let opening: (() => void) | null = null;
+    const opened = new Promise<void>(resolve => (opening = resolve));
+    server.reply = (method, path) => {
+      if (path === '/api/v1/stacks/s1/commands' && ++parts === 1) {
+        return held.then(() => Response.json({ revision: 2, sequence: 4, history: { dirty: true } }));
+      }
+
+      return method === 'POST' && path === '/api/v1/stacks'
+        ? opened.then(() => Response.json(stack({ id: 's2', path: '/a/Barrel.vxlayers', name: 'Barrel' })))
+        : null;
+    };
+
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    store.detach();
+    const barrel = store.open('/a/Barrel.vxlayers', false);
+    (release as unknown as () => void)();
+    await vi.waitFor(() => expect(parts).toBe(2));
+    (opening as unknown as () => void)();
+    await barrel;
+
+    // The last part went to the stack the drag began on, and nothing waits for it: a save of the other goes out.
+    const last = (bodies.at(-1) as { commands: { open: boolean }[] }).commands[0];
+    expect(last?.open).toBe(false);
+    expect(posts.filter(path => path.endsWith('/commands'))).toEqual([
+      '/api/v1/stacks/s1/commands',
+      '/api/v1/stacks/s1/commands'
+    ]);
+    expect(await store.act('save')).toBe(true);
+    expect(posts).toContain('/api/v1/stacks/s2/save');
+  });
 });
 
 describe('PaintStore saving', () => {
@@ -278,6 +346,69 @@ describe('PaintStore saving', () => {
     await store.act('save');
 
     expect(store.failure()).toBeNull();
+  });
+});
+
+describe('PaintStore graph of the stack (#205)', () => {
+  const made = { path: 'projects/crate/Crate Graph.vxtexgraph', name: 'Crate Graph', problems: [] };
+
+  /** A Server whose stack has unsaved edits until it is saved. */
+  function unsaved() {
+    const test = setup();
+    let saved = false;
+    test.server.reply = (method, path) => {
+      if (method === 'POST' && path.endsWith('/stacks/s1/graph')) {
+        return Response.json(made);
+      }
+
+      if (path.endsWith('/save')) {
+        saved = !test.steps.reply;
+        return null;
+      }
+
+      return saved ? null : Response.json(stack({ history: { canUndo: true, canRedo: false, dirty: true } }));
+    };
+    return test;
+  }
+
+  it('saves unsaved edits first, then writes the graph and says the layers stay', async () => {
+    const test = unsaved();
+    await test.store.open('/a/Crate.vxlayers', false);
+    expect(test.store.state()?.history.dirty).toBe(true);
+
+    expect(await test.store.writeGraph('Crate Graph')).toBe(made.path);
+
+    const order = test.posts.filter(path => /\/(?:save|graph)$/u.test(path));
+    expect(order).toEqual(['/api/v1/stacks/s1/save', '/api/v1/stacks/s1/graph']);
+    expect(test.store.notice()).toContain('Crate Graph');
+    expect(test.store.failure()).toBeNull();
+  });
+
+  it('writes no graph when the save is refused', async () => {
+    const test = unsaved();
+    await test.store.open('/a/Crate.vxlayers', false);
+    test.steps.reply = problem(503, 'No Worker came.');
+
+    expect(await test.store.writeGraph('Crate Graph')).toBeNull();
+
+    expect(test.posts.some(path => path.endsWith('/graph'))).toBe(false);
+    expect(test.store.failure()).toBe('No Worker came.');
+  });
+
+  it('says a refusal in its own words', async () => {
+    const test = setup();
+    test.server.reply = (_method, path) =>
+      path.endsWith('/graph')
+        ? Response.json(
+            { detail: 'A layer is missing.', code: 'stack-graph-refused', values: { reason: 'A layer is missing.' } },
+            { status: 422 }
+          )
+        : null;
+    await test.store.open('/a/Crate.vxlayers', false);
+
+    expect(await test.store.writeGraph('Crate Graph')).toBeNull();
+
+    expect(test.store.failure()).toBe('This stack can’t become a graph. A layer is missing.');
   });
 });
 
@@ -1150,6 +1281,39 @@ describe('PaintStore', () => {
       expect(parts[0]?.curve).toBe('path');
       expect(parts[0]?.stamps).toHaveLength(2);
     });
+  });
+
+  it('erases or smudges along a path when told to, and paints along it otherwise (#130)', async () => {
+    const { store, bodies } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    store.tool.set('path');
+    interface Part {
+      colour: number[];
+      source: { kind: string } | null;
+      curve: string;
+    }
+    const parts = () =>
+      bodies.flatMap(body => (body as { commands: Part[] }).commands).filter(part => part.curve === 'path');
+    const points = [
+      { x: 1, y: 1, pressure: 1 },
+      { x: 9, y: 4, pressure: 1 }
+    ];
+
+    store.curveAction.set('erase');
+    await store.paintCurve(points, 'path');
+    store.curveAction.set('smudge');
+    await store.paintCurve(points, 'path');
+    store.curveAction.set('paint');
+    await store.paintCurve(points, 'path');
+
+    await vi.waitFor(() => expect(parts()).toHaveLength(3));
+    const [erased, smudged, painted] = parts();
+    expect(erased?.colour).toEqual([0, 0, 0, 0]);
+    expect(erased?.source).toBeNull();
+    expect(smudged?.source).toEqual({ kind: 'smudge' });
+    expect(painted?.colour).not.toEqual([0, 0, 0, 0]);
+    expect(painted?.source).toBeNull();
+    expect(curveTool('brush', 'erase')).toBe('brush');
   });
 
   it('takes one point from a double click', () => {

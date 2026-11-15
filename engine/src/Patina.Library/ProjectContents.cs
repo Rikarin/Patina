@@ -462,6 +462,12 @@ static class ProjectFiles {
             return item.From;
         }
 
+        if (item.Kind == LibraryBin.UploadsKind) {
+            RestoreFiles(root, item, files);
+            LibraryBin.Forget(entry);
+            return item.From;
+        }
+
         var below = item.From[(LibraryLayout.ProjectsFolder.Length + 1)..];
         if (item.Kind == LibraryBin.ProjectKind) {
             var path = FreeFolder(root, below);
@@ -506,6 +512,24 @@ static class ProjectFiles {
     ///     unless all can: a file in a picture's place, or its project gone, refuses the lot.
     /// </summary>
     /// <exception cref="ProjectRefusedException">One cannot come back.</exception>
+    /// <summary>Puts files back at their paths below the library, all or none.</summary>
+    static void RestoreFiles(string root, BinItem item, string files) {
+        var moving = Directory.Exists(files)
+            ? Directory.EnumerateFiles(files, "*", SearchOption.AllDirectories)
+                .Select(file => Path.GetRelativePath(files, file).Replace('\\', '/'))
+                .ToList()
+            : [];
+        if (moving.Find(file => File.Exists(LibraryLayout.Beside(root, file))) is { } taken) {
+            throw new ProjectRefusedException($"'{taken}' is in the library now, so '{item.Name}' cannot come back.");
+        }
+
+        foreach (var file in moving) {
+            var to = LibraryLayout.Beside(root, file);
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            SharedFile.MoveOver(LibraryLayout.Beside(files, file), to);
+        }
+    }
+
     static void RestorePictures(string root, BinItem item, string files) {
         var moving = Directory.Exists(files)
             ? Directory.EnumerateFiles(files, "*", SearchOption.AllDirectories)

@@ -21,6 +21,9 @@ public static class LibraryBin {
     /// <summary>Pictures nothing read, which a Clean took out of their projects together (#162).</summary>
     public const string PicturesKind = "pictures";
 
+    /// <summary>Files sent from another computer that nothing named, which a person cleared together (#297).</summary>
+    public const string UploadsKind = "uploads";
+
     const string RecordFile = "bin.yaml";
     const string FilesFolder = "files";
     const string KindKey = "kind";
@@ -111,19 +114,40 @@ public static class LibraryBin {
         var name = pictures.Count == 1
             ? Path.GetFileName(pictures[0])
             : string.Create(CultureInfo.InvariantCulture, $"{pictures.Count} pictures nothing used");
-        var (entry, item) = Open(root, PicturesKind, name, LibraryLayout.ProjectsFolder);
+        return PutFiles(root, PicturesKind, name, LibraryLayout.ProjectsFolder, pictures);
+    }
+
+    /// <summary>
+    ///     Moves files of the library into the bin as one entry, each kept at its path below the library so that a
+    ///     Restore puts it back there.
+    /// </summary>
+    /// <param name="root">The library.</param>
+    /// <param name="kind">What they are.</param>
+    /// <param name="name">What the entry is called.</param>
+    /// <param name="from">The folder below the library they came from, as the entry says.</param>
+    /// <param name="files">Their paths below the library, with forward slashes.</param>
+    /// <returns>The entry, and the room the files take.</returns>
+    public static (BinItem Item, long Bytes) PutFiles(
+        string root,
+        string kind,
+        string name,
+        string from,
+        IReadOnlyList<string> files
+    ) {
+        ArgumentNullException.ThrowIfNull(files);
+        var (entry, item) = Open(root, kind, name, from);
         var into = Path.Combine(entry, FilesFolder);
         var bytes = 0L;
-        foreach (var picture in pictures) {
-            var from = LibraryLayout.Beside(root, picture);
-            if (!File.Exists(from)) {
+        foreach (var file in files) {
+            var source = LibraryLayout.Beside(root, file);
+            if (!File.Exists(source)) {
                 continue;
             }
 
-            var to = LibraryLayout.Beside(into, picture);
+            var to = LibraryLayout.Beside(into, file);
             Directory.CreateDirectory(Path.GetDirectoryName(to)!);
-            bytes += new FileInfo(from).Length;
-            File.Move(from, to);
+            bytes += new FileInfo(source).Length;
+            File.Move(source, to);
         }
 
         Write(entry, item);

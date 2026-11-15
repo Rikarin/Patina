@@ -1,9 +1,12 @@
+using Patina.Content;
 using Patina.Contracts;
 using Patina.Ipc;
+using Patina.Library;
 using Patina.Server.Graphs;
 using System.Globalization;
 using System.Reflection;
 using Vixen.NodeGraph;
+using Vixen.Texturing.Layers;
 
 namespace Patina.Server;
 
@@ -83,16 +86,36 @@ public sealed partial class Thumbnails {
     }
 
     /// <summary>
+    ///     A shipped compound on the shelf (#298), drawn as a palette draws its node, at the shelf's size: a mask as it
+    ///     makes itself, a filter over the standard noise. Nothing of a project's is part of it, so one picture serves
+    ///     every library on this build; a generator reads no bake here, so it shows what it makes from none.
+    /// </summary>
+    (string Key, MaterialThumbnailAsk Ask)? OfCompound(OpenLibrary library, string node) {
+        FactoryCompounds.Register();
+        if (!LayerStackCompiler.Library(out _).TryGet(node, out var type)) {
+            return null;
+        }
+
+        var root = library.RootPath;
+        var scope = new NodePictureScope(Path.Combine(root, LibraryLayout.ProjectsFolder), null, [root], []);
+        return OfNode(scope, type, Side);
+    }
+
+    /// <summary>
     ///     A graph of one node at its defaults, its first picture output drawn small. A type with no picture output,
     ///     such as an Output or a number, has nothing to draw.
     /// </summary>
-    (string Key, MaterialThumbnailAsk Ask)? OfNode(NodePictureScope scope, NodeTypeDefinition type) {
+    (string Key, MaterialThumbnailAsk Ask)? OfNode(
+        NodePictureScope scope,
+        NodeTypeDefinition type,
+        int side = NodeSide
+    ) {
         if (type.Ports.FirstOrDefault(static port => port.Direction == PortDirection.Output && IsPicture(port.Kind))
             is not { } output) {
             return null;
         }
 
-        var document = GraphDocuments.Text(Alone(type));
+        var document = GraphDocuments.Text(Alone(type, side));
         // A project's own compound is made of the files in its folder, which may hold the compounds it holds.
         var own = scope.Folder is { } folder
             && GraphSessions.Compounds(folder).Any(c => !c.ReadOnly && c.Type == type.Path);
@@ -120,14 +143,14 @@ public sealed partial class Thumbnails {
     }
 
     /// <summary>The graph a type is drawn from: the noise, and the type with the noise on each picture input.</summary>
-    static NodeGraphAsset Alone(NodeTypeDefinition type) =>
+    static NodeGraphAsset Alone(NodeTypeDefinition type, int side) =>
         new() {
             Name = type.Title,
             Settings = new(StringComparer.Ordinal) {
                 ["baseWidth"] = NodeBase,
                 ["baseHeight"] = NodeBase,
                 ["seed"] = "0",
-                [TextureSizes.GraphSetting] = NodeSide.ToString(CultureInfo.InvariantCulture)
+                [TextureSizes.GraphSetting] = side.ToString(CultureInfo.InvariantCulture)
             },
             Nodes = [new() { Id = StandardNode, Type = StandardInput }, new() { Id = DrawnNode, Type = type.Path }],
             Edges = [

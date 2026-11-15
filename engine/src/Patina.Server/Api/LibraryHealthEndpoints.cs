@@ -9,7 +9,8 @@ namespace Patina.Server.Api;
 
 /// <summary>
 ///     Keeping a library well from any client (#192, #162): the check <c>patina library check</c> runs, pruning the
-///     cache as <c>patina cache prune</c> does, and clearing the copies of moved paint. The CLI needs the library to
+///     cache as <c>patina cache prune</c> does, removing unused revisions as <c>--purge-revisions</c> does (#292), and
+///     clearing the copies of moved paint. The CLI needs the library to
 ///     itself; these run in the Server that holds it.
 /// </summary>
 static class LibraryHealthEndpoints {
@@ -29,12 +30,31 @@ static class LibraryHealthEndpoints {
                 "Removes built objects, bakes and reports nothing has touched for a number of days, 30 by default. "
                 + "A later build makes them again. Refused while a bake or build is queued or running."
             );
+        library.MapPost("/revisions/purge", PurgeRevisionsAsync)
+            .Described(
+                "PurgeRevisions",
+                "Rescans, then removes the bytes under .revisions that no snapshot and no pin names any more, which "
+                + "the check lists as UnusedRevision, as patina library check --purge-revisions does. No snapshot or "
+                + "pin is taken while it runs."
+            );
         library.MapPost("/clean", Clean)
             .Described(
                 "CleanLibrary",
                 "Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it, "
                 + "and moves the pictures in projects that no document reads, saved or open, into the bin as one "
                 + "entry."
+            );
+        library.MapGet("/uploads/unused", UnusedUploads)
+            .Described(
+                "GetUnusedUploads",
+                "The files sent from another computer that no file of the library and no open document names any "
+                + "more, with the room they take. One sent in the last hour counts as used. Changes nothing."
+            );
+        library.MapPost("/uploads/clear", ClearUploads)
+            .Described(
+                "ClearUploads",
+                "Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, "
+                + "into the bin as one entry, which Restore puts back."
             );
     }
 
@@ -49,6 +69,25 @@ static class LibraryHealthEndpoints {
         try {
             var report = await Task.Run(() => library.Check(cancellationToken: cancellationToken), cancellationToken);
             return TypedResults.Ok(Health(report));
+        } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
+            return problem;
+        }
+    }
+
+    static async Task<Results<Ok<LibraryTidied>, ProblemHttpResult>> PurgeRevisionsAsync(
+        LibraryHost host,
+        CancellationToken cancellationToken
+    ) {
+        if (host.Library is not { } library) {
+            return LibraryTreeEndpoints.NoLibrary();
+        }
+
+        try {
+            var (files, bytes) = await Task.Run(
+                () => LibraryRevisions.Purge(library, cancellationToken),
+                cancellationToken
+            );
+            return TypedResults.Ok(new LibraryTidied(files, bytes));
         } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
             return problem;
         }
@@ -116,19 +155,44 @@ static class LibraryHealthEndpoints {
         LibraryTreeEndpoints.Guarded(
             host,
             library => {
-                var (folders, bytes) = PaintBackups.Remove(library.RootPath);
-                Dictionary<string, string> open = new(StringComparer.Ordinal);
-                foreach (var stack in stacks.All) {
-                    open[stack.Path] = stack.Text;
-                }
-
-                foreach (var graph in graphs.All) {
-                    open[graph.Path] = graph.Text;
-                }
-
                 // As the copies of moved paint go: from the folders alone, which the next rescan finds as they are.
-                var (item, pictures, pictureBytes) = UnusedPictures.Bin(library.RootPath, open);
-                return TypedResults.Ok(new LibraryCleaned(folders, bytes, pictures, pictureBytes, item?.Id));
+                return TypedResults.Ok(library.Care.Clean(Open(stacks, graphs)));
             }
         );
+
+    /// <summary>The uploads nothing names, saved or open (#297).</summary>
+    static Results<Ok<UnusedUploadList>, ProblemHttpResult> UnusedUploads(
+        LibraryHost host,
+        StackSessions stacks,
+        GraphSessions graphs
+    ) =>
+        LibraryTreeEndpoints.Guarded(
+            host,
+            library => TypedResults.Ok(library.Care.UnusedUploads(Open(stacks, graphs)))
+        );
+
+    /// <summary>Moves the uploads nothing names into the bin (#297).</summary>
+    static Results<Ok<UploadsCleared>, ProblemHttpResult> ClearUploads(
+        LibraryHost host,
+        StackSessions stacks,
+        GraphSessions graphs
+    ) =>
+        LibraryTreeEndpoints.Guarded(
+            host,
+            library => TypedResults.Ok(library.Care.ClearUploads(Open(stacks, graphs)))
+        );
+
+    /// <summary>What every open document holds now, saved or not, by its file.</summary>
+    static Dictionary<string, string> Open(StackSessions stacks, GraphSessions graphs) {
+        Dictionary<string, string> open = new(StringComparer.Ordinal);
+        foreach (var stack in stacks.All) {
+            open[stack.Path] = stack.Text;
+        }
+
+        foreach (var graph in graphs.All) {
+            open[graph.Path] = graph.Text;
+        }
+
+        return open;
+    }
 }

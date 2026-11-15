@@ -48,6 +48,31 @@ static class TempFolders {
                 }
             }
         }
+
+        SweepSockets(cutoff);
+    }
+
+    /// <summary>A new socket path for a test's Server and Worker, which <see cref="Sweep" /> knows.</summary>
+    public static string NewSocket() => Path.Combine(Path.GetTempPath(), $"patina-test-{Guid.NewGuid():N}.sock");
+
+    /// <summary>
+    ///     Removes the socket files tests left before <paramref name="cutoff" /> (#297): those <see cref="NewSocket" />
+    ///     names, and those named by a bare random name, as tests named them before. A Server killed by a test never
+    ///     deletes its own.
+    /// </summary>
+    static void SweepSockets(DateTime cutoff) {
+        foreach (var socket in new DirectoryInfo(Path.GetTempPath()).EnumerateFiles("*.sock")) {
+            var name = Path.GetFileNameWithoutExtension(socket.Name);
+            var random = name.StartsWith("patina-test-", StringComparison.Ordinal)
+                || (name.Length == 32 && name.All(char.IsAsciiHexDigitLower));
+            if (random && socket.LastWriteTimeUtc < cutoff) {
+                try {
+                    socket.Delete();
+                } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+                    // Held: the next run tries again.
+                }
+            }
+        }
     }
 }
 

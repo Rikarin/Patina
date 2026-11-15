@@ -27,7 +27,7 @@ class StackChecks:
     """ The reply to `GET /api/v1/stacks/{id}/checks`: one texture set measured against its project.
 
         Attributes:
-            stack (str): The stack session.
+            stack (str): The stack session, or empty for a set nobody has open.
             set_ (str): The texture set, or empty for a model with no named sets.
             width (int): Its maps' width, in texels.
             height (int): Their height.
@@ -40,6 +40,10 @@ class StackChecks:
                 puts the project's limits, the errors,
                 first.
             files (list[CheckFile]): Each file the export writes for the set, with the GPU memory it takes.
+            document (str): The stack's file below the library, as a project lists it.
+            measured (bool): Whether the Worker measured its layout and values. A set nobody has open is judged on what the
+                Server knows of
+                it, its limits, its files and its bake, and not on its density, its UVs or its values.
      """
 
     stack: str
@@ -53,6 +57,8 @@ class StackChecks:
     preset: str
     problems: list[CheckProblem]
     files: list[CheckFile]
+    document: str
+    measured: bool
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -94,6 +100,10 @@ class StackChecks:
 
 
 
+        document = self.document
+
+        measured = self.measured
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -109,6 +119,8 @@ class StackChecks:
             "preset": preset,
             "problems": problems,
             "files": files,
+            "document": document,
+            "measured": measured,
         })
 
         return field_dict
@@ -158,6 +170,10 @@ class StackChecks:
             files.append(files_item)
 
 
+        document = d.pop("document")
+
+        measured = d.pop("measured")
+
         stack_checks = cls(
             stack=stack,
             set_=set_,
@@ -170,6 +186,8 @@ class StackChecks:
             preset=preset,
             problems=problems,
             files=files,
+            document=document,
+            measured=measured,
         )
 
 

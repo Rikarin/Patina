@@ -9,7 +9,7 @@ import {
   untracked,
   viewChild
 } from '@angular/core';
-import type { GraphHistogram } from '@patina/api-client';
+import type { GraphHistogram, GraphSample } from '@patina/api-client';
 import { ChannelView, type Histogram, HistogramChart, type PictureChannel } from '@patina/studio-ui';
 import { XuiButtonImports } from '@xui/button';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
@@ -66,6 +66,20 @@ async function pixelsOf(url: string): Promise<ImageData | null> {
   const context = canvas.getContext('2d', { willReadFrequently: true });
   context?.drawImage(image, 0, 0);
   return context?.getImageData(0, 0, canvas.width, canvas.height) ?? null;
+}
+
+/** How long the pointer rests on a texel before the Server is asked for it as stored, in milliseconds. */
+const SampleWait = 150;
+
+/** A texel as the graph stored it: its place in the picture at full size and every lane at its own precision. */
+export function storedText(texel: GraphSample): string {
+  const lanes = texel.values.map(value => amount(value, 5));
+  return `${String(texel.x)}, ${String(texel.y)}  ${lanes.join(' ')}`;
+}
+
+/** What a picture's format holds of each lane, in the readout's words. */
+export function precisionOf(format: string): string {
+  return format.includes('32Float') ? '32-bit float' : format.includes('16Float') ? '16-bit float' : '8 bits';
 }
 
 /** A texel's four lanes as the decoded picture holds them, 0 to 1. */
@@ -156,7 +170,7 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
         (dblclick)="reset()"
         (pointerdown)="grab($event)"
         (pointermove)="drag($event); hover($event)"
-        (pointerleave)="texel.set(null)"
+        (pointerleave)="leave()"
         (pointerup)="drop()"
         (wheel)="zoomBy($event)"
       >
@@ -205,7 +219,15 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
       }
       <div class="pane-bar gap-2 px-2" role="group" aria-label="Picture">
         <span class="readout shrink-0" data-testid="texture-size">{{ sizeText() }}</span>
-        @if (texel(); as at) {
+        @if (stored(); as exact) {
+          <span
+            class="readout text-foreground-muted min-w-0 truncate"
+            data-testid="texture-texel"
+            data-stored="true"
+            [title]="exact.title"
+            >{{ exact.text }}</span
+          >
+        } @else if (texel(); as at) {
           <span
             class="readout text-foreground-muted min-w-0 truncate"
             data-testid="texture-texel"
@@ -311,6 +333,14 @@ export class TextureView {
   /** Whether the picture on screen was just copied, which the button says until the picture changes. */
   protected readonly copied = signal<'copied' | 'refused' | null>(null);
   protected readonly texel = signal<string | null>(null);
+  /**
+   * The texel under the pointer as the graph stored it, once the pointer has rested on it and the Server has read it
+   * (#184): a height below zero or a light above one, which the preview's eight bits cannot hold, reads as it is.
+   */
+  protected readonly stored = signal<{ text: string; title: string } | null>(null);
+  /** The texel the pointer is on, as the place a sample was asked for, so a late answer for another lands nowhere. */
+  private pointed: string | null = null;
+  private sampling: ReturnType<typeof setTimeout> | undefined;
   protected readonly across = computed(() => (this.tiled() ? TileCount : 1));
   protected readonly tiles = computed(() => (this.tiled() ? Tiles : Tiles.slice(0, 1)));
 
@@ -584,19 +614,51 @@ export class TextureView {
     const pixels = this.pixels();
     const { width, height } = this.displayed();
     if (!sheet || !pixels || width <= 0 || height <= 0) {
-      this.texel.set(null);
+      this.leave();
       return;
     }
 
     const box = sheet.getBoundingClientRect();
     const [across, down] = [(event.clientX - box.left) / width, (event.clientY - box.top) / height];
     if (across < 0 || down < 0 || across >= this.across() || down >= this.across()) {
-      this.texel.set(null);
+      this.leave();
       return;
     }
 
     const x = Math.min(pixels.width - 1, Math.floor((across % 1) * pixels.width));
     const y = Math.min(pixels.height - 1, Math.floor((down % 1) * pixels.height));
     this.texel.set(texelText(pixels, x, y));
+    const place = `${String(across % 1)} ${String(down % 1)}`;
+    if (place !== this.pointed) {
+      this.pointed = place;
+      this.stored.set(null);
+      clearTimeout(this.sampling);
+      this.sampling = setTimeout(() => void this.sample(across % 1, down % 1, place), SampleWait);
+    }
+  }
+
+  protected leave(): void {
+    this.texel.set(null);
+    this.stored.set(null);
+    this.pointed = null;
+    clearTimeout(this.sampling);
+  }
+
+  /** Asks the Server for the texel the pointer rests on as stored, and shows it if the pointer is still there. */
+  private async sample(u: number, v: number, place: string): Promise<void> {
+    const node = this.store.viewedNode();
+    if (!node) {
+      return;
+    }
+
+    const port = this.store.document()?.previews.get(node.id)?.port ?? 'Out';
+    const texel = await this.store.sample(node.id, port, u, v);
+    if (texel && this.pointed === place) {
+      const precision = precisionOf(texel.format);
+      this.stored.set({
+        text: storedText(texel),
+        title: `The texel under the pointer, and its lanes as the graph stored it, at ${precision}`
+      });
+    }
   }
 }

@@ -8,7 +8,7 @@ namespace Patina.Library;
 ///     with no editor. One request per texture set to bake, or one for the whole mesh when it has none.
 /// </summary>
 public static class ProjectBakes {
-    const string MapsFolder = "maps";
+    internal const string MapsFolder = "maps";
 
     /// <summary>The project at a folder, read.</summary>
     /// <exception cref="FileNotFoundException">The folder holds no <c>project.yaml</c>.</exception>
@@ -35,7 +35,7 @@ public static class ProjectBakes {
     /// <param name="output">Where the maps go instead of the project's bake folder, or null.</param>
     /// <param name="sets">The texture sets to bake, by material, over those the project chose; empty for those.</param>
     /// <exception cref="ArgumentException">
-    ///     The project has no mesh, or names no such document or texture set.
+    ///     The project has no mesh, or names no such document or texture set, or ticks none on the mesh.
     /// </exception>
     public static IReadOnlyList<BakeRequest> Requests(
         string folder,
@@ -46,27 +46,47 @@ public static class ProjectBakes {
     ) {
         ArgumentNullException.ThrowIfNull(project);
         var mesh = MeshOf(project, document);
-        var settings = project.Bake ?? new ProjectBakeSettings();
-        var low = Path.GetFullPath(mesh.File, folder);
-        string[] high = [
-            mesh.High is { } detailed ? Path.GetFullPath(detailed, folder) : low,
-            ..settings.High.Select(path => Path.GetFullPath(path, folder))
-        ];
-        var maps = output is null
-            ? Path.Combine(folder, ProjectFiles.BakeFolder, MapsFolder)
-            : Path.GetFullPath(output);
+        var whole = Setup(folder, project, mesh, output);
+        var ticked = project.Bake?.Sets ?? [];
         return [
-            ..Chosen(project, mesh, sets is { Count: > 0 } ? sets : settings.Sets, sets is { Count: > 0 })
-                .Select(material => new BakeRequest {
-                        High = high,
-                        Low = low,
-                        Output = material is null ? maps : Path.Combine(maps, material),
-                        Cage = settings.Cage.Trim().Length > 0 ? Path.GetFullPath(settings.Cage.Trim(), folder) : null,
-                        Material = material,
-                        Options = settings.Options
+            ..Chosen(project, mesh, sets is { Count: > 0 } ? sets : ticked, sets is { Count: > 0 })
+                .Select(material => whole with {
+                        Output = material is null ? whole.Output : Path.Combine(whole.Output, material),
+                        Material = material
                     }
                 )
         ];
+    }
+
+    /// <summary>
+    ///     The bake of a project's whole low mesh, with no texture set: its meshes, cage and options, which the
+    ///     viewport's preview of the bake's setup shows (#296).
+    /// </summary>
+    /// <param name="folder">The project's folder.</param>
+    /// <param name="project">The project, as its file says.</param>
+    /// <param name="document">A document whose mesh is baked onto, by its file below the project, or null.</param>
+    /// <exception cref="ArgumentException">The project has no mesh, or names no such document.</exception>
+    public static BakeRequest Setup(string folder, ProjectDocument project, string? document = null) {
+        ArgumentNullException.ThrowIfNull(project);
+        return Setup(folder, project, MeshOf(project, document), null);
+    }
+
+    static BakeRequest Setup(string folder, ProjectDocument project, ProjectMesh mesh, string? output) {
+        var settings = project.Bake ?? new ProjectBakeSettings();
+        var low = Path.GetFullPath(mesh.File, folder);
+        var cage = settings.Cage.Trim();
+        return new() {
+            High = [
+                mesh.High is { } detailed ? Path.GetFullPath(detailed, folder) : low,
+                ..settings.High.Select(path => Path.GetFullPath(path, folder))
+            ],
+            Low = low,
+            Output = output is null
+                ? Path.Combine(folder, ProjectFiles.BakeFolder, MapsFolder)
+                : Path.GetFullPath(output),
+            Cage = cage.Length > 0 ? Path.GetFullPath(cage, folder) : null,
+            Options = settings.Options
+        };
     }
 
     /// <summary>The mesh a document is on, or the first one a document is on, or the first.</summary>
@@ -91,8 +111,11 @@ public static class ProjectBakes {
     /// <param name="project">The project.</param>
     /// <param name="mesh">The mesh baked onto.</param>
     /// <param name="asked">The sets asked for.</param>
-    /// <param name="named">Whether they were named for this bake, when a mesh with no sets cannot have them.</param>
-    static IReadOnlyList<string?> Chosen(
+    /// <param name="named">
+    ///     Whether they were named for this bake. Named sets must all be on the mesh. The project's ticked sets may be
+    ///     on its other meshes, so only those on this one count, and only none at all is refused (#296).
+    /// </param>
+    static List<string?> Chosen(
         ProjectDocument project,
         ProjectMesh mesh,
         IReadOnlyList<string> asked,
@@ -108,12 +131,17 @@ public static class ProjectBakes {
             return [null];
         }
 
-        if (asked.FirstOrDefault(set => !all.Contains(set, StringComparer.Ordinal)) is { } unknown) {
-            throw new ArgumentException(
-                $"The mesh has no texture set '{unknown}'. It has {(all.Count > 0 ? string.Join(", ", all) : "none")}."
-            );
+        var has = all.Count > 0 ? string.Join(", ", all) : "none";
+        if (named && asked.FirstOrDefault(set => !all.Contains(set, StringComparer.Ordinal)) is { } unknown) {
+            throw new ArgumentException($"The mesh has no texture set '{unknown}'. It has {has}.");
         }
 
-        return asked.Count > 0 ? [..all.Where(asked.Contains)] : [..all];
+        List<string?> here = [..all.Where(asked.Contains)];
+        return asked.Count == 0 ? [..all]
+            : here.Count > 0 ? here
+            : throw new ArgumentException(
+                $"None of the texture sets the project ticks ({string.Join(", ", asked)}) is on this mesh. "
+                + $"It has {has}."
+            );
     }
 }

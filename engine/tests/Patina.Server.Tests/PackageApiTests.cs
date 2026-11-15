@@ -227,6 +227,29 @@ public sealed class PackageApiTests : IAsyncLifetime {
         Assert.Equal(HttpStatusCode.UnprocessableEntity, role.StatusCode);
     }
 
+    /// <summary>
+    ///     A graph written from a layer stack reads its paint layers' files (#205), even one in the folder: they are a
+    ///     layer's pixels and no picture a package copies, and the plan says so rather than calling the file missing.
+    /// </summary>
+    [Fact]
+    public async Task A_graph_that_reads_painted_pixels_is_refused_for_them() {
+        var graph = await RustProjectAsync();
+        var file = Path.Combine(server.Library, graph);
+        var painted = (await File.ReadAllTextAsync(file, Token)).Replace(
+            "Source: mask.png",
+            "Source: 'vxpaint:baseColor|Paint.vxpaint'",
+            StringComparison.Ordinal
+        );
+        await File.WriteAllTextAsync(file, painted, Token);
+        await File.WriteAllBytesAsync(Path.Combine(Path.GetDirectoryName(file)!, "Paint.vxpaint"), [1], Token);
+
+        var plan = await PlanAsync(graph);
+
+        var refused = Assert.Single(plan.Dependencies, static d => d.Problem is not null);
+        Assert.Equal(("picture", "vxpaint:baseColor|Paint.vxpaint", null), (refused.Kind, refused.Name, refused.File));
+        Assert.Contains("painted pixels", refused.Problem, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task What_a_graph_says_about_itself_is_one_undo_step_that_reaches_its_file() {
         var graph = await RustProjectAsync();

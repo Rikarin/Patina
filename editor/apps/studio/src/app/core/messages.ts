@@ -85,12 +85,17 @@ const Words: Readonly<Record<string, string>> = {
   'document-newer':
     'This document was saved by a newer version of Patina, so it isn’t opened here: saving it would lose what is new. Open it in that version or a later one.',
   'stack-proxy-refused': 'Choose Full, Half, Quarter or Eighth size.',
+  'stack-graph-unsaved': 'Save the stack first: its graph reads painted layers from their files.',
+  'stack-graph-no-project': 'This stack isn’t in a project, so its graph has nowhere to go. Open it from a project.',
+  'stack-graph-refused': 'This stack can’t become a graph. {reason}',
   'page-refused': 'Patina asked for more of that list at once than it gives. Try again.',
   'size-refused': 'That size can’t be used. Choose one from {least} to {most}.',
   'file-kind-wrong': '{file} can’t be used here. Choose a {wanted} file.',
   'settings-refused': 'Those settings can’t be kept. {reason}',
   'project-missing': 'That project isn’t in the library any more. It may have been moved or deleted outside Patina.',
   'preview-missing': 'That preview isn’t kept any more. It is made again the next time it is shown.',
+  'panorama-empty':
+    '{file} draws nothing to light the viewport with. Give it an Output node, such as one after a Sky, and choose it again.',
   'build-refused': 'That can’t be built as the export settings are. {reason}',
   'build-report-missing': 'That build’s report isn’t kept any more, or the build didn’t finish.',
   'bake-refused': 'That bake can’t run as it is set up. {reason}',

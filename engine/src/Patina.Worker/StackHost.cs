@@ -243,12 +243,15 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
             using var alone = stack.Alone(layer, ask.Mask, out var name);
             using var only = alone.EvaluateClean();
             return new() {
-                Type = IpcTypes.Ok, StackPicture = Read(alone, only, $"{stack.Name}.{name}", ask.Folder, ask.File)
+                Type = IpcTypes.Ok,
+                StackPicture = Read(alone, only, ($"{stack.Name}.{name}", stack.Depths), ask.Folder, ask.File)
             };
         }
 
         using var bake = ask.Clean ? run.EvaluateClean() : run.Evaluate();
-        return new() { Type = IpcTypes.Ok, StackPicture = Read(run, bake, stack.Name, ask.Folder, ask.File) };
+        return new() {
+            Type = IpcTypes.Ok, StackPicture = Read(run, bake, (stack.Name, stack.Depths), ask.Folder, ask.File)
+        };
     }
 
     static string Digest(Bitmap map) => Convert.ToHexStringLower(SHA256.HashData(map.Pixels));
@@ -290,6 +293,17 @@ sealed partial class StackHost(DeviceHost gpu, ViewportHost viewport, MeshShelf 
 
         /// <summary>The coordinate set this texture set is laid out in, which every stroke lands in (#210).</summary>
         public int UvSet => LayerStackEdit.SetFor(document, set)?.UvSet ?? 0;
+
+        /// <summary>
+        ///     How many bits a lane each channel of the set is painted at (#141), which a file whose format follows its
+        ///     maps is written at.
+        /// </summary>
+        public IReadOnlyDictionary<string, int> Depths =>
+            (LayerStackEdit.SetFor(document, set)?.Channels ?? []).ToDictionary(
+                static channel => channel.Usage,
+                static channel => PaintTexelFormats.BytesPerTexel(channel.Format) * 2,
+                StringComparer.Ordinal
+            );
 
         readonly string folder;
         readonly PublishedCompounds compounds;

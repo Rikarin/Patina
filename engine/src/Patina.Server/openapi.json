@@ -537,6 +537,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -751,7 +761,7 @@
         "tags": [
           "Viewport"
         ],
-        "summary": "Lays a bake\u0027s setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. An empty low mesh takes it off.",
+        "summary": "Lays a bake\u0027s setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. A project takes the meshes, cage and options from its own bake settings, as its bake plan does. An empty low mesh with no project takes it off.",
         "operationId": "PreviewBakeInViewport",
         "requestBody": {
           "content": {
@@ -770,6 +780,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BakePreviewState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -2779,7 +2799,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Keeps what a project\u0027s texture sets are held to before export in its project.yaml: a GPU memory budget, a size limit and a texel density, which GET /stacks/{id}/checks and the texel density view measure against.",
+        "summary": "Keeps what a project\u0027s texture sets are held to before export in its project.yaml: a GPU memory budget, a size limit and a texel density, and limits of their own for each platform it ships to, by the export preset that writes for it. GET /stacks/{id}/checks, GET /library/project/checks and the texel density view measure against them.",
         "operationId": "SetProjectChecks",
         "requestBody": {
           "content": {
@@ -2798,6 +2818,72 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProjectContents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what its file says, its limits, its files and its bake, and says it was not measured. The export preset of a platform to check for, or none for the project\u0027s own.",
+        "operationId": "GetProjectChecks",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "preset",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectChecks"
                 }
               }
             }
@@ -4562,6 +4648,67 @@
         }
       }
     },
+    "/api/v1/library/project/bake/import": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Brings maps baked in another program in as a texturing document\u0027s bake: each PNG is copied where the document\u0027s own bake goes and replaces the map of its name there, and the document, open or not, reads them as a bake of its mesh, UV set and material as they stand. A normal map\u0027s green runs up.",
+        "operationId": "ImportProjectBake",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BakeImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BakeImported"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/snapshots": {
       "get": {
         "tags": [
@@ -5767,6 +5914,57 @@
         }
       }
     },
+    "/api/v1/library/revisions/purge": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Rescans, then removes the bytes under .revisions that no snapshot and no pin names any more, which the check lists as UnusedRevision, as patina library check --purge-revisions does. No snapshot or pin is taken while it runs.",
+        "operationId": "PurgeRevisions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryTidied"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/clean": {
       "post": {
         "tags": [
@@ -5781,6 +5979,108 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LibraryCleaned"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/uploads/unused": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The files sent from another computer that no file of the library and no open document names any more, with the room they take. One sent in the last hour counts as used. Changes nothing.",
+        "operationId": "GetUnusedUploads",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnusedUploadList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/uploads/clear": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into the bin as one entry, which Restore puts back.",
+        "operationId": "ClearUploads",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadsCleared"
                 }
               }
             }
@@ -6328,7 +6628,7 @@
         "tags": [
           "Graphs"
         ],
-        "summary": "Points every Bitmap node that reads a picture at another file, as one undo step. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
+        "summary": "Points every Bitmap node that reads a picture at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
         "operationId": "RelinkGraphPicture",
         "parameters": [
           {
@@ -6373,6 +6673,219 @@
           },
           "422": {
             "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/images": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Writes a node\u0027s picture at the size the graph computes it. /previews/{hash} serves the PNG.",
+        "operationId": "WriteGraphImage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphImageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphImage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/histogram": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Counts a node\u0027s picture, at the size the graph computes it, into a histogram per channel on the GPU: 256 shares of its texels for red, green, blue, alpha and luma.",
+        "operationId": "ReadGraphHistogram",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphImageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphHistogram"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/sample": {
+      "post": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Reads one texel of a node\u0027s picture, at the size the graph computes it, as the graph stored it: its lanes at the precision of its format and unclamped.",
+        "operationId": "SampleGraphPicture",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphSampleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphSample"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -6689,148 +7202,6 @@
         }
       }
     },
-    "/api/v1/graphs/{id}/images": {
-      "post": {
-        "tags": [
-          "Graphs"
-        ],
-        "summary": "Writes a node\u0027s picture at the size the graph computes it. /previews/{hash} serves the PNG.",
-        "operationId": "WriteGraphImage",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GraphImageRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GraphImage"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service Unavailable",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/graphs/{id}/histogram": {
-      "post": {
-        "tags": [
-          "Graphs"
-        ],
-        "summary": "Counts a node\u0027s picture, at the size the graph computes it, into a histogram per channel on the GPU: 256 shares of its texels for red, green, blue, alpha and luma.",
-        "operationId": "ReadGraphHistogram",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GraphImageRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GraphHistogram"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service Unavailable",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/graphs/{id}/mesh-maps": {
       "put": {
         "tags": [
@@ -6981,13 +7352,20 @@
         "tags": [
           "Stacks"
         ],
-        "summary": "Checks the texture set before export, against its project\u0027s budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is.",
+        "summary": "Checks the texture set before export, against its project\u0027s budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is. A preset checks it for that platform, with the limits the project keeps for it. The export preset of a platform to check for, or none for the project\u0027s own.",
         "operationId": "GetStackChecks",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "preset",
+            "in": "query",
             "schema": {
               "type": "string"
             }
@@ -7077,6 +7455,77 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/graph": {
+      "post": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "Writes the graph the stack\u0027s shown texture set stands for into its project, as a new graph document beside it. The stack is left as it is, and nothing keeps the two in step.",
+        "operationId": "WriteStackGraph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackGraphRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackGraphMade"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -7807,6 +8256,50 @@
           },
           "422": {
             "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stacks/{id}/sources": {
+      "get": {
+        "tags": [
+          "Stacks"
+        ],
+        "summary": "The project\u0027s own compounds an image input can read as a generator: each reads no image and writes at least one, with what it takes and, for one that writes several, its results. The shipped ones are the vocabulary\u0027s sources.",
+        "operationId": "GetStackSources",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StackFilterKind"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -9903,7 +10396,7 @@
               "null",
               "string"
             ],
-            "description": "The full path of a folder autosaves go to instead of each library\u0027s cache, a folder per library inside it,\nor null for the cache (#162). Autosaves the cache kept before one was chosen are still offered and let go\nof; those in a folder chosen earlier stay there and are not."
+            "description": "The full path of a folder autosaves go to instead of each library\u0027s cache, a folder per library inside it,\nor null for the cache (#162). Autosaves the cache kept before one was chosen are still offered and let go\nof, and those in a folder chosen earlier move to the folder chosen now, or to each library\u0027s cache (#297)."
           }
         },
         "description": "How unsaved work is kept. It goes to the library\u0027s cache unless a folder is chosen, never over a document."
@@ -9947,13 +10440,15 @@
         "required": [
           "source",
           "range",
-          "radius"
+          "radius",
+          "sampling",
+          "rays"
         ],
         "type": "object",
         "properties": {
           "source": {
             "type": "string",
-            "description": "Where the bends come from: \u0060mesh\u0060, the high mesh\u0027s own faces where each ray lands; or\n\u0060normal-map\u0060, the bends of the baked normal map, which is the high mesh\u0027s detail over the low mesh,\ndown to its smallest grooves, and none of the low mesh\u0027s own shape.",
+            "description": "Where the bends come from: \u0060mesh\u0060, the high mesh\u0027s own faces where each ray lands;\n\u0060normal-map\u0060, the bends of the baked normal map, which is the high mesh\u0027s detail over the low mesh,\ndown to its smallest grooves, and none of the low mesh\u0027s own shape; or \u0060rays\u0060, secondary rays\ndouble BakeCurvatureOptions.Sampling round where each ray lands, a bend at that scale, so a hard edge of a low poly high\nmesh reads as one.",
             "default": "mesh"
           },
           "range": {
@@ -9966,6 +10461,18 @@
             "description": "For \u0060custom\u0060: the radius of the tightest bend the map tells apart, in the rays\u0027 units.",
             "format": "double",
             "default": 0.01
+          },
+          "sampling": {
+            "type": "number",
+            "description": "For \u0060rays\u0060: how far round where each ray lands the secondary rays look, in the rays\u0027 units, which is\nthe radius of the bend read and the finest one told apart.",
+            "format": "double",
+            "default": 0.01
+          },
+          "rays": {
+            "type": "integer",
+            "description": "For \u0060rays\u0060: how many secondary rays each sample casts, 1 to 256.",
+            "format": "int32",
+            "default": 16
           }
         },
         "description": "The curvature map\u0027s source and stored range (#148)."
@@ -10088,6 +10595,70 @@
           }
         },
         "description": "What an ID map labels, and how it colours the labels."
+      },
+      "BakeImported": {
+        "required": [
+          "folder"
+        ],
+        "type": "object",
+        "properties": {
+          "folder": {
+            "type": "string",
+            "description": "The bake\u0027s folder, below the library."
+          }
+        },
+        "description": "Where maps brought in now are, which the document reads its bake from."
+      },
+      "BakeImportMap": {
+        "required": [
+          "map",
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "map": {
+            "type": "string",
+            "description": "One of the maps a bake makes, such as \u0060normal\u0060, \u0060ao\u0060 or \u0060curvature\u0060."
+          },
+          "file": {
+            "type": "string",
+            "description": "The PNG, absolute or below the library. A normal map\u0027s green runs up the picture, as Patina\u0027s bakes do."
+          }
+        },
+        "description": "One map brought in."
+      },
+      "BakeImportRequest": {
+        "required": [
+          "project",
+          "document",
+          "maps",
+          "space"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "document": {
+            "type": "string",
+            "description": "The texturing document, by its id, whose texture set the maps are of.",
+            "format": "uuid"
+          },
+          "maps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BakeImportMap"
+            },
+            "description": "Each map and the PNG of it, on the Server\u0027s machine."
+          },
+          "space": {
+            "type": "string",
+            "description": "Whether the normal is in \u0060tangent\u0060 or \u0060object\u0060 space, as a bake\u0027s options say.",
+            "default": "tangent"
+          }
+        },
+        "description": "Maps baked in another program, brought in as a texturing document\u0027s bake (#144): the body of\n\u0060POST /api/v1/library/project/bake/import\u0060."
       },
       "BakeOcclusionOptions": {
         "required": [
@@ -14897,14 +15468,110 @@
         "properties": {
           "from": {
             "type": "string",
-            "description": "The picture as the graph\u0027s Bitmap nodes name it."
+            "description": "The picture as the graph\u0027s Bitmap nodes name it; not read when a node is named."
           },
           "to": {
             "type": "string",
             "description": "The file to read instead: absolute, or below the library."
+          },
+          "node": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "One Bitmap node to point at the file, whatever it reads now, or null for every one that reads\nFrom (#292).",
+            "format": "int32"
           }
         },
         "description": "The body of \u0060POST /api/v1/graphs/{id}/relink\u0060: a picture the graph reads, and the file it is now."
+      },
+      "GraphSample": {
+        "required": [
+          "node",
+          "port",
+          "x",
+          "y",
+          "width",
+          "height",
+          "format",
+          "values"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "integer",
+            "description": "The node.",
+            "format": "int32"
+          },
+          "port": {
+            "type": "string",
+            "description": "Its output port, or the usage of an Output node."
+          },
+          "x": {
+            "type": "integer",
+            "description": "The texel\u0027s column.",
+            "format": "int32"
+          },
+          "y": {
+            "type": "integer",
+            "description": "Its row, from the top.",
+            "format": "int32"
+          },
+          "width": {
+            "type": "integer",
+            "description": "The picture\u0027s width, which is the size the graph computes it.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Its height.",
+            "format": "int32"
+          },
+          "format": {
+            "type": "string",
+            "description": "How the picture is stored: \u0060R8\u0060, \u0060Rg8\u0060, \u0060Rgba8\u0060, \u0060R16Float\u0060, \u0060Rgba16Float\u0060,\n\u0060R32Float\u0060 or \u0060Rgba32Float\u0060."
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "description": "The texel\u0027s lanes as stored: one for a grey, two for a normal\u0027s, four for a colour."
+          }
+        },
+        "description": "One texel of a node\u0027s picture as the graph stored it, at the size the graph computes it: its numbers at the\nprecision of its format, unclamped, where a preview\u0027s PNG holds eight bits of each lane between 0 and 1."
+      },
+      "GraphSampleRequest": {
+        "required": [
+          "node",
+          "port",
+          "u",
+          "v"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "type": "integer",
+            "description": "The node.",
+            "format": "int32"
+          },
+          "port": {
+            "type": "string",
+            "description": "Its output port, or the usage of an Output node."
+          },
+          "u": {
+            "type": "number",
+            "description": "Across the picture, 0 at its left edge and 1 at its right.",
+            "format": "double"
+          },
+          "v": {
+            "type": "number",
+            "description": "Down it, 0 at its top and 1 at its bottom.",
+            "format": "double"
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/graphs/{id}/sample\u0060: a place on one node\u0027s picture (#184)."
       },
       "GraphSelection": {
         "required": [
@@ -16664,6 +17331,37 @@
         },
         "description": "The body of \u0060POST /api/v1/library/packages\u0060."
       },
+      "PlatformCheckLimits": {
+        "required": [
+          "preset",
+          "memoryBudget",
+          "maxSize",
+          "texelDensity"
+        ],
+        "type": "object",
+        "properties": {
+          "preset": {
+            "type": "string",
+            "description": "The export preset\u0027s id."
+          },
+          "memoryBudget": {
+            "type": "number",
+            "description": "The most GPU memory one set\u0027s files may take on it, in mebibytes, or zero for the project\u0027s.",
+            "format": "double"
+          },
+          "maxSize": {
+            "type": "integer",
+            "description": "The longest side a set\u0027s maps may have on it, in texels, or zero for the project\u0027s.",
+            "format": "int32"
+          },
+          "texelDensity": {
+            "type": "number",
+            "description": "The texel density it holds sets to, or zero for the project\u0027s.",
+            "format": "double"
+          }
+        },
+        "description": "What one platform holds a project\u0027s texture sets to (#159), named by the export preset that writes for it. A\nzero is the project\u0027s own limit."
+      },
       "PreviewSaveRequest": {
         "required": [
           "file"
@@ -16787,12 +17485,45 @@
         },
         "description": "What a project keeps about baking, in its own file: the options, which texture sets to bake, and the files\nbeyond the project\u0027s mesh that a bake reads."
       },
+      "ProjectChecks": {
+        "required": [
+          "project",
+          "preset",
+          "memoryBytes",
+          "sets"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "preset": {
+            "type": "string",
+            "description": "The export preset measured against, by its name."
+          },
+          "memoryBytes": {
+            "type": "integer",
+            "description": "The GPU memory all the sets\u0027 exported files take together.",
+            "format": "int64"
+          },
+          "sets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackChecks"
+            },
+            "description": "Each set, in the order the project lists its documents."
+          }
+        },
+        "description": "The reply to \u0060GET /api/v1/library/project/checks\u0060: every texture set and layered material of a project\nchecked at once, against one platform (#159)."
+      },
       "ProjectCheckSettings": {
         "required": [
           "memoryBudget",
           "maxSize",
           "texelDensity",
-          "densityTolerance"
+          "densityTolerance",
+          "platforms"
         ],
         "type": "object",
         "properties": {
@@ -16819,6 +17550,13 @@
             "description": "How far a set\u0027s density may stray from it before it is flagged, as a share: 0.25 is a quarter.",
             "format": "double",
             "default": 0.25
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlatformCheckLimits"
+            },
+            "description": "Limits of their own for the platforms the project ships to, each named by the export preset that writes for\nit. A set measured with that preset is held to them in place of the project\u0027s."
           }
         },
         "description": "What a project holds its texture sets to before they are exported (#159), kept in its \u0060project.yaml\u0060. A\nzero is no limit, and a texel density of zero is the library\u0027s."
@@ -18148,6 +18886,14 @@
                 "$ref": "#/components/schemas/BakeOptions"
               }
             ]
+          },
+          "cacheBudget": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The most room each library\u0027s cache may take, in bytes, or null for no limit (#189). Over it, the built\nobjects, bakes and reports used longest ago go, as Prune takes them, while nothing is building.",
+            "format": "int64"
           }
         },
         "description": "The Server\u0027s settings that belong to the person and not to a library or project, kept in a plain file beside\nthe discovery file, which anyone can read and edit."
@@ -18285,7 +19031,8 @@
           "occlusionTolerance",
           "facing",
           "resume",
-          "tiltSize"
+          "tiltSize",
+          "alignment"
         ],
         "type": "object",
         "properties": {
@@ -18437,6 +19184,11 @@
             "description": "How much of the radius a pen held upright takes off, 0 to 1: a pen laid over paints the whole radius, as a\npencil\u0027s side paints wider. A mouse is upright, so a brush with any of this paints smaller under one.",
             "format": "float",
             "default": 0
+          },
+          "alignment": {
+            "type": "string",
+            "description": "What a stamp seen through a camera lies on: \u0060camera\u0060, the picture, so on a face that turns away it\nstretches along the slope; or \u0060tangent\u0060, the plane that touches the surface under its middle, so it is the\nsame size and shape on the model however the face is turned. A stroke with no view is measured along the\nsurface already, and takes no notice.",
+            "default": "camera"
           }
         },
         "description": "A brush. Everything but the radius has the value a new brush has."
@@ -18469,7 +19221,8 @@
           "maximumRadius",
           "maximumAspect",
           "maximumCount",
-          "materialProjections"
+          "materialProjections",
+          "alignments"
         ],
         "type": "object",
         "properties": {
@@ -18561,6 +19314,13 @@
               "$ref": "#/components/schemas/StackTerm"
             },
             "description": "How a material brush can lay its maps on the mesh."
+          },
+          "alignments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StackTerm"
+            },
+            "description": "What a stamp seen through a camera can lie on."
           }
         },
         "description": "What a brush\u0027s fields take and how a new brush starts, so a client keeps no list or default of its own."
@@ -18669,13 +19429,15 @@
           "memoryBudget",
           "preset",
           "problems",
-          "files"
+          "files",
+          "document",
+          "measured"
         ],
         "type": "object",
         "properties": {
           "stack": {
             "type": "string",
-            "description": "The stack session."
+            "description": "The stack session, or empty for a set nobody has open."
           },
           "set": {
             "type": "string",
@@ -18728,6 +19490,14 @@
               "$ref": "#/components/schemas/CheckFile"
             },
             "description": "Each file the export writes for the set, with the GPU memory it takes."
+          },
+          "document": {
+            "type": "string",
+            "description": "The stack\u0027s file below the library, as a project lists it."
+          },
+          "measured": {
+            "type": "boolean",
+            "description": "Whether the Worker measured its layout and values. A set nobody has open is judged on what the Server knows of\nit, its limits, its files and its bake, and not on its density, its UVs or its values."
           }
         },
         "description": "The reply to \u0060GET /api/v1/stacks/{id}/checks\u0060: one texture set measured against its project."
@@ -20722,6 +21492,45 @@
           }
         },
         "description": "Where something fixed on a stroke\u0027s picture stands: moved, scaled, turned and perhaps tiled."
+      },
+      "StackGraphMade": {
+        "required": [
+          "path",
+          "name",
+          "problems"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The graph document, below the library, as a project lists it."
+          },
+          "name": {
+            "type": "string",
+            "description": "The name it was given, with a number when the one asked for was taken."
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What the stack had to say as it became a graph, each said once, such as a layer left out because it has\nnothing to show: the graph has the rest."
+          }
+        },
+        "description": "What writing a stack\u0027s graph made."
+      },
+      "StackGraphRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What the graph is called. A name the project already has gets a number after it."
+          }
+        },
+        "description": "Writes the graph a layer stack stands for into its project, beside it, as a new graph document (#205). The stack\nis left as it is: the graph is a copy to take further, and nothing keeps the two in step."
       },
       "StackIdColour": {
         "required": [
@@ -22930,6 +23739,47 @@
         },
         "description": "The body of \u0060POST /api/v1/library/thumbnails\u0060. A thumbnail service for every client and every list: the\nLibrary\u0027s grid, the shelf, and anything after them."
       },
+      "UnusedFile": {
+        "required": [
+          "path",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its path below the library, with forward slashes."
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "Its size.",
+            "format": "int64"
+          }
+        },
+        "description": "A file of the library and the room it takes."
+      },
+      "UnusedUploadList": {
+        "required": [
+          "files",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnusedFile"
+            },
+            "description": "The files sent from another computer that nothing names, in order of their path."
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The room they take.",
+            "format": "int64"
+          }
+        },
+        "description": "What \u0060GET /api/v1/library/uploads/unused\u0060 answers (#297)."
+      },
       "UnwrapOptions": {
         "required": [
           "resolution",
@@ -23063,6 +23913,33 @@
         },
         "description": "A file a client sent from its own computer, now on the Server\u0027s machine (#4)."
       },
+      "UploadsCleared": {
+        "required": [
+          "count",
+          "bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "How many uploads nothing named went to the bin.",
+            "format": "int32"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The room those take, which emptying the bin frees.",
+            "format": "int64"
+          },
+          "bin": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The bin\u0027s entry that holds them, for a Restore, or null when none went."
+          }
+        },
+        "description": "What \u0060POST /api/v1/library/uploads/clear\u0060 took away (#297)."
+      },
       "ViewportBakePreview": {
         "required": [
           "high",
@@ -23078,6 +23955,20 @@
         ],
         "type": "object",
         "properties": {
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A project, by its path below \u0060projects/\u0060, whose own bake settings give the meshes, the cage and the\noptions in place of those sent, as \u0060GET /library/project/bake/plan\u0060 works them out; null to send them."
+          },
+          "document": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "With a project, a document by its path below the library, whose mesh the bake is onto; null for the mesh\nthe project\u0027s bake plan takes."
+          },
           "high": {
             "type": "array",
             "items": {
@@ -23087,7 +23978,7 @@
           },
           "low": {
             "type": "string",
-            "description": "The mesh baked onto, or empty to take the preview off.",
+            "description": "The mesh baked onto, or empty with no project to take the preview off.",
             "default": ""
           },
           "cage": {
@@ -23146,7 +24037,7 @@
             "default": 0.25
           }
         },
-        "description": "A bake\u0027s setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,\nand what of it to draw. Paths on the Server\u0027s machine, as in a bake request."
+        "description": "A bake\u0027s setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,\nand what of it to draw. Paths on the Server\u0027s machine, as in a bake request, or a project whose own settings the\nServer reads them from, as it plans that project\u0027s bake (#296)."
       },
       "ViewportBakeRequest": {
         "required": [
@@ -23327,7 +24218,7 @@
         "properties": {
           "environment": {
             "type": "string",
-            "description": "A built-in room (studio, overcast or sunset), or the path of an \u0060.hdr\u0060 or \u0060.exr\u0060 panorama.",
+            "description": "A built-in room (studio, overcast or sunset), the path of an \u0060.hdr\u0060 or \u0060.exr\u0060 panorama, or the path\nof a graph whose Output, its base colour\u0027s if it has one, is drawn as a panorama with its numbers past one\n(#180). A graph is drawn again when it is chosen again or saved.",
             "default": "studio"
           },
           "environmentRotation": {

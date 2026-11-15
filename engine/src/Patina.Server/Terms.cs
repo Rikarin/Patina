@@ -196,6 +196,7 @@ public static class Terms {
             "filter" => "Filters",
             "brush" => "Brushes",
             "preset" => "Brush Presets",
+            "picture" => "Pictures",
             "empty" => "Empty Graphs",
             "shipped" => "Starter",
             "package" => "Packages",

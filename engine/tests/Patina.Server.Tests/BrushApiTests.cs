@@ -51,7 +51,9 @@ public sealed class BrushApiTests : IAsyncLifetime {
         var paint = new ProjectPaintSettings {
             RecentColours = ["#d9401a", "#203040"],
             Palette = ["#ffffff"],
-            Brush = StackBrushes.Default with { Radius = 40f, Aspect = 3f, SizeSpace = "texture" },
+            Brush = StackBrushes.Default with {
+                Radius = 40f, Aspect = 3f, SizeSpace = "texture", Alignment = "tangent"
+            },
             Symmetry = new("radial", "y", Count: 6)
         };
 
@@ -211,6 +213,25 @@ public sealed class BrushApiTests : IAsyncLifetime {
     }
 
     /// <summary>
+    ///     A stamp lies on the picture or on the surface (#123), and the vocabulary offers both, so a client keeps no
+    ///     list of its own; a word for anything else is refused.
+    /// </summary>
+    [Fact]
+    public void A_stamp_lies_on_the_picture_or_on_the_surface_and_nothing_else() {
+        var terms = Stacks.StackDocuments.Vocabulary.Brush;
+
+        Assert.Equal(["camera", "tangent"], terms.Alignments.Select(static term => term.Value));
+        Assert.Equal(["Camera", "Tangent"], terms.Alignments.Select(static term => term.Label));
+        Assert.Equal("camera", terms.Default.Alignment);
+        Assert.Null((StackBrushes.Default with { Alignment = "tangent" }).Problem());
+        Assert.Contains(
+            "lies on",
+            (StackBrushes.Default with { Alignment = "uv" }).Problem(),
+            StringComparison.Ordinal
+        );
+    }
+
+    /// <summary>
     ///     Another project's preset is on the shelf, and the shelf keeps what it read of it only while the file stands
     ///     (#124): an edit to the file, or a new preset in that project, is on the next load.
     /// </summary>
@@ -229,6 +250,7 @@ public sealed class BrushApiTests : IAsyncLifetime {
             Token
         );
         var made = (await created.Content.ReadFromJsonAsync<BrushPresetInfo>(Token))!;
+        await IndexedAsync();
 
         Assert.Equal(30f, (await ShelfAsync()).Single(static p => p.Name == "Dent").Preset.Brush.Radius);
         var file = Path.Combine(server.Library, made.Source);
@@ -243,6 +265,19 @@ public sealed class BrushApiTests : IAsyncLifetime {
         );
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
         Assert.Contains(await ShelfAsync(), static p => p is { Name: "Gouge", Origin: "library" });
+    }
+
+    /// <summary>
+    ///     Waits for the scan a write asked for: the shelf finds other projects through the index, which lags a new
+    ///     project until the rescan the Server runs behind the API ends, and on a slow runner (macOS CI) that is
+    ///     after the next request.
+    /// </summary>
+    async Task IndexedAsync() {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        deadline.CancelAfter(TimeSpan.FromSeconds(30));
+        while ((await client.GetFromJsonAsync<LibraryInfo>("/api/v1/library", deadline.Token))!.Indexing) {
+            await Task.Delay(20, deadline.Token);
+        }
     }
 
     async Task<IReadOnlyList<BrushPresetInfo>> ShelfAsync() =>

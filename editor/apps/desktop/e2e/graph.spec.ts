@@ -452,7 +452,12 @@ test('the 2D view shows the node on view at full size, tiles it and pins it, and
   await window.getByTestId('texture-tile').click();
   await expect(window.getByTestId('texture-image')).toHaveCount(9);
   await window.getByTestId('texture-view').hover();
-  await expect(window.getByTestId('texture-texel')).toHaveText(/^\d+, \d+ {2}(\d\.\d{3} ?){4}$/);
+  // Read from the preview at once, then as the graph stored it once the pointer rests there (#184).
+  const texel = window.getByTestId('texture-texel');
+  await expect(texel).toHaveText(/^\d+, \d+ {2}((\d\.\d{3} ?){4}|(-?\d+\.\d{5} ?){1,4})$/);
+  await expect(texel).toHaveAttribute('data-stored', 'true', { timeout: 30_000 });
+  await expect(texel).toHaveText(/^\d+, \d+ {2}(-?\d+\.\d{5} ?){1,4}$/);
+  await expect(texel).toHaveAttribute('title', /as the graph stored it, at (8 bits|16-bit float|32-bit float)$/);
   await window.screenshot({ path: join(shots, 'graph-2d-tiled.png') });
   await window.getByTestId('texture-tile').click();
 

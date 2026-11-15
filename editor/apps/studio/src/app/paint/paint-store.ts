@@ -100,7 +100,8 @@ export const NewBrush: StackBrush = {
   occlusionTolerance: 2,
   facing: Math.PI / 2,
   resume: false,
-  tiltSize: 0
+  tiltSize: 0,
+  alignment: 'camera'
 };
 
 const ThumbnailQuiet = 400;
@@ -118,6 +119,18 @@ const StampTimes = 2048;
 export type BrushSettings = Omit<StackBrush, 'radius'>;
 
 export type PaintTool = 'brush' | 'eraser' | 'smudge' | 'clone' | 'projection' | 'fill' | 'line' | 'path' | 'picker';
+
+/** What the line and path tools do along themselves (#130): lay the colour, take paint away, or drag what is there. */
+export type CurveAction = 'paint' | 'erase' | 'smudge';
+
+/** The tool a line or a path strokes as, for what it does along itself. */
+export function curveTool(tool: PaintTool, action: CurveAction): PaintTool {
+  if (tool !== 'line' && tool !== 'path') {
+    return tool;
+  }
+
+  return action === 'erase' ? 'eraser' : action === 'smudge' ? 'smudge' : tool;
+}
 
 /** Whether two colours of a selection are one, as an id map's 8-bit texels read back. */
 export function sameColour(left: readonly number[], right: readonly number[]): boolean {
@@ -299,6 +312,12 @@ export class PaintStore {
   private sequence = 0;
   private stopped = false;
   private stroke: string | null = null;
+  /**
+   * The stack and layer the drag under way paints, taken as it began. ⚠ Its last part can leave after the document has
+   * gone behind another (#274): it still goes to its own stack, whose session stays open, never to the one in front,
+   * and a drag with nowhere to go still ends, or a save would wait for it for ever.
+   */
+  private strokeOn: { stack: string; layer: string } | null = null;
   private strokes = 0;
   private pending: StackStamp[] = [];
   private view: StackView | null = null;
@@ -463,6 +482,8 @@ export class PaintStore {
    * its path, until it is set back to null.
    */
   readonly placing = signal<'decal' | 'path' | null>(null);
+  /** What the line and path tools do along themselves (#130): paint, erase or smudge, as the brush tools do. */
+  readonly curveAction = signal<CurveAction>('paint');
   /**
    * A path copied from a fill, to paste onto another (#130). It is numbers alone, its points in the model's space, so
    * the app holds it rather than the Server.
@@ -931,6 +952,20 @@ export class PaintStore {
     }
   }
 
+  /**
+   * A fill on top whose channel being painted reads a picture (#203): the fill is one step and its picture a second, as
+   * a decal dropped on the mesh is.
+   */
+  async addPictureLayer(name: string, picture: string): Promise<void> {
+    const before = new Set(this.layers().map(row => row.layer.id));
+    await this.addLayer('fill', name);
+    // Only the layer just made: a picture set on the one chosen before would replace someone's work.
+    const layer = this.layer();
+    if (layer && !before.has(layer)) {
+      await this.edit({ op: 'setLayer', layer, textures: { [this.channel()]: picture } });
+    }
+  }
+
   /** What is under a place on the viewport, for a handle dragged over the mesh. */
   pickOnMesh(stamp: StackStamp, aim: Aim): Promise<ViewportPick> {
     return this.picked(stamp, aim);
@@ -958,6 +993,37 @@ export class PaintStore {
       this.notice.set(`Saved ${name} to the shelf as a smart ${saved.role}. ${saved.status}`);
     } catch (failure) {
       this.failure.set(messageOf(failure));
+    }
+  }
+
+  /**
+   * Writes the graph this stack stands for into its project as a new graph document (#205), saving the stack first, since
+   * the graph reads painted layers from their files. The stack stays as it is. The graph's path, or null if it was not
+   * written, which the failure says why.
+   */
+  async writeGraph(name: string): Promise<string | null> {
+    if (this.state()?.history.dirty && !(await this.act('save'))) {
+      return null;
+    }
+
+    const id = this.state()?.id;
+    if (!id) {
+      return null;
+    }
+
+    this.startAction();
+    try {
+      const client = await this.api();
+      const made = unwrap(await client.POST('/api/v1/stacks/{id}/graph', { params: { path: { id } }, body: { name } }));
+      this.notice.set(
+        made.problems.length > 0
+          ? `Wrote ${made.name}. ${made.problems.join(' ')}`
+          : `Wrote ${made.name}. The layers stay as they are; the graph is yours to take further.`
+      );
+      return made.path;
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
+      return null;
     }
   }
 
@@ -1510,7 +1576,12 @@ export class PaintStore {
     }
 
     const vocabulary = this.vocabulary();
-    const listed = [...(vocabulary?.filters ?? []), ...(vocabulary?.maskEffects ?? []), ...(vocabulary?.sources ?? [])];
+    const listed = [
+      ...(vocabulary?.filters ?? []),
+      ...(vocabulary?.maskEffects ?? []),
+      ...(vocabulary?.sources ?? []),
+      ...this.ownSources()
+    ];
     const found = listed.find(kind => kind.node === node);
     if (found) {
       return found;
@@ -1527,6 +1598,43 @@ export class PaintStore {
     }
 
     return undefined;
+  }
+
+  /**
+   * The project's own generators an image input can read (#298), each with its results when it writes several, for the
+   * open document: no shared list holds them. Asked once a document opens, and empty until the Server answers.
+   */
+  readonly ownSources = computed<readonly StackFilterKind[]>(() => {
+    const id = this.state()?.id;
+    const held = this.ownSourcesHeld();
+    if (!id) {
+      return [];
+    }
+
+    if (held.stack !== id) {
+      untracked(() => void this.askOwnSources(id));
+      return [];
+    }
+
+    return held.sources;
+  });
+
+  private readonly ownSourcesHeld = signal<{ stack?: string; sources: readonly StackFilterKind[] }>({ sources: [] });
+  private ownSourcesAsked: string | null = null;
+
+  private async askOwnSources(stack: string): Promise<void> {
+    if (this.ownSourcesAsked === stack) {
+      return;
+    }
+
+    this.ownSourcesAsked = stack;
+    try {
+      const client = await this.api();
+      const reply = await client.GET('/api/v1/stacks/{id}/sources', { params: { path: { id: stack } } });
+      this.ownSourcesHeld.set({ stack, sources: Array.isArray(reply.data) ? reply.data : [] });
+    } finally {
+      this.ownSourcesAsked = null;
+    }
   }
 
   /** What the Server says about nodes the vocabulary does not list, for the stack it said it for. */
@@ -1570,6 +1678,17 @@ export class PaintStore {
     return unwrap(
       await client.POST('/api/v1/stacks/{id}/export', { params: { path: { id } }, body: { folder, layer, mask } })
     );
+  }
+
+  /** Writes every map of the open texture set as PNGs into a folder, as an export does. Null when none is open. */
+  async exportMaps(folder: string): Promise<readonly StackPixels[] | null> {
+    const id = this.state()?.id;
+    if (!id) {
+      return null;
+    }
+
+    const client = await this.api();
+    return unwrap(await client.POST('/api/v1/stacks/{id}/export', { params: { path: { id } }, body: { folder } }));
   }
 
   setMaskLayer(
@@ -1685,6 +1804,8 @@ export class PaintStore {
     this.startAction();
     this.strokes += 1;
     this.stroke = `drag-${Date.now()}-${this.strokes}`;
+    const [stack, layer] = [this.state()?.id, this.layer()];
+    this.strokeOn = stack && layer ? { stack, layer } : null;
     this.resumeFrom = resume ? [resume.x, resume.y] : null;
     this.view = null;
     this.cloneStep = null;
@@ -1928,19 +2049,28 @@ export class PaintStore {
     }
 
     const stroke = this.stroke;
-    const layer = this.layer();
-    if (!stroke || !layer || (open && this.pending.length === 0)) {
+    const on = this.strokeOn;
+    if (!stroke || !on) {
+      this.ending = false;
+      this.pending = [];
+      return;
+    }
+
+    if (open && this.pending.length === 0) {
       return;
     }
 
     const stamps = this.pending;
     this.pending = [];
-    this.sending = this.send(stroke, layer, stamps, open, this.view, 'free', this.oldestStamp).finally(() => {
-      this.sending = null;
-      if (this.pending.length > 0) {
-        this.flush(open && this.stroke !== null);
+    const { stack, layer } = on;
+    this.sending = this.send(stroke, layer, stamps, open, this.view, 'free', this.oldestStamp, false, stack).finally(
+      () => {
+        this.sending = null;
+        if (this.pending.length > 0) {
+          this.flush(open && this.stroke !== null);
+        }
       }
-    });
+    );
     if (!open) {
       this.stroke = null;
       this.ending = false;
@@ -1955,9 +2085,10 @@ export class PaintStore {
     view: StackView | null,
     curve: 'free' | 'line' | 'path' | 'fill',
     since: number,
-    outline = false
+    outline = false,
+    stack = this.state()?.id
   ): Promise<void> {
-    const tool = this.tool();
+    const tool = curveTool(this.tool(), this.curveAction());
     const picture = this.screenPicture();
     if (tool === 'projection' && !this.projectsMaterial() && !picture) {
       return;
@@ -2003,35 +2134,38 @@ export class PaintStore {
                       .filter(([usage]) => usage !== this.channel() && writes(usage))
                       .map(([usage, colour]): [string, number[]] => [usage, colourOf(colour)]))
               ];
-    const revision = await this.command({
-      commands: channels.map(([channel, colour]) => ({
-        op: 'stroke' as const,
-        stroke,
-        layer,
-        channel,
-        brush: { ...brush, radius },
-        // A stamp mixes towards its colour, so towards nothing at all takes paint away.
-        colour: tool === 'eraser' ? [0, 0, 0, 0] : colour,
-        stamps,
-        open,
-        mask: masking,
-        maskLayer: masking ? this.maskLayer() : null,
-        view,
-        curve,
-        symmetry,
-        source,
-        stencil:
-          picture && this.stencil() && (tool !== 'projection' || this.projectsMaterial())
-            ? this.placed(picture, view)
-            : null,
-        fill: curve === 'fill' ? this.fillMode() : null,
-        outline,
-        through: outline && view !== null && this.fillThrough(),
-        resume: curve === 'free' ? resume : null,
-        quickMask
-      }))
-    });
-    if (revision !== null && revision > this.lastShown) {
+    const revision = await this.command(
+      {
+        commands: channels.map(([channel, colour]) => ({
+          op: 'stroke' as const,
+          stroke,
+          layer,
+          channel,
+          brush: { ...brush, radius },
+          // A stamp mixes towards its colour, so towards nothing at all takes paint away.
+          colour: tool === 'eraser' ? [0, 0, 0, 0] : colour,
+          stamps,
+          open,
+          mask: masking,
+          maskLayer: masking ? this.maskLayer() : null,
+          view,
+          curve,
+          symmetry,
+          source,
+          stencil:
+            picture && this.stencil() && (tool !== 'projection' || this.projectsMaterial())
+              ? this.placed(picture, view)
+              : null,
+          fill: curve === 'fill' ? this.fillMode() : null,
+          outline,
+          through: outline && view !== null && this.fillThrough(),
+          resume: curve === 'free' ? resume : null,
+          quickMask
+        }))
+      },
+      stack
+    );
+    if (revision !== null && revision > this.lastShown && stack === this.state()?.id) {
       this.sentAt.set(revision, since);
     }
   }
@@ -2123,8 +2257,7 @@ export class PaintStore {
   }
 
   /** Sends a batch, and answers the revision it made, or null when it was refused. */
-  private async command(body: StackCommandBatch): Promise<number | null> {
-    const id = this.state()?.id;
+  private async command(body: StackCommandBatch, id = this.state()?.id): Promise<number | null> {
     if (!id) {
       return null;
     }
@@ -2148,7 +2281,19 @@ export class PaintStore {
     }
   }
 
+  /**
+   * Takes a state the Server sent as the stack's. ⚠ One taken before a state already adopted for the same session is
+   * dropped (#295), whichever request it answers: the Server takes its picture of the stack first and may then wait, so
+   * an open, a refresh and a reopen can be answered in any order, and on a slow GPU an older one arrived last and undid
+   * newer edits on screen.
+   */
   private adopt(state: StackState): void {
+    const held = this.adopted;
+    if (held !== null && held.id === state.id && state.sequence < held.sequence) {
+      return;
+    }
+
+    this.adopted = { id: state.id, sequence: state.sequence };
     this.state.set(state);
     learnChannels(state.channels);
     this.sequence = state.sequence;
@@ -2347,6 +2492,9 @@ export class PaintStore {
     }
   }
 
+  /** The session and the event sequence of the newest state adopted, which an older reply cannot replace. */
+  private adopted: { id: string; sequence: number } | null = null;
+
   /** How many refreshes were asked for, and the newest whose reply was taken. */
   private refreshesAsked = 0;
   private refreshTaken = 0;
@@ -2396,6 +2544,7 @@ export class PaintStore {
     }
 
     this.failure.set(null);
+    this.adopted = null; // a new Server counts its events from the start again
     if (lost.history.dirty) {
       this.notice.set(RestartedNotice);
       this.recovery.ask(lost.path); // what autosave kept of the edits is offered back (#162)

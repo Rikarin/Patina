@@ -152,13 +152,13 @@ static class LibraryCareEndpoints {
         );
 
     static Results<Ok<BinList>, ProblemHttpResult> GetBin(LibraryHost host) =>
-        LibraryTreeEndpoints.Guarded(host, static library => TypedResults.Ok(library.Bin()));
+        LibraryTreeEndpoints.Guarded(host, static library => TypedResults.Ok(library.Care.Bin()));
 
     static Results<Ok<BinRestored>, ProblemHttpResult> Restore(LibraryHost host, BinRestoreRequest request) =>
         LibraryTreeEndpoints.Guarded(
             host,
             library => {
-                var path = library.Restore(request.Id);
+                var path = library.Care.Restore(request.Id);
                 host.RequestRescan();
                 return TypedResults.Ok(new BinRestored(path));
             }
@@ -170,7 +170,7 @@ static class LibraryCareEndpoints {
         }
 
         try {
-            library.DeleteFromBin(id);
+            library.Care.DeleteFromBin(id);
             return TypedResults.NoContent();
         } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
             return problem;
@@ -178,7 +178,7 @@ static class LibraryCareEndpoints {
     }
 
     static Results<Ok<BinEmptied>, ProblemHttpResult> EmptyBin(LibraryHost host) =>
-        LibraryTreeEndpoints.Guarded(host, static library => TypedResults.Ok(new BinEmptied(library.EmptyBin())));
+        LibraryTreeEndpoints.Guarded(host, static library => TypedResults.Ok(new BinEmptied(library.Care.EmptyBin())));
 
     static Results<Ok<CacheInfo>, ProblemHttpResult> GetCache(LibraryHost host) =>
         LibraryTreeEndpoints.Guarded(

@@ -304,7 +304,7 @@ export interface paths {
     };
     /** The bake setup the viewport shows, and the key to its colors. */
     get: operations['GetBakePreview'];
-    /** Lays a bake's setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. An empty low mesh takes it off. */
+    /** Lays a bake's setup over the model before it runs: where its rays start and how far they reach, the high meshes see-through, and which parts match by name. A project takes the meshes, cage and options from its own bake settings, as its bake plan does. An empty low mesh with no project takes it off. */
     put: operations['PreviewBakeInViewport'];
     post?: never;
     delete?: never;
@@ -788,8 +788,9 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
-    /** Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory budget, a size limit and a texel density, which GET /stacks/{id}/checks and the texel density view measure against. */
+    /** Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what its file says, its limits, its files and its bake, and says it was not measured. The export preset of a platform to check for, or none for the project's own. */
+    get: operations['GetProjectChecks'];
+    /** Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory budget, a size limit and a texel density, and limits of their own for each platform it ships to, by the export preset that writes for it. GET /stacks/{id}/checks, GET /library/project/checks and the texel density view measure against them. */
     put: operations['SetProjectChecks'];
     post?: never;
     delete?: never;
@@ -1193,6 +1194,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/project/bake/import': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Brings maps baked in another program in as a texturing document's bake: each PNG is copied where the document's own bake goes and replaces the map of its name there, and the document, open or not, reads them as a bake of its mesh, UV set and material as they stand. A normal map's green runs up. */
+    post: operations['ImportProjectBake'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/snapshots': {
     parameters: {
       query?: never;
@@ -1469,6 +1487,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/revisions/purge': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Rescans, then removes the bytes under .revisions that no snapshot and no pin names any more, which the check lists as UnusedRevision, as patina library check --purge-revisions does. No snapshot or pin is taken while it runs. */
+    post: operations['PurgeRevisions'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/clean': {
     parameters: {
       query?: never;
@@ -1480,6 +1515,40 @@ export interface paths {
     put?: never;
     /** Removes the copies of paint each project keeps in .paint-backup when a new UV layout moves it, and moves the pictures in projects that no document reads, saved or open, into the bin as one entry. */
     post: operations['CleanLibrary'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/uploads/unused': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The files sent from another computer that no file of the library and no open document names any more, with the room they take. One sent in the last hour counts as used. Changes nothing. */
+    get: operations['GetUnusedUploads'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/uploads/clear': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into the bin as one entry, which Restore puts back. */
+    post: operations['ClearUploads'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1617,8 +1686,59 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Points every Bitmap node that reads a picture at another file, as one undo step. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
+    /** Points every Bitmap node that reads a picture at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
     post: operations['RelinkGraphPicture'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/images': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Writes a node's picture at the size the graph computes it. /previews/{hash} serves the PNG. */
+    post: operations['WriteGraphImage'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/histogram': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Counts a node's picture, at the size the graph computes it, into a histogram per channel on the GPU: 256 shares of its texels for red, green, blue, alpha and luma. */
+    post: operations['ReadGraphHistogram'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/sample': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reads one texel of a node's picture, at the size the graph computes it, as the graph stored it: its lanes at the precision of its format and unclamped. */
+    post: operations['SampleGraphPicture'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1711,40 +1831,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/graphs/{id}/images': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Writes a node's picture at the size the graph computes it. /previews/{hash} serves the PNG. */
-    post: operations['WriteGraphImage'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/graphs/{id}/histogram': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Counts a node's picture, at the size the graph computes it, into a histogram per channel on the GPU: 256 shares of its texels for red, green, blue, alpha and luma. */
-    post: operations['ReadGraphHistogram'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/api/v1/graphs/{id}/mesh-maps': {
     parameters: {
       query?: never;
@@ -1803,7 +1889,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Checks the texture set before export, against its project's budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is. */
+    /** Checks the texture set before export, against its project's budget, size limit, texel density and export preset, and its layout and values against what a mesh and a physical material can have. Each problem has a stable code and where it is. A preset checks it for that platform, with the limits the project keeps for it. The export preset of a platform to check for, or none for the project's own. */
     get: operations['GetStackChecks'];
     put?: never;
     post?: never;
@@ -1824,6 +1910,23 @@ export interface paths {
     put?: never;
     /** Saves layers, or one layer's mask, into a project as a smart material or smart mask its shelf offers. */
     post: operations['SaveStackMaterial'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/graph': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Writes the graph the stack's shown texture set stands for into its project, as a new graph document beside it. The stack is left as it is, and nothing keeps the two in step. */
+    post: operations['WriteStackGraph'];
     delete?: never;
     options?: never;
     head?: never;
@@ -2011,6 +2114,23 @@ export interface paths {
     get?: never;
     /** Pauses or resumes a stack's evaluation, or sets the proxy its picture is composited at while it is edited. Every client hears a paced event. Saving, exporting and checking always evaluate it whole. */
     put: operations['PaceStack'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/stacks/{id}/sources': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The project's own compounds an image input can read as a generator: each reads no image and writes at least one, with what it takes and, for one that writes several, its results. The shipped ones are the vocabulary's sources. */
+    get: operations['GetStackSources'];
+    put?: never;
     post?: never;
     delete?: never;
     options?: never;
@@ -2705,7 +2825,7 @@ export interface components {
       /**
        * @description The full path of a folder autosaves go to instead of each library's cache, a folder per library inside it,
        *     or null for the cache (#162). Autosaves the cache kept before one was chosen are still offered and let go
-       *     of; those in a folder chosen earlier stay there and are not.
+       *     of, and those in a folder chosen earlier move to the folder chosen now, or to each library's cache (#297).
        */
       folder?: null | string;
     };
@@ -2737,9 +2857,11 @@ export interface components {
     /** @description The curvature map's source and stored range (#148). */
     BakeCurvatureOptions: {
       /**
-       * @description Where the bends come from: `mesh`, the high mesh's own faces where each ray lands; or
+       * @description Where the bends come from: `mesh`, the high mesh's own faces where each ray lands;
        *     `normal-map`, the bends of the baked normal map, which is the high mesh's detail over the low mesh,
-       *     down to its smallest grooves, and none of the low mesh's own shape.
+       *     down to its smallest grooves, and none of the low mesh's own shape; or `rays`, secondary rays
+       *     double BakeCurvatureOptions.Sampling round where each ray lands, a bend at that scale, so a hard edge of a low poly high
+       *     mesh reads as one.
        * @default mesh
        */
       source: string;
@@ -2756,6 +2878,19 @@ export interface components {
        * @default 0.01
        */
       radius: number;
+      /**
+       * Format: double
+       * @description For `rays`: how far round where each ray lands the secondary rays look, in the rays' units, which is
+       *     the radius of the bend read and the finest one told apart.
+       * @default 0.01
+       */
+      sampling: number;
+      /**
+       * Format: int32
+       * @description For `rays`: how many secondary rays each sample casts, 1 to 256.
+       * @default 16
+       */
+      rays: number;
     };
     /** @description One baked map, as a file. */
     BakedMapFile: {
@@ -2842,6 +2977,38 @@ export interface components {
        * @default random
        */
       palette: string;
+    };
+    /** @description Where maps brought in now are, which the document reads its bake from. */
+    BakeImported: {
+      /** @description The bake's folder, below the library. */
+      folder: string;
+    };
+    /** @description One map brought in. */
+    BakeImportMap: {
+      /** @description One of the maps a bake makes, such as `normal`, `ao` or `curvature`. */
+      map: string;
+      /** @description The PNG, absolute or below the library. A normal map's green runs up the picture, as Patina's bakes do. */
+      file: string;
+    };
+    /**
+     * @description Maps baked in another program, brought in as a texturing document's bake (#144): the body of
+     *     `POST /api/v1/library/project/bake/import`.
+     */
+    BakeImportRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /**
+       * Format: uuid
+       * @description The texturing document, by its id, whose texture set the maps are of.
+       */
+      document: string;
+      /** @description Each map and the PNG of it, on the Server's machine. */
+      maps: components['schemas']['BakeImportMap'][];
+      /**
+       * @description Whether the normal is in `tangent` or `object` space, as a bake's options say.
+       * @default tangent
+       */
+      space: string;
     };
     /** @description The occlusion rays, which ambient occlusion, the bent normal and thickness share. */
     BakeOcclusionOptions: {
@@ -5074,10 +5241,76 @@ export interface components {
     };
     /** @description The body of `POST /api/v1/graphs/{id}/relink`: a picture the graph reads, and the file it is now. */
     GraphRelinkRequest: {
-      /** @description The picture as the graph's Bitmap nodes name it. */
+      /** @description The picture as the graph's Bitmap nodes name it; not read when a node is named. */
       from: string;
       /** @description The file to read instead: absolute, or below the library. */
       to: string;
+      /**
+       * Format: int32
+       * @description One Bitmap node to point at the file, whatever it reads now, or null for every one that reads
+       *     From (#292).
+       */
+      node?: null | number;
+    };
+    /**
+     * @description One texel of a node's picture as the graph stored it, at the size the graph computes it: its numbers at the
+     *     precision of its format, unclamped, where a preview's PNG holds eight bits of each lane between 0 and 1.
+     */
+    GraphSample: {
+      /**
+       * Format: int32
+       * @description The node.
+       */
+      node: number;
+      /** @description Its output port, or the usage of an Output node. */
+      port: string;
+      /**
+       * Format: int32
+       * @description The texel's column.
+       */
+      x: number;
+      /**
+       * Format: int32
+       * @description Its row, from the top.
+       */
+      y: number;
+      /**
+       * Format: int32
+       * @description The picture's width, which is the size the graph computes it.
+       */
+      width: number;
+      /**
+       * Format: int32
+       * @description Its height.
+       */
+      height: number;
+      /**
+       * @description How the picture is stored: `R8`, `Rg8`, `Rgba8`, `R16Float`, `Rgba16Float`,
+       *     `R32Float` or `Rgba32Float`.
+       */
+      format: string;
+      /** @description The texel's lanes as stored: one for a grey, two for a normal's, four for a colour. */
+      values: number[];
+    };
+    /** @description The body of `POST /api/v1/graphs/{id}/sample`: a place on one node's picture (#184). */
+    GraphSampleRequest: {
+      /**
+       * Format: int32
+       * @description The node.
+       */
+      node: number;
+      /** @description Its output port, or the usage of an Output node. */
+      port: string;
+      /**
+       * Format: double
+       * @description Across the picture, 0 at its left edge and 1 at its right.
+       */
+      u: number;
+      /**
+       * Format: double
+       * @description Down it, 0 at its top and 1 at its bottom.
+       */
+      v: number;
     };
     /**
      * @description The nodes chosen in a graph session, and the one kept on view whatever is chosen. A session has one selection,
@@ -5865,6 +6098,29 @@ export interface components {
       /** @description What it is used as, or null for the role its project gives it. */
       role?: null | string;
     };
+    /**
+     * @description What one platform holds a project's texture sets to (#159), named by the export preset that writes for it. A
+     *     zero is the project's own limit.
+     */
+    PlatformCheckLimits: {
+      /** @description The export preset's id. */
+      preset: string;
+      /**
+       * Format: double
+       * @description The most GPU memory one set's files may take on it, in mebibytes, or zero for the project's.
+       */
+      memoryBudget: number;
+      /**
+       * Format: int32
+       * @description The longest side a set's maps may have on it, in texels, or zero for the project's.
+       */
+      maxSize: number;
+      /**
+       * Format: double
+       * @description The texel density it holds sets to, or zero for the project's.
+       */
+      texelDensity: number;
+    };
     /** @description The body of `POST /api/v1/previews/{hash}/save`. */
     PreviewSaveRequest: {
       /** @description The PNG to write, as a whole path on the Server's machine, in a folder that exists. */
@@ -5915,6 +6171,23 @@ export interface components {
       cage: string;
     };
     /**
+     * @description The reply to `GET /api/v1/library/project/checks`: every texture set and layered material of a project
+     *     checked at once, against one platform (#159).
+     */
+    ProjectChecks: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description The export preset measured against, by its name. */
+      preset: string;
+      /**
+       * Format: int64
+       * @description The GPU memory all the sets' exported files take together.
+       */
+      memoryBytes: number;
+      /** @description Each set, in the order the project lists its documents. */
+      sets: components['schemas']['StackChecks'][];
+    };
+    /**
      * @description What a project holds its texture sets to before they are exported (#159), kept in its `project.yaml`. A
      *     zero is no limit, and a texel density of zero is the library's.
      */
@@ -5944,6 +6217,11 @@ export interface components {
        * @default 0.25
        */
       densityTolerance: number;
+      /**
+       * @description Limits of their own for the platforms the project ships to, each named by the export preset that writes for
+       *     it. A set measured with that preset is held to them in place of the project's.
+       */
+      platforms: components['schemas']['PlatformCheckLimits'][];
     };
     /** @description The body of `PUT /api/v1/library/project/checks`. */
     ProjectChecksRequest: {
@@ -6511,6 +6789,12 @@ export interface components {
       /** @description How unsaved work is kept. */
       autosave: components['schemas']['AutosavePreferences'];
       bake?: null | components['schemas']['BakeOptions'];
+      /**
+       * Format: int64
+       * @description The most room each library's cache may take, in bytes, or null for no limit (#189). Over it, the built
+       *     objects, bakes and reports used longest ago go, as Prune takes them, while nothing is building.
+       */
+      cacheBudget?: null | number;
     };
     /** @description Puts a document back as a snapshot holds it, or forgets a snapshot. */
     SnapshotRequest: {
@@ -6715,6 +6999,14 @@ export interface components {
        * @default 0
        */
       tiltSize: number;
+      /**
+       * @description What a stamp seen through a camera lies on: `camera`, the picture, so on a face that turns away it
+       *     stretches along the slope; or `tangent`, the plane that touches the surface under its middle, so it is the
+       *     same size and shape on the model however the face is turned. A stroke with no view is measured along the
+       *     surface already, and takes no notice.
+       * @default camera
+       */
+      alignment: string;
     };
     /** @description A picture of a brush: a stroke of it drawn small, under `/previews/{hash}`. */
     StackBrushPreview: {
@@ -6760,6 +7052,8 @@ export interface components {
       maximumCount: number;
       /** @description How a material brush can lay its maps on the mesh. */
       materialProjections: components['schemas']['StackTerm'][];
+      /** @description What a stamp seen through a camera can lie on. */
+      alignments: components['schemas']['StackTerm'][];
     };
     /** @description A channel a stack writes. */
     StackChannel: {
@@ -6801,7 +7095,7 @@ export interface components {
     };
     /** @description The reply to `GET /api/v1/stacks/{id}/checks`: one texture set measured against its project. */
     StackChecks: {
-      /** @description The stack session. */
+      /** @description The stack session, or empty for a set nobody has open. */
       stack: string;
       /** @description The texture set, or empty for a model with no named sets. */
       set: string;
@@ -6844,6 +7138,13 @@ export interface components {
       problems: components['schemas']['CheckProblem'][];
       /** @description Each file the export writes for the set, with the GPU memory it takes. */
       files: components['schemas']['CheckFile'][];
+      /** @description The stack's file below the library, as a project lists it. */
+      document: string;
+      /**
+       * @description Whether the Worker measured its layout and values. A set nobody has open is judged on what the Server knows of
+       *     it, its limits, its files and its bake, and not on its density, its UVs or its values.
+       */
+      measured: boolean;
     };
     /** @description Layers copied out of a stack, which a StackPasteLayers names. */
     StackClip: {
@@ -7721,6 +8022,26 @@ export interface components {
        * @default false
        */
       tiled: boolean;
+    };
+    /** @description What writing a stack's graph made. */
+    StackGraphMade: {
+      /** @description The graph document, below the library, as a project lists it. */
+      path: string;
+      /** @description The name it was given, with a number when the one asked for was taken. */
+      name: string;
+      /**
+       * @description What the stack had to say as it became a graph, each said once, such as a layer left out because it has
+       *     nothing to show: the graph has the rest.
+       */
+      problems: string[];
+    };
+    /**
+     * @description Writes the graph a layer stack stands for into its project, beside it, as a new graph document (#205). The stack
+     *     is left as it is: the graph is a copy to take further, and nothing keeps the two in step.
+     */
+    StackGraphRequest: {
+      /** @description What the graph is called. A name the project already has gets a number after it. */
+      name: string;
     };
     /** @description One colour of a stack's id map. */
     StackIdColour: {
@@ -8814,6 +9135,26 @@ export interface components {
        */
       sources: string[];
     };
+    /** @description A file of the library and the room it takes. */
+    UnusedFile: {
+      /** @description Its path below the library, with forward slashes. */
+      path: string;
+      /**
+       * Format: int64
+       * @description Its size.
+       */
+      bytes: number;
+    };
+    /** @description What `GET /api/v1/library/uploads/unused` answers (#297). */
+    UnusedUploadList: {
+      /** @description The files sent from another computer that nothing names, in order of their path. */
+      files: components['schemas']['UnusedFile'][];
+      /**
+       * Format: int64
+       * @description The room they take.
+       */
+      bytes: number;
+    };
     /** @description How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own. */
     UnwrapOptions: {
       /**
@@ -8901,15 +9242,41 @@ export interface components {
        */
       path: string;
     };
+    /** @description What `POST /api/v1/library/uploads/clear` took away (#297). */
+    UploadsCleared: {
+      /**
+       * Format: int32
+       * @description How many uploads nothing named went to the bin.
+       */
+      count: number;
+      /**
+       * Format: int64
+       * @description The room those take, which emptying the bin frees.
+       */
+      bytes: number;
+      /** @description The bin's entry that holds them, for a Restore, or null when none went. */
+      bin?: null | string;
+    };
     /**
      * @description A bake's setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,
-     *     and what of it to draw. Paths on the Server's machine, as in a bake request.
+     *     and what of it to draw. Paths on the Server's machine, as in a bake request, or a project whose own settings the
+     *     Server reads them from, as it plans that project's bake (#296).
      */
     ViewportBakePreview: {
+      /**
+       * @description A project, by its path below `projects/`, whose own bake settings give the meshes, the cage and the
+       *     options in place of those sent, as `GET /library/project/bake/plan` works them out; null to send them.
+       */
+      project?: null | string;
+      /**
+       * @description With a project, a document by its path below the library, whose mesh the bake is onto; null for the mesh
+       *     the project's bake plan takes.
+       */
+      document?: null | string;
       /** @description The detailed meshes, in order. */
       high: string[];
       /**
-       * @description The mesh baked onto, or empty to take the preview off.
+       * @description The mesh baked onto, or empty with no project to take the preview off.
        * @default
        */
       low: string;
@@ -9036,7 +9403,9 @@ export interface components {
      */
     ViewportDisplay: {
       /**
-       * @description A built-in room (studio, overcast or sunset), or the path of an `.hdr` or `.exr` panorama.
+       * @description A built-in room (studio, overcast or sunset), the path of an `.hdr` or `.exr` panorama, or the path
+       *     of a graph whose Output, its base colour's if it has one, is drawn as a panorama with its numbers past one
+       *     (#180). A graph is drawn again when it is chosen again or saved.
        * @default studio
        */
       environment: string;
@@ -9968,6 +10337,15 @@ export interface operations {
           'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
     };
   };
   TakeViewportScreenshot: {
@@ -10175,6 +10553,15 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['BakePreviewState'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
         };
       };
       /** @description Not Found */
@@ -11739,6 +12126,56 @@ export interface operations {
       };
     };
   };
+  GetProjectChecks: {
+    parameters: {
+      query: {
+        project: string;
+        preset?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectChecks'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   SetProjectChecks: {
     parameters: {
       query?: never;
@@ -13169,6 +13606,57 @@ export interface operations {
       };
     };
   };
+  ImportProjectBake: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BakeImportRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BakeImported'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   GetDocumentSnapshots: {
     parameters: {
       query: {
@@ -14170,6 +14658,53 @@ export interface operations {
       };
     };
   };
+  PurgeRevisions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryTidied'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   CleanLibrary: {
     parameters: {
       query?: never;
@@ -14186,6 +14721,100 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['LibraryCleaned'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetUnusedUploads: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UnusedUploadList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ClearUploads: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UploadsCleared'];
         };
       };
       /** @description Bad Request */
@@ -14632,6 +15261,165 @@ export interface operations {
       };
     };
   };
+  WriteGraphImage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphImageRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphImage'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ReadGraphHistogram: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphImageRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphHistogram'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SampleGraphPicture: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphSampleRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphSample'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   UndoGraph: {
     parameters: {
       query?: never;
@@ -14867,112 +15655,6 @@ export interface operations {
       };
     };
   };
-  WriteGraphImage: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['GraphImageRequest'];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['GraphImage'];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Conflict */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Service Unavailable */
-      503: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
-  ReadGraphHistogram: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['GraphImageRequest'];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['GraphHistogram'];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Conflict */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-      /** @description Service Unavailable */
-      503: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/problem+json': components['schemas']['ProblemDetails'];
-        };
-      };
-    };
-  };
   SetGraphMeshMaps: {
     parameters: {
       query?: never;
@@ -15076,7 +15758,9 @@ export interface operations {
   };
   GetStackChecks: {
     parameters: {
-      query?: never;
+      query?: {
+        preset?: string;
+      };
       header?: never;
       path: {
         id: string;
@@ -15149,6 +15833,59 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  WriteStackGraph: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StackGraphRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackGraphMade'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
         headers: {
           [name: string]: unknown;
         };
@@ -15685,6 +16422,37 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  GetStackSources: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StackFilterKind'][];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

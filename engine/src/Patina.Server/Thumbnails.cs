@@ -6,6 +6,7 @@ using Patina.Server.Stacks;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
+using Vixen.NodeGraph;
 
 namespace Patina.Server;
 
@@ -62,13 +63,14 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
     }
 
     async Task<string?> HashAsync(string key, MaterialThumbnailAsk ask, CancellationToken cancellationToken) {
-        if (Held(key) is { } held) {
+        var extension = ask.Deep ? GraphPreviewFiles.Radiance : GraphPreviewFiles.Extension;
+        if (Held(key, extension) is { } held) {
             return held.Length == 0 ? null : held;
         }
 
         await drawing.WaitAsync(cancellationToken);
         try {
-            if (Held(key) is { } now) {
+            if (Held(key, extension) is { } now) {
                 return now.Length == 0 ? null : now;
             }
 
@@ -81,7 +83,7 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
     }
 
     /// <summary>What a key's picture is, if its file is still in the cache: empty for nothing to draw.</summary>
-    string? Held(string key) {
+    string? Held(string key, string extension) {
         if (!known.TryGetValue(key, out var hash)) {
             var file = KeyFile(key);
             if (!File.Exists(file)) {
@@ -92,7 +94,7 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             hash = hash == NothingToDraw ? string.Empty : hash;
         }
 
-        if (hash.Length > 0 && store.Find(hash) is null) {
+        if (hash.Length > 0 && store.Find(hash, extension) is null) {
             // The cache was trimmed or deleted under it, and it is drawn again.
             known.TryRemove(key, out _);
             return null;
@@ -152,7 +154,7 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
         }
 
         if (source.StartsWith(ShelfCompounds.Prefix, StringComparison.Ordinal)) {
-            return null; // a shipped compound shows its name: most read a bake or a picture a shelf has not got
+            return ShelfCompounds.NodeOf(source) is { } node ? OfCompound(library, node) : null;
         }
 
         if (source.StartsWith(MaterialShelf.ShippedPrefix, StringComparison.Ordinal)) {
@@ -176,6 +178,10 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
 
         if (!File.Exists(full)) {
             return null;
+        }
+
+        if (PictureFormats.IsPicture(full)) {
+            return OfPicture(source, full);
         }
 
         if (!full.EndsWith(LibraryLayout.GraphExtension, StringComparison.OrdinalIgnoreCase)
@@ -221,6 +227,24 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             _ => -1
         };
 
+    /// <summary>
+    ///     A picture file, as a graph that reads it into its base colour draws it (#203): the Worker decodes it as a
+    ///     layer would, and the file's stamp is part of its key, so a picture saved over is drawn again.
+    /// </summary>
+    (string Key, MaterialThumbnailAsk Ask)? OfPicture(string source, string full) {
+        var folder = Path.GetDirectoryName(full)!;
+        NodeGraphAsset graph = new() {
+            Name = Path.GetFileNameWithoutExtension(full),
+            Nodes = [
+                new() { Id = 1, Type = BitmapNode, Texts = new() { [SourceSetting] = Path.GetFileName(full) } },
+                new() { Id = 2, Type = OutputNode, Texts = new() { [UsageSetting] = DefaultUsage } }
+            ],
+            Edges = [new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Input" }]
+        };
+        var file = Path.Combine(folder, graph.Name + LibraryLayout.GraphExtension);
+        return OfGraph(source, GraphDocuments.Text(graph), file, null, [folder]);
+    }
+
     /// <summary>A graph's Output, preferring its base colour, computed at the picture's size.</summary>
     (string Key, MaterialThumbnailAsk Ask)? OfGraph(
         string source,
@@ -230,16 +254,10 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
         IReadOnlyList<string> roots
     ) {
         var graph = GraphDocuments.Parse(text);
-        var outputs = graph.Nodes.Where(static node => node.Type == OutputNode)
-            .Select(static node => (node.Id, Usage: node.Texts.GetValueOrDefault(UsageSetting, DefaultUsage)))
-            .ToList();
-        if (outputs.Count == 0) {
+        if (Output(graph) is not var (node, usage)) {
             return null;
         }
 
-        var (node, usage) = outputs.Find(static output => output.Usage == DefaultUsage) is { Usage: not null } chosen
-            ? chosen
-            : outputs[0];
         var small = graph with {
             Settings = new(graph.Settings, StringComparer.Ordinal) {
                 ["baseWidth"] = $"{Side}", ["baseHeight"] = $"{Side}"

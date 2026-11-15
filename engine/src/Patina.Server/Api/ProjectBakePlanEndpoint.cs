@@ -11,7 +11,7 @@ namespace Patina.Server.Api;
 static class ProjectBakePlanEndpoint {
     const string ProjectsPrefix = LibraryLayout.ProjectsFolder + "/";
 
-    public static void MapProjectBakePlan(this RouteGroupBuilder library) =>
+    public static void MapProjectBakePlan(this RouteGroupBuilder library) {
         library.MapGet("/project/bake/plan", GetPlan)
             .Described(
                 "GetProjectBakePlan",
@@ -20,6 +20,31 @@ static class ProjectBakePlanEndpoint {
                 + "the maps in a folder of the Server's machine instead of the project's; set, once per texture set, "
                 + "bakes those instead of the ones the project ticks."
             );
+        library.MapPost("/project/bake/import", Import)
+            .Described(
+                "ImportProjectBake",
+                "Brings maps baked in another program in as a texturing document's bake: each PNG is copied where the "
+                + "document's own bake goes and replaces the map of its name there, and the document, open or not, "
+                + "reads them as a bake of its mesh, UV set and material as they stand. A normal map's green runs up."
+            );
+    }
+
+    static Results<Ok<BakeImported>, ProblemHttpResult> Import(
+        LibraryHost host,
+        BakeLinks links,
+        BakeImportRequest request
+    ) =>
+        LibraryTreeEndpoints.Guarded(
+            host,
+            library => {
+                List<BakeImportMap> maps = [
+                    ..request.Maps.Select(map => map with { File = Path.GetFullPath(map.File, library.RootPath) })
+                ];
+                var (folder, document) = BakeImport.Run(library.RootPath, request with { Maps = maps });
+                links.Imported(document, folder);
+                return TypedResults.Ok(new BakeImported(LibraryLayout.Relative(library.RootPath, folder)));
+            }
+        );
 
     static Results<Ok<ProjectBakePlan>, ProblemHttpResult> GetPlan(
         LibraryHost host,
@@ -31,18 +56,76 @@ static class ProjectBakePlanEndpoint {
         LibraryTreeEndpoints.Guarded(
             host,
             library => {
-                var folder = Path.GetDirectoryName(LibraryFiles.ProjectFile(library.RootPath, project))!;
-                var inside = $"{ProjectsPrefix}{project}/";
-                var file = document is not null && document.StartsWith(inside, StringComparison.Ordinal)
-                    ? document[inside.Length..]
-                    : document;
+                var (folder, file) = Located(library, project, document);
                 var maps = string.IsNullOrWhiteSpace(output) ? null : output.Trim();
                 try {
                     var requests = ProjectBakes.Requests(folder, ProjectBakes.Read(folder), file, maps, set ?? []);
                     return TypedResults.Ok(new ProjectBakePlan(folder, requests));
-                } catch (ArgumentException e) {
+                } catch (Exception e) when (e is ArgumentException or LibraryFormatException) {
                     throw new ProjectRefusedException(e.Message, e);
                 }
             }
         );
+
+    /// <summary>
+    ///     A preview as a project's bake plan would show it (#296), or the refusal: no library, no such project or
+    ///     document, or a project file that cannot be read. A preview that names no project is as it was sent.
+    /// </summary>
+    internal static ProblemHttpResult? Resolve(
+        LibraryHost host,
+        ViewportBakePreview asked,
+        out ViewportBakePreview resolved
+    ) {
+        resolved = asked;
+        if (asked.Project is null) {
+            return null;
+        }
+
+        if (host.Library is not { } library) {
+            return LibraryTreeEndpoints.NoLibrary();
+        }
+
+        try {
+            resolved = Resolved(library, asked);
+            return null;
+        } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
+            return problem;
+        }
+    }
+
+    /// <summary>
+    ///     A preview that names a project, with the meshes, cage and options that project's bake plan takes in place of
+    ///     those sent (#296), so a client shows the bake it would run without working out its paths.
+    /// </summary>
+    /// <exception cref="FileNotFoundException">The library has no such project.</exception>
+    /// <exception cref="ProjectRefusedException">The project has no mesh, or lists no such document.</exception>
+    static ViewportBakePreview Resolved(OpenLibrary library, ViewportBakePreview asked) {
+        if (asked.Project is not { } project) {
+            return asked;
+        }
+
+        var (folder, file) = Located(library, project, asked.Document);
+        try {
+            var setup = ProjectBakes.Setup(folder, ProjectBakes.Read(folder), file);
+            return asked with {
+                High = setup.High,
+                Low = setup.Low,
+                Cage = setup.Cage,
+                Material = null,
+                Options = setup.Options
+            };
+        } catch (Exception e) when (e is ArgumentException or LibraryFormatException) {
+            throw new ProjectRefusedException(e.Message, e);
+        }
+    }
+
+    /// <summary>A project's folder, and a document by its path below the library as a file below that folder.</summary>
+    static (string Folder, string? File) Located(OpenLibrary library, string project, string? document) {
+        var folder = Path.GetDirectoryName(LibraryFiles.ProjectFile(library.RootPath, project))!;
+        var inside = $"{ProjectsPrefix}{project}/";
+        var file = document is not null && document.StartsWith(inside, StringComparison.Ordinal)
+            ? document[inside.Length..]
+            : document;
+        return (folder, file);
+    }
 }

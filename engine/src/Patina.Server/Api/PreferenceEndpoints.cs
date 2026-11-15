@@ -24,9 +24,21 @@ static class PreferenceEndpoints {
             .ProducesProblem(StatusCodes.Status409Conflict);
     }
 
-    static Results<Ok<ServerPreferences>, ProblemHttpResult> Set(Preferences preferences, ServerPreferences request) {
+    static Results<Ok<ServerPreferences>, ProblemHttpResult> Set(
+        Preferences preferences,
+        AutosaveGate autosaves,
+        LibraryHost host,
+        ServerPreferences request
+    ) {
         try {
-            return TypedResults.Ok(preferences.Set(request));
+            var before = preferences.Current.Autosave.Folder;
+            var kept = preferences.Set(request);
+            // Autosaves kept in the place chosen before go where they go now, so none is stranded (#297).
+            if (before is not null && before != kept.Autosave.Folder) {
+                autosaves.Move(before, kept.Autosave.Folder, host.Library?.RootPath);
+            }
+
+            return TypedResults.Ok(kept);
         } catch (ArgumentException e) {
             return Refusals.Problem(
                 e.Message,

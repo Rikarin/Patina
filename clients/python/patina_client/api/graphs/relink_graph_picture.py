@@ -86,8 +86,9 @@ def sync_detailed(
     body: GraphRelinkRequest,
 
 ) -> Response[GraphEditResult | ProblemDetails]:
-    """ Points every Bitmap node that reads a picture at another file, as one undo step. The file is named
-    as the graph finds it: below the graph's folder or the library when it is in one, else whole.
+    """ Points every Bitmap node that reads a picture at another file, as one undo step, or only the node
+    named by node. The file is named as the graph finds it: below the graph's folder or the library when
+    it is in one, else whole.
 
     Args:
         id (str):
@@ -122,8 +123,9 @@ def sync(
     body: GraphRelinkRequest,
 
 ) -> GraphEditResult | ProblemDetails | None:
-    """ Points every Bitmap node that reads a picture at another file, as one undo step. The file is named
-    as the graph finds it: below the graph's folder or the library when it is in one, else whole.
+    """ Points every Bitmap node that reads a picture at another file, as one undo step, or only the node
+    named by node. The file is named as the graph finds it: below the graph's folder or the library when
+    it is in one, else whole.
 
     Args:
         id (str):
@@ -153,8 +155,9 @@ async def asyncio_detailed(
     body: GraphRelinkRequest,
 
 ) -> Response[GraphEditResult | ProblemDetails]:
-    """ Points every Bitmap node that reads a picture at another file, as one undo step. The file is named
-    as the graph finds it: below the graph's folder or the library when it is in one, else whole.
+    """ Points every Bitmap node that reads a picture at another file, as one undo step, or only the node
+    named by node. The file is named as the graph finds it: below the graph's folder or the library when
+    it is in one, else whole.
 
     Args:
         id (str):
@@ -189,8 +192,9 @@ async def asyncio(
     body: GraphRelinkRequest,
 
 ) -> GraphEditResult | ProblemDetails | None:
-    """ Points every Bitmap node that reads a picture at another file, as one undo step. The file is named
-    as the graph finds it: below the graph's folder or the library when it is in one, else whole.
+    """ Points every Bitmap node that reads a picture at another file, as one undo step, or only the node
+    named by node. The file is named as the graph finds it: below the graph's folder or the library when
+    it is in one, else whole.
 
     Args:
         id (str):

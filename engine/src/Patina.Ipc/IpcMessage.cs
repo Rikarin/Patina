@@ -7,12 +7,15 @@ namespace Patina.Ipc;
 ///     Message types. Every message other than <see cref="Ok" /> and <see cref="Error" /> is a request, which gets one
 ///     of those two as its reply with the same <see cref="IpcMessage.Id" />. Either side may send requests.
 /// </summary>
-public static class IpcTypes {
+public static partial class IpcTypes {
     /// <summary>Worker to Server, first on a connection: who it is (<see cref="IpcMessage.Worker" />).</summary>
     public const string Hello = "hello";
 
     /// <summary>Server to Worker: answers with <see cref="IpcMessage.Health" />.</summary>
     public const string Health = "health";
+
+    /// <summary>Worker to Server: a warning or an error it logged (<see cref="IpcMessage.Log" />).</summary>
+    public const string WorkerLog = "worker.log";
 
     /// <summary>Server to Worker: read the mesh at <see cref="IpcMessage.Mesh" />.</summary>
     public const string ViewportOpen = "viewport.open";
@@ -240,7 +243,7 @@ public static class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 21;
+    public const int ProtocolVersion = 22;
 
     public string Type { get; set; } = string.Empty;
 
@@ -253,6 +256,9 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to health.</summary>
     public WorkerHealth? Health { get; set; }
+
+    /// <summary>worker.log: what the Worker logged.</summary>
+    public WorkerLogLine? Log { get; set; }
 
     /// <summary>bake.start: what to bake and where it goes.</summary>
     public StackLoad? StackLoad { get; set; }
@@ -342,6 +348,12 @@ public sealed class IpcMessage {
 
     /// <summary>The reply to graph.histogram.</summary>
     public GraphLevels? GraphLevels { get; set; }
+
+    /// <summary>graph.sample: which picture, and where on it.</summary>
+    public GraphSampleAsk? GraphSample { get; set; }
+
+    /// <summary>The reply to graph.sample.</summary>
+    public GraphSampled? GraphSampled { get; set; }
 
     /// <summary>The reply to graph.evaluate.</summary>
     public GraphResult? GraphResult { get; set; }
@@ -468,47 +480,6 @@ public sealed class IpcMessage {
 
     public static IpcMessage Fail(long id, string error) => new() { Type = IpcTypes.Error, Id = id, Error = error };
 }
-
-/// <summary>One attempt at a job: a report from an earlier attempt is one that arrived too late.</summary>
-/// <param name="Job">The job.</param>
-/// <param name="Attempt">Which attempt.</param>
-public sealed record BakeTicket(string Job, int Attempt);
-
-/// <summary>
-///     A bake for the Worker to run. It is a copy: the Server has the job, and sends it again after a crash.
-/// </summary>
-/// <param name="Ticket">Which attempt this is.</param>
-/// <param name="Request">What to bake.</param>
-/// <param name="Folder">The folder to make, which is the cache's for this key.</param>
-public sealed record BakeStart(BakeTicket Ticket, BakeRequest Request, string Folder);
-
-/// <summary>How far a bake is.</summary>
-public sealed record BakeProgressNote(BakeTicket Ticket, double Fraction);
-
-/// <summary>How a bake ended. A cancelled bake has neither a manifest nor an error.</summary>
-/// <param name="Ticket">Which attempt.</param>
-/// <param name="Manifest">What is in the folder, when it finished.</param>
-/// <param name="Error">Why it could not be done, when it could not.</param>
-public sealed record BakeEnding(BakeTicket Ticket, BakeManifest? Manifest, string? Error);
-
-/// <summary>One step of a build. It is a copy: the Server holds the job, and plans it again after a crash.</summary>
-/// <param name="Ticket">Which attempt this is.</param>
-/// <param name="Output">An output to build, or null.</param>
-/// <param name="Export">A preset to run, or null.</param>
-public sealed record BuildStart(BakeTicket Ticket, OutputStep? Output, ExportStep? Export);
-
-/// <summary>How a step ended. A cancelled step has no manifest and no error.</summary>
-/// <param name="Ticket">Which attempt.</param>
-/// <param name="Output">What an output made.</param>
-/// <param name="Export">What a preset made.</param>
-/// <param name="Error">Why it could not be done.</param>
-public sealed record BuildEnding(BakeTicket Ticket, BuildManifest? Output, ExportManifest? Export, string? Error);
-
-/// <summary>How far a step of a build is, and what it is on.</summary>
-/// <param name="Ticket">Which attempt.</param>
-/// <param name="Fraction">How far through the step, from 0 to 1.</param>
-/// <param name="File">What it is making now, for a person: a preset's file, with its texture set.</param>
-public sealed record BuildProgressNote(BakeTicket Ticket, double Fraction, string File);
 
 /// <summary>The Worker's hello.</summary>
 public sealed record WorkerHello(int Protocol, string Version, int ProcessId);
@@ -653,7 +624,13 @@ public sealed record MaterialThumbnailAsk(
     string Usage,
     string PreviewFolder,
     string? MeshMaps = null
-);
+) {
+    /// <summary>
+    ///     Whether the picture is drawn at the size the graph computes it and kept as a half-float <c>.exr</c> with
+    ///     its numbers as they are, past one, rather than small as a PNG: a graph that lights the viewport (#180).
+    /// </summary>
+    public bool Deep { get; init; }
+}
 
 /// <summary>A stack for a Worker to hold.</summary>
 /// <param name="Session">The session.</param>

@@ -86,6 +86,28 @@ public sealed class GraphAuthoringTests {
         Assert.Equal(GraphDocuments.Text(before), GraphDocuments.Text(editor.Document));
     }
 
+    /// <summary>
+    ///     A saved graph leaves out what a node holds by default (#298): no size for a node that follows its inputs, no
+    ///     bypass for one that is on, and it reads back as the same document.
+    /// </summary>
+    [Fact]
+    public void A_saved_graph_writes_no_default_and_reads_back_the_same() {
+        var editor = Editor();
+        var plain = GraphDocuments.Text(editor.Document);
+
+        Assert.DoesNotContain("level:", plain, StringComparison.Ordinal);
+        Assert.DoesNotContain("bypassed:", plain, StringComparison.Ordinal);
+        Assert.Equal(plain, GraphDocuments.Text(GraphDocuments.Parse(plain)));
+
+        editor.Apply(new([new GraphSetLevel([2], 0), new GraphSetBypass([2], true)]));
+        var set = GraphDocuments.Text(editor.Document);
+
+        Assert.Contains("level: 0", set, StringComparison.Ordinal);
+        Assert.Contains("bypassed: true", set, StringComparison.Ordinal);
+        Assert.Equal(set, GraphDocuments.Text(GraphDocuments.Parse(set)));
+        Assert.Equal(0, GraphDocuments.Parse(set).Nodes.Single(static node => node.Id == 2).Level);
+    }
+
     /// <summary>A size past what a node may be, or on a node that has none of its own, is refused.</summary>
     [Fact]
     public void A_size_out_of_range_or_on_an_output_or_a_reroute_is_refused() {

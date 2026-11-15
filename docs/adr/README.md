@@ -40,3 +40,10 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0040](0040-superseded-evaluations.md): accepted: an evaluation a save waits behind is stopped between parts of its run, and nothing it began is trusted.
 - [0041](0041-uploads.md): accepted: a client sends a file from its own computer to `uploads/` in the library, kept by its digest with its own name, and gives the path the Server answers with to any route that takes a file.
 - [0042](0042-server-decodes-no-picture.md): accepted: the Server decodes no picture; the Worker reads a library picture, a bake's ID colours and a compression preview beside its queue, and a picture that took a Worker down is not asked about again.
+- [0043](0043-platform-checks.md): accepted: a platform's check limits are kept by the export preset that writes for it, and a project's sets are checked at once, the open ones measured and the rest judged from their files.
+- [0044](0044-files-at-their-maps-depth.md): accepted: `png`, `tiff` and `exr` files are as deep as the maps they read, a built map says its depth, and a set with a float channel computes at 32 bits.
+- [0045](0045-tangent-stamps.md): accepted: a stamp laid on the surface is weighed on the plane touching the surface under its middle, the camera's right and up laid on it.
+- [0046](0046-quick-mask-across-sets.md): proposed: a model's quick mask strokes through a view are kept by the Server and laid in every set's quick mask, never taken out of a journal; undo, clear and show across sets wait on the owner's choice.
+- [0047](0047-worker-lanes.md): accepted: what goes ahead of a Worker's queue never wears a stack, and a frame does not wait for a wear.
+- [0048](0048-texture-set-display-names.md): proposed: a texture set keeps its mesh slot's name as its key, and a person's name for it is a label beside that; what `{set}` writes is open.
+- [0049](0049-graph-environments.md): accepted: a graph lights the viewport as a half-float panorama of its Output, drawn from its file into the preview cache and drawn again when it is saved.

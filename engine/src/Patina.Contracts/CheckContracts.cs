@@ -24,14 +24,79 @@ public sealed record ProjectCheckSettings {
     /// </summary>
     public double DensityTolerance { get; init; } = 0.25;
 
+    /// <summary>
+    ///     Limits of their own for the platforms the project ships to, each named by the export preset that writes for
+    ///     it. A set measured with that preset is held to them in place of the project's.
+    /// </summary>
+    public IReadOnlyList<PlatformCheckLimits> Platforms { get; init; } = [];
+
     /// <summary>What is wrong with these settings, or null when they can be used.</summary>
     public string? Problem() {
         (bool Wrong, string Why)[] checks = [
-            (!(MemoryBudget >= 0 && double.IsFinite(MemoryBudget)), "A memory budget is zero or more mebibytes."),
-            (MaxSize is < 0 or > 65536, $"A size limit is 0 to 65536 texels, not {MaxSize}."),
-            (!(TexelDensity >= 0 && double.IsFinite(TexelDensity)), "A texel density is zero or more."),
             (!(DensityTolerance is > 0 and <= 10),
-                $"A density tolerance is above 0 and at most 10, not {DensityTolerance}.")
+                $"A density tolerance is above 0 and at most 10, not {DensityTolerance}."),
+            (Platforms.Any(static platform => string.IsNullOrWhiteSpace(platform.Preset)),
+                "A platform's limits name the export preset that writes for it."),
+            (Platforms.DistinctBy(static platform => platform.Preset, StringComparer.Ordinal).Count()
+                != Platforms.Count, "Each platform has one set of limits.")
+        ];
+        return PlatformCheckLimits.ProblemOf(MemoryBudget, MaxSize, TexelDensity)
+            ?? checks.FirstOrDefault(static check => check.Wrong).Why
+            ?? Platforms.Select(static platform => platform.Problem()).FirstOrDefault(static why => why is not null);
+    }
+
+    /// <summary>
+    ///     The limits a set measured with a preset is held to: its platform's own where it has them, and the project's
+    ///     for any it leaves at zero.
+    /// </summary>
+    /// <param name="preset">The export preset's id, or null for the project's own limits.</param>
+    public ProjectCheckSettings For(string? preset) {
+        if (Platforms.FirstOrDefault(platform => platform.Preset == preset) is not { } own) {
+            return this;
+        }
+
+        return this with {
+            MemoryBudget = own.MemoryBudget > 0 ? own.MemoryBudget : MemoryBudget,
+            MaxSize = own.MaxSize > 0 ? own.MaxSize : MaxSize,
+            TexelDensity = own.TexelDensity > 0 ? own.TexelDensity : TexelDensity
+        };
+    }
+
+    /// <summary>Two settings are equal when their numbers are, and their platforms in the same order.</summary>
+    public bool Equals(ProjectCheckSettings? other) =>
+        other is not null
+        && MemoryBudget.Equals(other.MemoryBudget)
+        && MaxSize == other.MaxSize
+        && TexelDensity.Equals(other.TexelDensity)
+        && DensityTolerance.Equals(other.DensityTolerance)
+        && Platforms.SequenceEqual(other.Platforms);
+
+    public override int GetHashCode() => HashCode.Combine(MemoryBudget, MaxSize, TexelDensity, DensityTolerance);
+}
+
+/// <summary>
+///     What one platform holds a project's texture sets to (#159), named by the export preset that writes for it. A
+///     zero is the project's own limit.
+/// </summary>
+/// <param name="Preset">The export preset's id.</param>
+public sealed record PlatformCheckLimits(string Preset) {
+    /// <summary>The most GPU memory one set's files may take on it, in mebibytes, or zero for the project's.</summary>
+    public double MemoryBudget { get; init; }
+
+    /// <summary>The longest side a set's maps may have on it, in texels, or zero for the project's.</summary>
+    public int MaxSize { get; init; }
+
+    /// <summary>The texel density it holds sets to, or zero for the project's.</summary>
+    public double TexelDensity { get; init; }
+
+    /// <summary>What is wrong with these limits, or null when they can be used.</summary>
+    public string? Problem() => ProblemOf(MemoryBudget, MaxSize, TexelDensity);
+
+    internal static string? ProblemOf(double memoryBudget, int maxSize, double texelDensity) {
+        (bool Wrong, string Why)[] checks = [
+            (!(memoryBudget >= 0 && double.IsFinite(memoryBudget)), "A memory budget is zero or more mebibytes."),
+            (maxSize is < 0 or > 65536, $"A size limit is 0 to 65536 texels, not {maxSize}."),
+            (!(texelDensity >= 0 && double.IsFinite(texelDensity)), "A texel density is zero or more.")
         ];
         return checks.FirstOrDefault(static check => check.Wrong).Why;
     }
@@ -226,7 +291,7 @@ public sealed record CheckSpot(string Code, int Triangle, float U, float V, View
 public sealed record MapMeasure(string Code, double Share, CheckSpot Spot);
 
 /// <summary>The reply to <c>GET /api/v1/stacks/{id}/checks</c>: one texture set measured against its project.</summary>
-/// <param name="Stack">The stack session.</param>
+/// <param name="Stack">The stack session, or empty for a set nobody has open.</param>
 /// <param name="Set">The texture set, or empty for a model with no named sets.</param>
 /// <param name="Width">Its maps' width, in texels.</param>
 /// <param name="Height">Their height.</param>
@@ -240,6 +305,11 @@ public sealed record MapMeasure(string Code, double Share, CheckSpot Spot);
 ///     first.
 /// </param>
 /// <param name="Files">Each file the export writes for the set, with the GPU memory it takes.</param>
+/// <param name="Document">The stack's file below the library, as a project lists it.</param>
+/// <param name="Measured">
+///     Whether the Worker measured its layout and values. A set nobody has open is judged on what the Server knows of
+///     it, its limits, its files and its bake, and not on its density, its UVs or its values.
+/// </param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 public sealed record StackChecks(
@@ -253,9 +323,21 @@ public sealed record StackChecks(
     long MemoryBudget,
     string Preset,
     IReadOnlyList<CheckProblem> Problems,
-    IReadOnlyList<CheckFile> Files
+    IReadOnlyList<CheckFile> Files,
+    string Document,
+    bool Measured
 );
 #pragma warning restore SK7005
+
+/// <summary>
+///     The reply to <c>GET /api/v1/library/project/checks</c>: every texture set and layered material of a project
+///     checked at once, against one platform (#159).
+/// </summary>
+/// <param name="Project">The project, below <c>projects/</c>.</param>
+/// <param name="Preset">The export preset measured against, by its name.</param>
+/// <param name="MemoryBytes">The GPU memory all the sets' exported files take together.</param>
+/// <param name="Sets">Each set, in the order the project lists its documents.</param>
+public sealed record ProjectChecks(string Project, string Preset, long MemoryBytes, IReadOnlyList<StackChecks> Sets);
 
 /// <summary>One file an export writes for a texture set, and what it takes on a GPU (#159).</summary>
 /// <param name="File">Its name as the export writes it, with its extension.</param>

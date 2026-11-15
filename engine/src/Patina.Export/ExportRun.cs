@@ -114,7 +114,7 @@ public static class ExportRun {
             var named = several ? $"{set}: " : string.Empty;
             for (var index = 0; index < own.Textures.Count; index++) {
                 cancellationToken.ThrowIfCancellationRequested();
-                var texture = own.Textures[index];
+                var texture = Settled(own.Textures[index], maps);
                 progress?.Invoke(done / (double)steps, named + texture.File);
                 done++;
                 if (!ChannelPacker.Applies(texture, maps)) {
@@ -158,6 +158,21 @@ public static class ExportRun {
         );
         BuildObjects.Publish(part, folder);
         return manifest;
+    }
+
+    /// <summary>
+    ///     A file whose format follows its maps (#141) in the format it is written in: as deep as the deepest map it
+    ///     reads that the set has. Any other file is itself.
+    /// </summary>
+    public static ExportTexture Settled(ExportTexture texture, IReadOnlyDictionary<string, MapPicture> maps) {
+        ArgumentNullException.ThrowIfNull(texture);
+        ArgumentNullException.ThrowIfNull(maps);
+        if (!ExportFormats.Follows(texture.Format)) {
+            return texture;
+        }
+
+        var depth = texture.Maps.Select(map => maps.GetValueOrDefault(map)?.Depth ?? 0).DefaultIfEmpty(8).Max();
+        return texture with { Format = ExportFormats.Settled(texture.Format, depth, texture.Space) };
     }
 
     /// <summary>

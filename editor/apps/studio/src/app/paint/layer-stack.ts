@@ -1610,6 +1610,23 @@ export class LayerStack {
     this.shelfSave.set({ layers, mask, name: mask ? `${layer.name} Mask` : layer.name, project: project.path });
   }
 
+  /**
+   * The graph these layers stand for, written beside them in the project and opened in its own tab (#205). The layers
+   * stay as they are, and nothing keeps the two in step.
+   */
+  protected async openAsGraph(): Promise<void> {
+    const project = this.project.current();
+    const name = this.store.state()?.name;
+    if (!project || name === undefined) {
+      return;
+    }
+
+    const path = await this.store.writeGraph(`${name} Graph`);
+    if (path) {
+      await this.project.openDocument(project.path, path);
+    }
+  }
+
   /** Layers or a mask being named before they go to the shelf (#135), or null. */
   protected readonly shelfSave = signal<ShelfSave | null>(null);
 
@@ -2182,6 +2199,11 @@ export class LayerStack {
       'flattenStack',
       () => open() && (this.store.state()?.layers.length ?? 0) > 0,
       () => this.store.flatten()
+    );
+    handle(
+      'openStackAsGraph',
+      () => open() && this.project.current() !== null,
+      () => this.openAsGraph()
     );
     handle(
       'createInstance',

@@ -3,7 +3,17 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { answerOpen, chooseFromComputer, ending, leave, newLibrary, newProject, pick, removeScratch } from './projects';
+import {
+  answerOpen,
+  chooseFromComputer,
+  ending,
+  leave,
+  newLibrary,
+  newProject,
+  pick,
+  removeScratch,
+  showDocumentSettings
+} from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const bench = resolve(__dirname, '../../../../engine/tools/Patina.Bench/bin/Release/net11.0/patina-bench.dll');
@@ -129,6 +139,7 @@ async function drag(fromX: number, fromY: number, toX: number, toY: number): Pro
 
 test('height painted on the mesh lights it as a bump, sharp or smooth', async () => {
   await openOnMesh();
+  await showDocumentSettings(window);
   await window.getByTestId('paint-add-channel').click();
   await window.getByTestId('paint-add-channel-height').click();
   await expect(window.getByTestId('texture-set-height-normal')).toBeVisible({ timeout: 30_000 });

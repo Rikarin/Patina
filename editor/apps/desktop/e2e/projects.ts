@@ -60,6 +60,20 @@ export async function pick(window: Page, testId: string, name: string | RegExp):
     .click();
 }
 
+/**
+ * Unfolds Properties' document section to the texture set's settings, which start folded to the document's name, mesh
+ * and channels (#298). A machine that unfolded it before keeps it open, so this only clicks a folded one.
+ */
+export async function showDocumentSettings(window: Page): Promise<void> {
+  const fold = window.getByTestId('paint-fold-document');
+  await fold.waitFor({ timeout: 60_000 });
+  if ((await fold.getAttribute('aria-expanded')) === 'false') {
+    await fold.click();
+  }
+
+  await expect(fold).toHaveAttribute('aria-expanded', 'true');
+}
+
 /** What New Project calls each kind a project can start as. */
 export const ProjectKinds = {
   texturing: /^Texturing/u,

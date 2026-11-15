@@ -191,7 +191,9 @@ public static class SetMerge {
                 }
             }
         );
-        return first with { Name = name, Image = new(width, height, lanes, samples) };
+        return first with {
+            Name = name, Image = new(width, height, lanes, samples), Depth = held.Max(static map => map?.Depth ?? 0)
+        };
     }
 
     /// <summary>A lane of a texel, as a packer reads one: a grey map's one lane is every colour lane.</summary>

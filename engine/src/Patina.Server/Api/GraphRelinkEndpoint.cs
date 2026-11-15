@@ -8,7 +8,8 @@ namespace Patina.Server.Api;
 /// <summary>
 ///     Relinking a picture (#185): every Bitmap of an open graph that reads one file reads another, as one undo step.
 ///     It is what the dependency view of Publish as Package offers for a picture it cannot find, and it is the
-///     Server's so that any client names the new file the same way.
+///     Server's so that any client names the new file the same way. Naming a node points that Bitmap alone, which is
+///     how a client picks a Bitmap's Source from a list rather than typing it (#292).
 /// </summary>
 static class GraphRelinkEndpoint {
     const string BitmapNode = "Source/Bitmap";
@@ -18,8 +19,9 @@ static class GraphRelinkEndpoint {
         graphs.MapPost("/{id}/relink", Relink)
             .Describe(
                 "RelinkGraphPicture",
-                "Points every Bitmap node that reads a picture at another file, as one undo step. The file is named "
-                + "as the graph finds it: below the graph's folder or the library when it is in one, else whole.",
+                "Points every Bitmap node that reads a picture at another file, as one undo step, or only the node "
+                + "named by node. The file is named as the graph finds it: below the graph's folder or the library "
+                + "when it is in one, else whole.",
                 StatusCodes.Status404NotFound,
                 StatusCodes.Status422UnprocessableEntity
             );
@@ -47,19 +49,32 @@ static class GraphRelinkEndpoint {
             }
 
             var name = CompoundFolders.PictureName(session.ImageRoots, file);
-            var from = request.From.Trim();
             List<GraphCommand> commands = [
-                ..session.State.Nodes.Where(node => node.Type == BitmapNode
-                        && node.Texts.TryGetValue(SourceSetting, out var source)
-                        && source.Trim() == from
-                    )
-                    .Select(node => new GraphSetText(node.Id, SourceSetting, name))
+                ..Bitmaps(session.State.Nodes, request).Select(node => new GraphSetText(node.Id, SourceSetting, name))
             ];
-            return commands.Count == 0
-                ? throw new GraphEditRefusedException($"No Bitmap node of this graph reads '{request.From}'.")
-                : TypedResults.Ok(session.Apply(new(commands, "Relink Picture")));
+            if (commands.Count == 0) {
+                throw new GraphEditRefusedException(
+                    request.Node is { } node
+                        ? $"Node {node} of this graph is no Bitmap."
+                        : $"No Bitmap node of this graph reads '{request.From}'."
+                );
+            }
+
+            return TypedResults.Ok(
+                session.Apply(new(commands, request.Node is null ? "Relink Picture" : "Choose Picture"))
+            );
         } catch (GraphEditRefusedException e) {
             return Refusals.Of(e);
         }
+    }
+
+    /// <summary>The node the request names, or every one reading its picture, of those that are Bitmaps.</summary>
+    static IEnumerable<GraphNodeState> Bitmaps(IEnumerable<GraphNodeState> nodes, GraphRelinkRequest request) {
+        var from = request.From.Trim();
+        return nodes.Where(node => node.Type == BitmapNode
+            && (request.Node is { } id
+                ? node.Id == id
+                : node.Texts.TryGetValue(SourceSetting, out var source) && source.Trim() == from)
+        );
     }
 }

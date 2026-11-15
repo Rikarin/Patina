@@ -24,7 +24,7 @@ public sealed partial class StackProcessTests : IDisposable {
     static readonly Dictionary<string, IReadOnlyList<float>> Tint = new() { ["baseColor"] = [0.8f, 0.7f, 0.5f, 1f] };
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-stack-");
-    readonly string socketPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.sock");
+    readonly string socketPath = Patina.Testing.TempFolders.NewSocket();
     readonly List<Process> started = [];
     HttpClient http = new();
 

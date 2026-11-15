@@ -75,7 +75,8 @@ const Profiles = [
 ];
 const CurvatureSources = [
   { value: 'mesh', label: 'Mesh' },
-  { value: 'normal-map', label: 'Normal map' }
+  { value: 'normal-map', label: 'Normal map' },
+  { value: 'rays', label: 'Rays' }
 ];
 const CurvatureRanges = [
   { value: 'auto', label: 'Automatic' },
@@ -660,6 +661,25 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               @if (!options.maps.includes(section())) {
                 <p class="text-foreground-muted text-xs">Off: the next bake leaves this map out.</p>
               }
+              @if (importable(); as document) {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted min-w-0 flex-1 text-xs">
+                    Baked in another program? Bring in its PNG as {{ document.name }}’s {{ label(section()) }} map.
+                  </span>
+                  <button
+                    type="button"
+                    xuiButton
+                    size="sm"
+                    variant="ghost"
+                    data-testid="bake-import"
+                    [title]="'Copies a PNG into the bake of ' + document.name + ', in place of this map'"
+                    [disabled]="importing()"
+                    (click)="importMap(section())"
+                  >
+                    {{ importing() ? 'Bringing In…' : 'Bring In…' }}
+                  </button>
+                </div>
+              }
             </div>
             @switch (section()) {
               @case ('normal') {
@@ -951,8 +971,38 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 <p class="text-foreground-muted text-xs">
                   Mesh reads the bends of the high poly mesh’s faces. Normal map reads the bends the baked normal map
                   carries: the high poly detail over the low poly mesh, down to its finest grooves, without the low poly
-                  mesh’s own shape.
+                  mesh’s own shape. Rays looks round each point as far as the sampling radius and reads the bend at that
+                  size, so a hard edge with no faces to bend over still reads as an edge.
                 </p>
+                @if (options.curvature.source === 'rays') {
+                  <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                    <div class="flex min-w-0 flex-col gap-1">
+                      <span class="text-foreground-muted text-xs">Sampling radius, {{ unit() }}</span>
+                      <xui-numeric-input
+                        size="sm"
+                        aria-label="Curvature sampling radius"
+                        data-testid="bake-curvature-sampling"
+                        [min]="0"
+                        [stepSize]="step()"
+                        [value]="shown(options.curvature.sampling)"
+                        (valueChange)="setCurvature({ sampling: stored($event) })"
+                      />
+                    </div>
+                    <div class="flex min-w-0 flex-col gap-1">
+                      <span class="text-foreground-muted text-xs">Rays</span>
+                      <xui-numeric-input
+                        size="sm"
+                        aria-label="Curvature rays"
+                        data-testid="bake-curvature-rays"
+                        [max]="256"
+                        [min]="1"
+                        [stepSize]="4"
+                        [value]="options.curvature.rays"
+                        (valueChange)="setCurvature({ rays: $event ?? 16 })"
+                      />
+                    </div>
+                  </div>
+                }
                 <div class="flex items-center justify-between gap-2 text-sm">
                   Range
                   <xui-segmented-control
@@ -1633,6 +1683,34 @@ export class BakePane {
     const path = await this.choose('mesh', 'Add a High Poly Mesh');
     if (path) {
       this.settings.update(settings => ({ ...settings, high: [...settings.high, path] }));
+    }
+  }
+
+  /** The texturing document in front, whose bake a map baked elsewhere can become (#144). */
+  protected readonly importable = computed(() => {
+    const document = this.project.document();
+    return document?.kind === 'texturing' && document.id ? { id: document.id, name: document.name } : null;
+  });
+  protected readonly importing = signal(false);
+
+  /** Brings a PNG baked in another program in as this map of the document in front's bake (#144). */
+  protected async importMap(map: string): Promise<void> {
+    const project = this.project.current()?.path;
+    const document = this.importable();
+    const file = project && document ? await this.choose('picture', `Choose the ${this.label(map)} Map`) : null;
+    if (!project || !document || !file) {
+      return;
+    }
+
+    this.refused.set(null);
+    this.importing.set(true);
+    try {
+      await this.store.importMap(project, document.id, map, file, this.options()?.space ?? 'tangent');
+      await this.project.refreshContents(project);
+    } catch (error) {
+      this.refused.set(messageOf(error));
+    } finally {
+      this.importing.set(false);
     }
   }
 

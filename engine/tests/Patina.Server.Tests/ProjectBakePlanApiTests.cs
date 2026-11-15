@@ -1,6 +1,7 @@
 using Patina.Contracts;
 using Patina.Library;
 using System.Net;
+using System.Text.Json;
 
 namespace Patina.Server.Tests;
 
@@ -11,6 +12,7 @@ namespace Patina.Server.Tests;
 public sealed class ProjectBakePlanApiTests : IAsyncLifetime {
     readonly ServerFixture server = new();
     HttpClient client = null!;
+    ProjectDocument crate = null!;
 
     CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -37,6 +39,7 @@ public sealed class ProjectBakePlanApiTests : IAsyncLifetime {
             ],
             Bake = new() { Options = new() { Resolution = 256 }, Sets = ["Box"] }
         };
+        crate = document;
         File.WriteAllText(Path.Combine(project, LibraryLayout.ProjectFile), DocumentCodec.Write(document));
         client = server.AuthorisedClient();
         await Task.CompletedTask;
@@ -87,4 +90,119 @@ public sealed class ProjectBakePlanApiTests : IAsyncLifetime {
         var refused = await client.GetAsync("/api/v1/library/project/bake/plan?project=crate&set=Strap", Token);
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
     }
+
+    Task<HttpResponseMessage> PreviewAsync(ViewportBakePreview preview) =>
+        client.PutAsJsonAsync(
+            "/api/v1/viewport/bake-preview",
+            preview,
+            ContractsJsonContext.Default.ViewportBakePreview,
+            Token
+        );
+
+    /// <summary>
+    ///     A preview that names a project shows what that project's bake plan would run (#296): its meshes and options
+    ///     come from the project's file, not from the client, so a client that sends none still shows the right bake.
+    /// </summary>
+    [Fact]
+    public async Task A_preview_of_a_project_takes_its_meshes_and_options_from_the_projects_file() {
+        var folder = Path.Combine(server.Library, "projects", "crate");
+        using var noLow = await PreviewAsync(new() { Project = "crate", Document = "projects/crate/box.vxlayers" });
+        Assert.Equal(HttpStatusCode.NotFound, noLow.StatusCode);
+        Assert.Contains("crate_low.fbx", await noLow.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+
+        // The meshes are there, and the project's own extra high mesh is not: it was read from the file.
+        File.WriteAllBytes(Path.Combine(folder, "crate_low.fbx"), []);
+        File.WriteAllBytes(Path.Combine(folder, "crate_high.fbx"), []);
+        var extra = crate with { Bake = crate.Bake! with { High = ["extra_high.fbx"] } };
+        File.WriteAllText(Path.Combine(folder, LibraryLayout.ProjectFile), DocumentCodec.Write(extra));
+        using var noExtra = await PreviewAsync(new() { Project = "crate", High = ["ignored.fbx"] });
+        Assert.Equal(HttpStatusCode.NotFound, noExtra.StatusCode);
+        Assert.Contains("extra_high.fbx", await noExtra.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+
+        File.WriteAllText(Path.Combine(folder, LibraryLayout.ProjectFile), "schema: 1\nbake: [");
+        using var unread = await PreviewAsync(new() { Project = "crate" });
+        Assert.Equal(HttpStatusCode.BadRequest, unread.StatusCode);
+        File.WriteAllText(Path.Combine(folder, LibraryLayout.ProjectFile), DocumentCodec.Write(crate));
+
+        using var noDocument = await PreviewAsync(new() { Project = "crate", Document = "projects/crate/no.vxlayers" });
+        Assert.Equal(HttpStatusCode.BadRequest, noDocument.StatusCode);
+        using var noProject = await PreviewAsync(new() { Project = "nothing" });
+        Assert.Equal(HttpStatusCode.NotFound, noProject.StatusCode);
+    }
+
+    /// <summary>
+    ///     Maps baked in another program become the set's bake (#144): copied where its own bake goes, replacing the
+    ///     map of their name in the bake there, and described as of the set's UV set, so the set reads them as fitting.
+    /// </summary>
+    [Fact]
+    public async Task Maps_baked_elsewhere_become_the_sets_bake_and_replace_the_maps_of_their_name() {
+        var folder = Path.Combine(server.Library, "projects", "crate");
+        await File.WriteAllTextAsync(
+            Path.Combine(folder, "box.vxlayers"),
+            "name: Box\nbaseWidth: 512\nbaseHeight: 256\nsets:\n  - name: Box\n    uvSet: 1\n",
+            Token
+        );
+        var maps = Directory.CreateDirectory(Path.Combine(folder, "bakes", "maps", "Box")).FullName;
+        BakeManifest ours = new(
+            "crate_low",
+            "png16",
+            new(
+                [new("normal", "crate_low_normal.png", 256, 1, 128), new("ao", "crate_low_ao.png", 256, 1, 128)],
+                0,
+                0,
+                [],
+                false
+            ),
+            UvSet: 1
+        );
+        await File.WriteAllTextAsync(Path.Combine(maps, "crate_low_normal.png"), "ours", Token);
+        await File.WriteAllTextAsync(Path.Combine(maps, "crate_low_ao.png"), "ours", Token);
+        await File.WriteAllBytesAsync(
+            Path.Combine(maps, "crate_low.bake.json"),
+            JsonSerializer.SerializeToUtf8Bytes(ours, ContractsJsonContext.Default.BakeManifest),
+            Token
+        );
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
+        var theirs = Path.Combine(server.Library, "elsewhere_normal.png");
+        await File.WriteAllBytesAsync(theirs, png, Token);
+        await File.WriteAllTextAsync(Path.Combine(server.Library, "notes.png"), "not a picture", Token);
+        var box = ProjectBakes.Read(folder).Documents.Single(static d => d.Material == "Box").Id.Value;
+
+        var imported = await client.PostAsJsonAsync(
+            "/api/v1/library/project/bake/import",
+            new BakeImportRequest("crate", box, [new("normal", "elsewhere_normal.png")]),
+            Token
+        );
+        var notPng = await client.PostAsJsonAsync(
+            "/api/v1/library/project/bake/import",
+            new BakeImportRequest("crate", box, [new("ao", "notes.png")]),
+            Token
+        );
+        var unknown = await client.PostAsJsonAsync(
+            "/api/v1/library/project/bake/import",
+            new BakeImportRequest("crate", box, [new("gloss", "elsewhere_normal.png")]),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.OK, imported.StatusCode);
+        Assert.Equal(
+            "projects/crate/bakes/maps/Box",
+            (await imported.Content.ReadFromJsonAsync<BakeImported>(Token))!.Folder
+        );
+        Assert.Equal((HttpStatusCode.BadRequest, HttpStatusCode.BadRequest), (notPng.StatusCode, unknown.StatusCode));
+        Assert.Equal(png, await File.ReadAllBytesAsync(Path.Combine(maps, "imported_normal.png"), Token));
+        Assert.False(File.Exists(Path.Combine(maps, "crate_low_normal.png")));
+        Assert.True(File.Exists(Path.Combine(maps, "crate_low_ao.png")));
+        var kept = BakeManifestOf(Path.Combine(maps, "crate_low.bake.json"));
+        Assert.Equal(["ao"], kept.Result.Maps.Select(static m => m.Map));
+        var made = BakeManifestOf(Path.Combine(maps, "imported.bake.json"));
+        Assert.Equal(
+            ("Box", 1, "tangent", "normal"),
+            (made.Material, made.UvSet, made.Space, Assert.Single(made.Result.Maps).Map)
+        );
+        Assert.Null(BakeFit.Stale(maps, null, new(1, 512, 256)));
+    }
+
+    static BakeManifest BakeManifestOf(string file) =>
+        JsonSerializer.Deserialize(File.ReadAllBytes(file), ContractsJsonContext.Default.BakeManifest)!;
 }

@@ -3,6 +3,7 @@ using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
+using Patina.Server.Viewport;
 using Vixen.NodeGraph;
 
 namespace Patina.Server.Api;
@@ -82,6 +83,7 @@ static class GraphEndpoints {
                 Refused
             );
         graphs.MapGraphRelink();
+        graphs.MapGraphPictures();
         graphs.MapPost("/{id}/undo", Undo)
             .Describe("UndoGraph", "Takes back the newest batch, whichever client sent it.", Missing, Conflict);
         graphs.MapPost("/{id}/redo", Redo)
@@ -118,23 +120,6 @@ static class GraphEndpoints {
                 "EvaluateGraph",
                 "Evaluates again, which also rewrites previews a deleted cache has lost.",
                 Missing
-            );
-        graphs.MapPost("/{id}/images", WriteImage)
-            .Describe(
-                "WriteGraphImage",
-                "Writes a node's picture at the size the graph computes it. /previews/{hash} serves the PNG.",
-                Missing,
-                Conflict,
-                Unavailable
-            );
-        graphs.MapPost("/{id}/histogram", ReadHistogram)
-            .Describe(
-                "ReadGraphHistogram",
-                "Counts a node's picture, at the size the graph computes it, into a histogram per channel on the GPU: "
-                + "256 shares of its texels for red, green, blue, alpha and luma.",
-                Missing,
-                Conflict,
-                Unavailable
             );
         graphs.MapPut("/{id}/mesh-maps", UseMeshMaps)
             .Describe(
@@ -408,6 +393,7 @@ static class GraphEndpoints {
         LibraryHost host,
         StackSessions stacks,
         AutosaveGate autosave,
+        PanoramaKeeper panoramas,
         bool force = false
     ) {
         if (sessions.Find(id) is not { } session) {
@@ -417,6 +403,7 @@ static class GraphEndpoints {
         try {
             var result = session.Save(force);
             sessions.Republish(session);
+            panoramas.Saved(session.Path);
             if (host.Library is { } library) {
                 autosave.Forget(library.RootPath, session.Path);
                 MaterialShelf.RefreshOpen(library, stacks);
@@ -430,53 +417,11 @@ static class GraphEndpoints {
         }
     }
 
-    static Task<Results<Ok<GraphImage>, ProblemHttpResult>> WriteImage(
-        string id,
-        GraphImageRequest request,
-        GraphSessions sessions,
-        GraphEvaluator evaluator,
-        CancellationToken cancellationToken
-    ) =>
-        OnEngine(
-            id,
-            sessions,
-            async session => {
-                var image = await evaluator.ImageAsync(session, request.Node, request.Port, cancellationToken);
-                return new GraphImage(image.Hash, image.Width, image.Height);
-            }
-        );
-
-    static Task<Results<Ok<GraphHistogram>, ProblemHttpResult>> ReadHistogram(
-        string id,
-        GraphImageRequest request,
-        GraphSessions sessions,
-        GraphEvaluator evaluator,
-        CancellationToken cancellationToken
-    ) =>
-        OnEngine(
-            id,
-            sessions,
-            async session => {
-                var levels = await evaluator.HistogramAsync(session, request.Node, request.Port, cancellationToken);
-                return new GraphHistogram(
-                    request.Node,
-                    request.Port,
-                    levels.Width,
-                    levels.Height,
-                    levels.Red,
-                    levels.Green,
-                    levels.Blue,
-                    levels.Alpha,
-                    levels.Luma
-                );
-            }
-        );
-
     /// <summary>
     ///     Asks the Worker something about an open graph: a refusal from the engine is a conflict, and a Worker that
     ///     cannot be reached is unavailable.
     /// </summary>
-    static async Task<Results<Ok<T>, ProblemHttpResult>> OnEngine<T>(
+    internal static async Task<Results<Ok<T>, ProblemHttpResult>> OnEngine<T>(
         string id,
         GraphSessions sessions,
         Func<GraphSession, Task<T>> ask
