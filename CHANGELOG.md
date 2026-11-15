@@ -377,6 +377,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A choice made in the Export dialog before it has read the project's settings is kept: the preset, padding or format changed while the project's file is still on its way used to be put back and never written to `project.yaml`. Now the newer choice stays and is the one kept.
+- A color picked on the mesh with the eyedropper goes to the mask that was waiting when the mesh was clicked, though the eyedropper is turned off or on again meanwhile, and the eyedropper waits until the color is in the mask.
 - A graph that cannot light the viewport says why (#180): with no GPU, or with a node that does not compile, choosing it as the environment is refused with `engine-refused` and the engine's reason, where it said the graph drew nothing (`panorama-empty`), and the failure is not remembered, so choosing it again draws it once it can.
 - A bake no longer refuses texture sets the project ticks on another of its meshes (#296): a bake onto one mesh bakes the ticked sets that are on it, and is refused only when none is, saying which sets the mesh has. Sets named for one bake, with `set` or `--set`, must still all be on the mesh.
 - Bake writes the settings again when the project's file did not take them (#296), where the failure refused every Bake until the next edit.

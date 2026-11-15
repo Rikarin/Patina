@@ -977,6 +977,8 @@ export class ExportPane implements OnInit {
   private restored: ExportOwner | null = null;
   private saving: ReturnType<typeof setTimeout> | null = null;
   private pending: { owner: ExportOwner; settings: ExportSettings } | null = null;
+  /** How many changes have been made in the dialog, so a restore can tell one made while it read. */
+  private edits = 0;
 
   constructor() {
     // A change made just before the dialog closes is still kept.
@@ -1294,12 +1296,19 @@ export class ExportPane implements OnInit {
   private async restore(owner: ExportOwner | null, presets: readonly ExportPresetInfo[]): Promise<void> {
     this.flush();
     this.restored = null;
+    const edits = this.edits;
     const read = owner ? await this.store.settings(owner) : null;
     if (!sameOwner(owner, this.settingsOwner())) {
       return; // Another project came to the front while this one was read.
     }
     const saved = read?.kept ?? null;
     this.keptSets.set(read?.sets ?? []);
+    if (this.edits !== edits) {
+      // A choice made while the file was read is newer than the file, so it stays and is the one written.
+      this.restored = owner;
+      this.keep();
+      return;
+    }
     const preset =
       presets.find(known => known.id === saved?.preset) ??
       presets.find(known => known.id === this.store.defaultPreset()) ??
@@ -1317,6 +1326,7 @@ export class ExportPane implements OnInit {
    * the front goes out at once with this owner's settings, not the next one's.
    */
   private keep(): void {
+    this.edits++;
     const owner = this.restored;
     if (owner === null || !sameOwner(owner, this.settingsOwner())) {
       return;
