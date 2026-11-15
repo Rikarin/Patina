@@ -22,11 +22,7 @@ public sealed partial class GraphProcessTests {
             deadline.Token
         );
 
-        if (reply.StatusCode == HttpStatusCode.ServiceUnavailable) {
-            Assert.Fail(await reply.Content.ReadAsStringAsync(deadline.Token));
-        }
-
-        Assert.Equal(HttpStatusCode.OK, reply.StatusCode);
+        await LitAsync(reply, deadline.Token);
         var state = await reply.Content.ReadFromJsonAsync(ContractsJsonContext.Default.ViewportState, deadline.Token);
         Assert.Equal(sky, state!.Display.Environment);
         var drawn = Directory.GetFiles(LibraryLayout.PreviewsPath(Library), "*.exr", SearchOption.AllDirectories);
@@ -49,7 +45,7 @@ public sealed partial class GraphProcessTests {
                    ContractsJsonContext.Default.ViewportDisplay,
                    deadline.Token
                )) {
-            Assert.Equal(HttpStatusCode.OK, lit.StatusCode);
+            await LitAsync(lit, deadline.Token);
         }
 
         var state = await http.OpenAsync(sky, deadline.Token);
@@ -83,6 +79,49 @@ public sealed partial class GraphProcessTests {
             await reply.Content.ReadAsStringAsync(deadline.Token),
             StringComparison.Ordinal
         );
+    }
+
+    [Fact]
+    public async Task A_graph_that_cannot_be_drawn_is_refused_with_the_Workers_reason() {
+        using var deadline = Deadline(120);
+        await StartServerAsync(deadline.Token);
+        StartWorker();
+        var sky = Sky(256, 128);
+        var broken = sky with { Nodes = [sky.Nodes[0] with { Type = "Environment/Nowhere" }, sky.Nodes[1]] };
+        var file = GraphTesting.Write(Library, broken, "broken.vxtexgraph");
+
+        using var reply = await http.PutAsJsonAsync(
+            "/api/v1/viewport/display",
+            new() { Environment = file },
+            ContractsJsonContext.Default.ViewportDisplay,
+            deadline.Token
+        );
+
+        var problem = await reply.Content.ReadAsStringAsync(deadline.Token);
+        if (problem.Contains("No Vulkan", StringComparison.Ordinal)) {
+            Gpu.Skip(problem);
+        }
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, reply.StatusCode);
+        Assert.Contains("engine-refused", problem, StringComparison.Ordinal);
+        Assert.Contains("'broken.vxtexgraph' cannot be drawn", problem, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    ///     Passes a display the graph lit, skips on a machine with no GPU, and fails with the Server's reply for
+    ///     anything else, so a refusal names its reason in the log.
+    /// </summary>
+    static async Task LitAsync(HttpResponseMessage reply, CancellationToken cancellationToken) {
+        if (reply.StatusCode == HttpStatusCode.OK) {
+            return;
+        }
+
+        var problem = await reply.Content.ReadAsStringAsync(cancellationToken);
+        if (problem.Contains("No Vulkan", StringComparison.Ordinal)) {
+            Gpu.Skip(problem);
+        }
+
+        Assert.Fail($"{(int)reply.StatusCode}: {problem}");
     }
 
     /// <summary>A sky (1) into an Output (2), at a size two to one.</summary>

@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Ipc;
 using System.Threading.Channels;
 
 namespace Patina.Server.Viewport;
@@ -38,7 +39,10 @@ public sealed class PanoramaKeeper(ViewportSession viewport, Thumbnails thumbnai
                 if (await thumbnails.PanoramaAsync(file, stoppingToken) is { } panorama) {
                     viewport.Relight(file, panorama);
                 }
-            } catch (Exception e) when (e is IOException or TimeoutException or UnauthorizedAccessException) {
+            } catch (Exception e) when (e is IOException
+                                            or TimeoutException
+                                            or UnauthorizedAccessException
+                                            or IpcException) {
                 // The model stays lit as it was; choosing the graph again draws it again.
                 ServerLog.ViewportFailed(logger, e.Message);
             }

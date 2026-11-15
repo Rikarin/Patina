@@ -27,6 +27,7 @@ public sealed partial class Thumbnails {
     /// <param name="cancellationToken">Stops the wait.</param>
     /// <returns>The panorama, or null when the graph has no Output node to draw or draws nothing.</returns>
     /// <exception cref="TimeoutException">No Worker came to draw it.</exception>
+    /// <exception cref="IpcException">The Worker could not draw it, and says why.</exception>
     public async Task<ViewportMapFile?> PanoramaAsync(string file, CancellationToken cancellationToken) {
         var graph = GraphDocuments.Parse(await SharedFile.ReadAllTextAsync(file, cancellationToken));
         if (Output(graph) is not var (node, usage)) {
