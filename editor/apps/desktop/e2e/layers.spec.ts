@@ -277,12 +277,24 @@ test('colours painted in Blender bake to an id map, and a mask selects one', asy
     throw new Error('The viewport is not on screen.');
   }
 
-  // The last try wins, so it stops at the first that lands on red rather than going on to the other side.
+  // The last try wins, so it stops at the first that lands on red rather than going on to the other side. Each try
+  // waits until its pick is over, which the eyedropper says by asking for a click no longer, and then for the map to
+  // be drawn again: a slow runner's pick outlasts any fixed wait, and the next try would otherwise begin while the
+  // last was still finding its place.
+  const eyedropper = window.getByTestId('paint-eyedropper');
   for (const across of [0.42, 0.58]) {
-    await window.getByTestId('paint-eyedropper').click();
+    await eyedropper.click();
+    await expect(eyedropper).toHaveText('Click the mesh or map…');
     await window.mouse.click(canvas.x + canvas.width * across, canvas.y + canvas.height / 2);
-    await window.waitForTimeout(500);
-    if ((await greenAt(0.25)) > 200) {
+    await expect(eyedropper).toHaveText('Pick from Mesh', { timeout: 30_000 });
+    const red = await expect
+      .poll(() => greenAt(0.25), { timeout: 10_000 })
+      .toBeGreaterThan(200)
+      .then(
+        () => true,
+        () => false
+      );
+    if (red) {
       break;
     }
   }
