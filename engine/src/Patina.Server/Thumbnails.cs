@@ -125,8 +125,9 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             return reply.ThumbnailHash;
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
             throw new RendererMissingException();
-        } catch (IpcException) {
-            // A material that cannot draw shows its name alone, as it did before there were pictures.
+        } catch (IpcException) when (!ask.Deep) {
+            // A material that cannot draw shows its name alone, as it did before there were pictures. A panorama is
+            // asked for by name, so the Worker's reason reaches whoever asked, and nothing is remembered for it.
             return null;
         }
     }

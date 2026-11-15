@@ -377,6 +377,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A graph that cannot light the viewport says why (#180): with no GPU, or with a node that does not compile, choosing it as the environment is refused with `engine-refused` and the engine's reason, where it said the graph drew nothing (`panorama-empty`), and the failure is not remembered, so choosing it again draws it once it can.
 - A bake no longer refuses texture sets the project ticks on another of its meshes (#296): a bake onto one mesh bakes the ticked sets that are on it, and is refused only when none is, saying which sets the mesh has. Sets named for one bake, with `set` or `--set`, must still all be on the mesh.
 - Bake writes the settings again when the project's file did not take them (#296), where the failure refused every Bake until the next edit.
 - A library's old `shared/` folder no longer loses files when it is moved into the Shared Assets project (#292): a file at its top and anything with no sidecar was deleted with the folder, a graph with no sidecar was moved but listed nowhere, and a `shared/` that came back after the first move overwrote what that move had kept. Every file now arrives in Shared Assets, a taken name gets a free one beside it, a loose graph or layered material is listed, and a second move adds to the first.

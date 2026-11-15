@@ -156,10 +156,13 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         var load = new GraphLoad(ThumbnailSession, ask.Document, ask.Folder, ask.ImageRoots, ask.MeshMaps);
         using Loaded graph = new(load, compounds.Of(ask.Folder), pictures);
         var runner = gpu.Evaluator;
-        graph.Prepare(runner, out _);
+        var problems = graph.Prepare(runner, out _);
         var source = graph.Images.FirstOrDefault(image => image.Node == ask.Node && image.Port == ask.Usage);
         if (graph.Plan is not { } plan || source.Port is null) {
-            return Drawn(null);
+            // A panorama is asked for by name, so one that cannot be drawn says why rather than drawing nothing.
+            return ask.Deep && problems.FirstOrDefault() is { } problem
+                ? throw new IpcException($"'{Path.GetFileName(ask.Path)}' cannot be drawn: {problem.Message}")
+                : Drawn(null);
         }
 
         if (ask.Deep) {

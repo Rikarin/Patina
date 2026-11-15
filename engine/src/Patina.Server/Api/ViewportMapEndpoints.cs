@@ -204,6 +204,8 @@ static class ViewportMapEndpoints {
             return await thumbnails.PanoramaAsync(environment, cancellationToken) is { } panorama
                 ? (panorama, null)
                 : (null, Refusals.NoPanorama(environment));
+        } catch (IpcException e) {
+            return (null, Refusals.OfEngine(e, Refused));
         } catch (TimeoutException e) {
             return (null, Refusals.Of(e, Unavailable));
         }
