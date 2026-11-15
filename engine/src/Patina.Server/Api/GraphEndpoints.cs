@@ -83,7 +83,7 @@ static class GraphEndpoints {
                 Refused
             );
         graphs.MapGraphRelink();
-        graphs.MapGraphSample();
+        graphs.MapGraphPictures();
         graphs.MapPost("/{id}/undo", Undo)
             .Describe("UndoGraph", "Takes back the newest batch, whichever client sent it.", Missing, Conflict);
         graphs.MapPost("/{id}/redo", Redo)
@@ -120,23 +120,6 @@ static class GraphEndpoints {
                 "EvaluateGraph",
                 "Evaluates again, which also rewrites previews a deleted cache has lost.",
                 Missing
-            );
-        graphs.MapPost("/{id}/images", WriteImage)
-            .Describe(
-                "WriteGraphImage",
-                "Writes a node's picture at the size the graph computes it. /previews/{hash} serves the PNG.",
-                Missing,
-                Conflict,
-                Unavailable
-            );
-        graphs.MapPost("/{id}/histogram", ReadHistogram)
-            .Describe(
-                "ReadGraphHistogram",
-                "Counts a node's picture, at the size the graph computes it, into a histogram per channel on the GPU: "
-                + "256 shares of its texels for red, green, blue, alpha and luma.",
-                Missing,
-                Conflict,
-                Unavailable
             );
         graphs.MapPut("/{id}/mesh-maps", UseMeshMaps)
             .Describe(
@@ -433,48 +416,6 @@ static class GraphEndpoints {
             return Refusals.Of(e);
         }
     }
-
-    static Task<Results<Ok<GraphImage>, ProblemHttpResult>> WriteImage(
-        string id,
-        GraphImageRequest request,
-        GraphSessions sessions,
-        GraphEvaluator evaluator,
-        CancellationToken cancellationToken
-    ) =>
-        OnEngine(
-            id,
-            sessions,
-            async session => {
-                var image = await evaluator.ImageAsync(session, request.Node, request.Port, cancellationToken);
-                return new GraphImage(image.Hash, image.Width, image.Height);
-            }
-        );
-
-    static Task<Results<Ok<GraphHistogram>, ProblemHttpResult>> ReadHistogram(
-        string id,
-        GraphImageRequest request,
-        GraphSessions sessions,
-        GraphEvaluator evaluator,
-        CancellationToken cancellationToken
-    ) =>
-        OnEngine(
-            id,
-            sessions,
-            async session => {
-                var levels = await evaluator.HistogramAsync(session, request.Node, request.Port, cancellationToken);
-                return new GraphHistogram(
-                    request.Node,
-                    request.Port,
-                    levels.Width,
-                    levels.Height,
-                    levels.Red,
-                    levels.Green,
-                    levels.Blue,
-                    levels.Alpha,
-                    levels.Luma
-                );
-            }
-        );
 
     /// <summary>
     ///     Asks the Worker something about an open graph: a refusal from the engine is a conflict, and a Worker that

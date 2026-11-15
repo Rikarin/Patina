@@ -305,7 +305,9 @@ describe("a Bitmap's Source", () => {
     const fixture = TestBed.createComponent(GraphInspector);
     fixture.componentRef.setInput('node', { ...node(7), type: bitmapType.path });
     fixture.detectChanges();
-    fixture.nativeElement.querySelector('[data-testid="graph-bitmap-choose"]').click();
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('[data-testid="graph-bitmap-choose"]')
+      ?.click();
     await fixture.whenStable();
     return { store, path };
   }
