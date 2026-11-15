@@ -238,6 +238,45 @@ describe('PaintStore refreshes (#274)', () => {
 
     expect(store.state()?.name).toBe('Edited');
   });
+
+  it('ends a drag on its own stack when its last part leaves after the document went behind another', async () => {
+    const { store, bodies, posts, server } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    let release: (() => void) | null = null;
+    const held = new Promise<void>(resolve => (release = resolve));
+    // The first part is slow to answer, as on CI's busy runner, and the other document is slow to open.
+    let parts = 0;
+    let opening: (() => void) | null = null;
+    const opened = new Promise<void>(resolve => (opening = resolve));
+    server.reply = (method, path) => {
+      if (path === '/api/v1/stacks/s1/commands' && ++parts === 1) {
+        return held.then(() => Response.json({ revision: 2, sequence: 4, history: { dirty: true } }));
+      }
+
+      return method === 'POST' && path === '/api/v1/stacks'
+        ? opened.then(() => Response.json(stack({ id: 's2', path: '/a/Barrel.vxlayers', name: 'Barrel' })))
+        : null;
+    };
+
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    store.detach();
+    const barrel = store.open('/a/Barrel.vxlayers', false);
+    (release as unknown as () => void)();
+    await vi.waitFor(() => expect(parts).toBe(2));
+    (opening as unknown as () => void)();
+    await barrel;
+
+    // The last part went to the stack the drag began on, and nothing waits for it: a save of the other goes out.
+    const last = (bodies.at(-1) as { commands: { open: boolean }[] }).commands[0];
+    expect(last?.open).toBe(false);
+    expect(posts.filter(path => path.endsWith('/commands'))).toEqual([
+      '/api/v1/stacks/s1/commands',
+      '/api/v1/stacks/s1/commands'
+    ]);
+    expect(await store.act('save')).toBe(true);
+    expect(posts).toContain('/api/v1/stacks/s2/save');
+  });
 });
 
 describe('PaintStore saving', () => {

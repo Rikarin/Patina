@@ -368,10 +368,15 @@ test('the bar over the viewport holds the tool in handâ€™s settings, the brushâ€
   await expect(window.getByTestId('tool-settings-size-readout')).toHaveText('1 px');
   await expect(window.getByTestId('paint-size-readout')).toHaveText('1 px');
 
-  // Opacity from the bar too, which Properties' slider follows.
+  // Opacity from the bar too, which Properties' slider follows. The bar lets Flow and Opacity go first as the viewport
+  // narrows, and in Linux CI's window (1280 px wide) the viewport is narrow enough for that, so the pane is maximized
+  // to give the bar its room whatever the window, and restored to show Properties again.
+  await window.getByRole('button', { name: 'Maximize Viewport' }).click();
   const opacity = window.getByTestId('tool-settings-opacity').getByRole('slider');
   await opacity.focus();
   await opacity.press('Home');
+  await expect(opacity).toHaveAttribute('aria-valuenow', '0');
+  await window.getByRole('button', { name: 'Restore Viewport' }).click();
   await expect(window.getByTestId('paint-opacity').getByRole('slider')).toHaveAttribute('aria-valuenow', '0');
 
   // The fill has its own choices in place of a stroke's.

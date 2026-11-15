@@ -386,6 +386,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Clean reads only the files changed since it last ran (#297): it read every document and mesh of the library, up to 64 MB each, every time. The library's index keeps what each file names. Clean, emptying the bin and Restore now wait for any other change to the library's files, and it for them.
 - The engine and each test run sweep the socket files that ended processes left in the temp folder for over a day (#297).
 
+- A stroke ends on its own document when another document is brought to the front before its last part has left (#274): on a busy machine that part went nowhere while the other document opened, and a later Save, of either document, waited for it for ever, so Save on the Unsaved changes dialog left the document open.
 - A refusal names a file by its name alone on every system (#198): a Server on Linux or macOS left the folders of a Windows path in the sentence and the file's name, since it split a path only at `/`.
 - Export no longer shows the last export's Done and report while the next one is being started (#153): they go as soon as Export is pressed, so a second export from the dialog is never read as finished before it has begun.
 - Checks no longer says a texture set has no Diffuse, Specular or Glossiness channel when its export preset reads one (#159): the export works those out from base color, metalness and roughness, and the files that read them now count toward the set's memory.
