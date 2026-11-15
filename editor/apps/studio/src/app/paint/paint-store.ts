@@ -666,16 +666,18 @@ export class PaintStore {
     this.idColours.set(reply.data?.colours ?? null);
   }
 
-  /** Takes the colour at a place on the id map for the mask waiting for one. */
-  async pickColourAt(u: number, v: number): Promise<void> {
+  /**
+   * Takes the colour at a place on the id map for the mask waiting for one, or for the mask named, which a pick on the
+   * mesh names as the one waiting when it was clicked. The eyedropper waits on until the colour is in the mask.
+   */
+  async pickColourAt(u: number, v: number, waiting = this.picking()): Promise<void> {
     const id = this.state()?.id;
-    const layer = this.layers().find(row => row.layer.id === this.picking())?.layer;
-    this.picking.set(null);
-    if (!id || !layer) {
-      return;
-    }
-
+    const layer = this.layers().find(row => row.layer.id === waiting)?.layer;
     try {
+      if (!id || !layer) {
+        return;
+      }
+
       const client = await this.api();
       const params = { path: { id }, query: { u, v } };
       const colour = unwrap(await client.GET('/api/v1/stacks/{id}/id-colours', { params })).at;
@@ -686,6 +688,11 @@ export class PaintStore {
       }
     } catch (failure) {
       this.failure.set(messageOf(failure));
+    } finally {
+      // The eyedropper asks for a click until its colour is in the mask, so the next pick starts from this one's mask.
+      if (this.picking() === waiting) {
+        this.picking.set(null);
+      }
     }
   }
 
@@ -755,8 +762,12 @@ export class PaintStore {
     this.alsoPaints.set(others);
   }
 
-  /** Takes the colour under a place on the mesh in the viewport. */
+  /**
+   * Takes the colour under a place on the mesh in the viewport for the mask waiting when it was clicked, so the
+   * eyedropper turned off or on again while the Server finds the place changes nothing about this pick.
+   */
   async pickColourOnMesh(stamp: StackStamp, aim: Aim): Promise<void> {
+    const waiting = this.picking();
     const client = await this.api();
     const { width, height, camera } = aim;
     const hit = unwrap(
@@ -767,8 +778,8 @@ export class PaintStore {
     if (hit.found && this.tool() === 'picker') {
       await this.pickBrushColour(hit.u, hit.v);
     } else if (hit.found) {
-      await this.pickColourAt(hit.u, hit.v);
-    } else {
+      await this.pickColourAt(hit.u, hit.v, waiting);
+    } else if (this.picking() === waiting) {
       this.picking.set(null);
     }
   }

@@ -1610,6 +1610,41 @@ describe('PaintStore tools (#125, #127, #128, #129)', () => {
     expect(masks()[1]?.colours).toEqual([[1, 0.001, 0]]);
   });
 
+  it('gives a colour picked on the mesh to the mask waiting when it was clicked, though picking stops meanwhile', async () => {
+    const { store, bodies, server } = await onMesh();
+    let found: () => void = () => undefined;
+    const placed = new Promise<void>(resolve => (found = resolve));
+    server.reply = (_method, path) => {
+      if (path.endsWith('/viewport/pick')) {
+        return placed.then(() => Response.json({ found: true, view: PickedView, u: 0.25, v: 0.5 }));
+      }
+
+      return path.endsWith('/id-colours') ? Response.json({ colours: [], at: [1, 0, 0] }) : null;
+    };
+    store.state.update(state =>
+      state
+        ? {
+            ...state,
+            layers: state.layers.map((layer, index) =>
+              index === 0 ? { ...layer, mask: { ...layer.mask, source: 'Bake', map: 'id', colours: [] } } : layer
+            )
+          }
+        : state
+    );
+    const layer = store.state()?.layers[0]?.id ?? '';
+    const masks = () =>
+      bodies.flatMap(body => (body as { commands: { mask?: { colours: number[][] } }[] }).commands).map(c => c.mask);
+
+    store.picking.set(layer);
+    const pick = store.pickColourOnMesh({ x: 25, y: 50, pressure: 1 }, aim);
+    // The eyedropper is turned off before the Server says where the click landed.
+    store.picking.set(null);
+    found();
+    await pick;
+    await vi.waitFor(() => expect(masks()).toHaveLength(1));
+    expect(masks()[0]?.colours).toEqual([[1, 0, 0]]);
+  });
+
   it('takes the mesh under a click into the layer, or out of it, and keeps the last one (#110)', async () => {
     const { store, bodies, server } = await onMesh();
     server.reply = (_method, path) => {
