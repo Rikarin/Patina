@@ -40,10 +40,10 @@ import { ToolSettingsBar } from '../paint/tool-settings-bar';
 import { ToolStrip } from '../paint/tool-strip';
 import { FramePainter } from './frame-painter';
 import type { ViewportFrame } from './frame-transport';
-import { type AxisView, framed, nudge, orbit, pan, snapped, zoom } from './orbit';
+import { type AxisView, framed, nudge, orbit, pan, snapped, throughCamera, zoom } from './orbit';
 import { SpaceMouse, spaceStep } from './space-mouse';
 import { ViewportClient } from './viewport-client';
-import { ViewportDisplayPanel } from './viewport-display';
+import { type FileCameraChoice, ViewportDisplayPanel } from './viewport-display';
 
 const Rooms: readonly { value: string; label: string }[] = [
   { value: 'studio', label: 'Studio' },
@@ -377,7 +377,11 @@ const FrontGraph = 'graph:';
         <p class="text-foreground-muted absolute inset-x-0 top-1/2 text-center">{{ text }}</p>
       }
       @if (showDisplay()) {
-        <ptn-viewport-display class="absolute inset-y-2 end-2 max-w-[calc(100%-1rem)]" (snap)="snap($event)" />
+        <ptn-viewport-display
+          class="absolute inset-y-2 end-2 max-w-[calc(100%-1rem)]"
+          (snap)="snap($event)"
+          (lookThrough)="lookThrough($event)"
+        />
       }
     </div>
   `
@@ -741,6 +745,21 @@ export class ViewportPane implements AfterViewInit {
   /** Looks along an axis at the whole model. */
   protected snap(view: AxisView): void {
     this.viewport.moveCamera(snapped(this.viewport.camera(), view), false);
+  }
+
+  /** Looks through a camera the mesh file holds (#144), as the orbit camera can (ADR 0065). */
+  protected lookThrough(choice: FileCameraChoice): void {
+    const { clientWidth, clientHeight } = this.canvas().nativeElement;
+    const aspect = clientWidth > 0 && clientHeight > 0 ? clientWidth / clientHeight : 1;
+    const view = throughCamera(
+      choice.camera,
+      choice.minimum,
+      choice.maximum,
+      aspect,
+      this.viewport.display().fieldOfView
+    );
+    this.viewport.setDisplay({ fieldOfView: view.fieldOfView, orthographic: view.orthographic });
+    this.viewport.moveCamera(view.camera, false);
   }
 
   protected async open(): Promise<void> {

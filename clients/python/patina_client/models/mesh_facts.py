@@ -12,6 +12,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.mesh_camera_facts import MeshCameraFacts
   from ..models.mesh_material_facts import MeshMaterialFacts
   from ..models.mesh_part_facts import MeshPartFacts
 
@@ -38,6 +39,9 @@ class MeshFacts:
             minimum (list[float]): The least corner of the box round the model, in the file's units.
             maximum (list[float]): The greatest corner of the box.
             vertex_colours (bool): Whether any part carries vertex colours.
+            cameras (list[MeshCameraFacts]): The cameras the file holds (#144), in its order, each where it stands in the
+                space the box round the model
+                is in. Empty for a file with none.
             metres_per_unit (float | None | Unset): How long the file's unit is, in metres, when the file or its format
                 says: glTF is in metres, and an FBX states
                 its unit. Null for a file that does not say, as OBJ, PLY and STL never do.
@@ -53,6 +57,7 @@ class MeshFacts:
     minimum: list[float]
     maximum: list[float]
     vertex_colours: bool
+    cameras: list[MeshCameraFacts]
     metres_per_unit: float | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -61,6 +66,7 @@ class MeshFacts:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.mesh_camera_facts import MeshCameraFacts # noqa: PLC0415
         from ..models.mesh_material_facts import MeshMaterialFacts # noqa: PLC0415
         from ..models.mesh_part_facts import MeshPartFacts # noqa: PLC0415
         file = self.file
@@ -97,6 +103,13 @@ class MeshFacts:
 
         vertex_colours = self.vertex_colours
 
+        cameras = []
+        for cameras_item_data in self.cameras:
+            cameras_item = cameras_item_data.to_dict()
+            cameras.append(cameras_item)
+
+
+
         metres_per_unit: float | None | Unset
         if isinstance(self.metres_per_unit, Unset):
             metres_per_unit = UNSET
@@ -117,6 +130,7 @@ class MeshFacts:
             "minimum": minimum,
             "maximum": maximum,
             "vertexColours": vertex_colours,
+            "cameras": cameras,
         })
         if metres_per_unit is not UNSET:
             field_dict["metresPerUnit"] = metres_per_unit
@@ -127,6 +141,7 @@ class MeshFacts:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.mesh_camera_facts import MeshCameraFacts # noqa: PLC0415
         from ..models.mesh_material_facts import MeshMaterialFacts # noqa: PLC0415
         from ..models.mesh_part_facts import MeshPartFacts # noqa: PLC0415
         d = dict(src_dict)
@@ -168,6 +183,16 @@ class MeshFacts:
 
         vertex_colours = d.pop("vertexColours")
 
+        cameras = []
+        _cameras = d.pop("cameras")
+        for cameras_item_data in (_cameras):
+            cameras_item = MeshCameraFacts.from_dict(cameras_item_data)
+
+
+
+            cameras.append(cameras_item)
+
+
         def _parse_metres_per_unit(data: object) -> float | None | Unset:
             if data is None:
                 return data
@@ -189,6 +214,7 @@ class MeshFacts:
             minimum=minimum,
             maximum=maximum,
             vertex_colours=vertex_colours,
+            cameras=cameras,
             metres_per_unit=metres_per_unit,
         )
 

@@ -13,6 +13,7 @@ export type StackPixels = components['schemas']['StackPixels'];
 export type ProjectDocumentInfo = components['schemas']['ProjectDocumentInfo'];
 export type ProjectMeshInfo = components['schemas']['ProjectMeshInfo'];
 export type MeshFacts = components['schemas']['MeshFacts'];
+export type MeshCameraFacts = components['schemas']['MeshCameraFacts'];
 export type UnwrapOptions = components['schemas']['UnwrapOptions'];
 export type UnwrapReport = components['schemas']['UnwrapReport'];
 export type UnwrapSet = components['schemas']['UnwrapSet'];

@@ -117,6 +117,39 @@ public sealed class MeshFactsTests : IDisposable {
         Assert.Null(MeshFactsReader.Read(Write(".stl")).MetresPerUnit);
     }
 
+    /// <summary>
+    ///     A mesh's cameras (#144): each where its node puts it, looking where it looks, with its vertical angle; and a
+    ///     file with none says none.
+    /// </summary>
+    [Fact]
+    public void A_mesh_says_its_cameras() {
+        var path = Path.Combine(folder.FullName, "shot.gltf");
+        File.WriteAllText(
+            path,
+            Gltf(
+                "data:application/octet-stream;base64," + Convert.ToBase64String(Buffer()),
+                OneMesh + """
+                          "cameras": [{ "type": "perspective", "perspective": { "yfov": 0.6, "znear": 0.1 } }],
+                          """
+            ).Replace(
+                "\"nodes\": [{ \"mesh\": 0 }],",
+                "\"nodes\": [{ \"mesh\": 0, \"children\": [1] }, "
+                + "{ \"name\": \"Shot\", \"camera\": 0, \"translation\": [0.5, 0.5, 4] }],",
+                StringComparison.Ordinal
+            )
+        );
+
+        var camera = Assert.Single(MeshFactsReader.Read(path).Cameras);
+
+        Assert.Equal("Shot", camera.Name);
+        Assert.Equal([0.5, 0.5, 4], camera.Position.Select(static at => Math.Round(at, 4)));
+        Assert.Equal([0, 0, -1], camera.Forward.Select(static at => Math.Round(at, 4)));
+        Assert.Equal([0, 1, 0], camera.Up.Select(static at => Math.Round(at, 4)));
+        Assert.Equal(0.6, camera.FieldOfView, 4);
+        Assert.Equal(0, camera.OrthographicHeight);
+        Assert.Empty(MeshFactsReader.Read(Write(".gltf")).Cameras);
+    }
+
     /// <summary>A mesh's parts, materials and UV sets: two parts on two materials, one with a second set.</summary>
     [Fact]
     public void A_mesh_says_its_parts_materials_and_coordinate_sets() {
