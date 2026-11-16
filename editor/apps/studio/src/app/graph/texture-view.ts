@@ -14,6 +14,7 @@ import { ChannelView, type Histogram, HistogramChart, type PictureChannel } from
 import { XuiButtonImports } from '@xui/button';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
+import { XuiSelectImports } from '@xui/select';
 import { BakeStore } from '../bake/bake-store';
 import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
@@ -121,7 +122,14 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
  */
 @Component({
   selector: 'ptn-texture-view',
-  imports: [ChannelView, HistogramChart, XuiButtonImports, XuiNonIdealStateImports, XuiSegmentedControlImports],
+  imports: [
+    ChannelView,
+    HistogramChart,
+    XuiButtonImports,
+    XuiNonIdealStateImports,
+    XuiSegmentedControlImports,
+    XuiSelectImports
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex h-full min-h-0 flex-col' },
   styles: `
@@ -260,12 +268,23 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
         }
         <span class="readout ms-auto shrink-0" data-testid="texture-zoom">{{ percent() }}</span>
       </div>
-      <div class="pane-bar gap-1 px-2" role="toolbar" aria-label="2D View">
+      <!--
+        The bar keeps to one line, as every pane's does (#200, #184). As it narrows, Copy Image and Save Image… say
+        Copy and Save…, then the channel's switch becomes a list, which keeps its labels whole in a fraction of the room;
+        the buttons keep their size and their titles say what they do.
+      -->
+      <div
+        class="pane-bar @container flex-nowrap gap-1 overflow-hidden px-2"
+        role="toolbar"
+        aria-label="2D View"
+        data-testid="texture-bar"
+      >
         <button
           type="button"
           xuiButton
           size="sm"
           variant="ghost"
+          class="shrink-0"
           data-testid="texture-pin"
           [active]="store.pinned() !== null"
           [attr.aria-pressed]="store.pinned() !== null"
@@ -279,6 +298,7 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
           xuiButton
           size="sm"
           variant="ghost"
+          class="shrink-0"
           data-testid="texture-tile"
           title="Shows the picture three by three, to see whether it tiles"
           [active]="tiled()"
@@ -292,6 +312,7 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
           xuiButton
           size="sm"
           variant="ghost"
+          class="shrink-0"
           data-testid="texture-physical"
           [active]="proportioned() !== null"
           [attr.aria-pressed]="proportioned() !== null"
@@ -306,12 +327,20 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
           xuiButton
           size="sm"
           variant="ghost"
+          class="shrink-0"
           data-testid="texture-copy"
           [disabled]="!picture"
           [title]="copyTitle()"
           (click)="copyImage()"
         >
-          {{ copied() === 'copied' ? 'Copied' : copied() === 'refused' ? 'Not Copied' : 'Copy Image' }}
+          @if (copied() === 'copied') {
+            Copied
+          } @else if (copied() === 'refused') {
+            Not Copied
+          } @else {
+            <span class="@max-[30rem]:hidden">Copy Image</span>
+            <span class="hidden @max-[30rem]:inline">Copy</span>
+          }
         </button>
         @if (canSave) {
           <button
@@ -319,19 +348,35 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
             xuiButton
             size="sm"
             variant="ghost"
+            class="shrink-0"
             data-testid="texture-save"
             [disabled]="!full()"
             [title]="saveTitle()"
             (click)="saveImage()"
           >
-            Save Image…
+            <span class="@max-[30rem]:hidden">Save Image…</span>
+            <span class="hidden @max-[30rem]:inline">Save…</span>
           </button>
         }
+        <span class="min-w-0 flex-1"></span>
         <xui-segmented-control
-          class="ms-auto min-w-0"
+          class="hidden shrink-0 @min-[24rem]:flex"
           size="sm"
           aria-label="Channel"
+          data-testid="texture-channels"
           [options]="channelOptions"
+          [value]="channel()"
+          (valueChange)="channel.set($event ?? 'rgba')"
+        />
+        <xui-select
+          class="w-20 min-w-14 @min-[24rem]:hidden [&_button]:text-xs"
+          style="--control-height-md: 1.5rem; --control-padding-md: 0.375rem"
+          aria-label="Channel"
+          data-testid="texture-channel-narrow"
+          [filterable]="false"
+          [itemText]="channelName"
+          [items]="channelValues"
+          [matchTargetWidth]="false"
           [value]="channel()"
           (valueChange)="channel.set($event ?? 'rgba')"
         />
@@ -345,6 +390,10 @@ export class TextureView {
   protected readonly commands = inject(Commands);
   protected readonly project = inject(ProjectStore);
   protected readonly channelOptions = channels;
+  /** The channels as the narrow bar's list offers them, under the switch's own labels. */
+  protected readonly channelValues = channels.map(option => option.value);
+  protected readonly channelName = (value: PictureChannel): string =>
+    channels.find(option => option.value === value)?.label ?? value;
   /** A bake map as the app calls it: Ambient Occlusion, not `ao` (#198). */
   protected readonly mapName = termName;
   protected readonly texelTitle =

@@ -609,6 +609,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The 2D View's tool bar keeps to one line in a narrow pane (#184), as every pane's bar does: Copy Image and Save Image… say Copy and Save…, and then the channel's switch becomes a list. The buttons keep their size, and their tips say what they do.
 - A graph lighting the viewport follows its edits (#300): the model is lit again each time the open graph has evaluated a change, without a save, so the sun can be moved with its slider and seen on the model. Only the newest change waits while one is drawn, and the file is left as it was.
 - A section that folds open is xUI's too (#195): the bake's Log, the Checks tab's Memory by file and Limits, and a preset's The file open under an xUI button with an arrow, where they were the browser's own disclosure with its own look.
 - The third-party notices name cereal, which MoltenVK builds into the macOS package to keep its pipeline cache, with its BSD-3-Clause licence (#48).
