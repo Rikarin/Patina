@@ -81,6 +81,9 @@ sealed class LibraryQueries(IndexDatabase database) {
     /// <summary>Every project's pictures the index holds, each with its project (#306).</summary>
     public IReadOnlyList<LibraryPicture> Pictures() => IndexedPictures.All(database);
 
+    /// <summary>Every project's documents the index holds, each with its project (#311).</summary>
+    public IReadOnlyList<IndexedDocument> Documents() => IndexedDocuments.All(database);
+
     public int CountProjects() => Scalar("SELECT count(*) FROM project");
 
     public int CountAssets() => Scalar("SELECT count(*) FROM asset");

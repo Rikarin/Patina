@@ -7,6 +7,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Sky graphs on the shelf (#203): a graph of any project that uses an Environment node, such as Sky, is listed under Environments as well as under its own type, drawn as its graph is, and a click lights the viewport with it as choosing the graph under Environment does. A search for "environment" finds them. Through the API an environment's `source` is the graph's path behind `environment:`, as a panorama's is.
 - Project templates (#144): Save as Template, in Project Settings, keeps a project's settings under a name in the library's `project-templates` folder (Auto Unwrap, Preserve Paint, and how it exports, bakes, opens the viewport, checks and paints), never its mesh or documents. New Project offers them as Template, and a project made from one starts with those settings; one the template says nothing about, such as a bake, stays as the project was made. Through the API `GET`, `POST` and `DELETE /api/v1/library/project-templates` and `template` on `POST /api/v1/library/projects`; a template nobody kept refuses the project before anything is made (ADR 0052).
 - Environments and alphas on the shelf (#203). Environments lists every project's HDR and EXR panoramas, and a click lights the viewport with one, as choosing it under Environment does. Alphas lists the brush's stamp shapes, each drawn as a stamp of the brush in hand, and a click makes it the brush's.
 - Import Materials reads USD's binary form (#157): a `.usdc` layer, a `.usd` that is binary and a `.usdz` package whose layer is binary, as most tools write them, bring in their `UsdPreviewSurface` materials as a text layer does, where they were refused with the advice to save as `.usda`. Patina reads the binary layer itself, without USD's library; a damaged file, or one older than USD's version 0.4, is refused in words. File dialogs offer `.usdc`.
@@ -639,6 +640,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The shelf and the brush panel list other projects' documents from the library's index (#311), one query where a load read every project's file and walked its folder, so a library of many projects opens the shelf faster. A document listed or retagged in another project shows after the next scan, as a picture does; a preset copied in by hand beside another project, and not listed by it, is no longer offered there. The index is built again once on the first start.
+- The Library's tag filter loads once the app is idle, which keeps the app's first load under its budget (#311).
 - The 2D View's tool bar keeps to one line in a narrow pane (#184), as every pane's bar does: Copy Image and Save Image… say Copy and Save…, and then the channel's switch becomes a list. The buttons keep their size, and their tips say what they do.
 - A graph lighting the viewport follows its edits (#300): the model is lit again each time the open graph has evaluated a change, without a save, so the sun can be moved with its slider and seen on the model. Only the newest change waits while one is drawn, and the file is left as it was.
 - A section that folds open is xUI's too (#195): the bake's Log, the Checks tab's Memory by file and Limits, and a preset's The file open under an xUI button with an arrow, where they were the browser's own disclosure with its own look.
