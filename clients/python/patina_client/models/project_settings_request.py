@@ -52,6 +52,9 @@ class ProjectSettingsRequest:
             normal_format (None | str | Unset): Which way the green of the project's tangent-space normal maps runs: `y-up`
                 or `y-down`
                 (#144). Maps already brought in stay as they were brought in.
+            metres_per_unit (float | None | Unset): How long a unit of the project's mesh is, in metres, for a file that
+                says nothing or says it wrongly
+                (#146): 0.01 for centimetres, from a micrometre to a kilometre. Zero goes back to what the file says.
      """
 
     project: str
@@ -63,6 +66,7 @@ class ProjectSettingsRequest:
     reassign: None | ProjectSettingsRequestReassignType1 | Unset = UNSET
     same_layout: bool | None | Unset = UNSET
     normal_format: None | str | Unset = UNSET
+    metres_per_unit: float | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -126,6 +130,12 @@ class ProjectSettingsRequest:
         else:
             normal_format = self.normal_format
 
+        metres_per_unit: float | None | Unset
+        if isinstance(self.metres_per_unit, Unset):
+            metres_per_unit = UNSET
+        else:
+            metres_per_unit = self.metres_per_unit
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -148,6 +158,8 @@ class ProjectSettingsRequest:
             field_dict["sameLayout"] = same_layout
         if normal_format is not UNSET:
             field_dict["normalFormat"] = normal_format
+        if metres_per_unit is not UNSET:
+            field_dict["metresPerUnit"] = metres_per_unit
 
         return field_dict
 
@@ -260,6 +272,16 @@ class ProjectSettingsRequest:
         normal_format = _parse_normal_format(d.pop("normalFormat", UNSET))
 
 
+        def _parse_metres_per_unit(data: object) -> float | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(float | None | Unset, data)
+
+        metres_per_unit = _parse_metres_per_unit(d.pop("metresPerUnit", UNSET))
+
+
         project_settings_request = cls(
             project=project,
             mesh=mesh,
@@ -270,6 +292,7 @@ class ProjectSettingsRequest:
             reassign=reassign,
             same_layout=same_layout,
             normal_format=normal_format,
+            metres_per_unit=metres_per_unit,
         )
 
 
