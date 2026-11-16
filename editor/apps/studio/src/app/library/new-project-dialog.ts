@@ -27,6 +27,7 @@ import { LibraryStore } from './library-store';
 import { LibraryTreeStore } from './library-tree-store';
 import { MeshFactsView } from './mesh-facts';
 import { ProjectStore } from './project-store';
+import { ProjectTemplates } from './project-templates';
 
 /** What a project can start as, and what each is for. */
 const ProjectKinds = [
@@ -77,6 +78,20 @@ const ProjectKinds = [
               (valueChange)="$event && kind.set($event)"
             />
           </xui-form-field>
+          @if (templates().length > 0) {
+            <xui-form-field label="Template">
+              <xui-select
+                class="w-full"
+                data-testid="new-project-template"
+                title="The settings it starts with: Auto Unwrap, export, bake, viewport, checks and paint"
+                [filterable]="false"
+                [itemText]="templateName"
+                [items]="templateChoices()"
+                [value]="template()"
+                (valueChange)="template.set($event ?? '')"
+              />
+            </xui-form-field>
+          }
           @if (kind() === 'image-material') {
             <div class="flex flex-col gap-1">
               <span class="section-label">Picture</span>
@@ -120,7 +135,7 @@ const ProjectKinds = [
               </button>
             </div>
           </div>
-          @if (kind() === 'texturing') {
+          @if (kind() === 'texturing' && !template()) {
             <label class="flex items-center justify-between gap-2">
               <span class="text-sm">Auto Unwrap</span>
               <xui-switch aria-label="Auto Unwrap" data-testid="new-project-unwrap" [(checked)]="autoUnwrap" />
@@ -198,6 +213,7 @@ export class NewProjectDialog {
   private readonly store = inject(LibraryStore);
   private readonly tree = inject(LibraryTreeStore);
   private readonly project = inject(ProjectStore);
+  private readonly kept = inject(ProjectTemplates);
 
   readonly open = model(false);
   /** The folder it goes in, where empty is the top of the library. */
@@ -227,6 +243,11 @@ export class NewProjectDialog {
   protected readonly highName = computed(() => this.high().split(/[\\/]/u).pop() ?? '');
   protected readonly tags = signal<string[]>([]);
   protected readonly autoUnwrap = signal(true);
+  /** The library's project templates, and the one it starts from: empty is none (#144). */
+  protected readonly templates = signal<string[]>([]);
+  protected readonly template = signal('');
+  protected readonly templateChoices = computed(() => ['', ...this.templates()]);
+  protected readonly templateName = (name: string): string => name || 'None';
   protected readonly refused = signal<string | null>(null);
   private readonly saving = signal(false);
   /** Texturing is painting on something, so it waits for a mesh. */
@@ -244,6 +265,10 @@ export class NewProjectDialog {
     effect(() => {
       if (this.open()) {
         this.refused.set(null); // a refusal is about the last attempt, not this one
+        void this.kept.names().then(names => {
+          this.templates.set(names);
+          this.template.update(chosen => (names.includes(chosen) ? chosen : ''));
+        });
       }
     });
   }
@@ -270,9 +295,11 @@ export class NewProjectDialog {
         resolution: this.resolution(),
         rows: (this.layered() && this.rows()) || null,
         kind: this.kind(),
-        image: this.image() || null
+        image: this.image() || null,
+        template: this.template() || null
       });
-      if (this.kind() === 'texturing') {
+      // A template says whether to unwrap, so the switch is not there to say otherwise.
+      if (this.kind() === 'texturing' && !this.template()) {
         await this.project.startSettings(project.path, this.autoUnwrap());
       }
 

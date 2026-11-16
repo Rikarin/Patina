@@ -7,15 +7,18 @@ import { LibraryStore } from './library-store';
 import { LibraryTreeStore } from './library-tree-store';
 import { NewProjectDialog } from './new-project-dialog';
 import { ProjectStore } from './project-store';
+import { ProjectTemplates } from './project-templates';
 
-async function render() {
+async function render(templates: string[] = []) {
   const createProject = vi.fn((_request: unknown) => Promise.resolve({ path: 'strip' }));
+  const startSettings = vi.fn((_path: string, _unwrap: boolean) => Promise.resolve());
   const choose = vi.fn((_request: unknown) => Promise.resolve('C:\\Art\\Game.ptlib/projects/crate/strip.glb'));
   TestBed.configureTestingModule({
     providers: [
       { provide: LibraryStore, useValue: { createProject } },
       { provide: LibraryTreeStore, useValue: { reload: vi.fn(), choose: vi.fn() } },
-      { provide: ProjectStore, useValue: { open: vi.fn(), startSettings: vi.fn() } },
+      { provide: ProjectStore, useValue: { open: vi.fn(), startSettings } },
+      { provide: ProjectTemplates, useValue: { names: () => Promise.resolve(templates) } },
       { provide: FileChooser, useValue: { path: choose } },
       {
         provide: SystemStatus,
@@ -27,7 +30,7 @@ async function render() {
   fixture.componentRef.setInput('open', true);
   fixture.detectChanges();
   await fixture.whenStable();
-  return { fixture, createProject, choose };
+  return { fixture, createProject, choose, startSettings };
 }
 
 const byId = (id: string) => document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
@@ -60,6 +63,33 @@ describe('NewProjectDialog', () => {
         rows: 1024
       })
     );
+  });
+
+  it('starts from a template, which says whether to unwrap (#144)', async () => {
+    const { fixture, createProject, startSettings } = await render(['Hero Prop']);
+    const name = document.querySelector<HTMLInputElement>('[data-testid="new-project-name"]');
+    if (!name) {
+      throw new Error('New Project shows no name.');
+    }
+
+    name.value = 'Barrel';
+    name.dispatchEvent(new Event('input'));
+    byId('new-project-mesh')?.click();
+    await fixture.whenStable();
+    expect(byId('new-project-unwrap')).not.toBeNull();
+
+    await chooseIn(fixture, document.body, 'new-project-template', 'Hero Prop');
+    expect(byId('new-project-unwrap')).toBeNull();
+
+    document.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+    await fixture.whenStable();
+    expect(createProject).toHaveBeenCalledWith(expect.objectContaining({ name: 'Barrel', template: 'Hero Prop' }));
+    expect(startSettings).not.toHaveBeenCalled();
+  });
+
+  it('offers no template when the library keeps none', async () => {
+    await render();
+    expect(byId('new-project-template')).toBeNull();
   });
 
   it('keeps a graph square', async () => {

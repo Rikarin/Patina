@@ -124,6 +124,8 @@ static class LibraryEndpoints {
                 OpenLibrary.RequireMesh(mesh);
             }
 
+            RequireTemplate(library, request.Template);
+
             var kind = request.Kind ?? (request.Mesh is null ? null : DocumentKinds.Texturing);
             if (kind is not null && !DocumentKinds.Known(kind)) {
                 throw new ProjectRefusedException($"'{kind}' cannot be made yet.");
@@ -155,12 +157,24 @@ static class LibraryEndpoints {
             }
 
             BakeAsPreferred(library, project.Path, kind, request.Resolution, preferences.Current.Bake);
+            if (request.Template is { } chosen) {
+                library.ApplyTemplate(project.Path, chosen);
+            }
+
             host.RequestRescan();
             return TypedResults.Created((string?)null, project);
         } catch (FileNotFoundException e) {
             return Refusals.Of(e);
         } catch (ProjectRefusedException e) {
             return Refusals.Of(e);
+        }
+    }
+
+    /// <summary>A template the request names, looked for before anything is made, so a typo makes nothing.</summary>
+    /// <exception cref="FileNotFoundException">There is no template of that name.</exception>
+    static void RequireTemplate(OpenLibrary library, string? template) {
+        if (template is not null) {
+            ProjectTemplates.Find(library.RootPath, template);
         }
     }
 

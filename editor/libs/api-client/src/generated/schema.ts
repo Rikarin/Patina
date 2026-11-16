@@ -816,6 +816,25 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/project-templates': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The project templates the library keeps, by name. */
+    get: operations['ListProjectTemplates'];
+    put?: never;
+    /** Keeps a project's settings as a template: Auto Unwrap and Preserve Paint, and how it exports, bakes, opens the viewport, checks and paints. Its meshes and documents stay its own. A template of the same name is replaced. */
+    post: operations['SaveProjectTemplate'];
+    /** Throws a project template away. Projects made from it keep their settings. */
+    delete: operations['DeleteProjectTemplate'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/settings': {
     parameters: {
       query?: never;
@@ -6350,6 +6369,11 @@ export interface components {
        *     a model laid out on a 2:1 sheet paints at 2048 × 1024. Null is square. A graph is always square.
        */
       rows?: null | number;
+      /**
+       * @description The project template whose settings it starts with (#144), by name, or null for none. Its bake settings take
+       *     the place of the person's default and of the size the project is made at.
+       */
+      template?: null | string;
     };
     /** @description The body of `POST /api/v1/library/project/document/copy`. */
     ProjectDocumentCopyRequest: {
@@ -6754,6 +6778,22 @@ export interface components {
       path: string;
       /** @description Every tag it has from now on. Repeats and empty ones are dropped. */
       tags: string[];
+    };
+    /**
+     * @description The project templates a library keeps (#144): a project's settings under a name, which a new project starts
+     *     from through string? ProjectCreateRequest.Template. A template holds how Auto Unwrap and Preserve Paint
+     *     are set and the export, bake, viewport, checks and paint settings, never a mesh or a document.
+     */
+    ProjectTemplateList: {
+      /** @description Their names, sorted. */
+      names: string[];
+    };
+    /** @description The body of `POST /api/v1/library/project-templates`: a project's settings, kept by name. */
+    ProjectTemplateRequest: {
+      /** @description The project whose settings are kept, below `projects/`. */
+      project: string;
+      /** @description What the template is called. One of the same name is replaced. */
+      name: string;
     };
     /** @description The body of `PUT /api/v1/library/project/viewport`. */
     ProjectViewportRequest: {
@@ -12283,6 +12323,153 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ProjectContents'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  ListProjectTemplates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectTemplateList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SaveProjectTemplate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectTemplateRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectTemplateList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  DeleteProjectTemplate: {
+    parameters: {
+      query: {
+        name: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectTemplateList'];
         };
       };
       /** @description Bad Request */

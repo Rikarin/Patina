@@ -269,6 +269,8 @@ from .project_settings_request import ProjectSettingsRequest
 from .project_settings_request_reassign_type_1 import ProjectSettingsRequestReassignType1
 from .project_summary import ProjectSummary
 from .project_tags_request import ProjectTagsRequest
+from .project_template_list import ProjectTemplateList
+from .project_template_request import ProjectTemplateRequest
 from .project_viewport_request import ProjectViewportRequest
 from .sample_list import SampleList
 from .sample_request import SampleRequest
@@ -733,6 +735,8 @@ __all__ = (
     "ProjectSettingsRequestReassignType1",
     "ProjectSummary",
     "ProjectTagsRequest",
+    "ProjectTemplateList",
+    "ProjectTemplateRequest",
     "ProjectViewportRequest",
     "SampleList",
     "SampleRequest",

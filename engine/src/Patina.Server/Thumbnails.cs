@@ -33,7 +33,6 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
     const string SourceSetting = "Source";
     const string DefaultUsage = "baseColor";
     const string StarterPrefix = "starter:";
-    static readonly TimeSpan WorkerPatience = TimeSpan.FromSeconds(10);
 
     readonly ConcurrentDictionary<string, string> known = new(StringComparer.Ordinal);
 
@@ -41,6 +40,13 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
     ///     One drawing at a time: the Worker draws one at a time anyway, and a shelf asks for many at once.
     /// </summary>
     readonly SemaphoreSlim drawing = new(1, 1);
+
+    /// <summary>
+    ///     How long a picture waits for a Worker to be connected, and never for the one connected to finish (#275): a
+    ///     panorama is drawn at <see cref="PanoramaSide" />, which a busy GPU took more than ten seconds over while the
+    ///     viewport answered that no GPU process was connected.
+    /// </summary>
+    public TimeSpan WorkerPatience { get; init; } = TimeSpan.FromSeconds(10);
 
     public void Dispose() => drawing.Dispose();
 
@@ -118,17 +124,13 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
 
     /// <summary>The Worker's picture of an ask, and whether its answer holds for these files anywhere.</summary>
     async Task<(string? Hash, bool Lasting)> DrawAsync(MaterialThumbnailAsk ask, CancellationToken cancellationToken) {
-        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        patience.CancelAfter(WorkerPatience);
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerPatience, cancellationToken);
         try {
-            var connection = await worker.ConnectionAsync(patience.Token);
             var reply = await connection.SendAsync(
                 new() { Type = IpcTypes.MaterialThumbnail, MaterialThumbnail = ask },
-                patience.Token
+                cancellationToken
             );
             return (reply.ThumbnailHash, true);
-        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new RendererMissingException();
         } catch (IpcException e) when (!ask.Deep) {
             // A material that cannot draw shows its name alone, as it did before there were pictures. A panorama is
             // asked for by name, so the Worker's reason reaches whoever asked, and nothing is remembered for it. A

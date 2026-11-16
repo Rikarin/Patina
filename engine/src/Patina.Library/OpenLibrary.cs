@@ -336,6 +336,38 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>The project templates this library keeps, by name (#144).</summary>
+    public IReadOnlyList<string> Templates() => ProjectTemplates.Names(RootPath);
+
+    /// <summary>Keeps a project's settings as a template of this name, replacing one of the same name.</summary>
+    /// <returns>The name it was kept under.</returns>
+    /// <exception cref="FileNotFoundException">The project is not there.</exception>
+    /// <exception cref="ProjectRefusedException">The name cannot name a template.</exception>
+    public string SaveTemplate(string project, string name) {
+        lock (createGate) {
+            return ProjectTemplates.Save(RootPath, project, name);
+        }
+    }
+
+    /// <summary>Sets a project's settings to a template's.</summary>
+    /// <exception cref="FileNotFoundException">The project or the template is not there.</exception>
+    /// <exception cref="ProjectRefusedException">The name cannot name a template.</exception>
+    public void ApplyTemplate(string project, string name) {
+        lock (createGate) {
+            ProjectTemplates.Apply(RootPath, project, name);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
+    /// <summary>Throws a template away.</summary>
+    /// <returns>Whether there was one.</returns>
+    /// <exception cref="ProjectRefusedException">The name cannot name a template.</exception>
+    public bool DeleteTemplate(string name) {
+        lock (createGate) {
+            return ProjectTemplates.Delete(RootPath, name);
+        }
+    }
+
     /// <summary>Keeps how the viewport is to open in a project.</summary>
     public void SetViewport(string path, ViewportDisplay viewport) {
         lock (createGate) {
