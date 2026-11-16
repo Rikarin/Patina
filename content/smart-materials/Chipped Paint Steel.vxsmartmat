@@ -1,0 +1,44 @@
+version: 1
+name: Chipped Paint Steel
+baseWidth: 1024
+baseHeight: 1024
+sets:
+  - name: Material
+    channels:
+      - usage: baseColor
+        default: [0.5, 0.5, 0.5, 1]
+      - usage: roughness
+        default: [0.5, 0.5, 0.5, 1]
+      - usage: metalness
+        default: [0, 0, 0, 1]
+    layers:
+      - id: paint
+        name: Paint
+        kind: Fill
+        values:
+          baseColor: [0.55, 0.08, 0.06, 1]
+          roughness: [0.45, 0.45, 0.45, 1]
+          metalness: [0, 0, 0, 1]
+      - id: chips
+        name: Chips
+        kind: Fill
+        blend: Copy
+        values:
+          baseColor: [0.56, 0.57, 0.58, 1]
+          roughness: [0.38, 0.38, 0.38, 1]
+          metalness: [1, 1, 1, 1]
+        mask:
+          source: Generator
+          generator: Generators/Paint Chips
+      - id: grime
+        name: Grime
+        kind: Fill
+        blend: Copy
+        opacity: 0.6
+        values:
+          baseColor: [0.18, 0.15, 0.12, 1]
+          roughness: [0.8, 0.8, 0.8, 1]
+          metalness: [0, 0, 0, 1]
+        mask:
+          source: Generator
+          generator: Generators/Cavity Select

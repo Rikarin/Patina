@@ -1,7 +1,9 @@
 # Factory content
 
 `materials/` holds the starter graphs the shelf offers, and `brushes/` the starter brush and tool presets, each a `.ptbrush` keyed as
-`BrushPreset` is. `compounds/` holds Patina's own compounds, published as node types beside Vixen's by `Patina.Content`: a
+`BrushPreset` is. `smart-materials/` holds Patina's layered materials, each a `.vxsmartmat` of fills whose masks are
+compounds from `compounds/` and nothing else, so the CC0 promise below covers everything they draw with; the shelf offers
+them beside Vixen's own, which are Vixen's files under its licence. `compounds/` holds Patina's own compounds, published as node types beside Vixen's by `Patina.Content`: a
 file at `compounds/Grunges/Speckle.vxtexgraph` is the node `Grunges/Speckle`. Each is a graph of Patina's nodes and no
 picture, so it can be opened, read and regenerated in the app; `FactoryCompoundTests` holds every one to compiling with
 nothing to say and every grunge to drawing something that tiles. `Generators/` reads the mesh's bakes and `Weathering/` and

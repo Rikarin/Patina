@@ -1,5 +1,9 @@
+using Patina.Content;
 using Patina.Contracts;
+using Patina.Library;
+using Patina.Server.Graphs;
 using System.Net;
+using Vixen.Texturing.Layers;
 
 namespace Patina.Server.Tests;
 
@@ -80,6 +84,29 @@ public sealed class ShelfCompoundApiTests : IAsyncLifetime {
             Token
         );
         Assert.False(unknown.IsSuccessStatusCode);
+    }
+
+    /// <summary>
+    ///     Patina's own layered materials (#34), CC0 in <c>content/smart-materials</c>, are on the shelf as shipped, and
+    ///     each reads as layers whose every mask is one of Patina's own compounds, so nothing of it is under another
+    ///     licence and it opens with nothing missing.
+    /// </summary>
+    [Fact]
+    public async Task Patinas_own_layered_materials_are_on_the_shelf_masked_by_its_own_compounds() {
+        var folder = Path.Combine(Engine.Root, "..", "content", "smart-materials");
+        var names = Directory.GetFiles(folder, "*.vxsmartmat").Select(Path.GetFileNameWithoutExtension).ToArray();
+        var shelf = await ShelfAsync(string.Empty);
+
+        Assert.True(names.Length >= 10, $"Only {names.Length} layered materials ship.");
+        foreach (var name in names) {
+            var listed = Assert.Single(shelf, material => material.Source == MaterialShelf.ShippedPrefix + name);
+            Assert.Equal((DocumentKinds.LayeredMaterial, "shipped"), (listed.Kind, listed.Origin));
+
+            var set = Assert.Single(MaterialShelf.Read(null, listed.Source).Sets);
+            var masks = set.Layers.Where(static layer => layer.Mask.Source == LayerMaskSource.Generator).ToArray();
+            Assert.True(masks.Length >= 2, $"'{name}' has {masks.Length} masks.");
+            Assert.All(masks, static layer => Assert.Contains(layer.Mask.Generator, FactoryCompounds.Paths));
+        }
     }
 
     static MaterialInfo Compound(IEnumerable<MaterialInfo> shelf, string node) =>
