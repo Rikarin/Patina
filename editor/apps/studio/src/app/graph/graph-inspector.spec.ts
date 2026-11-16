@@ -240,6 +240,48 @@ describe('an X and Y pair from the Inspector (#311)', () => {
   });
 });
 
+describe('a curve or a ramp from the Inspector (#181)', () => {
+  const falling = 'curve:r=0 1,1 0';
+  const curveType: GraphNodeType = {
+    ...tintType,
+    path: 'Colour/Curve',
+    ports: [],
+    settings: [
+      { name: 'Curve', default: '', summary: '', kind: 'Text', minimum: null, maximum: null, group: '', accepted: [] }
+    ]
+  };
+
+  function render(text: string) {
+    const store = {
+      ...fakeStore(),
+      types: signal(new Map([[curveType.path, curveType]])),
+      textOf: vi.fn((_node: number, port: string, fallback: string) => (port === 'Curve' ? text : fallback)),
+      addParameter: vi.fn()
+    };
+    TestBed.configureTestingModule({ providers: [{ provide: GraphStore, useValue: store }] });
+    const fixture = TestBed.createComponent(GraphInspector);
+    fixture.componentRef.setInput('node', { ...node(1), type: curveType.path });
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    return { store, found: (id: string) => element.querySelector<HTMLElement>(`[data-testid="${id}"]`) };
+  }
+
+  it('makes a Curve parameter holding the curve, and points the setting at it', () => {
+    const { store, found } = render(falling);
+
+    found('expose-Curve')?.click();
+
+    expect(store.addParameter).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Curve', kind: 'Curve', default: falling })
+    );
+    expect(store.setText).toHaveBeenCalledWith(1, 'Curve', '$Curve');
+  });
+
+  it('is not offered once the setting follows a parameter', () => {
+    expect(render('$Shape').found('expose-Curve')).toBeNull();
+  });
+});
+
 describe("a node's size", () => {
   function render(type: string, level?: number | null) {
     const store = { ...fakeStore(), setLevel: vi.fn() };

@@ -462,6 +462,22 @@ export { keptLanes } from './graph-fields';
                         (change)="setText(field, $event)"
                       />
                     }
+                    @if (canExposeTable(field)) {
+                      <button
+                        class="self-start"
+                        type="button"
+                        xuiButton
+                        size="sm"
+                        variant="ghost"
+                        title="Make this a parameter of the graph"
+                        [attr.aria-label]="'Expose ' + field.name"
+                        [attr.data-testid]="'expose-' + field.name"
+                        [disabled]="!store.editable()"
+                        (click)="exposeTable(field)"
+                      >
+                        <ng-icon xui size="sm" name="matPublish" />
+                      </button>
+                    }
                   }
                   @case ('ramp') {
                     @if (stopsOf(field); as stops) {
@@ -480,6 +496,22 @@ export { keptLanes } from './graph-fields';
                         [value]="textOf(field)"
                         (change)="setText(field, $event)"
                       />
+                    }
+                    @if (canExposeTable(field)) {
+                      <button
+                        class="self-start"
+                        type="button"
+                        xuiButton
+                        size="sm"
+                        variant="ghost"
+                        title="Make this a parameter of the graph"
+                        [attr.aria-label]="'Expose ' + field.name"
+                        [attr.data-testid]="'expose-' + field.name"
+                        [disabled]="!store.editable()"
+                        (click)="exposeTable(field)"
+                      >
+                        <ng-icon xui size="sm" name="matPublish" />
+                      </button>
                     }
                   }
                   @case ('text') {
@@ -598,6 +630,23 @@ export class GraphInspector {
     return field.control === 'choice' && !this.textOf(field).startsWith(ReferencePrefix);
   }
 
+  /**
+   * A curve or a ramp written inline, or left empty, that does not already follow a parameter can become a Curve or a
+   * Ramp parameter (#181); one naming an asset a host resolves cannot, since a parameter holds the table itself.
+   */
+  protected canExposeTable(field: GraphField): boolean {
+    if (field.control === 'curve') {
+      return !this.textOf(field).startsWith(ReferencePrefix) && this.curvesOf(field) !== null;
+    }
+
+    return field.control === 'ramp' && !this.textOf(field).startsWith(ReferencePrefix) && this.stopsOf(field) !== null;
+  }
+
+  /** Makes a Curve or Ramp parameter holding the field's table, and points the setting at it. */
+  protected exposeTable(field: GraphField): void {
+    this.exposeOne(field);
+  }
+
   /** Makes a parameter offering the setting's choices, and points the setting at it with Vixen's `$` reference. */
   protected exposeSetting(field: GraphField): void {
     if (field.control !== 'choice') {
@@ -627,7 +676,8 @@ export class GraphInspector {
           !this.wireInto(field) &&
           ((field.control === 'number' && this.canExpose(field)) ||
             (field.control === 'colour' && field.source === 'value' && this.expressionOf(field.name) === '') ||
-            this.canExposeSetting(field))
+            this.canExposeSetting(field) ||
+            this.canExposeTable(field))
       )
   );
 
@@ -650,6 +700,12 @@ export class GraphInspector {
     const node = { name, summary: field.summary, group: '', minimum: null, maximum: null };
     if (field.control === 'choice') {
       const parameter = { ...node, default: this.textOf(field), kind: 'Text', accepted: [...field.choices] };
+      return { parameter, port: field.name, value: `${ReferencePrefix}${name}` };
+    }
+
+    if (field.control === 'curve' || field.control === 'ramp') {
+      const kind = field.control === 'curve' ? 'Curve' : 'Ramp';
+      const parameter = { ...node, default: this.textOf(field).trim(), kind, accepted: [] };
       return { parameter, port: field.name, value: `${ReferencePrefix}${name}` };
     }
 

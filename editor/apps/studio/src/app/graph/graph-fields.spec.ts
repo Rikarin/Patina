@@ -223,3 +223,19 @@ describe("a Float2 parameter's text (#181)", () => {
     expect(main?.fields[0]).toMatchObject({ control: 'pair', minimum: 0, maximum: 1, widget: 'Position' });
   });
 });
+
+describe('a Curve or Ramp parameter on a compound (#181)', () => {
+  it('draws as the curve or ramp editor, whatever the setting is called', () => {
+    const setting = { default: '', summary: '', minimum: null, maximum: null, group: '', accepted: [] };
+    const [main] = fieldsOf({
+      ...type,
+      ports: [],
+      settings: [
+        { ...setting, name: 'Shape', kind: 'Curve' },
+        { ...setting, name: 'Tint', kind: 'Ramp' }
+      ]
+    });
+
+    expect(main?.fields.map(field => field.control)).toEqual(['curve', 'ramp']);
+  });
+});

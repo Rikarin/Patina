@@ -120,6 +120,8 @@ public static class GraphFactsOf {
             SettingKind.Color => SettingColors.TryRead(parameter.Default, out _),
             SettingKind.Float2 => SettingPairs.TryRead(parameter.Default, out var pair)
                 && pair.All(lane => lane >= parameter.Minimum && lane <= parameter.Maximum),
+            SettingKind.Curve => TextureGraphParameters.ReadsAsTable(TextureGraphParameterKind.Curve, parameter.Default),
+            SettingKind.Ramp => TextureGraphParameters.ReadsAsTable(TextureGraphParameterKind.Ramp, parameter.Default),
             _ => parameter.Accepts(parameter.Default)
         };
     }

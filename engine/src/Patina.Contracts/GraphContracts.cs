@@ -41,7 +41,9 @@ public sealed record GraphEdgeState(int FromNode, string FromPort, int ToNode, s
 /// <param name="Summary">One line about it.</param>
 /// <param name="Kind">
 ///     Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two numbers such
-///     as a position or a tiling, separated by a comma, each within the range.
+///     as a position or a tiling, separated by a comma, each within the range. A graph's own parameter can also be a
+///     Curve or a Ramp, written inline as a Curve or Ramp setting holds one (<c>curve:</c>, <c>ramp:</c>) or empty for
+///     the node's own, which a setting written <c>$Name</c> takes whole.
 /// </param>
 /// <param name="Minimum">Its lower bound, or null for none.</param>
 /// <param name="Maximum">Its upper bound, or null for none.</param>

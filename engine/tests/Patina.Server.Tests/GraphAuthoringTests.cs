@@ -430,6 +430,50 @@ public sealed class GraphAuthoringTests {
         );
     }
 
+    /// <summary>
+    ///     A curve or a ramp as a parameter (#181): a setting written <c>$Shape</c> bakes the parameter's table, a
+    ///     default that is not a curve written inline is refused, and an empty one is the node's own.
+    /// </summary>
+    [Fact]
+    public void A_curve_or_a_ramp_parameter_holds_a_table_a_setting_names() {
+        const string Falling = "curve:r=0 1,1 0;g=0 1,1 0;b=0 1,1 0";
+        var editor = Editor();
+        GraphSettingDefinition shape = new("Shape", Falling, string.Empty, "Curve", null, null, string.Empty, []);
+        GraphSettingDefinition tint = shape with { Name = "Tint", Kind = "Ramp", Default = "ramp:0 000000ff,1 ff8000ff" };
+
+        editor.Apply(
+            new(
+                [
+                    new GraphAddParameter(shape),
+                    new GraphAddParameter(tint),
+                    new GraphAddNode("Colour/Curve", 0, 0, -1),
+                    new GraphSetText(-1, "Curve", "$Shape"),
+                    new GraphConnect(1, "Out", -1, "Input"),
+                    new GraphConnect(-1, "Out", 4, "Input")
+                ]
+            )
+        );
+
+        Refuses(editor, shape with { Default = "Gold" });
+        Refuses(editor, shape with { Default = tint.Default });
+        Refuses(editor, tint with { Default = Falling });
+        editor.Apply(new([new GraphSetParameter("Shape", shape with { Default = string.Empty })]));
+        editor.Apply(new([new GraphSetParameter("Shape", shape)]));
+
+        var held = GraphDocuments.Definition(editor.Document.Parameters.Single(static p => p.Name == "Shape"));
+        Assert.Equal(("Curve", Falling), (held.Kind, held.Default));
+        var curve = editor.Document.Nodes.Single(static n => n.Type == "Colour/Curve");
+        Assert.Equal("$Shape", curve.Texts["Curve"]);
+        var model = NodeGraphDocument.Load(editor.Document, out _);
+        var compiler = new TextureGraphCompiler(Registry);
+        compiler.Compile(model);
+        Assert.Contains(
+            compiler.Externals,
+            external => external.Node.Value == curve.Id
+                && external.Texels.SequenceEqual(TextureRamp.FromText(Falling)!)
+        );
+    }
+
     static void Refuses(GraphEditor editor, GraphSettingDefinition parameter) =>
         Assert.Throws<GraphEditRefusedException>(() =>
             editor.Apply(new([new GraphSetParameter(parameter.Name, parameter)]))

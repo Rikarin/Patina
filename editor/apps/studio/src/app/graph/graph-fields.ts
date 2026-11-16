@@ -150,6 +150,10 @@ function fieldOfSetting(setting: GraphSettingDefinition): GraphField {
       return { ...base, control: 'colour' };
     case 'Float2':
       return { ...base, control: 'pair', minimum: setting.minimum ?? null, maximum: setting.maximum ?? null };
+    case 'Curve':
+      return { ...base, control: 'curve' };
+    case 'Ramp':
+      return { ...base, control: 'ramp' };
     case 'Int':
     case 'Float':
       return {
