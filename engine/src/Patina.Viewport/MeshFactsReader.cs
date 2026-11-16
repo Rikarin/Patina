@@ -54,7 +54,7 @@ public static class MeshFactsReader {
         ];
         var box = read.Model.Bounds;
         var extension = Path.GetExtension(path);
-        return new MeshFacts(
+        return new(
             Path.GetFileName(path),
             MeshFormats.Name(extension),
             parts.Sum(static part => part.Triangles),
