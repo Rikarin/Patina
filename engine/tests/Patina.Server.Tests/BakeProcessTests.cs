@@ -674,11 +674,13 @@ public sealed partial class BakeProcessTests : IDisposable {
             Nodes = [
                 new() { Id = 1, Type = "Source/Gradient" },
                 new() { Id = 2, Type = "Output/Output", X = 300, Texts = new() { ["Usage"] = "roughness" } },
-                new() { Id = 3, Type = "Output/Output", X = 300, Texts = new() { ["Usage"] = "emissive" } }
+                new() { Id = 3, Type = "Output/Output", X = 300, Texts = new() { ["Usage"] = "emissive" } },
+                new() { Id = 4, Type = "Output/Output", X = 300, Texts = new() { ["Usage"] = "coat" } }
             ],
             Edges = [
                 new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Input" },
-                new() { FromNode = 1, FromPort = "Out", ToNode = 3, ToPort = "Input" }
+                new() { FromNode = 1, FromPort = "Out", ToNode = 3, ToPort = "Input" },
+                new() { FromNode = 1, FromPort = "Out", ToNode = 4, ToPort = "Input" }
             ],
             Settings = new() { ["baseWidth"] = "64", ["baseHeight"] = "64" }
         };
@@ -708,6 +710,9 @@ public sealed partial class BakeProcessTests : IDisposable {
 
         Assert.True(File.Exists(shown.Maps.Roughness), shown.Maps.Roughness);
         Assert.Null(shown.Maps.BaseColor);
+        // A coat is laid over the base as a stack's is (#310); what the graph does not make stays none.
+        Assert.True(File.Exists(shown.Maps.Layers?.Coat), shown.Maps.Layers?.Coat);
+        Assert.Null(shown.Maps.Layers!.Sheen);
         await FrameAsync(socket, deadline.Token);
         Assert.Null((await ViewportStateAsync(deadline.Token)).Error);
     }

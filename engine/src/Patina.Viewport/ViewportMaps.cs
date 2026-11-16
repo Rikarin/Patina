@@ -24,4 +24,23 @@ public sealed record ViewportMaps(
 ) {
     /// <summary>Nothing replaced.</summary>
     public static ViewportMaps None { get; } = new();
+
+    /// <summary>OpenPBR's coat, sheen and transmission laid over the material: a graph's or a bake's (#310).</summary>
+    public ViewportLayerFiles Layers { get; init; } = ViewportLayerFiles.None;
+}
+
+/// <summary>
+///     OpenPBR's layers over the base as pictures, each read from its red but the sheen's colour, which is linear (ADR
+///     0050). A slot left null draws as OpenPBR's default, as a stack that does not paint it does.
+/// </summary>
+public sealed record ViewportLayerFiles(
+    ViewportMapFile? Coat = null,
+    ViewportMapFile? CoatRoughness = null,
+    ViewportMapFile? Sheen = null,
+    ViewportMapFile? SheenColor = null,
+    ViewportMapFile? SheenRoughness = null,
+    ViewportMapFile? Transmission = null
+) {
+    /// <summary>No layer laid over.</summary>
+    public static ViewportLayerFiles None { get; } = new();
 }

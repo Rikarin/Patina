@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Export.Presets;
 using Patina.Ipc;
 using Patina.Server.Graphs;
 
@@ -13,10 +14,19 @@ public sealed record NodePicture(ViewportNodeShown Shown, ViewportMapFile File);
 /// <param name="Maps">The Output nodes' pictures, by slot.</param>
 /// <param name="Node">One node's picture in place of the material, or null.</param>
 public sealed record GraphOnMesh(ViewportMapSet Maps, NodePicture? Node = null) {
+    /// <summary>OpenPBR's layers, which the viewport lays over the base (#310).</summary>
+    static readonly string[] LayerUsages = [
+        ExportMaps.Coat, ExportMaps.CoatRoughness, ExportMaps.Sheen, ExportMaps.SheenColor,
+        ExportMaps.SheenRoughness, ExportMaps.Transmission
+    ];
+
     /// <summary>An Output node's usages the viewport has a slot for.</summary>
     static readonly IReadOnlySet<string> Slots =
         new HashSet<string>(
-            ["baseColor", "normal", "roughness", "metalness", "occlusion", "emissive", "opacity"],
+            [
+                "baseColor", "normal", "roughness", "metalness", "occlusion", "emissive", "opacity",
+                ..LayerUsages
+            ],
             StringComparer.Ordinal
         );
 
@@ -56,10 +66,21 @@ public sealed record GraphOnMesh(ViewportMapSet Maps, NodePicture? Node = null) 
                 files.GetValueOrDefault("opacity")
             ) {
                 // A graph's Height to Normal points green down, and the shader reads green up (ADR 0011).
-                GreenDown = true
+                GreenDown = true,
+                Layers = LayerUsages.Any(files.ContainsKey) ? Layers(files) : null
             }
         );
     }
+
+    static ViewportLayerSet Layers(Dictionary<string, ViewportMapFile> files) =>
+        new(
+            files.GetValueOrDefault(ExportMaps.Coat),
+            files.GetValueOrDefault(ExportMaps.CoatRoughness),
+            files.GetValueOrDefault(ExportMaps.Sheen),
+            files.GetValueOrDefault(ExportMaps.SheenColor),
+            files.GetValueOrDefault(ExportMaps.SheenRoughness),
+            files.GetValueOrDefault(ExportMaps.Transmission)
+        );
 
     /// <summary>
     ///     The output a node's picture comes from: the one asked for, or else the one its preview shows, which a client

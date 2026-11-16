@@ -9813,6 +9813,25 @@ export interface components {
       materials: string[];
     };
     /**
+     * @description OpenPBR's layers over the material as pictures, each a path on the Server's machine (#310). Each is read from
+     *     red, as linear, but the sheen's colour, which is a linear colour (ADR 0050). A slot left null is no coat, no
+     *     sheen, a white sheen or no transmission: what a material without the layer draws.
+     */
+    ViewportLayerPaths: {
+      /** @description How much clear coat lies over the base: OpenPBR's `coat_weight`. */
+      coat?: null | string;
+      /** @description The coat's own roughness. */
+      coatRoughness?: null | string;
+      /** @description How much sheen lies over everything: OpenPBR's `fuzz_weight`. */
+      sheen?: null | string;
+      /** @description The sheen's colour. */
+      sheenColor?: null | string;
+      /** @description The sheen's roughness. */
+      sheenRoughness?: null | string;
+      /** @description How much of a dielectric base lets light through: `transmission_weight`. */
+      transmission?: null | string;
+    };
+    /**
      * @description Pictures to lay over the mesh's own materials, on every part. Each is a path on the Server's machine, and a slot
      *     left null keeps what the material asks for. A filled slot replaces the material's factor too, so what shows
      *     is the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or
@@ -9833,6 +9852,7 @@ export interface components {
       emissive?: null | string;
       /** @description What the surface covers, read from red and shown as cut out or not. */
       opacity?: null | string;
+      layers?: null | components['schemas']['ViewportLayerPaths'];
     };
     /** @description The named meshes a marquee reached (#110), by name in ordinal order; none when the model names none. */
     ViewportMarquee: {

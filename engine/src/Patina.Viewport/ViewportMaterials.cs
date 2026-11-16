@@ -173,19 +173,30 @@ sealed class ViewportMaterials(VulkanDevice device, ViewportTextures textures, S
     }
 
     /// <summary>
-    ///     OpenPBR's layers over the base (#142): only a stack paints them, and a slot it leaves empty reads as
-    ///     OpenPBR's default, no coat, sheen or transmission and a white sheen (ADR 0050), so the base is drawn as
-    ///     before.
+    ///     OpenPBR's layers over the base (#142): a stack paints them, and a graph's or a bake's pictures lay them
+    ///     (#310). A slot neither fills reads as OpenPBR's default, no coat, sheen or transmission and a white sheen
+    ///     (ADR 0050), so the base is drawn as before.
     /// </summary>
-    LayerMaps Layers(ViewportLiveMap?[] worn) =>
-        new(
-            worn[(int)ViewportSlot.Coat]?.View ?? textures.Black,
-            worn[(int)ViewportSlot.CoatRoughness]?.View ?? textures.Black,
-            worn[(int)ViewportSlot.Sheen]?.View ?? textures.Black,
-            worn[(int)ViewportSlot.SheenColor]?.View ?? textures.Open,
-            worn[(int)ViewportSlot.SheenRoughness]?.View ?? textures.Black,
-            worn[(int)ViewportSlot.Transmission]?.View ?? textures.Black
+    LayerMaps Layers(ViewportLiveMap?[] worn) {
+        var files = Maps.Layers;
+        return new(
+            Layer(worn, ViewportSlot.Coat, files.Coat, textures.Black),
+            Layer(worn, ViewportSlot.CoatRoughness, files.CoatRoughness, textures.Black),
+            Layer(worn, ViewportSlot.Sheen, files.Sheen, textures.Black),
+            Layer(worn, ViewportSlot.SheenColor, files.SheenColor, textures.Open),
+            Layer(worn, ViewportSlot.SheenRoughness, files.SheenRoughness, textures.Black),
+            Layer(worn, ViewportSlot.Transmission, files.Transmission, textures.Black)
         );
+    }
+
+    /// <summary>A layer's slot: a mesh's material has none of its own, and each is read as it is stored.</summary>
+    TextureViewHandle Layer(
+        ViewportLiveMap?[] worn,
+        ViewportSlot slot,
+        ViewportMapFile? file,
+        TextureViewHandle empty
+    ) =>
+        Slot(worn, slot, file, null, MapMeaning.Measurement, empty);
 
     /// <summary>
     ///     The side a material is painted at, which its texel density is measured in: a stack's live maps, or its base

@@ -109,7 +109,7 @@ public sealed partial class ViewportSession(
             lock (changing) {
                 return new(
                     mesh,
-                    Paths(maps),
+                    ViewportMapFiles.Paths(maps),
                     camera,
                     width,
                     height,
@@ -942,17 +942,6 @@ public sealed partial class ViewportSession(
             // Already awake: the loop reads the newest state, so one signal stands for any number of changes.
         }
     }
-
-    static ViewportMapPaths Paths(ViewportMapSet set) =>
-        new(
-            set.BaseColor?.Path,
-            set.Normal?.Path,
-            set.Roughness?.Path,
-            set.Metallic?.Path,
-            set.Occlusion?.Path,
-            set.Emissive?.Path,
-            set.Opacity?.Path
-        );
 
     /// <summary>The stack the viewport wears, if any, and the newest revision of it the Worker has shown.</summary>
     readonly record struct Wearing(
