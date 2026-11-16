@@ -37,8 +37,10 @@ public static class MaterialShelf {
         new(StringComparer.Ordinal);
 
     /// <summary>The types a shelf narrows to, and where a material can be from.</summary>
-    static readonly string[] Roles =
-        [GraphRoles.Material, GraphRoles.Mask, GraphRoles.Filter, GraphRoles.Brush, PresetRole, PictureRole];
+    static readonly string[] Roles = [
+        GraphRoles.Material, GraphRoles.Mask, GraphRoles.Filter, GraphRoles.Brush, PresetRole, PictureRole,
+        ShelfEnvironments.Role, ShelfAlphas.Role
+    ];
 
     /// <summary>
     ///     The type of a brush or tool preset on the shelf, which a client takes up rather than adds (#124).
@@ -82,10 +84,13 @@ public static class MaterialShelf {
         if (project is not null) {
             var contents = library.Contents(project);
             found.AddRange(contents.Documents.Select(document => Described(library, document)).OfType<MaterialInfo>());
-            found.AddRange(contents.Pictures.Select(picture => Pictured(picture, contents.Name, "project")));
+            List<MaterialInfo> pictures = [..contents.Pictures.Select(p => Pictured(p, contents.Name, "project"))];
+            found.AddRange(pictures);
+            found.AddRange(ShelfEnvironments.Among(pictures));
         }
 
         found.AddRange(Presets(library, project, search));
+        found.AddRange(ShelfAlphas.All);
         found.RemoveAll(material => !Matches(material, words));
         found.AddRange(Elsewhere(library, project, words).Take(ElsewhereLimit));
         return found;
@@ -296,8 +301,10 @@ public static class MaterialShelf {
             .Select(document => Readable(library, document))
             .OfType<MaterialInfo>()
             .Select(read => read with { Origin = ElsewhereOrigin, Project = summary.Name });
-        var pictured = pictures.Select(static picture => Pictured(picture));
-        return materials.Concat(pictured).Where(material => Matches(material, words));
+        List<MaterialInfo> pictured = [..pictures.Select(static picture => Pictured(picture))];
+        return materials.Concat(pictured)
+            .Concat(ShelfEnvironments.Among(pictured))
+            .Where(material => Matches(material, words));
     }
 
     /// <summary>

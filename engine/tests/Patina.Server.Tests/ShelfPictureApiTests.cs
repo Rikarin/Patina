@@ -72,6 +72,31 @@ public sealed class ShelfPictureApiTests : IAsyncLifetime {
         Assert.Single(await PicturesAsync("alpha", "2048", static found => found.Count > 0));
     }
 
+    /// <summary>
+    ///     A panorama of any project is an environment on the shelf too (#203), told apart from the picture it is by its
+    ///     source, and the brush alphas are there to choose from.
+    /// </summary>
+    [Fact]
+    public async Task Panoramas_are_environments_and_the_brush_alphas_are_on_the_shelf() {
+        var pictures = Directory.CreateDirectory(Path.Combine(server.Library, "projects", "wear-kit", "skies")).FullName;
+        await File.WriteAllBytesAsync(Path.Combine(pictures, "Dusk.hdr"), [1], Token);
+        await File.WriteAllBytesAsync(Path.Combine(server.Library, "projects", "alpha", "Noon.exr"), [2], Token);
+        server.Services.GetRequiredService<LibraryHost>().RequestRescan();
+
+        var skies = await PicturesAsync("alpha", string.Empty, static found => found.Count == 2, "environment");
+        Assert.Equal(
+            [
+                ("Noon", "environment:projects/alpha/Noon.exr", "project"),
+                ("Dusk", "environment:projects/wear-kit/skies/Dusk.hdr", "library")
+            ],
+            skies.Select(static sky => (sky.Name, sky.Source, sky.Origin))
+        );
+        Assert.Equal(2, (await PicturesAsync("alpha", "dusk", static found => found.Count == 2, null)).Count);
+        var alphas = await PicturesAsync("alpha", string.Empty, static _ => true, "alpha");
+        Assert.Equal(["Round", "Square", "Chisel", "Cross"], alphas.Select(static alpha => alpha.Name));
+        Assert.Equal("alpha:Square", alphas[1].Source);
+    }
+
     /// <summary>The start of a PNG as wide and high as asked: its signature and its header chunk.</summary>
     static byte[] Png(int width, int height) {
         byte[] head = [0x89, (byte)'P', (byte)'N', (byte)'G', 13, 10, 26, 10, 0, 0, 0, 13, ..("IHDR"u8), ..new byte[8]];
@@ -82,19 +107,20 @@ public sealed class ShelfPictureApiTests : IAsyncLifetime {
 
     /// <summary>
     ///     The pictures a project's shelf finds for a search, once the index lists every project: it catches up after a
-    ///     project is made.
+    ///     project is made. Of one type, or of any for none.
     /// </summary>
     async Task<IReadOnlyList<MaterialInfo>> PicturesAsync(
         string project,
         string search,
-        Func<IReadOnlyList<MaterialInfo>, bool> done
+        Func<IReadOnlyList<MaterialInfo>, bool> done,
+        string? role = "picture"
     ) {
         for (var attempt = 0;; attempt++) {
             var list = await client.GetFromJsonAsync<MaterialList>(
                 $"/api/v1/library/materials?project={project}&search={Uri.EscapeDataString(search)}",
                 Token
             );
-            var found = list!.Items.Where(static material => material.Role == "picture").ToList();
+            var found = list!.Items.Where(material => role is null || material.Role == role).ToList();
             if (done(found) || attempt > 100) {
                 return found;
             }

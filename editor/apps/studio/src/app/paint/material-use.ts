@@ -1,10 +1,19 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { type MaterialInfo, type StackLayer, unwrap } from '@patina/api-client';
 import { messageOf } from '../core/messages';
+import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
+import { ViewportJump } from '../viewport/viewport-jump';
 import { type DropZone, dropManyCommands } from './layer-drag';
 import { PaintStore } from './paint-store';
+
+/** The type of a brush alpha on the shelf, whose source is its name behind {@link AlphaPrefix} (#203). */
+export const ShelfAlpha = 'alpha';
+export const AlphaPrefix = 'alpha:';
+/** The type of a panorama on the shelf, whose source is its picture's path behind {@link EnvironmentPrefix}. */
+export const ShelfEnvironment = 'environment';
+const EnvironmentPrefix = 'environment:';
 
 /** Where in the stack a material was dropped. */
 export interface MaterialDrop {
@@ -18,6 +27,8 @@ export class MaterialUse {
   private readonly library = inject(LibraryStore);
   private readonly paint = inject(PaintStore);
   private readonly project = inject(ProjectStore);
+  private readonly status = inject(SystemStatus);
+  private readonly jump = inject(ViewportJump);
 
   /** What is being dragged from the shelf, since a drag says nothing about itself until it is dropped. */
   readonly carried = signal<MaterialInfo | null>(null);
@@ -30,6 +41,10 @@ export class MaterialUse {
     }
 
     this.failure.set(null);
+    if (this.useAside(material)) {
+      return;
+    }
+
     try {
       if (material.role === 'brush') {
         const alpha = await this.brush(project.path, material);
@@ -59,6 +74,32 @@ export class MaterialUse {
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }
+  }
+
+  /**
+   * What the shelf holds that adds nothing to the stack (#203): an alpha becomes the brush's, and an environment lights
+   * the viewport, by its file on the Server's machine. False for anything else.
+   */
+  private useAside(material: MaterialInfo): boolean {
+    if (material.role === ShelfAlpha) {
+      const alpha = material.source.slice(AlphaPrefix.length);
+      this.paint.brush.update(brush => ({ ...brush, alpha }));
+      return true;
+    }
+
+    if (material.role !== ShelfEnvironment) {
+      return false;
+    }
+
+    const state = this.status.state();
+    if (state.kind === 'online' && state.system.library) {
+      const environment = `${state.system.library}/${material.source.slice(EnvironmentPrefix.length)}`;
+      this.jump.go({ environment });
+    } else {
+      this.failure.set('Open a library to light the viewport with its pictures.');
+    }
+
+    return true;
   }
 
   /**

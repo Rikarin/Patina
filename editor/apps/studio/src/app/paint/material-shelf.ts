@@ -28,7 +28,8 @@ import { DragType as LibraryDrag } from '../library/library-tree';
 import { ProjectStore } from '../library/project-store';
 import { LibraryThumbnails } from '../library/thumbnails';
 import { BrushStore } from './brush-store';
-import { MaterialUse } from './material-use';
+import { MaterialUse, ShelfAlpha, ShelfEnvironment } from './material-use';
+import { ShelfAlphaStamps } from './shelf-alphas';
 
 const SearchQuiet = 200;
 
@@ -46,6 +47,14 @@ const Favourites = 'favourites';
 const Preset = 'preset';
 /** A picture on the shelf, the open project's or another's (#203), which goes where a picture from the Library goes. */
 const Picture = 'picture';
+/** What a click takes up rather than adds to the stack, so it is not dragged nor chosen with others. */
+const TakenUp: ReadonlySet<string> = new Set([Preset, ShelfAlpha, ShelfEnvironment]);
+/** What a click on each type taken up does. */
+const TakeUpSaid: Readonly<Record<string, string>> = {
+  [Preset]: 'Click to paint with this preset',
+  [ShelfAlpha]: 'Click to paint with this alpha',
+  [ShelfEnvironment]: 'Click to light the viewport with it'
+};
 
 /**
  * What a layer can be filled with, from anywhere in the Library, each with its picture. Click to add it, or drag it
@@ -152,14 +161,15 @@ const Picture = 'picture';
       "
     >
       @for (material of shown(); track material.source) {
-        @let picture = pictures.url(material.source);
+        @let picture = alphas.url(material.source) ?? pictures.url(material.source);
         @let starred = favourites().has(material.source);
         <li class="group relative flex min-w-0 items-center">
           <button
             type="button"
             data-testid="shelf-material"
             [attr.data-source]="material.source"
-            [attr.draggable]="material.role !== 'empty' && material.role !== 'preset'"
+            [attr.data-role]="material.role"
+            [attr.draggable]="material.role !== 'empty' && !takenUp(material)"
             [class]="
               view() === 'list'
                 ? 'hover:bg-selection flex w-full min-w-0 items-center gap-2 px-2 py-1 text-start text-sm'
@@ -174,9 +184,9 @@ const Picture = 'picture';
                 : material.name +
                   ' · ' +
                   describe(material) +
-                  (material.role === 'preset'
-                    ? '\\nClick to paint with this preset'
-                    : '\\nClick to add, Ctrl-click to choose several, drag into the stack, or Alt-click to paint with it')
+                  '\\n' +
+                  (takeUpSaid[material.role] ??
+                    'Click to add, Ctrl-click to choose several, drag into the stack, or Alt-click to paint with it')
             "
             (click)="use(material, $event)"
             (dragstart)="carry($event, material)"
@@ -305,6 +315,10 @@ export class MaterialShelf {
   private readonly materials = signal<readonly MaterialInfo[]>([]);
   /** The pictures, from the one thumbnail service the Library's grid uses too. */
   protected readonly pictures = inject(LibraryThumbnails);
+  /** The alphas' pictures, each a stamp of the brush in hand (#203). */
+  protected readonly alphas = inject(ShelfAlphaStamps);
+  protected readonly takeUpSaid = TakeUpSaid;
+  protected readonly takenUp = (material: MaterialInfo): boolean => TakenUp.has(material.role);
 
   /** The types and origins the Server names, which it also searches by, so no list of them is kept here. */
   private readonly roleTerms = signal<readonly StackTerm[]>([]);
@@ -453,7 +467,7 @@ export class MaterialShelf {
    * platform key held, it is chosen, or no longer chosen, to add with others (#203).
    */
   protected use(material: MaterialInfo, event?: MouseEvent): void {
-    if ((event?.ctrlKey || event?.metaKey) && material.role !== Preset) {
+    if ((event?.ctrlKey || event?.metaKey) && !TakenUp.has(material.role)) {
       const next = new Set(this.chosen());
       if (!next.delete(material.source)) {
         next.add(material.source);
@@ -468,11 +482,11 @@ export class MaterialShelf {
       return;
     }
 
-    void (event?.altKey ? this.using.paintWith(material) : this.using.use(material));
+    void (event?.altKey && !TakenUp.has(material.role) ? this.using.paintWith(material) : this.using.use(material));
   }
 
   protected carry(event: DragEvent, material: MaterialInfo): void {
-    if (material.role === Preset) {
+    if (TakenUp.has(material.role)) {
       event.preventDefault();
       return;
     }
@@ -500,10 +514,13 @@ export class MaterialShelf {
       this.originTerms.set(list.origins);
       this.failure.set(null);
       // In the list's order, a few at a time, so the first rows fill while the rest are drawn.
-      // A preset is a brush and not a picture, so it has none to draw.
+      // A preset is a brush and not a picture, so it has none to draw; an alpha is drawn as a stamp of the brush.
       this.pictures.want(
-        materials.filter(material => material.role !== 'empty' && material.role !== Preset).map(m => m.source)
+        materials
+          .filter(material => material.role !== 'empty' && material.role !== Preset && material.role !== ShelfAlpha)
+          .map(m => m.source)
       );
+      this.alphas.want(materials.filter(material => material.role === ShelfAlpha).map(m => m.source));
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }

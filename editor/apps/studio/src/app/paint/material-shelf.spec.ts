@@ -8,6 +8,7 @@ import { LibraryThumbnails } from '../library/thumbnails';
 import { BrushStore } from './brush-store';
 import { MaterialShelf } from './material-shelf';
 import { MaterialUse } from './material-use';
+import { ShelfAlphaStamps } from './shelf-alphas';
 
 const rust: MaterialInfo = {
   name: 'Rust',
@@ -41,6 +42,11 @@ function setup(listed: readonly MaterialInfo[] = [plastic, rust]) {
   const searches: string[] = [];
   const using = { failure: signal(null), carried: signal(null), use: vi.fn(), paintWith: vi.fn() };
   const brushes = { useSource: vi.fn() };
+  const stamped: string[] = [];
+  const alphas = {
+    want: (sources: readonly string[]) => stamped.push(...sources),
+    url: (source: string) => (source === 'alpha:Square' ? 'blob:square' : undefined)
+  };
   const wanted: string[] = [];
   const pictures = {
     want: (sources: readonly string[]) => wanted.push(...sources),
@@ -65,13 +71,14 @@ function setup(listed: readonly MaterialInfo[] = [plastic, rust]) {
       { provide: ProjectStore, useValue: { current: signal({ path: 'alpha' }), active: signal(null) } },
       { provide: MaterialUse, useValue: using },
       { provide: LibraryThumbnails, useValue: pictures },
-      { provide: BrushStore, useValue: brushes }
+      { provide: BrushStore, useValue: brushes },
+      { provide: ShelfAlphaStamps, useValue: alphas }
     ]
   });
   const fixture = TestBed.createComponent(MaterialShelf);
   const page = fixture.nativeElement as HTMLElement;
   const names = () => [...page.querySelectorAll('[data-testid="shelf-material"]')].map(row => row.textContent.trim());
-  return { fixture, page, names, searches, using, wanted, brushes };
+  return { fixture, page, names, searches, using, wanted, brushes, stamped };
 }
 
 afterEach(() => {
@@ -189,6 +196,47 @@ describe('MaterialShelf', () => {
     preset?.dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }));
     expect(brushes.useSource).toHaveBeenCalledWith(chisel.source);
     expect(using.use).not.toHaveBeenCalled();
+    expect(using.paintWith).not.toHaveBeenCalled();
+  });
+
+  it('takes an alpha or an environment up on a click, never drags or chooses it, and shows an alpha as a stamp (#203)', async () => {
+    const square: MaterialInfo = {
+      name: 'Square',
+      kind: 'alpha',
+      source: 'alpha:Square',
+      role: 'alpha',
+      origin: 'shipped',
+      channels: []
+    };
+    const dusk: MaterialInfo = {
+      name: 'Dusk',
+      kind: 'picture',
+      source: 'environment:projects/skies/dusk.hdr',
+      role: 'environment',
+      origin: 'library',
+      channels: [],
+      project: 'Skies'
+    };
+    const { fixture, page, names, using, wanted, stamped } = setup([square, dusk]);
+    await vi.waitFor(async () => {
+      await settled(fixture);
+      expect(names()).toEqual(['SquareStarter', 'DuskSkies']);
+    });
+
+    expect(wanted).toEqual([dusk.source]);
+    expect(stamped).toEqual([square.source]);
+    const [alpha, sky] = page.querySelectorAll<HTMLElement>('[data-testid="shelf-material"]');
+    expect(alpha?.querySelector('img')?.getAttribute('src')).toBe('blob:square');
+    expect(alpha?.getAttribute('title')).toContain('Click to paint with this alpha');
+    expect(sky?.getAttribute('title')).toContain('Click to light the viewport with it');
+    expect([alpha, sky].map(row => row?.getAttribute('draggable'))).toEqual(['false', 'false']);
+
+    alpha?.dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }));
+    sky?.dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }));
+    expect(using.use.mock.calls.map(([material]) => (material as MaterialInfo).source)).toEqual([
+      square.source,
+      dusk.source
+    ]);
     expect(using.paintWith).not.toHaveBeenCalled();
   });
 
