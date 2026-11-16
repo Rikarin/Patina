@@ -30,6 +30,32 @@ public sealed record MeshFacts(
     IReadOnlyList<double> Maximum,
     double? MetresPerUnit,
     bool VertexColours
+) {
+    /// <summary>
+    ///     The cameras the file holds (#144), in its order, each where it stands in the space the box round the model
+    ///     is in. Empty for a file with none.
+    /// </summary>
+    public IReadOnlyList<MeshCameraFacts> Cameras { get; init; } = [];
+}
+
+/// <summary>A camera a mesh file holds, as a client may look through it.</summary>
+/// <param name="Name">What the file calls it.</param>
+/// <param name="Position">Where it stands, in the file's units.</param>
+/// <param name="Forward">The unit direction it looks in.</param>
+/// <param name="Up">The unit direction that is up in its picture, square to <paramref name="Forward" />.</param>
+/// <param name="FieldOfView">The whole vertical angle it sees, in radians; zero for an orthographic camera.</param>
+/// <param name="AspectRatio">Its picture's width over its height, or zero when the file does not say.</param>
+/// <param name="OrthographicHeight">
+///     How tall the slab an orthographic camera sees is, in the file's units; zero for a camera with perspective.
+/// </param>
+public sealed record MeshCameraFacts(
+    string Name,
+    IReadOnlyList<double> Position,
+    IReadOnlyList<double> Forward,
+    IReadOnlyList<double> Up,
+    double FieldOfView,
+    double AspectRatio,
+    double OrthographicHeight
 );
 
 /// <summary>One named mesh where the file places it.</summary>

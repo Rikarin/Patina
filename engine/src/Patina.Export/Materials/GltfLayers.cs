@@ -6,11 +6,14 @@ namespace Patina.Export.Materials;
 
 /// <summary>
 ///     OpenPBR's maps (#142) as glTF's extensions carry them: a coat through <c>KHR_materials_clearcoat</c>, with its
-///     roughness and its own normal, a sheen through <c>KHR_materials_sheen</c>, and transmission through
-///     <c>KHR_materials_transmission</c>. Each extension fixes its lanes: the coat in red, its roughness in green, the
-///     sheen's roughness in alpha and transmission in red. glTF's sheen has no weight, so its colour is the sheen's
-///     colour times its weight, which the preset writes as <c>sheenTint</c>. glTF has no coat colour, and its specular
-///     and anisotropy extensions are not written, so those are said and left out.
+///     roughness and its own normal, a sheen through <c>KHR_materials_sheen</c>, transmission through
+///     <c>KHR_materials_transmission</c>, the specular lobe through <c>KHR_materials_specular</c> and anisotropy
+///     through <c>KHR_materials_anisotropy</c>. Each extension fixes its lanes: the coat in red, its roughness in
+///     green, the sheen's roughness in alpha, transmission in red, the specular weight in alpha and its colour, sRGB,
+///     in red, green and blue. glTF's sheen has no weight, so its colour is the sheen's colour times its weight, which
+///     the preset writes as <c>sheenTint</c>; glTF's anisotropy is a direction and a strength in one picture, which
+///     the preset writes as <c>anisotropyVector</c>. glTF has no coat colour, and this writes no extension for
+///     subsurface scattering or a thin film, so those are said and left out.
 /// </summary>
 static class GltfLayers {
     public static ModelWriterLayers Of(OpenPbrSlots layers, GreenAxis green, ICollection<string> warnings) {
@@ -18,7 +21,7 @@ static class GltfLayers {
         var sheen = Sheen(layers, warnings);
         var transmission = Lane(layers.Transmission, 0, "transmission", warnings);
         Unwritten(layers, warnings);
-        return new() {
+        ModelWriterLayers written = new() {
             ClearcoatFactor = coat is null ? 0f : 1f,
             Clearcoat = coat,
             ClearcoatRoughnessFactor = Factor(layers.CoatRoughness, ExportMaps.CoatRoughness),
@@ -31,6 +34,42 @@ static class GltfLayers {
             TransmissionFactor = transmission is null ? 0f : 1f,
             Transmission = transmission
         };
+        return Lobe(written, layers, warnings);
+    }
+
+    /// <summary>
+    ///     The specular lobe's weight in alpha and its colour, sRGB, each multiplying glTF's whole white lobe, which is
+    ///     OpenPBR's default too, and the anisotropy at a whole strength turned by its picture alone.
+    /// </summary>
+    static ModelWriterLayers Lobe(ModelWriterLayers written, OpenPbrSlots layers, ICollection<string> warnings) {
+        var anisotropy = Anisotropy(layers, warnings);
+        return written with {
+            Specular = Lane(layers.SpecularWeight, 3, "specular weight", warnings),
+            SpecularColor = layers.SpecularColor is { } colour
+                ? GltfMaterialFile.Image(colour.File, "specular color", true, warnings)
+                : null,
+            AnisotropyStrength = anisotropy is null ? 0f : 1f,
+            Anisotropy = anisotropy
+        };
+    }
+
+    /// <summary>
+    ///     The anisotropy's direction and strength, linear, which is made only for a set with an anisotropy; null for
+    ///     one without, and said when a set has one and the preset writes no file of it.
+    /// </summary>
+    static string? Anisotropy(OpenPbrSlots layers, ICollection<string> warnings) {
+        if (layers.AnisotropyVector is { } vector) {
+            return GltfMaterialFile.Image(vector.File, "anisotropy", false, warnings);
+        }
+
+        if (layers.Anisotropy is not null) {
+            warnings.Add(
+                "glTF: anisotropy is left out, because glTF reads its direction and strength from one file, and this "
+                + "preset writes no file of anisotropyVector."
+            );
+        }
+
+        return null;
     }
 
     /// <summary>One with a map, which then multiplies it, or OpenPBR's default for a set without one.</summary>
@@ -93,11 +132,14 @@ static class GltfLayers {
             warnings.Add("glTF: the coat's color is left out, because glTF's clear coat has none.");
         }
 
-        if (layers.SpecularWeight is not null || layers.SpecularColor is not null || layers.Anisotropy is not null) {
-            warnings.Add(
-                "glTF: specular weight, color and anisotropy are left out, because this writes no glTF extension for "
-                + "them."
-            );
+        if (layers.Subsurface is not null
+            || layers.SubsurfaceColor is not null
+            || layers.SubsurfaceRadius is not null) {
+            warnings.Add("glTF: subsurface scattering is left out, because this writes no glTF extension for it.");
+        }
+
+        if (layers.ThinFilm is not null || layers.ThinFilmThickness is not null) {
+            warnings.Add("glTF: the thin film is left out, because this writes no glTF extension for it.");
         }
     }
 }

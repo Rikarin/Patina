@@ -1,4 +1,4 @@
-import type { ViewportCameraState } from '@patina/api-client';
+import type { MeshCameraFacts, ViewportCameraState } from '@patina/api-client';
 
 const RadiansPerPixel = 0.008;
 const ZoomPerWheelPixel = 0.001;
@@ -124,4 +124,78 @@ export function padView(code: string, opposite: boolean): AxisView | undefined {
     default:
       return undefined;
   }
+}
+
+/** The lens range the Server takes for the field of view. */
+const Lenses = { min: 0.1, max: 2.6 } as const;
+
+/** Where a file's camera puts the orbit camera, and the lens it sees through. */
+export interface FileView {
+  camera: ViewportCameraState;
+  fieldOfView: number;
+  orthographic: boolean;
+}
+
+type Triple = readonly [number, number, number];
+
+function triple(values: readonly number[]): Triple {
+  return [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0];
+}
+
+function dot(a: Triple, b: Triple): number {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+/** Half the angle across the picture's narrower side, as the Server's orbit camera measures a framing. */
+function narrower(fieldOfView: number, aspect: number): number {
+  const half = fieldOfView / 2;
+  return Math.min(half, Math.atan(aspect * Math.tan(half)));
+}
+
+/**
+ * The orbit camera that looks through a mesh file's camera (#144, ADR 0065). It looks the way the file's camera looks and
+ * circles the point on its line of sight nearest the model's centre, so it stands where the file's camera stands and the
+ * model stays the thing it turns round. The file's vertical angle becomes the lens; an orthographic camera keeps the
+ * pane's lens and sees as tall a slab as the file's. A file camera's roll is not kept, since the orbit's up is the
+ * world's, and the pane's shape, not the file's, says how wide the picture is. A model behind the camera is circled at
+ * its own distance ahead.
+ *
+ * @param file The file's camera, in the units of the box.
+ * @param minimum The least corner of the box round the model.
+ * @param maximum The greatest corner.
+ * @param aspect The pane's width over its height.
+ * @param lens The field of view the viewport has now, which an orthographic camera keeps.
+ */
+export function throughCamera(
+  file: MeshCameraFacts,
+  minimum: readonly number[],
+  maximum: readonly number[],
+  aspect: number,
+  lens: number
+): FileView {
+  const [low, high] = [triple(minimum), triple(maximum)];
+  const centre: Triple = [(low[0] + high[0]) / 2, (low[1] + high[1]) / 2, (low[2] + high[2]) / 2];
+  const radius = Math.max(Math.hypot(high[0] - low[0], high[1] - low[1], high[2] - low[2]) / 2, 1e-4);
+  const eye = triple(file.position);
+  const forward = triple(file.forward);
+  const toCentre: Triple = [centre[0] - eye[0], centre[1] - eye[1], centre[2] - eye[2]];
+  const along = dot(toCentre, forward);
+  const reach = along > 1e-4 * radius ? along : Math.max(Math.hypot(...toCentre), radius);
+  const target = forward.map((lane, axis) => (eye[axis] ?? 0) + lane * reach);
+  const orthographic = file.orthographicHeight > 0;
+  const fieldOfView = orthographic ? lens : Math.min(Lenses.max, Math.max(Lenses.min, file.fieldOfView));
+  const seen = orthographic ? file.orthographicHeight / 2 / Math.tan(fieldOfView / 2) : reach;
+  const distance = (seen * Math.sin(narrower(fieldOfView, aspect))) / radius;
+  return {
+    camera: {
+      yaw: Math.atan2(-forward[0], -forward[2]),
+      pitch: Math.asin(Math.max(-1, Math.min(1, -forward[1]))),
+      distance: Math.max(MinDistance, Math.min(MaxDistance, distance)),
+      panX: ((target[0] ?? 0) - centre[0]) / radius,
+      panY: ((target[1] ?? 0) - centre[1]) / radius,
+      panZ: ((target[2] ?? 0) - centre[2]) / radius
+    },
+    fieldOfView,
+    orthographic
+  };
 }

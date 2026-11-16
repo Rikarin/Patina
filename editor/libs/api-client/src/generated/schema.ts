@@ -6014,6 +6014,32 @@ export interface components {
       /** @description The graph, below the library. */
       source: string;
     };
+    /** @description A camera a mesh file holds, as a client may look through it. */
+    MeshCameraFacts: {
+      /** @description What the file calls it. */
+      name: string;
+      /** @description Where it stands, in the file's units. */
+      position: number[];
+      /** @description The unit direction it looks in. */
+      forward: number[];
+      /** @description The unit direction that is up in its picture, square to Forward. */
+      up: number[];
+      /**
+       * Format: double
+       * @description The whole vertical angle it sees, in radians; zero for an orthographic camera.
+       */
+      fieldOfView: number;
+      /**
+       * Format: double
+       * @description Its picture's width over its height, or zero when the file does not say.
+       */
+      aspectRatio: number;
+      /**
+       * Format: double
+       * @description How tall the slab an orthographic camera sees is, in the file's units; zero for a camera with perspective.
+       */
+      orthographicHeight: number;
+    };
     /** @description What a mesh file is, as the engine reads it (#146): the answer to `GET /library/mesh`. */
     MeshFacts: {
       /** @description The file's name. */
@@ -6051,6 +6077,11 @@ export interface components {
       metresPerUnit?: null | number;
       /** @description Whether any part carries vertex colours. */
       vertexColours: boolean;
+      /**
+       * @description The cameras the file holds (#144), in its order, each where it stands in the space the box round the model
+       *     is in. Empty for a file with none.
+       */
+      cameras: components['schemas']['MeshCameraFacts'][];
     };
     /** @description One material of a mesh, which is one texture set. */
     MeshMaterialFacts: {

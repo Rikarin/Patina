@@ -68,7 +68,7 @@ public static class ImportedSpaces {
 
     /// <summary>The usages whose picture is a colour, which are the ones a file's colour space applies to.</summary>
     public static IReadOnlyList<string> Colours { get; } =
-        ["baseColor", "emissive", "sheenColor", "coatColor", "specularColor"];
+        ["baseColor", "emissive", "sheenColor", "coatColor", "specularColor", "subsurfaceColor"];
 }
 
 /// <summary>

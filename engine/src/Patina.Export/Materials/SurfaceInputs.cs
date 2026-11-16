@@ -15,7 +15,8 @@ static class SurfaceInputs {
         ExportMaps.Opacity, ExportMaps.Occlusion, ExportMaps.Height, ExportMaps.Coat, ExportMaps.CoatRoughness,
         ExportMaps.Sheen, ExportMaps.SheenColor, ExportMaps.SheenRoughness, ExportMaps.Transmission,
         ExportMaps.SpecularWeight, ExportMaps.SpecularColor, ExportMaps.Anisotropy, ExportMaps.CoatColor,
-        ExportMaps.CoatNormal
+        ExportMaps.CoatNormal, ExportMaps.AnisotropyRotation, ExportMaps.Subsurface, ExportMaps.SubsurfaceColor,
+        ExportMaps.SubsurfaceRadius, ExportMaps.ThinFilm, ExportMaps.ThinFilmThickness
     ];
 
     /// <summary>Each shader's inputs in <see cref="Usages" /> order, null where it has none for that map.</summary>
@@ -23,13 +24,15 @@ static class SurfaceInputs {
         ["standard_surface"] = [
             "base_color", "specular_roughness", "metalness", "normal", "emission_color", "opacity", null, null, "coat",
             "coat_roughness", "sheen", "sheen_color", "sheen_roughness", "transmission", "specular", "specular_color",
-            "specular_anisotropy", "coat_color", "coat_normal"
+            "specular_anisotropy", "coat_color", "coat_normal", "specular_rotation", "subsurface", "subsurface_color",
+            "subsurface_scale", null, null
         ],
         ["open_pbr_surface"] = [
             "base_color", "specular_roughness", "base_metalness", "geometry_normal", "emission_color",
             "geometry_opacity", null, null, "coat_weight", "coat_roughness", "fuzz_weight", "fuzz_color",
             "fuzz_roughness", "transmission_weight", "specular_weight", "specular_color",
-            "specular_roughness_anisotropy", "coat_color", "geometry_coat_normal"
+            "specular_roughness_anisotropy", "coat_color", "geometry_coat_normal", null, "subsurface_weight",
+            "subsurface_color", "subsurface_radius", "thin_film_weight", "thin_film_thickness"
         ],
         ["gltf_pbr"] = [
             "base_color", "roughness", "metallic", "normal", "emissive", "alpha", "occlusion", null, "clearcoat",
@@ -51,9 +54,9 @@ static class SurfaceInputs {
     /// <summary>
     ///     A material's slots less OpenPBR's maps (#142) that do nothing, since a tool writes every input of a surface
     ///     whether it uses that layer or not: a map set to the number that leaves the base alone, and a layer's
-    ///     roughness, colour or normal when the layer has no weight. A material without a coat comes in without a coat
-    ///     channel. A shader whose sheen has no weight of its own, glTF's, gets a whole one while its sheen colour is
-    ///     not black, which is what makes OpenPBR's sheen glTF's.
+    ///     roughness, colour, normal, radius, thickness or turn when the layer has no weight. A material without a coat
+    ///     comes in without a coat channel. A shader whose sheen has no weight of its own, glTF's, gets a whole one
+    ///     while its sheen colour is not black, which is what makes OpenPBR's sheen glTF's.
     /// </summary>
     /// <param name="slots">What the shader's inputs said.</param>
     /// <param name="shader">The shader, whose row says whether its sheen has a weight.</param>
@@ -70,6 +73,9 @@ static class SurfaceInputs {
                 ExportMaps.CoatRoughness or ExportMaps.CoatColor or ExportMaps.CoatNormal =>
                     weighed.Contains(ExportMaps.Coat),
                 ExportMaps.SheenColor or ExportMaps.SheenRoughness => weighed.Contains(ExportMaps.Sheen),
+                ExportMaps.SubsurfaceColor or ExportMaps.SubsurfaceRadius => weighed.Contains(ExportMaps.Subsurface),
+                ExportMaps.ThinFilmThickness => weighed.Contains(ExportMaps.ThinFilm),
+                ExportMaps.AnisotropyRotation => weighed.Contains(ExportMaps.Anisotropy),
                 _ => true
             }
         );

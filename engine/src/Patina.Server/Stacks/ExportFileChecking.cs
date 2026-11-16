@@ -202,7 +202,8 @@ public static class ExportFileChecking {
             or ExportMaps.SheenColor
             or ExportMaps.SheenTint
             or ExportMaps.SpecularColor
-            or ExportMaps.CoatColor;
+            or ExportMaps.CoatColor
+            or ExportMaps.SubsurfaceColor;
 
     /// <summary>Whether a file keeps eight bits a lane, where linear colour bands.</summary>
     static bool EightBit(ExportTexture texture) =>

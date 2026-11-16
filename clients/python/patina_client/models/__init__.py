@@ -218,6 +218,7 @@ from .material_preset_create_request_parameters import MaterialPresetCreateReque
 from .material_use import MaterialUse
 from .material_use_parameters_type_1 import MaterialUseParametersType1
 from .material_use_request import MaterialUseRequest
+from .mesh_camera_facts import MeshCameraFacts
 from .mesh_facts import MeshFacts
 from .mesh_material_facts import MeshMaterialFacts
 from .mesh_part_facts import MeshPartFacts
@@ -688,6 +689,7 @@ __all__ = (
     "MaterialUse",
     "MaterialUseParametersType1",
     "MaterialUseRequest",
+    "MeshCameraFacts",
     "MeshFacts",
     "MeshMaterialFacts",
     "MeshPartFacts",

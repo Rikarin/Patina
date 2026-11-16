@@ -37,6 +37,9 @@ public sealed class EngineContractTests : IDisposable {
     const float Transmission = 140 / 255f;
     static readonly float[] SheenColor = [0.8f, 0.4f, 0.2f];
     static readonly float[] CoatNormal = [102 / 255f, 153 / 255f, 240 / 255f];
+    const float SpecularWeight = 204 / 255f;
+    const float Anisotropy = 153 / 255f;
+    static readonly float[] SpecularColor = [1f, 0.5f, 0.25f];
 
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-engines-");
 
@@ -96,6 +99,10 @@ public sealed class EngineContractTests : IDisposable {
         ("gltf", "_clearcoatNormal", CoatNormal),
         ("gltf", "_sheen", [..Srgb([..SheenColor.Select(static lane => lane * Sheen)]), SheenRoughness]),
         ("gltf", "_transmission", [Transmission]),
+        // KHR_materials_specular (an sRGB colour, the weight in alpha) and KHR_materials_anisotropy (the direction in
+        // red and green from 0 to 1, here a quarter turn from the tangent, and the strength in blue).
+        ("gltf", "_specular", [..Srgb(SpecularColor), SpecularWeight]),
+        ("gltf", "_anisotropy", [0.5f, 1f, Anisotropy]),
         // Blender's manual: an Image Texture node reads a colour picture as sRGB and a data map as Non-Color, the
         // Normal Map node reads tangent space with green up (OpenGL), and Emission Color is a colour.
         ("blender", "_base_color", BaseColor),
@@ -151,7 +158,11 @@ public sealed class EngineContractTests : IDisposable {
             [ExportMaps.Sheen] = Constant(ExportMaps.Sheen, Sheen),
             [ExportMaps.SheenColor] = Constant(ExportMaps.SheenColor, SheenColor),
             [ExportMaps.SheenRoughness] = Constant(ExportMaps.SheenRoughness, SheenRoughness),
-            [ExportMaps.Transmission] = Constant(ExportMaps.Transmission, Transmission)
+            [ExportMaps.Transmission] = Constant(ExportMaps.Transmission, Transmission),
+            [ExportMaps.SpecularWeight] = Constant(ExportMaps.SpecularWeight, SpecularWeight),
+            [ExportMaps.SpecularColor] = Constant(ExportMaps.SpecularColor, SpecularColor),
+            [ExportMaps.Anisotropy] = Constant(ExportMaps.Anisotropy, Anisotropy),
+            [ExportMaps.AnisotropyRotation] = Constant(ExportMaps.AnisotropyRotation, 0.25f)
         };
 
     /// <summary>

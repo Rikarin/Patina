@@ -209,10 +209,10 @@ static class MaterialImport {
     ///     A picture's lanes as a map: one lane spread over three, then the factor, one minus it, or green turned so it
     ///     runs down the picture as a graph's normal does (ADR 0011). A color's factor is linear, so a base color is
     ///     taken to linear numbers for it and back. A graph's emissive is linear, and so are OpenPBR's colours (#142),
-    ///     a sheen's, a coat's and the specular lobe's, so their pictures are taken to linear. Whether a colour picture
-    ///     needs taking there is what its file says of it (#308), sRGB when it says nothing: a linear one is read as it
-    ///     is, and a linear base color is taken to sRGB, which a graph's base color is. A coat's normal turns as the
-    ///     normal does.
+    ///     a sheen's, a coat's, the specular lobe's and subsurface scattering's, so their pictures are taken to linear.
+    ///     Whether a colour picture needs taking there is what its file says of it (#308), sRGB when it says nothing:
+    ///     a linear one is read as it is, and a linear base color is taken to sRGB, which a graph's base color is. A
+    ///     coat's normal turns as the normal does.
     /// </summary>
     static int Picture(GraphText graph, ImportedSlot slot, string relative, List<string> warnings) {
         var bitmap = graph.Node("Source/Bitmap", [("Source", relative), ..Edges(slot.Placement)]);
