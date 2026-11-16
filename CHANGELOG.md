@@ -394,6 +394,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The preview cache keeps to its budget with a graph lighting the viewport (#300): the panoramas a sky graph is drawn as, and the UV layout drawings, were never trimmed, so a sky edited over an afternoon left one behind per change. They now share the cache's budget with the pictures, oldest first, and the panorama lighting the model and the maps on it stay while they are shown, so a new engine finds them.
 - A graph's physical size set one side quickly after the other keeps both: the second side used to write the first one's old value back while the first was still on its way.
 - A shelf picture the engine could not draw for want of a GPU is drawn once there is one (#302): a library opened on a machine with no GPU used to keep its shelf and Library pictures blank until its cache was cleared. A material the engine cannot draw is still remembered as having no picture.
 - A big brush on a dense model keeps up better (#25): finding the faces under a stamp no longer tests each face of a part that lies wholly inside the stamp's reach and view, which was over a quarter of a 48-pixel stamp's time on one thread on a two-million-triangle model and is now about a seventh of what it was. It finds the same faces in the same order, so a stroke paints and replays as before.
@@ -606,6 +607,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- A graph lighting the viewport follows its edits (#300): the model is lit again each time the open graph has evaluated a change, without a save, so the sun can be moved with its slider and seen on the model. Only the newest change waits while one is drawn, and the file is left as it was.
 - A section that folds open is xUI's too (#195): the bake's Log, the Checks tab's Memory by file and Limits, and a preset's The file open under an xUI button with an arrow, where they were the browser's own disclosure with its own look.
 - The third-party notices name cereal, which MoltenVK builds into the macOS package to keep its pipeline cache, with its BSD-3-Clause licence (#48).
 - The Bake dialog's Preview shows the bake its project would run (#296): the engine reads the meshes, the cage and the options from the project's file as it plans that bake, where the app worked them out itself. Through the API `project` and `document` in `PUT /api/v1/viewport/bake-preview`, which any client can send in place of the paths.
