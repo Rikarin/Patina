@@ -106,6 +106,8 @@ static class BakeRequestSettings {
                 "edges" => MeshMaps.Edges,
                 "islands" => MeshMaps.Islands,
                 "borders" => MeshMaps.Borders,
+                "bounds" => MeshMaps.Bounds,
+                "density" => MeshMaps.Density,
                 _ => MeshMaps.None
             };
         }

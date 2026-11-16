@@ -30,6 +30,7 @@ public sealed class MeshCompoundTests {
         "Generators/Splashes",
         "Generators/Sun Fade",
         "Generators/Surface Scratches",
+        "Generators/Texel Density",
         "Generators/Thin Parts",
         "Generators/UV Island Checker",
         "Generators/Water Line",
@@ -256,6 +257,74 @@ public sealed class MeshCompoundTests {
 
             Assert.True(own > 0.05, $"{knob} {value} adds {own:0.000} to the {part}.");
             Assert.True(other < 0.005, $"{knob} {value} adds {other:0.000} away from the {part}.");
+        }
+    }
+
+    /// <summary>
+    ///     Patina #121: fitted to each island, UV Island Checker starts again at each island's corner. The stand-in's
+    ///     islands are its two halves, red and blue, and its bounds bake starts again at the middle, so five squares
+    ///     fitted draw the same checker on both halves; over the layout, five squares end halfway through one at the
+    ///     middle, so the right half is the left half's checker shifted.
+    /// </summary>
+    [Fact]
+    public void Uv_island_checker_fitted_to_each_island_starts_again_at_its_corner() {
+        if (Device() is not { } device) {
+            return;
+        }
+
+        using (device) {
+            var (compiler, graph) = Containing("Generators/UV Island Checker", out var used, out _);
+            used.SetText("scale", "5");
+            var layout = Bake(device, compiler, graph)["baseColor"];
+            used.SetText("fit", "1");
+            var fitted = Bake(device, compiler, graph)["baseColor"];
+
+            Assert.True(Differing(fitted) < 0.02, $"Fitted, {Differing(fitted):0.000} of the halves differ.");
+            Assert.True(Differing(layout) > 0.2, $"Over the layout, only {Differing(layout):0.000} of the halves differ.");
+        }
+
+        // The share of texels whose red on the left is not the blue half a picture to the right.
+        static double Differing(Vixen.Core.Imaging.Bitmap picture) {
+            var (count, differ) = (0, 0);
+
+            for (var y = 0; y < Side; y++) {
+                for (var x = 0; x < Side / 2; x++) {
+                    var red = picture.Pixels[(y * Side + x) * 4];
+                    var blue = picture.Pixels[(y * Side + x + Side / 2) * 4 + 2];
+                    differ += Math.Abs(red - blue) > 8 ? 1 : 0;
+                    count++;
+                }
+            }
+
+            return differ / (double)count;
+        }
+    }
+
+    /// <summary>
+    ///     Patina #121: Texel Density colours the stand-in's density bake, which climbs from sparse on the left to dense
+    ///     on the right: blue on the left, green in the middle and red on the right.
+    /// </summary>
+    [Fact]
+    public void Texel_density_is_blue_where_sparse_and_red_where_dense() {
+        if (Device() is not { } device) {
+            return;
+        }
+
+        using (device) {
+            var (compiler, graph) = Containing("Generators/Texel Density", out _, out _);
+            var picture = Bake(device, compiler, graph)["baseColor"];
+
+            Assert.Equal(2, Strongest(picture, 4));
+            Assert.Equal(1, Strongest(picture, Side / 2));
+            Assert.Equal(0, Strongest(picture, Side - 5));
+        }
+
+        // Which of red, green and blue is strongest in a column, halfway down.
+        static int Strongest(Vixen.Core.Imaging.Bitmap picture, int x) {
+            var at = (Side / 2 * Side + x) * 4;
+            var lanes = picture.Pixels.AsSpan(at, 3).ToArray();
+
+            return Array.IndexOf(lanes, lanes.Max());
         }
     }
 

@@ -43,6 +43,7 @@ public sealed class GraphCatalogueProcessTests : IDisposable {
         ["Generators/Sun Fade"] = MeshBake,
         ["Generators/Wrinkles"] = MeshBake,
         ["Generators/Surface Scratches"] = MeshBake,
+        ["Generators/Texel Density"] = MeshBake,
         ["Generators/Thin Parts"] = MeshBake,
         ["Generators/UV Island Checker"] = MeshBake,
         ["Generators/Water Line"] = MeshBake,
