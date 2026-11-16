@@ -25144,6 +25144,54 @@
         },
         "description": "What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The\nrest of the model is not drawn and casts no shadow. Both empty is the whole model."
       },
+      "ViewportLayerPaths": {
+        "type": "object",
+        "properties": {
+          "coat": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How much clear coat lies over the base: OpenPBR\u0027s \u0060coat_weight\u0060."
+          },
+          "coatRoughness": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The coat\u0027s own roughness."
+          },
+          "sheen": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How much sheen lies over everything: OpenPBR\u0027s \u0060fuzz_weight\u0060."
+          },
+          "sheenColor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The sheen\u0027s colour."
+          },
+          "sheenRoughness": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The sheen\u0027s roughness."
+          },
+          "transmission": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How much of a dielectric base lets light through: \u0060transmission_weight\u0060."
+          }
+        },
+        "description": "OpenPBR\u0027s layers over the material as pictures, each a path on the Server\u0027s machine (#310). Each is read from\nred, as linear, but the sheen\u0027s colour, which is a linear colour (ADR 0050). A slot left null is no coat, no\nsheen, a white sheen or no transmission: what a material without the layer draws."
+      },
       "ViewportMapPaths": {
         "type": "object",
         "properties": {
@@ -25195,6 +25243,17 @@
               "string"
             ],
             "description": "What the surface covers, read from red and shown as cut out or not."
+          },
+          "layers": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "OpenPBR\u0027s coat, sheen and transmission laid over the material, or null for none.",
+                "$ref": "#/components/schemas/ViewportLayerPaths"
+              }
+            ]
           }
         },
         "description": "Pictures to lay over the mesh\u0027s own materials, on every part. Each is a path on the Server\u0027s machine, and a slot\nleft null keeps what the material asks for. A filled slot replaces the material\u0027s factor too, so what shows\nis the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or\nthree grey ones both work. PNG, JPEG and EXR are read, base colour as sRGB and the rest as linear."

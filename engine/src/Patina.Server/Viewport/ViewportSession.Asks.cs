@@ -56,15 +56,7 @@ public sealed partial class ViewportSession {
     /// <summary>A question for the Worker that reads the mesh and no device: a pick or a cast.</summary>
     /// <exception cref="RendererMissingException">No Worker came in time.</exception>
     async Task<IpcMessage> AskWorkerAsync(IpcMessage request, CancellationToken cancellationToken) {
-        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        patience.CancelAfter(PickPatience);
-        IpcConnection connection;
-        try {
-            connection = await worker.ConnectionAsync(patience.Token);
-        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new RendererMissingException();
-        }
-
+        var connection = await WorkerWait.ConnectionAsync(worker, PickPatience, cancellationToken);
         return await connection.SendAsync(request, cancellationToken);
     }
 }

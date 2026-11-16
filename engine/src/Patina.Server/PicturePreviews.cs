@@ -136,15 +136,8 @@ public sealed class PicturePreviews(LibraryHost host, WorkerLink worker) {
         }
     }
 
-    async Task<IpcConnection> ConnectionAsync(CancellationToken cancellationToken) {
-        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        patience.CancelAfter(Patience);
-        try {
-            return await worker.ConnectionAsync(patience.Token);
-        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new RendererMissingException();
-        }
-    }
+    Task<IpcConnection> ConnectionAsync(CancellationToken cancellationToken) =>
+        WorkerWait.ConnectionAsync(worker, Patience, cancellationToken);
 
     static void Mark(string folder, string digest) =>
         LibraryFiles.Replace(Path.Combine(folder, digest + ReadMark), string.Empty);

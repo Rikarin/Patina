@@ -106,7 +106,7 @@ static class MaterialImport {
         string pictures,
         CancellationToken cancellationToken
     ) {
-        var connection = await worker.ConnectionAsync(cancellationToken);
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerWait.Patience, cancellationToken);
         var reply = await connection.SendAsync(
             new() { Type = IpcTypes.MaterialRead, MaterialRead = new(file, pictures) },
             cancellationToken

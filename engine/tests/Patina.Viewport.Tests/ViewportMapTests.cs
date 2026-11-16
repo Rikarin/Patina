@@ -228,6 +228,35 @@ public sealed class ViewportMapTests : IDisposable {
         Assert.Equal(first, Render(renderer));
     }
 
+    /// <summary>
+    ///     A graph's coat, sheen and transmission pictures are laid on the mesh (#310), where only a stack's live maps
+    ///     were: each changes the lit picture, and a coat from a file draws as the same coat painted does.
+    /// </summary>
+    [Fact]
+    public void A_graph_s_coat_sheen_and_transmission_lie_on_the_mesh_as_a_stack_s_do() {
+        using var renderer = Open();
+        renderer.OpenMesh(Square("square.glb"));
+        var angled = new OrbitCamera(0.3f, 0.2f, 0.6f);
+        var colour = File_(Picture("red.png", 200, 40, 30));
+        var rough = File_(Picture("rough.png", 0, 200, 0));
+        var full = File_(Picture("full.png", 255, 255, 255));
+        var plastic = File_(Picture("plastic.png", 0, 0, 0));
+        renderer.SetMaps(new(colour, Roughness: rough, Metallic: plastic));
+        var bare = Render(renderer, angled);
+
+        foreach (var layers in new ViewportLayerFiles[] { new(full), new(Sheen: full), new(Transmission: full) }) {
+            renderer.SetMaps(new(colour, Roughness: rough, Metallic: plastic) { Layers = layers });
+            Assert.NotEqual(bare, Render(renderer, angled));
+        }
+
+        renderer.SetMaps(new(colour, Roughness: rough, Metallic: plastic) { Layers = new(full) });
+        var fromFile = Render(renderer, angled);
+        renderer.SetMaps(new(colour, Roughness: rough, Metallic: plastic));
+        renderer.SetLive(ViewportSlot.Coat, 4, 4, Enumerable.Repeat((byte)255, 4 * 4 * 4).ToArray());
+
+        Assert.True(Largest(fromFile, Render(renderer, angled)) <= 2, "A coat from a file draws otherwise.");
+    }
+
     [Fact]
     public void A_picture_that_cannot_be_read_is_refused_and_the_view_goes_on() {
         using var renderer = Open();

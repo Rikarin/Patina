@@ -88,7 +88,7 @@ static class StackMeshEndpoints {
         CancellationToken cancellationToken
     ) {
         try {
-            var connection = await worker.ConnectionAsync(cancellationToken);
+            var connection = await WorkerWait.ConnectionAsync(worker, WorkerWait.Patience, cancellationToken);
             return (await connection.SendAsync(question, cancellationToken), null);
         } catch (IpcException e) {
             return (null, Refusals.OfEngine(e, Refused));

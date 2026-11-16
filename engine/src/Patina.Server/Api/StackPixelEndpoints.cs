@@ -120,10 +120,11 @@ static class StackPixelEndpoints {
 
         try {
             return TypedResults.Ok(await evaluator.PixelsAsync(session, reading, cancellationToken));
-        } catch (TimeoutException e) {
-            return Refusals.Of(e, Unavailable);
         } catch (IpcException e) {
             return Refusals.OfEngine(e, Refused);
+        } catch (Exception e) when (e is IOException or TimeoutException) {
+            // The Worker went while it read the pixels, or none came (#309).
+            return Refusals.OfEngine(e, Unavailable);
         }
     }
 }

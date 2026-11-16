@@ -11,6 +11,8 @@ from ..types import UNSET, Unset
 from ..types import UNSET, Unset
 from typing import cast
 
+if TYPE_CHECKING:
+  from ..models.viewport_layer_paths import ViewportLayerPaths
 
 
 
@@ -35,6 +37,7 @@ class ViewportMapPaths:
             occlusion (None | str | Unset): Ambient occlusion.
             emissive (None | str | Unset): Light the surface gives off.
             opacity (None | str | Unset): What the surface covers, read from red and shown as cut out or not.
+            layers (None | Unset | ViewportLayerPaths):
      """
 
     base_color: None | str | Unset = UNSET
@@ -44,6 +47,7 @@ class ViewportMapPaths:
     occlusion: None | str | Unset = UNSET
     emissive: None | str | Unset = UNSET
     opacity: None | str | Unset = UNSET
+    layers: None | Unset | ViewportLayerPaths = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -51,6 +55,7 @@ class ViewportMapPaths:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.viewport_layer_paths import ViewportLayerPaths # noqa: PLC0415
         base_color: None | str | Unset
         if isinstance(self.base_color, Unset):
             base_color = UNSET
@@ -93,6 +98,14 @@ class ViewportMapPaths:
         else:
             opacity = self.opacity
 
+        layers: dict[str, Any] | None | Unset
+        if isinstance(self.layers, Unset):
+            layers = UNSET
+        elif isinstance(self.layers, ViewportLayerPaths):
+            layers = self.layers.to_dict()
+        else:
+            layers = self.layers
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -112,6 +125,8 @@ class ViewportMapPaths:
             field_dict["emissive"] = emissive
         if opacity is not UNSET:
             field_dict["opacity"] = opacity
+        if layers is not UNSET:
+            field_dict["layers"] = layers
 
         return field_dict
 
@@ -119,6 +134,7 @@ class ViewportMapPaths:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.viewport_layer_paths import ViewportLayerPaths # noqa: PLC0415
         d = dict(src_dict)
         def _parse_base_color(data: object) -> None | str | Unset:
             if data is None:
@@ -190,6 +206,26 @@ class ViewportMapPaths:
         opacity = _parse_opacity(d.pop("opacity", UNSET))
 
 
+        def _parse_layers(data: object) -> None | Unset | ViewportLayerPaths:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                layers_type_1 = ViewportLayerPaths.from_dict(data)
+
+
+
+                return layers_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | Unset | ViewportLayerPaths, data)
+
+        layers = _parse_layers(d.pop("layers", UNSET))
+
+
         viewport_map_paths = cls(
             base_color=base_color,
             normal=normal,
@@ -198,6 +234,7 @@ class ViewportMapPaths:
             occlusion=occlusion,
             emissive=emissive,
             opacity=opacity,
+            layers=layers,
         )
 
 

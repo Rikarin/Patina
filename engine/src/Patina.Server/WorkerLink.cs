@@ -45,6 +45,9 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
         }
     }
 
+    /// <summary>The Worker's connection now, without waiting, or null when none is connected.</summary>
+    public IpcConnection? ConnectionNow => current is { Closed.IsCompleted: false } connection ? connection : null;
+
     /// <summary>
     ///     A connection and some work, if there is work. Waiting for a Worker can take seconds, and only what is newest
     ///     when one arrives counts, so the work is asked for on both sides of the wait.

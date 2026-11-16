@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
@@ -66,8 +67,9 @@ static class LibraryCareEndpoints {
             return TypedResults.Ok(
                 new ThumbnailList(await thumbnails.DrawAsync(library, request.Sources, cancellationToken))
             );
-        } catch (TimeoutException e) {
-            return Refusals.Of(e, StatusCodes.Status503ServiceUnavailable);
+        } catch (Exception e) when (e is IpcDisconnectedException or TimeoutException) {
+            // No Worker came, or the one drawing went (#309).
+            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
         }
     }
 

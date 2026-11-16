@@ -59,9 +59,8 @@ public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : ID
             return State;
         }
 
-        var connecting = worker.ConnectionAsync(cancellationToken);
-        if (connecting.IsCompletedSuccessfully) {
-            await TellAsync(await connecting, false, cancellationToken);
+        if (worker.ConnectionNow is { } connection) {
+            await TellAsync(connection, false, cancellationToken);
         } else {
             ReadAgain(); // no Worker to tell: the next one hears it
         }
@@ -118,15 +117,7 @@ public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : ID
             }
         }
 
-        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        patience.CancelAfter(WorkerPatience);
-        IpcConnection connection;
-        try {
-            connection = await worker.ConnectionAsync(patience.Token);
-        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new RendererMissingException();
-        }
-
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerPatience, cancellationToken);
         await TellAsync(connection, true, cancellationToken);
         return State;
     }

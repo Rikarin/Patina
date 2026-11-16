@@ -18,12 +18,13 @@ import { Commands } from '../core/commands';
 import { channelName } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { amount } from '../core/numbers';
-import { API_CLIENT_FACTORY, SERVER_CONNECTION } from '../core/system-status';
+import { API_CLIENT_FACTORY, SERVER_CONNECTION, SystemStatus } from '../core/system-status';
 import { ProjectStore } from '../library/project-store';
 import { BrushRing } from './brush-ring';
 import { PaintStore, penOf, toTexels } from './paint-store';
 import { ScreenPictureOverlay, handleStencilKeys } from './screen-picture';
 import { StrokeGesture } from './stroke-gesture';
+import { wireAskedAgain, workerOf } from './uv-wire';
 
 /** What the channel list means by the one being painted, whichever that is. */
 const Painting = 'painting:';
@@ -245,11 +246,13 @@ export class PaintAtlas {
     effect(() => {
       const state = this.store.state();
       const key = this.wired() && state && state.model !== '' ? `${state.id}\n${state.model}` : null;
-      if (key === this.wiredFor) {
+      const worker = workerOf(this.system.state());
+      if (!wireAskedAgain(key, this.wiredFor, this.wireFailure() !== null, worker, this.wiredWith)) {
         return;
       }
 
       this.wiredFor = key;
+      this.wiredWith = worker;
       this.drop();
       if (key !== null && state) {
         void this.fetchWire(state.id, key);
@@ -319,6 +322,9 @@ export class PaintAtlas {
   protected readonly wire = signal<string | null>(null);
   protected readonly wireFailure = signal<string | null>(null);
   private wiredFor: string | null = null;
+  /** The Worker the layout was last asked of: one that failed is asked again when another answers (#309). */
+  private wiredWith = '';
+  private readonly system = inject(SystemStatus);
   private panning = false;
   /** What the 2D view can show: the channel being painted, or any other to look at. */
   protected readonly paintingChannel = Painting;
@@ -351,7 +357,9 @@ export class PaintAtlas {
         this.wireFailure.set(null);
       }
     } catch (error) {
-      this.wireFailure.set(messageOf(error));
+      if (this.wiredFor === key) {
+        this.wireFailure.set(messageOf(error));
+      }
     }
   }
 

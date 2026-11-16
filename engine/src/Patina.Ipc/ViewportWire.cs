@@ -17,7 +17,20 @@ public sealed record ViewportMapSet(
 ) {
     /// <summary>Whether normals here point green down, as a graph's do.</summary>
     public bool GreenDown { get; init; }
+
+    /// <summary>OpenPBR's coat, sheen and transmission laid over the material, or null for none (#310).</summary>
+    public ViewportLayerSet? Layers { get; init; }
 }
+
+/// <summary>OpenPBR's layers as pictures, each read from its red but the sheen's colour. A null slot is none.</summary>
+public sealed record ViewportLayerSet(
+    ViewportMapFile? Coat = null,
+    ViewportMapFile? CoatRoughness = null,
+    ViewportMapFile? Sheen = null,
+    ViewportMapFile? SheenColor = null,
+    ViewportMapFile? SheenRoughness = null,
+    ViewportMapFile? Transmission = null
+);
 
 /// <summary>
 ///     How frames are lit, shown and finished, with the files it names hashed: the viewing table, and the picture the

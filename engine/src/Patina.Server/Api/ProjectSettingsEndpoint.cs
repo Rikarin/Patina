@@ -251,7 +251,7 @@ static class ProjectSettingsEndpoint {
         IReadOnlyDictionary<string, string>? reassign,
         CancellationToken cancellationToken
     ) {
-        var connection = await worker.ConnectionAsync(cancellationToken);
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerWait.Patience, cancellationToken);
         var reply = await connection.SendAsync(
             new() { Type = IpcTypes.MeshMaterials, MeshFile = library.ProjectFile(project, mesh.File) },
             cancellationToken
@@ -343,7 +343,7 @@ static class ProjectSettingsEndpoint {
             project,
             $"{LibraryLayout.PaintBackupFolder}/{DateTime.UtcNow:yyyyMMdd-HHmmss}"
         );
-        var connection = await worker.ConnectionAsync(cancellationToken);
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerWait.Patience, cancellationToken);
         foreach (var (document, was) in documents) {
             var stack = library.ProjectFile(project, document.File);
             if (open.Contains(stack)) {
@@ -388,7 +388,7 @@ static class ProjectSettingsEndpoint {
     ) {
         var source = library.ProjectFile(project, mesh.File);
         var output = library.ProjectFile(project, $"{Path.GetFileNameWithoutExtension(mesh.File)}_unwrapped.glb");
-        var connection = await worker.ConnectionAsync(cancellationToken);
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerWait.Patience, cancellationToken);
         var reply = await connection.SendAsync(
             new() { Type = IpcTypes.MeshUnwrap, MeshUnwrap = new(source, output, options) },
             cancellationToken
