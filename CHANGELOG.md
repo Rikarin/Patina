@@ -430,6 +430,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A stroke, a frame or a bake no longer waits for the shelf's pictures: a picture being drawn stops for any work queued behind it and is drawn again after, up to three times. On a GPU without hardware, such as Linux's lavapipe, Worn Canvas, Muddy Rubber and Scratched Aluminium each took tens of seconds to draw for the shelf, and the 2D view kept its old picture that long after a stroke.
+- A Splatter passes by the stamps that cannot reach a texel before reading any of its maps, the same picture at about half the cost; the grunges scattered with it drew in half the time or less on a software GPU.
+- The 2D View's bar fits its pane by measuring it (#184): Copy Image and Save Image… become Copy and Save…, then the channels a list, when what it holds is wider than it is, where it changed at fixed widths and ran past its end in wider fonts, as on Linux.
 - A mask changed by a client that leaves out its projection keeps the one it has (#311): `projection` on a layer's `mask` read as UV when it was missing, so such a change laid a tri-planar mask through the UVs again.
 - A graph reading a mask as it is painted carries the tiles each stroke touched (#311), where every stroke compiled the graph again and uploaded the whole channel, 64 MiB for a 4K float one.
 - A project whose export preset has gone, in a library with no other preset, is told there is no other preset to stand in for it (#310), where Checks quoted an empty default.
