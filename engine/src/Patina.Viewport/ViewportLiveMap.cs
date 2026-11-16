@@ -32,7 +32,25 @@ public enum ViewportSlot {
     ///     A quick mask, shown red over the surface where it is painted, in every view. No map of the material: it
     ///     never reaches a file that is exported.
     /// </summary>
-    QuickMask
+    QuickMask,
+
+    /// <summary>How much clear coat lies over the base: OpenPBR's <c>coat_weight</c> (#142).</summary>
+    Coat,
+
+    /// <summary>The coat's own roughness.</summary>
+    CoatRoughness,
+
+    /// <summary>How much sheen lies over everything: OpenPBR's <c>fuzz_weight</c>.</summary>
+    Sheen,
+
+    /// <summary>The sheen's colour, linear (ADR 0050).</summary>
+    SheenColor,
+
+    /// <summary>The sheen's roughness.</summary>
+    SheenRoughness,
+
+    /// <summary>How much of a dielectric base lets light through: OpenPBR's <c>transmission_weight</c>.</summary>
+    Transmission
 }
 
 /// <summary>A rectangle of a picture.</summary>

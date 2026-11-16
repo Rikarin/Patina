@@ -62,6 +62,15 @@ shader ViewportForward {
 
     // A quick mask, red over the surface where it is painted, in every view; black where a stack has none.
     var quickMaskMap: Texture2D
+
+    // OpenPBR's layers over the base (#142), each from its red but the sheen's colour, which is linear (ADR 0050). Where a
+    // stack paints none they are OpenPBR's defaults, no coat, sheen or transmission, and the base is drawn as it was.
+    var coatMap: Texture2D
+    var coatRoughnessMap: Texture2D
+    var sheenMap: Texture2D
+    var sheenColorMap: Texture2D
+    var sheenRoughnessMap: Texture2D
+    var transmissionMap: Texture2D
     var mapSampler: Sampler
 
     stream var worldPosition: float3
@@ -136,12 +145,83 @@ shader ViewportForward {
 
         val occlusion = saturate(occlusionMap.Sample(mapSampler, surfaceUv).r)
         val f0 = Brdf.F0FromMetalness(albedo, metal, 0.04f)
-        val diffuseColor = albedo * (1f - metal)
+        val layers = LayersHere()
+
+        // A dielectric base lets through what it does not scatter: transmission takes the diffuse's place.
+        val dielectric = 1f - metal
+        val diffuseColor = albedo * dielectric * (1f - layers.transmission)
 
         val emitted = view > 0.5f ? float3(0f, 0f, 0f) : emissiveMap.Sample(mapSampler, surfaceUv).rgb
         val geometric = Math.SafeNormalize(worldNormal)
+        val sunlit = Sunlit(geometric)
 
-        return Direct(n, v, perceptual, f0, diffuseColor, occlusion) * Sunlit(geometric) + Ambient(n, v, geometric, perceptual, f0, diffuseColor, occlusion) + emitted
+        val under = Direct(n, v, perceptual, f0, diffuseColor, occlusion) * sunlit + Ambient(n, v, geometric, perceptual, f0, diffuseColor, occlusion) + Transmitted(n, v, perceptual, f0, dielectric * layers.transmission)
+        return Layered(under, layers, n, v, geometric, sunlit, occlusion) + emitted
+    }
+
+    // OpenPBR's layers at this pixel, as `LayersHere` reads them.
+    struct Layers {
+        var coat: float
+        var coatRoughness: float
+        var sheen: float3
+        var sheenRoughness: float
+        var transmission: float
+    }
+
+    // The layers the maps hold here; none in clay, which shows the shape alone. The sheen is its weight times its colour.
+    func LayersHere(): Layers {
+        var layers: Layers
+        layers.coat = saturate(coatMap.Sample(mapSampler, surfaceUv).r)
+        layers.coatRoughness = clamp(coatRoughnessMap.Sample(mapSampler, surfaceUv).r, 0.045f, 1f)
+        layers.sheen = saturate(sheenMap.Sample(mapSampler, surfaceUv).r) * saturate(sheenColorMap.Sample(mapSampler, surfaceUv).rgb)
+        layers.sheenRoughness = clamp(sheenRoughnessMap.Sample(mapSampler, surfaceUv).r, 0.07f, 1f)
+        layers.transmission = saturate(transmissionMap.Sample(mapSampler, surfaceUv).r)
+        if (view > 0.5f) {
+            layers.coat = 0f
+            layers.sheen = float3(0f, 0f, 0f)
+            layers.transmission = 0f
+        }
+
+        return layers
+    }
+
+    // What a transmitting base lets through: the environment straight behind it, as blurred as the surface is rough and
+    // untinted, as OpenPBR's transmission colour is white until a set has one, less what the surface reflects. The
+    // viewport draws one model, so nothing else is behind it, and it is seen as through a thin wall, with no bending.
+    func Transmitted(n: float3, v: float3, perceptual: float, f0: float3, share: float): float3 {
+        val dfg = Ibl.EnvironmentDfg(saturate(dot(n, v)), perceptual)
+        val reflected = f0 * dfg.x + float3(dfg.y, dfg.y, dfg.y)
+        val lod = Ibl.SpecularLod(perceptual, environmentMipCount)
+        val behind = environment.SampleLevel(environmentSampler, Turned(-v), lod).rgb
+        return behind * share * saturate(float3(1f, 1f, 1f) - reflected)
+    }
+
+    // The coat over the base and the sheen over both, OpenPBR's order. The coat is its own smooth dielectric on the
+    // surface's own normal, as OpenPBR's coat normal is by default, so a normal map's bumps show under a smooth coat; what
+    // it reflects is taken from what reaches the base. The sheen takes what it reflects from everything beneath it.
+    func Layered(under: float3, layers: Layers, n: float3, v: float3, geometric: float3, sunlit: float, occlusion: float): float3 {
+        val l = Math.SafeNormalize(lightDirection)
+        val outer = ShadingAngles.Of(geometric, v, l)
+        val outerNdotV = saturate(dot(geometric, v))
+        val coatLod = Ibl.SpecularLod(layers.coatRoughness, environmentMipCount)
+        val coatSeen = environment.SampleLevel(environmentSampler, Turned(reflect(-v, geometric)), coatLod).rgb
+        val coatLight = ClearCoat.Lobe(outer, layers.coatRoughness) * outer.NdotL * sunlit * lightColor + coatSeen * Brdf.FresnelSchlickScalar(ClearCoat.F0, outerNdotV) * occlusion
+        val coated = under * ClearCoat.Attenuation(outerNdotV, layers.coat) + coatLight * layers.coat
+
+        val angles = ShadingAngles.Of(n, v, l)
+        val NdotV = saturate(dot(n, v))
+        val albedo = SheenAlbedo(NdotV, layers.sheenRoughness)
+        val sheenLight = Sheen.Lobe(layers.sheen, angles, layers.sheenRoughness) * angles.NdotL * sunlit * lightColor
+        val sheenSeen = Ibl.Diffuse(Ibl.IrradianceSh9(Turned(n), environmentSh), layers.sheen * albedo, occlusion)
+        return coated * (1f - Math.MaxComponent(layers.sheen) * albedo) + sheenLight + sheenSeen
+    }
+
+    // How much of the light from all around the sheen sends back towards the eye: little face on and most at the rim, a
+    // rougher sheen more. A fit of the Charlie lobe's albedo standing in for the table a renderer would keep; the base
+    // gives up that much, so a white sheen of one brightens the rim and never makes the surface glow.
+    func SheenAlbedo(NdotV: float, roughness: float): float {
+        val rim = Math.Pow2(1f - NdotV)
+        return (0.08f + 0.37f * rim) * (0.5f + 0.5f * roughness)
     }
 
     // A quick mask's red, as much as it is painted, in the colours a person sees and premultiplied by its share. It is
