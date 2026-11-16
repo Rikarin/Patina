@@ -20,7 +20,7 @@ public sealed class StackGraphPaintTests : IDisposable {
         File.WriteAllText(
             stackFile,
             LayerStackYaml.Write(
-                new LayerStackAsset {
+                new() {
                     Name = "Body",
                     BaseWidth = 32,
                     BaseHeight = 32,

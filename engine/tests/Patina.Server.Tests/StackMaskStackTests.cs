@@ -50,7 +50,7 @@ public sealed class StackMaskStackTests {
                         0,
                         Asset: "grunge.png",
                         Projection: "Triplanar",
-                        Placement: new(Scale: 3f, Sharpness: 8f)
+                        Placement: new(3f, Sharpness: 8f)
                     )
                 ]
             )
