@@ -17,8 +17,6 @@ public static class MaterialShelf {
     public const string ShippedPrefix = "smart:";
     const string OutputNode = "Output/Output";
     const string BoundaryOutput = "Sub-graph/Output";
-    const string BitmapNode = "Source/Bitmap";
-    const string SourceSetting = "Source";
     const string UsageSetting = "Usage";
     const string DefaultUsage = "baseColor";
     const string MaterialsFolder = "Materials";
@@ -392,7 +390,7 @@ public static class MaterialShelf {
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
         Reference(library, project, source);
         BringPackage(library, project, full);
-        var text = GraphDocuments.Text(AsCompound(Rooted(graph, full, library.RootPath)));
+        var text = GraphDocuments.Text(AsCompound(GraphFiles.Rooted(graph, full, library.RootPath)));
         var path = $"{MaterialsFolder}/{name}";
         if (File.Exists(file) && string.Equals(SharedFile.ReadAllText(file), text, StringComparison.Ordinal)) {
             return path;
@@ -582,31 +580,6 @@ public static class MaterialShelf {
             .Select(static node => node.Texts.GetValueOrDefault(UsageSetting, DefaultUsage))
             .Distinct(StringComparer.Ordinal)
     ];
-
-    /// <summary>
-    ///     A graph's pictures are found beside it, and a compound lives elsewhere, so they are named from the library,
-    ///     which is where a stack in any project looks.
-    /// </summary>
-    static NodeGraphAsset Rooted(NodeGraphAsset graph, string file, string library) =>
-        graph with {
-            Nodes = [
-                ..graph.Nodes.Select(node => {
-                        if (node.Type != BitmapNode
-                            || !node.Texts.TryGetValue(SourceSetting, out var picture)
-                            || Path.IsPathRooted(picture)) {
-                            return node;
-                        }
-
-                        var beside = Path.GetFullPath(picture, Path.GetDirectoryName(file)!);
-                        return node with {
-                            Texts = new(node.Texts, StringComparer.Ordinal) {
-                                [SourceSetting] = LibraryLayout.Relative(library, beside)
-                            }
-                        };
-                    }
-                )
-            ]
-        };
 
     /// <summary>A graph as a compound: every Output becomes a port of one boundary, named for its usage.</summary>
     static NodeGraphAsset AsCompound(NodeGraphAsset graph) {
