@@ -349,9 +349,9 @@ public sealed class OpenPbrLayerExportTests : IDisposable {
     }
 
     /// <summary>
-    ///     The shipped glTF preset writes the specular lobe in the lanes <c>KHR_materials_specular</c> reads, its colour
-    ///     with its weight in alpha, and anisotropy as <c>KHR_materials_anisotropy</c> reads it: a quarter turn points
-    ///     the direction along the bitangent, (0, 1) stored as (0.5, 1), with the strength in blue.
+    ///     The shipped glTF preset writes the specular lobe in the lanes <c>KHR_materials_specular</c> reads, its
+    ///     colour with its weight in alpha, and anisotropy as <c>KHR_materials_anisotropy</c> reads it: a quarter turn
+    ///     points the direction along the bitangent, (0, 1) stored as (0.5, 1), with the strength in blue.
     /// </summary>
     [Fact]
     public void The_gltf_preset_carries_the_specular_lobe_and_anisotropy_through_gltfs_extensions() {
@@ -392,9 +392,9 @@ public sealed class OpenPbrLayerExportTests : IDisposable {
 
     /// <summary>
     ///     The anisotropy's rotation, subsurface scattering and a thin film reach OpenPBR's inputs and standard
-    ///     surface's, the rotation as a tangent in OpenPBR's and as a fraction of a turn in standard surface's, and read
-    ///     back as the maps they were written from. Standard surface's thin film has no weight, so it is said and left
-    ///     out, and so are all of them in USD and glTF.
+    ///     surface's, the rotation as a tangent in OpenPBR's and as a fraction of a turn in standard surface's, and
+    ///     read back as the maps they were written from. Standard surface's thin film has no weight, so it is said and
+    ///     left out, and so are all of them in USD and glTF.
     /// </summary>
     [Fact]
     public void Subsurface_a_thin_film_and_the_anisotropys_rotation_reach_materialx_and_read_back() {

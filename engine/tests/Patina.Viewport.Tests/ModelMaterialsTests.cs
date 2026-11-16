@@ -224,9 +224,9 @@ public sealed class ModelMaterialsTests : IDisposable {
     }
 
     /// <summary>
-    ///     glTF's specular lobe and anisotropy come in as OpenPBR's maps (#142): the weight from alpha, the colour as its
-    ///     factor, the anisotropy's strength from blue and its rotation as a fraction of a turn. The direction picture
-    ///     is no one lane, so that is said. A whole white lobe brings in nothing.
+    ///     glTF's specular lobe and anisotropy come in as OpenPBR's maps (#142): the weight from alpha, the colour as
+    ///     its factor, the anisotropy's strength from blue and its rotation as a fraction of a turn. The direction
+    ///     picture is no one lane, so that is said. A whole white lobe brings in nothing.
     /// </summary>
     [Fact]
     public void A_gltfs_specular_lobe_and_anisotropy_come_in_as_openpbrs_maps() {
@@ -245,7 +245,10 @@ public sealed class ModelMaterialsTests : IDisposable {
             (brushed["anisotropy"].Texture, brushed["anisotropy"].Lane, brushed["anisotropy"].Value[0])
         );
         Assert.Equal(0.25f, Round(brushed["anisotropyRotation"].Value[0]));
-        Assert.Contains(materials[0].Warnings, static w => w.Contains("anisotropy's picture", StringComparison.Ordinal));
+        Assert.Contains(
+            materials[0].Warnings,
+            static w => w.Contains("anisotropy's picture", StringComparison.Ordinal)
+        );
 
         Assert.Equal(["baseColor", "roughness", "metalness"], materials[1].Slots.Select(static s => s.Usage));
     }

@@ -127,16 +127,18 @@ public sealed class MeshFactsTests : IDisposable {
         File.WriteAllText(
             path,
             Gltf(
-                "data:application/octet-stream;base64," + Convert.ToBase64String(Buffer()),
-                OneMesh + """
-                          "cameras": [{ "type": "perspective", "perspective": { "yfov": 0.6, "znear": 0.1 } }],
-                          """
-            ).Replace(
-                "\"nodes\": [{ \"mesh\": 0 }],",
-                "\"nodes\": [{ \"mesh\": 0, \"children\": [1] }, "
-                + "{ \"name\": \"Shot\", \"camera\": 0, \"translation\": [0.5, 0.5, 4] }],",
-                StringComparison.Ordinal
-            )
+                    "data:application/octet-stream;base64," + Convert.ToBase64String(Buffer()),
+                    OneMesh
+                    + """
+                      "cameras": [{ "type": "perspective", "perspective": { "yfov": 0.6, "znear": 0.1 } }],
+                      """
+                )
+                .Replace(
+                    "\"nodes\": [{ \"mesh\": 0 }],",
+                    "\"nodes\": [{ \"mesh\": 0, \"children\": [1] }, "
+                    + "{ \"name\": \"Shot\", \"camera\": 0, \"translation\": [0.5, 0.5, 4] }],",
+                    StringComparison.Ordinal
+                )
         );
 
         var camera = Assert.Single(MeshFactsReader.Read(path).Cameras);

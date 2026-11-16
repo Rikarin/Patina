@@ -7,8 +7,8 @@ using Vixen.Interchange;
 namespace Patina.Viewport;
 
 /// <summary>
-///     Says what a mesh file is (#146): its parts, materials, coordinate sets, triangles, box and units, and the cameras
-///     it holds (#144).
+///     Says what a mesh file is (#146): its parts, materials, coordinate sets, triangles, box and units, and the
+///     cameras it holds (#144).
 /// </summary>
 public static class MeshFactsReader {
     /// <summary>Reads a mesh file for its facts.</summary>
