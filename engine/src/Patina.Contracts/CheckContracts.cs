@@ -150,6 +150,14 @@ public static class CheckCodes {
     /// </summary>
     public const string BakeStale = "bake-stale";
 
+    /// <summary>
+    ///     A linear file of a fixed depth, such as <c>png8</c> or <c>exr16</c>, reads a channel painted deeper, and
+    ///     rounds away what the extra bits hold; a <c>png</c>, <c>tiff</c> or <c>exr</c> file is as deep as its maps
+    ///     (ADR 0044). Values: <c>file</c>, <c>format</c> by its label, <c>channel</c> by its label, <c>painted</c> and
+    ///     <c>bits</c>, the bits a lane painted and written.
+    /// </summary>
+    public const string DepthLost = "depth-lost";
+
     // Between the groups, as ExportMaps has it: SK7020 honours no suppression, and reads thirteen constants in a row as
     // a clone of another list of them.
     /// <summary>Every code, in the order a list shows them.</summary>
@@ -177,14 +185,6 @@ public static class CheckCodes {
     ///     takes it as sRGB. Values: <c>file</c>, <c>channel</c>.
     /// </summary>
     public const string SpaceColourLinear = "space-color-linear";
-
-    /// <summary>
-    ///     A linear file of a fixed depth, such as <c>png8</c> or <c>exr16</c>, reads a channel painted deeper, and
-    ///     rounds away what the extra bits hold; a <c>png</c>, <c>tiff</c> or <c>exr</c> file is as deep as its maps
-    ///     (ADR 0044). Values: <c>file</c>, <c>format</c> by its label, <c>channel</c> by its label, <c>painted</c> and
-    ///     <c>bits</c>, the bits a lane painted and written.
-    /// </summary>
-    public const string DepthLost = "depth-lost";
 
     /// <summary>
     ///     A tangent-space normal held in BC1 or BC3 colour blocks, which shift its lanes together and show as blocks

@@ -125,9 +125,10 @@ public static class ExportFileChecking {
     }
 
     /// <summary>
-    ///     A linear file of a fixed depth that reads a map painted deeper (ADR 0044), which it rounds away. A file whose
-    ///     format follows its maps is as deep as they are, an sRGB file is eight bits by design, and a GPU container's
-    ///     depth is its compression, which an engine chooses for its memory, so none of those is judged here.
+    ///     A linear file of a fixed depth that reads a map painted deeper (ADR 0044), which it rounds away. A file
+    ///     whose format follows its maps is as deep as they are, an sRGB file is eight bits by design, and a GPU
+    ///     container's depth is its compression, which an engine chooses for its memory, so none of those is judged
+    ///     here.
     /// </summary>
     static IEnumerable<CheckProblem> Depth(Written written, IReadOnlyDictionary<string, int> depths) {
         var texture = written.Texture;
@@ -159,7 +160,7 @@ public static class ExportFileChecking {
         );
     }
 
-    /// <summary>How many bits a lane a file of a fixed format keeps, or null where the depth is not its own to say.</summary>
+    /// <summary>How many bits a lane a file of a fixed format keeps, or null where its format does not say.</summary>
     static int? BitsOf(string format) =>
         format switch {
             _ when ExportFormats.Follows(format) || ExportFormats.IsContainer(format) => null,

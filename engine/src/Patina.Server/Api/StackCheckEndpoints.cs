@@ -35,9 +35,9 @@ static class StackCheckEndpoints {
                 "GetProjectChecks",
                 "Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks "
                 + "does one. A set open in a session is measured by the GPU engine; one nobody has open is judged on "
-                + "what its file says, its limits, its files and its bake, and says it was not measured, unless measure "
-                + "is true: then the Server opens each such set in turn for the GPU engine to measure, and closes it "
-                + "again, which evaluates every set and takes as long. "
+                + "what its file says, its limits, its files and its bake, and says it was not measured, unless "
+                + "measure is true: then the Server opens each such set in turn for the GPU engine to measure, and "
+                + "closes it again, which evaluates every set and takes as long. "
                 + PresetQuery
             );
 
@@ -122,9 +122,10 @@ static class StackCheckEndpoints {
     static bool IsStack(string kind) => kind is DocumentKinds.Texturing or DocumentKinds.LayeredMaterial;
 
     /// <summary>
-    ///     Each stack file as it stands: as its open session has it, measured by the Worker where it answers, or as its
-    ///     file says. Asked to measure every set, the Server borrows a session for each one nobody has open, in turn, has
-    ///     the Worker measure it and closes it again; once no Worker comes, the rest are judged from their files.
+    ///     Each stack file as it stands: as its open session has it, measured by the Worker where it answers, or as
+    ///     its file says. Asked to measure every set, the Server borrows a session for each one nobody has open, in
+    ///     turn, has the Worker measure it and closes it again; once no Worker comes, the rest are judged from their
+    ///     files.
     /// </summary>
     sealed class Standing(StackSessions sessions, StackEvaluator evaluator, bool measureAll) {
         bool workerGone;
@@ -138,7 +139,8 @@ static class StackCheckEndpoints {
                 return (open.State, await MeasuredAsync(open, cancellationToken));
             }
 
-            // A stack nobody has open is read as its file says; nothing reaches the Worker, which holds no session of it.
+            // A stack nobody has open is read as its file says, unless every set is to be measured: nothing reaches
+            // the Worker, which holds no session of it.
             if (!File.Exists(file)) {
                 return null;
             }

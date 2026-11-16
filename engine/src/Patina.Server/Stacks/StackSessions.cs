@@ -52,9 +52,9 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips, Mes
     }
 
     /// <summary>
-    ///     Opens a file nobody has open for the Server's own use, such as measuring it for a project's checks (ADR 0043),
-    ///     or null when a session has it open already. <see cref="GiveBack" /> closes it, unless a client opened it in
-    ///     the meantime.
+    ///     Opens a file nobody has open for the Server's own use, such as measuring it for a project's checks
+    ///     (ADR 0043), or null when a session has it open already. <see cref="GiveBack" /> closes it, unless a client
+    ///     opened it in the meantime.
     /// </summary>
     /// <exception cref="FileNotFoundException">There is no such file.</exception>
     /// <exception cref="StackEditRefusedException">The file is not a stack.</exception>

@@ -320,9 +320,9 @@ public sealed class StackCheckingTests {
 
     /// <summary>
     ///     A linear file of a fixed depth that reads a channel painted deeper says it rounds it away and that a file
-    ///     following its maps keeps it (ADR 0044): an 8-bit PNG of a 16-bit roughness, a half EXR of a 32-bit height and
-    ///     the normal worked out from it. A following PNG, an sRGB file and a GPU container are not judged on depth, and
-    ///     neither is a file as deep as what it reads.
+    ///     following its maps keeps it (ADR 0044): an 8-bit PNG of a 16-bit roughness, a half EXR of a 32-bit height
+    ///     and the normal worked out from it. A following PNG, an sRGB file and a GPU container are not judged on
+    ///     depth, and neither is a file as deep as what it reads.
     /// </summary>
     [Fact]
     public void A_fixed_file_shallower_than_the_channel_it_reads_says_so() {
