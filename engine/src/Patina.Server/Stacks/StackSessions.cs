@@ -22,6 +22,18 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips, Mes
 
     public IReadOnlyList<StackSession> All => table.All;
 
+    /// <summary>
+    ///     The sessions a client opened: every one but those the Server borrowed for itself while it measures them
+    ///     (#305), which no client asked for and which close again by themselves.
+    /// </summary>
+    public IReadOnlyList<StackSession> Opened {
+        get {
+            lock (lent) {
+                return [..table.All.Where(session => !lent.Contains(session.Id))];
+            }
+        }
+    }
+
     public void Dispose() => table.Dispose();
 
     public StackSession? Find(string id) => table.Find(id);

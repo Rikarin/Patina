@@ -50,6 +50,13 @@ public static class MaterialFiles {
         var name = material.Length > 0 ? material : stem;
         List<string> written = [];
         List<string> warnings = [];
+        if (preset.Materials.Count > 0 && slots is { Normal: null, NormalApart: true }) {
+            warnings.Add(
+                "Material files: the normal is left out, because its file holds it in fewer than three lanes, "
+                + "and a material reads all three from one picture."
+            );
+        }
+
         foreach (var kind in preset.Materials) {
             var path = Path.Combine(folder, $"{stem}{ExportMaterials.ExtensionOf(kind)}");
             var text = kind switch {

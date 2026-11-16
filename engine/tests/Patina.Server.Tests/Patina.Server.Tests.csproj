@@ -9,4 +9,8 @@
     <ProjectReference Include="../../src/Patina.Cli/Patina.Cli.csproj" ReferenceOutputAssembly="false" Private="false"/>
     <ProjectReference Include="../../tools/Patina.Bench/Patina.Bench.csproj"/>
   </ItemGroup>
+  <ItemGroup>
+    <!-- The binary USD material MaterialImportApiTests brings in, written by usd-core (#157). -->
+    <None Include="../Patina.Export.Tests/fixtures/brick.usdc" Link="fixtures/brick.usdc" CopyToOutputDirectory="PreserveNewest"/>
+  </ItemGroup>
 </Project>

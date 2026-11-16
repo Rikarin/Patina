@@ -120,6 +120,13 @@ public static class CheckCodes {
     public const string PlatformUnknown = "platform-unknown";
 
     /// <summary>
+    ///     The export preset the project last chose is one neither the library nor the project has any more, renamed
+    ///     or deleted, so the library's default stands in for it (#305). Values:
+    ///     <c>preset</c>, the id the project names, and <c>fallback</c>, the id used, empty when there is none.
+    /// </summary>
+    public const string PresetUnknown = "preset-unknown";
+
+    /// <summary>
     ///     The set's exported files take more GPU memory than the budget. Values: <c>bytes</c>, <c>budget</c>.
     /// </summary>
     public const string OverBudget = "texture-over-budget";
@@ -162,9 +169,9 @@ public static class CheckCodes {
     // a clone of another list of them.
     /// <summary>Every code, in the order a list shows them.</summary>
     public static IReadOnlyList<string> All { get; } = [
-        PlatformUnknown, OverBudget, TooLarge, ChannelMissing, PackingMixed, SpaceDataSrgb, SpaceColourLinear,
-        DepthLost, CompressionNormal, MipsMissing, DensityLow, DensityHigh, BakeStale, UvOutside, UvOverlap,
-        UvDegenerate, UvFlipped, AlbedoDark, AlbedoBright, MetalDark, MetalPartial
+        PlatformUnknown, PresetUnknown, OverBudget, TooLarge, ChannelMissing, PackingMixed, SpaceDataSrgb,
+        SpaceColourLinear, DepthLost, CompressionNormal, MipsMissing, DensityLow, DensityHigh, BakeStale, UvOutside,
+        UvOverlap, UvDegenerate, UvFlipped, AlbedoDark, AlbedoBright, MetalDark, MetalPartial
     ];
 
     /// <summary>

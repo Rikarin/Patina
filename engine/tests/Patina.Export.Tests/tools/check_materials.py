@@ -1,12 +1,18 @@
 """Reads Patina's USD and MaterialX material files in their own libraries, and says what they find wrong.
 
 Usage: python -I check_materials.py <file>...
+       python -I check_materials.py --normals <file.usda>...
+       python -I check_materials.py --binary <file.usda> <file.usdc>
 
 Each .usda is opened by Pixar's USD (usd-core) and each .mtlx by the MaterialX library, the readers Blender, Houdini,
 Omniverse, Maya and Unreal use. A file is held to what they need to show it: it opens, its schema's own validation
 passes, every shader is a known one, every input it wires comes from a picture that is there, and each picture is read
 in the colour space its numbers are in. Prints one JSON object, {"<file>": ["<problem>", ...]}, and exits 0 either way:
 the test that runs it reads the problems.
+
+With --normals it prints, for each USD file, how USD reads the picture behind each UsdPreviewSurface normal:
+{"<file>": [{"file": "<picture>", "output": "rgb", "scale": [4], "bias": [4]}]}. UsdUVTexture's result is each texel
+times scale plus bias, so the test that runs it works out the normal a renderer is handed from the picture itself.
 """
 
 import json
@@ -33,9 +39,15 @@ def space_problem(name, output, file, space):
     return None
 
 
-# A normal whose green runs down is read through a texture whose scale for green is -2 (UsdMaterialFile), which is how
-# UsdUVTexture undoes it; USD's validator holds an 8-bit normal to the scale of one with green up, and says so.
-ACCEPTED = ("NormalMapTextureValidator.NonCompliantScaleValues",)
+# A normal whose green runs down is read through a texture with scale (2, -2, 2, 1) and bias (-1, 1, -1, 0)
+# (UsdMaterialFile), the form the USD working group's NormalsTextureBiasAndScale asset gives a reversed-Y normal and
+# that usdview and Blender's importer read. USD's validator warns about any 8-bit normal whose scale is not (2, 2, 2),
+# since "some authoring tools may rely on this to scale an effect of normal perturbations" (its own comment); that
+# warning, for exactly this scale, is the one accepted (#304). MaterialToolTests checks the normal USD reads.
+ACCEPTED = (
+    "NormalMapTextureValidator.NonCompliantScaleValues",
+    "non-standard inputs:scale value of (2, -2, 2, 1)",
+)
 
 
 def check_usd(path):
@@ -56,7 +68,7 @@ def check_usd(path):
     ]
     for error in UsdValidation.ValidationContext(validators).Validate(stage):
         said = error.GetErrorAsString()
-        if str(error.GetType()).rsplit(".", 1)[-1] in ("Error", "Warn") and not any(a in said for a in ACCEPTED):
+        if str(error.GetType()).rsplit(".", 1)[-1] in ("Error", "Warn") and not all(a in said for a in ACCEPTED):
             problems.append(f"validation: {said}")
 
     materials = [UsdShade.Material(prim) for prim in stage.Traverse() if prim.IsA(UsdShade.Material)]
@@ -143,7 +155,45 @@ def check_materialx(path):
     return problems
 
 
+def normals_of(path):
+    """How USD reads each picture that feeds a UsdPreviewSurface normal: its file, output, scale and bias."""
+    from pxr import Usd, UsdShade
+
+    stage = Usd.Stage.Open(path)
+    found = []
+    for prim in stage.Traverse():
+        shader = UsdShade.Shader(prim)
+        if not shader or shader.GetShaderId() != "UsdPreviewSurface":
+            continue
+        normal = shader.GetInput("normal")
+        if not normal or not normal.HasConnectedSource():
+            continue
+        source, output, _ = normal.GetConnectedSource()
+        texture = UsdShade.Shader(source.GetPrim())
+
+        def value(name, default):
+            attributes = UsdShade.Utils.GetValueProducingAttributes(texture.GetInput(name))
+            return list(attributes[0].Get()) if attributes else default
+
+        found.append({
+            "file": texture.GetInput("file").Get().path,
+            "output": output,
+            "scale": value("scale", [1, 1, 1, 1]),
+            "bias": value("bias", [0, 0, 0, 0]),
+        })
+    return found
+
+
 def main(files):
+    if files[:1] == ["--binary"]:
+        # The layer written again in USD's binary form, as USD itself writes it, for Patina's reader to read.
+        from pxr import Sdf
+
+        print(json.dumps({files[1]: Sdf.Layer.FindOrOpen(files[1]).Export(files[2], args={"format": "usdc"})}))
+        return
+    if files[:1] == ["--normals"]:
+        print(json.dumps({path: normals_of(path) for path in files[1:]}))
+        return
     found = {}
     for path in files:
         if path.endswith(".usda") or path.endswith(".usd"):

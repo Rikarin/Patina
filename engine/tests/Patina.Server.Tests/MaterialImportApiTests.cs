@@ -133,6 +133,9 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
         File.WriteAllText(Path.Combine(source.FullName, "tile.mtlx"), Mtlx);
         Package("brick.usdz", ("brick.usda", Encoding.UTF8.GetBytes(Usda)));
         Package("scene.usdz", ("scene.usdc", "PXR-USDC"u8.ToArray()));
+        var binary = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures", "brick.usdc"));
+        File.WriteAllBytes(Path.Combine(source.FullName, "brick.usdc"), binary);
+        Package("binary.usdz", ("brick.usdc", binary));
     }
 
     /// <summary>
@@ -176,6 +179,16 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
     [InlineData("brick.usda", "Brick", new[] { "baseColor", "roughness", "metalness", "normal" })]
     [InlineData("tile.mtlx", "Tile", new[] { "baseColor", "roughness", "metalness" })]
     [InlineData("brick.usdz", "Brick", new[] { "baseColor", "roughness", "metalness", "normal" })]
+    [InlineData(
+        "brick.usdc",
+        "Brick",
+        new[] { "baseColor", "roughness", "metalness", "normal", "emissive", "opacity" }
+    )]
+    [InlineData(
+        "binary.usdz",
+        "Brick",
+        new[] { "baseColor", "roughness", "metalness", "normal", "emissive", "opacity" }
+    )]
     public async Task A_material_file_becomes_a_graph_that_reads_its_pictures(
         string file,
         string name,
@@ -242,11 +255,11 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
     }
 
     /// <summary>
-    ///     A USD package whose layer is binary is refused with what to do instead, and nothing it unpacked is left in
-    ///     the project.
+    ///     A USD package whose binary layer is damaged is refused in words, and nothing it unpacked is left in the
+    ///     project.
     /// </summary>
     [Fact]
-    public async Task A_usd_package_whose_layer_is_binary_is_refused_with_what_to_do() {
+    public async Task A_usd_package_whose_binary_layer_is_damaged_is_refused() {
         using var response = await client.PostAsJsonAsync(
             "/api/v1/library/project/materials",
             new MaterialImportRequest("walls", Path.Combine(source.FullName, "scene.usdz")),
@@ -254,7 +267,11 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("as .usda", await response.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+        Assert.Contains(
+            "not a USD binary layer",
+            await response.Content.ReadAsStringAsync(Token),
+            StringComparison.Ordinal
+        );
         Assert.False(Directory.Exists(Path.Combine(server.Library, "projects/walls/pictures/scene")));
     }
 

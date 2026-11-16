@@ -34,8 +34,10 @@ inside the file is written there. A graph reads them relative to itself, so the 
   `material.read`: Assimp is a native parser that may crash, which is what the Worker is for. A picture inside the file is
   written by the Worker to the folder the Server names, so no pixel crosses the socket. A material no part wears is one Assimp
   adds itself, and is left out.
-- **MaterialX** (`.mtlx`) and **USD's text form** (`.usda`, and `.usd` when it is text) are read by the Server, in
-  `Patina.Export/Materials` beside the writers they invert. They are text, so reading them risks nothing a crash would cost.
+- **MaterialX** (`.mtlx`) and **USD** (`.usda`, `.usdc`, and `.usd` in either form) are read by the Server, in
+  `Patina.Export/Materials` beside the writers they invert. MaterialX and USD's text form are text, so reading them
+  risks nothing a crash would cost; USD's binary form is read by managed code that checks every offset and count the
+  file gives against its length, so a damaged file is refused with a reason (below).
   MaterialX: `standard_surface`, `open_pbr_surface`, `gltf_pbr` and `UsdPreviewSurface`, through `convert`, `extract`,
   `invert`, `normalmap` and a `multiply` by a value. USD: a `Material`'s `UsdPreviewSurface`, and a `UsdUVTexture`'s `scale`
   and `bias` say one minus a lane, a factor or a green that runs down.
@@ -46,12 +48,19 @@ in the reply's `warnings`, and the rest of the material comes in.
 
 ## What is not done, and why
 
-- **USD's binary form** (`.usdc`) needs USD's own library, which Patina does not carry. It is refused with the sentence
-  to save the layer as `.usda`. A **USD package** (`.usdz`, #157) is a zip whose first file is its layer: when that
-  layer is text the Server unpacks the package into a temporary folder, reads the layer there and copies its pictures
-  into the project as it copies any picture beside a file (`UsdzReader`); when it is `.usdc`, as most tools write it,
-  it is refused the same way. A crate reader written here from OpenUSD's `crateFile.cpp` (Apache-2.0) is possible, but
-  no `.usdc` file or USD tool was on hand to test one against, so none was written.
+- **USD's binary form** (`.usdc`, USD's "crate", #157) is read without USD's library, which Patina does not carry:
+  `UsdCrate` reads its tables (tokens, strings, fields, field sets, paths, specs) from version 0.4, when USD began to
+  compress them with LZ4 and its integer coding, on; `UsdCrateValues` spells each attribute's value and connection as
+  the text form does, so `UsdaReader`'s one table turns either into maps. Only what a surface is made of is read: a
+  token, a string, an asset, a number, a vector of them (inline as bytes when they are small whole numbers) and a list
+  of paths; an array, a dictionary or time samples are passed over. The paths' tree is walked with a stack, not
+  recursion, so a scene of many siblings cannot exhaust the Server's thread; a size the file gives is held to what LZ4
+  can make of the bytes there, so a damaged file cannot ask for gigabytes. A property test cuts and changes the bytes
+  of a crate file and holds the reader to reading it or refusing it in words. A crate older than 0.4 is refused with
+  what to do. `MaterialToolTests` has USD itself write every shipped preset's material in binary and holds the reader
+  to what the text brings in. A **USD package** (`.usdz`) is a zip whose first file is its layer: the Server unpacks
+  the package into a temporary folder, reads the layer there in either form and copies its pictures into the project
+  as it copies any picture beside a file (`UsdzReader`).
 - **A glTF picture's placement** is drawn by `Space/Transform 2D`, whose turn is taken in texels: exact on the square
   graphs an import makes. glTF reads a picture at `M·uv + offset`; the node reads its source at `A⁻¹(o − ½ − t) + ½`, so
   `A = M⁻¹` and `t = A(½ − offset) − ½`, and an uneven scale under a turn needs the node's shear, since `M⁻¹` is then

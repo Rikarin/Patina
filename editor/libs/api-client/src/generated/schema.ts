@@ -5870,8 +5870,8 @@ export interface components {
       project: string;
       /**
        * @description A file on the Server's machine that describes materials: a glTF (`.gltf`, `.glb`) or another model
-       *     file, a MaterialX document (`.mtlx`), a USD layer in its text form (`.usda`) or a USD package
-       *     (`.usdz`) whose layer is text.
+       *     file, a MaterialX document (`.mtlx`), a USD layer in text or binary (`.usda`, `.usdc`,
+       *     `.usd`) or a USD package (`.usdz`).
        */
       file: string;
     };

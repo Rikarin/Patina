@@ -7,5 +7,7 @@
   <ItemGroup>
     <!-- MaterialToolTests reads the material files in USD's and MaterialX's own libraries through this script. -->
     <None Include="tools/check_materials.py" CopyToOutputDirectory="PreserveNewest"/>
+    <!-- A USD material as text and in the binary form usd-core 26.11 writes it, which UsdCrateTests reads (#157). -->
+    <None Include="fixtures/**" CopyToOutputDirectory="PreserveNewest"/>
   </ItemGroup>
 </Project>

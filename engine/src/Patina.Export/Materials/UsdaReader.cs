@@ -4,39 +4,32 @@ using System.Text;
 
 namespace Patina.Export.Materials;
 
+/// <summary>A prim: its type and its properties by name, each value as USD's text form spells it.</summary>
+sealed record UsdPrim(string Path, string Type, string Name, Dictionary<string, string> Properties);
+
 /// <summary>
 ///     Reads the materials of a USD layer in its text form (<c>.usda</c>) as maps (#157): each <c>Material</c> prim's
 ///     <c>UsdPreviewSurface</c>, whose inputs are a value or a connection to a <c>UsdUVTexture</c>'s output. It reads
 ///     what <see cref="UsdMaterialFile" /> writes and what other tools write of the same schema: a texture's
 ///     <c>scale</c> and <c>bias</c> say a lane holds one minus the map, a normal's green runs down or a factor
-///     multiplies it. USD's binary form (<c>.usdc</c>) needs USD's own library, which Patina does not
-///     carry; a <c>.usd</c> file is read when it is text, and a <c>.usdz</c> package through <see cref="UsdzReader" />.
+///     multiplies it. A layer in USD's binary form (<c>.usdc</c>, or a <c>.usd</c> that is binary) is read through
+///     <see cref="UsdCrateValues" /> into the same table of prims, and a <c>.usdz</c> package through
+///     <see cref="UsdzReader" />.
 /// </summary>
 public sealed class UsdaReader {
     readonly string folder;
-    readonly Dictionary<string, Prim> prims = new(StringComparer.Ordinal);
+    readonly Dictionary<string, UsdPrim> prims;
     readonly List<string> warnings = [];
 
-    UsdaReader(string path) {
+    UsdaReader(string path, Dictionary<string, UsdPrim> prims) {
         folder = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        this.prims = prims;
     }
 
-    /// <summary>A prim: its type and its properties by name, each value as the file spells it.</summary>
-    sealed record Prim(string Path, string Type, string Name, Dictionary<string, string> Properties);
-
-    /// <summary>The materials of a USD text layer, in its order.</summary>
-    /// <exception cref="InvalidDataException">It is not a USD text layer, or holds no material.</exception>
+    /// <summary>The materials of a USD layer, text or binary, in its order.</summary>
+    /// <exception cref="InvalidDataException">It is not a USD layer, or holds no material.</exception>
     public static IReadOnlyList<ImportedMaterial> Read(string path) {
-        var text = SharedFile.ReadAllText(path);
-        if (!text.TrimStart().StartsWith("#usda", StringComparison.Ordinal)) {
-            throw new InvalidDataException(
-                $"'{Path.GetFileName(path)}' is not a USD text layer. A .usdc needs USD's own library; "
-                + "save it as .usda to bring its materials in."
-            );
-        }
-
-        var reader = new UsdaReader(path);
-        reader.Parse(text);
+        var reader = new UsdaReader(path, Prims(path, SharedFile.ReadAllBytes(path)));
         var materials = reader.prims.Values.Where(static p => p.Type == "Material").ToList();
         if (materials.Count == 0) {
             throw new InvalidDataException($"'{Path.GetFileName(path)}' has no Material prim.");
@@ -45,7 +38,27 @@ public sealed class UsdaReader {
         return [..materials.Select(reader.Material)];
     }
 
-    ImportedMaterial Material(Prim material) {
+    /// <summary>A layer's prims: parsed from its text, or read from its binary tables.</summary>
+    static Dictionary<string, UsdPrim> Prims(string path, byte[] bytes) {
+        if (UsdCrate.Is(bytes)) {
+            try {
+                return UsdCrateValues.Prims(bytes);
+            } catch (InvalidDataException e) {
+                throw new InvalidDataException($"'{Path.GetFileName(path)}' cannot be brought in. {e.Message}", e);
+            }
+        }
+
+        var text = Encoding.UTF8.GetString(bytes).TrimStart('\uFEFF');
+        if (!text.TrimStart().StartsWith("#usda", StringComparison.Ordinal)) {
+            throw new InvalidDataException($"'{Path.GetFileName(path)}' is not a USD layer, in text or binary.");
+        }
+
+        Dictionary<string, UsdPrim> prims = new(StringComparer.Ordinal);
+        Parse(text, prims);
+        return prims;
+    }
+
+    ImportedMaterial Material(UsdPrim material) {
         warnings.Clear();
         var surface = material.Properties.TryGetValue("outputs:surface.connect", out var target)
             ? Target(target)
@@ -67,7 +80,7 @@ public sealed class UsdaReader {
         return new(material.Name, SurfaceInputs.Kept(slots), [..warnings]);
     }
 
-    ImportedSlot? Slot(string usage, Prim surface, string input) {
+    ImportedSlot? Slot(string usage, UsdPrim surface, string input) {
         if (surface.Properties.TryGetValue($"{input}.connect", out var connection)) {
             return Connected(usage, connection);
         }
@@ -123,14 +136,15 @@ public sealed class UsdaReader {
         return null;
     }
 
-    Prim? Target(string connection) => prims.GetValueOrDefault(Before(connection.Trim().Trim('<', '>'), ".outputs:"));
+    UsdPrim? Target(string connection) =>
+        prims.GetValueOrDefault(Before(connection.Trim().Trim('<', '>'), ".outputs:"));
 
     static string Before(string text, string mark) {
         var at = text.LastIndexOf(mark, StringComparison.Ordinal);
         return at < 0 ? text : text[..at];
     }
 
-    static string? Id(Prim prim) => prim.Properties.TryGetValue("info:id", out var id) ? id.Trim().Trim('"') : null;
+    static string? Id(UsdPrim prim) => prim.Properties.TryGetValue("info:id", out var id) ? id.Trim().Trim('"') : null;
 
     static string? Asset(string value) {
         var start = value.IndexOf('@', StringComparison.Ordinal);
@@ -138,7 +152,7 @@ public sealed class UsdaReader {
         return start >= 0 && end > start ? value[(start + 1)..end].Trim('@') : null;
     }
 
-    static float[] Lanes(Prim prim, string name, float fallback) {
+    static float[] Lanes(UsdPrim prim, string name, float fallback) {
         var numbers = prim.Properties.TryGetValue(name, out var text) ? MaterialXReader.Numbers(text) : [];
         return [..Enumerable.Range(0, 4).Select(at => at < numbers.Count ? numbers[at] : fallback)];
     }
@@ -147,13 +161,13 @@ public sealed class UsdaReader {
     ///     Walks the layer's prims, keeping each one's type and the right-hand side of each property. Metadata in
     ///     brackets, comments and dictionaries are passed over: a material's surface needs none of them.
     /// </summary>
-    void Parse(string text) {
+    static void Parse(string text, Dictionary<string, UsdPrim> prims) {
         var tokens = new Tokens(text);
         Stack<string> path = [];
         while (tokens.Next() is { } token) {
             switch (token) {
                 case "def" or "over" or "class":
-                    Define(tokens, path);
+                    Define(tokens, path, prims);
                     break;
                 case "}":
                     path.TryPop(out _);
@@ -173,7 +187,7 @@ public sealed class UsdaReader {
     }
 
     /// <summary>A prim's head, after <c>def</c>: its type if any, its name, its metadata, then its body.</summary>
-    void Define(Tokens tokens, Stack<string> path) {
+    static void Define(Tokens tokens, Stack<string> path, Dictionary<string, UsdPrim> prims) {
         var type = tokens.Peek() is { } next && !next.StartsWith('"') ? tokens.Next()! : string.Empty;
         var name = (tokens.Next() ?? "\"\"").Trim('"');
         if (tokens.Peek() == "(") {
