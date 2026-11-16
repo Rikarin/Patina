@@ -15,7 +15,10 @@ public sealed record ScanResult(int Files, int Hashed, int Changed, int Removed,
 
 enum TrackedKind {
     Project = 0,
-    Content = 2
+    Content = 2,
+
+    /// <summary>A picture in a project, at any depth, with its size from its header (#306).</summary>
+    Picture = 3
 }
 
 /// <summary>Why a document is not, or not quite, in the index.</summary>
@@ -173,6 +176,10 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
                 found.Add(Describe(file, TrackedKind.Content));
             }
 
+            foreach (var picture in ProjectFiles.PicturesIn(folder)) {
+                found.Add(Describe(new(Path.Combine(folder, picture)), TrackedKind.Picture));
+            }
+
             return;
         }
 
@@ -204,6 +211,10 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
                 return Content(file, knownHash);
             }
 
+            if (file.Kind == TrackedKind.Picture) {
+                return Picture(file);
+            }
+
             var bytes = SharedFile.ReadAllBytes(file.FullPath);
             var hash = Revision.Of(bytes).Text;
             return (hash == knownHash ? new(file, Effect.Same, hash) : Parse(file, bytes, hash)) with {
@@ -232,6 +243,25 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         var stack = file.Path.EndsWith(StackInputs.Extension, StringComparison.Ordinal);
         return new(file, hash == knownHash ? Effect.Same : Effect.Changed, hash) {
             Texture = stack ? StackInputs.SizeOf(Encoding.UTF8.GetString(bytes)) : null, Names = NamesIn(bytes)
+        };
+    }
+
+    /// <summary>
+    ///     A picture is not hashed, which for a library of large textures would cost more than all else a scan does:
+    ///     its stamp says when it changed, and its header how large it is. One being written has no size until the
+    ///     next scan, which is no problem of the library's.
+    /// </summary>
+    static Outcome Picture(ScannedFile file) {
+        (int Width, int Height)? size;
+        try {
+            size = PictureSizes.Of(file.FullPath);
+        } catch (Exception e) when (e is IOException and not FileNotFoundException and not DirectoryNotFoundException
+                                        or UnauthorizedAccessException) {
+            size = null;
+        }
+
+        return new(file, Effect.Changed, null) {
+            Texture = size is var (width, height) ? new TextureSize(width, height, 0) : null
         };
     }
 
@@ -504,7 +534,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         }
 
         void ClearDocument(string path, TrackedKind kind) {
-            if (kind == TrackedKind.Content) {
+            if (kind != TrackedKind.Project) {
                 return;
             }
 

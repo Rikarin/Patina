@@ -3,6 +3,7 @@ using Patina.Graphs;
 using Patina.Library;
 using Patina.Server.Stacks;
 using System.Collections.Concurrent;
+using System.Globalization;
 using Vixen.NodeGraph;
 using Vixen.Texturing.Layers;
 
@@ -27,7 +28,6 @@ public static class MaterialShelf {
     const string PackageOrigin = "package";
     const string StarterPrefix = "starter:";
     const string StarterResource = "Starter/";
-    const string PicturesFolder = "pictures";
 
     /// <summary>
     ///     What each project lists, its documents and its pictures, kept while its file and the folders pictures are
@@ -265,10 +265,12 @@ public static class MaterialShelf {
     }
 
     static IEnumerable<MaterialInfo> Elsewhere(OpenLibrary library, string? project, string[] words) {
+        // Every project's pictures at any depth are one query of the index, not a walk of each folder (#306).
+        var pictures = library.Pictures().ToLookup(static picture => picture.Project, StringComparer.Ordinal);
         for (var offset = 0;; offset += ProjectPage) {
             var page = library.Projects(new(Offset: offset, Limit: ProjectPage)).Items;
             foreach (var summary in page.Where(summary => summary.Path != project)) {
-                foreach (var material in OfProject(library, summary, words)) {
+                foreach (var material in OfProject(library, summary, pictures[summary.Path], words)) {
                     yield return material;
                 }
             }
@@ -283,15 +285,19 @@ public static class MaterialShelf {
     ///     What another project offers that a search finds: its materials, and its pictures too (#203), which a click
     ///     or a drag brings into the open project first.
     /// </summary>
-    static IEnumerable<MaterialInfo> OfProject(OpenLibrary library, ProjectSummary summary, string[] words) {
-        var contents = ContentsOf(library, summary.Path);
-        var materials = contents.Documents
+    static IEnumerable<MaterialInfo> OfProject(
+        OpenLibrary library,
+        ProjectSummary summary,
+        IEnumerable<LibraryPicture> pictures,
+        string[] words
+    ) {
+        var materials = DocumentsOf(library, summary.Path)
             .Where(document => Maybe(document, summary.Name, words))
             .Select(document => Readable(library, document))
             .OfType<MaterialInfo>()
             .Select(read => read with { Origin = ElsewhereOrigin, Project = summary.Name });
-        var pictures = contents.Pictures.Select(picture => Pictured(picture, summary.Name, ElsewhereOrigin));
-        return materials.Concat(pictures).Where(material => Matches(material, words));
+        var pictured = pictures.Select(static picture => Pictured(picture));
+        return materials.Concat(pictured).Where(material => Matches(material, words));
     }
 
     /// <summary>
@@ -302,8 +308,8 @@ public static class MaterialShelf {
         ContentsOf(library, project).Documents;
 
     /// <summary>
-    ///     What a project holds, read again only when its file, its folder or its pictures folder has changed since: a
-    ///     picture brought in or dropped beside the file changes a folder, though not the project's file.
+    ///     What a project holds, read again only when its file or its folder has changed since: a document dropped
+    ///     beside the file changes the folder, though not the project's file. Its pictures are the index's (#306).
     /// </summary>
     static ProjectContents ContentsOf(OpenLibrary library, string project) {
         var file = library.ProjectFile(project, LibraryLayout.ProjectFile);
@@ -311,8 +317,7 @@ public static class MaterialShelf {
         var stamp = string.Join(
             '|',
             File.GetLastWriteTimeUtc(file).Ticks,
-            Directory.GetLastWriteTimeUtc(folder).Ticks,
-            Directory.GetLastWriteTimeUtc(Path.Combine(folder, PicturesFolder)).Ticks
+            Directory.GetLastWriteTimeUtc(folder).Ticks
         );
         if (Kept.TryGetValue(file, out var held) && held.Stamp == stamp) {
             return held.Contents;
@@ -335,6 +340,21 @@ public static class MaterialShelf {
             Project: project,
             Tags: [Path.GetExtension(picture.Name).TrimStart('.').ToUpperInvariant()]
         );
+
+    /// <summary>
+    ///     Another project's picture as the index has it (#306), found by its file type and its size as well as its
+    ///     name: "2048" finds every picture that wide or high.
+    /// </summary>
+    static MaterialInfo Pictured(LibraryPicture picture) {
+        var name = Path.GetFileName(picture.Path);
+        var listed = Pictured(new("picture", name, picture.Path), picture.ProjectName, ElsewhereOrigin);
+        if (picture is not { Width: { } width, Height: { } height }) {
+            return listed;
+        }
+
+        var size = string.Create(CultureInfo.InvariantCulture, $"{width} × {height}");
+        return listed with { Tags = [..listed.Tags ?? [], size] };
+    }
 
     /// <summary>One broken file in another project must not empty this project's shelf.</summary>
     static MaterialInfo? Readable(OpenLibrary library, ProjectDocumentInfo document) {

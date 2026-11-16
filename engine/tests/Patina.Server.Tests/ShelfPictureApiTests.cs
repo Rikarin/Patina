@@ -1,4 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
 using Patina.Contracts;
+using System.Buffers.Binary;
 
 namespace Patina.Server.Tests;
 
@@ -46,6 +48,7 @@ public sealed class ShelfPictureApiTests : IAsyncLifetime {
         Directory.CreateDirectory(pictures);
         await File.WriteAllBytesAsync(Path.Combine(pictures, "Rust.png"), [1, 2, 3], Token);
         await File.WriteAllBytesAsync(Path.Combine(server.Library, "projects", "alpha", "Own.png"), [4], Token);
+        server.Services.GetRequiredService<LibraryHost>().RequestRescan();
 
         var rust = Assert.Single(await PicturesAsync("alpha", "Rust", static found => found.Count > 0));
         Assert.Equal(
@@ -58,11 +61,23 @@ public sealed class ShelfPictureApiTests : IAsyncLifetime {
         Assert.Single(await PicturesAsync("alpha", "rust other png", static found => found.Count > 0));
         Assert.Empty(await PicturesAsync("alpha", "rust brush", static _ => true));
 
-        // Brought in after the shelf read the project: its folder changed, though its project file did not.
-        await File.WriteAllBytesAsync(Path.Combine(pictures, "Moss.jpg"), [5, 6], Token);
+        // Copied in after the shelf read the project, two folders deep: the next scan lists it, though the project's
+        // file did not change (#306).
+        var deep = Directory.CreateDirectory(Path.Combine(pictures, "worn", "edges")).FullName;
+        await File.WriteAllBytesAsync(Path.Combine(deep, "Moss.png"), Png(2048, 512), Token);
+        server.Services.GetRequiredService<LibraryHost>().RequestRescan();
         var moss = Assert.Single(await PicturesAsync("alpha", "Moss", static found => found.Count > 0));
-        Assert.Equal(("library", "projects/wear-kit/pictures/Moss.jpg"), (moss.Origin, moss.Source));
-        Assert.Equal(["JPG"], moss.Tags);
+        Assert.Equal(("library", "projects/wear-kit/pictures/worn/edges/Moss.png"), (moss.Origin, moss.Source));
+        Assert.Equal(["PNG", "2048 × 512"], moss.Tags);
+        Assert.Single(await PicturesAsync("alpha", "2048", static found => found.Count > 0));
+    }
+
+    /// <summary>The start of a PNG as wide and high as asked: its signature and its header chunk.</summary>
+    static byte[] Png(int width, int height) {
+        byte[] head = [0x89, (byte)'P', (byte)'N', (byte)'G', 13, 10, 26, 10, 0, 0, 0, 13, ..("IHDR"u8), ..new byte[8]];
+        BinaryPrimitives.WriteInt32BigEndian(head.AsSpan(16), width);
+        BinaryPrimitives.WriteInt32BigEndian(head.AsSpan(20), height);
+        return head;
     }
 
     /// <summary>

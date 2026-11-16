@@ -870,6 +870,12 @@ static class ProjectFiles {
 
     static bool IsMesh(string file) => MeshFormats.IsMesh(file);
 
+    /// <summary>
+    ///     A project's pictures at any depth, by their paths below its folder, as its contents list them: what the scan
+    ///     indexes, so a shelf finds another project's pictures without walking its folder (#306).
+    /// </summary>
+    internal static IEnumerable<string> PicturesIn(string full) => Files(full).Where(IsPicture);
+
     /// <summary>A picture of the user's: what the Server drew for a mesh mask is not one.</summary>
     static bool IsPicture(string file) =>
         PictureFormats.IsPicture(file)
