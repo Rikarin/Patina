@@ -82,7 +82,7 @@ public sealed class ModelMaterialsTests : IDisposable {
                            """;
 
     /// <summary>Two triangles, each wearing one of two materials, its pictures beside the file and inside it.</summary>
-    string Gltf(string materials = Painted) {
+    string Gltf(string materials = Painted, bool listed = true) {
         var floats = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1 };
         var bytes = new byte[floats.Length * 4];
         Buffer.BlockCopy(floats, 0, bytes, 0, bytes.Length);
@@ -93,10 +93,7 @@ public sealed class ModelMaterialsTests : IDisposable {
         var text = $$"""
                      {
                        "asset": { "version": "2.0" },
-                       "extensionsUsed": [
-                         "KHR_texture_transform", "KHR_materials_emissive_strength", "KHR_materials_clearcoat",
-                         "KHR_materials_sheen", "KHR_materials_transmission"
-                       ],
+                       "extensionsUsed": [{{(listed ? Listed : string.Empty)}}],
                        "scene": 0,
                        "scenes": [{ "nodes": [0, 1] }],
                        "nodes": [{ "mesh": 0, "name": "A" }, { "mesh": 1, "name": "B" }],
@@ -139,6 +136,72 @@ public sealed class ModelMaterialsTests : IDisposable {
                      """;
         var path = Path.Combine(folder.FullName, "two.gltf");
         File.WriteAllText(path, text);
+        return path;
+    }
+
+    const string Listed = """
+                          "KHR_texture_transform", "KHR_materials_emissive_strength", "KHR_materials_clearcoat",
+                          "KHR_materials_sheen", "KHR_materials_transmission"
+                          """;
+
+    /// <summary>
+    ///     A hand-written glTF that uses its layers' extensions without listing them in <c>extensionsUsed</c> (#310)
+    ///     still brings its clear coat, sheen and transmission in, where Assimp alone dropped them without a word,
+    ///     and says so on each material that named one. A binary glTF is read the same way.
+    /// </summary>
+    [Theory]
+    [InlineData(".gltf")]
+    [InlineData(".glb")]
+    public void Extensions_a_gltf_does_not_list_are_read_and_said(string extension) {
+        var path = Gltf(Layered, listed: false);
+        if (extension == ".glb") {
+            path = Binary(path);
+        }
+
+        var materials = ModelMaterials.Read(path, Path.Combine(folder.FullName, "pictures"));
+
+        var lacquer = materials[0].Slots.Select(static s => s.Usage).ToHashSet();
+        Assert.Superset(new HashSet<string> { "coat", "coatRoughness", "sheenColor", "transmission" }, lacquer);
+        var said = Assert.Single(
+            materials[0].Warnings,
+            static w => w.Contains("extensionsUsed", StringComparison.Ordinal)
+        );
+        Assert.Contains(
+            "KHR_materials_clearcoat, KHR_materials_sheen, KHR_materials_transmission",
+            said,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(materials[1].Warnings, static w => w.Contains("KHR_materials_sheen", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            ModelMaterials.Read(Gltf(Layered), Path.Combine(folder.FullName, "pictures"))[0].Warnings,
+            static w => w.Contains("extensionsUsed", StringComparison.Ordinal)
+        );
+    }
+
+    /// <summary>
+    ///     A text glTF as a binary one: its JSON, padded with spaces, then its buffer in a chunk of its own.
+    /// </summary>
+    static string Binary(string gltf) {
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(gltf))!;
+        var buffer = root["buffers"]![0]!.AsObject();
+        var uri = buffer["uri"]!.GetValue<string>();
+        var body = Convert.FromBase64String(uri[(uri.IndexOf(',', StringComparison.Ordinal) + 1)..]);
+        buffer.Remove("uri");
+        var json = System.Text.Encoding.UTF8.GetBytes(root.ToJsonString());
+        var (jsonLength, bodyLength) = ((json.Length + 3) / 4 * 4, (body.Length + 3) / 4 * 4);
+        var bytes = new byte[28 + jsonLength + bodyLength];
+        BitConverter.TryWriteBytes(bytes.AsSpan(0), 0x46546C67u);
+        BitConverter.TryWriteBytes(bytes.AsSpan(4), 2u);
+        BitConverter.TryWriteBytes(bytes.AsSpan(8), (uint)bytes.Length);
+        BitConverter.TryWriteBytes(bytes.AsSpan(12), (uint)jsonLength);
+        BitConverter.TryWriteBytes(bytes.AsSpan(16), 0x4E4F534Au);
+        json.CopyTo(bytes, 20);
+        bytes.AsSpan(20 + json.Length, jsonLength - json.Length).Fill((byte)' ');
+        BitConverter.TryWriteBytes(bytes.AsSpan(20 + jsonLength), (uint)bodyLength);
+        BitConverter.TryWriteBytes(bytes.AsSpan(24 + jsonLength), 0x004E4942u);
+        body.CopyTo(bytes, 28 + jsonLength);
+        var path = Path.ChangeExtension(gltf, ".glb");
+        File.WriteAllBytes(path, bytes);
         return path;
     }
 
