@@ -74,8 +74,11 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
                 return now.Length == 0 ? null : now;
             }
 
-            var hash = await DrawAsync(ask, cancellationToken);
-            Remember(key, hash);
+            var (hash, lasting) = await DrawAsync(ask, cancellationToken);
+            if (lasting) {
+                Remember(key, hash);
+            }
+
             return hash;
         } finally {
             drawing.Release();
@@ -113,7 +116,8 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
 
     string KeyFile(string key) => Path.Combine(store.Root, KeysFolder, key[..2], key);
 
-    async Task<string?> DrawAsync(MaterialThumbnailAsk ask, CancellationToken cancellationToken) {
+    /// <summary>The Worker's picture of an ask, and whether what it said holds for these files on any machine.</summary>
+    async Task<(string? Hash, bool Lasting)> DrawAsync(MaterialThumbnailAsk ask, CancellationToken cancellationToken) {
         using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         patience.CancelAfter(WorkerPatience);
         try {
@@ -122,13 +126,15 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
                 new() { Type = IpcTypes.MaterialThumbnail, MaterialThumbnail = ask },
                 patience.Token
             );
-            return reply.ThumbnailHash;
+            return (reply.ThumbnailHash, true);
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
             throw new RendererMissingException();
-        } catch (IpcException) when (!ask.Deep) {
+        } catch (IpcException e) when (!ask.Deep) {
             // A material that cannot draw shows its name alone, as it did before there were pictures. A panorama is
-            // asked for by name, so the Worker's reason reaches whoever asked, and nothing is remembered for it.
-            return null;
+            // asked for by name, so the Worker's reason reaches whoever asked, and nothing is remembered for it. A
+            // Worker with no device says nothing about the material, so that is not remembered either (#302): the
+            // same library opened where there is a GPU draws it.
+            return (null, !e.AboutTheDevice);
         }
     }
 

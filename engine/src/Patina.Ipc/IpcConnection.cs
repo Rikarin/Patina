@@ -220,4 +220,16 @@ public sealed class IpcException : Exception {
     public IpcException(string message) : base(message) { }
 
     public IpcException(string message, Exception innerException) : base(message, innerException) { }
+
+    /// <summary>How a refusal that is about the machine, not the request, begins: the Worker has no GPU to use.</summary>
+    public const string NoDevicePrefix = "No Vulkan device";
+
+    /// <summary>
+    ///     Whether the peer refused for want of a device rather than for anything in what was asked: the same ask may
+    ///     well be answered on another machine, or by the next Worker, so nothing is to be remembered of it (#302).
+    /// </summary>
+    public bool AboutTheDevice => Message.StartsWith(NoDevicePrefix, StringComparison.Ordinal);
+
+    /// <summary>The refusal of a Worker that could open no device, with the reason the device gave.</summary>
+    public static IpcException NoDevice(string? refusal) => new($"{NoDevicePrefix}: {refusal}");
 }
