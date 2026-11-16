@@ -46,7 +46,7 @@ public sealed class StackEvaluator(
         bool force,
         CancellationToken cancellationToken
     ) {
-        var (text, revision) = session.PrepareSave(force);
+        var (text, edits) = session.PrepareSave(force);
         KeepBase(session);
         await ReachedAsync(session, cancellationToken);
         if (session.EvaluationError is { } failed) {
@@ -58,7 +58,7 @@ public sealed class StackEvaluator(
             new() { Type = IpcTypes.StackSave, StackSave = new(session.Id, null) },
             cancellationToken
         );
-        var saved = session.FinishSave(text, revision);
+        var saved = session.FinishSave(text, edits);
         if (identity.Library is { } library) {
             autosave.Forget(library, session.Path);
         }
@@ -464,9 +464,19 @@ public sealed class StackEvaluator(
         }
     }
 
-    bool Superseded(StackSession session, StackWork work) =>
-        session.WaitedBehind(work.Revision)
-        || sessions.All.Any(other => !ReferenceEquals(other, session) && other.WaitedBehind(null));
+    bool Superseded(StackSession session, StackWork work) => Supersedes(session, work.Revision, sessions.All);
+
+    /// <summary>
+    ///     Whether an evaluation of a stack should stop for something waited on: a newer revision of the same stack
+    ///     that is waited on, or another stack that is waited on and behind, while nothing waits on this one. Two
+    ///     stacks waited on at once never stop each other, which on a slow GPU repeated forever (#299).
+    /// </summary>
+    /// <param name="session">The stack being evaluated.</param>
+    /// <param name="revision">The revision being evaluated.</param>
+    /// <param name="open">Every open stack.</param>
+    public static bool Supersedes(StackSession session, long revision, IEnumerable<StackSession> open) =>
+        session.WaitedBehind(revision)
+        || (!session.Awaited && open.Any(other => !ReferenceEquals(other, session) && other.WaitedBehind(null)));
 
     /// <summary>
     ///     Bounds what a new Worker has to stamp again. Only between strokes: a canvas in the middle of a drag is a

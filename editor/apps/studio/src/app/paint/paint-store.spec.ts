@@ -183,6 +183,13 @@ function drop(socket: GraphSocket | undefined): void {
 
 const problem = (status: number, detail: string) => () => Response.json({ detail }, { status });
 
+/** A part of a drag as the Server was sent it. */
+interface Part {
+  stroke: string;
+  open: boolean;
+  stamps: { x: number }[];
+}
+
 describe('PaintStore refreshes (#274)', () => {
   it('keeps the newest state when the replies to two edits come back in the other order', async () => {
     const { store, server } = setup();
@@ -276,6 +283,80 @@ describe('PaintStore refreshes (#274)', () => {
     ]);
     expect(await store.act('save')).toBe(true);
     expect(posts).toContain('/api/v1/stacks/s2/save');
+  });
+
+  it('ends a drag still going out before one on another document begins, each with its own stamps (#299)', async () => {
+    const { store, bodies, posts, server } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    let release: (() => void) | null = null;
+    const held = new Promise<void>(resolve => (release = resolve));
+    let parts = 0;
+    server.reply = (method, path) => {
+      if (path === '/api/v1/stacks/s1/commands' && ++parts === 1) {
+        return held.then(() => Response.json({ revision: 2, sequence: 4, history: { dirty: true } }));
+      }
+
+      return method === 'POST' && path === '/api/v1/stacks'
+        ? Response.json(stack({ id: 's2', path: '/a/Barrel.vxlayers', name: 'Barrel' }))
+        : null;
+    };
+
+    // The first part of a drag on the crate is slow, and its last stamp waits behind it as the barrel comes in front.
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.move({ x: 3, y: 4, pressure: 1 });
+    store.detach();
+    await store.open('/a/Barrel.vxlayers', false);
+    store.begin({ x: 5, y: 6, pressure: 1 });
+    store.move({ x: 7, y: 8, pressure: 1 });
+    store.end();
+    (release as unknown as () => void)();
+    await vi.waitFor(() => expect(posts.filter(path => path.endsWith('/commands'))).toHaveLength(3));
+
+    const sent = (bodies as { commands: Part[] }[]).map(body => body.commands[0] as Part);
+    expect(posts.filter(path => path.endsWith('/commands'))).toEqual([
+      '/api/v1/stacks/s1/commands',
+      '/api/v1/stacks/s1/commands',
+      '/api/v1/stacks/s2/commands'
+    ]);
+    // The held first part is not among what was read: the crate's drag ended with the stamp that waited.
+    const [last, other] = sent;
+    expect(last?.open).toBe(false);
+    expect(last?.stamps.map(stamp => stamp.x)).toEqual([3]);
+    expect(other?.stroke).not.toBe(last?.stroke);
+    expect(other?.open).toBe(false);
+    expect(other?.stamps.map(stamp => stamp.x)).toEqual([5, 7]);
+  });
+
+  it('keeps a drag pressed again while the last one’s end is answered whole, and ends it once (#299)', async () => {
+    const { store, bodies, server } = setup();
+    await store.open('/a/Crate.vxlayers', false);
+    let release: (() => void) | null = null;
+    const held = new Promise<void>(resolve => (release = resolve));
+    let parts = 0;
+    server.reply = (_method, path) =>
+      path === '/api/v1/stacks/s1/commands' && ++parts === 1
+        ? held.then(() => Response.json({ revision: 2, sequence: 4, history: { dirty: true } }))
+        : null;
+
+    store.begin({ x: 1, y: 2, pressure: 1 });
+    store.end();
+    store.begin({ x: 5, y: 6, pressure: 1 });
+    store.move({ x: 7, y: 8, pressure: 1 });
+    (release as unknown as () => void)();
+    await vi.waitFor(() => expect(parts).toBeGreaterThan(2));
+    store.move({ x: 9, y: 10, pressure: 1 });
+    store.end();
+
+    const sent = () => (bodies as { commands: Part[] }[]).map(body => body.commands[0] as Part);
+    await vi.waitFor(() => expect(sent().filter(part => !part.open)).toHaveLength(2));
+    const strokes = [...new Set(sent().map(part => part.stroke))];
+    expect(strokes).toHaveLength(2);
+    // The first part, held, is not among what was read; the first drag's end carries nothing more.
+    expect(sent().filter(part => part.stroke === strokes[0])).toMatchObject([{ open: false, stamps: [] }]);
+    const again = sent().filter(part => part.stroke === strokes[1]);
+    expect(again.flatMap(part => part.stamps.map(stamp => stamp.x))).toEqual([5, 7, 9]);
+    expect(again.filter(part => !part.open)).toHaveLength(1);
+    expect(again.at(-1)?.open).toBe(false);
   });
 });
 
