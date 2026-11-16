@@ -489,6 +489,28 @@ test('the 2D view shows the node on view at full size, tiles it and pins it, and
   await window.screenshot({ path: join(shots, 'graph-node-on-plane.png') });
   await window.getByTestId('viewport-show-node').click();
   await expect(window.getByTestId('viewport-view').getByRole('combobox')).toBeEnabled();
+
+  // In the graph's physical proportions once it has a physical size (#184). Pinned, the node stays on view while
+  // Graph Settings has the Inspector.
+  await window.getByRole('tab', { name: '2D View' }).click();
+  await node(3).locator('xui-graph-node-preview').click();
+  await window.getByTestId('texture-pin').click();
+  const physical = window.getByTestId('texture-physical');
+  await expect(physical).toBeDisabled();
+  await window.getByTestId('graph-settings').click();
+  const sides = window.getByTestId('about-physical-size').getByRole('spinbutton');
+  await sides.first().fill('200');
+  await sides.first().press('Enter');
+  await sides.last().fill('100');
+  await sides.last().press('Enter');
+  await expect(physical).toBeEnabled();
+  await physical.click();
+  await expect(window.getByTestId('texture-size')).toContainText('shown as 2.0 m × 1.0 m');
+  const drawnAs = await window.getByTestId('texture-image').boundingBox();
+  expect((drawnAs?.width ?? 0) / (drawnAs?.height ?? 1)).toBeCloseTo(2, 1);
+  await window.screenshot({ path: join(shots, 'graph-2d-physical.png') });
+  await physical.click();
+  await window.getByTestId('texture-pin').click();
 });
 
 test('shows a second graph beside the first, and the panes follow the one touched last (#40)', async () => {
