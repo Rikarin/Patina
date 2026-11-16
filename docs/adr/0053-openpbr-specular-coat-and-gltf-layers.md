@@ -1,4 +1,4 @@
-# ADR 0052: OpenPBR's specular lobe, a coat's colour and normal, and glTF's layers
+# ADR 0053: OpenPBR's specular lobe, a coat's colour and normal, and glTF's layers
 
 **Status:** accepted, 2026-11-16, for issues #142, #157 and #305.
 

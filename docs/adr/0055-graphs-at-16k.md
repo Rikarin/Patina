@@ -1,4 +1,4 @@
-# ADR 0052: A graph is built at 16K only when its plan fits the device, measured before anything is made
+# ADR 0055: A graph is built at 16K only when its plan fits the device, measured before anything is made
 
 **Status:** proposed, 2026-11-16, for issue #218. Nothing of it is built yet.
 

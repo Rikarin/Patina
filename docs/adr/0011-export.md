@@ -294,8 +294,7 @@ Two tests stand in for the engines until someone opens the files in them:
   texture coordinates, and each picture read in a space its numbers can be in. Linux CI installs both and fails if the
   test is skipped. It found the layer saying no units or up axis, which every stage is asked to; the layer now says
   metres and Y up. One warning is accepted: a normal whose green runs down is read with a green scale of −2, which USD's
-  validator holds against an 8-bit normal; a reader that ignores a texture's scale reads that green upside down, which
-  only an import in that reader shows.
+  validator holds against an 8-bit normal (why that is right is the next entry).
 - _2026-11-16 (#304):_ The green scale of −2 stays. USD defines a `UsdUVTexture`'s result as each texel times `scale`
   plus `bias`, and USD's working group gives a normal whose green runs down exactly this scale and bias,
   (2, −2, 2, 1) and (−1, 1, −1, 0), in its `NormalsTextureBiasAndScale` test asset, which usdview draws like the

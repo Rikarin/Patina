@@ -1,4 +1,4 @@
-# ADR 0052: A project's normal format says how its normal maps come in
+# ADR 0054: A project's normal format says how its normal maps come in
 
 **Status:** accepted, 2026-11-16, for issue #144.
 

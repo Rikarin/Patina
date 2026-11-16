@@ -1,4 +1,4 @@
-# ADR 0052: A graph reads the canvas being painted, and a texture set's layers as a node wait on a choice
+# ADR 0056: A graph reads the canvas being painted, and a texture set's layers as a node wait on a choice
 
 **Status:** accepted for a graph reading paint as it is painted, 2026-11-16, built for issue #205; proposed for a
 texture set's layers as a node of a graph, which is not built.
