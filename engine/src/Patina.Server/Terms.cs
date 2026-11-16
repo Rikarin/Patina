@@ -144,7 +144,7 @@ public static class Terms {
     ];
 
     static readonly string[] KindNames =
-        ["Image", "Float", "Int", "Bool", "Text", "Color", "Float2", "Float3", "Float4"];
+        ["Image", "Float", "Int", "Bool", "Text", "Color", "Float2", "Float3", "Float4", "Curve", "Ramp"];
 
     /// <summary>What a layer stack calls one value of its fields: a mask source, a blend, a channel.</summary>
     public static string InStack(string value) => InStacks.TryGetValue(value, out var named) ? named : Label(value);

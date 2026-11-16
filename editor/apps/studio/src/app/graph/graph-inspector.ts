@@ -38,6 +38,7 @@ import {
   keptLanes,
   lanesOfColorText,
   lanesOfHex,
+  pairTextOf,
   sliderRange
 } from './graph-fields';
 import { edgeKey } from './graph-model';
@@ -54,6 +55,26 @@ interface Exposure {
   parameter: GraphSettingDefinition;
   port: string;
   value: string;
+}
+
+/** An X port's Y partner, and the name the two share. */
+interface Pair {
+  stem: string;
+  y: NumberField;
+}
+
+/** What a port named `<stem> X` is called without its axis, or null for any other name. */
+export function pairStemOf(port: string): string | null {
+  return /^(.+) X$/u.exec(port)?.[1] ?? null;
+}
+
+/** The Float2 widget a pair's name suggests: counts tile, places are positions, and the rest stay plain numbers. */
+export function pairWidgetOf(stem: string): string | null {
+  if (/repeat|tiling|tiles|grid|count/iu.test(stem)) {
+    return 'Tiling';
+  }
+
+  return /offset|position|centre|center|start|end|left|right|origin/iu.test(stem) ? 'Position' : null;
 }
 
 const SliderSteps = 1000;
@@ -323,6 +344,21 @@ export { keptLanes } from './graph-fields';
                           >
                             <ng-icon xui size="sm" name="matPublish" />
                           </button>
+                          @if (pairOf(field); as pair) {
+                            <button
+                              type="button"
+                              xuiButton
+                              size="sm"
+                              variant="ghost"
+                              [title]="'Make ' + field.name + ' and ' + pair.y.name + ' one Float2 parameter'"
+                              [attr.aria-label]="'Expose ' + pair.stem + ' as one parameter'"
+                              [attr.data-testid]="'expose-pair-' + pair.stem"
+                              [disabled]="!store.editable()"
+                              (click)="exposePair(field, pair)"
+                            >
+                              XY
+                            </button>
+                          }
                         }
                       }
                     </div>
@@ -468,6 +504,22 @@ export { keptLanes } from './graph-fields';
                         (change)="setText(field, $event)"
                       />
                     }
+                    @if (canExposeTable(field)) {
+                      <button
+                        class="self-start"
+                        type="button"
+                        xuiButton
+                        size="sm"
+                        variant="ghost"
+                        title="Make this a parameter of the graph"
+                        [attr.aria-label]="'Expose ' + field.name"
+                        [attr.data-testid]="'expose-' + field.name"
+                        [disabled]="!store.editable()"
+                        (click)="exposeTable(field)"
+                      >
+                        <ng-icon xui size="sm" name="matPublish" />
+                      </button>
+                    }
                   }
                   @case ('ramp') {
                     @if (stopsOf(field); as stops) {
@@ -486,6 +538,22 @@ export { keptLanes } from './graph-fields';
                         [value]="textOf(field)"
                         (change)="setText(field, $event)"
                       />
+                    }
+                    @if (canExposeTable(field)) {
+                      <button
+                        class="self-start"
+                        type="button"
+                        xuiButton
+                        size="sm"
+                        variant="ghost"
+                        title="Make this a parameter of the graph"
+                        [attr.aria-label]="'Expose ' + field.name"
+                        [attr.data-testid]="'expose-' + field.name"
+                        [disabled]="!store.editable()"
+                        (click)="exposeTable(field)"
+                      >
+                        <ng-icon xui size="sm" name="matPublish" />
+                      </button>
                     }
                   }
                   @case ('text') {
@@ -604,6 +672,23 @@ export class GraphInspector {
     return field.control === 'choice' && !this.textOf(field).startsWith(ReferencePrefix);
   }
 
+  /**
+   * A curve or a ramp written inline, or left empty, that does not already follow a parameter can become a Curve or a
+   * Ramp parameter (#181); one naming an asset a host resolves cannot, since a parameter holds the table itself.
+   */
+  protected canExposeTable(field: GraphField): boolean {
+    if (field.control === 'curve') {
+      return !this.textOf(field).startsWith(ReferencePrefix) && this.curvesOf(field) !== null;
+    }
+
+    return field.control === 'ramp' && !this.textOf(field).startsWith(ReferencePrefix) && this.stopsOf(field) !== null;
+  }
+
+  /** Makes a Curve or Ramp parameter holding the field's table, and points the setting at it. */
+  protected exposeTable(field: GraphField): void {
+    this.exposeOne(field);
+  }
+
   /** Makes a parameter offering the setting's choices, and points the setting at it with Vixen's `$` reference. */
   protected exposeSetting(field: GraphField): void {
     if (field.control !== 'choice') {
@@ -633,7 +718,8 @@ export class GraphInspector {
           !this.wireInto(field) &&
           ((field.control === 'number' && this.canExpose(field)) ||
             (field.control === 'colour' && field.source === 'value' && this.expressionOf(field.name) === '') ||
-            this.canExposeSetting(field))
+            this.canExposeSetting(field) ||
+            this.canExposeTable(field))
       )
   );
 
@@ -656,6 +742,12 @@ export class GraphInspector {
     const node = { name, summary: field.summary, group: '', minimum: null, maximum: null };
     if (field.control === 'choice') {
       const parameter = { ...node, default: this.textOf(field), kind: 'Text', accepted: [...field.choices] };
+      return { parameter, port: field.name, value: `${ReferencePrefix}${name}` };
+    }
+
+    if (field.control === 'curve' || field.control === 'ramp') {
+      const kind = field.control === 'curve' ? 'Curve' : 'Ramp';
+      const parameter = { ...node, default: this.textOf(field).trim(), kind, accepted: [] };
       return { parameter, port: field.name, value: `${ReferencePrefix}${name}` };
     }
 
@@ -812,6 +904,55 @@ export class GraphInspector {
   /** Makes a parameter of the field's name, starting where the field is, and drives the field from it. */
   protected expose(field: NumberField): void {
     this.exposeOne(field);
+  }
+
+  /**
+   * The `<stem> Y` a port named `<stem> X` pairs with, when both are fractional numbers nothing drives or wires yet, so
+   * the two can become one Float2 parameter (#311). Null for any other field.
+   */
+  protected pairOf(field: NumberField): Pair | null {
+    const stem = pairStemOf(field.name);
+    if (stem === null || field.source !== 'value' || field.whole || !this.canExpose(field)) {
+      return null;
+    }
+
+    const y = this.groups()
+      .flatMap(group => group.fields)
+      .find(other => other.control === 'number' && other.name === `${stem} Y`);
+    return y?.control === 'number' &&
+      y.source === 'value' &&
+      !y.whole &&
+      this.canExpose(y) &&
+      !this.wireInto(y) &&
+      this.shown(y)
+      ? { stem, y }
+      : null;
+  }
+
+  /**
+   * Makes one Float2 parameter of an X and Y pair, starting where they are and drawn as a position or a tiling by what
+   * the pair is called, and drives each port from its half (`Offset.x`), as one undo step.
+   */
+  protected exposePair(x: NumberField, pair: Pair): void {
+    const name = this.freeName(pair.stem);
+    const at = [this.numberOf(x), this.numberOf(pair.y)] as const;
+    const { minimum: lowX, maximum: highX } = x;
+    const { minimum: lowY, maximum: highY } = pair.y;
+    const parameter: GraphSettingDefinition = {
+      name,
+      summary: x.summary,
+      group: '',
+      default: pairTextOf(at[0], at[1]),
+      kind: 'Float2',
+      minimum: Math.min(...at, ...(lowX === null || lowY === null ? [0] : [lowX, lowY])),
+      maximum: Math.max(...at, ...(highX === null || highY === null ? [1] : [highX, highY])),
+      accepted: [],
+      widget: pairWidgetOf(pair.stem)
+    };
+    this.store.exposePair(this.node().id, parameter, [
+      { port: expressionKey(x.name), value: `${name}.x` },
+      { port: expressionKey(pair.y.name), value: `${name}.y` }
+    ]);
   }
 
   protected expressionOf(port: string): string {

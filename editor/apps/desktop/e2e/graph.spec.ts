@@ -628,6 +628,15 @@ test('the node library adds a node, and a number becomes a parameter in one step
   await expect(window.getByTestId('expression-Scale')).toHaveValue('Scale');
   await window.getByTestId('graph-settings').click();
   await expect(window.getByTestId('parameter-Scale')).toBeVisible();
+
+  // An X and Y pair becomes one Float2, each port driven by its half (#311).
+  await node(1).click();
+  await window.getByTestId('expose-pair-Offset').click();
+  await expect(window.getByTestId('expression-Offset X')).toHaveValue('Offset.x');
+  await expect(window.getByTestId('expression-Offset Y')).toHaveValue('Offset.y');
+  await expect(window.getByTestId('expose-pair-Offset')).toHaveCount(0);
+  await window.getByTestId('graph-settings').click();
+  await expect(window.getByTestId('parameter-pair-Offset')).toBeVisible();
 });
 
 test('groups nodes, keeps notes, and both survive a save and a reopen', async () => {

@@ -112,6 +112,8 @@ describe('parameters', () => {
     expect(controlOf(parameter({ kind: 'Text', accepted: ['A', 'B'] }))).toBe('choice');
     expect(controlOf(parameter({ kind: 'Text' }))).toBe('text');
     expect(controlOf(parameter({ kind: 'Float2', default: '0.5,0.5', widget: 'Position' }))).toBe('pair');
+    expect(controlOf(parameter({ kind: 'Curve', default: '' }))).toBe('curve');
+    expect(controlOf(parameter({ kind: 'Ramp', default: '' }))).toBe('ramp');
   });
 
   it('are offered only the widgets the Server accepts for them', () => {
