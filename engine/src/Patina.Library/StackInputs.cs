@@ -79,9 +79,10 @@ public static class StackInputs {
             return null;
         }
 
-        var maps = 0;
+        var (maps, count) = (0, 0);
         if (root.Children.TryGetValue(new YamlScalarNode("sets"), out var sets) && sets is YamlSequenceNode list) {
             foreach (var set in list.Children.OfType<YamlMappingNode>()) {
+                count++;
                 if (set.Children.TryGetValue(new YamlScalarNode("channels"), out var channels)
                     && channels is YamlSequenceNode held) {
                     maps += held.Children.Count;
@@ -89,7 +90,7 @@ public static class StackInputs {
             }
         }
 
-        return new(width, height, maps);
+        return new(width, height, maps) { Sets = count };
     }
 
     /// <summary>
@@ -160,6 +161,9 @@ public static class StackInputs {
 public readonly record struct TextureSize(int Width, int Height, int Maps) {
     /// <summary>Bytes per texel of one map as an export writes it uncompressed: four eight-bit lanes.</summary>
     public const int BytesPerTexel = 4;
+
+    /// <summary>How many texture sets it has, each of which an export writes a preset's files for (#207).</summary>
+    public int Sets { get; init; }
 
     /// <summary>What its maps hold together, uncompressed and without mip levels.</summary>
     public long Bytes => (long)Width * Height * Maps * BytesPerTexel;

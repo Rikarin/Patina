@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked
+} from '@angular/core';
 import type { UnwrapOptions } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
@@ -8,6 +18,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { percent, times } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { FileChooser } from './file-chooser';
+import { HeldFiles } from './held-files';
 import { MeshFactsView } from './mesh-facts';
 import { ProjectStore, type SettingsPlace } from './project-store';
 
@@ -308,6 +319,8 @@ export class ProjectSettingsForm {
   });
 
   constructor() {
+    // A mesh chosen and not yet applied may be an upload nothing else names (#301).
+    inject(DestroyRef).onDestroy(inject(HeldFiles).hold(() => [this.mesh()]));
     // Properties' form is made again when a failed Apply opens the document again, and must still say why (#291), so
     // only coming into view again or another project starts the failure over.
     let made = false;

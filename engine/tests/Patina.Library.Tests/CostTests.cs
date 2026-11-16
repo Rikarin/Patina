@@ -70,6 +70,35 @@ public sealed class CostTests : IDisposable {
         Assert.Equal(1024L * 512 * 3 * 4, open.Costs(string.Empty).Bytes);
     }
 
+    /// <summary>
+    ///     A platform's price is any function of a stack's size, maps and sets (#207): the folder sums it as the SQL
+    ///     sums the uncompressed cost, and the budget pages by it, the same order and the same total either way.
+    /// </summary>
+    [Fact]
+    public void A_price_per_platform_is_summed_by_folder_and_paged_by_its_budget() {
+        Project("props/crate", ("crate.vxlayers", Stack(1024, 1024, 3)), ("trim.vxlayers", Stack(512, 256, 2, 1)));
+        Project("hero", ("hero.vxlayers", Stack(2048, 2048, 5)));
+        using var open = library.Open();
+        open.Rescan(TestContext.Current.CancellationToken);
+        DocumentPrice bySets = static size => (long)size.Width * size.Height * size.Sets;
+        DocumentPrice uncompressed = static size => size.Bytes;
+
+        var top = open.Costs(string.Empty, bySets);
+        var over = open.CostlierThan(string.Empty, 1024L * 1024 - 1, 0, 1, bySets);
+
+        Assert.Equal(
+            [("hero", 1, 2048L * 2048), ("props", 2, 1024L * 1024 + 512L * 256 * 2)],
+            top.Items.Select(static item => (item.Name, item.Documents, item.Bytes))
+        );
+        Assert.Equal(2, over.Total);
+        Assert.Equal(("projects/hero/hero.vxlayers", 2048, 2048, 5), Single(over));
+        Assert.Equal(open.Costs("props").Items, open.Costs("props", uncompressed).Items);
+        Assert.Equal(
+            open.CostlierThan("props", 0, 0, 10).Items,
+            open.CostlierThan("props", 0, 0, 10, uncompressed).Items
+        );
+    }
+
     static (string, int, int, int) Single(Contracts.DocumentCostPage page) {
         var item = Assert.Single(page.Items);
         return (item.Path, item.Width, item.Height, item.Maps);

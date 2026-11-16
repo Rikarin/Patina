@@ -1272,7 +1272,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** What a folder's documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document's size. No folder is the whole library. */
+    /** What a folder's documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document's size. No folder is the whole library. With preset, what they take in GPU memory as that platform's preset writes them: each of its files for each texture set, at its size, compression and mip chain. A preset nobody has is refused with preset-missing. */
     get: operations['GetLibraryCosts'];
     put?: never;
     post?: never;
@@ -1289,7 +1289,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first. */
+    /** One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first, uncompressed or, with preset, as that platform's preset writes them. */
     get: operations['GetDocumentsOverBudget'];
     put?: never;
     post?: never;
@@ -1528,7 +1528,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The files sent from another computer that no file of the library and no open document names any more, with the room they take. One sent in the last hour counts as used. Changes nothing. */
+    /** The files sent from another computer that no file of the library, no open document, no queued or running bake or build and nothing in held names any more, with the room they take. held is what the client holds unsaved, such as an open dialog's paths. One sent in the last hour counts as used. Changes nothing. */
     get: operations['GetUnusedUploads'];
     put?: never;
     post?: never;
@@ -1547,7 +1547,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into the bin as one entry, which Restore puts back. */
+    /** Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them with the body's held, into the bin as one entry, which Restore puts back. */
     post: operations['ClearUploads'];
     delete?: never;
     options?: never;
@@ -5578,7 +5578,8 @@ export interface components {
     /**
      * @description What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A
      *     document's cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for
-     *     each channel of each texture set. Compression and mip levels are a preset's, and are not counted.
+     *     each channel of each texture set. Asked for a platform's preset, it is what that preset writes: each of its
+     *     files for each texture set, at its size, compression and mip chain.
      */
     LibraryCosts: {
       /** @description The folder below `projects/`, empty for the whole library. */
@@ -9261,6 +9262,14 @@ export interface components {
       bytes: number;
       /** @description The bin's entry that holds them, for a Restore, or null when none went. */
       bin?: null | string;
+    };
+    /** @description The body of `POST /api/v1/library/uploads/clear` (#301). */
+    UploadsClearRequest: {
+      /**
+       * @description Paths on the Server's machine, or any text naming them, that the client holds where no file of the library
+       *     does yet, such as an open dialog's unsaved settings. An upload any of them names counts as used.
+       */
+      held?: null | string[];
     };
     /**
      * @description A bake's setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,
@@ -13966,6 +13975,7 @@ export interface operations {
     parameters: {
       query?: {
         folder?: string;
+        preset?: string;
       };
       header?: never;
       path?: never;
@@ -14016,6 +14026,7 @@ export interface operations {
       query: {
         over: number;
         folder?: string;
+        preset?: string;
         offset?: number;
         limit?: number;
       };
@@ -14760,7 +14771,9 @@ export interface operations {
   };
   GetUnusedUploads: {
     parameters: {
-      query?: never;
+      query?: {
+        held?: string[];
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -14812,7 +14825,11 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody?: {
+      content: {
+        'application/json': null | components['schemas']['UploadsClearRequest'];
+      };
+    };
     responses: {
       /** @description OK */
       200: {

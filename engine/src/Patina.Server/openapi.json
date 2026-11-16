@@ -5080,11 +5080,18 @@
         "tags": [
           "Library"
         ],
-        "summary": "What a folder\u0027s documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document\u0027s size. No folder is the whole library.",
+        "summary": "What a folder\u0027s documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document\u0027s size. No folder is the whole library. With preset, what they take in GPU memory as that platform\u0027s preset writes them: each of its files for each texture set, at its size, compression and mip chain. A preset nobody has is refused with preset-missing.",
         "operationId": "GetLibraryCosts",
         "parameters": [
           {
             "name": "folder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "preset",
             "in": "query",
             "schema": {
               "type": "string"
@@ -5140,7 +5147,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first.",
+        "summary": "One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first, uncompressed or, with preset, as that platform\u0027s preset writes them.",
         "operationId": "GetDocumentsOverBudget",
         "parameters": [
           {
@@ -5154,6 +5161,13 @@
           },
           {
             "name": "folder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "preset",
             "in": "query",
             "schema": {
               "type": "string"
@@ -6028,8 +6042,20 @@
         "tags": [
           "Library"
         ],
-        "summary": "The files sent from another computer that no file of the library and no open document names any more, with the room they take. One sent in the last hour counts as used. Changes nothing.",
+        "summary": "The files sent from another computer that no file of the library, no open document, no queued or running bake or build and nothing in held names any more, with the room they take. held is what the client holds unsaved, such as an open dialog\u0027s paths. One sent in the last hour counts as used. Changes nothing.",
         "operationId": "GetUnusedUploads",
+        "parameters": [
+          {
+            "name": "held",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -6079,8 +6105,24 @@
         "tags": [
           "Library"
         ],
-        "summary": "Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into the bin as one entry, which Restore puts back.",
+        "summary": "Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them with the body\u0027s held, into the bin as one entry, which Restore puts back.",
         "operationId": "ClearUploads",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/UploadsClearRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -16233,7 +16275,7 @@
             "description": "Each folder or project directly in it."
           }
         },
-        "description": "What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A\ndocument\u0027s cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for\neach channel of each texture set. Compression and mip levels are a preset\u0027s, and are not counted."
+        "description": "What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A\ndocument\u0027s cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for\neach channel of each texture set. Asked for a platform\u0027s preset, it is what that preset writes: each of its\nfiles for each texture set, at its size, compression and mip chain."
       },
       "LibraryExportRequest": {
         "required": [
@@ -23954,6 +23996,22 @@
           }
         },
         "description": "What \u0060POST /api/v1/library/uploads/clear\u0060 took away (#297)."
+      },
+      "UploadsClearRequest": {
+        "type": "object",
+        "properties": {
+          "held": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Paths on the Server\u0027s machine, or any text naming them, that the client holds where no file of the library\ndoes yet, such as an open dialog\u0027s unsaved settings. An upload any of them names counts as used."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/uploads/clear\u0060 (#301)."
       },
       "ViewportBakePreview": {
         "required": [

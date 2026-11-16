@@ -18,6 +18,7 @@ from typing import cast
 def _get_kwargs(
     *,
     folder: str | Unset = UNSET,
+    preset: str | Unset = UNSET,
 
 ) -> dict[str, Any]:
     
@@ -27,6 +28,8 @@ def _get_kwargs(
     params: dict[str, Any] = {}
 
     params["folder"] = folder
+
+    params["preset"] = preset
 
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
@@ -91,13 +94,17 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
     folder: str | Unset = UNSET,
+    preset: str | Unset = UNSET,
 
 ) -> Response[LibraryCosts | ProblemDetails]:
     """ What a folder's documents cost, by each folder or project directly in it, costliest first: their
-    maps uncompressed, at each document's size. No folder is the whole library.
+    maps uncompressed, at each document's size. No folder is the whole library. With preset, what they
+    take in GPU memory as that platform's preset writes them: each of its files for each texture set, at
+    its size, compression and mip chain. A preset nobody has is refused with preset-missing.
 
     Args:
         folder (str | Unset):
+        preset (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -110,6 +117,7 @@ def sync_detailed(
 
     kwargs = _get_kwargs(
         folder=folder,
+preset=preset,
 
     )
 
@@ -123,13 +131,17 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
     folder: str | Unset = UNSET,
+    preset: str | Unset = UNSET,
 
 ) -> LibraryCosts | ProblemDetails | None:
     """ What a folder's documents cost, by each folder or project directly in it, costliest first: their
-    maps uncompressed, at each document's size. No folder is the whole library.
+    maps uncompressed, at each document's size. No folder is the whole library. With preset, what they
+    take in GPU memory as that platform's preset writes them: each of its files for each texture set, at
+    its size, compression and mip chain. A preset nobody has is refused with preset-missing.
 
     Args:
         folder (str | Unset):
+        preset (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -143,6 +155,7 @@ def sync(
     return sync_detailed(
         client=client,
 folder=folder,
+preset=preset,
 
     ).parsed
 
@@ -150,13 +163,17 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
     folder: str | Unset = UNSET,
+    preset: str | Unset = UNSET,
 
 ) -> Response[LibraryCosts | ProblemDetails]:
     """ What a folder's documents cost, by each folder or project directly in it, costliest first: their
-    maps uncompressed, at each document's size. No folder is the whole library.
+    maps uncompressed, at each document's size. No folder is the whole library. With preset, what they
+    take in GPU memory as that platform's preset writes them: each of its files for each texture set, at
+    its size, compression and mip chain. A preset nobody has is refused with preset-missing.
 
     Args:
         folder (str | Unset):
+        preset (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -169,6 +186,7 @@ async def asyncio_detailed(
 
     kwargs = _get_kwargs(
         folder=folder,
+preset=preset,
 
     )
 
@@ -182,13 +200,17 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
     folder: str | Unset = UNSET,
+    preset: str | Unset = UNSET,
 
 ) -> LibraryCosts | ProblemDetails | None:
     """ What a folder's documents cost, by each folder or project directly in it, costliest first: their
-    maps uncompressed, at each document's size. No folder is the whole library.
+    maps uncompressed, at each document's size. No folder is the whole library. With preset, what they
+    take in GPU memory as that platform's preset writes them: each of its files for each texture set, at
+    its size, compression and mip chain. A preset nobody has is refused with preset-missing.
 
     Args:
         folder (str | Unset):
+        preset (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -202,5 +224,6 @@ async def asyncio(
     return (await asyncio_detailed(
         client=client,
 folder=folder,
+preset=preset,
 
     )).parsed

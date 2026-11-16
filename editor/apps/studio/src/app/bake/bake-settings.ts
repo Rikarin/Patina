@@ -8,6 +8,7 @@ import type {
 } from '@patina/api-client';
 import { messageOf, refusalWords } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
+import { HeldFiles } from '../library/held-files';
 import { ProjectStore } from '../library/project-store';
 import { type BakePlanQuery, BakeStore } from './bake-store';
 
@@ -270,7 +271,10 @@ export class BakeSettings {
   }
 
   constructor() {
+    // An edit not written yet may be all that names an upload, such as a cage just sent (#301).
+    const release = inject(HeldFiles).hold(() => (this.pending ? [JSON.stringify(this.pending.bake)] : []));
     inject(DestroyRef).onDestroy(() => {
+      release();
       if (this.timer !== null) {
         clearTimeout(this.timer);
       }

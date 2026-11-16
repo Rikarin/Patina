@@ -9,7 +9,8 @@ public sealed record FolderCost(string Name, int Documents, long Bytes);
 /// <summary>
 ///     What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A
 ///     document's cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for
-///     each channel of each texture set. Compression and mip levels are a preset's, and are not counted.
+///     each channel of each texture set. Asked for a platform's preset, it is what that preset writes: each of its
+///     files for each texture set, at its size, compression and mip chain.
 /// </summary>
 /// <param name="Folder">The folder below <c>projects/</c>, empty for the whole library.</param>
 /// <param name="Documents">How many stacks are below it.</param>

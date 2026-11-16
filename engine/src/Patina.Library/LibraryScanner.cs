@@ -206,7 +206,9 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
             var bytes = SharedFile.ReadAllBytes(file.FullPath);
             var hash = Revision.Of(bytes).Text;
-            return hash == knownHash ? new(file, Effect.Same, hash) : Parse(file, bytes, hash);
+            return (hash == knownHash ? new(file, Effect.Same, hash) : Parse(file, bytes, hash)) with {
+                Names = NamesIn(bytes)
+            };
         } catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException) {
             return new(file, Effect.Gone, null); // deleted since the walk; the next scan would agree
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
@@ -216,20 +218,26 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
     /// <summary>
     ///     A document beside a project: its revision, and for a stack what it exports at, which the costs read (#207).
-    ///     A stack is small text, its paint being apart, so it is read once for both.
+    ///     A document is small text, a stack's paint being apart, so it is read once for all of it, with the names of
+    ///     pictures and uploads it holds, which Clean then need not read again (#301).
     /// </summary>
     static Outcome Content(ScannedFile file, string? knownHash) {
-        if (!file.Path.EndsWith(StackInputs.Extension, StringComparison.Ordinal)) {
+        if (file.Size > LibraryNameReader.MostRead) {
             var revision = Revision.OfFile(file.FullPath).Text;
             return new(file, revision == knownHash ? Effect.Same : Effect.Changed, revision);
         }
 
         var bytes = SharedFile.ReadAllBytes(file.FullPath);
         var hash = Revision.Of(bytes).Text;
+        var stack = file.Path.EndsWith(StackInputs.Extension, StringComparison.Ordinal);
         return new(file, hash == knownHash ? Effect.Same : Effect.Changed, hash) {
-            Texture = StackInputs.SizeOf(Encoding.UTF8.GetString(bytes))
+            Texture = stack ? StackInputs.SizeOf(Encoding.UTF8.GetString(bytes)) : null, Names = NamesIn(bytes)
         };
     }
+
+    /// <summary>The names of pictures and uploads in a file read whole, as Clean finds them.</summary>
+    static HashSet<LibraryName>? NamesIn(byte[] bytes) =>
+        bytes.LongLength > LibraryNameReader.MostRead ? null : LibraryNameReader.Read(Encoding.UTF8.GetString(bytes));
 
     /// <summary>
     ///     A file that does not parse (a merge conflict, a hand edit) must not stop the scan: it is recorded, and the
@@ -286,6 +294,9 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         /// <summary>What a stack exports at, or null for any other file.</summary>
         public TextureSize? Texture { get; init; }
 
+        /// <summary>The names of pictures and uploads the file holds, or null when it was not read for them.</summary>
+        public HashSet<LibraryName>? Names { get; init; }
+
         public (ProblemCode Code, string Detail)? Problem { get; init; }
     }
 
@@ -298,6 +309,8 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         readonly List<SqliteCommand> commands = [];
         readonly SqliteCommand stampFile;
         readonly SqliteCommand deleteFile;
+        readonly SqliteCommand stampNames;
+        readonly SqliteCommand deleteNames;
         readonly SqliteCommand deleteProblem;
         readonly SqliteCommand insertProblem;
         readonly SqliteCommand findProject;
@@ -330,11 +343,11 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
             stampFile = Prepare(
                 """
-                INSERT INTO file(path, kind, size, mtime, scanned, hash, width, height, maps)
-                VALUES (@path, @kind, @size, @mtime, @scanned, @hash, @width, @height, @maps)
+                INSERT INTO file(path, kind, size, mtime, scanned, hash, width, height, maps, sets)
+                VALUES (@path, @kind, @size, @mtime, @scanned, @hash, @width, @height, @maps, @sets)
                 ON CONFLICT(path) DO UPDATE
                 SET kind = @kind, size = @size, mtime = @mtime, scanned = @scanned, hash = @hash,
-                    width = @width, height = @height, maps = @maps
+                    width = @width, height = @height, maps = @maps, sets = @sets
                 """,
                 PathParameter,
                 "@kind",
@@ -344,9 +357,22 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
                 "@hash",
                 "@width",
                 "@height",
-                "@maps"
+                "@maps",
+                "@sets"
             );
             deleteFile = Prepare("DELETE FROM file WHERE path = @path", PathParameter);
+            stampNames = Prepare(
+                """
+                INSERT OR REPLACE INTO named_file(path, size, mtime, scanned, names)
+                VALUES (@path, @size, @mtime, @scanned, @names)
+                """,
+                PathParameter,
+                "@size",
+                "@mtime",
+                "@scanned",
+                "@names"
+            );
+            deleteNames = Prepare("DELETE FROM named_file WHERE path = @path", PathParameter);
             deleteProblem = Prepare("DELETE FROM problem WHERE path = @path", PathParameter);
             insertProblem = Prepare(
                 "INSERT INTO problem(path, code, detail) VALUES (@path, @code, @detail)",
@@ -437,12 +463,23 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
             Set(stampFile, "@width", outcome.Texture?.Width);
             Set(stampFile, "@height", outcome.Texture?.Height);
             Set(stampFile, "@maps", outcome.Texture?.Maps);
+            Set(stampFile, "@sets", outcome.Texture?.Sets);
             stampFile.ExecuteNonQuery();
+            if (outcome.Names is { } names) {
+                Set(stampNames, PathParameter, file.Path);
+                Set(stampNames, "@size", file.Size);
+                Set(stampNames, "@mtime", file.Time);
+                Set(stampNames, "@scanned", scanned);
+                Set(stampNames, "@names", LibraryNameIndex.Join(names));
+                stampNames.ExecuteNonQuery();
+            }
         }
 
         public void Remove(string path, TrackedKind kind) {
             Set(deleteFile, PathParameter, path);
             deleteFile.ExecuteNonQuery();
+            Set(deleteNames, PathParameter, path);
+            deleteNames.ExecuteNonQuery();
             ClearDocument(path, kind);
         }
 

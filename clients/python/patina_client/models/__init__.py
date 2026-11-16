@@ -436,6 +436,7 @@ from .unwrap_options import UnwrapOptions
 from .unwrap_report import UnwrapReport
 from .unwrap_set import UnwrapSet
 from .uploaded_file import UploadedFile
+from .uploads_clear_request import UploadsClearRequest
 from .uploads_cleared import UploadsCleared
 from .viewport_bake_preview import ViewportBakePreview
 from .viewport_bake_request import ViewportBakeRequest
@@ -900,6 +901,7 @@ __all__ = (
     "UnwrapSet",
     "UploadedFile",
     "UploadsCleared",
+    "UploadsClearRequest",
     "ViewportBakePreview",
     "ViewportBakeRequest",
     "ViewportCameraState",

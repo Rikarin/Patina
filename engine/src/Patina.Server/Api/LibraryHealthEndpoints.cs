@@ -4,6 +4,7 @@ using Patina.Jobs;
 using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
+using System.Text.Json;
 
 namespace Patina.Server.Api;
 
@@ -47,14 +48,16 @@ static class LibraryHealthEndpoints {
         library.MapGet("/uploads/unused", UnusedUploads)
             .Described(
                 "GetUnusedUploads",
-                "The files sent from another computer that no file of the library and no open document names any "
-                + "more, with the room they take. One sent in the last hour counts as used. Changes nothing."
+                "The files sent from another computer that no file of the library, no open document, no queued or "
+                + "running bake or build and nothing in held names any more, with the room they take. held is what "
+                + "the client holds unsaved, such as an open dialog's paths. One sent in the last hour counts as "
+                + "used. Changes nothing."
             );
         library.MapPost("/uploads/clear", ClearUploads)
             .Described(
                 "ClearUploads",
-                "Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, "
-                + "into the bin as one entry, which Restore puts back."
+                "Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them with "
+                + "the body's held, into the bin as one entry, which Restore puts back."
             );
     }
 
@@ -160,27 +163,42 @@ static class LibraryHealthEndpoints {
             }
         );
 
-    /// <summary>The uploads nothing names, saved or open (#297).</summary>
+    /// <summary>The uploads nothing names, saved, open, queued or held by the client (#297, #301).</summary>
     static Results<Ok<UnusedUploadList>, ProblemHttpResult> UnusedUploads(
         LibraryHost host,
         StackSessions stacks,
-        GraphSessions graphs
+        GraphSessions graphs,
+        JobQueue jobs,
+        string[]? held
     ) =>
         LibraryTreeEndpoints.Guarded(
             host,
-            library => TypedResults.Ok(library.Care.UnusedUploads(Open(stacks, graphs)))
+            library => TypedResults.Ok(library.Care.UnusedUploads(Open(stacks, graphs), Held(jobs, held)))
         );
 
     /// <summary>Moves the uploads nothing names into the bin (#297).</summary>
     static Results<Ok<UploadsCleared>, ProblemHttpResult> ClearUploads(
         LibraryHost host,
         StackSessions stacks,
-        GraphSessions graphs
+        GraphSessions graphs,
+        JobQueue jobs,
+        UploadsClearRequest? request
     ) =>
         LibraryTreeEndpoints.Guarded(
             host,
-            library => TypedResults.Ok(library.Care.ClearUploads(Open(stacks, graphs)))
+            library => TypedResults.Ok(library.Care.ClearUploads(Open(stacks, graphs), Held(jobs, request?.Held)))
         );
+
+    /// <summary>
+    ///     What names files outside every file of the library (#301): each bake or build queued or running, whose
+    ///     request names its meshes and pictures, and what the client says it holds.
+    /// </summary>
+    static List<string> Held(JobQueue jobs, IReadOnlyList<string>? client) => [
+        ..jobs.Page()
+            .Jobs.Where(static job => job.State is JobStates.Queued or JobStates.Running)
+            .Select(static job => JsonSerializer.Serialize(job, ContractsJsonContext.Default.JobState)),
+        ..client ?? []
+    ];
 
     /// <summary>What every open document holds now, saved or not, by its file.</summary>
     static Dictionary<string, string> Open(StackSessions stacks, GraphSessions graphs) {
