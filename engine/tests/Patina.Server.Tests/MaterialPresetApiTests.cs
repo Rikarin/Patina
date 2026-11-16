@@ -91,7 +91,7 @@ public sealed class MaterialPresetApiTests : IAsyncLifetime {
         Assert.Contains(own, material => material.Source == preset.Source && material.Origin == "project");
         var found = Assert.Single(
             await ShelfAsync("barrel", "rust"),
-            material => material.Kind == DocumentKinds.MaterialPreset
+            static material => material.Kind == DocumentKinds.MaterialPreset
         );
         Assert.Equal(("library", "Crate"), (found.Origin, found.Project));
 

@@ -50,7 +50,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     readonly List<UndoStep> redoable = [];
     long nextEntry;
     long nextStep;
-    SaveMark saved;
+    (long? Step, int Parts) saved;
 
     /// <summary>
     ///     What size each canvas is as a Worker holds it, which a stroke is checked against before it begins.
@@ -199,11 +199,14 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         return step.Label;
     }
 
-    /// <summary>Where the history stands, which a save takes with its text.</summary>
-    public SaveMark Mark => undoable.Count > 0 ? new(undoable[^1].Id, undoable[^1].Parts) : default;
+    /// <summary>
+    ///     Where the history stands, which a save takes with its text (#306): the newest step that stands, or null, and
+    ///     how far a drag had got with it. The revision is no measure, since it also moves for a bake chosen.
+    /// </summary>
+    public (long? Step, int Parts) Mark => undoable.Count > 0 ? (undoable[^1].Id, undoable[^1].Parts) : (null, 0);
 
     /// <summary>The file holds the document as it stood at a mark: back at it, the stack is saved.</summary>
-    public void MarkSaved(SaveMark at) => saved = at;
+    public void MarkSaved((long? Step, int Parts) at) => saved = at;
 
     /// <summary>What a colour in the API is in a paint file.</summary>
     /// <exception cref="StackEditRefusedException">It is not four numbers.</exception>

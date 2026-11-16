@@ -34,7 +34,13 @@ public static class MaterialPresetShelf {
             throw new ProjectRefusedException(problem);
         }
 
-        var path = library.CreateMaterialPreset(request.Project, request.Name, preset);
+        var path = library.CreatePreset(
+            request.Project,
+            request.Name,
+            DocumentKinds.MaterialPreset,
+            MaterialPresets.Extension,
+            MaterialPresets.Text(preset)
+        );
         var document = library.Contents(request.Project).Documents.First(document => document.Path == path);
         return Described(document, preset);
     }
@@ -49,11 +55,11 @@ public static class MaterialPresetShelf {
     ///     fill's <c>parameters</c> take.
     /// </summary>
     /// <exception cref="FileNotFoundException">There is no such preset.</exception>
-    /// <exception cref="ProjectRefusedException">Its file is not a material preset, or names another preset.</exception>
+    /// <exception cref="ProjectRefusedException">Its file is no material preset, or names another preset.</exception>
     public static MaterialUse Use(OpenLibrary library, string project, string source) {
         var full = Path.GetFullPath(source, library.RootPath);
-        if (!full.StartsWith(Path.GetFullPath(library.RootPath) + Path.DirectorySeparatorChar, StringComparison.Ordinal)
-            || !File.Exists(full)) {
+        var root = Path.GetFullPath(library.RootPath) + Path.DirectorySeparatorChar;
+        if (!full.StartsWith(root, StringComparison.Ordinal) || !File.Exists(full)) {
             throw new FileNotFoundException($"There is no material preset '{source}' in this library.", source);
         }
 
@@ -71,7 +77,11 @@ public static class MaterialPresetShelf {
         var graph = MaterialShelf.Publish(library, project, preset.Material);
         return new(
             graph,
-            preset.Values.ToDictionary(static value => value.Name, static value => value.Value, StringComparer.Ordinal)
+            preset.Values.ToDictionary(
+                static value => value.Name,
+                static value => value.Value,
+                StringComparer.Ordinal
+            )
         );
     }
 
@@ -86,7 +96,7 @@ public static class MaterialPresetShelf {
             Tags: [..document.Tags, MaterialName(preset.Material)]
         );
 
-    /// <summary>What a material is called, from how the shelf names it: its file's name, or a shipped one's own.</summary>
+    /// <summary>What a material is called, from how the shelf names it: its file's name or a shipped one's.</summary>
     static string MaterialName(string material) {
         var name = material[(material.IndexOf(':', StringComparison.Ordinal) + 1)..];
         return Path.GetFileNameWithoutExtension(name.Replace('\\', '/').Split('/')[^1]);

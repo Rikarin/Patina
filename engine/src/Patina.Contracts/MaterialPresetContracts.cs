@@ -5,16 +5,18 @@ namespace Patina.Contracts;
 ///     <c>.ptpreset</c> file, and the file is the truth; the shelf lists it among the materials, and using it fills a
 ///     layer with the material at these values.
 /// </summary>
-/// <param name="Material">The material, as the shelf names it: a graph's path in the library, or a shipped one's.</param>
-/// <param name="Values">What it sets the material's parameters to, by name; a parameter left out keeps its default.</param>
+/// <param name="Material">The material as the shelf names it: a graph's path in the library or a shipped one's.</param>
+/// <param name="Values">What it sets the material's parameters to; a parameter left out keeps its default.</param>
 public sealed record MaterialPreset(string Material, IReadOnlyList<MaterialPresetValue> Values) {
     /// <summary>What is wrong with it, or null when it can be kept.</summary>
     public string? Problem() =>
-        Material.Trim().Length == 0 ? "A material preset names the material it sets."
-        : Values.Any(static value => value.Name.Trim().Length == 0) ? "A material preset's value names its parameter."
-        : Values.DistinctBy(static value => value.Name, StringComparer.Ordinal).Count() != Values.Count
-            ? "A material preset sets each parameter once."
-        : null;
+        Material.Trim().Length == 0
+            ? "A material preset names the material it sets."
+            : Values.Any(static value => value.Name.Trim().Length == 0)
+                ? "A material preset's value names its parameter."
+                : Values.DistinctBy(static value => value.Name, StringComparer.Ordinal).Count() != Values.Count
+                    ? "A material preset sets each parameter once."
+                    : null;
 }
 
 /// <summary>One parameter of a material preset.</summary>

@@ -365,7 +365,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     ///     when a bake is chosen, which is no edit of the document (#299), and an edit undone again leaves the
     ///     document as the file holds it (#306).
     /// </returns>
-    public (string Text, SaveMark Mark) PrepareSave(bool force) {
+    public (string Text, (long? Step, int Parts) Mark) PrepareSave(bool force) {
         lock (Changing) {
             if (!force && File.Exists(Path) && Hash(SharedFile.ReadAllText(Path)) != fileHash) {
                 throw new GraphFileChangedException($"'{Path}' changed on disk after it was opened.");
@@ -400,7 +400,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     /// </summary>
     /// <param name="text">The text <see cref="PrepareSave" /> took.</param>
     /// <param name="taken">Where the history stood then.</param>
-    public StackEditResult FinishSave(string text, SaveMark taken) {
+    public StackEditResult FinishSave(string text, (long? Step, int Parts) taken) {
         lock (Changing) {
             LibraryFiles.Replace(Path, text);
             fileHash = Hash(text);

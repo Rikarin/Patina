@@ -168,7 +168,7 @@ static class StackSurfaces {
             Radius = path.Radius,
             Hardness = path.Hardness,
             Ribbon = path.Ribbon,
-            Filled = path.Filled && !path.Ribbon,
+            Filled = path is { Filled: true, Ribbon: false },
             Repeat = path.Repeat,
             Angle = path.Angle,
             Spacing = path.Spacing,

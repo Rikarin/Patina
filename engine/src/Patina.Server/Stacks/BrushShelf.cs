@@ -49,7 +49,13 @@ public static class BrushShelf {
     /// <summary>Saves a new preset in a project.</summary>
     /// <exception cref="ProjectExistsException">The project has one of that name.</exception>
     public static BrushPresetInfo Create(OpenLibrary library, BrushPresetCreateRequest request) {
-        var path = library.CreateBrushPreset(request.Project, request.Name, request.Preset);
+        var path = library.CreatePreset(
+            request.Project,
+            request.Name,
+            DocumentKinds.BrushPreset,
+            BrushPresets.Extension,
+            BrushPresets.Text(request.Preset)
+        );
         return new(Named(library, request.Project, path) ?? request.Name.Trim(), path, Own, request.Preset);
     }
 

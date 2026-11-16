@@ -109,12 +109,12 @@ public sealed class GraphEditorPropertyTests {
                         TryEdit(editor, seed);
                     }
 
-                    if (editor.History.Step == mark.Step) {
+                    if (editor.History.Step == mark) {
                         return;
                     }
 
                     Assert.True(editor.History.Dirty);
-                    while (editor.History.Step != mark.Step && editor.Undo() is not null) { }
+                    while (editor.History.Step != mark && editor.Undo() is not null) { }
 
                     Assert.False(editor.History.Dirty);
                     Assert.Equal(saved, GraphDocuments.Text(editor.Document));

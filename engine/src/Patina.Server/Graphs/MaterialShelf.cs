@@ -245,11 +245,14 @@ public static class MaterialShelf {
     ///     kind the file could turn out to give, so it passes everything that matches and the file decides the rest.
     /// </summary>
     static bool Maybe(ProjectDocumentInfo document, string project, string[] words) {
+        // A material preset is found by its material's name too, which only its file holds (#124).
+        if (document.Kind == DocumentKinds.MaterialPreset) {
+            return true;
+        }
+
         var graph = document.Kind is DocumentKinds.Graph or DocumentKinds.ImageMaterial;
         var role = document.Role ?? GraphRoles.Material;
-
-        // A material preset is found by its material's name too, which only its file holds (#124).
-        return document.Kind == DocumentKinds.MaterialPreset || Has(
+        return Has(
             words,
             document.Name,
             document.Path,
@@ -445,7 +448,7 @@ public static class MaterialShelf {
     }
 
     /// <summary>
-    ///     Where the shelf has the material a graph fill of a project reads (#124): a shipped compound by its node type,
+    ///     Where the shelf has the material a graph fill of a project reads (#124): a shipped compound by its type,
     ///     or what the project's copy of a published graph was published from. Null for a graph the shelf did not give.
     /// </summary>
     internal static string? SourceOf(OpenLibrary library, string project, string graph) {
@@ -465,7 +468,8 @@ public static class MaterialShelf {
     /// <summary>Whether a source names a graph file in the library.</summary>
     internal static bool IsLibraryGraph(OpenLibrary library, string source) {
         var full = Path.GetFullPath(source, library.RootPath);
-        return full.StartsWith(Path.GetFullPath(library.RootPath) + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+        var root = Path.GetFullPath(library.RootPath) + Path.DirectorySeparatorChar;
+        return full.StartsWith(root, StringComparison.Ordinal)
             && full.EndsWith(LibraryLayout.GraphExtension, StringComparison.OrdinalIgnoreCase)
             && File.Exists(full);
     }

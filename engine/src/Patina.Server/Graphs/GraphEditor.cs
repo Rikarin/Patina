@@ -37,7 +37,7 @@ public sealed class GraphEditor {
     readonly List<UndoStep> redoable = [];
     NodeTypeRegistry registry;
     long nextStep;
-    SaveMark saved;
+    long? saved;
 
     /// <summary>Takes a document as a file holds it.</summary>
     public GraphEditor(NodeGraphAsset asset, NodeTypeRegistry registry) {
@@ -197,13 +197,13 @@ public sealed class GraphEditor {
     internal NodeTypeRegistry Registry => registry;
 
     /// <summary>Where the history stands, which a save takes with its text. A merged drag is a new step.</summary>
-    public SaveMark Mark => undoable.Count > 0 ? new(undoable[^1].Id, 0) : default;
+    public long? Mark => undoable.Count > 0 ? undoable[^1].Id : null;
 
     /// <summary>
     ///     Says the file holds the document as it stood at a mark. A later drag starts a new undo step rather than
     ///     merging into the step saved.
     /// </summary>
-    public void MarkSaved(SaveMark at) => saved = at;
+    public void MarkSaved(long? at) => saved = at;
 
     void Remember(GraphCommandBatch batch, List<IAuthoringCommand> applied) {
         redoable.Clear();
@@ -220,7 +220,7 @@ public sealed class GraphEditor {
 
     /// <summary>Folds a batch into the last step, keeping that step's "before" (plan: a drag is one undo).</summary>
     bool TryMerge(List<IAuthoringCommand> applied) {
-        if (undoable.Count == 0 || undoable[^1].Id == saved.Step || undoable[^1].Commands.Count != applied.Count) {
+        if (undoable.Count == 0 || undoable[^1].Id == saved || undoable[^1].Commands.Count != applied.Count) {
             return false;
         }
 

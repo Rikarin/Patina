@@ -58,7 +58,7 @@ public sealed class StackSaveRaceTests : IDisposable {
         Assert.True(session.Summary.Dirty);
     }
 
-    /// <summary>The step saved, undone during the save, is still what the file holds: it is unsaved until redone.</summary>
+    /// <summary>The step saved, undone during the save, is what the file holds: it is unsaved until redone.</summary>
     [Fact]
     public void A_step_undone_during_a_save_is_saved_once_redone() {
         var session = Opened("Crate");

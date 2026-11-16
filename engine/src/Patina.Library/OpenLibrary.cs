@@ -364,28 +364,23 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
-    /// <summary>Saves a new brush preset in a project, as a document of it.</summary>
+    /// <summary>
+    ///     Saves a new preset in a project, as a document of it: a brush preset's <c>.ptbrush</c> or a material
+    ///     preset's <c>.ptpreset</c> (#124), whose text its kind's own reader writes.
+    /// </summary>
+    /// <param name="path">The project.</param>
+    /// <param name="name">What to call it, which names its file.</param>
+    /// <param name="kind">Its kind of document.</param>
+    /// <param name="extension">Its file's extension.</param>
+    /// <param name="text">Its file's text.</param>
     /// <returns>Its path below the library.</returns>
     /// <exception cref="ProjectExistsException">The project has a file of that name.</exception>
     /// <exception cref="ProjectRefusedException">The name cannot name a file.</exception>
-    public string CreateBrushPreset(string path, string name, BrushPreset preset) {
+    public string CreatePreset(string path, string name, string kind, string extension, string text) {
         lock (createGate) {
-            var file = ProjectFiles.NewFile(RootPath, path, name, BrushPresets.Extension);
-            BrushPresets.Write(ProjectFile(path, file), preset);
-            ProjectFiles.AddDocument(RootPath, path, DocumentKinds.BrushPreset, file, name, null);
-            Interlocked.Increment(ref unscannedWrites);
-            return $"{LibraryLayout.ProjectsFolder}/{path.Trim('/')}/{file}";
-        }
-    }
-
-    /// <summary>Keeps a material preset as a new document of a project (#124).</summary>
-    /// <returns>Its file's path below the library.</returns>
-    /// <exception cref="ProjectExistsException">The project has a document of that name.</exception>
-    public string CreateMaterialPreset(string path, string name, MaterialPreset preset) {
-        lock (createGate) {
-            var file = ProjectFiles.NewFile(RootPath, path, name, MaterialPresets.Extension);
-            MaterialPresets.Write(ProjectFile(path, file), preset);
-            ProjectFiles.AddDocument(RootPath, path, DocumentKinds.MaterialPreset, file, name, null);
+            var file = ProjectFiles.NewFile(RootPath, path, name, extension);
+            LibraryFiles.Replace(ProjectFile(path, file), text);
+            ProjectFiles.AddDocument(RootPath, path, kind, file, name, null);
             Interlocked.Increment(ref unscannedWrites);
             return $"{LibraryLayout.ProjectsFolder}/{path.Trim('/')}/{file}";
         }
