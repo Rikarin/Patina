@@ -65,18 +65,20 @@ public sealed class LibraryCare {
 
     /// <summary>The files sent from another computer that nothing names any more (#297).</summary>
     /// <param name="open">The open documents' text by their full path.</param>
-    public UnusedUploadList UnusedUploads(IReadOnlyDictionary<string, string> open) {
+    /// <param name="held">Paths or text held outside every file: queued work, an open dialog's settings (#301).</param>
+    public UnusedUploadList UnusedUploads(IReadOnlyDictionary<string, string> open, IReadOnlyList<string> held) {
         lock (gate) {
-            var found = Library.UnusedUploads.Find(root, open, names.Read);
+            var found = Library.UnusedUploads.Find(root, open, held, names.Read);
             return new(found, found.Sum(static file => file.Bytes));
         }
     }
 
     /// <summary>Moves the files sent from elsewhere that nothing names to the bin, as one entry (#297).</summary>
     /// <param name="open">The open documents' text by their full path.</param>
-    public UploadsCleared ClearUploads(IReadOnlyDictionary<string, string> open) {
+    /// <param name="held">Paths or text held outside every file: queued work, an open dialog's settings (#301).</param>
+    public UploadsCleared ClearUploads(IReadOnlyDictionary<string, string> open, IReadOnlyList<string> held) {
         lock (gate) {
-            var (item, count, bytes) = Library.UnusedUploads.Bin(root, open, names.Read);
+            var (item, count, bytes) = Library.UnusedUploads.Bin(root, open, held, names.Read);
             return new(count, bytes, item?.Id);
         }
     }

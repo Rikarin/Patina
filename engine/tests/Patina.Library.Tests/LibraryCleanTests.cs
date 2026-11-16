@@ -109,11 +109,11 @@ public sealed class LibraryCleanTests : IDisposable {
             [Path.Combine(crate, "crate.vxlayers")] = $$"""{"high":"{{escaped}}"}"""
         };
 
-        var listed = library.Care.UnusedUploads(open);
+        var listed = library.Care.UnusedUploads(open, []);
 
         Assert.Equal(["uploads/bbbb/scan.png"], listed.Files.Select(static file => file.Path));
         Assert.Equal(3, listed.Bytes);
-        var cleared = library.Care.ClearUploads(open);
+        var cleared = library.Care.ClearUploads(open, []);
         Assert.Equal(1, cleared.Count);
         Assert.False(File.Exists(unused));
         Assert.False(Directory.Exists(Path.GetDirectoryName(unused)));

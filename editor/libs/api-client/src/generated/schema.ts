@@ -1528,7 +1528,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The files sent from another computer that no file of the library and no open document names any more, with the room they take. One sent in the last hour counts as used. Changes nothing. */
+    /** The files sent from another computer that no file of the library, no open document, no queued or running bake or build and nothing in held names any more, with the room they take. held is what the client holds unsaved, such as an open dialog's paths. One sent in the last hour counts as used. Changes nothing. */
     get: operations['GetUnusedUploads'];
     put?: never;
     post?: never;
@@ -1547,7 +1547,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into the bin as one entry, which Restore puts back. */
+    /** Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them with the body's held, into the bin as one entry, which Restore puts back. */
     post: operations['ClearUploads'];
     delete?: never;
     options?: never;
@@ -9257,6 +9257,14 @@ export interface components {
       /** @description The bin's entry that holds them, for a Restore, or null when none went. */
       bin?: null | string;
     };
+    /** @description The body of `POST /api/v1/library/uploads/clear` (#301). */
+    UploadsClearRequest: {
+      /**
+       * @description Paths on the Server's machine, or any text naming them, that the client holds where no file of the library
+       *     does yet, such as an open dialog's unsaved settings. An upload any of them names counts as used.
+       */
+      held?: null | string[];
+    };
     /**
      * @description A bake's setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,
      *     and what of it to draw. Paths on the Server's machine, as in a bake request, or a project whose own settings the
@@ -14754,7 +14762,9 @@ export interface operations {
   };
   GetUnusedUploads: {
     parameters: {
-      query?: never;
+      query?: {
+        held?: string[];
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -14806,7 +14816,11 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody?: {
+      content: {
+        'application/json': null | components['schemas']['UploadsClearRequest'];
+      };
+    };
     responses: {
       /** @description OK */
       200: {

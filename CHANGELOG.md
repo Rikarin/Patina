@@ -377,6 +377,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Clear Uploads keeps an upload no file names yet but a bake does (#301): a bake queued or running names its meshes, cage and pictures, and so does a bake setting the project's file has not caught up with. Through the API `held` on `GET /api/v1/library/uploads/unused` and in the body of `POST /api/v1/library/uploads/clear`: paths, or any text naming them, the client holds unsaved.
 - A choice made in the Export dialog before it has read the project's settings is kept: the preset, padding or format changed while the project's file is still on its way used to be put back and never written to `project.yaml`. Now the newer choice stays and is the one kept.
 - A color picked on the mesh with the eyedropper goes to the mask that was waiting when the mesh was clicked, though the eyedropper is turned off or on again meanwhile, and the eyedropper waits until the color is in the mask.
 - A graph that cannot light the viewport says why (#180): with no GPU, or with a node that does not compile, choosing it as the environment is refused with `engine-refused` and the engine's reason, where it said the graph drew nothing (`panorama-empty`), and the failure is not remembered, so choosing it again draws it once it can.

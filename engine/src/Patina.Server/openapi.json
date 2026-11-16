@@ -6021,8 +6021,20 @@
         "tags": [
           "Library"
         ],
-        "summary": "The files sent from another computer that no file of the library and no open document names any more, with the room they take. One sent in the last hour counts as used. Changes nothing.",
+        "summary": "The files sent from another computer that no file of the library, no open document, no queued or running bake or build and nothing in held names any more, with the room they take. held is what the client holds unsaved, such as an open dialog\u0027s paths. One sent in the last hour counts as used. Changes nothing.",
         "operationId": "GetUnusedUploads",
+        "parameters": [
+          {
+            "name": "held",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -6072,8 +6084,24 @@
         "tags": [
           "Library"
         ],
-        "summary": "Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into the bin as one entry, which Restore puts back.",
+        "summary": "Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them with the body\u0027s held, into the bin as one entry, which Restore puts back.",
         "operationId": "ClearUploads",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/UploadsClearRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -23939,6 +23967,22 @@
           }
         },
         "description": "What \u0060POST /api/v1/library/uploads/clear\u0060 took away (#297)."
+      },
+      "UploadsClearRequest": {
+        "type": "object",
+        "properties": {
+          "held": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Paths on the Server\u0027s machine, or any text naming them, that the client holds where no file of the library\ndoes yet, such as an open dialog\u0027s unsaved settings. An upload any of them names counts as used."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/uploads/clear\u0060 (#301)."
       },
       "ViewportBakePreview": {
         "required": [

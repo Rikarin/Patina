@@ -9,6 +9,7 @@ import { XuiNumericInputImports } from '@xui/numeric-input';
 import { Activity } from '../core/activity';
 import { messageOf } from '../core/messages';
 import { bytes, count } from '../core/numbers';
+import { HeldFiles } from './held-files';
 import { LibraryStore } from './library-store';
 
 type LibraryHealth = components['schemas']['LibraryHealth'];
@@ -294,6 +295,7 @@ export class LibrarySettingsDialog {
   readonly open = model(false);
   private readonly library = inject(LibraryStore);
   private readonly activity = inject(Activity);
+  private readonly held = inject(HeldFiles);
 
   protected readonly info = computed(() => {
     const state = this.library.state();
@@ -390,8 +392,10 @@ export class LibrarySettingsDialog {
 
   /** Moves the files sent from another computer that nothing uses any more to the bin (#297). */
   async clearUploads(): Promise<void> {
+    // What is held now, as Clear was pressed: a dialog may write it while the Server is asked.
+    const held = this.held.all();
     await this.run('uploads', async client => {
-      const done = unwrap(await client.POST('/api/v1/library/uploads/clear'));
+      const done = unwrap(await client.POST('/api/v1/library/uploads/clear', { body: { held } }));
       this.say(
         done.count === 0
           ? 'Every upload is in use.'
@@ -469,8 +473,9 @@ export class LibrarySettingsDialog {
 
   private async readUploads(): Promise<void> {
     try {
+      const held = this.held.all();
       const client = await this.library.api();
-      this.uploads.set(unwrap(await client.GET('/api/v1/library/uploads/unused')));
+      this.uploads.set(unwrap(await client.GET('/api/v1/library/uploads/unused', { params: { query: { held } } })));
     } catch {
       this.uploads.set(null); // Clear Uploads still says what it moved
     }

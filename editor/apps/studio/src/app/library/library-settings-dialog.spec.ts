@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Activity } from '../core/activity';
+import { HeldFiles } from './held-files';
 import { LibrarySettingsDialog } from './library-settings-dialog';
 import { LibraryStore } from './library-store';
 
@@ -206,7 +207,7 @@ describe('LibrarySettingsDialog', () => {
     );
   });
 
-  it('clears the uploads nothing uses into the bin, and reads them again (#297)', async () => {
+  it('clears the uploads nothing uses into the bin, keeping what a dialog holds unsaved (#297, #301)', async () => {
     let unused: unknown = { files: [{ path: 'uploads/ab/scan.png', bytes: 2048 }], bytes: 2048 };
     const { fixture, POST } = await render(
       () => ok({ count: 1, bytes: 2048, bin: 'b2' }),
@@ -219,11 +220,15 @@ describe('LibrarySettingsDialog', () => {
     expect(byId('library-settings-uploads-unused')?.textContent).toContain('1 nothing uses any more');
 
     unused = noUploads;
+    const release = TestBed.inject(HeldFiles).hold(() => ['C:/Art/Game.ptlib/uploads/cd/cage.glb']);
     byId('library-settings-clear-uploads')?.click();
+    release();
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(POST).toHaveBeenCalledWith('/api/v1/library/uploads/clear');
+    expect(POST).toHaveBeenCalledWith('/api/v1/library/uploads/clear', {
+      body: { held: ['C:/Art/Game.ptlib/uploads/cd/cage.glb'] }
+    });
     expect(byId('library-settings-tidied')?.textContent.trim()).toBe(
       'Moved 1 uploads nothing uses to the bin, 2.0 KB.'
     );

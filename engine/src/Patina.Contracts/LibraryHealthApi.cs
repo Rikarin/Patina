@@ -56,6 +56,13 @@ public sealed record UnusedFile(string Path, long Bytes);
 /// <param name="Bytes">The room they take.</param>
 public sealed record UnusedUploadList(IReadOnlyList<UnusedFile> Files, long Bytes);
 
+/// <summary>The body of <c>POST /api/v1/library/uploads/clear</c> (#301).</summary>
+/// <param name="Held">
+///     Paths on the Server's machine, or any text naming them, that the client holds where no file of the library
+///     does yet, such as an open dialog's unsaved settings. An upload any of them names counts as used.
+/// </param>
+public sealed record UploadsClearRequest(IReadOnlyList<string>? Held);
+
 /// <summary>What <c>POST /api/v1/library/uploads/clear</c> took away (#297).</summary>
 /// <param name="Count">How many uploads nothing named went to the bin.</param>
 /// <param name="Bytes">The room those take, which emptying the bin frees.</param>
