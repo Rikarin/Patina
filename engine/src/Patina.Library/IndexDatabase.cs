@@ -12,7 +12,7 @@ sealed class IndexDatabase : IDisposable {
     ///     Raise this whenever the tables change or the scanner would read an unchanged file differently, such as
     ///     when a document gains a migration: the rescan skips unchanged files, so only a rebuild would notice.
     /// </summary>
-    const int Version = 4;
+    const int Version = 5;
 
     const int NotADatabase = 26;
     const int Corrupt = 11;
@@ -27,7 +27,8 @@ sealed class IndexDatabase : IDisposable {
                               hash TEXT,
                               width INTEGER,
                               height INTEGER,
-                              maps INTEGER
+                              maps INTEGER,
+                              sets INTEGER
                           ) WITHOUT ROWID;
                           CREATE INDEX file_kind ON file(kind);
 

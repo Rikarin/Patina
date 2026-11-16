@@ -1272,7 +1272,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** What a folder's documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document's size. No folder is the whole library. */
+    /** What a folder's documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document's size. No folder is the whole library. With preset, what they take in GPU memory as that platform's preset writes them: each of its files for each texture set, at its size, compression and mip chain. A preset nobody has is refused with preset-missing. */
     get: operations['GetLibraryCosts'];
     put?: never;
     post?: never;
@@ -1289,7 +1289,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first. */
+    /** One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first, uncompressed or, with preset, as that platform's preset writes them. */
     get: operations['GetDocumentsOverBudget'];
     put?: never;
     post?: never;
@@ -5578,7 +5578,8 @@ export interface components {
     /**
      * @description What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A
      *     document's cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for
-     *     each channel of each texture set. Compression and mip levels are a preset's, and are not counted.
+     *     each channel of each texture set. Asked for a platform's preset, it is what that preset writes: each of its files
+     *     for each texture set, at its size, compression and mip chain.
      */
     LibraryCosts: {
       /** @description The folder below `projects/`, empty for the whole library. */
@@ -13968,6 +13969,7 @@ export interface operations {
     parameters: {
       query?: {
         folder?: string;
+        preset?: string;
       };
       header?: never;
       path?: never;
@@ -14018,6 +14020,7 @@ export interface operations {
       query: {
         over: number;
         folder?: string;
+        preset?: string;
         offset?: number;
         limit?: number;
       };

@@ -498,6 +498,13 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     public DocumentCostPage CostlierThan(string folder, long budget, int offset = 0, int limit = 50) =>
         costs.Over(folder, budget, offset, limit);
 
+    /// <summary>What a folder's documents cost on a platform, each priced as a preset writes it (#207).</summary>
+    public LibraryCosts Costs(string folder, DocumentPrice price) => costs.Costs(folder, price);
+
+    /// <summary>One page of the documents below a folder over a budget on a platform (#207).</summary>
+    public DocumentCostPage CostlierThan(string folder, long budget, int offset, int limit, DocumentPrice price) =>
+        costs.Over(folder, budget, offset, limit, price);
+
     /// <summary>
     ///     Keeps what an export of the whole library is set to, in <c>library.yaml</c>, where any client's next one
     ///     starts. Writing the file brings it to the current schema.

@@ -343,11 +343,11 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
 
             stampFile = Prepare(
                 """
-                INSERT INTO file(path, kind, size, mtime, scanned, hash, width, height, maps)
-                VALUES (@path, @kind, @size, @mtime, @scanned, @hash, @width, @height, @maps)
+                INSERT INTO file(path, kind, size, mtime, scanned, hash, width, height, maps, sets)
+                VALUES (@path, @kind, @size, @mtime, @scanned, @hash, @width, @height, @maps, @sets)
                 ON CONFLICT(path) DO UPDATE
                 SET kind = @kind, size = @size, mtime = @mtime, scanned = @scanned, hash = @hash,
-                    width = @width, height = @height, maps = @maps
+                    width = @width, height = @height, maps = @maps, sets = @sets
                 """,
                 PathParameter,
                 "@kind",
@@ -357,7 +357,8 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
                 "@hash",
                 "@width",
                 "@height",
-                "@maps"
+                "@maps",
+                "@sets"
             );
             deleteFile = Prepare("DELETE FROM file WHERE path = @path", PathParameter);
             stampNames = Prepare(
@@ -462,6 +463,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
             Set(stampFile, "@width", outcome.Texture?.Width);
             Set(stampFile, "@height", outcome.Texture?.Height);
             Set(stampFile, "@maps", outcome.Texture?.Maps);
+            Set(stampFile, "@sets", outcome.Texture?.Sets);
             stampFile.ExecuteNonQuery();
             if (outcome.Names is { } names) {
                 Set(stampNames, PathParameter, file.Path);
