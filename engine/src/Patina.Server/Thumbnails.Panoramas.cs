@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Graphs;
 using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
@@ -42,10 +43,7 @@ public sealed partial class Thumbnails {
         var document = GraphDocuments.Text(sized);
         var folder = CompoundFolders.Of(file);
         var roots = CompoundFolders.PictureRoots(file);
-        var pictures = graph.Nodes.Where(static n => n.Type == BitmapNode)
-            .Select(static n => n.Texts.GetValueOrDefault(SourceSetting))
-            .OfType<string>()
-            .SelectMany(picture => roots.Select(root => Path.GetFullPath(picture, root)));
+        var pictures = FilesRead(graph, roots);
         var key = Key(PanoramaKind, file, document, [..Stamps(Files(folder, true)), ..Stamps(pictures)]);
         var ask = new MaterialThumbnailAsk(
             MaterialThumbnailKinds.Graph,

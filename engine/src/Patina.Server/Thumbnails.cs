@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Graphs;
 using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
@@ -28,9 +29,7 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
     const string KeysFolder = "thumbnails";
     const string NothingToDraw = "-";
     const string OutputNode = "Output/Output";
-    const string BitmapNode = "Source/Bitmap";
     const string UsageSetting = "Usage";
-    const string SourceSetting = "Source";
     const string DefaultUsage = "baseColor";
     const string StarterPrefix = "starter:";
     static readonly TimeSpan WorkerPatience = TimeSpan.FromSeconds(10);
@@ -243,7 +242,11 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
         NodeGraphAsset graph = new() {
             Name = Path.GetFileNameWithoutExtension(full),
             Nodes = [
-                new() { Id = 1, Type = BitmapNode, Texts = new() { [SourceSetting] = Path.GetFileName(full) } },
+                new() {
+                    Id = 1,
+                    Type = GraphFiles.BitmapNode,
+                    Texts = new() { [GraphFiles.SettingOf(GraphFiles.BitmapNode)!] = Path.GetFileName(full) }
+                },
                 new() { Id = 2, Type = OutputNode, Texts = new() { [UsageSetting] = DefaultUsage } }
             ],
             Edges = [new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Input" }]
@@ -271,10 +274,7 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             }
         };
         var document = GraphDocuments.Text(small);
-        var pictures = graph.Nodes.Where(static n => n.Type == BitmapNode)
-            .Select(static n => n.Texts.GetValueOrDefault(SourceSetting))
-            .OfType<string>()
-            .SelectMany(picture => roots.Select(root => Path.GetFullPath(picture, root)));
+        var pictures = FilesRead(graph, roots);
         var key = Key(
             MaterialThumbnailKinds.Graph,
             source,
@@ -342,6 +342,16 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
     }
 
     /// <summary>When and how large each file is, which is what changes when it is saved.</summary>
+    /// <summary>
+    ///     Where each file a graph reads may be, a font and an SVG as much as a picture (#306), so that one saved over
+    ///     draws it again.
+    /// </summary>
+    static IEnumerable<string> FilesRead(NodeGraphAsset graph, IReadOnlyList<string> roots) =>
+        GraphFiles.Read(graph)
+            .Select(static read => read.File)
+            .Where(static file => !GraphFiles.IsScheme(file))
+            .SelectMany(file => roots.Select(root => Path.GetFullPath(file, root)));
+
     static IEnumerable<string> Stamps(IEnumerable<string> files) =>
         files.Where(File.Exists)
             .Select(static file => {
