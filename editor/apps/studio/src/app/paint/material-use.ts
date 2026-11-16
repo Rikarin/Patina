@@ -6,7 +6,7 @@ import { LibraryStore } from '../library/library-store';
 import { ProjectStore } from '../library/project-store';
 import { ViewportJump } from '../viewport/viewport-jump';
 import { type DropZone, dropManyCommands } from './layer-drag';
-import { PaintStore } from './paint-store';
+import { type BrushMaterial, PaintStore } from './paint-store';
 
 /** The type of a brush alpha on the shelf, whose source is its name behind {@link AlphaPrefix} (#203). */
 export const ShelfAlpha = 'alpha';
@@ -122,26 +122,18 @@ export class MaterialUse {
 
     this.failure.set(null);
     const layered = material.kind === 'layered-material';
-    if (material.kind === 'material-preset') {
-      this.failure.set(`${material.name} is a material preset, which fills a layer: a brush paints with a material.`);
-      return;
-    }
-
-    if (material.role !== 'material' || (material.kind !== 'graph' && material.kind !== 'image-material' && !layered)) {
+    if (material.role !== 'material' || (!hasMaps(material) && !layered)) {
       this.failure.set(`${material.name} has no maps to paint with.`);
       return;
     }
 
     try {
-      // A layered material's layers are read by the Server as the stroke begins, so nothing is published for it.
+      // A layered material's layers are read by the Server as the stroke begins, so nothing is published for it. A
+      // material preset paints its material at the values it keeps (#311).
       this.paint.material.set(
         layered
           ? { name: material.name, layered: material.source, source: material.source }
-          : {
-              name: material.name,
-              graph: (await this.publish(project.path, material)).graph,
-              source: material.source
-            }
+          : brushOf(material, await this.publish(project.path, material))
       );
       // The fill and the projection tool lay a material too; any other tool gives way to the brush.
       if (this.paint.tool() !== 'fill' && this.paint.tool() !== 'projection') {
@@ -153,21 +145,17 @@ export class MaterialUse {
   }
 
   /**
-   * Whether a material can be dropped on a region of the mesh: one with maps, a graph or a picture material, onto a
-   * stack that is open (#110).
+   * Whether a material can be dropped on a region of the mesh: one with maps, a graph, a picture material or a material
+   * preset, onto a stack that is open (#110, #311).
    */
   takesRegion(material: MaterialInfo | null): boolean {
-    return (
-      material !== null &&
-      material.role === 'material' &&
-      (material.kind === 'graph' || material.kind === 'image-material') &&
-      this.paint.state() !== null
-    );
+    return material !== null && material.role === 'material' && hasMaps(material) && this.paint.state() !== null;
   }
 
   /**
    * A material dropped on the mesh fills the region of the id map it landed on: a graph fill on top, masked by that
-   * region's color (#110). A stack with no id map says how to get one.
+   * region's color (#110), at a material preset's values when it is one (#311). A stack with no id map says how to
+   * get one.
    */
   async useOnRegion(material: MaterialInfo, colour: readonly number[] | null): Promise<void> {
     const project = this.project.current();
@@ -182,7 +170,8 @@ export class MaterialUse {
     }
 
     try {
-      await this.paint.addGraphLayerOnRegion(material.name, (await this.publish(project.path, material)).graph, colour);
+      const used = await this.publish(project.path, material);
+      await this.paint.addGraphLayerOnRegion(material.name, used.graph, colour, used.parameters ?? undefined);
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }
@@ -252,4 +241,20 @@ export class MaterialUse {
       await this.paint.edit(...commands);
     }
   }
+}
+
+/** Whether a shelf material is one graph's maps: a graph, a picture material, or a material preset of either. */
+function hasMaps(material: MaterialInfo): boolean {
+  return material.kind === 'graph' || material.kind === 'image-material' || material.kind === 'material-preset';
+}
+
+/** The brush's material from what the Server made ready, with a material preset's values (#311). */
+function brushOf(material: MaterialInfo, used: Used): BrushMaterial {
+  const parameters = used.parameters ?? undefined;
+  return {
+    name: material.name,
+    graph: used.graph,
+    source: material.source,
+    ...(parameters && Object.keys(parameters).length > 0 ? { parameters } : {})
+  };
 }
