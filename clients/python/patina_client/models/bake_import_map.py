@@ -24,12 +24,17 @@ class BakeImportMap:
 
         Attributes:
             map_ (str): One of the maps a bake makes, such as `normal`, `ao` or `curvature`.
-            file (str): The PNG, absolute or below the library. A normal map's green runs up the picture, as Patina's bakes
-                do.
+            file (str): The picture, absolute or below the library: a PNG is copied as it is, and any other picture Patina
+                reads is
+                written as a 16-bit PNG by the GPU engine (#300).
+            green_down (bool): For a tangent-space `normal` or `bent` map: its green runs down the picture, as DirectX's do,
+                and is
+                turned over as it comes in, since Patina's bakes run it up. False keeps it as it is. Default: False.
      """
 
     map_: str
     file: str
+    green_down: bool = False
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -41,12 +46,15 @@ class BakeImportMap:
 
         file = self.file
 
+        green_down = self.green_down
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({
             "map": map_,
             "file": file,
+            "greenDown": green_down,
         })
 
         return field_dict
@@ -60,9 +68,12 @@ class BakeImportMap:
 
         file = d.pop("file")
 
+        green_down = d.pop("greenDown")
+
         bake_import_map = cls(
             map_=map_,
             file=file,
+            green_down=green_down,
         )
 
 

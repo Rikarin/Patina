@@ -91,9 +91,11 @@ def sync_detailed(
     body: BakeImportRequest,
 
 ) -> Response[BakeImported | ProblemDetails]:
-    """ Brings maps baked in another program in as a texturing document's bake: each PNG is copied where the
-    document's own bake goes and replaces the map of its name there, and the document, open or not,
-    reads them as a bake of its mesh, UV set and material as they stand. A normal map's green runs up.
+    """ Brings maps baked in another program in as a texturing document's bake: each picture is copied where
+    the document's own bake goes, as a PNG, and replaces the map of its name there, and the document,
+    open or not, reads them as a bake of its mesh, UV set and material as they stand. A PNG is copied as
+    it is; any other picture, and a normal whose green runs down, is written as a 16-bit PNG with its
+    green up by the GPU engine first.
 
     Args:
         body (BakeImportRequest): Maps baked in another program, brought in as a texturing
@@ -126,9 +128,11 @@ def sync(
     body: BakeImportRequest,
 
 ) -> BakeImported | ProblemDetails | None:
-    """ Brings maps baked in another program in as a texturing document's bake: each PNG is copied where the
-    document's own bake goes and replaces the map of its name there, and the document, open or not,
-    reads them as a bake of its mesh, UV set and material as they stand. A normal map's green runs up.
+    """ Brings maps baked in another program in as a texturing document's bake: each picture is copied where
+    the document's own bake goes, as a PNG, and replaces the map of its name there, and the document,
+    open or not, reads them as a bake of its mesh, UV set and material as they stand. A PNG is copied as
+    it is; any other picture, and a normal whose green runs down, is written as a 16-bit PNG with its
+    green up by the GPU engine first.
 
     Args:
         body (BakeImportRequest): Maps baked in another program, brought in as a texturing
@@ -156,9 +160,11 @@ async def asyncio_detailed(
     body: BakeImportRequest,
 
 ) -> Response[BakeImported | ProblemDetails]:
-    """ Brings maps baked in another program in as a texturing document's bake: each PNG is copied where the
-    document's own bake goes and replaces the map of its name there, and the document, open or not,
-    reads them as a bake of its mesh, UV set and material as they stand. A normal map's green runs up.
+    """ Brings maps baked in another program in as a texturing document's bake: each picture is copied where
+    the document's own bake goes, as a PNG, and replaces the map of its name there, and the document,
+    open or not, reads them as a bake of its mesh, UV set and material as they stand. A PNG is copied as
+    it is; any other picture, and a normal whose green runs down, is written as a 16-bit PNG with its
+    green up by the GPU engine first.
 
     Args:
         body (BakeImportRequest): Maps baked in another program, brought in as a texturing
@@ -191,9 +197,11 @@ async def asyncio(
     body: BakeImportRequest,
 
 ) -> BakeImported | ProblemDetails | None:
-    """ Brings maps baked in another program in as a texturing document's bake: each PNG is copied where the
-    document's own bake goes and replaces the map of its name there, and the document, open or not,
-    reads them as a bake of its mesh, UV set and material as they stand. A normal map's green runs up.
+    """ Brings maps baked in another program in as a texturing document's bake: each picture is copied where
+    the document's own bake goes, as a PNG, and replaces the map of its name there, and the document,
+    open or not, reads them as a bake of its mesh, UV set and material as they stand. A PNG is copied as
+    it is; any other picture, and a normal whose green runs down, is written as a 16-bit PNG with its
+    green up by the GPU engine first.
 
     Args:
         body (BakeImportRequest): Maps baked in another program, brought in as a texturing

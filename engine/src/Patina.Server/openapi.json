@@ -4660,7 +4660,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Brings maps baked in another program in as a texturing document\u0027s bake: each PNG is copied where the document\u0027s own bake goes and replaces the map of its name there, and the document, open or not, reads them as a bake of its mesh, UV set and material as they stand. A normal map\u0027s green runs up.",
+        "summary": "Brings maps baked in another program in as a texturing document\u0027s bake: each picture is copied where the document\u0027s own bake goes, as a PNG, and replaces the map of its name there, and the document, open or not, reads them as a bake of its mesh, UV set and material as they stand. A PNG is copied as it is; any other picture, and a normal whose green runs down, is written as a 16-bit PNG with its green up by the GPU engine first.",
         "operationId": "ImportProjectBake",
         "requestBody": {
           "content": {
@@ -10522,6 +10522,13 @@
             "description": "For \u0060rays\u0060: how many secondary rays each sample casts, 1 to 256.",
             "format": "int32",
             "default": 16
+          },
+          "withinPart": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "For \u0060rays\u0060, when parts are matched by name: whether the secondary rays meet only the texel\u0027s own part\n(#300), so a part standing on another reads no crease where they meet, as an exploded bake would. Null or\nfalse reads the whole high mesh."
           }
         },
         "description": "The curvature map\u0027s source and stored range (#148)."
@@ -10661,7 +10668,8 @@
       "BakeImportMap": {
         "required": [
           "map",
-          "file"
+          "file",
+          "greenDown"
         ],
         "type": "object",
         "properties": {
@@ -10671,7 +10679,12 @@
           },
           "file": {
             "type": "string",
-            "description": "The PNG, absolute or below the library. A normal map\u0027s green runs up the picture, as Patina\u0027s bakes do."
+            "description": "The picture, absolute or below the library: a PNG is copied as it is, and any other picture Patina reads is\nwritten as a 16-bit PNG by the GPU engine (#300)."
+          },
+          "greenDown": {
+            "type": "boolean",
+            "description": "For a tangent-space \u0060normal\u0060 or \u0060bent\u0060 map: its green runs down the picture, as DirectX\u0027s do, and is\nturned over as it comes in, since Patina\u0027s bakes run it up. False keeps it as it is.",
+            "default": false
           }
         },
         "description": "One map brought in."
@@ -10699,7 +10712,7 @@
             "items": {
               "$ref": "#/components/schemas/BakeImportMap"
             },
-            "description": "Each map and the PNG of it, on the Server\u0027s machine."
+            "description": "Each map and the picture of it, on the Server\u0027s machine."
           },
           "space": {
             "type": "string",

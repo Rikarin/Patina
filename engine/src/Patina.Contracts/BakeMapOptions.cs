@@ -39,6 +39,13 @@ public sealed record BakeCurvatureOptions {
     /// <summary>For <c>rays</c>: how many secondary rays each sample casts, 1 to 256.</summary>
     public int Rays { get; set; } = 16;
 
+    /// <summary>
+    ///     For <c>rays</c>, when parts are matched by name: whether the secondary rays meet only the texel's own part
+    ///     (#300), so a part standing on another reads no crease where they meet, as an exploded bake would. Null or
+    ///     false reads the whole high mesh.
+    /// </summary>
+    public bool? WithinPart { get; set; }
+
     /// <summary>What is wrong, or null.</summary>
     public string? Problem() =>
         !Ranges.Contains(Range, StringComparer.Ordinal) ? $"'{Range}' is not a curvature range."

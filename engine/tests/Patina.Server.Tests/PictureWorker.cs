@@ -54,9 +54,10 @@ sealed class PictureWorker : IAsyncDisposable {
             return IpcMessage.Fail(request.Id, "gone");
         }
 
-        return new() {
-            Type = IpcTypes.Ok, Id = request.Id, Pictured = new(PictureReads.Read(ask.File, ask.Preview, ask.Side))
-        };
+        var answer = ask is { Map: true, Preview: { } map }
+            ? PictureReads.Map(ask.File, map, ask.TurnGreen)
+            : PictureReads.Read(ask.File, ask.Preview, ask.Side);
+        return new() { Type = IpcTypes.Ok, Id = request.Id, Pictured = new(answer) };
     }
 
     public ValueTask DisposeAsync() => connection.DisposeAsync();

@@ -27,7 +27,7 @@ function speak(socket: GraphSocket | undefined, message: unknown): void {
   hear?.({ data: JSON.stringify(message) } as MessageEvent);
 }
 
-function setup(routes: Record<string, (request: Request) => Response>) {
+function setup(routes: Record<string, (request: Request) => Response | Promise<Response>>) {
   const sockets: GraphSocket[] = [];
   const urls: string[] = [];
   const answer = (input: RequestInfo | URL) => {
@@ -172,20 +172,35 @@ describe('BakeStore', () => {
     const bodies: unknown[] = [];
     const { store } = setup({
       ...empty,
-      'POST library/project/bake/import': request => {
-        void request.json().then(body => bodies.push(body));
-        return bodies.length === 0
-          ? Response.json({ folder: 'projects/crate/bakes/maps/Box' })
-          : Response.json({ detail: 'no PNG' }, { status: 400 });
+      'POST library/project/bake/import': async request => {
+        const body = (await request.json()) as { maps: { file: string }[] };
+        if (body.maps[0]?.file.endsWith('.txt')) {
+          return Response.json({ detail: 'no picture' }, { status: 400 });
+        }
+
+        bodies.push(body);
+        return Response.json({ folder: 'projects/crate/bakes/maps/Box' });
       }
     });
     await settled();
 
     await store.importMap('crate', 'd1', 'normal', 'C:/maps/box_normal.png', 'tangent');
+    await store.importMap('crate', 'd1', 'normal', 'C:/maps/box_normal_dx.tga', 'tangent', true);
     await settled();
 
     expect(bodies).toEqual([
-      { project: 'crate', document: 'd1', maps: [{ map: 'normal', file: 'C:/maps/box_normal.png' }], space: 'tangent' }
+      {
+        project: 'crate',
+        document: 'd1',
+        maps: [{ map: 'normal', file: 'C:/maps/box_normal.png', greenDown: false }],
+        space: 'tangent'
+      },
+      {
+        project: 'crate',
+        document: 'd1',
+        maps: [{ map: 'normal', file: 'C:/maps/box_normal_dx.tga', greenDown: true }],
+        space: 'tangent'
+      }
     ]);
     await expect(store.importMap('crate', 'd1', 'ao', 'C:/maps/notes.txt', 'tangent')).rejects.toBeTruthy();
   });

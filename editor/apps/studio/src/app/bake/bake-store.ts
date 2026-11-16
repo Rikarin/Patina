@@ -165,14 +165,22 @@ export class BakeStore {
   }
 
   /**
-   * Brings a PNG baked in another program in as one map of a texturing document's bake (#144). The Server copies it
-   * where the document's own bake goes, and the document reads it from then on, open or not.
+   * Brings a picture baked in another program in as one map of a texturing document's bake (#144). The Server copies
+   * it where the document's own bake goes, as a PNG with its green up (#300), and the document reads it from then on,
+   * open or not.
    */
-  async importMap(project: string, document: string, map: string, file: string, space: string): Promise<void> {
+  async importMap(
+    project: string,
+    document: string,
+    map: string,
+    file: string,
+    space: string,
+    greenDown = false
+  ): Promise<void> {
     const client = await this.api();
     unwrap(
       await client.POST('/api/v1/library/project/bake/import', {
-        body: { project, document, maps: [{ map, file }], space }
+        body: { project, document, maps: [{ map, file, greenDown }], space }
       })
     );
   }

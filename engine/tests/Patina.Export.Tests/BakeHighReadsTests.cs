@@ -170,6 +170,43 @@ public sealed class BakeHighReadsTests : IDisposable {
         Assert.NotEqual(acrossBefore, acrossAfter);
     }
 
+    /// <summary>
+    ///     Curvature by rays within the part keeps the set's key when another part changes (#300), and the set baked
+    ///     again is the same, byte for byte; across parts, its rays reach the plate risen beside the bolt.
+    /// </summary>
+    [Fact]
+    public void Curvature_by_rays_within_the_part_keeps_the_key_and_bakes_the_same() {
+        BakeRequest Curving(bool within) =>
+            Request(
+                "Bolt",
+                options => options with {
+                    Maps = ["curvature"],
+                    Curvature = new() { Source = "rays", Sampling = 0.3, Rays = 8, WithinPart = within }
+                }
+            );
+
+        byte[] Map(string into, bool within) {
+            var manifest = MeshMapBakeRun.Run(
+                Curving(within),
+                Into(into),
+                0,
+                null,
+                TestContext.Current.CancellationToken
+            );
+            return File.ReadAllBytes(Path.Combine(Into(into), manifest.Result.Maps.Single().Path));
+        }
+
+        High(0.02f, 0.02f);
+        var key = Key(Curving(true));
+        var before = Map("before", true);
+        var acrossBefore = Map("across-before", false);
+        High(0.02f, 0.8f);
+
+        Assert.Equal(key, Key(Curving(true)));
+        Assert.Equal(before, Map("after", true));
+        Assert.NotEqual(acrossBefore, Map("across-after", false));
+    }
+
     /// <summary>Anything reaching past the set's parts reads the high mesh whole: any change rebakes it.</summary>
     [Theory]
     [InlineData("unmatched")]
@@ -177,6 +214,7 @@ public sealed class BakeHighReadsTests : IDisposable {
     [InlineData("id")]
     [InlineData("colour")]
     [InlineData("curvature")]
+    [InlineData("curvature-rays")]
     [InlineData("rounding")]
     [InlineData("edges")]
     [InlineData("tileable")]
@@ -190,6 +228,9 @@ public sealed class BakeHighReadsTests : IDisposable {
                 Maps = ["edges"], Edges = options.Edges with { Mesh = "high" }
             },
             "tileable" => static options => options with { Tileable = true },
+            "curvature-rays" => static options => options with {
+                Maps = ["curvature"], Curvature = new() { Source = "rays" }
+            },
             "renamed" => static options => options,
             _ => options => options with { Maps = [what] }
         };

@@ -8,6 +8,8 @@ from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
+from ..types import UNSET, Unset
+from typing import cast
 
 
 
@@ -39,6 +41,10 @@ class BakeCurvatureOptions:
                 which is
                 the radius of the bend read and the finest one told apart. Default: 0.01.
             rays (int): For `rays`: how many secondary rays each sample casts, 1 to 256. Default: 16.
+            within_part (bool | None | Unset): For `rays`, when parts are matched by name: whether the secondary rays meet
+                only the texel's own part
+                (#300), so a part standing on another reads no crease where they meet, as an exploded bake would. Null or
+                false reads the whole high mesh.
      """
 
     source: str = 'mesh'
@@ -46,6 +52,7 @@ class BakeCurvatureOptions:
     radius: float = 0.01
     sampling: float = 0.01
     rays: int = 16
+    within_part: bool | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -63,6 +70,12 @@ class BakeCurvatureOptions:
 
         rays = self.rays
 
+        within_part: bool | None | Unset
+        if isinstance(self.within_part, Unset):
+            within_part = UNSET
+        else:
+            within_part = self.within_part
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -73,6 +86,8 @@ class BakeCurvatureOptions:
             "sampling": sampling,
             "rays": rays,
         })
+        if within_part is not UNSET:
+            field_dict["withinPart"] = within_part
 
         return field_dict
 
@@ -91,12 +106,23 @@ class BakeCurvatureOptions:
 
         rays = d.pop("rays")
 
+        def _parse_within_part(data: object) -> bool | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(bool | None | Unset, data)
+
+        within_part = _parse_within_part(d.pop("withinPart", UNSET))
+
+
         bake_curvature_options = cls(
             source=source,
             range_=range_,
             radius=radius,
             sampling=sampling,
             rays=rays,
+            within_part=within_part,
         )
 
 

@@ -31,6 +31,37 @@ public static class PictureReads {
     }
 
     /// <summary>
+    ///     Writes a picture as a map brought into a bake (#300): a PNG of 16 bits a lane at its own size, a value
+    ///     past 0 to 1 clamped and two lanes given an empty third, and with its green turned over when asked.
+    /// </summary>
+    /// <param name="file">The picture.</param>
+    /// <param name="map">Where the PNG goes.</param>
+    /// <param name="turnGreen">Whether the second lane becomes one less itself, for a green that ran down.</param>
+    /// <returns>Null when it read, or why it does not read as a picture.</returns>
+    /// <exception cref="IOException">The file could not be read or the PNG written.</exception>
+    public static string? Map(string file, string map, bool turnGreen) {
+        FloatImage image;
+        try {
+            image = MapPictures.ReadFile(file);
+        } catch (Exception e) when (IsUnreadable(e)) {
+            return e.Message;
+        }
+
+        var lanes = image.Channels == 2 ? 3 : image.Channels;
+        var samples = new ushort[image.Width * image.Height * lanes];
+        for (var texel = 0; texel < image.Width * image.Height; texel++) {
+            for (var lane = 0; lane < image.Channels; lane++) {
+                var value = Math.Clamp(image.Samples[texel * image.Channels + lane], 0f, 1f);
+                value = turnGreen && lane == 1 ? 1f - value : value;
+                samples[texel * lanes + lane] = (ushort)MathF.Round(value * ushort.MaxValue);
+            }
+        }
+
+        LibraryFiles.Replace(map, PngCodec.Encode16(image.Width, image.Height, lanes, samples));
+        return null;
+    }
+
+    /// <summary>
     ///     What a decoder throws for bytes that are not the picture they claim to be. A header that promises more than
     ///     the file holds runs a reader off its end as often as it says so.
     /// </summary>

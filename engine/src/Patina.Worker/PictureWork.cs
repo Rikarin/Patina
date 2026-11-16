@@ -15,6 +15,9 @@ static class PictureWork {
 
     static PictureAnswer Answered(IpcMessage request, CancellationToken cancellationToken) =>
         (request.Type, request.Picture) switch {
+            (IpcTypes.PictureRead, { Read: { Map: true, Preview: { } map } read }) => new(
+                PictureReads.Map(read.File, map, read.TurnGreen)
+            ),
             (IpcTypes.PictureRead, { Read: { } read }) => new(PictureReads.Read(read.File, read.Preview, read.Side)),
             (IpcTypes.BakeIdColours, { IdColours: { } bake }) => new(
                 IdColours: IdColours.Read(bake.Folder, bake.U, bake.V)

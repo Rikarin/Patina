@@ -86,6 +86,32 @@ public sealed class PicturePreviews(LibraryHost host, WorkerLink worker) {
         }
     }
 
+    /// <summary>
+    ///     Writes a picture as a 16-bit PNG of a map brought into a bake, its green turned over when asked (#300). Not
+    ///     kept: the caller copies it into the bake and lets it go.
+    /// </summary>
+    /// <param name="file">The picture.</param>
+    /// <param name="map">Where the PNG goes.</param>
+    /// <param name="turnGreen">Whether a normal's green ran down the picture.</param>
+    /// <param name="cancellationToken">Stops the wait.</param>
+    /// <exception cref="PictureUnreadableException">It does not read as a picture.</exception>
+    /// <exception cref="RendererMissingException">No Worker came to read it.</exception>
+    public Task MapAsync(string file, string map, bool turnGreen, CancellationToken cancellationToken) =>
+        ReadAsync(
+            file,
+            Digest(file),
+            new(file, map, null) { Map = true, TurnGreen = turnGreen },
+            cancellationToken
+        );
+
+    /// <summary>Where a picture written as a map waits to be brought in, in the library's cache.</summary>
+    public string MapFile() =>
+        Path.Combine(
+            CacheFolder() ?? throw new InvalidOperationException("Maps are brought into a library."),
+            "maps",
+            $"{Guid.NewGuid():N}.png"
+        );
+
     async Task ReadAsync(string file, string digest, PictureReadAsk ask, CancellationToken cancellationToken) {
         if (fatal.TryGetValue(digest, out var lost)) {
             throw new PictureUnreadableException(lost);
