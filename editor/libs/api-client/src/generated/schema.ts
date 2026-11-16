@@ -7606,6 +7606,9 @@ export interface components {
        *     starts from empty.
        */
       output?: null | string;
+      /** @description How a texture entry lands: Uv, Triplanar, Planar, Spherical or Cylindrical. */
+      projection?: null | string;
+      placement?: null | components['schemas']['StackPlacement'];
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {
@@ -8335,6 +8338,13 @@ export interface components {
        * @default
        */
       output: string;
+      /**
+       * @description How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world
+       *     position, which a mask on a mesh whose UVs it was not made for wants (#120).
+       * @default Uv
+       */
+      projection: string;
+      placement?: null | components['schemas']['StackPlacement'];
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {
@@ -8437,6 +8447,13 @@ export interface components {
        * @default
        */
       output: string;
+      /**
+       * @description How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world
+       *     position, which a mask on a mesh whose UVs it was not made for wants (#120).
+       * @default Uv
+       */
+      projection: string;
+      placement?: null | components['schemas']['StackPlacement'];
     };
     /** @description Chooses the bake a stack's generators and bake masks read. */
     StackMeshMapsRequest: {

@@ -15,6 +15,7 @@ if TYPE_CHECKING:
   from ..models.stack_anchor_ref import StackAnchorRef
   from ..models.stack_mask_layer_inputs_type_1 import StackMaskLayerInputsType1
   from ..models.stack_mask_layer_parameters_type_1 import StackMaskLayerParametersType1
+  from ..models.stack_placement import StackPlacement
 
 
 
@@ -42,10 +43,14 @@ class StackMaskLayer:
             lane (str): Which lane of its picture it reads: Red, Green, Blue or Alpha. Default: 'Red'.
             output (str): Which picture of a generator entry that writes several it reads, or empty for its one. Default:
                 ''.
+            projection (str): How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or
+                Cylindrical by world
+                position, which a mask on a mesh whose UVs it was not made for wants (#120). Default: 'Uv'.
             anchor (None | StackAnchorRef | Unset):
             parameters (None | StackMaskLayerParametersType1 | Unset): What a generator entry's knobs are set to, as text.
             inputs (None | StackMaskLayerInputsType1 | Unset): The image inputs of a generator entry that anchor points
                 feed, by port.
+            placement (None | StackPlacement | Unset):
      """
 
     source: str
@@ -59,9 +64,11 @@ class StackMaskLayer:
     enabled: bool = True
     lane: str = 'Red'
     output: str = ''
+    projection: str = 'Uv'
     anchor: None | StackAnchorRef | Unset = UNSET
     parameters: None | StackMaskLayerParametersType1 | Unset = UNSET
     inputs: None | StackMaskLayerInputsType1 | Unset = UNSET
+    placement: None | StackPlacement | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -72,6 +79,7 @@ class StackMaskLayer:
         from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
         from ..models.stack_mask_layer_inputs_type_1 import StackMaskLayerInputsType1 # noqa: PLC0415
         from ..models.stack_mask_layer_parameters_type_1 import StackMaskLayerParametersType1 # noqa: PLC0415
+        from ..models.stack_placement import StackPlacement # noqa: PLC0415
         source = self.source
 
         value = self.value
@@ -93,6 +101,8 @@ class StackMaskLayer:
         lane = self.lane
 
         output = self.output
+
+        projection = self.projection
 
         anchor: dict[str, Any] | None | Unset
         if isinstance(self.anchor, Unset):
@@ -118,6 +128,14 @@ class StackMaskLayer:
         else:
             inputs = self.inputs
 
+        placement: dict[str, Any] | None | Unset
+        if isinstance(self.placement, Unset):
+            placement = UNSET
+        elif isinstance(self.placement, StackPlacement):
+            placement = self.placement.to_dict()
+        else:
+            placement = self.placement
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -133,6 +151,7 @@ class StackMaskLayer:
             "enabled": enabled,
             "lane": lane,
             "output": output,
+            "projection": projection,
         })
         if anchor is not UNSET:
             field_dict["anchor"] = anchor
@@ -140,6 +159,8 @@ class StackMaskLayer:
             field_dict["parameters"] = parameters
         if inputs is not UNSET:
             field_dict["inputs"] = inputs
+        if placement is not UNSET:
+            field_dict["placement"] = placement
 
         return field_dict
 
@@ -150,6 +171,7 @@ class StackMaskLayer:
         from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
         from ..models.stack_mask_layer_inputs_type_1 import StackMaskLayerInputsType1 # noqa: PLC0415
         from ..models.stack_mask_layer_parameters_type_1 import StackMaskLayerParametersType1 # noqa: PLC0415
+        from ..models.stack_placement import StackPlacement # noqa: PLC0415
         d = dict(src_dict)
         source = d.pop("source")
 
@@ -172,6 +194,8 @@ class StackMaskLayer:
         lane = d.pop("lane")
 
         output = d.pop("output")
+
+        projection = d.pop("projection")
 
         def _parse_anchor(data: object) -> None | StackAnchorRef | Unset:
             if data is None:
@@ -233,6 +257,26 @@ class StackMaskLayer:
         inputs = _parse_inputs(d.pop("inputs", UNSET))
 
 
+        def _parse_placement(data: object) -> None | StackPlacement | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                placement_type_1 = StackPlacement.from_dict(data)
+
+
+
+                return placement_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackPlacement | Unset, data)
+
+        placement = _parse_placement(d.pop("placement", UNSET))
+
+
         stack_mask_layer = cls(
             source=source,
             value=value,
@@ -245,9 +289,11 @@ class StackMaskLayer:
             enabled=enabled,
             lane=lane,
             output=output,
+            projection=projection,
             anchor=anchor,
             parameters=parameters,
             inputs=inputs,
+            placement=placement,
         )
 
 
