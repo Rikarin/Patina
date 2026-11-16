@@ -92,14 +92,8 @@ public sealed class GraphEvaluator(
 
     /// <summary>Sends one question to the Worker, waiting a while for one to come.</summary>
     async Task<IpcMessage> AskAsync(IpcMessage request, CancellationToken cancellationToken) {
-        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        patience.CancelAfter(WorkerPatience);
-        try {
-            var connection = await worker.ConnectionAsync(patience.Token);
-            return await connection.SendAsync(request, cancellationToken);
-        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new RendererMissingException();
-        }
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerPatience, cancellationToken);
+        return await connection.SendAsync(request, cancellationToken);
     }
 
     async Task<bool> DrainAsync(CancellationToken cancellationToken) {

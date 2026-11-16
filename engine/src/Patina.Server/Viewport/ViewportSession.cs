@@ -662,14 +662,7 @@ public sealed partial class ViewportSession(
 
         var (across, down) = (Math.Clamp(work.Size.Width, 2, FrameMemory.MaxWidth),
             Math.Clamp(work.Size.Height, 2, FrameMemory.MaxHeight));
-        using (var waiting = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)) {
-            waiting.CancelAfter(PickPatience);
-            try {
-                await worker.ConnectionAsync(waiting.Token);
-            } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-                throw new RendererMissingException();
-            }
-        }
+        await WorkerWait.ConnectionAsync(worker, PickPatience, cancellationToken);
 
         await drawing.WaitAsync(cancellationToken);
         try {
@@ -705,7 +698,8 @@ public sealed partial class ViewportSession(
 
     /// <summary>Tells the Worker the mesh, maps, settings, stacks and camera it does not yet know.</summary>
     async Task<IpcConnection> TellAsync(Work work, CancellationToken cancellationToken) {
-        var connection = await worker.ConnectionAsync(cancellationToken);
+        // The frame loop waits for as long as it runs: it draws for whichever Worker comes.
+        var connection = await WorkerWait.ConnectionAsync(worker, Timeout.InfiniteTimeSpan, cancellationToken);
         // A texture set moved to another coordinate set is the mesh read again with it (#210).
         var layouts = string.Join(';', work.Worn.UvSets.Select(static pair => $"{pair.Key}={pair.Value}"));
         // A mesh reloaded on the same layout is the same file rewritten, under documents that stay open (#89).

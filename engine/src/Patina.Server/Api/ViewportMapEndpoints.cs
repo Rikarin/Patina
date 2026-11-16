@@ -210,8 +210,9 @@ static class ViewportMapEndpoints {
                 : (null, Refusals.NoPanorama(environment));
         } catch (IpcException e) {
             return (null, Refusals.OfEngine(e, Refused));
-        } catch (TimeoutException e) {
-            return (null, Refusals.Of(e, Unavailable));
+        } catch (Exception e) when (e is IOException or TimeoutException) {
+            // The Worker went while it drew the panorama, or none came (#309).
+            return (null, Refusals.OfEngine(e, Unavailable));
         }
     }
 
@@ -243,6 +244,8 @@ static class ViewportMapEndpoints {
             return Refusals.Of(e);
         } catch (IpcException e) {
             return Refusals.OfEngine(e, Refused);
+        } catch (IpcDisconnectedException e) {
+            return Refusals.OfEngine(e, Unavailable);
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
             return Refusals.Unwritable(e, Unavailable);
         } catch (TimeoutException e) {

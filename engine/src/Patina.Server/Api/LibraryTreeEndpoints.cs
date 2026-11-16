@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Stacks;
@@ -416,6 +417,11 @@ static class LibraryTreeEndpoints {
 
     internal static ProblemHttpResult? Refusal(Exception e) =>
         e switch {
+            // ⚠ Before IOException: a Worker that went mid-answer is no file that would not write (#309).
+            IpcDisconnectedException or RendererMissingException => Refusals.OfEngine(
+                e,
+                StatusCodes.Status503ServiceUnavailable
+            ),
             FileNotFoundException missing => Refusals.Of(missing),
             ProjectRefusedException refused => Refusals.Of(refused),
             StackEditRefusedException refused => Refusals.Of(refused, StatusCodes.Status400BadRequest),

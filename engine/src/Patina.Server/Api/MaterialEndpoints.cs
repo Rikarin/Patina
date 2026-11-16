@@ -95,12 +95,14 @@ static class MaterialEndpoints {
 
     /// <summary>
     ///     A graph's Output as a picture in <c>brushes/</c>, through a session of its own unless one is open. The
-    ///     Worker only has a picture once it has evaluated, so this asks until it does.
+    ///     Worker only has a picture once it has evaluated, so this waits until it has. Only the wait for a Worker to
+    ///     come is bounded: one that is connected and slow over the graph is waited for (#309).
     /// </summary>
     static async Task<Results<Ok<MaterialBrush>, ProblemHttpResult>> MakeBrush(
         LibraryHost host,
         GraphSessions graphs,
         GraphEvaluator evaluator,
+        WorkerLink worker,
         PreviewStore previews,
         MaterialUseRequest request,
         CancellationToken cancellationToken
@@ -119,9 +121,14 @@ static class MaterialEndpoints {
         try {
             var (node, usage) = MaterialShelf.BrushOutput(await SharedFile.ReadAllTextAsync(full, cancellationToken));
             session.Evaluate();
-            using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            patience.CancelAfter(BrushPatience);
-            var picture = await RenderedAsync(session, evaluator, node, usage, patience.Token);
+            await WorkerWait.UntilAsync(
+                session,
+                session.Pending,
+                worker.ConnectionAsync,
+                BrushPatience,
+                cancellationToken
+            );
+            var picture = await RenderedAsync(session, evaluator, node, usage, cancellationToken);
             var name = Path.GetFileNameWithoutExtension(request.Source);
             var alpha = $"{BrushFolder}/{name}.png";
             var file = library.ProjectFile(request.Project, alpha);
@@ -135,12 +142,9 @@ static class MaterialEndpoints {
                 Refusals.LibraryRefused,
                 Refusals.Reason(e.Message)
             );
-        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            return Refusals.Problem(
-                "The graph did not render in time.",
-                StatusCodes.Status503ServiceUnavailable,
-                Refusals.EngineUnavailable
-            );
+        } catch (Exception e) when (e is IpcDisconnectedException or TimeoutException) {
+            // No Worker came, or the one drawing went (#309).
+            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
         } finally {
             if (!held) {
                 graphs.Close(session);
@@ -155,12 +159,17 @@ static class MaterialEndpoints {
         string usage,
         CancellationToken cancellationToken
     ) {
-        while (true) {
+        // ⚠ Evaluated already: these tries only cover a picture the Worker has not quite put away, never its drawing.
+        for (var waited = TimeSpan.Zero;; waited += BrushRetry) {
             try {
                 return await evaluator.ImageAsync(session, node, usage, cancellationToken);
             } catch (IpcException) when (!cancellationToken.IsCancellationRequested) {
                 if (session.EvaluationError is { } failed) {
                     throw new ProjectRefusedException(failed);
+                }
+
+                if (waited > BrushPatience) {
+                    throw new TimeoutException("The graph did not render in time.");
                 }
 
                 await Task.Delay(BrushRetry, cancellationToken);

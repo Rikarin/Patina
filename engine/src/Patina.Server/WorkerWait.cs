@@ -10,6 +10,16 @@ namespace Patina.Server;
 ///     for the whole of its patience, never because the one connected is slow.
 /// </summary>
 public static class WorkerWait {
+    /// <summary>How long a request waits for a Worker to come before it says none is connected.</summary>
+    public static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
+
+    /// <summary>The Worker's connection if one is connected now, without waiting; null if none is.</summary>
+    public static IpcConnection? Now(WorkerLink worker) {
+        ArgumentNullException.ThrowIfNull(worker);
+        var connecting = worker.ConnectionAsync(CancellationToken.None);
+        return connecting.IsCompletedSuccessfully ? connecting.Result : null;
+    }
+
     /// <summary>The Worker's connection, waiting at most <paramref name="patience" /> for one to be there.</summary>
     /// <remarks>
     ///     ⚠ Only the connection is bounded: what is then asked of it is sent with
