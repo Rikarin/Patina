@@ -221,7 +221,7 @@ public sealed class IpcException : Exception {
 
     public IpcException(string message, Exception innerException) : base(message, innerException) { }
 
-    /// <summary>How a refusal that is about the machine, not the request, begins: the Worker has no GPU to use.</summary>
+    /// <summary>How a refusal about the machine, not the request, begins: the Worker has no GPU to use.</summary>
     public const string NoDevicePrefix = "No Vulkan device";
 
     /// <summary>

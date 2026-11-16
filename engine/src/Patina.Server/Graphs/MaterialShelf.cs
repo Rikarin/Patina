@@ -270,21 +270,8 @@ public static class MaterialShelf {
         for (var offset = 0;; offset += ProjectPage) {
             var page = library.Projects(new(Offset: offset, Limit: ProjectPage)).Items;
             foreach (var summary in page.Where(summary => summary.Path != project)) {
-                var contents = ContentsOf(library, summary.Path);
-                foreach (var document in contents.Documents) {
-                    if (Maybe(document, summary.Name, words)
-                        && Readable(library, document) is { } read
-                        && read with { Origin = ElsewhereOrigin, Project = summary.Name } is var material
-                        && Matches(material, words)) {
-                        yield return material;
-                    }
-                }
-
-                // Another project's pictures too (#203): a click or a drag brings one into this project first.
-                foreach (var picture in contents.Pictures) {
-                    if (Pictured(picture, summary.Name, ElsewhereOrigin) is var material && Matches(material, words)) {
-                        yield return material;
-                    }
+                foreach (var material in OfProject(library, summary, words)) {
+                    yield return material;
                 }
             }
 
@@ -292,6 +279,21 @@ public static class MaterialShelf {
                 yield break;
             }
         }
+    }
+
+    /// <summary>
+    ///     What another project offers that a search finds: its materials, and its pictures too (#203), which a click
+    ///     or a drag brings into the open project first.
+    /// </summary>
+    static IEnumerable<MaterialInfo> OfProject(OpenLibrary library, ProjectSummary summary, string[] words) {
+        var contents = ContentsOf(library, summary.Path);
+        var materials = contents.Documents
+            .Where(document => Maybe(document, summary.Name, words))
+            .Select(document => Readable(library, document))
+            .OfType<MaterialInfo>()
+            .Select(read => read with { Origin = ElsewhereOrigin, Project = summary.Name });
+        var pictures = contents.Pictures.Select(picture => Pictured(picture, summary.Name, ElsewhereOrigin));
+        return materials.Concat(pictures).Where(material => Matches(material, words));
     }
 
     /// <summary>

@@ -9,7 +9,7 @@ using System.Security.Cryptography;
 
 namespace Patina.Server.Tests;
 
-/// <summary>What a shelf picture the Worker would not draw leaves behind: nothing, unless the material was the reason.</summary>
+/// <summary>What a shelf picture the Worker would not draw leaves: nothing, unless the material was why.</summary>
 public sealed class ThumbnailRefusalTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-thumbnail-refusal-");
 
@@ -19,8 +19,8 @@ public sealed class ThumbnailRefusalTests : IDisposable {
 
     /// <summary>
     ///     A library opened once on a machine with no GPU kept blank shelf pictures until its cache was cleared (#302):
-    ///     the Worker's "No Vulkan device" was remembered as "nothing to draw". A refusal about the device is asked again;
-    ///     one about the material is still remembered, so a broken material is not drawn on every visit.
+    ///     the Worker's "No Vulkan device" was remembered as "nothing to draw". A refusal about the device is asked
+    ///     again; one about the material is still remembered, so a broken material is not drawn on every visit.
     /// </summary>
     [Fact]
     public async Task A_picture_refused_for_want_of_a_device_is_drawn_once_there_is_one() {
@@ -77,7 +77,7 @@ public sealed class ThumbnailRefusalTests : IDisposable {
 
     /// <summary>A Worker's picture: any bytes, written under their hash into the cache it was told of.</summary>
     static IpcMessage Drawn(IpcMessage request, string cache) {
-        byte[] pixels = [.. Guid.NewGuid().ToByteArray()];
+        byte[] pixels = [..Guid.NewGuid().ToByteArray()];
         var hash = Convert.ToHexStringLower(SHA256.HashData(pixels));
         var path = GraphPreviewFiles.PathOf(cache, hash);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -85,7 +85,7 @@ public sealed class ThumbnailRefusalTests : IDisposable {
         return new() { Type = IpcTypes.Ok, Id = request.Id, ThumbnailHash = hash };
     }
 
-    /// <summary>A Worker that says hello and answers every request it is asked with <paramref name="answer" />.</summary>
+    /// <summary>A Worker that says hello and answers every request with <paramref name="answer" />.</summary>
     static async Task<IpcConnection> WorkerAsync(string socketPath, Func<IpcMessage, IpcMessage> answer) {
         var stream = await IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(5), Token);
         var worker = new IpcConnection(stream, (request, _) => ValueTask.FromResult(answer(request)));

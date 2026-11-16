@@ -116,7 +116,7 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
 
     string KeyFile(string key) => Path.Combine(store.Root, KeysFolder, key[..2], key);
 
-    /// <summary>The Worker's picture of an ask, and whether what it said holds for these files on any machine.</summary>
+    /// <summary>The Worker's picture of an ask, and whether its answer holds for these files anywhere.</summary>
     async Task<(string? Hash, bool Lasting)> DrawAsync(MaterialThumbnailAsk ask, CancellationToken cancellationToken) {
         using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         patience.CancelAfter(WorkerPatience);
