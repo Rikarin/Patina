@@ -2989,6 +2989,175 @@
         }
       }
     },
+    "/api/v1/library/project-templates": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The project templates the library keeps, by name.",
+        "operationId": "ListProjectTemplates",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTemplateList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps a project\u0027s settings as a template: Auto Unwrap and Preserve Paint, and how it exports, bakes, opens the viewport, checks and paints. Its meshes and documents stay its own. A template of the same name is replaced.",
+        "operationId": "SaveProjectTemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTemplateList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Throws a project template away. Projects made from it keep their settings.",
+        "operationId": "DeleteProjectTemplate",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTemplateList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/settings": {
       "patch": {
         "tags": [
@@ -17912,6 +18081,13 @@
             ],
             "description": "The height of a stack it starts with, when it is not as tall as Resolution is wide (#144):\na model laid out on a 2:1 sheet paints at 2048 \u00D7 1024. Null is square. A graph is always square.",
             "format": "int32"
+          },
+          "template": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project template whose settings it starts with (#144), by name, or null for none. Its bake settings take\nthe place of the person\u0027s default and of the size the project is made at."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/projects\u0060."
@@ -18826,6 +19002,40 @@
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/tags\u0060."
+      },
+      "ProjectTemplateList": {
+        "required": [
+          "names"
+        ],
+        "type": "object",
+        "properties": {
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Their names, sorted."
+          }
+        },
+        "description": "The project templates a library keeps (#144): a project\u0027s settings under a name, which a new project starts\nfrom through string? ProjectCreateRequest.Template. A template holds how Auto Unwrap and Preserve Paint\nare set and the export, bake, viewport, checks and paint settings, never a mesh or a document."
+      },
+      "ProjectTemplateRequest": {
+        "required": [
+          "project",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project whose settings are kept, below \u0060projects/\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "What the template is called. One of the same name is replaced."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/project-templates\u0060: a project\u0027s settings, kept by name."
       },
       "ProjectViewportRequest": {
         "required": [

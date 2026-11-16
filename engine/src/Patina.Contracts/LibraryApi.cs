@@ -86,6 +86,12 @@ public sealed record ProjectCreateRequest(
     ///     a model laid out on a 2:1 sheet paints at 2048 × 1024. Null is square. A graph is always square.
     /// </summary>
     public int? Rows { get; init; }
+
+    /// <summary>
+    ///     The project template whose settings it starts with (#144), by name, or null for none. Its bake settings take
+    ///     the place of the person's default and of the size the project is made at.
+    /// </summary>
+    public string? Template { get; init; }
 }
 
 /// <summary>A result of a bake in a project's folder.</summary>

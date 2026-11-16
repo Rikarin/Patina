@@ -70,4 +70,6 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(BrushPreset))]
 [JsonSerializable(typeof(BrushPresetCreateRequest))]
 [JsonSerializable(typeof(BrushPresetUpdateRequest))]
+[JsonSerializable(typeof(ProjectTemplateList), TypeInfoPropertyName = nameof(ProjectTemplateList))]
+[JsonSerializable(typeof(ProjectTemplateRequest))]
 public sealed partial class LibraryTreeJsonContext : JsonSerializerContext;

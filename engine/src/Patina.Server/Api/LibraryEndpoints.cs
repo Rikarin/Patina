@@ -124,6 +124,10 @@ static class LibraryEndpoints {
                 OpenLibrary.RequireMesh(mesh);
             }
 
+            if (request.Template is { } template) {
+                ProjectTemplates.Find(library.RootPath, template); // before anything is made, so a typo makes nothing
+            }
+
             var kind = request.Kind ?? (request.Mesh is null ? null : DocumentKinds.Texturing);
             if (kind is not null && !DocumentKinds.Known(kind)) {
                 throw new ProjectRefusedException($"'{kind}' cannot be made yet.");
@@ -155,6 +159,10 @@ static class LibraryEndpoints {
             }
 
             BakeAsPreferred(library, project.Path, kind, request.Resolution, preferences.Current.Bake);
+            if (request.Template is { } chosen) {
+                library.ApplyTemplate(project.Path, chosen);
+            }
+
             host.RequestRescan();
             return TypedResults.Created((string?)null, project);
         } catch (FileNotFoundException e) {

@@ -707,7 +707,7 @@ static class ProjectFiles {
         return name;
     }
 
-    static (string Full, ProjectDocument Document) Project(string root, string path) {
+    internal static (string Full, ProjectDocument Document) Project(string root, string path) {
         var file = LibraryFiles.ProjectFile(root, LibraryFolders.Existing(path));
         if (!File.Exists(file)) {
             throw new FileNotFoundException($"There is no project '{path}' in this library.", path);
