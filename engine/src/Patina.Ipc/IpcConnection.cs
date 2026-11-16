@@ -50,6 +50,12 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
     /// </summary>
     public Func<string, bool>? Urgent { get; init; }
 
+    /// <summary>
+    ///     Told the type of each request as it joins the queue, on the reading thread, while the one being answered
+    ///     may still be running: what is answering can give way to it.
+    /// </summary>
+    public Action<string>? Queued { get; init; }
+
     /// <summary>Completes when the peer has gone or this connection was disposed.</summary>
     public Task Closed => closed.Task;
 
@@ -147,6 +153,7 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
             _ = Task.Run(() => AnswerAsideAsync(message, cancellationToken), CancellationToken.None);
         } else if (Immediate is { } immediate && !immediate(message.Type)) {
             (Urgent?.Invoke(message.Type) == true ? ahead : queued).Writer.TryWrite(message);
+            Queued?.Invoke(message.Type);
         } else {
             await WriteAsync(await AnswerAsync(message, cancellationToken).ConfigureAwait(false), cancellationToken)
                 .ConfigureAwait(false);

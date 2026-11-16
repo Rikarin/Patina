@@ -125,10 +125,16 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
     async Task<(string? Hash, bool Lasting)> DrawAsync(MaterialThumbnailAsk ask, CancellationToken cancellationToken) {
         var connection = await WorkerWait.ConnectionAsync(worker, WorkerPatience, cancellationToken);
         try {
-            var reply = await connection.SendAsync(
-                new() { Type = IpcTypes.MaterialThumbnail, MaterialThumbnail = ask },
-                cancellationToken
-            );
+            IpcMessage reply;
+            do {
+                // A picture gives way to work queued behind it on the Worker, and is asked for again behind that work
+                // (PictureYield): it is nobody's wait, and on a software GPU one took tens of seconds.
+                reply = await connection.SendAsync(
+                    new() { Type = IpcTypes.MaterialThumbnail, MaterialThumbnail = ask },
+                    cancellationToken
+                );
+            } while (reply.Superseded == true);
+
             return (reply.ThumbnailHash, true);
         } catch (IpcException e) when (!ask.Deep) {
             // A material that cannot draw shows its name alone, as it did before there were pictures. A panorama is

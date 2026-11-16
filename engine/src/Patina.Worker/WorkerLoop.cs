@@ -22,6 +22,9 @@ sealed class WorkerLoop(
     static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
     static readonly long Started = Stopwatch.GetTimestamp();
 
+    /// <summary>The picture being drawn, which stops for anything queued behind it.</summary>
+    readonly PictureYield pictures = new();
+
     /// <summary>
     ///     Keeps a link to the Server, reconnecting when it drops. <paramref name="log" /> gets one line per link,
     ///     which the desktop app's supervision reads, and the Server gets its warnings and errors.
@@ -70,7 +73,12 @@ sealed class WorkerLoop(
             // ⚠ A frame waits for the request being answered, never behind every evaluation and thumbnail sent before
             // it: on a software GPU those queue for minutes, and the viewport stopped answering a change (#274). What
             // wears a stack keeps its place behind the stack's own requests (#295).
-            Urgent = IpcTypes.Urgent
+            Urgent = IpcTypes.Urgent,
+            Queued = type => {
+                if (type != IpcTypes.MaterialThumbnail) {
+                    pictures.GiveWay();
+                }
+            }
         };
         await using (connection) {
             connection.Start();
@@ -339,7 +347,11 @@ sealed class WorkerLoop(
 
     IpcMessage Thumbnail(IpcMessage request) {
         var ask = request.MaterialThumbnail ?? throw new IpcException("material.thumbnail says nothing to draw.");
-        return ask.Kind == MaterialThumbnailKinds.Stack ? stacks.Thumbnail(ask) : graphs.Thumbnail(ask);
+        return pictures.Draw(stop => ask.Kind == MaterialThumbnailKinds.Stack
+                    ? stacks.Thumbnail(ask, stop)
+                    : graphs.Thumbnail(ask, stop)
+            )
+            ?? new() { Type = IpcTypes.Ok, Id = request.Id, Superseded = true };
     }
 
     WorkerHealth Health() =>
