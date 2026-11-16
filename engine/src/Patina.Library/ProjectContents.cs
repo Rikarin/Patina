@@ -52,6 +52,7 @@ static class ProjectFiles {
             Tags = document.Tags,
             PreservePaint = document.PreservePaint,
             Unwrap = document.Unwrap,
+            NormalFormat = document.NormalFormat,
             Export = document.Export,
             ExportSets = [
                 ..ProjectOutputs.Of(document, full)
@@ -287,6 +288,12 @@ static class ProjectFiles {
                 Unwrap = unwrap ?? document.Unwrap
             }
         );
+    }
+
+    /// <summary>Keeps which way the green of the project's normal maps runs (#144).</summary>
+    public static void SetNormalFormat(string root, string path, string format) {
+        var (_, document) = Project(root, path);
+        LibraryFiles.WriteProject(root, path, document with { NormalFormat = format });
     }
 
     /// <summary>Keeps how a project's bakes run, in its own file.</summary>

@@ -25,6 +25,13 @@ static class ProjectSettingsEndpoint {
             return Refusals.BadSettings(wrong, StatusCodes.Status400BadRequest);
         }
 
+        if (request.NormalFormat is { } format && !NormalFormats.All.Contains(format, StringComparer.Ordinal)) {
+            return Refusals.BadSettings(
+                $"A normal map's green runs y-up or y-down, not '{format}'.",
+                StatusCodes.Status400BadRequest
+            );
+        }
+
         var kept = request.SameLayout == true;
         var project = request.Project;
         try {
@@ -34,6 +41,9 @@ static class ProjectSettingsEndpoint {
 
             var options = library.Contents(project).Unwrap;
             library.SetMeshHandling(project, request.AutoUnwrap, request.PreservePaint, request.Unwrap);
+            if (request.NormalFormat is { } normals) {
+                library.SetNormalFormat(project, normals);
+            }
 
             var before = library.Contents(project);
             var onDocument = before.Documents.FirstOrDefault(static d => d.Mesh is not null)?.Mesh;

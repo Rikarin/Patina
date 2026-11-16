@@ -181,6 +181,12 @@ public sealed record ProjectContents(
     /// <summary>How Auto Unwrap lays a mesh out.</summary>
     public UnwrapOptions Unwrap { get; init; } = new();
 
+    /// <summary>
+    ///     Which way the green of the project's tangent-space normal maps runs: <c>y-up</c> (OpenGL) or <c>y-down</c>
+    ///     (DirectX). A normal map brought in is read as this unless it says otherwise (#144).
+    /// </summary>
+    public string NormalFormat { get; init; } = NormalFormats.Up;
+
     /// <summary>How its bakes run, which texture sets they make maps for, and what they read beyond its mesh.</summary>
     public ProjectBakeSettings Bake { get; init; } = new();
 
@@ -242,6 +248,10 @@ public sealed record ProjectFileRequest(string Project, string File);
 ///     with their undo. Otherwise it is refused with <c>mesh-layout-changed</c> and nothing changes, and a client asks
 ///     what reloading costs before it reloads without this.
 /// </param>
+/// <param name="NormalFormat">
+///     Which way the green of the project's tangent-space normal maps runs: <c>y-up</c> or <c>y-down</c> (#144). Maps
+///     already brought in stay as they were brought in.
+/// </param>
 public sealed record ProjectSettingsRequest(
     string Project,
     string? Mesh,
@@ -250,8 +260,21 @@ public sealed record ProjectSettingsRequest(
     bool? PreservePaint = null,
     UnwrapOptions? Unwrap = null,
     IReadOnlyDictionary<string, string>? Reassign = null,
-    bool? SameLayout = null
+    bool? SameLayout = null,
+    string? NormalFormat = null
 );
+
+/// <summary>Which way the green of a tangent-space normal map runs, as a project or an export preset says it.</summary>
+public static class NormalFormats {
+    /// <summary>More green points up the picture: Y+, often called OpenGL, and how Patina keeps its maps.</summary>
+    public const string Up = "y-up";
+
+    /// <summary>More green points down the picture: Y-, often called DirectX.</summary>
+    public const string Down = "y-down";
+
+    /// <summary>Every format.</summary>
+    public static IReadOnlyList<string> All { get; } = [Up, Down];
+}
 
 /// <summary>One preset file as a project's export last had it.</summary>
 /// <param name="Preset">The preset it is a file of.</param>

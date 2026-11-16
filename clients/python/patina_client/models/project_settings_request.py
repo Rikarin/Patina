@@ -49,6 +49,9 @@ class ProjectSettingsRequest:
                 materials, and every texture set laid out as it was. Then no paint is touched and open documents stay open,
                 with their undo. Otherwise it is refused with `mesh-layout-changed` and nothing changes, and a client asks
                 what reloading costs before it reloads without this.
+            normal_format (None | str | Unset): Which way the green of the project's tangent-space normal maps runs: `y-up`
+                or `y-down` (#144). Maps
+                already brought in stay as they were brought in.
      """
 
     project: str
@@ -59,6 +62,7 @@ class ProjectSettingsRequest:
     unwrap: None | Unset | UnwrapOptions = UNSET
     reassign: None | ProjectSettingsRequestReassignType1 | Unset = UNSET
     same_layout: bool | None | Unset = UNSET
+    normal_format: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -116,6 +120,12 @@ class ProjectSettingsRequest:
         else:
             same_layout = self.same_layout
 
+        normal_format: None | str | Unset
+        if isinstance(self.normal_format, Unset):
+            normal_format = UNSET
+        else:
+            normal_format = self.normal_format
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -136,6 +146,8 @@ class ProjectSettingsRequest:
             field_dict["reassign"] = reassign
         if same_layout is not UNSET:
             field_dict["sameLayout"] = same_layout
+        if normal_format is not UNSET:
+            field_dict["normalFormat"] = normal_format
 
         return field_dict
 
@@ -238,6 +250,16 @@ class ProjectSettingsRequest:
         same_layout = _parse_same_layout(d.pop("sameLayout", UNSET))
 
 
+        def _parse_normal_format(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        normal_format = _parse_normal_format(d.pop("normalFormat", UNSET))
+
+
         project_settings_request = cls(
             project=project,
             mesh=mesh,
@@ -247,6 +269,7 @@ class ProjectSettingsRequest:
             unwrap=unwrap,
             reassign=reassign,
             same_layout=same_layout,
+            normal_format=normal_format,
         )
 
 

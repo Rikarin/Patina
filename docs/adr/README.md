@@ -49,3 +49,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0049](0049-graph-environments.md): accepted: a graph lights the viewport as a half-float panorama of its Output, drawn from its file into the preview cache and drawn again when it is saved.
 - [0050](0050-openpbr-layer-channels.md): accepted: OpenPBR's coat, sheen and transmission are six channels named after OpenPBR's inputs (fuzz called a sheen), each starting at OpenPBR's default, wired into a material file only when the set has it.
 - [0051](0051-history-across-a-close.md): proposed: a texturing document's undo history is kept in the cache at a save, as each step's text and strokes over the files it began from, and taken up at an open while the files are unchanged.
+- [0052](0052-project-normal-format.md): accepted: a project's normal format, `y-up` or `y-down`, says how a tangent-space normal brought in is read; Patina keeps every map green up and export stays with its preset.

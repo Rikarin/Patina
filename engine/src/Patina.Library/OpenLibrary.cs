@@ -319,6 +319,14 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Keeps which way the green of a project's normal maps runs, one of <see cref="NormalFormats.All" />.</summary>
+    public void SetNormalFormat(string path, string format) {
+        lock (createGate) {
+            ProjectFiles.SetNormalFormat(RootPath, path, format);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
     /// <summary>Keeps what a project's export is set to, so any client's next export of it starts there.</summary>
     /// <exception cref="FileNotFoundException">The project is not there.</exception>
     public void SetExport(string path, ProjectExportSettings settings) {

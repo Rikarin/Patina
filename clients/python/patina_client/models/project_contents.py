@@ -51,6 +51,9 @@ class ProjectContents:
                 project of one unnamed set.
             preserve_paint (bool): Whether paint moves to a new mesh's layout.
             unwrap (UnwrapOptions): How Auto Unwrap lays out a mesh. Each texture set gets an atlas of its own.
+            normal_format (str): Which way the green of the project's tangent-space normal maps runs: `y-up` (OpenGL) or
+                `y-down`
+                (DirectX). A normal map brought in is read as this unless it says otherwise (#144).
             bake (ProjectBakeSettings): What a project keeps about baking, in its own file: the options, which texture sets
                 to bake, and the files
                 beyond the project's mesh that a bake reads.
@@ -73,6 +76,7 @@ class ProjectContents:
     export_sets: list[str]
     preserve_paint: bool
     unwrap: UnwrapOptions
+    normal_format: str
     bake: ProjectBakeSettings
     export: None | ProjectExportSettings | Unset = UNSET
     viewport: None | Unset | ViewportDisplay = UNSET
@@ -144,6 +148,8 @@ class ProjectContents:
 
         unwrap = self.unwrap.to_dict()
 
+        normal_format = self.normal_format
+
         bake = self.bake.to_dict()
 
         export: dict[str, Any] | None | Unset
@@ -195,6 +201,7 @@ class ProjectContents:
             "exportSets": export_sets,
             "preservePaint": preserve_paint,
             "unwrap": unwrap,
+            "normalFormat": normal_format,
             "bake": bake,
         })
         if export is not UNSET:
@@ -287,6 +294,8 @@ class ProjectContents:
 
 
 
+
+        normal_format = d.pop("normalFormat")
 
         bake = ProjectBakeSettings.from_dict(d.pop("bake"))
 
@@ -387,6 +396,7 @@ class ProjectContents:
             export_sets=export_sets,
             preserve_paint=preserve_paint,
             unwrap=unwrap,
+            normal_format=normal_format,
             bake=bake,
             export=export,
             viewport=viewport,

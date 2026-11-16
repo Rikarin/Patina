@@ -24,6 +24,7 @@ public static class DocumentCodec {
     const string HashKey = "hash";
     const string PreservePaintKey = "preservePaint";
     const string UnwrapKey = "unwrap";
+    const string NormalFormatKey = "normalFormat";
     const string BakeKey = "bake";
     const string ViewportKey = "viewport";
     const string PaintKey = "paint";
@@ -82,6 +83,9 @@ public static class DocumentCodec {
                     ..document.AutoUnwrap ? [] : new[] { Pair(AutoUnwrapKey, YamlText.Plain("false")) },
                     ..document.PreservePaint ? [] : new[] { Pair(PreservePaintKey, YamlText.Plain("false")) },
                     ..Named(UnwrapKey, document.Unwrap != new UnwrapOptions(), Unwrap(document.Unwrap)),
+                    ..document.NormalFormat == NormalFormats.Up
+                        ? []
+                        : new[] { Pair(NormalFormatKey, YamlText.Plain(document.NormalFormat)) },
                     ..Block(
                         ExportKey,
                         Canonical(document.Export),
@@ -318,6 +322,9 @@ public static class DocumentCodec {
                     AutoUnwrap = fields.Optional(AutoUnwrapKey) != "false",
                     PreservePaint = fields.Optional(PreservePaintKey) != "false",
                     Unwrap = ReadUnwrap(fields.TextMap(UnwrapKey), fields),
+                    NormalFormat = fields.Optional(NormalFormatKey) == NormalFormats.Down
+                        ? NormalFormats.Down
+                        : NormalFormats.Up,
                     Export = ReadBlock(fields, ExportKey, LibraryTreeJsonContext.Default.ProjectExportSettings, new()),
                     Bake = ReadBake(fields),
                     Viewport = ReadBlock(fields, ViewportKey, LibraryTreeJsonContext.Default.ViewportDisplay, new()),
