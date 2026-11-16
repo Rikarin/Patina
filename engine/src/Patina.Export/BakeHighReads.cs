@@ -18,8 +18,9 @@ namespace Patina.Export;
 ///         <b>When a set reads only its matched parts</b>, which ADR 0008's table says option by option: rays match
 ///         by name and every part of the set has a high part of its name, since an unmatched face's rays may strike
 ///         all of the high mesh; occlusion, bent normals and thickness, when asked for, stay within the part; a
-///         curvature map, when asked for, is by rays within the part (#300); and the set asks for no ID or colour map,
-///         no rounded edges and no edges map of the high mesh, and is not tileable. Anything else reads the high meshes
+///         curvature map, when asked for, is by rays within the part (#300) or from the normal map, which is made of
+///         the matched parts' own rays (#305); and the set asks for no ID or colour map, no rounded edges and no edges
+///         map of the high mesh, and is not tileable. Anything else reads the high meshes
 ///         whole, by their bytes: the full rebake stays the answer whenever it is unclear.
 ///     </para>
 ///     <para>
@@ -91,7 +92,7 @@ public static class BakeHighReads {
             && (!occludes || options.Occlusion.WithinPart)
             && !Asks("id")
             && !Asks("colour")
-            && (!Asks("curvature") || options.Curvature is { Source: "rays", WithinPart: true })
+            && (!Asks("curvature") || options.Curvature is { Source: "normal-map" } or { Source: "rays", WithinPart: true })
             && !(Asks("edges") && options.Edges.Mesh != "low");
     }
 

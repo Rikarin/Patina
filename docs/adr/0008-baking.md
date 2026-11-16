@@ -130,7 +130,8 @@ option: a set reads only the high parts its own parts match by name when, and on
 | Normal, height, opacity, world normal, position | No | One ray per sample, into the matched part's own tree, and its normal. |
 | AO, bent normal, thickness, occlusion within the part | No | Occlusion rays go into the part's tree. |
 | AO, bent normal, thickness, across parts | Yes | Occlusion rays strike the whole model. |
-| Curvature from the mesh or the normal map, or by rays across parts | Yes | The Laplacian at a vertex two parts share reads both, as welding in a file joins them. |
+| Curvature from the mesh, or by rays across parts | Yes | The Laplacian at a vertex two parts share reads both, as welding in a file joins them. |
+| Curvature from the normal map (#305) | No | It is worked out from the baked normal map alone, which is the matched parts' own rays. |
 | Curvature by rays within the part (#300) | No | Its secondary rays go into the part's tree, as occlusion's do. |
 | ID | Yes | Materials, parts and shells are numbered across every file, so another part's change renumbers this one's. |
 | Colour | Yes | Each part's material and pictures are read from the file, outside its geometry. |
