@@ -26,5 +26,9 @@ model. It is every map a generator in `compounds/Generators` reads, at 256 texel
 --resolution 256 --maps ao,curvature,thickness,position,world,id,islands,bounds,density --format png8 --name knot`.
 Bake it again when a generator reads a map that is not there.
 
+`alphas/` holds the picture alphas the shelf offers beside the stamp shapes (#34), each a 256-texel grey PNG, white where
+a stamp paints and black at every edge. Taking one up copies it into the project's `brushes/`. They are drawn from seeds,
+not downloaded, by `patina-bench alphas content/alphas`; draw them again rather than editing one by hand.
+
 `export-presets/` holds the factory export presets. Each is a text file; a library adds or overrides one by putting a file
 with the same shape in `export-presets/`.
