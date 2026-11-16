@@ -19,6 +19,7 @@ def _get_kwargs(
     *,
     project: str,
     preset: str | Unset = UNSET,
+    measure: bool | Unset = UNSET,
 
 ) -> dict[str, Any]:
     
@@ -30,6 +31,8 @@ def _get_kwargs(
     params["project"] = project
 
     params["preset"] = preset
+
+    params["measure"] = measure
 
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
@@ -95,16 +98,20 @@ def sync_detailed(
     client: AuthenticatedClient | Client,
     project: str,
     preset: str | Unset = UNSET,
+    measure: bool | Unset = UNSET,
 
 ) -> Response[ProblemDetails | ProjectChecks]:
     """ Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does
     one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what
-    its file says, its limits, its files and its bake, and says it was not measured. The export preset
-    of a platform to check for, or none for the project's own.
+    its file says, its limits, its files and its bake, and says it was not measured, unless measure is
+    true: then the Server opens each such set in turn for the GPU engine to measure, and closes it
+    again, which evaluates every set and takes as long. The export preset of a platform to check for, or
+    none for the project's own.
 
     Args:
         project (str):
         preset (str | Unset):
+        measure (bool | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -118,6 +125,7 @@ def sync_detailed(
     kwargs = _get_kwargs(
         project=project,
 preset=preset,
+measure=measure,
 
     )
 
@@ -132,16 +140,20 @@ def sync(
     client: AuthenticatedClient | Client,
     project: str,
     preset: str | Unset = UNSET,
+    measure: bool | Unset = UNSET,
 
 ) -> ProblemDetails | ProjectChecks | None:
     """ Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does
     one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what
-    its file says, its limits, its files and its bake, and says it was not measured. The export preset
-    of a platform to check for, or none for the project's own.
+    its file says, its limits, its files and its bake, and says it was not measured, unless measure is
+    true: then the Server opens each such set in turn for the GPU engine to measure, and closes it
+    again, which evaluates every set and takes as long. The export preset of a platform to check for, or
+    none for the project's own.
 
     Args:
         project (str):
         preset (str | Unset):
+        measure (bool | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -156,6 +168,7 @@ def sync(
         client=client,
 project=project,
 preset=preset,
+measure=measure,
 
     ).parsed
 
@@ -164,16 +177,20 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
     project: str,
     preset: str | Unset = UNSET,
+    measure: bool | Unset = UNSET,
 
 ) -> Response[ProblemDetails | ProjectChecks]:
     """ Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does
     one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what
-    its file says, its limits, its files and its bake, and says it was not measured. The export preset
-    of a platform to check for, or none for the project's own.
+    its file says, its limits, its files and its bake, and says it was not measured, unless measure is
+    true: then the Server opens each such set in turn for the GPU engine to measure, and closes it
+    again, which evaluates every set and takes as long. The export preset of a platform to check for, or
+    none for the project's own.
 
     Args:
         project (str):
         preset (str | Unset):
+        measure (bool | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -187,6 +204,7 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         project=project,
 preset=preset,
+measure=measure,
 
     )
 
@@ -201,16 +219,20 @@ async def asyncio(
     client: AuthenticatedClient | Client,
     project: str,
     preset: str | Unset = UNSET,
+    measure: bool | Unset = UNSET,
 
 ) -> ProblemDetails | ProjectChecks | None:
     """ Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does
     one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what
-    its file says, its limits, its files and its bake, and says it was not measured. The export preset
-    of a platform to check for, or none for the project's own.
+    its file says, its limits, its files and its bake, and says it was not measured, unless measure is
+    true: then the Server opens each such set in turn for the GPU engine to measure, and closes it
+    again, which evaluates every set and takes as long. The export preset of a platform to check for, or
+    none for the project's own.
 
     Args:
         project (str):
         preset (str | Unset):
+        measure (bool | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -225,5 +247,6 @@ async def asyncio(
         client=client,
 project=project,
 preset=preset,
+measure=measure,
 
     )).parsed

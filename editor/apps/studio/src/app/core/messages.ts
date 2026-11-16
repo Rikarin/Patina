@@ -157,12 +157,16 @@ export function diagnosticOf(text: string): { summary: string; code: string | nu
  * bytes in MB.
  */
 const CheckWords: Readonly<Record<string, string>> = {
+  'platform-unknown': 'Limits are kept for “{preset}”, which no export preset is any more, so they hold no set.',
   'texture-over-budget': 'Takes {bytes} of GPU memory as {preset} writes it, over the budget of {budget}.',
   'texture-too-large': 'Is {width} × {height} texels, larger than the limit of {limit}.',
   'channel-missing': '{preset} reads {channel} into {file}, and this set has no {channel}, so a default fills it.',
   'packing-mixed': '{file} packs {color} with {data}, so one of them is held in the other’s encoding.',
   'space-data-srgb': '{file} holds {channel} in sRGB, which an engine reads as color, not as data.',
   'space-color-linear': '{file} holds {channel} as 8-bit linear numbers, which band in the darks.',
+  'depth-lost':
+    '{file} is {format} and reads {channel} painted at {painted} bits, which it rounds to {bits}. A png, tiff or exr ' +
+    'file is as deep as its maps.',
   'compression-normal':
     '{file} holds a normal in {compression} blocks, which show on a lit surface. BC5 or BC7 keep it.',
   'mips-missing': '{file} has no mips, so an engine samples it as it is and it shimmers at a distance.',

@@ -113,6 +113,13 @@ public sealed record ProjectChecksRequest(string Project, ProjectCheckSettings C
 /// </summary>
 public static class CheckCodes {
     /// <summary>
+    ///     The project keeps limits for a platform by an export preset that neither the library nor the project has any
+    ///     more, renamed or deleted, so they hold no set until a preset of that id comes back (ADR 0043). Values:
+    ///     <c>preset</c>, the id the limits name.
+    /// </summary>
+    public const string PlatformUnknown = "platform-unknown";
+
+    /// <summary>
     ///     The set's exported files take more GPU memory than the budget. Values: <c>bytes</c>, <c>budget</c>.
     /// </summary>
     public const string OverBudget = "texture-over-budget";
@@ -143,13 +150,21 @@ public static class CheckCodes {
     /// </summary>
     public const string BakeStale = "bake-stale";
 
+    /// <summary>
+    ///     A linear file of a fixed depth, such as <c>png8</c> or <c>exr16</c>, reads a channel painted deeper, and
+    ///     rounds away what the extra bits hold; a <c>png</c>, <c>tiff</c> or <c>exr</c> file is as deep as its maps
+    ///     (ADR 0044). Values: <c>file</c>, <c>format</c> by its label, <c>channel</c> by its label, <c>painted</c> and
+    ///     <c>bits</c>, the bits a lane painted and written.
+    /// </summary>
+    public const string DepthLost = "depth-lost";
+
     // Between the groups, as ExportMaps has it: SK7020 honours no suppression, and reads thirteen constants in a row as
     // a clone of another list of them.
     /// <summary>Every code, in the order a list shows them.</summary>
     public static IReadOnlyList<string> All { get; } = [
-        OverBudget, TooLarge, ChannelMissing, PackingMixed, SpaceDataSrgb, SpaceColourLinear, CompressionNormal,
-        MipsMissing, DensityLow, DensityHigh, BakeStale, UvOutside, UvOverlap, UvDegenerate, UvFlipped,
-        AlbedoDark, AlbedoBright, MetalDark, MetalPartial
+        PlatformUnknown, OverBudget, TooLarge, ChannelMissing, PackingMixed, SpaceDataSrgb, SpaceColourLinear,
+        DepthLost, CompressionNormal, MipsMissing, DensityLow, DensityHigh, BakeStale, UvOutside, UvOverlap,
+        UvDegenerate, UvFlipped, AlbedoDark, AlbedoBright, MetalDark, MetalPartial
     ];
 
     /// <summary>
@@ -337,7 +352,17 @@ public sealed record StackChecks(
 /// <param name="Preset">The export preset measured against, by its name.</param>
 /// <param name="MemoryBytes">The GPU memory all the sets' exported files take together.</param>
 /// <param name="Sets">Each set, in the order the project lists its documents.</param>
-public sealed record ProjectChecks(string Project, string Preset, long MemoryBytes, IReadOnlyList<StackChecks> Sets);
+/// <param name="Problems">
+///     What is wrong with the project's checks themselves rather than any one set: limits kept for a platform no preset
+///     writes for any more.
+/// </param>
+public sealed record ProjectChecks(
+    string Project,
+    string Preset,
+    long MemoryBytes,
+    IReadOnlyList<StackChecks> Sets,
+    IReadOnlyList<CheckProblem> Problems
+);
 
 /// <summary>One file an export writes for a texture set, and what it takes on a GPU (#159).</summary>
 /// <param name="File">Its name as the export writes it, with its extension.</param>

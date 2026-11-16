@@ -7,7 +7,8 @@ namespace Patina.Export.Materials;
 /// <summary>
 ///     A USD layer with one material whose surface is a <c>UsdPreviewSurface</c>. Each image is a <c>UsdUVTexture</c>,
 ///     and a lane holding one minus a map, or a normal whose green runs down, is a texture node of its own with the
-///     scale and bias that undo it, since those apply to a whole image.
+///     scale and bias that undo it, since those apply to a whole image. The layer says it is in metres with Y up, as
+///     glTF is, which USD's validation asks of any stage though a layer of materials alone places nothing.
 /// </summary>
 sealed class UsdMaterialFile(string name, ICollection<string> warnings) {
     readonly string prim = MaterialFiles.Identifier(name);
@@ -48,6 +49,8 @@ sealed class UsdMaterialFile(string name, ICollection<string> warnings) {
                  (
                      defaultPrim = "{{prim}}"
                      doc = "Written by Patina beside the texture files it names."
+                     metersPerUnit = 1
+                     upAxis = "Y"
                  )
 
                  def Material "{{prim}}"

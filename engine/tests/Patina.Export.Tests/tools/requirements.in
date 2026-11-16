@@ -1,0 +1,3 @@
+# The libraries MaterialToolTests reads Patina's material files with (check_materials.py).
+usd-core==26.11
+MaterialX==1.39.5

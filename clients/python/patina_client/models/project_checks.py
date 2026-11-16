@@ -11,6 +11,7 @@ from ..types import UNSET, Unset
 from typing import cast
 
 if TYPE_CHECKING:
+  from ..models.check_problem import CheckProblem
   from ..models.stack_checks import StackChecks
 
 
@@ -31,12 +32,16 @@ class ProjectChecks:
             preset (str): The export preset measured against, by its name.
             memory_bytes (int): The GPU memory all the sets' exported files take together.
             sets (list[StackChecks]): Each set, in the order the project lists its documents.
+            problems (list[CheckProblem]): What is wrong with the project's checks themselves rather than any one set:
+                limits kept for a platform no preset
+                writes for any more.
      """
 
     project: str
     preset: str
     memory_bytes: int
     sets: list[StackChecks]
+    problems: list[CheckProblem]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -44,6 +49,7 @@ class ProjectChecks:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.check_problem import CheckProblem # noqa: PLC0415
         from ..models.stack_checks import StackChecks # noqa: PLC0415
         project = self.project
 
@@ -58,6 +64,13 @@ class ProjectChecks:
 
 
 
+        problems = []
+        for problems_item_data in self.problems:
+            problems_item = problems_item_data.to_dict()
+            problems.append(problems_item)
+
+
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -66,6 +79,7 @@ class ProjectChecks:
             "preset": preset,
             "memoryBytes": memory_bytes,
             "sets": sets,
+            "problems": problems,
         })
 
         return field_dict
@@ -74,6 +88,7 @@ class ProjectChecks:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.check_problem import CheckProblem # noqa: PLC0415
         from ..models.stack_checks import StackChecks # noqa: PLC0415
         d = dict(src_dict)
         project = d.pop("project")
@@ -92,11 +107,22 @@ class ProjectChecks:
             sets.append(sets_item)
 
 
+        problems = []
+        _problems = d.pop("problems")
+        for problems_item_data in (_problems):
+            problems_item = CheckProblem.from_dict(problems_item_data)
+
+
+
+            problems.append(problems_item)
+
+
         project_checks = cls(
             project=project,
             preset=preset,
             memory_bytes=memory_bytes,
             sets=sets,
+            problems=problems,
         )
 
 
