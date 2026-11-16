@@ -63,10 +63,14 @@ public static class NativeCheck {
             using (renderer) {
                 var mesh = Path.Combine(folder.FullName, "triangle.obj");
                 File.WriteAllText(mesh, Triangle);
-                renderer!.OpenMesh(mesh);
                 const int Side = 64;
                 var pixels = new byte[ViewportRenderer.FrameBytes(Side, Side)];
-                renderer.Render(OrbitCamera.Default, Side, Side, pixels);
+                // ⚠ Drained before the device goes, or MoltenVK counts the frame's Metal objects as leaked (#310).
+                using (AutoreleasePool.Enter()) {
+                    renderer!.OpenMesh(mesh);
+                    renderer.Render(OrbitCamera.Default, Side, Side, pixels);
+                }
+
                 var colours = Enumerable.Range(0, Side * Side)
                     .Select(at => BitConverter.ToInt32(pixels, at * 4))
                     .Distinct()
