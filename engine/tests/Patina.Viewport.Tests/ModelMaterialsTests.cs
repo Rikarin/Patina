@@ -153,7 +153,7 @@ public sealed class ModelMaterialsTests : IDisposable {
     [InlineData(".gltf")]
     [InlineData(".glb")]
     public void Extensions_a_gltf_does_not_list_are_read_and_said(string extension) {
-        var path = Gltf(Layered, listed: false);
+        var path = Gltf(Layered, false);
         if (extension == ".glb") {
             path = Binary(path);
         }
