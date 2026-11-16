@@ -183,6 +183,13 @@ function drop(socket: GraphSocket | undefined): void {
 
 const problem = (status: number, detail: string) => () => Response.json({ detail }, { status });
 
+/** A part of a drag as the Server was sent it. */
+interface Part {
+  stroke: string;
+  open: boolean;
+  stamps: { x: number }[];
+}
+
 describe('PaintStore refreshes (#274)', () => {
   it('keeps the newest state when the replies to two edits come back in the other order', async () => {
     const { store, server } = setup();
@@ -305,7 +312,6 @@ describe('PaintStore refreshes (#274)', () => {
     (release as unknown as () => void)();
     await vi.waitFor(() => expect(posts.filter(path => path.endsWith('/commands'))).toHaveLength(3));
 
-    type Part = { stroke: string; open: boolean; stamps: { x: number }[] };
     const sent = (bodies as { commands: Part[] }[]).map(body => body.commands[0] as Part);
     expect(posts.filter(path => path.endsWith('/commands'))).toEqual([
       '/api/v1/stacks/s1/commands',
@@ -341,7 +347,6 @@ describe('PaintStore refreshes (#274)', () => {
     store.move({ x: 9, y: 10, pressure: 1 });
     store.end();
 
-    type Part = { stroke: string; open: boolean; stamps: { x: number }[] };
     const sent = () => (bodies as { commands: Part[] }[]).map(body => body.commands[0] as Part);
     await vi.waitFor(() => expect(sent().filter(part => !part.open)).toHaveLength(2));
     const strokes = [...new Set(sent().map(part => part.stroke))];

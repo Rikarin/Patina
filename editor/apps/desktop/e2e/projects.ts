@@ -272,7 +272,7 @@ async function keepLogs(app: ElectronApplication): Promise<void> {
     .evaluateAll(found =>
       found
         .filter(element => (element as HTMLElement).offsetParent !== null)
-        .map(element => `${element.getAttribute('data-testid') ?? 'alert'}: ${element.textContent?.trim() ?? ''}`)
+        .map(element => `${element.getAttribute('data-testid') ?? 'alert'}: ${element.textContent.trim()}`)
     )
     .catch(() => [] as string[]);
   if (failures.length > 0) {
