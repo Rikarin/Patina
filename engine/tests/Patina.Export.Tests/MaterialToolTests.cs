@@ -1,3 +1,4 @@
+using Patina.Export.Materials;
 using Patina.Export.Presets;
 using System.Diagnostics;
 using System.Text.Json;
@@ -83,7 +84,9 @@ public sealed class MaterialToolTests : IDisposable {
         if (reads.Length == 0) {
             // No normal in the file: the preset writes none, or writes it where USD reads no picture, and says so.
             var writes = preset.Textures.Any(static t => t.Channels.Any(static c => c.Map == ExportMaps.Normal));
-            var said = delivered.Warnings.Any(static w => w.Contains("the normal is left out", StringComparison.Ordinal));
+            var said = delivered.Warnings.Any(static w =>
+                w.Contains("the normal is left out", StringComparison.Ordinal)
+            );
             Assert.True(
                 !writes || said,
                 string.Join(Environment.NewLine, delivered.Warnings)
@@ -104,7 +107,39 @@ public sealed class MaterialToolTests : IDisposable {
         }
     }
 
-    /// <summary>A normal leaning to +X and −Y with green up, on 8-bit levels, so a green read upside down shows.</summary>
+    /// <summary>
+    ///     Each preset's USD material, written again by USD itself in its binary form (<c>.usdc</c>), brings in what
+    ///     the text does through Patina's own reader of that form (#157), slot for slot.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Presets))]
+    public void Patina_reads_each_presets_material_as_usd_writes_it_in_binary(string id) {
+        var python = Python();
+        var preset = ExportPresetCatalog.Read(null).Find(id)! with { Materials = [ExportMaterials.Usd] };
+        var made = Path.Combine(folder.FullName, "made");
+        var manifest = ExportRun.Run(preset, LeaningMaps(), made, null, Token);
+        var delivered = ExportRun.Deliver(
+            "key", made, manifest, Path.Combine(folder.FullName, "out"), new("Crate", id), preset: preset
+        );
+        var usda = Assert.Single(delivered.Files, static f => f.EndsWith(".usda", StringComparison.Ordinal));
+        var usdc = Path.ChangeExtension(usda, ".usdc");
+
+        Assert.Contains("true", Run(python, ["--binary", usda, usdc]), StringComparison.Ordinal);
+
+        Assert.StartsWith("PXR-USDC", File.ReadAllText(usdc)[..8], StringComparison.Ordinal);
+        Assert.Equal(Slots(usda), Slots(usdc));
+    }
+
+    static string[] Slots(string layer) =>
+        [
+            ..UsdaReader.Read(layer)
+                .SelectMany(static m => m.Slots.Select(s =>
+                        $"{m.Name} {s.Usage} {s.Texture} {s.Lane} {s.Inverted} {s.GreenUp} {string.Join(',', s.Value)}"
+                    )
+                )
+        ];
+
+    /// <summary>A normal leaning to +X and −Y with green up, on 8-bit levels, so green read upside down shows.</summary>
     static readonly float[] Leaning = [166 / 255f, 77 / 255f, 230 / 255f];
 
     static Dictionary<string, MapPicture> LeaningMaps() {

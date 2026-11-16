@@ -40,20 +40,20 @@ public sealed record FileFormats(
 
 /// <summary>
 ///     The one list of the files Patina reads materials from (#157): a model's materials through Assimp in the Worker,
-///     and MaterialX and USD's text form, which the Server reads. A file dialog offers them from here.
+///     and MaterialX and USD, text or binary, which the Server reads. A file dialog offers them from here.
 /// </summary>
 public static class MaterialFormats {
     /// <summary>MaterialX.</summary>
     public const string MaterialX = ".mtlx";
 
     public static IReadOnlyList<string> Materials { get; } =
-        [".gltf", ".glb", ".fbx", ".obj", ".dae", MaterialX, ".usda", ".usd", Package];
+        [".gltf", ".glb", ".fbx", ".obj", ".dae", MaterialX, ".usda", ".usd", ".usdc", Package];
 
-    /// <summary>A USD package, which the Server unpacks and reads when its layer is text.</summary>
+    /// <summary>A USD package, which the Server unpacks and reads.</summary>
     public const string Package = ".usdz";
 
-    /// <summary>The ones the Server reads as text: MaterialX, and USD, which must be in its text form.</summary>
-    public static IReadOnlyList<string> Texts { get; } = [MaterialX, ".usda", ".usd"];
+    /// <summary>The ones the Server reads itself: MaterialX, and a USD layer in text or binary.</summary>
+    public static IReadOnlyList<string> Texts { get; } = [MaterialX, ".usda", ".usd", ".usdc"];
 
     /// <summary>Whether a file is one Patina reads materials from, by its name.</summary>
     public static bool IsMaterial(string path) =>

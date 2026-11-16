@@ -4,8 +4,8 @@ namespace Patina.Contracts;
 /// <param name="Project">The project, below <c>projects/</c>, that the materials become graphs of.</param>
 /// <param name="File">
 ///     A file on the Server's machine that describes materials: a glTF (<c>.gltf</c>, <c>.glb</c>) or another model
-///     file, a MaterialX document (<c>.mtlx</c>), a USD layer in its text form (<c>.usda</c>) or a USD package
-///     (<c>.usdz</c>) whose layer is text.
+///     file, a MaterialX document (<c>.mtlx</c>), a USD layer in text or binary (<c>.usda</c>, <c>.usdc</c>,
+///     <c>.usd</c>) or a USD package (<c>.usdz</c>).
 /// </param>
 public sealed record MaterialImportRequest(string Project, string File);
 

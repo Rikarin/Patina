@@ -2,6 +2,7 @@
 
 Usage: python -I check_materials.py <file>...
        python -I check_materials.py --normals <file.usda>...
+       python -I check_materials.py --binary <file.usda> <file.usdc>
 
 Each .usda is opened by Pixar's USD (usd-core) and each .mtlx by the MaterialX library, the readers Blender, Houdini,
 Omniverse, Maya and Unreal use. A file is held to what they need to show it: it opens, its schema's own validation
@@ -184,6 +185,12 @@ def normals_of(path):
 
 
 def main(files):
+    if files[:1] == ["--binary"]:
+        # The layer written again in USD's binary form, as USD itself writes it, for Patina's reader to read.
+        from pxr import Sdf
+
+        print(json.dumps({files[1]: Sdf.Layer.FindOrOpen(files[1]).Export(files[2], args={"format": "usdc"})}))
+        return
     if files[:1] == ["--normals"]:
         print(json.dumps({path: normals_of(path) for path in files[1:]}))
         return
