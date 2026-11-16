@@ -131,15 +131,8 @@ public sealed class StackEvaluator(
     static bool Prefix(IReadOnlyList<long> start, IReadOnlyList<StackJournalEntry> standing) =>
         start.Count <= standing.Count && start.Select((id, index) => standing[index].Id == id).All(static same => same);
 
-    async Task<IpcConnection> ConnectionAsync(CancellationToken cancellationToken) {
-        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        patience.CancelAfter(WorkerPatience);
-        try {
-            return await worker.ConnectionAsync(patience.Token);
-        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new RendererMissingException();
-        }
-    }
+    Task<IpcConnection> ConnectionAsync(CancellationToken cancellationToken) =>
+        WorkerWait.ConnectionAsync(worker, WorkerPatience, cancellationToken);
 
     /// <summary>
     ///     Waits until the Worker's pixels are what the journal says, which a save and a read both need. It gives up
@@ -287,22 +280,17 @@ public sealed class StackEvaluator(
         StackSession session,
         CancellationToken cancellationToken
     ) {
-        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        patience.CancelAfter(WorkerPatience);
-        try {
-            if (session.EvaluationError is { } failed) {
-                throw new IpcException(failed);
-            }
-
-            var connection = await worker.ConnectionAsync(patience.Token);
-            var reply = await connection.SendAsync(
-                new() { Type = IpcTypes.StackThumbnails, StackThumbnails = new(session.Id, store.Root) },
-                patience.Token
-            );
-            return reply.StackLayerThumbnails ?? [];
-        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new RendererMissingException();
+        if (session.EvaluationError is { } failed) {
+            throw new IpcException(failed);
         }
+
+        // ⚠ The patience is for a Worker to come, not for the one connected to finish (#275).
+        var connection = await ConnectionAsync(cancellationToken);
+        var reply = await connection.SendAsync(
+            new() { Type = IpcTypes.StackThumbnails, StackThumbnails = new(session.Id, store.Root) },
+            cancellationToken
+        );
+        return reply.StackLayerThumbnails ?? [];
     }
 
     async Task<bool> DrainAsync(CancellationToken cancellationToken) {

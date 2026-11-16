@@ -75,6 +75,50 @@ public sealed class ThumbnailRefusalTests : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     A picture the connected Worker takes longer over than the patience is waited for (#284): the patience bounded
+    ///     the drawing as well as the wait for a Worker, so a panorama on a busy GPU was answered 503, "No GPU process is
+    ///     connected", while one was connected and drawing. With no Worker at all, the patience still runs out.
+    /// </summary>
+    [Fact]
+    public async Task A_picture_the_Worker_is_slow_over_is_waited_for_and_no_Worker_is_not() {
+        var root = Path.Combine(folder.FullName, "Library");
+        LibraryFiles.CreateDefaultLibrary(root, "Game");
+        await File.WriteAllBytesAsync(Path.Combine(root, "slow.png"), [1, 2, 3], Token);
+        using var library = OpenLibrary.Open(root);
+        var store = new PreviewStore(new(root, null));
+        var socketPath = TempFolders.NewSocket();
+        using var link = new WorkerLink(
+            Options.Create(new ServerOptions { Worker = { SocketPath = socketPath } }),
+            NullLogger<WorkerLink>.Instance
+        );
+        var patience = TimeSpan.FromMilliseconds(200);
+        await link.StartAsync(Token);
+        try {
+            using var thumbnails = new Thumbnails(link, store) { WorkerPatience = patience };
+            await Assert.ThrowsAsync<RendererMissingException>(() => thumbnails.DrawAsync(library, ["slow.png"], Token));
+
+            await using var worker = await WorkerAsync(
+                socketPath,
+                async request => {
+                    if (request.Type != IpcTypes.MaterialThumbnail) {
+                        return IpcMessage.Ok(request.Id);
+                    }
+
+                    await Task.Delay(patience * 5, Token);
+                    return Drawn(request, store.Root);
+                }
+            );
+            await link.ConnectionAsync(Token);
+
+            var drawn = await thumbnails.DrawAsync(library, ["slow.png"], Token);
+
+            Assert.Matches("^[0-9a-f]{64}$", drawn[0].Hash);
+        } finally {
+            await link.StopAsync(Token);
+        }
+    }
+
     /// <summary>A Worker's picture: any bytes, written under their hash into the cache it was told of.</summary>
     static IpcMessage Drawn(IpcMessage request, string cache) {
         byte[] pixels = [..Guid.NewGuid().ToByteArray()];
@@ -86,9 +130,13 @@ public sealed class ThumbnailRefusalTests : IDisposable {
     }
 
     /// <summary>A Worker that says hello and answers every request with <paramref name="answer" />.</summary>
-    static async Task<IpcConnection> WorkerAsync(string socketPath, Func<IpcMessage, IpcMessage> answer) {
+    static Task<IpcConnection> WorkerAsync(string socketPath, Func<IpcMessage, IpcMessage> answer) =>
+        WorkerAsync(socketPath, request => Task.FromResult(answer(request)));
+
+    /// <summary>A Worker that says hello and answers every request with <paramref name="answer" />, in its own time.</summary>
+    static async Task<IpcConnection> WorkerAsync(string socketPath, Func<IpcMessage, Task<IpcMessage>> answer) {
         var stream = await IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(5), Token);
-        var worker = new IpcConnection(stream, (request, _) => ValueTask.FromResult(answer(request)));
+        var worker = new IpcConnection(stream, async (request, _) => await answer(request));
         worker.Start();
         var hello = new WorkerHello(IpcMessage.ProtocolVersion, ProductInfo.Version, Environment.ProcessId);
         await worker.SendAsync(new() { Type = IpcTypes.Hello, Worker = hello }, Token);
