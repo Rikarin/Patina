@@ -46,6 +46,12 @@ public sealed record MaterialSlots {
     public GreenAxis Green { get; init; } = GreenAxis.Up;
 
     /// <summary>
+    ///     Whether a file holds the normal but not as three lanes in order, as a two-lane BC5 file does, so no
+    ///     material file can wire it: each reads the normal's three lanes from one texture.
+    /// </summary>
+    public bool NormalApart { get; init; }
+
+    /// <summary>
     ///     Finds the slots in one set's files. The first file in the preset's order that holds a map is the one read.
     ///     Opacity counts only when the set had an opacity map, since its default is opaque and a renderer told an
     ///     image holds opacity draws the surface as transparent.
@@ -76,7 +82,12 @@ public sealed record MaterialSlots {
     }
 
     MaterialSlots With(SlotFile file, IReadOnlyList<ChannelSource> channels) {
-        var found = Triple(channels) is { } map ? WithColour(map, new(file)) : this;
+        var triple = Triple(channels);
+        var found = triple is { } map ? WithColour(map, new(file)) : this;
+        if (triple != ExportMaps.Normal && channels.Any(static c => c.Map == ExportMaps.Normal)) {
+            found = found with { NormalApart = true };
+        }
+
         for (var lane = 0; lane < channels.Count; lane++) {
             if (channels[lane] is { Map: { } name, Lane: 0 } source) {
                 found = found.WithLane(name, new(file, lane, source.Inverted));

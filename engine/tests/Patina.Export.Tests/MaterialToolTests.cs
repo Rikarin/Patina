@@ -61,14 +61,80 @@ public sealed class MaterialToolTests : IDisposable {
         Assert.True(!problems.Any(), string.Join(Environment.NewLine, problems));
     }
 
-    static Dictionary<string, string[]> Read(string python, IReadOnlyList<string> files) {
+    /// <summary>
+    ///     The normal USD hands a renderer, worked out as UsdUVTexture defines it: each texel times the texture's scale
+    ///     plus its bias, with the scale and bias as USD itself reads them from the file (#304). A preset whose normal
+    ///     runs green down (Unreal) writes a scale of −2 for green, as the USD working group's reversed-Y test asset
+    ///     does; it must give the same tangent-space normal as a preset whose green runs up.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Presets))]
+    public void Usd_reads_each_presets_normal_with_its_green_up(string id) {
+        var python = Python();
+        var preset = ExportPresetCatalog.Read(null).Find(id)! with { Materials = [ExportMaterials.Usd] };
+        var made = Path.Combine(folder.FullName, "made");
+        var manifest = ExportRun.Run(preset, LeaningMaps(), made, null, Token);
+        var delivered = ExportRun.Deliver(
+            "key", made, manifest, Path.Combine(folder.FullName, "out"), new("Crate", id), preset: preset
+        );
+        var usd = Assert.Single(delivered.Files, static f => f.EndsWith(".usda", StringComparison.Ordinal));
+
+        var reads = Assert.Single(Normals(python, usd)).Value;
+        if (reads.Length == 0) {
+            // No normal in the file: the preset writes none, or writes it where USD reads no picture, and says so.
+            var writes = preset.Textures.Any(static t => t.Channels.Any(static c => c.Map == ExportMaps.Normal));
+            var said = delivered.Warnings.Any(static w => w.Contains("the normal is left out", StringComparison.Ordinal));
+            Assert.True(
+                !writes || said,
+                string.Join(Environment.NewLine, delivered.Warnings)
+            );
+            return;
+        }
+
+        var normal = Assert.Single(reads);
+        Assert.Equal("rgb", normal.Output);
+        var texel = MapPictures.ReadFile(Path.Combine(Path.GetDirectoryName(usd)!, normal.File)).Samples;
+        for (var lane = 0; lane < 3; lane++) {
+            var read = texel[lane] * normal.Scale[lane] + normal.Bias[lane];
+            var meant = 2 * Leaning[lane] - 1;
+            Assert.True(
+                Math.Abs(read - meant) <= 3f / 255f,
+                $"{id}: USD reads lane {lane} of the normal as {read}, not {meant} (scale {normal.Scale[lane]})."
+            );
+        }
+    }
+
+    /// <summary>A normal leaning to +X and −Y with green up, on 8-bit levels, so a green read upside down shows.</summary>
+    static readonly float[] Leaning = [166 / 255f, 77 / 255f, 230 / 255f];
+
+    static Dictionary<string, MapPicture> LeaningMaps() {
+        var maps = Maps();
+        float[] samples = [..Enumerable.Range(0, Side * Side * 3).Select(static at => Leaning[at % 3])];
+        maps[ExportMaps.Normal] = new(ExportMaps.Normal, new(Side, Side, 3, samples), GreenAxis.Up);
+        return maps;
+    }
+
+    sealed record NormalRead(string File, string Output, float[] Scale, float[] Bias);
+
+    static Dictionary<string, NormalRead[]> Normals(string python, string usd) =>
+        JsonSerializer.Deserialize<Dictionary<string, NormalRead[]>>(
+            Run(python, ["--normals", usd]),
+            Web
+        )!;
+
+    static readonly JsonSerializerOptions Web = new(JsonSerializerDefaults.Web);
+
+    static Dictionary<string, string[]> Read(string python, IReadOnlyList<string> files) =>
+        JsonSerializer.Deserialize<Dictionary<string, string[]>>(Run(python, files))!;
+
+    static string Run(string python, IReadOnlyList<string> arguments) {
         ProcessStartInfo start = new(python) {
             RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false
         };
         start.ArgumentList.Add("-I");
         start.ArgumentList.Add(Script);
-        foreach (var file in files) {
-            start.ArgumentList.Add(file);
+        foreach (var argument in arguments) {
+            start.ArgumentList.Add(argument);
         }
 
         using var process = Process.Start(start)!;
@@ -76,7 +142,7 @@ public sealed class MaterialToolTests : IDisposable {
         var error = process.StandardError.ReadToEndAsync(Token);
         process.WaitForExit();
         Assert.True(process.ExitCode == 0, error.Result);
-        return JsonSerializer.Deserialize<Dictionary<string, string[]>>(output.Result)!;
+        return output.Result;
     }
 
     static string Script => Path.Combine(AppContext.BaseDirectory, "tools", "check_materials.py");

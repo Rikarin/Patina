@@ -388,6 +388,31 @@ public sealed class PresetLanguageTests : IDisposable {
         Assert.False(document.RootElement.GetProperty("materials")[0].TryGetProperty("normalTexture", out _));
     }
 
+    /// <summary>
+    ///     A normal in two lanes, as Vixen's BC5 file holds it, cannot be wired by any material file, since each reads
+    ///     all three lanes from one picture; it is said, not dropped without a word. Here blue is a constant.
+    /// </summary>
+    [Fact]
+    public void A_normal_in_two_lanes_is_said_to_be_left_out_of_the_material_files() {
+        var preset = ExportPresetCatalog.Read(null).Find("unreal")! with { Materials = ["usda", "mtlx"] };
+        preset = preset with {
+            Textures = [
+                ..preset.Textures.Select(static t => t with { Channels = [..t.Channels.Select(static c => Flat(c))] })
+            ]
+        };
+        var manifest = ExportRun.Run(preset, Surface(), Path("object"), null, Token);
+
+        var delivered = ExportRun.Deliver(
+            "key", Path("object"), manifest, Path("out"), new("Crate", "unreal"), preset: preset
+        );
+
+        Assert.Single(delivered.Warnings, static w => w.Contains("the normal is left out", StringComparison.Ordinal));
+        Assert.DoesNotContain("inputs:normal", File.ReadAllText(Path("out/Crate.usda")), StringComparison.Ordinal);
+    }
+
+    static ChannelSource Flat(ChannelSource lane) =>
+        lane is { Map: ExportMaps.Normal, Lane: 2 } ? new(null, 0, false, 1f) : lane;
+
     [Fact]
     public void A_usd_material_reads_each_lane_and_turns_a_y_down_normal_over() {
         var unreal = ExportPresetCatalog.Read(null).Find("unreal")! with { Materials = ["usda"] };
