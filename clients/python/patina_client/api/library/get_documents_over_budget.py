@@ -19,6 +19,7 @@ def _get_kwargs(
     *,
     over: int,
     folder: str | Unset = UNSET,
+    preset: str | Unset = UNSET,
     offset: int | Unset = 0,
     limit: int | Unset = 50,
 
@@ -32,6 +33,8 @@ def _get_kwargs(
     params["over"] = over
 
     params["folder"] = folder
+
+    params["preset"] = preset
 
     params["offset"] = offset
 
@@ -101,16 +104,18 @@ def sync_detailed(
     client: AuthenticatedClient | Client,
     over: int,
     folder: str | Unset = UNSET,
+    preset: str | Unset = UNSET,
     offset: int | Unset = 0,
     limit: int | Unset = 50,
 
 ) -> Response[DocumentCostPage | ProblemDetails]:
     """ One page of the documents below a folder whose maps cost more than a budget in bytes, costliest
-    first.
+    first, uncompressed or, with preset, as that platform's preset writes them.
 
     Args:
         over (int):
         folder (str | Unset):
+        preset (str | Unset):
         offset (int | Unset):  Default: 0.
         limit (int | Unset):  Default: 50.
 
@@ -126,6 +131,7 @@ def sync_detailed(
     kwargs = _get_kwargs(
         over=over,
 folder=folder,
+preset=preset,
 offset=offset,
 limit=limit,
 
@@ -142,16 +148,18 @@ def sync(
     client: AuthenticatedClient | Client,
     over: int,
     folder: str | Unset = UNSET,
+    preset: str | Unset = UNSET,
     offset: int | Unset = 0,
     limit: int | Unset = 50,
 
 ) -> DocumentCostPage | ProblemDetails | None:
     """ One page of the documents below a folder whose maps cost more than a budget in bytes, costliest
-    first.
+    first, uncompressed or, with preset, as that platform's preset writes them.
 
     Args:
         over (int):
         folder (str | Unset):
+        preset (str | Unset):
         offset (int | Unset):  Default: 0.
         limit (int | Unset):  Default: 50.
 
@@ -168,6 +176,7 @@ def sync(
         client=client,
 over=over,
 folder=folder,
+preset=preset,
 offset=offset,
 limit=limit,
 
@@ -178,16 +187,18 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
     over: int,
     folder: str | Unset = UNSET,
+    preset: str | Unset = UNSET,
     offset: int | Unset = 0,
     limit: int | Unset = 50,
 
 ) -> Response[DocumentCostPage | ProblemDetails]:
     """ One page of the documents below a folder whose maps cost more than a budget in bytes, costliest
-    first.
+    first, uncompressed or, with preset, as that platform's preset writes them.
 
     Args:
         over (int):
         folder (str | Unset):
+        preset (str | Unset):
         offset (int | Unset):  Default: 0.
         limit (int | Unset):  Default: 50.
 
@@ -203,6 +214,7 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         over=over,
 folder=folder,
+preset=preset,
 offset=offset,
 limit=limit,
 
@@ -219,16 +231,18 @@ async def asyncio(
     client: AuthenticatedClient | Client,
     over: int,
     folder: str | Unset = UNSET,
+    preset: str | Unset = UNSET,
     offset: int | Unset = 0,
     limit: int | Unset = 50,
 
 ) -> DocumentCostPage | ProblemDetails | None:
     """ One page of the documents below a folder whose maps cost more than a budget in bytes, costliest
-    first.
+    first, uncompressed or, with preset, as that platform's preset writes them.
 
     Args:
         over (int):
         folder (str | Unset):
+        preset (str | Unset):
         offset (int | Unset):  Default: 0.
         limit (int | Unset):  Default: 50.
 
@@ -245,6 +259,7 @@ async def asyncio(
         client=client,
 over=over,
 folder=folder,
+preset=preset,
 offset=offset,
 limit=limit,
 

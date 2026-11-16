@@ -10,22 +10,37 @@ from ... import errors
 
 from ...models.problem_details import ProblemDetails
 from ...models.unused_upload_list import UnusedUploadList
+from ...types import UNSET, Unset
 from typing import cast
 
 
 
 def _get_kwargs(
-    
+    *,
+    held: list[str] | Unset = UNSET,
+
 ) -> dict[str, Any]:
     
 
     
 
-    
+    params: dict[str, Any] = {}
+
+    json_held: list[str] | Unset = UNSET
+    if not isinstance(held, Unset):
+        json_held = held
+
+
+    params["held"] = json_held
+
+
+    params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
+
 
     _kwargs: dict[str, Any] = {
         "method": "get",
         "url": "/api/v1/library/uploads/unused",
+        "params": params,
     }
 
 
@@ -80,10 +95,16 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx2.Re
 def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
+    held: list[str] | Unset = UNSET,
 
 ) -> Response[ProblemDetails | UnusedUploadList]:
-    """ The files sent from another computer that no file of the library and no open document names any
-    more, with the room they take. One sent in the last hour counts as used. Changes nothing.
+    """ The files sent from another computer that no file of the library, no open document, no queued or
+    running bake or build and nothing in held names any more, with the room they take. held is what the
+    client holds unsaved, such as an open dialog's paths. One sent in the last hour counts as used.
+    Changes nothing.
+
+    Args:
+        held (list[str] | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -95,7 +116,8 @@ def sync_detailed(
 
 
     kwargs = _get_kwargs(
-        
+        held=held,
+
     )
 
     response = client.get_httpx_client().request(
@@ -107,10 +129,16 @@ def sync_detailed(
 def sync(
     *,
     client: AuthenticatedClient | Client,
+    held: list[str] | Unset = UNSET,
 
 ) -> ProblemDetails | UnusedUploadList | None:
-    """ The files sent from another computer that no file of the library and no open document names any
-    more, with the room they take. One sent in the last hour counts as used. Changes nothing.
+    """ The files sent from another computer that no file of the library, no open document, no queued or
+    running bake or build and nothing in held names any more, with the room they take. held is what the
+    client holds unsaved, such as an open dialog's paths. One sent in the last hour counts as used.
+    Changes nothing.
+
+    Args:
+        held (list[str] | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -123,16 +151,23 @@ def sync(
 
     return sync_detailed(
         client=client,
+held=held,
 
     ).parsed
 
 async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
+    held: list[str] | Unset = UNSET,
 
 ) -> Response[ProblemDetails | UnusedUploadList]:
-    """ The files sent from another computer that no file of the library and no open document names any
-    more, with the room they take. One sent in the last hour counts as used. Changes nothing.
+    """ The files sent from another computer that no file of the library, no open document, no queued or
+    running bake or build and nothing in held names any more, with the room they take. held is what the
+    client holds unsaved, such as an open dialog's paths. One sent in the last hour counts as used.
+    Changes nothing.
+
+    Args:
+        held (list[str] | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -144,7 +179,8 @@ async def asyncio_detailed(
 
 
     kwargs = _get_kwargs(
-        
+        held=held,
+
     )
 
     response = await client.get_async_httpx_client().request(
@@ -156,10 +192,16 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: AuthenticatedClient | Client,
+    held: list[str] | Unset = UNSET,
 
 ) -> ProblemDetails | UnusedUploadList | None:
-    """ The files sent from another computer that no file of the library and no open document names any
-    more, with the room they take. One sent in the last hour counts as used. Changes nothing.
+    """ The files sent from another computer that no file of the library, no open document, no queued or
+    running bake or build and nothing in held names any more, with the room they take. held is what the
+    client holds unsaved, such as an open dialog's paths. One sent in the last hour counts as used.
+    Changes nothing.
+
+    Args:
+        held (list[str] | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -172,5 +214,6 @@ async def asyncio(
 
     return (await asyncio_detailed(
         client=client,
+held=held,
 
     )).parsed
