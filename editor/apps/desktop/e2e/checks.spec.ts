@@ -130,4 +130,14 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
   await expect(window.getByTestId('checks-project-memory')).toHaveText(/ MB for 2 sets with Godot/u);
   await expect(sets.locator('[data-code="texture-too-large"]')).toHaveCount(2);
   await expect(sets.filter({ hasText: 'Gold' }).getByTestId('checks-unmeasured')).toHaveCount(0);
+  await expect(window.getByTestId('checks-unmeasured')).toHaveCount(1);
+
+  // Asked to, the check opens the set nobody has open for the engine to measure, so none is left unmeasured (#300).
+  await window.getByTestId('checks-measure-all').getByRole('checkbox').click();
+  await expect(window.getByTestId('checks-measure-all').getByRole('checkbox')).toBeChecked();
+  await window.getByTestId('checks-run').click();
+  await expect(window.getByTestId('checks-run')).toHaveText('Checking…');
+  await expect(window.getByTestId('checks-run')).toHaveText('Check', { timeout: 180_000 });
+  await expect(sets).toHaveCount(2);
+  await expect(window.getByTestId('checks-unmeasured')).toHaveCount(0);
 });

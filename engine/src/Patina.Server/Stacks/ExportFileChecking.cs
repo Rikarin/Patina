@@ -1,6 +1,7 @@
 using Patina.Contracts;
 using Patina.Export;
 using Patina.Export.Presets;
+using System.Globalization;
 
 namespace Patina.Server.Stacks;
 
@@ -66,10 +67,19 @@ public static class ExportFileChecking {
     ///     What is wrong with the files written, file by file in the preset's order: packing first, then space,
     ///     compression and mips.
     /// </summary>
-    public static IEnumerable<CheckProblem> Judge(ExportPreset preset, NamingValues naming, IReadOnlySet<string> maps) {
+    /// <param name="preset">The preset as the project's export writes it.</param>
+    /// <param name="naming">What its file names are made from.</param>
+    /// <param name="depths">Each map the set makes, with how many bits a lane it is painted at: 8, 16 or 32.</param>
+    public static IEnumerable<CheckProblem> Judge(
+        ExportPreset preset,
+        NamingValues naming,
+        IReadOnlyDictionary<string, int> depths
+    ) {
+        ArgumentNullException.ThrowIfNull(depths);
         List<CheckProblem> problems = [];
-        foreach (var written in Writes(preset, naming, maps)) {
+        foreach (var written in Writes(preset, naming, depths.Keys.ToHashSet(StringComparer.Ordinal))) {
             problems.AddRange(Packing(written));
+            problems.AddRange(Depth(written, depths));
             problems.AddRange(Compression(written));
         }
 
@@ -113,6 +123,51 @@ public static class ExportFileChecking {
             );
         }
     }
+
+    /// <summary>
+    ///     A linear file of a fixed depth that reads a map painted deeper (ADR 0044), which it rounds away. A file whose
+    ///     format follows its maps is as deep as they are, an sRGB file is eight bits by design, and a GPU container's
+    ///     depth is its compression, which an engine chooses for its memory, so none of those is judged here.
+    /// </summary>
+    static IEnumerable<CheckProblem> Depth(Written written, IReadOnlyDictionary<string, int> depths) {
+        var texture = written.Texture;
+        if (texture.Space == "srgb" || BitsOf(texture.Format) is not { } bits) {
+            yield break;
+        }
+
+        var deepest = texture.Maps.Where(depths.ContainsKey)
+            .Select(map => (Map: map, Bits: depths[map]))
+            .OrderByDescending(static map => map.Bits)
+            .FirstOrDefault();
+        if (deepest.Map is null || deepest.Bits <= bits) {
+            yield break;
+        }
+
+        var label = ExportFormats.LabelOf(texture.Format);
+        var channel = Terms.Label(deepest.Map);
+        yield return Problem(
+            CheckCodes.DepthLost,
+            $"{written.Name} is {label} and reads {channel} painted at {deepest.Bits} bits, which it rounds to {bits}. "
+            + "A png, tiff or exr file is as deep as its maps.",
+            new() {
+                ["file"] = written.Name,
+                ["format"] = label,
+                ["channel"] = channel,
+                ["painted"] = deepest.Bits.ToString(CultureInfo.InvariantCulture),
+                ["bits"] = bits.ToString(CultureInfo.InvariantCulture)
+            }
+        );
+    }
+
+    /// <summary>How many bits a lane a file of a fixed format keeps, or null where the depth is not its own to say.</summary>
+    static int? BitsOf(string format) =>
+        format switch {
+            _ when ExportFormats.Follows(format) || ExportFormats.IsContainer(format) => null,
+            _ when ExportFormats.IsEightBit(format) => 8,
+            ExportFormats.Png16 or ExportFormats.Tiff16 or ExportFormats.Exr16 => 16,
+            ExportFormats.Exr32 or ExportFormats.Tiff32 => 32,
+            _ => null
+        };
 
     /// <summary>A normal in colour blocks, and a GPU container without the mips an engine samples.</summary>
     static IEnumerable<CheckProblem> Compression(Written written) {

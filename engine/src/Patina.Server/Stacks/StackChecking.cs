@@ -4,6 +4,7 @@ using Patina.Export.Presets;
 using Patina.Ipc;
 using Patina.Library;
 using System.Globalization;
+using Vixen.Texturing.Painting;
 
 namespace Patina.Server.Stacks;
 
@@ -89,6 +90,30 @@ public static class StackChecking {
             ?? throw new KeyNotFoundException($"There is no preset '{asked}' in this library.");
     }
 
+    /// <summary>
+    ///     Limits the project keeps for a platform whose preset neither the library nor the project has any more, which
+    ///     hold no set until a preset of that id comes back (ADR 0043). Each goes to the project's limits.
+    /// </summary>
+    public static IEnumerable<CheckProblem> Platforms(ProjectContents? project, OpenLibrary? library) {
+        if (project?.Checks is not { Platforms.Count: > 0 } checks) {
+            return [];
+        }
+
+        var root = library?.RootPath;
+        var presets = ExportPresetCatalog.Read(root, root is null ? null : project.Path);
+        return checks.Platforms.Where(platform => presets.Find(platform.Preset) is null)
+            .Select(static platform => Problem(
+                    CheckCodes.PlatformUnknown,
+                    Warning,
+                    $"The project keeps limits for '{platform.Preset}', which no export preset is any more, so they "
+                    + "hold no set. Name the preset again or remove its limits.",
+                    new() { ["preset"] = platform.Preset },
+                    new(Setting: "checks.platforms")
+                )
+            )
+            .ToArray();
+    }
+
     /// <summary>Judges what the Worker measured, or what the Server knows of a set nobody has open.</summary>
     /// <param name="state">The stack as it stands.</param>
     /// <param name="measured">What the Worker measured of it, or null when it was not asked.</param>
@@ -116,7 +141,7 @@ public static class StackChecking {
         List<CheckProblem> problems = [..Limits(settings, name, (width, height), (bytes, budget), preset)];
         if (written is not null) {
             problems.AddRange(Missing(written, naming, state, name));
-            problems.AddRange(ExportFileChecking.Judge(written, naming, Maps(state)));
+            problems.AddRange(ExportFileChecking.Judge(written, naming, Depths(state)));
         }
 
         if (state.BakeStale is { } stale) {
@@ -263,33 +288,57 @@ public static class StackChecking {
     ///     The maps a set makes. One with a height channel makes a normal whether or not it says so, and one with
     ///     metal-roughness maps makes the specular-glossiness maps the export works out from them.
     /// </summary>
-    static HashSet<string> Maps(StackState state) {
-        HashSet<string> maps = [..state.Channels.Select(static channel => channel.Usage)];
-        if (maps.Contains("height")) {
-            maps.Add("normal");
+    static HashSet<string> Maps(StackState state) => Depths(state).Keys.ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>
+    ///     The maps a set makes, each with how many bits a lane it is painted at (ADR 0044): a channel's own depth, a
+    ///     normal from height as deep as the height, a map the export works out as deep as the deepest it comes from,
+    ///     and a bake's maps at eight, the least any bake is.
+    /// </summary>
+    static Dictionary<string, int> Depths(StackState state) {
+        Dictionary<string, int> maps = new(StringComparer.Ordinal);
+        foreach (var channel in state.Channels) {
+            maps[channel.Usage] = Math.Max(maps.GetValueOrDefault(channel.Usage), BitsOf(channel.Format));
+        }
+
+        if (maps.TryGetValue("height", out var height)) {
+            maps.TryAdd("normal", height);
         }
 
         // A bake beneath the set writes its normal and occlusion whether or not it has those channels (#86).
         var baked = BakedMapPicture.Shading(state.MeshMaps);
         if (baked.Contains("normal") && state.BakedNormal != "Off") {
-            maps.Add("normal");
+            maps.TryAdd("normal", Bits8);
         }
 
         if (baked.Contains("ao") && state.BakedOcclusion != "Off") {
-            maps.Add("occlusion");
+            maps.TryAdd("occlusion", Bits8);
         }
 
         // The export works out specular, diffuse and glossiness from the metal-roughness maps (DerivedMaps).
-        if (maps.Contains(ExportMaps.Roughness)) {
-            maps.Add(ExportMaps.Glossiness);
+        if (maps.TryGetValue(ExportMaps.Roughness, out var roughness)) {
+            maps.TryAdd(ExportMaps.Glossiness, roughness);
         }
 
-        if (maps.Contains(ExportMaps.BaseColor) || maps.Contains(ExportMaps.Metalness)) {
-            maps.UnionWith([ExportMaps.Specular, ExportMaps.Diffuse]);
+        var colour = Math.Max(
+            maps.GetValueOrDefault(ExportMaps.BaseColor),
+            maps.GetValueOrDefault(ExportMaps.Metalness)
+        );
+        if (colour > 0) {
+            maps.TryAdd(ExportMaps.Specular, colour);
+            maps.TryAdd(ExportMaps.Diffuse, colour);
         }
 
         return maps;
     }
+
+    const int Bits8 = 8;
+
+    /// <summary>How many bits a lane a channel of this format is painted at: 8, 16 or 32.</summary>
+    static int BitsOf(string format) =>
+        Enum.TryParse<PaintTexelFormat>(format, out var known) && Enum.IsDefined(known)
+            ? PaintTexelFormats.BytesPerTexel(known) * 2
+            : Bits8;
 
     /// <summary>
     ///     A map the preset reads that the set does not make, once, under the first file that reads it. The file is

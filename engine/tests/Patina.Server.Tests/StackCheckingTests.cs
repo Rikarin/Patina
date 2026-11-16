@@ -318,6 +318,53 @@ public sealed class StackCheckingTests {
         Assert.Equal("BC1 (RGB)", checks.Problems[3].Values["compression"]);
     }
 
+    /// <summary>
+    ///     A linear file of a fixed depth that reads a channel painted deeper says it rounds it away and that a file
+    ///     following its maps keeps it (ADR 0044): an 8-bit PNG of a 16-bit roughness, a half EXR of a 32-bit height and
+    ///     the normal worked out from it. A following PNG, an sRGB file and a GPU container are not judged on depth, and
+    ///     neither is a file as deep as what it reads.
+    /// </summary>
+    [Fact]
+    public void A_fixed_file_shallower_than_the_channel_it_reads_says_so() {
+        ExportPreset preset = new(
+            "deep",
+            "Deep",
+            "test",
+            GreenAxis.Up,
+            [
+                Texture(("{set}_rough", "png8", "none", "linear", false), Lane("roughness")),
+                Texture(("{set}_rough_follows", "png", "none", "linear", false), Lane("roughness")),
+                Texture(("{set}_height", "exr16", "none", "linear", false), Lane("height")),
+                Texture(("{set}_normal", "png16", "none", "linear", false), Lanes("normal", 3)),
+                Texture(("{set}_colour", "png8", "none", "srgb", false), Lanes("baseColor", 3)),
+                Texture(("{set}_rough_bc4", "dds", "bc4", "linear", true), Lane("roughness")),
+                Texture(("{set}_metal", "png8", "none", "linear", false), Lane("metalness"))
+            ],
+            "r",
+            null
+        );
+        var state = Set("baseColor", "roughness", "height", "metalness") with {
+            Channels = [
+                new("baseColor", [0f], "Rgba16Float"), new("roughness", [0f], "Rgba16Float"),
+                new("height", [0f], "Rgba32Float"), new("metalness", [0f])
+            ]
+        };
+
+        var lost = StackChecking.Judge(state, Square, null, 0, preset)
+            .Problems.Where(static p => p.Code == CheckCodes.DepthLost)
+            .ToArray();
+
+        Assert.Equal(
+            [
+                ("Wood_rough", "Roughness", "16", "8"), ("Wood_height", "Height", "32", "16"),
+                ("Wood_normal", "Normal", "32", "16")
+            ],
+            lost.Select(static p => (p.Values["file"], p.Values["channel"], p.Values["painted"], p.Values["bits"]))
+        );
+        Assert.All(lost, static p => Assert.Equal(("warning", "export.preset"), (p.Severity, p.Target.Setting)));
+        Assert.Contains("png, tiff or exr", lost[0].Detail, StringComparison.Ordinal);
+    }
+
     /// <summary>Every preset Patina ships passes its own file checks, for a set that makes every map.</summary>
     [Fact]
     public void No_shipped_preset_trips_the_file_checks() {

@@ -37,14 +37,19 @@ public sealed class SessionTable<T> : IDisposable where T : class, IFileSession 
     }
 
     /// <summary>The session that has a path open, or a new one.</summary>
-    public T Open(string path, Func<T> open) {
+    public T Open(string path, Func<T> open) => Open(path, open, out _);
+
+    /// <summary>The session that has a path open, or a new one, and whether it is new.</summary>
+    public T Open(string path, Func<T> open, out bool created) {
         lock (changing) {
             if (byId.Values.FirstOrDefault(s => string.Equals(s.Path, path, StringComparison.Ordinal)) is { } held) {
+                created = false;
                 return held;
             }
 
             var session = open();
             byId[session.Id] = session;
+            created = true;
             Wake();
             return session;
         }

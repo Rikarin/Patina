@@ -143,6 +143,22 @@ describe('check words', () => {
     }
   });
 
+  it('says what depth a file rounds a channel to, and names limits a preset no longer has (#300)', () => {
+    expect(
+      checkWords(
+        'depth-lost',
+        { file: 'Crate_H', format: 'PNG 8-bit', channel: 'Height', painted: '32', bits: '8' },
+        'server'
+      )
+    ).toBe(
+      'Crate_H is PNG 8-bit and reads Height painted at 32 bits, which it rounds to 8. A png, tiff or exr file is ' +
+        'as deep as its maps.'
+    );
+    expect(checkWords('platform-unknown', { preset: 'console' }, 'server')).toBe(
+      'Limits are kept for “console”, which no export preset is any more, so they hold no set.'
+    );
+  });
+
   it('falls back to the Server’s sentence for a code it does not know', () => {
     expect(checkWords('something-new', { share: '1' }, 'The Server’s own sentence.')).toBe(
       'The Server’s own sentence.'

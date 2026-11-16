@@ -35,7 +35,9 @@ static class StackCheckEndpoints {
                 "GetProjectChecks",
                 "Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks "
                 + "does one. A set open in a session is measured by the GPU engine; one nobody has open is judged on "
-                + "what its file says, its limits, its files and its bake, and says it was not measured. "
+                + "what its file says, its limits, its files and its bake, and says it was not measured, unless measure "
+                + "is true: then the Server opens each such set in turn for the GPU engine to measure, and closes it "
+                + "again, which evaluates every set and takes as long. "
                 + PresetQuery
             );
 
@@ -59,14 +61,16 @@ static class StackCheckEndpoints {
             sessions,
             async session => {
                 var measured = await evaluator.MeasureAsync(session, cancellationToken);
-                return StackChecking.Judge(
+                var judged = StackChecking.Judge(
                     session.State,
                     measured,
                     project,
                     library?.Describe().TexelDensity ?? 0,
                     chosen!.Preset
-                ) with {
-                    Document = StackChecking.DocumentOf(library, session.Path)
+                );
+                return judged with {
+                    Document = StackChecking.DocumentOf(library, session.Path),
+                    Problems = [..StackChecking.Platforms(project, library), ..judged.Problems]
                 };
             }
         );
@@ -75,6 +79,7 @@ static class StackCheckEndpoints {
     static async Task<Results<Ok<ProjectChecks>, ProblemHttpResult>> GetProjectChecksAsync(
         string project,
         string? preset,
+        bool? measure,
         LibraryHost host,
         StackSessions sessions,
         StackEvaluator evaluator,
@@ -97,56 +102,80 @@ static class StackCheckEndpoints {
         }
 
         var density = library.Describe().TexelDensity;
+        Standing standing = new(sessions, evaluator, measure == true);
         List<StackChecks> sets = [];
         foreach (var document in contents.Documents.Where(static document => IsStack(document.Kind))) {
             var file = Path.GetFullPath(document.Path, library.RootPath);
-            if (await StandingAsync(file, sessions, evaluator, cancellationToken) is ({ } state, var measured)) {
+            if (await standing.OfAsync(file, cancellationToken) is ({ } state, var measured)) {
                 var judged = StackChecking.Judge(state, measured, contents, density, chosen!.Preset);
                 sets.Add(judged with { Document = document.Path });
             }
         }
 
         var name = chosen!.Preset?.Name ?? string.Empty;
-        return TypedResults.Ok(new ProjectChecks(project, name, sets.Sum(static set => set.MemoryBytes), sets));
+        var memory = sets.Sum(static set => set.MemoryBytes);
+        return TypedResults.Ok(
+            new ProjectChecks(project, name, memory, sets, [..StackChecking.Platforms(contents, library)])
+        );
     }
 
     static bool IsStack(string kind) => kind is DocumentKinds.Texturing or DocumentKinds.LayeredMaterial;
 
     /// <summary>
-    ///     A stack file as it stands: as its open session has it, measured by the Worker where it answers, or as its
-    ///     file says. Null for a file that has gone.
+    ///     Each stack file as it stands: as its open session has it, measured by the Worker where it answers, or as its
+    ///     file says. Asked to measure every set, the Server borrows a session for each one nobody has open, in turn, has
+    ///     the Worker measure it and closes it again; once no Worker comes, the rest are judged from their files.
     /// </summary>
-    static async Task<(StackState State, StackMeasured? Measured)?> StandingAsync(
-        string file,
-        StackSessions sessions,
-        StackEvaluator evaluator,
-        CancellationToken cancellationToken
-    ) {
-        if (sessions.All.FirstOrDefault(session => session.Path == file) is { } open) {
-            return (open.State, await MeasuredAsync(evaluator, open, cancellationToken));
+    sealed class Standing(StackSessions sessions, StackEvaluator evaluator, bool measureAll) {
+        bool workerGone;
+
+        /// <summary>The file as it stands, or null for one that has gone.</summary>
+        public async Task<(StackState State, StackMeasured? Measured)?> OfAsync(
+            string file,
+            CancellationToken cancellationToken
+        ) {
+            if (sessions.All.FirstOrDefault(session => session.Path == file) is { } open) {
+                return (open.State, await MeasuredAsync(open, cancellationToken));
+            }
+
+            // A stack nobody has open is read as its file says; nothing reaches the Worker, which holds no session of it.
+            if (!File.Exists(file)) {
+                return null;
+            }
+
+            if (measureAll && !workerGone && Borrowed(file) is { } borrowed) {
+                try {
+                    var measured = await MeasuredAsync(borrowed, cancellationToken);
+                    return (borrowed.State with { Id = string.Empty }, measured);
+                } finally {
+                    sessions.GiveBack(borrowed);
+                }
+            }
+
+            StackSession unopened = new(file, SharedFile.ReadAllText(file), static () => { });
+            return (unopened.State with { Id = string.Empty }, null);
         }
 
-        // A stack nobody has open is read as its file says; nothing reaches the Worker, which holds no session of it.
-        if (!File.Exists(file)) {
-            return null;
+        StackSession? Borrowed(string file) {
+            try {
+                return sessions.Borrow(file);
+            } catch (Exception e) when (e is FileNotFoundException or StackEditRefusedException) {
+                return null;
+            }
         }
 
-        StackSession unopened = new(file, SharedFile.ReadAllText(file), static () => { });
-        return (unopened.State with { Id = string.Empty }, null);
-    }
-
-    /// <summary>
-    ///     What the Worker measured of an open set, or null when it could not, and the set is judged unmeasured.
-    /// </summary>
-    static async Task<StackMeasured?> MeasuredAsync(
-        StackEvaluator evaluator,
-        StackSession session,
-        CancellationToken cancellationToken
-    ) {
-        try {
-            return await evaluator.MeasureAsync(session, cancellationToken);
-        } catch (Exception e) when (e is IpcException or TimeoutException or IOException) {
-            return null;
+        /// <summary>
+        ///     What the Worker measured of a set, or null when it could not, and the set is judged unmeasured.
+        /// </summary>
+        async Task<StackMeasured?> MeasuredAsync(StackSession session, CancellationToken cancellationToken) {
+            try {
+                return await evaluator.MeasureAsync(session, cancellationToken);
+            } catch (RendererMissingException) {
+                workerGone = true;
+                return null;
+            } catch (Exception e) when (e is IpcException or TimeoutException or IOException) {
+                return null;
+            }
         }
     }
 

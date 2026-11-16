@@ -26,8 +26,18 @@ one it happens to have open.
 
 ## Costs
 
-- An unopened set's density and value problems are not found until it is opened. A project check that opened each set
-  in turn would find them, at the cost of evaluating every set on the GPU; nothing stops a later client doing that
-  through the existing routes.
+- An unopened set's density and value problems are not found until it is opened, unless the check is asked to measure
+  every set (below), at the cost of evaluating every set on the GPU.
 - A platform's limits are keyed by a preset id, so renaming a preset's file leaves its limits behind, as it leaves a
-  project's chosen preset; the limits are kept and ignored until a preset of that id comes back.
+  project's chosen preset; the limits are kept until a preset of that id comes back, and the checks name them (below).
+
+## Amended 2026-11-16 (#300)
+
+- **A project check can measure every set.** With `measure=true`, the Server borrows a session for each set nobody has
+  open, in turn: it opens the file as a client would, the Worker evaluates and measures it, and the Server closes it.
+  A client that opens the file meanwhile joins that session and keeps it, so giving it back closes nothing a client
+  holds. Once no Worker comes, the remaining sets are judged from their files as before, rather than each waiting for
+  one. Nothing is kept: the Worker forgets a borrowed session as it forgets any closed one.
+- **Limits for a preset that has gone are named.** They still hold no set, and stay in the project's file so a preset
+  of that id coming back finds them, but a check says so with `platform-unknown`: once for the project in a project
+  check, and at the head of a single set's check.

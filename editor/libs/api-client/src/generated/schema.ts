@@ -788,7 +788,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what its file says, its limits, its files and its bake, and says it was not measured. The export preset of a platform to check for, or none for the project's own. */
+    /** Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what its file says, its limits, its files and its bake, and says it was not measured, unless measure is true: then the Server opens each such set in turn for the GPU engine to measure, and closes it again, which evaluates every set and takes as long. The export preset of a platform to check for, or none for the project's own. */
     get: operations['GetProjectChecks'];
     /** Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory budget, a size limit and a texel density, and limits of their own for each platform it ships to, by the export preset that writes for it. GET /stacks/{id}/checks, GET /library/project/checks and the texel density view measure against them. */
     put: operations['SetProjectChecks'];
@@ -6186,6 +6186,11 @@ export interface components {
       memoryBytes: number;
       /** @description Each set, in the order the project lists its documents. */
       sets: components['schemas']['StackChecks'][];
+      /**
+       * @description What is wrong with the project's checks themselves rather than any one set: limits kept for a platform no preset
+       *     writes for any more.
+       */
+      problems: components['schemas']['CheckProblem'][];
     };
     /**
      * @description What a project holds its texture sets to before they are exported (#159), kept in its `project.yaml`. A
@@ -12131,6 +12136,7 @@ export interface operations {
       query: {
         project: string;
         preset?: string;
+        measure?: boolean;
       };
       header?: never;
       path?: never;

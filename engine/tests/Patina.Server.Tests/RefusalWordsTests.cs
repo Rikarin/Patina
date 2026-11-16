@@ -1,3 +1,4 @@
+using Patina.Contracts;
 using Patina.Server.Api;
 using System.Reflection;
 
@@ -45,6 +46,19 @@ public sealed class RefusalWordsTests {
             words.Contains($"'{code}':", StringComparison.Ordinal),
             $"Refusals.cs sends '{code}', and editor/apps/studio/src/app/core/messages.ts has no words for it."
         );
+    }
+
+    /// <summary>
+    ///     Every problem a check before export finds has the app's words too, so a new check reaches a person in them
+    ///     and not as the Server's sentence (#159).
+    /// </summary>
+    [Fact]
+    public void The_app_has_words_for_each_check_code() {
+        var words = File.ReadAllText(Messages);
+
+        var unworded = CheckCodes.All.Where(code => !words.Contains($"'{code}':", StringComparison.Ordinal));
+
+        Assert.Empty(unworded);
     }
 
     /// <summary>
