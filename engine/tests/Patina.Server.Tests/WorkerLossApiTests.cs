@@ -42,7 +42,7 @@ public sealed partial class WorkerLossApiTests : IAsyncLifetime {
             IpcTypes.MaterialThumbnail,
             () => client.PutAsJsonAsync(
                 "/api/v1/viewport/display",
-                new ViewportDisplay { Environment = sky },
+                new() { Environment = sky },
                 ContractsJsonContext.Default.ViewportDisplay,
                 Token
             )

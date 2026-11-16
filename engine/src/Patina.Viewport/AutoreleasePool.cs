@@ -12,7 +12,9 @@ public readonly partial struct AutoreleasePool : IDisposable {
     const string ObjectiveC = "/usr/lib/libobjc.A.dylib";
     readonly nint token;
 
-    AutoreleasePool(nint token) => this.token = token;
+    AutoreleasePool(nint token) {
+        this.token = token;
+    }
 
     /// <summary>Whether this pool drains anything when it is left: only on macOS.</summary>
     public bool Drains => token != 0;
