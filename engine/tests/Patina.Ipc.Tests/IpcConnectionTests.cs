@@ -292,7 +292,11 @@ public sealed class IpcConnectionTests : IDisposable {
 
             await Assert.ThrowsAsync<IpcDisconnectedException>(() => pending);
             await left.Closed.WaitAsync(TimeSpan.FromSeconds(5), Token);
-            await Assert.ThrowsAsync<IpcDisconnectedException>(() => left.SendAsync(new() { Type = IpcTypes.Health }, Token));
+            await Assert.ThrowsAsync<IpcDisconnectedException>(() => left.SendAsync(
+                    new() { Type = IpcTypes.Health },
+                    Token
+                )
+            );
         }
     }
 
@@ -316,7 +320,11 @@ public sealed class IpcConnectionTests : IDisposable {
         var connection = new IpcConnection(new StalledStream(), Reply);
         await connection.DisposeAsync();
 
-        await Assert.ThrowsAsync<IpcDisconnectedException>(() => connection.SendAsync(new() { Type = IpcTypes.Health }, Token));
+        await Assert.ThrowsAsync<IpcDisconnectedException>(() => connection.SendAsync(
+                new() { Type = IpcTypes.Health },
+                Token
+            )
+        );
     }
 
     [Fact]

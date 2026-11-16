@@ -557,11 +557,8 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     /// </summary>
     public IReadOnlyList<LibraryPicture> Pictures() => queries.Pictures();
 
-    /// <summary>
-    ///     Every project's documents but its texturing ones, as the last <see cref="Rescan" /> found them: one query,
-    ///     where reading each project's contents would read its file and walk its folder (#311).
-    /// </summary>
-    public IReadOnlyList<IndexedDocument> Documents() => queries.Documents();
+    /// <summary>The index's queries, which <see cref="LibraryIndexReads" /> reads.</summary>
+    internal LibraryQueries Queries => queries;
 
     /// <summary>What a folder's documents cost, by each folder or project directly in it (#207).</summary>
     /// <param name="folder">The folder below <c>projects/</c>, empty for the whole library.</param>
