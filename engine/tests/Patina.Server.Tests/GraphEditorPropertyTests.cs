@@ -88,6 +88,39 @@ public sealed class GraphEditorPropertyTests {
                 }
             );
 
+    /// <summary>
+    ///     A save holds the history where it stood: edits after it leave the graph unsaved, and undoing them back to
+    ///     the step saved gives the saved text and a saved graph, however many edits came between (#306).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Property")]
+    public void Undoing_back_to_the_step_saved_leaves_the_graph_saved() =>
+        Gen.Select(Gen.Int.Array[0, 8], Gen.Int.Array[1, 8])
+            .Sample(static (before, after) => {
+                    var editor = new GraphEditor(GraphTesting.Sample(), Registry);
+                    foreach (var seed in before) {
+                        TryEdit(editor, seed);
+                    }
+
+                    var (saved, mark) = (GraphDocuments.Text(editor.Document), editor.Mark);
+                    editor.MarkSaved(mark);
+                    Assert.False(editor.History.Dirty);
+                    foreach (var seed in after) {
+                        TryEdit(editor, seed);
+                    }
+
+                    if (editor.History.Step == mark) {
+                        return;
+                    }
+
+                    Assert.True(editor.History.Dirty);
+                    while (editor.History.Step != mark && editor.Undo() is not null) { }
+
+                    Assert.False(editor.History.Dirty);
+                    Assert.Equal(saved, GraphDocuments.Text(editor.Document));
+                }
+            );
+
     static HistoryList Steps(GraphEditor editor) =>
         UndoHistory.List(editor.DoneSteps, editor.UndoneSteps, static step => new(step.Id, step.Label));
 

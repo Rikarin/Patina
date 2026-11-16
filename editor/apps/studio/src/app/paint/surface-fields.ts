@@ -257,6 +257,20 @@ const SymmetryChoices: readonly string[] = [Off, 'Mirror on X', 'Mirror on Y', '
         @if (!curve.ribbon) {
           <div
             class="flex items-center gap-2"
+            title="Closes the path into a loop and fills what it encloses; the width is the fill's soft edge"
+          >
+            <span class="text-foreground-muted w-16 shrink-0 text-xs">Filled</span>
+            <xui-switch
+              aria-label="Fill what the path encloses"
+              data-testid="surface-path-filled"
+              [checked]="curve.filled"
+              (checkedChange)="setPath({ filled: $event })"
+            />
+          </div>
+        }
+        @if (!curve.ribbon && !curve.filled) {
+          <div
+            class="flex items-center gap-2"
             title="How far apart the stroke's stamps are, as a share of its width; 0 is one unbroken line"
           >
             <span class="text-foreground-muted w-16 shrink-0 text-xs">Spacing</span>
@@ -310,6 +324,7 @@ const SymmetryChoices: readonly string[] = [Off, 'Mirror on X', 'Mirror on Y', '
             aria-label="Lay the picture along the path"
             data-testid="surface-path-ribbon"
             [checked]="curve.ribbon"
+            [disabled]="curve.filled"
             (checkedChange)="setPath({ ribbon: $event })"
           />
           @if (curve.ribbon) {

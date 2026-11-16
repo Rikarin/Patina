@@ -1462,11 +1462,27 @@ export class PaintStore {
   }
 
   /** Adds a layer filled from a material graph, whose maps reach the channels of the same usage. */
-  async addGraphLayer(name: string, graph: string): Promise<void> {
+  async addGraphLayer(name: string, graph: string, parameters?: Readonly<Record<string, string>>): Promise<void> {
     await this.addLayer('fill', name);
     const layer = this.layer();
     if (layer) {
-      await this.edit({ op: 'setLayer', layer, fill: 'Graph', graph });
+      await this.edit({ op: 'setLayer', layer, fill: 'Graph', graph, ...(parameters ? { parameters } : {}) });
+    }
+  }
+
+  /**
+   * Keeps a graph fill's material and the values it gives its parameters as a material preset of the project (#124),
+   * which the shelf then lists among the materials.
+   */
+  async saveMaterialPreset(layer: StackLayer, name: string, project: string): Promise<void> {
+    this.startAction();
+    try {
+      const client = await this.api();
+      const body = { project, name, graph: layer.graph, parameters: { ...layer.parameters } };
+      unwrap(await client.POST('/api/v1/library/materials/presets', { body }));
+      this.notice.set(`Saved ${name} to the shelf as a material preset.`);
+    } catch (failure) {
+      this.failure.set(messageOf(failure));
     }
   }
 

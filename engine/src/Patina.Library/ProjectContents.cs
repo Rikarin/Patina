@@ -897,6 +897,8 @@ static class ProjectFiles {
                 .Graph
             : string.Equals(extension, BrushPresets.Extension, StringComparison.OrdinalIgnoreCase) ? DocumentKinds
                 .BrushPreset
+            : string.Equals(extension, MaterialPresets.Extension, StringComparison.OrdinalIgnoreCase) ? DocumentKinds
+                .MaterialPreset
             : null;
     }
 

@@ -191,8 +191,13 @@ public static class DocumentKinds {
     /// </summary>
     public const string BrushPreset = "brush-preset";
 
+    /// <summary>
+    ///     A material with its parameters set (#124). It opens no workspace; the shelf lists it among the materials.
+    /// </summary>
+    public const string MaterialPreset = "material-preset";
+
     public static bool Known(string kind) =>
-        kind is Texturing or LayeredMaterial or ImageMaterial or Graph or BrushPreset;
+        kind is Texturing or LayeredMaterial or ImageMaterial or Graph or BrushPreset or MaterialPreset;
 }
 
 /// <summary>

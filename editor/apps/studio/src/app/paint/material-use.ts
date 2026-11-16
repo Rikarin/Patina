@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { type MaterialInfo, type StackLayer, unwrap } from '@patina/api-client';
+import { type MaterialInfo, type StackLayer, type components, unwrap } from '@patina/api-client';
 import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from '../library/library-store';
@@ -14,6 +14,9 @@ export const AlphaPrefix = 'alpha:';
 /** The type of a panorama on the shelf, whose source is its picture's path behind {@link EnvironmentPrefix}. */
 export const ShelfEnvironment = 'environment';
 const EnvironmentPrefix = 'environment:';
+
+/** A material made ready for the project's layers, with a preset's values (#124). */
+type Used = components['schemas']['MaterialUse'];
 
 /** Where in the stack a material was dropped. */
 export interface MaterialDrop {
@@ -64,7 +67,12 @@ export class MaterialUse {
         if (picture) {
           await this.placed(drop, () => this.paint.addPictureLayer(material.name, picture));
         }
-      } else if (material.kind === 'graph' || material.kind === 'image-material') {
+      } else if (
+        material.kind === 'graph' ||
+        material.kind === 'image-material' ||
+        material.kind === 'material-preset'
+      ) {
+        // A material preset is its material at the values it keeps (#124).
         await this.useGraph(material, await this.publish(project.path, material), drop);
       } else {
         await this.placed(drop, () =>
@@ -114,6 +122,11 @@ export class MaterialUse {
 
     this.failure.set(null);
     const layered = material.kind === 'layered-material';
+    if (material.kind === 'material-preset') {
+      this.failure.set(`${material.name} is a material preset, which fills a layer: a brush paints with a material.`);
+      return;
+    }
+
     if (material.role !== 'material' || (material.kind !== 'graph' && material.kind !== 'image-material' && !layered)) {
       this.failure.set(`${material.name} has no maps to paint with.`);
       return;
@@ -124,7 +137,11 @@ export class MaterialUse {
       this.paint.material.set(
         layered
           ? { name: material.name, layered: material.source, source: material.source }
-          : { name: material.name, graph: await this.publish(project.path, material), source: material.source }
+          : {
+              name: material.name,
+              graph: (await this.publish(project.path, material)).graph,
+              source: material.source
+            }
       );
       // The fill and the projection tool lay a material too; any other tool gives way to the brush.
       if (this.paint.tool() !== 'fill' && this.paint.tool() !== 'projection') {
@@ -165,7 +182,7 @@ export class MaterialUse {
     }
 
     try {
-      await this.paint.addGraphLayerOnRegion(material.name, await this.publish(project.path, material), colour);
+      await this.paint.addGraphLayerOnRegion(material.name, (await this.publish(project.path, material)).graph, colour);
     } catch (failure) {
       this.failure.set(messageOf(failure));
     }
@@ -175,7 +192,7 @@ export class MaterialUse {
   async fillWith(layer: StackLayer, material: MaterialInfo): Promise<void> {
     const project = this.project.current();
     if (project) {
-      const graph = await this.publish(project.path, material);
+      const { graph } = await this.publish(project.path, material);
       await this.paint.edit({ op: 'setLayer', layer: layer.id, fill: 'Graph', graph });
     }
   }
@@ -186,14 +203,18 @@ export class MaterialUse {
     return unwrap(await client.POST('/api/v1/library/materials/brush', { body })).alpha;
   }
 
-  private async publish(project: string, material: MaterialInfo): Promise<string> {
+  private async publish(project: string, material: MaterialInfo): Promise<Used> {
     const client = await this.library.api();
     const body = { project, source: material.source };
-    return unwrap(await client.POST('/api/v1/library/materials/use', { body })).graph;
+    return unwrap(await client.POST('/api/v1/library/materials/use', { body }));
   }
 
-  /** A graph lands where its role says: a fill, a filter in the stack, or a layer's mask. */
-  private async useGraph(material: MaterialInfo, graph: string, drop?: MaterialDrop): Promise<void> {
+  /**
+   * A graph lands where its role says: a fill, a filter in the stack, or a layer's mask. A material preset's values
+   * are the new fill's parameters.
+   */
+  private async useGraph(material: MaterialInfo, used: Used, drop?: MaterialDrop): Promise<void> {
+    const graph = used.graph;
     if (material.role === 'mask') {
       const layer = this.paint.layers().find(row => row.layer.id === drop?.layer)?.layer ?? this.paint.chosen();
       if (!layer) {
@@ -207,7 +228,7 @@ export class MaterialUse {
         this.paint.edit({ op: 'addLayer', kind: 'filter', name: material.name, filterNode: graph })
       );
     } else {
-      await this.placed(drop, () => this.paint.addGraphLayer(material.name, graph));
+      await this.placed(drop, () => this.paint.addGraphLayer(material.name, graph, used.parameters ?? undefined));
     }
   }
 

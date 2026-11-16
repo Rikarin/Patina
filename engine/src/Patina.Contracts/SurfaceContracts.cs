@@ -87,6 +87,11 @@ public sealed record StackPathPoint(IReadOnlyList<float> Position, IReadOnlyList
 ///     For a stroke in stamps, the brush alpha each stamp takes the shape of, one of the vocabulary's <c>alphas</c>,
 ///     turned with the path. Null, empty or <c>Round</c> is a round stamp.
 /// </param>
+/// <param name="Filled">
+///     Whether the path is a loop whose inside is covered too (#130): it closes from its last point back to its first,
+///     what it encloses takes the fill's picture, and the width falls away past the loop as a soft edge. A ribbon and
+///     a row of stamps take no fill.
+/// </param>
 public sealed record StackSurfacePath(
     IReadOnlyList<StackPathPoint> Points,
     float Radius,
@@ -98,7 +103,8 @@ public sealed record StackSurfacePath(
     float Spacing = 0f,
     float Jitter = 0f,
     StackSurfaceSymmetry? Symmetry = null,
-    string? Alpha = null
+    string? Alpha = null,
+    bool Filled = false
 );
 
 /// <summary>

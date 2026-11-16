@@ -200,6 +200,10 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             return OfPicture(source, full);
         }
 
+        if (MaterialPresets.Names(full)) {
+            return OfPreset(library, source, full);
+        }
+
         if (!full.EndsWith(LibraryLayout.GraphExtension, StringComparison.OrdinalIgnoreCase)
             && !full.EndsWith(StackDocuments.Extension, StringComparison.OrdinalIgnoreCase)) {
             return null; // a brush preset or a mesh: nothing a material picture can show

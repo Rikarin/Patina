@@ -4242,6 +4242,67 @@
         }
       }
     },
+    "/api/v1/library/materials/presets": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps a graph fill\u0027s material and parameters as a material preset, a document of the project (#124).",
+        "operationId": "CreateMaterialPreset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialPresetCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/materials/brush": {
       "post": {
         "tags": [
@@ -17139,6 +17200,37 @@
         },
         "description": "The materials a project can use."
       },
+      "MaterialPresetCreateRequest": {
+        "required": [
+          "project",
+          "name",
+          "graph",
+          "parameters"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "What to call it, which names its file."
+          },
+          "graph": {
+            "type": "string",
+            "description": "The material, as a graph fill in the project reads it (its \u0060graph\u0060), which the Server takes back to where\nthe shelf has it."
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What the fill sets the material\u0027s parameters to (its \u0060parameters\u0060)."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/materials/presets\u0060, which keeps a graph fill\u0027s material and parameters\nas a new material preset of the project."
+      },
       "MaterialUse": {
         "required": [
           "graph"
@@ -17148,6 +17240,16 @@
           "graph": {
             "type": "string",
             "description": "What a fill layer\u0027s \u0060graph\u0060 takes."
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What a material preset sets the graph\u0027s parameters to, which a fill layer\u0027s \u0060parameters\u0060 take, or null\nfor a material used as it is (#124)."
           }
         },
         "description": "A graph ready for a layer."
@@ -23553,7 +23655,8 @@
           "repeat",
           "angle",
           "spacing",
-          "jitter"
+          "jitter",
+          "filled"
         ],
         "type": "object",
         "properties": {
@@ -23632,6 +23735,11 @@
               "string"
             ],
             "description": "For a stroke in stamps, the brush alpha each stamp takes the shape of, one of the vocabulary\u0027s \u0060alphas\u0060,\nturned with the path. Null, empty or \u0060Round\u0060 is a round stamp."
+          },
+          "filled": {
+            "type": "boolean",
+            "description": "Whether the path is a loop whose inside is covered too (#130): it closes from its last point back to its first,\nwhat it encloses takes the fill\u0027s picture, and the width falls away past the loop as a soft edge. A ribbon and\na row of stamps take no fill.",
+            "default": false
           }
         },
         "description": "A curve on the model that a fill with the \u0060Path\u0060 projection is laid along (#130, #131): the points stay in\nthe stack, so they can be moved after the stroke is seen, and the stroke follows. It passes through each point."

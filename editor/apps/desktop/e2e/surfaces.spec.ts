@@ -186,6 +186,21 @@ test('a decal is placed with a click and scaled by its handle, a path takes poin
   await settled();
   await window.screenshot({ path: join(shots, 'surface-path-chisel.png') });
 
+  // A fourth point above the line makes a loop, and Filled covers what it encloses (#130); off again, the band is back.
+  await window.getByTestId('surface-add-points').click();
+  await click(0.32, 0.5);
+  await expect(window.getByTestId('surface-path-count')).toContainText('4 points', { timeout: 30_000 });
+  await window.getByTestId('surface-add-points').click();
+  await settled();
+  const open = await shot();
+  await window.getByTestId('surface-path-filled').click();
+  await expect.poll(async () => changed(open, await shot()), { timeout: 60_000 }).toBeGreaterThan(100);
+  await settled();
+  await window.screenshot({ path: join(shots, 'surface-path-filled.png') });
+  await window.getByTestId('surface-path-filled').click();
+  await expect(window.getByTestId('surface-path-spacing')).toBeVisible({ timeout: 30_000 });
+  await settled();
+
   await window.getByTestId('surface-path-ribbon').click();
   await settled();
   await window.screenshot({ path: join(shots, 'surface-ribbon.png') });

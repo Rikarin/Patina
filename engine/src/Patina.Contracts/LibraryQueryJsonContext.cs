@@ -3,8 +3,8 @@ using System.Text.Json.Serialization;
 namespace Patina.Contracts;
 
 /// <summary>
-///     What a document's snapshots (#209), the samples (#190), the library's costs (#207) and its project templates
-///     (#144) send.
+///     What a document's snapshots (#209), the samples (#190), the library's costs (#207), its project templates
+///     (#144) and material presets (#124) send.
 /// </summary>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
@@ -22,4 +22,6 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(DocumentCostPage), TypeInfoPropertyName = nameof(DocumentCostPage))]
 [JsonSerializable(typeof(ProjectTemplateList), TypeInfoPropertyName = nameof(ProjectTemplateList))]
 [JsonSerializable(typeof(ProjectTemplateRequest))]
+[JsonSerializable(typeof(MaterialPreset), TypeInfoPropertyName = nameof(MaterialPreset))]
+[JsonSerializable(typeof(MaterialPresetCreateRequest), TypeInfoPropertyName = nameof(MaterialPresetCreateRequest))]
 public sealed partial class LibraryQueryJsonContext : JsonSerializerContext;
