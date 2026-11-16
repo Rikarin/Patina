@@ -289,7 +289,7 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
             Token
         );
         foreach (var name in (string[])["crate.obj", "crate.gltf"]) {
-            File.WriteAllText(Path.Combine(source.FullName, name), "");
+            File.WriteAllText(Path.Combine(source.FullName, name), string.Empty);
         }
 
         Assert.True(Turned(await ImportAsync("crate.obj")), "A Y+ project turns an OBJ's normal as glTF's.");

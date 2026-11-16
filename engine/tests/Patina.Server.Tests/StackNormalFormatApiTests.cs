@@ -85,7 +85,7 @@ public sealed class StackNormalFormatApiTests : IAsyncLifetime {
 
         Assert.Equal(NormalFormats.Down, await PictureAsync("Coat", "coatNormal"));
         Assert.Equal(NormalFormats.Up, (await LayerAsync("Bumps")).NormalFormat);
-        var told = new StackSetLayer("") { NormalFormat = NormalFormats.Up };
+        var told = new StackSetLayer(string.Empty) { NormalFormat = NormalFormats.Up };
         Assert.Equal(NormalFormats.Up, await PictureAsync("Told", "normal", told));
 
         var bumps = await LayerAsync("Bumps");

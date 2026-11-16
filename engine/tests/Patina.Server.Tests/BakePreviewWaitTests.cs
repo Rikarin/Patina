@@ -24,7 +24,7 @@ public sealed class BakePreviewWaitTests : IAsyncDisposable {
         var first = await PreviewWorker.ConnectAsync(server.SocketPath, Token);
         using var shown = await client.PutAsJsonAsync(
             "/api/v1/viewport/bake-preview",
-            new ViewportBakePreview { Low = low, High = [low] },
+            new() { Low = low, High = [low] },
             ContractsJsonContext.Default.ViewportBakePreview,
             Token
         );
@@ -63,7 +63,9 @@ public sealed class BakePreviewWaitTests : IAsyncDisposable {
     sealed class PreviewWorker : IAsyncDisposable {
         readonly IpcConnection connection;
 
-        PreviewWorker(Stream stream) => connection = new(stream, (request, _) => ValueTask.FromResult(Answer(request)));
+        PreviewWorker(Stream stream) {
+            connection = new(stream, (request, _) => ValueTask.FromResult(Answer(request)));
+        }
 
         /// <summary>How many previews it was told.</summary>
         public int Told { get; private set; }
@@ -89,7 +91,7 @@ public sealed class BakePreviewWaitTests : IAsyncDisposable {
             }
 
             Told++;
-            BakePreviewState shown = preview.Low.Length == 0
+            var shown = preview.Low.Length == 0
                 ? BakePreviewState.Off
                 : new(preview, [new("Box", 12, 40, "#ff8000")], []);
             return new() { Type = IpcTypes.Ok, Id = request.Id, BakePreviewShown = shown };
