@@ -414,6 +414,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Import Materials reads an FBX's, an OBJ's or a Collada file's normal as the project's Normal maps say (#310): those formats do not say which way their green runs, and a DirectX project's were turned as if it ran up. glTF, MaterialX and USD say it runs up, and are read so whatever the project says.
 - The bake preview says it waits for the engine while none is connected (#310): its key and warnings were the last engine's, kept as if they still stood. A new engine draws it again when the Bake dialog asks, not only at the next frame.
 - A graph that lights the viewport, a shelf picture or a layer's picture that takes the GPU engine more than ten seconds is waited for (#284): on a busy GPU the viewport answered that no GPU process was connected while one was drawing the panorama. Only the wait for the engine to be there is bounded now, as for every other wait on it.
 - Generators on the shelf have pictures (#301): each is drawn on the sample knot's bake, which ships under `content/bakes/Knot`, where a generator used to show its name alone for want of a bake.
