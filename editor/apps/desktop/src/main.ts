@@ -475,10 +475,12 @@ function handleIpc(): void {
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);
   });
-  handle('patina:openImage', async (_event, formats: unknown) => {
+  handle('patina:openImage', async (_event, formats: unknown, kind: unknown) => {
     const options: OpenDialogOptions = {
       properties: ['openFile'],
-      filters: [{ name: 'Pictures', extensions: extensionsOf(formats) }]
+      filters: [
+        { name: typeof kind === 'string' && kind.length > 0 ? kind : 'Pictures', extensions: extensionsOf(formats) }
+      ]
     };
     const picked = await (window ? dialog.showOpenDialog(window, options) : dialog.showOpenDialog(options));
     return picked.canceled ? null : (picked.filePaths[0] ?? null);

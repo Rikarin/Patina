@@ -18,6 +18,8 @@ import {
   matAdd,
   matDashboard,
   matNoteAdd,
+  matPause,
+  matPlayArrow,
   matPowerSettingsNew,
   matStickyNote2,
   matTune,
@@ -223,6 +225,8 @@ export class GraphThumbnail {
       matAdd,
       matDashboard,
       matNoteAdd,
+      matPause,
+      matPlayArrow,
       matPowerSettingsNew,
       matStickyNote2,
       matTune,
@@ -295,6 +299,27 @@ export class GraphThumbnail {
         </button>
       }
       <span class="readout text-foreground-muted ms-2 truncate" data-testid="graph-evaluation">{{ evaluated() }}</span>
+      @if (store.document(); as current) {
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
+          class="ms-1 shrink-0"
+          data-testid="graph-pause"
+          [title]="
+            current.paused
+              ? 'Resume: evaluates every edit made while paused'
+              : 'Pause: edits wait to be evaluated while you set up'
+          "
+          [attr.aria-label]="current.paused ? 'Resume evaluation' : 'Pause evaluation'"
+          [attr.aria-pressed]="current.paused"
+          [class.bg-selection]="current.paused"
+          (click)="store.setPaused(!current.paused)"
+        >
+          <ng-icon xui size="sm" [name]="current.paused ? 'matPlayArrow' : 'matPause'" />
+        </button>
+      }
       <span class="flex-1"></span>
       <button
         type="button"
