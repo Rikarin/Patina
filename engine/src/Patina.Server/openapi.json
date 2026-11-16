@@ -21036,6 +21036,13 @@
               "string"
             ],
             "description": "The colour it is marked with, from the vocabulary\u0027s tags: None takes the mark away."
+          },
+          "normalFormat": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How a texture fill\u0027s normal and coat normal pictures are read, \u0060y-up\u0060 or \u0060y-down\u0060 (#310). Null\nkeeps it, unless the textures it lays put a picture in the normal or coat normal channel: then it is the\nproject\u0027s."
           }
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
@@ -22343,7 +22350,8 @@
           "filterNode",
           "anchorPoint",
           "flattened",
-          "tag"
+          "tag",
+          "normalFormat"
         ],
         "type": "object",
         "properties": {
@@ -22538,6 +22546,10 @@
             "type": "string",
             "description": "The colour the layer is marked with in a list, from the vocabulary\u0027s tags, or None.",
             "default": "None"
+          },
+          "normalFormat": {
+            "type": "string",
+            "description": "How a texture fill\u0027s normal and coat normal pictures are read: \u0060y-up\u0060, their green turned to run down\nas a stack\u0027s normals do, or \u0060y-down\u0060, as they are (#310). The project\u0027s normal format when they were\nlaid."
           }
         },
         "description": "One layer, without its pixels."

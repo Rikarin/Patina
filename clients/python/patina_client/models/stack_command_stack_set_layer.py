@@ -71,6 +71,10 @@ class StackCommandStackSetLayer:
             decal (None | StackDecal | Unset):
             path (None | StackSurfacePath | Unset):
             tag (None | str | Unset): The colour it is marked with, from the vocabulary's tags: None takes the mark away.
+            normal_format (None | str | Unset): How a texture fill's normal and coat normal pictures are read, `y-up` or
+                `y-down` (#310). Null
+                keeps it, unless the textures it lays put a picture in the normal or coat normal channel: then it is the
+                project's.
      """
 
     op: StackCommandStackSetLayerOp
@@ -99,6 +103,7 @@ class StackCommandStackSetLayer:
     decal: None | StackDecal | Unset = UNSET
     path: None | StackSurfacePath | Unset = UNSET
     tag: None | str | Unset = UNSET
+    normal_format: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -291,6 +296,12 @@ class StackCommandStackSetLayer:
         else:
             tag = self.tag
 
+        normal_format: None | str | Unset
+        if isinstance(self.normal_format, Unset):
+            normal_format = UNSET
+        else:
+            normal_format = self.normal_format
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -346,6 +357,8 @@ class StackCommandStackSetLayer:
             field_dict["path"] = path
         if tag is not UNSET:
             field_dict["tag"] = tag
+        if normal_format is not UNSET:
+            field_dict["normalFormat"] = normal_format
 
         return field_dict
 
@@ -730,6 +743,16 @@ class StackCommandStackSetLayer:
         tag = _parse_tag(d.pop("tag", UNSET))
 
 
+        def _parse_normal_format(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        normal_format = _parse_normal_format(d.pop("normalFormat", UNSET))
+
+
         stack_command_stack_set_layer = cls(
             op=op,
             layer=layer,
@@ -757,6 +780,7 @@ class StackCommandStackSetLayer:
             decal=decal,
             path=path,
             tag=tag,
+            normal_format=normal_format,
         )
 
 

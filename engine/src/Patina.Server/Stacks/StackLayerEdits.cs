@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Library;
 using Vixen.Authoring;
 using Vixen.Texturing.Layers;
 
@@ -54,6 +55,50 @@ static class StackLayerEdits {
     /// <summary>A layer's path as a change asks for it (#130): the one sent, or the one it had.</summary>
     public static LayerSurfacePath? SurfacePath(StackSetLayer change, LayerAsset layer) =>
         change.Path is { } path ? StackSurfaces.Kept(path) : layer.SurfacePath;
+
+    /// <summary>
+    ///     Whether a layer's normal pictures run their green up as a change asks (#310): the format it names, or the
+    ///     one the layer had.
+    /// </summary>
+    /// <exception cref="StackEditRefusedException">It names a format that is not one.</exception>
+    public static bool NormalGreenUp(StackSetLayer change, LayerAsset layer) =>
+        change.NormalFormat switch {
+            null => layer.NormalGreenUp,
+            NormalFormats.Up => true,
+            NormalFormats.Down => false,
+            var other => throw new StackEditRefusedException(
+                $"'{other}' is not a normal format: use {string.Join(" or ", NormalFormats.All)}."
+            )
+        };
+
+    /// <summary>
+    ///     A batch with the project's normal format on each change that lays a normal or coat normal picture and does
+    ///     not say how to read it (#310, ADR 0054): a picture comes in as the project says. A stack in no project is
+    ///     left as it is sent.
+    /// </summary>
+    /// <param name="batch">The batch as a client sent it.</param>
+    /// <param name="library">The library, or null for none open.</param>
+    /// <param name="stack">The stack's file, which says its project.</param>
+    public static StackCommandBatch AsTheProjectSays(StackCommandBatch batch, OpenLibrary? library, string stack) {
+        // ⚠ The project's file is read only for a batch that lays a normal, never for every stroke.
+        if (!batch.Commands.Any(LaysNormal)
+            || StackChecking.ProjectOf(library, stack)?.NormalFormat is not { } format) {
+            return batch;
+        }
+
+        return batch with {
+            Commands = [
+                ..batch.Commands.Select(command => LaysNormal(command)
+                        ? (StackSetLayer)command with { NormalFormat = format }
+                        : command
+                )
+            ]
+        };
+    }
+
+    static bool LaysNormal(StackCommand command) =>
+        command is StackSetLayer { NormalFormat: null, Textures: { } textures }
+        && textures.Any(static pair => pair.Key is "normal" or "coatNormal" && pair.Value.Trim().Length > 0);
 
     /// <summary>A layer's mask as a change asks for it, which <see cref="StackMaskLayers.Masked" /> says.</summary>
     public static MaskAsset Masked(MaskAsset held, StackMask? mask) => StackMaskLayers.Masked(held, mask);

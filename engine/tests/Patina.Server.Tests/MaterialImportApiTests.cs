@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Ipc;
 using System.IO.Compression;
 using System.Net;
 using System.Text;
@@ -350,6 +351,44 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
         Assert.False(Directory.Exists(Path.Combine(server.Library, "projects/walls/pictures/scene")));
     }
 
+    /// <summary>
+    ///     A model file that does not say which way its normal's green runs is read as the project's normal format says
+    ///     (#310): in a DirectX project an FBX's or an OBJ's normal is not turned, and a glTF's, whose format says its
+    ///     green runs up, still is.
+    /// </summary>
+    [Fact]
+    public async Task A_models_normal_runs_its_green_as_the_project_says_unless_its_format_says() {
+        await using var worker = await ModelWorker.ConnectAsync(
+            server.SocketPath,
+            Path.Combine(source.FullName, "textures", "normal.png"),
+            Token
+        );
+        foreach (var name in (string[])["crate.obj", "crate.gltf"]) {
+            File.WriteAllText(Path.Combine(source.FullName, name), string.Empty);
+        }
+
+        Assert.True(Turned(await ImportAsync("crate.obj")), "A Y+ project turns an OBJ's normal as glTF's.");
+        using var settings = await client.PatchAsJsonAsync(
+            "/api/v1/library/project/settings",
+            new ProjectSettingsRequest("walls", null, null, null) { NormalFormat = NormalFormats.Down },
+            Token
+        );
+        Assert.True(settings.IsSuccessStatusCode, await settings.Content.ReadAsStringAsync(Token));
+
+        Assert.False(Turned(await ImportAsync("crate.obj")), "A Y- project reads an OBJ's normal as running down.");
+        Assert.True(Turned(await ImportAsync("crate.gltf")), "glTF says its green runs up, whatever the project.");
+
+        bool Turned(MaterialImportResult imported) {
+            var asset = YamlSerializer.Parse<NodeGraphAsset>(
+                File.ReadAllText(Path.Combine(server.Library, imported.Documents[0]))
+            );
+            return asset.Nodes.Any(static n => n.Type == "Colour/Channel Mix"
+                && n.Values.TryGetValue("Green from Green", out var green)
+                && green[0] < 0
+            );
+        }
+    }
+
     [Fact]
     public async Task A_file_that_is_no_material_file_is_refused() {
         File.WriteAllText(Path.Combine(source.FullName, "notes.txt"), "no");
@@ -360,5 +399,49 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    /// <summary>A Worker that reads every model as one material whose normal is a picture, and nothing else.</summary>
+    sealed class ModelWorker : IAsyncDisposable {
+        readonly IpcConnection connection;
+        readonly string normal;
+        int reads;
+
+        ModelWorker(Stream stream, string normal) {
+            this.normal = normal;
+            connection = new(stream, (request, _) => ValueTask.FromResult(Answer(request)));
+        }
+
+        public static async Task<ModelWorker> ConnectAsync(
+            string socketPath,
+            string normal,
+            CancellationToken cancellationToken
+        ) {
+            var stream = await IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(30), cancellationToken);
+            ModelWorker worker = new(stream, normal);
+            worker.connection.Start();
+            await worker.connection.SendAsync(
+                new() {
+                    Type = IpcTypes.Hello, Worker = new(IpcMessage.ProtocolVersion, "test", Environment.ProcessId)
+                },
+                cancellationToken
+            );
+            return worker;
+        }
+
+        IpcMessage Answer(IpcMessage request) =>
+            request.Type switch {
+                IpcTypes.Health => IpcMessage.Ok(request.Id),
+                IpcTypes.MaterialRead => new() {
+                    Type = IpcTypes.Ok,
+                    Id = request.Id,
+                    MaterialsRead = [
+                        new($"Crate {++reads}", [new("normal", normal, -1, false, [1f, 1f, 1f, 1f])], [])
+                    ]
+                },
+                _ => IpcMessage.Fail(request.Id, $"A model Worker does not answer '{request.Type}'.")
+            };
+
+        public ValueTask DisposeAsync() => connection.DisposeAsync();
     }
 }

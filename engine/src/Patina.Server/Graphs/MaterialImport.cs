@@ -21,6 +21,10 @@ static class MaterialImport {
     static readonly string[] Channels = ["Red", "Green", "Blue"];
     static readonly string[] Lanes = ["FirstRed", "FirstGreen", "FirstBlue", "FirstAlpha"];
 
+    /// <summary>The material files whose format says which way a normal's green runs.</summary>
+    static readonly HashSet<string> GreenSaid =
+        [".gltf", ".glb", MaterialFormats.MaterialX, ".usda", ".usd", ".usdc", MaterialFormats.Package];
+
     /// <summary>Reads a material file and makes a graph of each of its materials.</summary>
     /// <param name="library">The library.</param>
     /// <param name="worker">The Worker, which reads a model's materials.</param>
@@ -47,13 +51,17 @@ static class MaterialImport {
             throw new FileNotFoundException($"There is no file '{request.File}'.", request.File);
         }
 
-        library.Contents(request.Project);
+        var format = library.Contents(request.Project).NormalFormat;
         var stem = Clean(Path.GetFileNameWithoutExtension(file));
         var pictures = library.ProjectFile(request.Project, $"pictures/{stem}");
         // A USD package's layer and pictures, read from here and copied into the project like a picture beside a file.
         var unpacked = Path.Combine(Path.GetTempPath(), $"patina-usdz-{Guid.NewGuid():N}");
         try {
-            var materials = await ReadAsync(worker, file, new(pictures, unpacked), cancellationToken);
+            var materials = AsTheProjectSays(
+                await ReadAsync(worker, file, new(pictures, unpacked), cancellationToken),
+                file,
+                format
+            );
             if (materials.Count == 0) {
                 throw new ProjectRefusedException($"'{Path.GetFileName(file)}' names no material.");
             }
@@ -76,6 +84,34 @@ static class MaterialImport {
                 Directory.Delete(unpacked, true);
             }
         }
+    }
+
+    /// <summary>
+    ///     A file's materials with their normals' green as the project's normal format says (#310, ADR 0054), for a
+    ///     file whose format does not say which way it runs. glTF, MaterialX and USD say their green runs up, and their
+    ///     readers say where a file turns it; an FBX, an OBJ or a Collada file says nothing, so in a project whose maps
+    ///     run their green down its normals are read as running down.
+    /// </summary>
+    static IReadOnlyList<ImportedMaterial> AsTheProjectSays(
+        IReadOnlyList<ImportedMaterial> materials,
+        string file,
+        string format
+    ) {
+        if (format != NormalFormats.Down || GreenSaid.Contains(Path.GetExtension(file).ToLowerInvariant())) {
+            return materials;
+        }
+
+        return [
+            ..materials.Select(static material => material with {
+                    Slots = [
+                        ..material.Slots.Select(static slot => slot.Usage is "normal" or "coatNormal"
+                                ? slot with { GreenUp = false }
+                                : slot
+                        )
+                    ]
+                }
+            )
+        ];
     }
 
     /// <summary>Where a file's pictures go in the project, and where a USD package is unpacked to read it.</summary>

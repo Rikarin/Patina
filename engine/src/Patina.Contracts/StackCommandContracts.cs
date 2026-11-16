@@ -131,7 +131,14 @@ public sealed record StackSetLayer(
     StackDecal? Decal = null,
     StackSurfacePath? Path = null,
     string? Tag = null
-) : StackCommand;
+) : StackCommand {
+    /// <summary>
+    ///     How a texture fill's normal and coat normal pictures are read, <c>y-up</c> or <c>y-down</c> (#310). Null
+    ///     keeps it, unless the textures it lays put a picture in the normal or coat normal channel: then it is the
+    ///     project's.
+    /// </summary>
+    public string? NormalFormat { get; init; }
+}
 #pragma warning restore SK7005
 
 /// <summary>Where a fill sits on the surface, in whichever projection it uses.</summary>

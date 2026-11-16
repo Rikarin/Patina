@@ -459,6 +459,7 @@ public sealed partial class StackEditor(string path, LayerStackAsset document) :
                 Fill = Parsed(change.Fill, layer.Fill, "kind of fill"),
                 Values = Merged(layer.Values, Copied(change.Values)),
                 Textures = Merged(layer.Textures, change.Textures),
+                NormalGreenUp = StackLayerEdits.NormalGreenUp(change, layer),
                 Graph = change.Graph ?? layer.Graph,
                 AnchorPoint = point,
                 Anchor = change.Anchor is { } anchor ? StackDocuments.Reference(anchor) : layer.Anchor,

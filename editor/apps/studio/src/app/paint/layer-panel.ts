@@ -386,6 +386,20 @@ function stemOf(source: string): string | undefined {
                   }
                 </div>
               }
+              @if (layer.fill === 'Texture' && laysNormal(layer)) {
+                <label
+                  class="flex items-center justify-between gap-2 text-xs"
+                  title="A normal map made for DirectX runs its green down the picture. A new picture starts from the project's Normal maps."
+                >
+                  Its green runs down (DirectX)
+                  <xui-switch
+                    aria-label="Its green runs down (DirectX)"
+                    data-testid="paint-texture-green-down"
+                    [checked]="layer.normalFormat === 'y-down'"
+                    (checkedChange)="setGreenDown(layer, $event)"
+                  />
+                </label>
+              }
               @if (layer.fill === 'Graph') {
                 <div class="flex items-center gap-2">
                   <span class="text-foreground-muted w-16 shrink-0 text-xs">Graph</span>
@@ -1267,6 +1281,16 @@ export class LayerPanel {
 
   protected setTexture(layer: StackLayer, usage: string, path: string): void {
     void this.store.edit({ op: 'setLayer', layer: layer.id, textures: { [usage]: path } });
+  }
+
+  /** Whether a texture fill lays a picture in a tangent-space normal channel, whose green runs one way or the other. */
+  protected laysNormal(layer: StackLayer): boolean {
+    return ['normal', 'coatNormal'].some(usage => (layer.textures[usage] ?? '').length > 0);
+  }
+
+  /** How a texture fill's normal pictures are read: as they are, or with their green turned down (#310). */
+  protected setGreenDown(layer: StackLayer, down: boolean): void {
+    void this.store.edit({ op: 'setLayer', layer: layer.id, normalFormat: down ? 'y-down' : 'y-up' });
   }
 
   /** What a filter runs, or nothing for a compound of the project's own, whose knobs come from the shelf. */

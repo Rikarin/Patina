@@ -571,7 +571,7 @@ public static class StackDocuments {
             StackSurfaces.Wire(layer.Decal),
             StackSurfaces.Wire(layer.SurfacePath),
             layer.Tag.ToString()
-        );
+        ) { NormalFormat = layer.NormalGreenUp ? NormalFormats.Up : NormalFormats.Down };
 
     static Dictionary<string, IReadOnlyList<float>> Numbers(Dictionary<string, float[]> numbers) =>
         numbers.ToDictionary(static pair => pair.Key, static pair => (IReadOnlyList<float>)pair.Value);

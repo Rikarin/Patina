@@ -94,7 +94,14 @@ public sealed record StackLayer(
     StackDecal? Decal = null,
     StackSurfacePath? Path = null,
     string Tag = "None"
-);
+) {
+    /// <summary>
+    ///     How a texture fill's normal and coat normal pictures are read: <c>y-up</c>, their green turned to run down
+    ///     as a stack's normals do, or <c>y-down</c>, as they are (#310). The project's normal format when they were
+    ///     laid.
+    /// </summary>
+    public string NormalFormat { get; init; } = NormalFormats.Down;
+}
 
 /// <summary>The layer an instance stands for.</summary>
 /// <param name="Layer">The source layer's id.</param>
