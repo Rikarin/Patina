@@ -77,7 +77,7 @@ static class CostEndpoints {
             : library.CostlierThan(folder, over, offset, limit, price);
     }
 
-    /// <summary>Answers with the price of the preset asked for, none for uncompressed, or refuses a missing one.</summary>
+    /// <summary>Answers with the price of the preset asked for, or none, or refuses a missing preset.</summary>
     static Results<Ok<T>, ProblemHttpResult> Priced<T>(
         LibraryHost host,
         string? preset,
