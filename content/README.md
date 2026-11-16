@@ -18,5 +18,11 @@ document for each of its materials, named for the material, whose masks are comp
 copies the folder into the library as a project of its own. `samples/Knot/knot.glb` is written by
 `patina-bench mesh <file> --uvs`, the same knot and sphere as `fixtures/viewport-test.glb` with a layout.
 
+`bakes/Knot/` is that knot's bake, which the shelf draws its generators from (#301), so each shows what it makes on a
+model. It is every map a generator in `compounds/Generators` reads, at 256 texels, written by
+`patina bake-maps --high content/samples/Knot/knot.glb --low content/samples/Knot/knot.glb --out content/bakes/Knot
+--resolution 256 --maps ao,curvature,thickness,position,world,id,islands,bounds,density --format png8 --name knot`.
+Bake it again when a generator reads a map that is not there.
+
 `export-presets/` holds the factory export presets. Each is a text file; a library adds or overrides one by putting a file
 with the same shape in `export-presets/`.

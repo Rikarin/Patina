@@ -394,6 +394,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Generators on the shelf have pictures (#301): each is drawn on the sample knot's bake, which ships under `content/bakes/Knot`, where a generator used to show its name alone for want of a bake.
 - Other projects' pictures on the shelf come from the library's index (#306): a picture in a folder of its own inside another project, such as `pictures/worn/edges`, is listed after the next scan, where it used to wait until that project's file changed, and the shelf no longer reads each project's folders to find them. Each is found by its size as well, so a search for `2048` finds every picture that wide or high. The index is rebuilt once on the first start.
 - A graph's physical size set one side quickly after the other keeps both: the second side used to write the first one's old value back while the first was still on its way.
 - A shelf picture the engine could not draw for want of a GPU is drawn once there is one (#302): a library opened on a machine with no GPU used to keep its shelf and Library pictures blank until its cache was cleared. A material the engine cannot draw is still remembered as having no picture.

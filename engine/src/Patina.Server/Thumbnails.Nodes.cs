@@ -88,7 +88,8 @@ public sealed partial class Thumbnails {
     /// <summary>
     ///     A shipped compound on the shelf (#298), drawn as a palette draws its node, at the shelf's size: a mask as it
     ///     makes itself, a filter over the standard noise. Nothing of a project's is part of it, so one picture serves
-    ///     every library on this build; a generator reads no bake here, so it shows what it makes from none.
+    ///     every library on this build; a generator reads the sample knot's bake (#301), so it shows what it makes on
+    ///     a model.
     /// </summary>
     (string Key, MaterialThumbnailAsk Ask)? OfCompound(OpenLibrary library, string node) {
         FactoryCompounds.Register();
@@ -97,7 +98,9 @@ public sealed partial class Thumbnails {
         }
 
         var root = library.RootPath;
-        var scope = new NodePictureScope(Path.Combine(root, LibraryLayout.ProjectsFolder), null, [root], []);
+        var scope = new NodePictureScope(Path.Combine(root, LibraryLayout.ProjectsFolder), null, [root], []) {
+            MeshMaps = ShelfBake.In(store.Root)
+        };
         return OfNode(scope, type, Side);
     }
 
