@@ -347,10 +347,7 @@ sealed class WorkerLoop(
 
     IpcMessage Thumbnail(IpcMessage request) {
         var ask = request.MaterialThumbnail ?? throw new IpcException("material.thumbnail says nothing to draw.");
-        var key = $"{ask.Kind}\n{ask.Path}\n{ask.Node}\n{ask.Usage}";
-        return pictures.Draw(
-                key,
-                stop => ask.Kind == MaterialThumbnailKinds.Stack
+        return pictures.Draw(stop => ask.Kind == MaterialThumbnailKinds.Stack
                     ? stacks.Thumbnail(ask, stop)
                     : graphs.Thumbnail(ask, stop)
             )

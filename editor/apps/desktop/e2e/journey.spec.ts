@@ -209,12 +209,23 @@ test('the shelf shows each material as a picture, at a size of choice, and narro
 
   await window.getByTestId('shelf-view').getByText('Large').click();
   await expect(window.getByTestId('shelf-materials')).toHaveAttribute('data-view', 'large');
-  await expect(
-    window.locator('[data-testid=shelf-material][data-source="smart:Plastic"]').getByTestId('shelf-picture')
-  ).toBeVisible();
+  // A picture already drawn, whichever it is: the shelf draws in its own order, and on a software GPU (Linux CI's
+  // lavapipe) the materials Patina lists first take a minute between them, so a named one may not be drawn yet.
+  const drawn = window
+    .getByTestId('shelf-material')
+    .filter({ has: window.getByTestId('shelf-picture') })
+    .first();
+  const source = await drawn.getAttribute('data-source');
+  const picture = window
+    .locator(`[data-testid=shelf-material][data-source="${source ?? ''}"]`)
+    .getByTestId('shelf-picture');
+  await expect(picture).toBeVisible();
+  const large = (await picture.boundingBox())?.width ?? 0;
   await window.screenshot({ path: join(shots, 'shelf-pictures-large.png') });
 
   await window.getByTestId('shelf-view').getByText('Small').click();
+  await expect(window.getByTestId('shelf-materials')).toHaveAttribute('data-view', 'small');
+  await expect.poll(async () => (await picture.boundingBox())?.width ?? 0).toBeLessThan(large);
   await window.screenshot({ path: join(shots, 'shelf-pictures-small.png') });
 
   const all = await window.getByTestId('shelf-material').count();
