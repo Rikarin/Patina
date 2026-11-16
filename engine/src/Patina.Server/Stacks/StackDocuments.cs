@@ -119,6 +119,11 @@ public static class StackDocuments {
         };
     }
 
+    /// <summary>Where a picture sits as asked, or where it sat when nothing was asked.</summary>
+    /// <exception cref="StackEditRefusedException">It repeats no times or fewer.</exception>
+    internal static LayerPlacement Placed(StackPlacement? placement, LayerPlacement held) =>
+        placement is null ? held : Placed(placement);
+
     /// <summary>Where a fill or a mask's picture sits, as a client sees it.</summary>
     internal static StackPlacement Wire(LayerPlacement placement) =>
         new(placement.Scale, placement.Rotation, placement.OffsetX, placement.OffsetY, placement.Sharpness);

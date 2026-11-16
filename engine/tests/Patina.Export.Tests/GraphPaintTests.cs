@@ -99,8 +99,8 @@ public sealed class GraphPaintTests : IDisposable {
 
     /// <summary>
     ///     A canvas a texture set is painting is read in place of its file, so a painted mask feeds a graph as it is
-    ///     painted (#205). What was read goes stale on the next stroke and when the painting ends, and a file read before
-    ///     somebody began to paint it goes stale then too.
+    ///     painted (#205). What was read goes stale on the next stroke and when the painting ends, and a file read
+    ///     before somebody began to paint it goes stale then too.
     /// </summary>
     [Fact]
     public void A_canvas_being_painted_is_read_in_place_of_its_file_and_each_stroke_is_noticed() {
@@ -126,12 +126,16 @@ public sealed class GraphPaintTests : IDisposable {
 
         using (device) {
             PaintCanvas? painting = null;
-            GraphPictures pictures = new() {
-                Painting = path => path == Path.GetFullPath(file) ? painting : null
-            };
+            GraphPictures pictures = new() { Painting = path => path == Path.GetFullPath(file) ? painting : null };
             using TextureUploads before = new(device);
             var fromFile = Assert.Single(
-                pictures.Fill(before, plan, TextureGraphExternals.Upload(before, plan, compiler.Externals), [folder], null)
+                pictures.Fill(
+                        before,
+                        plan,
+                        TextureGraphExternals.Upload(before, plan, compiler.Externals),
+                        [folder],
+                        null
+                    )
                     .Stamps
             );
             Assert.False(pictures.Stale(fromFile));

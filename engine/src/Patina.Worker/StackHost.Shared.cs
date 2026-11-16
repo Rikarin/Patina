@@ -12,9 +12,9 @@ namespace Patina.Worker;
 /// </summary>
 sealed partial class StackHost {
     /// <summary>
-    ///     The canvas a session of this Worker paints for a file, unsaved strokes and all, or null: what a graph reading
-    ///     the file reads in its place, so that a painted mask feeds a graph as it is painted (#205). Asked on the
-    ///     device's turn, as strokes are laid, so the canvas is never read halfway through one.
+    ///     The canvas a session of this Worker paints for a file, unsaved strokes and all, or null: what a graph
+    ///     reading the file reads in its place, so that a painted mask feeds a graph as it is painted (#205). Asked on
+    ///     the device's turn, as strokes are laid, so the canvas is never read halfway through one.
     /// </summary>
     public PaintCanvas? Painting(string file) {
         var full = Path.GetFullPath(file);

@@ -5,9 +5,9 @@ using Vixen.Texturing.Layers;
 namespace Patina.Server.Tests;
 
 /// <summary>
-///     A graph beside a texture set that reads the set's paint is evaluated again as the set's strokes reach the Worker
-///     and as its painting ends, so a painted mask feeds the graph as it is painted (#205). A graph that reads no paint,
-///     or reads paint elsewhere, is left alone.
+///     A graph beside a texture set that reads the set's paint is evaluated again as the set's strokes reach the
+///     Worker and as its painting ends, so a painted mask feeds the graph as it is painted (#205). A graph that reads
+///     no paint, or reads paint elsewhere, is left alone.
 /// </summary>
 public sealed class StackGraphPaintTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-graph-paint-");

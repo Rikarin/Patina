@@ -36,8 +36,8 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
     protected override string Kind => "graph";
 
     /// <summary>
-    ///     Reads a canvas the stacks of this Worker are painting in place of its file, so a graph reading a painted mask
-    ///     follows the strokes rather than the last save (#205).
+    ///     Reads a canvas the stacks of this Worker are painting in place of its file, so a graph reading a painted
+    ///     mask follows the strokes rather than the last save (#205).
     /// </summary>
     public void ReadPaintingOf(StackHost stacks) {
         ArgumentNullException.ThrowIfNull(stacks);

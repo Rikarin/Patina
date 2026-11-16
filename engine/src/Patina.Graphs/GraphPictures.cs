@@ -201,10 +201,9 @@ public sealed class GraphPictures {
 
     /// <summary>
     ///     One channel of a painted canvas, as a layer stack names it and a graph written from one keeps naming it
-    ///     (#205): the canvas being painted when a session of this Worker paints it, else the file beside the graph as it
-    ///     was last saved. A layer never painted has no file yet, and it and
-    ///     a channel never painted are clear, as in the stack; the missing file is stamped, so its first save is
-    ///     noticed.
+    ///     (#205): the canvas being painted when a session of this Worker paints it, else the file beside the graph
+    ///     as it was last saved. A layer never painted has no file yet, and it and a channel never painted are clear,
+    ///     as in the stack; the missing file is stamped, so its first save is noticed.
     /// </summary>
     /// <exception cref="InvalidDataException">
     ///     The reference is malformed or reaches outside the graph's folder.
@@ -248,8 +247,8 @@ public sealed class GraphPictures {
     }
 
     /// <summary>
-    ///     One channel of a canvas being painted, stamped with the channel's revision. Never kept: the next stroke makes
-    ///     it another picture, and the canvas holds it already.
+    ///     One channel of a canvas being painted, stamped with the channel's revision. Never kept: the next stroke
+    ///     makes it another picture, and the canvas holds it already.
     /// </summary>
     static (PictureStamp Stamp, Decoded Picture) Painted(PaintCanvas canvas, string file, string usage) {
         PictureStamp stamp = new($"{file}|{usage}", Revision(canvas, usage), Live);

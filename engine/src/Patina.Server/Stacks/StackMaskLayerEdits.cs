@@ -119,7 +119,7 @@ sealed class StackMaskLayerEdits(StackEditor editor) {
             Value = change.Value ?? held.Value,
             Asset = change.Asset ?? held.Asset,
             Projection = StackEditor.Parsed(change.Projection, held.Projection, "projection"),
-            Placement = change.Placement is { } placement ? StackDocuments.Placed(placement) : held.Placement,
+            Placement = StackDocuments.Placed(change.Placement, held.Placement),
             Anchor = change.Anchor is { } anchor ? StackDocuments.Reference(anchor) : held.Anchor,
             Generator = generator,
             GeneratorTexts = StackEditor.Merged(sameGenerator ? held.GeneratorTexts : [], change.Parameters),

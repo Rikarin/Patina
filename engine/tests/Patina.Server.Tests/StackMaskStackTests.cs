@@ -43,15 +43,17 @@ public sealed class StackMaskStackTests {
         var editor = Generated();
         editor.Apply(new([new StackAddMaskLayer("paint", "Texture")]));
         editor.Apply(
-            new([
-                new StackSetMaskLayer(
-                    "paint",
-                    0,
-                    Asset: "grunge.png",
-                    Projection: "Triplanar",
-                    Placement: new(Scale: 3f, Sharpness: 8f)
-                )
-            ])
+            new(
+                [
+                    new StackSetMaskLayer(
+                        "paint",
+                        0,
+                        Asset: "grunge.png",
+                        Projection: "Triplanar",
+                        Placement: new(Scale: 3f, Sharpness: 8f)
+                    )
+                ]
+            )
         );
 
         var entry = Assert.Single(Layer(editor).Mask.Layers);
@@ -65,12 +67,14 @@ public sealed class StackMaskStackTests {
 
         var mask = StackDocuments.Layers([Layer(editor)])[0].Mask;
         editor.Apply(
-            new([
-                new StackSetLayer(
-                    "paint",
-                    Mask: mask with { Source = "Texture", Asset = "spots.png", Projection = "Spherical" }
-                )
-            ])
+            new(
+                [
+                    new StackSetLayer(
+                        "paint",
+                        Mask: mask with { Source = "Texture", Asset = "spots.png", Projection = "Spherical" }
+                    )
+                ]
+            )
         );
         Assert.Equal(LayerProjection.Spherical, Layer(editor).Mask.Projection);
         Assert.Equal("Spherical", StackDocuments.Layers([Layer(editor)])[0].Mask.Projection);

@@ -177,7 +177,8 @@ public sealed class StackSessions(
         // the end of the painting too (#205).
         var folder = Path.GetDirectoryName(changed.Path);
         foreach (var graph in graphs?.All ?? []) {
-            if (string.Equals(Path.GetDirectoryName(graph.Path), folder, StringComparison.Ordinal) && graph.ReadsPaint) {
+            if (string.Equals(Path.GetDirectoryName(graph.Path), folder, StringComparison.Ordinal)
+                && graph.ReadsPaint) {
                 graph.Evaluate();
             }
         }

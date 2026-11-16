@@ -119,7 +119,7 @@ static class StackMaskLayers {
                 Value = mask.Value,
                 Asset = mask.Asset,
                 Projection = StackEditor.Parsed(mask.Projection, held.Projection, "projection"),
-                Placement = mask.Placement is { } placement ? StackDocuments.Placed(placement) : held.Placement,
+                Placement = StackDocuments.Placed(mask.Placement, held.Placement),
                 Anchor = StackDocuments.Reference(mask.Anchor),
                 Generator = mask.Generator,
                 GeneratorTexts = GeneratorKnobs(held, mask),
