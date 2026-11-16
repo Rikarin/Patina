@@ -96,46 +96,57 @@ static class GraphRelinkEndpoint {
     ///     choices or in a preset, pointed at the new one: what the parameter can hold is what a package carries.
     /// </summary>
     static IEnumerable<GraphCommand> Parameters(GraphState state, string from, string to) {
-        HashSet<string> knobs = new(StringComparer.Ordinal);
-        foreach (var node in state.Nodes) {
-            if (GraphFiles.SettingOf(node.Type) is { } setting
+        HashSet<string> knobs = [
+            ..state.Nodes.Select(static node => GraphFiles.SettingOf(node.Type) is { } setting
                 && TextureGraphParameters.IsReference(
                     node.Texts.GetValueOrDefault(setting, string.Empty).Trim(),
                     out var knob
-                )) {
-                knobs.Add(knob);
-            }
-        }
-
-        string Pointed(string text) => text.Trim() == from ? to : text;
-
-        foreach (var parameter in state.Parameters.Where(p => knobs.Contains(p.Name))) {
-            if (parameter.Default.Trim() == from || parameter.Accepted.Any(text => text.Trim() == from)) {
-                yield return new GraphSetParameter(
-                    parameter.Name,
-                    parameter with {
-                        Default = Pointed(parameter.Default),
-                        Accepted = [..parameter.Accepted.Select(Pointed)],
-                        Labels = null
-                    }
-                );
-            }
-        }
-
-        // A preset may name a parameter the graph no longer declares, which saving it again would refuse.
-        var declared = state.Parameters.Select(static p => p.Name).ToHashSet(StringComparer.Ordinal);
-        foreach (var preset in state.Presets) {
-            if (preset.Values.Any(value => knobs.Contains(value.Key) && value.Value.Trim() == from)) {
-                yield return new GraphSavePreset(
-                    preset.Name,
-                    preset.Values.Where(value => declared.Contains(value.Key)).ToDictionary(
-                        static value => value.Key,
-                        value => knobs.Contains(value.Key) ? Pointed(value.Value) : value.Value,
-                        StringComparer.Ordinal
+                )
+                        ? knob
+                        : null
+                )
+                .OfType<string>()
+        ];
+        Func<string, string> pointed = text => text.Trim() == from ? to : text;
+        return [
+            ..state.Parameters
+                .Where(p => knobs.Contains(p.Name) && p.Accepted.Prepend(p.Default).Any(text => text.Trim() == from))
+                .Select(parameter => new GraphSetParameter(
+                        parameter.Name,
+                        parameter with {
+                            Default = pointed(parameter.Default),
+                            Accepted = [..parameter.Accepted.Select(pointed)],
+                            Labels = null
+                        }
                     )
-                );
-            }
-        }
+                ),
+            ..Presets(state, knobs, from, pointed)
+        ];
+    }
+
+    /// <summary>
+    ///     Each preset holding the file in a parameter a node reads it through, saved again with it pointed. A
+    ///     preset may name a parameter the graph no longer declares, which saving it would refuse, so that is left out.
+    /// </summary>
+    static IEnumerable<GraphCommand> Presets(
+        GraphState state,
+        HashSet<string> knobs,
+        string from,
+        Func<string, string> pointed
+    ) {
+        var declared = state.Parameters.Select(static p => p.Name).ToHashSet(StringComparer.Ordinal);
+        return state.Presets
+            .Where(preset => preset.Values.Any(value => knobs.Contains(value.Key) && value.Value.Trim() == from))
+            .Select(preset => new GraphSavePreset(
+                    preset.Name,
+                    preset.Values.Where(value => declared.Contains(value.Key))
+                        .ToDictionary(
+                            static value => value.Key,
+                            value => knobs.Contains(value.Key) ? pointed(value.Value) : value.Value,
+                            StringComparer.Ordinal
+                        )
+                )
+            );
     }
 
     /// <summary>What the undo step is called: a picture's when only Bitmaps read the file.</summary>

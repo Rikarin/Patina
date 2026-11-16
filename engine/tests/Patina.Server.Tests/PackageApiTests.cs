@@ -481,7 +481,10 @@ public sealed class PackageApiTests : IAsyncLifetime {
         var files = (await published.Content.ReadFromJsonAsync<PackagePublished>(Token))!.Manifest.Files
             .ToDictionary(static f => f.From, static f => f.Path);
         var inside = YamlSerializer.Parse<NodeGraphAsset>(
-            await File.ReadAllTextAsync(Path.Combine(server.Library, "packages", "Rust.ptpkg", "Rust.vxtexgraph"), Token)
+            await File.ReadAllTextAsync(
+                Path.Combine(server.Library, "packages", "Rust.ptpkg", "Rust.vxtexgraph"),
+                Token
+            )
         );
         var wearNode = inside.Nodes.Single(static n => n.Id == 2);
         Assert.Equal(("$sign", files["dots.png"]), (wearNode.Texts["face"], wearNode.Texts["grain"]));

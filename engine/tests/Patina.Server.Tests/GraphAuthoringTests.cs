@@ -391,8 +391,8 @@ public sealed class GraphAuthoringTests {
     }
 
     /// <summary>
-    ///     An X and Y pair exposed as one Float2 (#311), as the Inspector sends it: the parameter and each port driven by
-    ///     its half, as one undo step, which compiles with nothing to say.
+    ///     An X and Y pair exposed as one Float2 (#311), as the Inspector sends it: the parameter and each port driven
+    ///     by its half, as one undo step, which compiles with nothing to say.
     /// </summary>
     [Fact]
     public void An_x_and_y_pair_exposed_as_one_float2_drives_each_port_from_its_half() {
@@ -439,7 +439,8 @@ public sealed class GraphAuthoringTests {
         const string Falling = "curve:r=0 1,1 0;g=0 1,1 0;b=0 1,1 0";
         var editor = Editor();
         GraphSettingDefinition shape = new("Shape", Falling, string.Empty, "Curve", null, null, string.Empty, []);
-        GraphSettingDefinition tint = shape with { Name = "Tint", Kind = "Ramp", Default = "ramp:0 000000ff,1 ff8000ff" };
+        const string Warm = "ramp:0 000000ff,1 ff8000ff";
+        var tint = shape with { Name = "Tint", Kind = "Ramp", Default = Warm };
 
         editor.Apply(
             new(

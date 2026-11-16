@@ -295,8 +295,9 @@ public sealed class PackageImportApiTests : IAsyncLifetime {
     }
 
     /// <summary>
-    ///     A file a node reads through a parameter, or a compound's node hands its compound, is relinked where it is named
-    ///     (#311): in the parameter's default, its choices and its presets, and on the compound's node, as one undo step.
+    ///     A file a node reads through a parameter, or a compound's node hands its compound, is relinked where it is
+    ///     named (#311): in the parameter's default, its choices and its presets, and on the compound's node, as one
+    ///     undo step.
     /// </summary>
     [Fact]
     public async Task A_file_named_through_a_parameter_or_handed_to_a_compound_is_relinked_where_it_is_named() {

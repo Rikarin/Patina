@@ -112,16 +112,13 @@ public static class GraphFiles {
             }
         }
 
-        string Kept(string name, string text) =>
-            knobs.TryGetValue(name, out var renaming) ? KeptOrRenamed(text, renaming) : text;
-
         return graph with {
             Nodes = [..graph.Nodes.Select(node => Renamed(node, rename))],
             Parameters = [
                 ..graph.Parameters.Select(parameter => knobs.ContainsKey(parameter.Name)
                         ? parameter with {
-                            Default = Kept(parameter.Name, parameter.Default),
-                            Accepted = [..parameter.Accepted.Select(text => Kept(parameter.Name, text))]
+                            Default = Kept(knobs, parameter.Name, parameter.Default),
+                            Accepted = [..parameter.Accepted.Select(text => Kept(knobs, parameter.Name, text))]
                         }
                         : parameter
                 )
@@ -130,7 +127,7 @@ public static class GraphFiles {
                 ..graph.Presets.Select(preset => preset with {
                         Values = preset.Values.ToDictionary(
                             static value => value.Key,
-                            value => Kept(value.Key, value.Value),
+                            value => Kept(knobs, value.Key, value.Value),
                             StringComparer.Ordinal
                         )
                     }
@@ -138,6 +135,10 @@ public static class GraphFiles {
             ]
         };
     }
+
+    /// <summary>A parameter's text renamed as its parameter's files are, or as it was.</summary>
+    static string Kept(Dictionary<string, Func<string, string?>> knobs, string name, string text) =>
+        knobs.TryGetValue(name, out var renaming) ? KeptOrRenamed(text, renaming) : text;
 
     /// <summary>
     ///     The files a compound's node hands its compound, each with what a package calls it: a setting naming a file
@@ -157,16 +158,16 @@ public static class GraphFiles {
 
         foreach (var text in node.Texts.Values) {
             var named = text.Trim();
-            IEnumerable<string> files = TextureGraphParameters.IsReference(named, out var knob)
+            var files = TextureGraphParameters.IsReference(named, out var knob)
                 ? Choices(graph, knob)
-                : [named];
+                : new[] { named };
             foreach (var file in files.Where(file => IsFileName(file) && found(file))) {
                 yield return (file, KindOfFile(file));
             }
         }
     }
 
-    /// <summary>What a package calls a file by its extension: a font or an SVG is a drawing's, the rest pictures.</summary>
+    /// <summary>What a package calls a file by its extension: a font or an SVG is a drawing, else a picture.</summary>
     public static string KindOfFile(string file) =>
         Path.GetExtension(file).ToLowerInvariant() is ".ttf" or ".otf" or ".svg" ? Drawing : Picture;
 
