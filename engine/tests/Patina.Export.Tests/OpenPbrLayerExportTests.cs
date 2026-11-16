@@ -223,6 +223,31 @@ public sealed class OpenPbrLayerExportTests : IDisposable {
     }
 
     /// <summary>
+    ///     A coat's roughness or a sheen's without its weight is no coat and no sheen (#310): glTF's preset writes no
+    ///     clear coat or sheen file for it, where it wrote a coat file of nothing and a sheen file whose colour was a
+    ///     default, and the material names neither extension.
+    /// </summary>
+    [Fact]
+    public void A_layers_roughness_without_its_weight_writes_no_file_of_the_layer() {
+        var preset = ExportPresetCatalog.Read(null).Find("gltf")!;
+        var maps = new Dictionary<string, MapPicture> {
+            ["baseColor"] = Flat("baseColor", 3, 0.5f, 0.4f, 0.3f),
+            ["coatRoughness"] = Flat("coatRoughness", 1, 0.2f),
+            ["coatNormal"] = Flat("coatNormal", 3, 0.5f, 0.5f, 1f),
+            ["sheenRoughness"] = Flat("sheenRoughness", 1, 0.4f)
+        };
+
+        var said = Delivered(preset, maps, "bare");
+
+        string[] written = [..Directory.GetFiles(Path("bare")).Select(System.IO.Path.GetFileName).OfType<string>()];
+        Assert.Contains("Car_baseColor.png", written);
+        Assert.DoesNotContain(written, static file => file.Contains("clearcoat", StringComparison.Ordinal));
+        Assert.DoesNotContain(written, static file => file.Contains("sheen", StringComparison.Ordinal));
+        Assert.DoesNotContain(said, static warning => warning.Contains("sheenTint", StringComparison.Ordinal));
+        Assert.DoesNotContain("KHR_materials_", File.ReadAllText(Path("bare/Car.gltf")), StringComparison.Ordinal);
+    }
+
+    /// <summary>
     ///     OpenPBR's specular lobe, a coat's colour and its own normal reach OpenPBR's and standard surface's inputs
     ///     and read back as the maps they were written from; USD and glTF say they leave them out.
     /// </summary>

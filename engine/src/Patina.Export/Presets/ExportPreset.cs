@@ -451,6 +451,31 @@ public static class ExportMaps {
     /// </summary>
     public const string BakedOcclusion = "bakedOcclusion";
 
+    /// <summary>
+    ///     The layer weight a map means nothing without, or null: a coat's roughness, normal and colour are the coat's,
+    ///     and a sheen's roughness and colour the sheen's. OpenPBR's weights start at none, so without one the layer
+    ///     is not there (#310).
+    /// </summary>
+    public static string? WeightOf(string map) =>
+        map switch {
+            CoatRoughness or CoatNormal or CoatColor => Coat,
+            SheenRoughness or SheenColor or SheenTint => Sheen,
+            _ => null
+        };
+
+    /// <summary>
+    ///     Whether a file reading these maps is written for a set: one that reads nothing is, as it holds constants,
+    ///     and one that reads maps is when the set has one of them. A layer's map counts only beside its weight, so a
+    ///     coat's roughness alone writes no coat file, which would say the coat is there (#310).
+    /// </summary>
+    /// <param name="reads">The maps the file reads.</param>
+    /// <param name="has">Whether the set has a map.</param>
+    public static bool Written(IReadOnlyCollection<string> reads, Func<string, bool> has) {
+        ArgumentNullException.ThrowIfNull(reads);
+        ArgumentNullException.ThrowIfNull(has);
+        return reads.Count == 0 || reads.Any(map => has(map) && (WeightOf(map) is not { } weight || has(weight)));
+    }
+
     /// <summary>Whether a map is a tangent-space normal, whose green a target may read either way.</summary>
     public static bool IsTangentNormal(string map) => map is Normal or BakedNormal or CoatNormal;
 

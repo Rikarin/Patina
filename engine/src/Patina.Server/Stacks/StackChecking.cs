@@ -403,7 +403,7 @@ public static class StackChecking {
         var maps = Maps(state);
         HashSet<string> said = new(StringComparer.Ordinal);
         foreach (var (texture, file) in ExportFileChecking.Writes(written, naming, maps)) {
-            if (!texture.Maps.Any(maps.Contains)) {
+            if (!texture.Maps.Any()) {
                 continue;
             }
 

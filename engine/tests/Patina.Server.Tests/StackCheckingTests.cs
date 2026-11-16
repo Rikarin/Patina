@@ -410,6 +410,27 @@ public sealed class StackCheckingTests {
         Assert.Contains("png, tiff or exr", lost[0].Detail, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    ///     A sheen's roughness without the sheen's weight writes no sheen file (#310), so the checks neither count one
+    ///     nor say it has no Sheen Tint; a coat's roughness without the coat writes no clear coat file either.
+    /// </summary>
+    [Fact]
+    public void A_layers_roughness_without_its_weight_is_no_file_to_check() {
+        var gltf = ExportPresetCatalog.Read(null).Find("gltf")!;
+        var state = Set(
+            "baseColor", "opacity", "roughness", "metalness", "normal", "occlusion", "sheenRoughness", "coatRoughness"
+        );
+
+        var checks = StackChecking.Judge(state, Square, null, 0, gltf);
+
+        Assert.DoesNotContain(checks.Problems, static p => p.Code == CheckCodes.ChannelMissing);
+        Assert.DoesNotContain(checks.Files, static f => f.File.Contains("sheen", StringComparison.Ordinal));
+        Assert.DoesNotContain(checks.Files, static f => f.File.Contains("clearcoat", StringComparison.Ordinal));
+        var layered = StackChecking.Judge(Set("baseColor", "sheen", "sheenRoughness", "coat"), Square, null, 0, gltf);
+        Assert.Contains(layered.Files, static f => f.File.Contains("sheen", StringComparison.Ordinal));
+        Assert.Contains(layered.Files, static f => f.File.Contains("clearcoat", StringComparison.Ordinal));
+    }
+
     /// <summary>Every preset Patina ships passes its own file checks, for a set that makes every map.</summary>
     [Fact]
     public void No_shipped_preset_trips_the_file_checks() {

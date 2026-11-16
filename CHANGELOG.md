@@ -415,6 +415,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A coat's or a sheen's roughness, normal or colour without the layer's own weight writes no file of the layer (#310): glTF 2.0 wrote a clear coat file of nothing for a set with Coat Roughness and no Coat, and a sheen file for Sheen Roughness without Sheen, which Checks then said had no Sheen Tint. Checks count and judge only the files the export writes.
 - Import Materials brings in a glTF's clear coat, sheen and transmission when the file uses their extensions without listing them in `extensionsUsed` (#310), as a hand-written file often does, where they were dropped without a word. Each material that names one says the file should list it.
 - Import Materials reads a colour picture in the colour space its file gives it (#308): a MaterialX image in `lin_rec709`, ACEScg or `none`, set on the image or anywhere round it, and a USD texture whose `sourceColorSpace` is `raw` come in linear, so a linear emissive, sheen, coat or specular colour is no longer darkened and a linear base color is turned to sRGB rather than read as sRGB. A file that says nothing is read as before.
 - The texel density check and view measure texels per metre (#307), as the library's and the project's densities are given, where they measured per unit of the model: a mesh in centimetres was judged a hundred times too coarse. A glTF reads in metres and an FBX in the unit it states, unless the project says its Mesh units (ADR 0058).
