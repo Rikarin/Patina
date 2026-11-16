@@ -52,6 +52,7 @@ static class ProjectFiles {
             Tags = document.Tags,
             PreservePaint = document.PreservePaint,
             Unwrap = document.Unwrap,
+            NormalFormat = document.NormalFormat,
             Export = document.Export,
             ExportSets = [
                 ..ProjectOutputs.Of(document, full)
@@ -269,13 +270,17 @@ static class ProjectFiles {
         LibraryFiles.WriteProject(root, path, document with { Export = settings });
     }
 
-    /// <summary>Says what happens to a mesh with no UV layout, and to paint on a new layout.</summary>
+    /// <summary>
+    ///     Says what happens to a mesh with no UV layout, to paint on a new layout, and which way the green of the
+    ///     project's normal maps runs (#144).
+    /// </summary>
     public static void SetMeshHandling(
         string root,
         string path,
         bool? autoUnwrap,
         bool? preservePaint,
-        UnwrapOptions? unwrap = null
+        UnwrapOptions? unwrap = null,
+        string? normalFormat = null
     ) {
         var (_, document) = Project(root, path);
         LibraryFiles.WriteProject(
@@ -284,7 +289,8 @@ static class ProjectFiles {
             document with {
                 AutoUnwrap = autoUnwrap ?? document.AutoUnwrap,
                 PreservePaint = preservePaint ?? document.PreservePaint,
-                Unwrap = unwrap ?? document.Unwrap
+                Unwrap = unwrap ?? document.Unwrap,
+                NormalFormat = normalFormat ?? document.NormalFormat
             }
         );
     }
@@ -707,7 +713,7 @@ static class ProjectFiles {
         return name;
     }
 
-    static (string Full, ProjectDocument Document) Project(string root, string path) {
+    internal static (string Full, ProjectDocument Document) Project(string root, string path) {
         var file = LibraryFiles.ProjectFile(root, LibraryFolders.Existing(path));
         if (!File.Exists(file)) {
             throw new FileNotFoundException($"There is no project '{path}' in this library.", path);
@@ -870,6 +876,12 @@ static class ProjectFiles {
 
     static bool IsMesh(string file) => MeshFormats.IsMesh(file);
 
+    /// <summary>
+    ///     A project's pictures at any depth, by their paths below its folder, as its contents list them: what the scan
+    ///     indexes, so a shelf finds another project's pictures without walking its folder (#306).
+    /// </summary>
+    internal static IEnumerable<string> PicturesIn(string full) => Files(full).Where(IsPicture);
+
     /// <summary>A picture of the user's: what the Server drew for a mesh mask is not one.</summary>
     static bool IsPicture(string file) =>
         PictureFormats.IsPicture(file)
@@ -885,6 +897,8 @@ static class ProjectFiles {
                 .Graph
             : string.Equals(extension, BrushPresets.Extension, StringComparison.OrdinalIgnoreCase) ? DocumentKinds
                 .BrushPreset
+            : string.Equals(extension, MaterialPresets.Extension, StringComparison.OrdinalIgnoreCase) ? DocumentKinds
+                .MaterialPreset
             : null;
     }
 

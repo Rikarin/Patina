@@ -45,14 +45,17 @@ files:
   its own: `patina bake Rust.ptpkg out/` works on a machine with no library, and so does `vixen texture bake` on the
   graph inside. Every picture a package's graph or its compounds name is rewritten to `files/…`, which is beside the
   graph, because a compound's pictures are found from the graph holding it. A Text node's font and a Vector node's SVG
-  file are found as a picture is, so they are carried the same way (wave 18).
+  file are found as a picture is, so they are carried the same way (wave 18). A file a node reads through a parameter of
+  its graph (`$Font`) is carried with every value that parameter can hold, its default, its list and its presets'
+  values, and those are rewritten too; a text on a compound's node naming a carried file, as a graph hands its compound's
+  parameter one, is rewritten to the package's copy (wave 19, #306).
 - **A package's compounds live under `Packages/<name>/`**, and every node that named one is rewritten to that type. Two
   packages each carrying a `Wear`, or a package and the project using it, then never share one by accident.
 - **A shipped compound is named, not carried.** `shipped` lists the compounds of Vixen's and Patina's own that it reads;
   a Patina without one says `TG0025` on the node, as for any graph.
 - **Publishing is refused** when a picture, font or SVG file cannot be found, a node type is published by nothing, a
-  Text or Vector node reads a font or an SVG file that a parameter names rather than the node, or the graph does not
-  compile. `GET
+  Text or Vector node reads a font or an SVG file that a parameter names from outside the graph and its compounds, or
+  the graph does not compile. `GET
 /library/packages/plan` lists each of these before anything is written, so a dialog can show them; `POST
 /library/packages` answers `package-refused` with the reason.
 - **The same graph publishes to the same bytes.** Files are content-named and lists are sorted, so republishing an
@@ -106,8 +109,9 @@ So the format is the graph and what it reads, made self-contained, and stamped.
 
 ## Costs and open questions
 
-- **A font or an SVG file a parameter names is not carried.** A package carries the files its nodes name; which files a
-  parameter could name is not known when it is published, so a drawing that reads one refuses publishing.
+- **A file a parameter names is carried only from the package's own graphs.** The walk follows a node's `$Name` to the
+  parameter of the graph holding the node and carries everything it can hold; a name passed in from a graph using the
+  package cannot be known when it is published, so a drawing that reads one refuses publishing.
 - **A package is a folder, not one file.** That is what diffs in Git; sending one means zipping it, which
   `patina package --zip` does: the folder under `<name>.ptpkg/`, its entries sorted and stamped alike, so the same package
   zips to the same bytes. Import Package… and `POST /library/packages/import` (#185) take such a zip, or a manifest at the
@@ -115,8 +119,9 @@ So the format is the graph and what it reads, made self-contained, and stamped.
   manifest read (a newer `format` is refused as above) and every file it names found; an entry that is rooted or climbs
   out of the package, or a zip that unpacks to more than 4 GiB, brings nothing in. The package then replaces one of its
   name whole.
-- **Relink reaches the graph's own Bitmap nodes.** The plan's `in` says which compound names a picture, or none for the
-  graph itself; `POST /graphs/{id}/relink` repoints every Bitmap of an open graph that reads one picture, as one undo
-  step, naming the new file as ADR 0007 finds it. A picture only a compound reads is relinked by opening that compound.
+- **Relink reaches the graph's own nodes that read a file.** The plan's `in` says which compound names a file, or none
+  for the graph itself; `POST /graphs/{id}/relink` repoints every Bitmap, Text or Vector of an open graph that reads one
+  file, as one undo step, naming the new file as ADR 0007 finds it (a font and an SVG since wave 19). A file a node
+  reads through a parameter is not relinked by it: the parameter is edited in Graph Settings. A picture only a compound reads is relinked by opening that compound.
 - **Stale compounds of a package that was removed stay in a project** that used it, as any project compound does.
 - **Graph-file tags of another project's graph are not searched** from this project, as above.

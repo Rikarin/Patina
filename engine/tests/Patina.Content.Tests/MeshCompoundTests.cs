@@ -305,7 +305,8 @@ public sealed class MeshCompoundTests {
 
     /// <summary>
     ///     Patina #121: Texel Density colours the stand-in's density bake, which climbs from sparse on the left to
-    ///     dense on the right: blue on the left, green in the middle and red on the right.
+    ///     dense on the right: blue on the left, green in the middle and red on the right, and black at its nought on
+    ///     the left edge, which a bake writes only where no island reaches.
     /// </summary>
     [Fact]
     public void Texel_density_is_blue_where_sparse_and_red_where_dense() {
@@ -320,6 +321,10 @@ public sealed class MeshCompoundTests {
             Assert.Equal(2, Strongest(picture, 4));
             Assert.Equal(1, Strongest(picture, Side / 2));
             Assert.Equal(0, Strongest(picture, Side - 5));
+
+            // Patina #306: the bake reads nought only where no island reaches, so that is black, not sparse.
+            var gap = picture.Pixels.AsSpan(Side / 2 * Side * 4, 3).ToArray();
+            Assert.True(gap.Max() < 8, $"Where no island reaches is colored {string.Join(", ", gap)}.");
         }
 
         // Which of red, green and blue is strongest in a column, halfway down.

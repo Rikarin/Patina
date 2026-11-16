@@ -35,6 +35,15 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
 
     protected override string Kind => "graph";
 
+    /// <summary>
+    ///     Reads a canvas the stacks of this Worker are painting in place of its file, so a graph reading a painted
+    ///     mask follows the strokes rather than the last save (#205).
+    /// </summary>
+    public void ReadPaintingOf(StackHost stacks) {
+        ArgumentNullException.ThrowIfNull(stacks);
+        pictures.Painting = stacks.Painting;
+    }
+
     public IpcMessage Load(IpcMessage request) {
         var load = request.GraphLoad ?? throw new IpcException("graph.load holds no graph.");
         Hold(load.Session, new(load, compounds.Of(load.Folder), pictures));
@@ -285,7 +294,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         /// <summary>Brings the plan up to date, compiling only for more than a value (plan §3.2).</summary>
         public GraphResultProblem[] Prepare(TexturePlanEvaluator evaluator, out bool compiled) {
             compiled = false;
-            if (!stamps.Any(GraphPictures.Moved) && compiler.Refresh(graph) is { } refreshed) {
+            if (!stamps.Any(pictures.Stale) && compiler.Refresh(graph) is { } refreshed) {
                 Plan = refreshed;
                 return Problems();
             }

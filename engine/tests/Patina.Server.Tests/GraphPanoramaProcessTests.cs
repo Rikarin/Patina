@@ -59,6 +59,37 @@ public sealed partial class GraphProcessTests {
         }
     }
 
+    /// <summary>
+    ///     A sky being made followed saves only, so each try at the sun needed a save (#300). An edit the graph has
+    ///     evaluated now lights the model, and the file is left as it was.
+    /// </summary>
+    [Fact]
+    public async Task Editing_the_graph_that_lights_the_viewport_draws_it_again_before_a_save() {
+        using var deadline = Deadline(120);
+        await StartServerAsync(deadline.Token);
+        StartWorker();
+        var sky = GraphTesting.Write(Library, Sky(256, 128), "sky.vxtexgraph");
+        var saved = await File.ReadAllTextAsync(sky, deadline.Token);
+        using (var lit = await http.PutAsJsonAsync(
+                   "/api/v1/viewport/display",
+                   new() { Environment = sky },
+                   ContractsJsonContext.Default.ViewportDisplay,
+                   deadline.Token
+               )) {
+            await LitAsync(lit, deadline.Token);
+        }
+
+        var state = await http.OpenAsync(sky, deadline.Token);
+        await http.EditAsync(state.Id, deadline.Token, new GraphSetValue(1, "Sun Elevation", [0.2f]));
+
+        var previews = LibraryLayout.PreviewsPath(Library);
+        while (Directory.GetFiles(previews, "*.exr", SearchOption.AllDirectories).Length < 2) {
+            await Task.Delay(100, deadline.Token);
+        }
+
+        Assert.Equal(saved, await File.ReadAllTextAsync(sky, deadline.Token));
+    }
+
     [Fact]
     public async Task A_graph_with_no_output_is_refused_as_an_environment() {
         using var deadline = Deadline(60);

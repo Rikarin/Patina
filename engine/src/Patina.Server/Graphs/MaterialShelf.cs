@@ -3,6 +3,7 @@ using Patina.Graphs;
 using Patina.Library;
 using Patina.Server.Stacks;
 using System.Collections.Concurrent;
+using System.Globalization;
 using Vixen.NodeGraph;
 using Vixen.Texturing.Layers;
 
@@ -27,7 +28,6 @@ public static class MaterialShelf {
     const string PackageOrigin = "package";
     const string StarterPrefix = "starter:";
     const string StarterResource = "Starter/";
-    const string PicturesFolder = "pictures";
 
     /// <summary>
     ///     What each project lists, its documents and its pictures, kept while its file and the folders pictures are
@@ -37,8 +37,10 @@ public static class MaterialShelf {
         new(StringComparer.Ordinal);
 
     /// <summary>The types a shelf narrows to, and where a material can be from.</summary>
-    static readonly string[] Roles =
-        [GraphRoles.Material, GraphRoles.Mask, GraphRoles.Filter, GraphRoles.Brush, PresetRole, PictureRole];
+    static readonly string[] Roles = [
+        GraphRoles.Material, GraphRoles.Mask, GraphRoles.Filter, GraphRoles.Brush, PresetRole, PictureRole,
+        ShelfEnvironments.Role, ShelfAlphas.Role
+    ];
 
     /// <summary>
     ///     The type of a brush or tool preset on the shelf, which a client takes up rather than adds (#124).
@@ -66,7 +68,7 @@ public static class MaterialShelf {
     public static IReadOnlyList<MaterialInfo> List(OpenLibrary library, string? project, string? search = null) {
         var words = search?.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
         List<MaterialInfo> found = [
-            ..SmartMaterial.Shipped.Select(static name => new MaterialInfo(
+            ..ShippedSmartMaterials.Names.Select(static name => new MaterialInfo(
                     name,
                     DocumentKinds.LayeredMaterial,
                     ShippedPrefix + name,
@@ -82,10 +84,13 @@ public static class MaterialShelf {
         if (project is not null) {
             var contents = library.Contents(project);
             found.AddRange(contents.Documents.Select(document => Described(library, document)).OfType<MaterialInfo>());
-            found.AddRange(contents.Pictures.Select(picture => Pictured(picture, contents.Name, "project")));
+            List<MaterialInfo> pictures = [..contents.Pictures.Select(p => Pictured(p, contents.Name, "project"))];
+            found.AddRange(pictures);
+            found.AddRange(ShelfEnvironments.Among(pictures));
         }
 
         found.AddRange(Presets(library, project, search));
+        found.AddRange(ShelfAlphas.All);
         found.RemoveAll(material => !Matches(material, words));
         found.AddRange(Elsewhere(library, project, words).Take(ElsewhereLimit));
         return found;
@@ -245,6 +250,11 @@ public static class MaterialShelf {
     ///     kind the file could turn out to give, so it passes everything that matches and the file decides the rest.
     /// </summary>
     static bool Maybe(ProjectDocumentInfo document, string project, string[] words) {
+        // A material preset is found by its material's name too, which only its file holds (#124).
+        if (document.Kind == DocumentKinds.MaterialPreset) {
+            return true;
+        }
+
         var graph = document.Kind is DocumentKinds.Graph or DocumentKinds.ImageMaterial;
         var role = document.Role ?? GraphRoles.Material;
         return Has(
@@ -265,10 +275,12 @@ public static class MaterialShelf {
     }
 
     static IEnumerable<MaterialInfo> Elsewhere(OpenLibrary library, string? project, string[] words) {
+        // Every project's pictures at any depth are one query of the index, not a walk of each folder (#306).
+        var pictures = library.Pictures().ToLookup(static picture => picture.Project, StringComparer.Ordinal);
         for (var offset = 0;; offset += ProjectPage) {
             var page = library.Projects(new(Offset: offset, Limit: ProjectPage)).Items;
             foreach (var summary in page.Where(summary => summary.Path != project)) {
-                foreach (var material in OfProject(library, summary, words)) {
+                foreach (var material in OfProject(library, summary, pictures[summary.Path], words)) {
                     yield return material;
                 }
             }
@@ -283,15 +295,21 @@ public static class MaterialShelf {
     ///     What another project offers that a search finds: its materials, and its pictures too (#203), which a click
     ///     or a drag brings into the open project first.
     /// </summary>
-    static IEnumerable<MaterialInfo> OfProject(OpenLibrary library, ProjectSummary summary, string[] words) {
-        var contents = ContentsOf(library, summary.Path);
-        var materials = contents.Documents
+    static IEnumerable<MaterialInfo> OfProject(
+        OpenLibrary library,
+        ProjectSummary summary,
+        IEnumerable<LibraryPicture> pictures,
+        string[] words
+    ) {
+        var materials = DocumentsOf(library, summary.Path)
             .Where(document => Maybe(document, summary.Name, words))
             .Select(document => Readable(library, document))
             .OfType<MaterialInfo>()
             .Select(read => read with { Origin = ElsewhereOrigin, Project = summary.Name });
-        var pictures = contents.Pictures.Select(picture => Pictured(picture, summary.Name, ElsewhereOrigin));
-        return materials.Concat(pictures).Where(material => Matches(material, words));
+        List<MaterialInfo> pictured = [..pictures.Select(static picture => Pictured(picture))];
+        return materials.Concat(pictured)
+            .Concat(ShelfEnvironments.Among(pictured))
+            .Where(material => Matches(material, words));
     }
 
     /// <summary>
@@ -302,8 +320,8 @@ public static class MaterialShelf {
         ContentsOf(library, project).Documents;
 
     /// <summary>
-    ///     What a project holds, read again only when its file, its folder or its pictures folder has changed since: a
-    ///     picture brought in or dropped beside the file changes a folder, though not the project's file.
+    ///     What a project holds, read again only when its file or its folder has changed since: a document dropped
+    ///     beside the file changes the folder, though not the project's file. Its pictures are the index's (#306).
     /// </summary>
     static ProjectContents ContentsOf(OpenLibrary library, string project) {
         var file = library.ProjectFile(project, LibraryLayout.ProjectFile);
@@ -311,8 +329,7 @@ public static class MaterialShelf {
         var stamp = string.Join(
             '|',
             File.GetLastWriteTimeUtc(file).Ticks,
-            Directory.GetLastWriteTimeUtc(folder).Ticks,
-            Directory.GetLastWriteTimeUtc(Path.Combine(folder, PicturesFolder)).Ticks
+            Directory.GetLastWriteTimeUtc(folder).Ticks
         );
         if (Kept.TryGetValue(file, out var held) && held.Stamp == stamp) {
             return held.Contents;
@@ -335,6 +352,21 @@ public static class MaterialShelf {
             Project: project,
             Tags: [Path.GetExtension(picture.Name).TrimStart('.').ToUpperInvariant()]
         );
+
+    /// <summary>
+    ///     Another project's picture as the index has it (#306), found by its file type and its size as well as its
+    ///     name: "2048" finds every picture that wide or high.
+    /// </summary>
+    static MaterialInfo Pictured(LibraryPicture picture) {
+        var name = Path.GetFileName(picture.Path);
+        var listed = Pictured(new("picture", name, picture.Path), picture.ProjectName, ElsewhereOrigin);
+        if (picture is not { Width: { } width, Height: { } height }) {
+            return listed;
+        }
+
+        var size = string.Create(CultureInfo.InvariantCulture, $"{width} × {height}");
+        return listed with { Tags = [..listed.Tags ?? [], size] };
+    }
 
     /// <summary>One broken file in another project must not empty this project's shelf.</summary>
     static MaterialInfo? Readable(OpenLibrary library, ProjectDocumentInfo document) {
@@ -442,6 +474,33 @@ public static class MaterialShelf {
         }
     }
 
+    /// <summary>
+    ///     Where the shelf has the material a graph fill of a project reads (#124): a shipped compound by its type,
+    ///     or what the project's copy of a published graph was published from. Null for a graph the shelf did not give.
+    /// </summary>
+    internal static string? SourceOf(OpenLibrary library, string project, string graph) {
+        if (ShelfCompounds.NodeOf(ShelfCompounds.Prefix + graph) is not null) {
+            return ShelfCompounds.Prefix + graph;
+        }
+
+        var name = graph.StartsWith(MaterialsFolder + "/", StringComparison.Ordinal)
+            ? graph[(MaterialsFolder.Length + 1)..]
+            : null;
+        var file = name is null || name.Contains('/', StringComparison.Ordinal)
+            ? null
+            : CompoundFile(library, project, name) + SourceSuffix;
+        return file is not null && File.Exists(file) ? SharedFile.ReadAllText(file).Trim() : null;
+    }
+
+    /// <summary>Whether a source names a graph file in the library.</summary>
+    internal static bool IsLibraryGraph(OpenLibrary library, string source) {
+        var full = Path.GetFullPath(source, library.RootPath);
+        var root = Path.GetFullPath(library.RootPath) + Path.DirectorySeparatorChar;
+        return full.StartsWith(root, StringComparison.Ordinal)
+            && full.EndsWith(LibraryLayout.GraphExtension, StringComparison.OrdinalIgnoreCase)
+            && File.Exists(full);
+    }
+
     static string CompoundFile(OpenLibrary library, string project, string name) =>
         library.ProjectFile(
             project,
@@ -533,7 +592,7 @@ public static class MaterialShelf {
     public static LayerStackAsset Read(string? library, string source) {
         if (source.StartsWith(ShippedPrefix, StringComparison.Ordinal)) {
             var name = source[ShippedPrefix.Length..];
-            var text = SmartMaterial.Source(name)
+            var text = ShippedSmartMaterials.Source(name)
                 ?? throw new StackEditRefusedException($"There is no material '{name}'.");
             return StackDocuments.Parse(text);
         }
@@ -563,6 +622,7 @@ public static class MaterialShelf {
                 document.Role,
                 document.Tags
             ),
+            DocumentKinds.MaterialPreset => MaterialPresetShelf.Described(library, document),
             DocumentKinds.LayeredMaterial => new(
                 document.Name,
                 document.Kind,

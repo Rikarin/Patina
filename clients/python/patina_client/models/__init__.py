@@ -169,6 +169,7 @@ from .graph_node_state_values import GraphNodeStateValues
 from .graph_node_time import GraphNodeTime
 from .graph_node_type import GraphNodeType
 from .graph_open_request import GraphOpenRequest
+from .graph_pace import GraphPace
 from .graph_port_definition import GraphPortDefinition
 from .graph_port_range import GraphPortRange
 from .graph_preset_state import GraphPresetState
@@ -212,7 +213,10 @@ from .material_import_request import MaterialImportRequest
 from .material_import_result import MaterialImportResult
 from .material_info import MaterialInfo
 from .material_list import MaterialList
+from .material_preset_create_request import MaterialPresetCreateRequest
+from .material_preset_create_request_parameters import MaterialPresetCreateRequestParameters
 from .material_use import MaterialUse
+from .material_use_parameters_type_1 import MaterialUseParametersType1
 from .material_use_request import MaterialUseRequest
 from .mesh_facts import MeshFacts
 from .mesh_material_facts import MeshMaterialFacts
@@ -269,6 +273,8 @@ from .project_settings_request import ProjectSettingsRequest
 from .project_settings_request_reassign_type_1 import ProjectSettingsRequestReassignType1
 from .project_summary import ProjectSummary
 from .project_tags_request import ProjectTagsRequest
+from .project_template_list import ProjectTemplateList
+from .project_template_request import ProjectTemplateRequest
 from .project_viewport_request import ProjectViewportRequest
 from .sample_list import SampleList
 from .sample_request import SampleRequest
@@ -633,6 +639,7 @@ __all__ = (
     "GraphNodeTime",
     "GraphNodeType",
     "GraphOpenRequest",
+    "GraphPace",
     "GraphPortDefinition",
     "GraphPortRange",
     "GraphPresetState",
@@ -676,7 +683,10 @@ __all__ = (
     "MaterialImportResult",
     "MaterialInfo",
     "MaterialList",
+    "MaterialPresetCreateRequest",
+    "MaterialPresetCreateRequestParameters",
     "MaterialUse",
+    "MaterialUseParametersType1",
     "MaterialUseRequest",
     "MeshFacts",
     "MeshMaterialFacts",
@@ -733,6 +743,8 @@ __all__ = (
     "ProjectSettingsRequestReassignType1",
     "ProjectSummary",
     "ProjectTagsRequest",
+    "ProjectTemplateList",
+    "ProjectTemplateRequest",
     "ProjectViewportRequest",
     "SampleList",
     "SampleRequest",

@@ -763,6 +763,12 @@ public sealed class ViewportRenderer : IDisposable {
                     DescriptorWrite.Texture(Binding("emissiveMap"), material.Maps.Emissive),
                     DescriptorWrite.Texture(Binding("opacityMap"), material.Maps.Opacity),
                     DescriptorWrite.Texture(Binding("quickMaskMap"), material.Maps.QuickMask),
+                    DescriptorWrite.Texture(Binding("coatMap"), material.Maps.Layers.Coat),
+                    DescriptorWrite.Texture(Binding("coatRoughnessMap"), material.Maps.Layers.CoatRoughness),
+                    DescriptorWrite.Texture(Binding("sheenMap"), material.Maps.Layers.Sheen),
+                    DescriptorWrite.Texture(Binding("sheenColorMap"), material.Maps.Layers.SheenColor),
+                    DescriptorWrite.Texture(Binding("sheenRoughnessMap"), material.Maps.Layers.SheenRoughness),
+                    DescriptorWrite.Texture(Binding("transmissionMap"), material.Maps.Layers.Transmission),
                     DescriptorWrite.SamplerAt(Binding("mapSampler"), material.Sampler)
                 ]
             );

@@ -816,6 +816,25 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/project-templates': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The project templates the library keeps, by name. */
+    get: operations['ListProjectTemplates'];
+    put?: never;
+    /** Keeps a project's settings as a template: Auto Unwrap and Preserve Paint, and how it exports, bakes, opens the viewport, checks and paints. Its meshes and documents stay its own. A template of the same name is replaced. */
+    post: operations['SaveProjectTemplate'];
+    /** Throws a project template away. Projects made from it keep their settings. */
+    delete: operations['DeleteProjectTemplate'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/project/settings': {
     parameters: {
       query?: never;
@@ -1067,6 +1086,23 @@ export interface paths {
     put?: never;
     /** Makes a material graph ready for a project's layers, and names it for them. */
     post: operations['UseMaterial'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/library/materials/presets': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Keeps a graph fill's material and parameters as a material preset, a document of the project (#124). */
+    post: operations['CreateMaterialPreset'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1686,8 +1722,25 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Points every Bitmap node that reads a picture at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
+    /** Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
     post: operations['RelinkGraphPicture'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/pace': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Pauses or resumes a graph's evaluation. While it is paused, edits wait and the previews stay those of its settled revision; resuming evaluates them. Every client hears a paced event. */
+    put: operations['PaceGraph'];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -3000,10 +3053,10 @@ export interface components {
       file: string;
       /**
        * @description For a tangent-space `normal` or `bent` map: its green runs down the picture, as DirectX's do, and is
-       *     turned over as it comes in, since Patina's bakes run it up. False keeps it as it is.
-       * @default false
+       *     turned over as it comes in, since Patina's bakes run it up. False keeps it as it is. Null, or left out, reads
+       *     it as the project's string ProjectContents.NormalFormat says (#144).
        */
-      greenDown: boolean;
+      greenDown?: null | boolean;
     };
     /**
      * @description Maps baked in another program, brought in as a texturing document's bake (#144): the body of
@@ -5192,6 +5245,11 @@ export interface components {
       /** @description The graph file on the Server's machine, absolute or relative to the library. */
       path: string;
     };
+    /** @description How a graph is evaluated while it is edited (#306): the body and the reply of its `pace` route. */
+    GraphPace: {
+      /** @description Whether edits wait to be evaluated, as a stack's can, while a big graph is set up. */
+      paused: boolean;
+    };
     /** @description One port of a node type. */
     GraphPortDefinition: {
       /** @description What an edge calls it. */
@@ -5260,15 +5318,18 @@ export interface components {
        */
       height: number;
     };
-    /** @description The body of `POST /api/v1/graphs/{id}/relink`: a picture the graph reads, and the file it is now. */
+    /**
+     * @description The body of `POST /api/v1/graphs/{id}/relink`: a file the graph reads (a picture, a font or an SVG), and
+     *     the file it is now.
+     */
     GraphRelinkRequest: {
-      /** @description The picture as the graph's Bitmap nodes name it; not read when a node is named. */
+      /** @description The file as the graph's nodes name it; not read when a node is named. */
       from: string;
       /** @description The file to read instead: absolute, or below the library. */
       to: string;
       /**
        * Format: int32
-       * @description One Bitmap node to point at the file, whatever it reads now, or null for every one that reads
+       * @description One node that reads a file to point at this one, whatever it reads now, or null for every one that reads
        *     From (#292).
        */
       node?: null | number;
@@ -5366,7 +5427,10 @@ export interface components {
       default: string;
       /** @description One line about it. */
       summary: string;
-      /** @description Text, Bool, Int, Float or Color, whose default is four numbers separated by commas. */
+      /**
+       * @description Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two numbers such
+       *     as a position or a tiling, separated by a comma, each within the range.
+       */
       kind: string;
       /**
        * Format: float
@@ -5394,7 +5458,8 @@ export interface components {
       label?: null | string;
       /**
        * @description The control an inspector draws: `Default`, `Slider` (a number with a range), `Angle` (a number
-       *     in degrees) or `Toggle` (a flag). Null for `Default`.
+       *     in degrees), `Toggle` (a flag), `Position` (a Float2 as a point on a square) or `Tiling` (a
+       *     Float2 as two counts that can be kept equal). Null for `Default`.
        */
       widget?: null | string;
       visibleIf?: null | components['schemas']['GraphSettingCondition'];
@@ -5455,6 +5520,12 @@ export interface components {
       selection: components['schemas']['GraphSelection'];
       /** @description The newest GPU time of each node an evaluation has timed. */
       times: components['schemas']['GraphNodeTime'][];
+      /**
+       * @description True while edits wait to be evaluated (#306): the previews are those of Settled until it is
+       *     resumed. Saving never waits on it.
+       * @default false
+       */
+      paused: boolean;
     };
     /** @description An open graph, for a list. */
     GraphSummary: {
@@ -5851,8 +5922,8 @@ export interface components {
       project: string;
       /**
        * @description A file on the Server's machine that describes materials: a glTF (`.gltf`, `.glb`) or another model
-       *     file, a MaterialX document (`.mtlx`), a USD layer in its text form (`.usda`) or a USD package
-       *     (`.usdz`) whose layer is text.
+       *     file, a MaterialX document (`.mtlx`), a USD layer in text or binary (`.usda`, `.usdc`,
+       *     `.usd`) or a USD package (`.usdz`).
        */
       file: string;
     };
@@ -5901,10 +5972,36 @@ export interface components {
       /** @description Where a material can be from, with what to call each. */
       origins: components['schemas']['StackTerm'][];
     };
+    /**
+     * @description The body of `POST /api/v1/library/materials/presets`, which keeps a graph fill's material and parameters
+     *     as a new material preset of the project.
+     */
+    MaterialPresetCreateRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description What to call it, which names its file. */
+      name: string;
+      /**
+       * @description The material, as a graph fill in the project reads it (its `graph`), which the Server takes back to where
+       *     the shelf has it.
+       */
+      graph: string;
+      /** @description What the fill sets the material's parameters to (its `parameters`). */
+      parameters: {
+        [key: string]: string;
+      };
+    };
     /** @description A graph ready for a layer. */
     MaterialUse: {
       /** @description What a fill layer's `graph` takes. */
       graph: string;
+      /**
+       * @description What a material preset sets the graph's parameters to, which a fill layer's `parameters` take, or null
+       *     for a material used as it is (#124).
+       */
+      parameters?: null | {
+        [key: string]: string;
+      };
     };
     /** @description The body of `POST /api/v1/library/materials/use`. */
     MaterialUseRequest: {
@@ -6314,6 +6411,11 @@ export interface components {
       preservePaint: boolean;
       /** @description How Auto Unwrap lays a mesh out. */
       unwrap: components['schemas']['UnwrapOptions'];
+      /**
+       * @description Which way the green of the project's tangent-space normal maps runs: `y-up` (OpenGL) or `y-down`
+       *     (DirectX). A normal map brought in is read as this unless it says otherwise (#144).
+       */
+      normalFormat: string;
       /** @description How its bakes run, which texture sets they make maps for, and what they read beyond its mesh. */
       bake: components['schemas']['ProjectBakeSettings'];
       viewport?: null | components['schemas']['ViewportDisplay'];
@@ -6350,6 +6452,11 @@ export interface components {
        *     a model laid out on a 2:1 sheet paints at 2048 × 1024. Null is square. A graph is always square.
        */
       rows?: null | number;
+      /**
+       * @description The project template whose settings it starts with (#144), by name, or null for none. Its bake settings take
+       *     the place of the person's default and of the size the project is made at.
+       */
+      template?: null | string;
     };
     /** @description The body of `POST /api/v1/library/project/document/copy`. */
     ProjectDocumentCopyRequest: {
@@ -6728,6 +6835,11 @@ export interface components {
        *     what reloading costs before it reloads without this.
        */
       sameLayout?: null | boolean;
+      /**
+       * @description Which way the green of the project's tangent-space normal maps runs: `y-up` or `y-down`
+       *     (#144). Maps already brought in stay as they were brought in.
+       */
+      normalFormat?: null | string;
     };
     /** @description One project as the browser shows it. The project itself loads on open. */
     ProjectSummary: {
@@ -6754,6 +6866,22 @@ export interface components {
       path: string;
       /** @description Every tag it has from now on. Repeats and empty ones are dropped. */
       tags: string[];
+    };
+    /**
+     * @description The project templates a library keeps (#144): a project's settings under a name, which a new project starts
+     *     from through string? ProjectCreateRequest.Template. A template holds how Auto Unwrap and Preserve Paint
+     *     are set and the export, bake, viewport, checks and paint settings, never a mesh or a document.
+     */
+    ProjectTemplateList: {
+      /** @description Their names, sorted. */
+      names: string[];
+    };
+    /** @description The body of `POST /api/v1/library/project-templates`: a project's settings, kept by name. */
+    ProjectTemplateRequest: {
+      /** @description The project whose settings are kept, below `projects/`. */
+      project: string;
+      /** @description What the template is called. One of the same name is replaced. */
+      name: string;
     };
     /** @description The body of `PUT /api/v1/library/project/viewport`. */
     ProjectViewportRequest: {
@@ -7606,6 +7734,9 @@ export interface components {
        *     starts from empty.
        */
       output?: null | string;
+      /** @description How a texture entry lands: Uv, Triplanar, Planar, Spherical or Cylindrical. */
+      projection?: null | string;
+      placement?: null | components['schemas']['StackPlacement'];
     };
     /** @description Names the mesh a stack is painted on, which is undone like any other edit. */
     StackCommandStackSetModel: {
@@ -8335,6 +8466,13 @@ export interface components {
        * @default
        */
       output: string;
+      /**
+       * @description How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world
+       *     position, which a mask on a mesh whose UVs it was not made for wants (#120).
+       * @default Uv
+       */
+      projection: string;
+      placement?: null | components['schemas']['StackPlacement'];
     };
     /** @description One step run on a mask. */
     StackMaskEffect: {
@@ -8437,6 +8575,13 @@ export interface components {
        * @default
        */
       output: string;
+      /**
+       * @description How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world
+       *     position, which a mask on a mesh whose UVs it was not made for wants (#120).
+       * @default Uv
+       */
+      projection: string;
+      placement?: null | components['schemas']['StackPlacement'];
     };
     /** @description Chooses the bake a stack's generators and bake masks read. */
     StackMeshMapsRequest: {
@@ -8929,6 +9074,13 @@ export interface components {
        *     turned with the path. Null, empty or `Round` is a round stamp.
        */
       alpha?: null | string;
+      /**
+       * @description Whether the path is a loop whose inside is covered too (#130): it closes from its last point back to its first,
+       *     what it encloses takes the fill's picture, and the width falls away past the loop as a soft edge. A ribbon and
+       *     a row of stamps take no fill.
+       * @default false
+       */
+      filled: boolean;
     };
     /**
      * @description How a decal or a path copies itself over the model (#132): mirrored through a plane, or turned round a line,
@@ -12314,6 +12466,153 @@ export interface operations {
       };
     };
   };
+  ListProjectTemplates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectTemplateList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  SaveProjectTemplate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectTemplateRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectTemplateList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  DeleteProjectTemplate: {
+    parameters: {
+      query: {
+        name: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProjectTemplateList'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
   SetProjectSettings: {
     parameters: {
       query?: never;
@@ -13155,6 +13454,57 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['MaterialUse'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CreateMaterialPreset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MaterialPresetCreateRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialInfo'];
         };
       };
       /** @description Bad Request */
@@ -15296,6 +15646,41 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PaceGraph: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphPace'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphPace'];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

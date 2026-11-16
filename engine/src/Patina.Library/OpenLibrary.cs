@@ -311,10 +311,19 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
-    /// <summary>Says what a project does with a mesh with no UV layout, and with paint on a new layout.</summary>
-    public void SetMeshHandling(string path, bool? autoUnwrap, bool? preservePaint, UnwrapOptions? unwrap = null) {
+    /// <summary>
+    ///     Says what a project does with a mesh with no UV layout, with paint on a new layout, and which way its normal
+    ///     maps' green runs (#144). Null leaves a setting as it is.
+    /// </summary>
+    public void SetMeshHandling(
+        string path,
+        bool? autoUnwrap,
+        bool? preservePaint,
+        UnwrapOptions? unwrap = null,
+        string? normalFormat = null
+    ) {
         lock (createGate) {
-            ProjectFiles.SetMeshHandling(RootPath, path, autoUnwrap, preservePaint, unwrap);
+            ProjectFiles.SetMeshHandling(RootPath, path, autoUnwrap, preservePaint, unwrap, normalFormat);
             Interlocked.Increment(ref unscannedWrites);
         }
     }
@@ -333,6 +342,38 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         lock (createGate) {
             ProjectFiles.SetBake(RootPath, path, bake);
             Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
+    /// <summary>The project templates this library keeps, by name (#144).</summary>
+    public IReadOnlyList<string> Templates() => ProjectTemplates.Names(RootPath);
+
+    /// <summary>Keeps a project's settings as a template of this name, replacing one of the same name.</summary>
+    /// <returns>The name it was kept under.</returns>
+    /// <exception cref="FileNotFoundException">The project is not there.</exception>
+    /// <exception cref="ProjectRefusedException">The name cannot name a template.</exception>
+    public string SaveTemplate(string project, string name) {
+        lock (createGate) {
+            return ProjectTemplates.Save(RootPath, project, name);
+        }
+    }
+
+    /// <summary>Sets a project's settings to a template's.</summary>
+    /// <exception cref="FileNotFoundException">The project or the template is not there.</exception>
+    /// <exception cref="ProjectRefusedException">The name cannot name a template.</exception>
+    public void ApplyTemplate(string project, string name) {
+        lock (createGate) {
+            ProjectTemplates.Apply(RootPath, project, name);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
+    /// <summary>Throws a template away.</summary>
+    /// <returns>Whether there was one.</returns>
+    /// <exception cref="ProjectRefusedException">The name cannot name a template.</exception>
+    public bool DeleteTemplate(string name) {
+        lock (createGate) {
+            return ProjectTemplates.Delete(RootPath, name);
         }
     }
 
@@ -364,15 +405,23 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
-    /// <summary>Saves a new brush preset in a project, as a document of it.</summary>
+    /// <summary>
+    ///     Saves a new preset in a project, as a document of it: a brush preset's <c>.ptbrush</c> or a material
+    ///     preset's <c>.ptpreset</c> (#124), whose text its kind's own reader writes.
+    /// </summary>
+    /// <param name="path">The project.</param>
+    /// <param name="name">What to call it, which names its file.</param>
+    /// <param name="kind">Its kind of document.</param>
+    /// <param name="extension">Its file's extension.</param>
+    /// <param name="text">Its file's text.</param>
     /// <returns>Its path below the library.</returns>
     /// <exception cref="ProjectExistsException">The project has a file of that name.</exception>
     /// <exception cref="ProjectRefusedException">The name cannot name a file.</exception>
-    public string CreateBrushPreset(string path, string name, BrushPreset preset) {
+    public string CreatePreset(string path, string name, string kind, string extension, string text) {
         lock (createGate) {
-            var file = ProjectFiles.NewFile(RootPath, path, name, BrushPresets.Extension);
-            BrushPresets.Write(ProjectFile(path, file), preset);
-            ProjectFiles.AddDocument(RootPath, path, DocumentKinds.BrushPreset, file, name, null);
+            var file = ProjectFiles.NewFile(RootPath, path, name, extension);
+            LibraryFiles.Replace(ProjectFile(path, file), text);
+            ProjectFiles.AddDocument(RootPath, path, kind, file, name, null);
             Interlocked.Increment(ref unscannedWrites);
             return $"{LibraryLayout.ProjectsFolder}/{path.Trim('/')}/{file}";
         }
@@ -489,6 +538,12 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     public TagPage AssetTags(int offset = 0, int limit = 50) => queries.AssetTags(offset, limit);
 
     public AssetImpact? Impact(AssetId asset, int offset = 0, int limit = 50) => queries.Impact(asset, offset, limit);
+
+    /// <summary>
+    ///     Every project's pictures at any depth, with their sizes, as the last <see cref="Rescan" /> found them
+    ///     (#306): one query, where reading each project's contents would walk its folder.
+    /// </summary>
+    public IReadOnlyList<LibraryPicture> Pictures() => queries.Pictures();
 
     /// <summary>What a folder's documents cost, by each folder or project directly in it (#207).</summary>
     /// <param name="folder">The folder below <c>projects/</c>, empty for the whole library.</param>

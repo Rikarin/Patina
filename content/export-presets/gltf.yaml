@@ -27,3 +27,22 @@ textures:
     format: png8
     space: srgb
     channels: [emissive.r, emissive.g, emissive.b]
+  # OpenPBR's coat, sheen and transmission (#142), written only for a set that has them, in the lanes glTF's
+  # KHR_materials_clearcoat, _sheen and _transmission read: the coat in red and its roughness in green, the coat's own
+  # normal, the sheen's colour times its weight with its roughness in alpha, and transmission in red.
+  - file: "{set}_clearcoat"
+    format: png8
+    space: linear
+    channels: [coat.r, coatRoughness.r, 0]
+  - file: "{set}_clearcoatNormal"
+    format: png8
+    space: linear
+    channels: [coatNormal.r, coatNormal.g, coatNormal.b]
+  - file: "{set}_sheen"
+    format: png8
+    space: srgb
+    channels: [sheenTint.r, sheenTint.g, sheenTint.b, sheenRoughness.r]
+  - file: "{set}_transmission"
+    format: png8
+    space: linear
+    channels: [transmission.r]

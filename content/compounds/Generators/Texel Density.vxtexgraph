@@ -7,7 +7,7 @@ nodes:
     x: -480
     y: 0
     texts:
-      Expression: 'float4(lerp(lerp(float3(0.1f, 0.75f, 0.2f), float3(0.9f, 0.15f, 0.1f), saturate((a.x - 0.5f) * x)), float3(0.15f, 0.3f, 0.9f), saturate((0.5f - a.x) * x)), 1f)'
+      Expression: 'float4(lerp(lerp(float3(0.1f, 0.75f, 0.2f), float3(0.9f, 0.15f, 0.1f), saturate((a.x - 0.5f) * x)), float3(0.15f, 0.3f, 0.9f), saturate((0.5f - a.x) * x)) * step(0.002f, a.x), 1f)'
       '=X': spread
   - { id: 99, type: Sub-graph/Output, x: 0, y: 0 }
 edges:
@@ -20,7 +20,7 @@ interface:
     direction: Output
     kind: Image
     default: []
-    summary: 'Green where the texel density is the layout''s own, turning blue where it is sparser and red where it is denser.'
+    summary: 'Green where the texel density is the layout''s own, turning blue where it is sparser and red where it is denser; black between islands.'
 settings:
   baseWidth: '1024'
   baseHeight: '1024'

@@ -149,7 +149,12 @@ export class ViewportClient {
     effect(() => {
       const target = jump.target();
       if (target) {
-        untracked(() => this.go(target.to.view ?? null, target.to.camera ?? null, target.to.picture ?? null));
+        untracked(() => {
+          this.go(target.to.view ?? null, target.to.camera ?? null, target.to.picture ?? null);
+          if (target.to.environment) {
+            this.setDisplay({ environment: target.to.environment });
+          }
+        });
       }
     });
     effect(() => {

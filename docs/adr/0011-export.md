@@ -294,8 +294,18 @@ Two tests stand in for the engines until someone opens the files in them:
   texture coordinates, and each picture read in a space its numbers can be in. Linux CI installs both and fails if the
   test is skipped. It found the layer saying no units or up axis, which every stage is asked to; the layer now says
   metres and Y up. One warning is accepted: a normal whose green runs down is read with a green scale of −2, which USD's
-  validator holds against an 8-bit normal; a reader that ignores a texture's scale reads that green upside down, which
-  only an import in that reader shows.
+  validator holds against an 8-bit normal (why that is right is the next entry).
+- _2026-11-16 (#304):_ The green scale of −2 stays. USD defines a `UsdUVTexture`'s result as each texel times `scale`
+  plus `bias`, and USD's working group gives a normal whose green runs down exactly this scale and bias,
+  (2, −2, 2, 1) and (−1, 1, −1, 0), in its `NormalsTextureBiasAndScale` test asset, which usdview draws like the
+  green-up cube. Blender's importer applies any scale and bias before its Normal Map node (its fix for #106326), and
+  three.js's USD loader takes the green scale's sign as its normal scale. The validator's warning is about strength:
+  its own comment says "some authoring tools may rely on this to scale an effect", and its check ignores bias. Writing
+  a second, green-up picture only for USD would put a file in the export the preset does not name. So
+  `MaterialToolTests` now works out the normal USD hands a renderer, texel × scale + bias with the scale and bias as
+  USD reads them from the file, for every shipped preset with a distinct leaning normal, and holds it to the green-up
+  normal the maps were made with; the accepted warning is narrowed to that one scale. A normal a file holds in two
+  lanes, as Vixen's BC5 file does, was left out of every material file without a word; the export now says so.
 
 What only a person with the engine can check, one import per engine, recorded here when done:
 

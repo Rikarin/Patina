@@ -1,0 +1,56 @@
+version: 1
+name: Grimy Enamel
+baseWidth: 1024
+baseHeight: 1024
+sets:
+  - name: Material
+    channels:
+      - usage: baseColor
+        default: [0.5, 0.5, 0.5, 1]
+      - usage: roughness
+        default: [0.5, 0.5, 0.5, 1]
+      - usage: metalness
+        default: [0, 0, 0, 1]
+    layers:
+      - id: enamel
+        name: Enamel
+        kind: Fill
+        values:
+          baseColor: [0.82, 0.81, 0.76, 1]
+          roughness: [0.25, 0.25, 0.25, 1]
+          metalness: [0, 0, 0, 1]
+      - id: wiped
+        name: Wiped Grime
+        kind: Fill
+        blend: Copy
+        opacity: 0.5
+        values:
+          baseColor: [0.5, 0.47, 0.4, 1]
+          roughness: [0.5, 0.5, 0.5, 1]
+          metalness: [0, 0, 0, 1]
+        mask:
+          source: Generator
+          generator: Grunges/Wiped Grime
+      - id: chips
+        name: Chips
+        kind: Fill
+        blend: Copy
+        values:
+          baseColor: [0.12, 0.12, 0.13, 1]
+          roughness: [0.6, 0.6, 0.6, 1]
+          metalness: [0.8, 0.8, 0.8, 1]
+        mask:
+          source: Generator
+          generator: Generators/Paint Chips
+      - id: ground
+        name: Ground Grime
+        kind: Fill
+        blend: Copy
+        opacity: 0.8
+        values:
+          baseColor: [0.25, 0.2, 0.14, 1]
+          roughness: [0.85, 0.85, 0.85, 1]
+          metalness: [0, 0, 0, 1]
+        mask:
+          source: Generator
+          generator: Generators/Ground Grime

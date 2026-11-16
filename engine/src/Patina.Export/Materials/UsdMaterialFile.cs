@@ -7,8 +7,10 @@ namespace Patina.Export.Materials;
 /// <summary>
 ///     A USD layer with one material whose surface is a <c>UsdPreviewSurface</c>. Each image is a <c>UsdUVTexture</c>,
 ///     and a lane holding one minus a map, or a normal whose green runs down, is a texture node of its own with the
-///     scale and bias that undo it, since those apply to a whole image. The layer says it is in metres with Y up, as
-///     glTF is, which USD's validation asks of any stage though a layer of materials alone places nothing.
+///     scale and bias that undo it, since those apply to a whole image. A green-down normal's scale (2, −2, 2, 1) and
+///     bias (−1, 1, −1, 0) are the ones USD's working group gives a reversed-Y normal (ADR 0011, #304). The layer
+///     says it is in metres with Y up, as glTF is, which USD's validation asks of any stage though a layer of
+///     materials alone places nothing.
 /// </summary>
 sealed class UsdMaterialFile(string name, ICollection<string> warnings) {
     readonly string prim = MaterialFiles.Identifier(name);
@@ -41,8 +43,9 @@ sealed class UsdMaterialFile(string name, ICollection<string> warnings) {
     }
 
     /// <summary>
-    ///     OpenPBR's layers (#142) as far as UsdPreviewSurface has them: a clear coat and its roughness. It has no
-    ///     sheen or transmission, so those are said and left out.
+    ///     OpenPBR's maps (#142) as far as UsdPreviewSurface has them: a clear coat and its roughness. It has no
+    ///     sheen, transmission, coat colour or normal, or specular lobe of OpenPBR's kind, so those are said and left
+    ///     out.
     /// </summary>
     void Layers(OpenPbrSlots layers) {
         Lane(layers.Coat, "float inputs:clearcoat", "coat");
@@ -53,6 +56,16 @@ sealed class UsdMaterialFile(string name, ICollection<string> warnings) {
 
         if (layers.Transmission is not null) {
             warnings.Add("USD: transmission is left out, because UsdPreviewSurface has none.");
+        }
+
+        if (layers.CoatColor is not null || layers.CoatNormal is not null) {
+            warnings.Add("USD: the coat's color and normal are left out, because UsdPreviewSurface has neither.");
+        }
+
+        if (layers.SpecularWeight is not null || layers.SpecularColor is not null || layers.Anisotropy is not null) {
+            warnings.Add(
+                "USD: specular weight, color and anisotropy are left out, because UsdPreviewSurface has none of them."
+            );
         }
     }
 

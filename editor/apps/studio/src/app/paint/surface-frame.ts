@@ -164,6 +164,7 @@ export function extendedPath(hit: ViewportPick, held: StackSurfacePath | null | 
   return {
     hardness: 0.5,
     ribbon: false,
+    filled: false,
     repeat: 0,
     spacing: 0,
     jitter: 0,

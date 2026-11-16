@@ -88,8 +88,11 @@ export interface DesktopBridge {
   openMesh(formats?: readonly string[]): Promise<string | null>;
   /** Asks the user for a file of materials of these formats: its path, or null if they cancelled. */
   openMaterial(formats?: readonly string[]): Promise<string | null>;
-  /** Asks the user for a picture of these formats: its path, or null if they cancelled. */
-  openImage(formats?: readonly string[]): Promise<string | null>;
+  /**
+   * Asks the user for a picture of these formats, or another file a graph reads such as a font when `kind` names it: its
+   * path, or null if they cancelled.
+   */
+  openImage(formats?: readonly string[], kind?: string): Promise<string | null>;
   /** Asks the user for a folder: its path, or null if they cancelled. */
   openFolder(): Promise<string | null>;
   /** Asks where a picture goes, as a PNG, starting from a name: its path, or null if they cancelled. */

@@ -42,12 +42,17 @@ static class ProjectBakePlanEndpoint {
             return LibraryTreeEndpoints.NoLibrary();
         }
 
-        var asked = request with {
-            Maps = [..request.Maps.Select(map => map with { File = Path.GetFullPath(map.File, library.RootPath) })]
-        };
         List<string> written = [];
         var reading = string.Empty;
         try {
+            var asked = BakeImport.Greens(
+                request with {
+                    Maps = [
+                        ..request.Maps.Select(map => map with { File = Path.GetFullPath(map.File, library.RootPath) })
+                    ]
+                },
+                library.Contents(request.Project).NormalFormat
+            );
             BakeImport.Check(asked, true);
             List<BakeImportMap> maps = [];
             foreach (var map in asked.Maps) {
@@ -60,7 +65,7 @@ static class ProjectBakePlanEndpoint {
                 var png = pictures.MapFile();
                 reading = map.File;
                 written.Add(png);
-                await pictures.MapAsync(map.File, png, map.GreenDown, cancellationToken);
+                await pictures.MapAsync(map.File, png, map.GreenDown == true, cancellationToken);
                 maps.Add(map with { File = png, GreenDown = false });
             }
 

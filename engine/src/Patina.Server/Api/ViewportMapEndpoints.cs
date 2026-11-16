@@ -92,7 +92,11 @@ static class ViewportMapEndpoints {
             .ProducesProblem(Missing)
             .ProducesProblem(Refused)
             .ProducesProblem(Unavailable);
-        api.MapGet("/viewport/bake-preview", static (BakePreviewSession preview) => TypedResults.Ok(preview.State))
+        api.MapGet(
+                "/viewport/bake-preview",
+                static async (BakePreviewSession preview, CancellationToken cancellationToken) =>
+                    TypedResults.Ok(await preview.StateAsync(cancellationToken))
+            )
             .WithName("GetBakePreview")
             .WithTags(Tag)
             .WithSummary("The bake setup the viewport shows, and the key to its colors.");

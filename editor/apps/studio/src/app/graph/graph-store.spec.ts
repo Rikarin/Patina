@@ -99,6 +99,21 @@ describe('GraphStore', () => {
     return test;
   }
 
+  it('pauses and resumes evaluation, and hears another client pause it (#306)', async () => {
+    const { store, routes, socket, requests } = await opened();
+    routes['PUT graphs/g1/pace'] = async request => Response.json(await request.json());
+    expect(store.document()?.paused).toBe(false);
+
+    await store.setPaused(true);
+    expect(requests.at(-1)).toEqual({ key: 'PUT graphs/g1/pace', body: { paused: true } });
+    expect(store.document()?.paused).toBe(true);
+
+    routes['GET graphs/g1'] = () => Response.json(state({ paused: false }));
+    socket().send({ sequence: 1, kind: 'paced', revision: 1, history: clean });
+    await settle();
+    expect(store.document()?.paused).toBe(false);
+  });
+
   it('builds the socket address, with the token the browser cannot put in a header', () => {
     expect(socketUrl({ baseUrl: 'http://127.0.0.1:5190', token: 't' }, 'g1', 7)).toBe(
       'ws://127.0.0.1:5190/ws/graphs/g1?since=7&access_token=t'

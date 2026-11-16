@@ -2,7 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace Patina.Contracts;
 
-/// <summary>What a document's snapshots (#209), the samples (#190) and the library's costs (#207) send.</summary>
+/// <summary>
+///     What a document's snapshots (#209), the samples (#190), the library's costs (#207), its project templates
+///     (#144) and material presets (#124) send.
+/// </summary>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     WriteIndented = true,
@@ -12,9 +15,13 @@ namespace Patina.Contracts;
 [JsonSerializable(typeof(DocumentSnapshot))]
 [JsonSerializable(typeof(DocumentSnapshotList))]
 [JsonSerializable(typeof(SnapshotTakeRequest))]
-[JsonSerializable(typeof(SnapshotRequest), TypeInfoPropertyName = nameof(SnapshotRequest))]
 [JsonSerializable(typeof(SampleList))]
 [JsonSerializable(typeof(SampleRequest))]
 [JsonSerializable(typeof(LibraryCosts))]
+[JsonSerializable(typeof(ProjectTemplateRequest))]
+[JsonSerializable(typeof(SnapshotRequest), TypeInfoPropertyName = nameof(SnapshotRequest))]
 [JsonSerializable(typeof(DocumentCostPage), TypeInfoPropertyName = nameof(DocumentCostPage))]
+[JsonSerializable(typeof(ProjectTemplateList), TypeInfoPropertyName = nameof(ProjectTemplateList))]
+[JsonSerializable(typeof(MaterialPreset), TypeInfoPropertyName = nameof(MaterialPreset))]
+[JsonSerializable(typeof(MaterialPresetCreateRequest), TypeInfoPropertyName = nameof(MaterialPresetCreateRequest))]
 public sealed partial class LibraryQueryJsonContext : JsonSerializerContext;

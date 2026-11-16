@@ -1,7 +1,9 @@
 # Factory content
 
 `materials/` holds the starter graphs the shelf offers, and `brushes/` the starter brush and tool presets, each a `.ptbrush` keyed as
-`BrushPreset` is. `compounds/` holds Patina's own compounds, published as node types beside Vixen's by `Patina.Content`: a
+`BrushPreset` is. `smart-materials/` holds Patina's layered materials, each a `.vxsmartmat` of fills whose masks are
+compounds from `compounds/` and nothing else, so the CC0 promise below covers everything they draw with; the shelf offers
+them beside Vixen's own, which are Vixen's files under its licence. `compounds/` holds Patina's own compounds, published as node types beside Vixen's by `Patina.Content`: a
 file at `compounds/Grunges/Speckle.vxtexgraph` is the node `Grunges/Speckle`. Each is a graph of Patina's nodes and no
 picture, so it can be opened, read and regenerated in the app; `FactoryCompoundTests` holds every one to compiling with
 nothing to say and every grunge to drawing something that tiles. `Generators/` reads the mesh's bakes and `Weathering/` and
@@ -17,6 +19,12 @@ built from bundled materials can contain that content, and game studios must be 
 document for each of its materials, named for the material, whose masks are compounds from `compounds/`. Making one
 copies the folder into the library as a project of its own. `samples/Knot/knot.glb` is written by
 `patina-bench mesh <file> --uvs`, the same knot and sphere as `fixtures/viewport-test.glb` with a layout.
+
+`bakes/Knot/` is that knot's bake, which the shelf draws its generators from (#301), so each shows what it makes on a
+model. It is every map a generator in `compounds/Generators` reads, at 256 texels, written by
+`patina bake-maps --high content/samples/Knot/knot.glb --low content/samples/Knot/knot.glb --out content/bakes/Knot
+--resolution 256 --maps ao,curvature,thickness,position,world,id,islands,bounds,density --format png8 --name knot`.
+Bake it again when a generator reads a map that is not there.
 
 `export-presets/` holds the factory export presets. Each is a text file; a library adds or overrides one by putting a file
 with the same shape in `export-presets/`.

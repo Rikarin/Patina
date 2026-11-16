@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Graphs;
 using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
@@ -28,12 +29,9 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
     const string KeysFolder = "thumbnails";
     const string NothingToDraw = "-";
     const string OutputNode = "Output/Output";
-    const string BitmapNode = "Source/Bitmap";
     const string UsageSetting = "Usage";
-    const string SourceSetting = "Source";
     const string DefaultUsage = "baseColor";
     const string StarterPrefix = "starter:";
-    static readonly TimeSpan WorkerPatience = TimeSpan.FromSeconds(10);
 
     readonly ConcurrentDictionary<string, string> known = new(StringComparer.Ordinal);
 
@@ -41,6 +39,13 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
     ///     One drawing at a time: the Worker draws one at a time anyway, and a shelf asks for many at once.
     /// </summary>
     readonly SemaphoreSlim drawing = new(1, 1);
+
+    /// <summary>
+    ///     How long a picture waits for a Worker to be connected, and never for the one connected to finish (#275): a
+    ///     panorama is drawn at <see cref="PanoramaSide" />, which a busy GPU took more than ten seconds over while the
+    ///     viewport answered that no GPU process was connected.
+    /// </summary>
+    public TimeSpan WorkerPatience { get; init; } = TimeSpan.FromSeconds(10);
 
     public void Dispose() => drawing.Dispose();
 
@@ -118,17 +123,13 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
 
     /// <summary>The Worker's picture of an ask, and whether its answer holds for these files anywhere.</summary>
     async Task<(string? Hash, bool Lasting)> DrawAsync(MaterialThumbnailAsk ask, CancellationToken cancellationToken) {
-        using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        patience.CancelAfter(WorkerPatience);
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerPatience, cancellationToken);
         try {
-            var connection = await worker.ConnectionAsync(patience.Token);
             var reply = await connection.SendAsync(
                 new() { Type = IpcTypes.MaterialThumbnail, MaterialThumbnail = ask },
-                patience.Token
+                cancellationToken
             );
             return (reply.ThumbnailHash, true);
-        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            throw new RendererMissingException();
         } catch (IpcException e) when (!ask.Deep) {
             // A material that cannot draw shows its name alone, as it did before there were pictures. A panorama is
             // asked for by name, so the Worker's reason reaches whoever asked, and nothing is remembered for it. A
@@ -164,6 +165,14 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             return ShelfCompounds.NodeOf(source) is { } node ? OfCompound(library, node) : null;
         }
 
+        if (ShelfEnvironments.PictureOf(source) is { } panorama) {
+            return Ask(library, panorama); // an environment on the shelf is drawn as the picture it is (#203)
+        }
+
+        if (source.StartsWith(ShelfAlphas.Prefix, StringComparison.Ordinal)) {
+            return null; // a client draws an alpha as a stamp of its brush
+        }
+
         if (source.StartsWith(MaterialShelf.ShippedPrefix, StringComparison.Ordinal)) {
             return OfStack(source, library.RootPath, Path.Combine(library.RootPath, LibraryLayout.ProjectsFolder));
         }
@@ -176,6 +185,13 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             return null;
         }
 
+        return OfFile(library, source, full);
+    }
+
+    /// <summary>
+    ///     The picture of a library file or folder named by its whole path, or null for one that draws nothing.
+    /// </summary>
+    (string Key, MaterialThumbnailAsk Ask)? OfFile(OpenLibrary library, string source, string full) {
         if (Directory.Exists(full)) {
             // An empty material, or one that cannot be read, gives way to the next.
             return Standing(library, source)
@@ -189,6 +205,10 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
 
         if (PictureFormats.IsPicture(full)) {
             return OfPicture(source, full);
+        }
+
+        if (MaterialPresets.Names(full)) {
+            return OfPreset(library, source, full);
         }
 
         if (!full.EndsWith(LibraryLayout.GraphExtension, StringComparison.OrdinalIgnoreCase)
@@ -243,7 +263,11 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
         NodeGraphAsset graph = new() {
             Name = Path.GetFileNameWithoutExtension(full),
             Nodes = [
-                new() { Id = 1, Type = BitmapNode, Texts = new() { [SourceSetting] = Path.GetFileName(full) } },
+                new() {
+                    Id = 1,
+                    Type = GraphFiles.BitmapNode,
+                    Texts = new() { [GraphFiles.SettingOf(GraphFiles.BitmapNode)!] = Path.GetFileName(full) }
+                },
                 new() { Id = 2, Type = OutputNode, Texts = new() { [UsageSetting] = DefaultUsage } }
             ],
             Edges = [new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Input" }]
@@ -271,10 +295,7 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             }
         };
         var document = GraphDocuments.Text(small);
-        var pictures = graph.Nodes.Where(static n => n.Type == BitmapNode)
-            .Select(static n => n.Texts.GetValueOrDefault(SourceSetting))
-            .OfType<string>()
-            .SelectMany(picture => roots.Select(root => Path.GetFullPath(picture, root)));
+        var pictures = FilesRead(graph, roots);
         var key = Key(
             MaterialThumbnailKinds.Graph,
             source,
@@ -342,6 +363,16 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
     }
 
     /// <summary>When and how large each file is, which is what changes when it is saved.</summary>
+    /// <summary>
+    ///     Where each file a graph reads may be, a font and an SVG as much as a picture (#306), so that one saved over
+    ///     draws it again.
+    /// </summary>
+    static IEnumerable<string> FilesRead(NodeGraphAsset graph, IReadOnlyList<string> roots) =>
+        GraphFiles.Read(graph)
+            .Select(static read => read.File)
+            .Where(static file => !GraphFiles.IsScheme(file))
+            .SelectMany(file => roots.Select(root => Path.GetFullPath(file, root)));
+
     static IEnumerable<string> Stamps(IEnumerable<string> files) =>
         files.Where(File.Exists)
             .Select(static file => {

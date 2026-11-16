@@ -193,8 +193,17 @@ public static class ExportFileChecking {
         }
     }
 
-    /// <summary>Whether a map's numbers are a colour: base colour and its derived maps, and emission.</summary>
-    static bool IsColour(string map) => ExportMaps.IsColour(map) || map == ExportMaps.Emissive;
+    /// <summary>
+    ///     Whether a map's numbers are a colour: base colour and its derived maps, emission, and OpenPBR's colours
+    ///     (#142), glTF's sheen among them.
+    /// </summary>
+    static bool IsColour(string map) =>
+        ExportMaps.IsColour(map)
+        || map is ExportMaps.Emissive
+            or ExportMaps.SheenColor
+            or ExportMaps.SheenTint
+            or ExportMaps.SpecularColor
+            or ExportMaps.CoatColor;
 
     /// <summary>Whether a file keeps eight bits a lane, where linear colour bands.</summary>
     static bool EightBit(ExportTexture texture) =>

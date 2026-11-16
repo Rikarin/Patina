@@ -16,6 +16,7 @@ if TYPE_CHECKING:
   from ..models.stack_anchor_ref import StackAnchorRef
   from ..models.stack_command_stack_set_mask_layer_inputs_type_1 import StackCommandStackSetMaskLayerInputsType1
   from ..models.stack_command_stack_set_mask_layer_parameters_type_1 import StackCommandStackSetMaskLayerParametersType1
+  from ..models.stack_placement import StackPlacement
 
 
 
@@ -51,6 +52,8 @@ class StackCommandStackSetMaskLayer:
             output (None | str | Unset): Which picture of a generator entry that writes several it reads, or empty for its
                 only one. Another generator
                 starts from empty.
+            projection (None | str | Unset): How a texture entry lands: Uv, Triplanar, Planar, Spherical or Cylindrical.
+            placement (None | StackPlacement | Unset):
      """
 
     op: StackCommandStackSetMaskLayerOp
@@ -69,6 +72,8 @@ class StackCommandStackSetMaskLayer:
     lane: None | str | Unset = UNSET
     inputs: None | StackCommandStackSetMaskLayerInputsType1 | Unset = UNSET
     output: None | str | Unset = UNSET
+    projection: None | str | Unset = UNSET
+    placement: None | StackPlacement | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -79,6 +84,7 @@ class StackCommandStackSetMaskLayer:
         from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
         from ..models.stack_command_stack_set_mask_layer_inputs_type_1 import StackCommandStackSetMaskLayerInputsType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_mask_layer_parameters_type_1 import StackCommandStackSetMaskLayerParametersType1 # noqa: PLC0415
+        from ..models.stack_placement import StackPlacement # noqa: PLC0415
         op = self.op.value
 
         layer = self.layer
@@ -169,6 +175,20 @@ class StackCommandStackSetMaskLayer:
         else:
             output = self.output
 
+        projection: None | str | Unset
+        if isinstance(self.projection, Unset):
+            projection = UNSET
+        else:
+            projection = self.projection
+
+        placement: dict[str, Any] | None | Unset
+        if isinstance(self.placement, Unset):
+            placement = UNSET
+        elif isinstance(self.placement, StackPlacement):
+            placement = self.placement.to_dict()
+        else:
+            placement = self.placement
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -203,6 +223,10 @@ class StackCommandStackSetMaskLayer:
             field_dict["inputs"] = inputs
         if output is not UNSET:
             field_dict["output"] = output
+        if projection is not UNSET:
+            field_dict["projection"] = projection
+        if placement is not UNSET:
+            field_dict["placement"] = placement
 
         return field_dict
 
@@ -213,6 +237,7 @@ class StackCommandStackSetMaskLayer:
         from ..models.stack_anchor_ref import StackAnchorRef # noqa: PLC0415
         from ..models.stack_command_stack_set_mask_layer_inputs_type_1 import StackCommandStackSetMaskLayerInputsType1 # noqa: PLC0415
         from ..models.stack_command_stack_set_mask_layer_parameters_type_1 import StackCommandStackSetMaskLayerParametersType1 # noqa: PLC0415
+        from ..models.stack_placement import StackPlacement # noqa: PLC0415
         d = dict(src_dict)
         op = StackCommandStackSetMaskLayerOp(d.pop("op"))
 
@@ -383,6 +408,36 @@ class StackCommandStackSetMaskLayer:
         output = _parse_output(d.pop("output", UNSET))
 
 
+        def _parse_projection(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        projection = _parse_projection(d.pop("projection", UNSET))
+
+
+        def _parse_placement(data: object) -> None | StackPlacement | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                placement_type_1 = StackPlacement.from_dict(data)
+
+
+
+                return placement_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackPlacement | Unset, data)
+
+        placement = _parse_placement(d.pop("placement", UNSET))
+
+
         stack_command_stack_set_mask_layer = cls(
             op=op,
             layer=layer,
@@ -400,6 +455,8 @@ class StackCommandStackSetMaskLayer:
             lane=lane,
             inputs=inputs,
             output=output,
+            projection=projection,
+            placement=placement,
         )
 
 

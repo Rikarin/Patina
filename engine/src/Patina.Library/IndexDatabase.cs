@@ -12,7 +12,7 @@ sealed class IndexDatabase : IDisposable {
     ///     Raise this whenever the tables change or the scanner would read an unchanged file differently, such as
     ///     when a document gains a migration: the rescan skips unchanged files, so only a rebuild would notice.
     /// </summary>
-    const int Version = 5;
+    const int Version = 6;
 
     const int NotADatabase = 26;
     const int Corrupt = 11;

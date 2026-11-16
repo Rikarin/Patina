@@ -35,6 +35,11 @@ const KindHints: Readonly<Record<string, string>> = {
   drawing: 'Carried in the package'
 };
 
+/** The files a font or an SVG can be relinked to, and what the dialog calls them, by the one it replaces. */
+function drawingFormats(name: string): [readonly string[], string] {
+  return name.toLowerCase().endsWith('.svg') ? [['svg'], 'SVG files'] : [['ttf', 'otf'], 'Fonts'];
+}
+
 /**
  * Publishes the open graph as a package (ADR 0027): first what it would bring, then the package in the library's
  * packages folder, where every project's shelf offers it. The Server gathers and refuses; this shows what it said.
@@ -79,7 +84,7 @@ const KindHints: Readonly<Record<string, string>> = {
                 } @else {
                   <span class="text-foreground-muted shrink-0">{{ hintOf(dependency) }}</span>
                 }
-                @if (dependency.kind === 'picture') {
+                @if (relinks(dependency)) {
                   @if (dependency.in) {
                     <span class="text-foreground-muted shrink-0">In {{ dependency.in }}</span>
                   } @else if (canRelink) {
@@ -90,7 +95,7 @@ const KindHints: Readonly<Record<string, string>> = {
                       variant="ghost"
                       data-testid="publish-package-relink"
                       [disabled]="relinking()"
-                      [title]="'Point every Bitmap that reads ' + dependency.name + ' at another picture'"
+                      [title]="relinkTitle(dependency)"
                       (click)="relink(dependency)"
                     >
                       Relink…
@@ -175,12 +180,25 @@ export class PublishPackageDialog {
     return KindHints[dependency.kind] ?? '';
   }
 
+  /** Whether a dependency is a file the graph's nodes name, which Relink can point at another (#306). */
+  protected relinks(dependency: PackageDependency): boolean {
+    return dependency.kind === 'picture' || dependency.kind === 'drawing';
+  }
+
+  protected relinkTitle(dependency: PackageDependency): string {
+    return dependency.kind === 'picture'
+      ? `Point every Bitmap that reads ${dependency.name} at another picture`
+      : `Point every node that reads ${dependency.name} at another file`;
+  }
+
   /**
-   * Asks for the picture a dependency should be, points the graph's Bitmap nodes at it as one undo step, saves, and
-   * looks again, since a package is published from what is saved.
+   * Asks for the file a dependency should be, a picture or a font or an SVG as it is now, points the graph's nodes at
+   * it as one undo step, saves, and looks again, since a package is published from what is saved.
    */
   protected async relink(dependency: PackageDependency): Promise<void> {
-    const file = await this.bridge?.openImage(this.status.pictures());
+    const file = await (dependency.kind === 'picture'
+      ? this.bridge?.openImage(this.status.pictures())
+      : this.bridge?.openImage(...drawingFormats(dependency.name)));
     if (!file) {
       return;
     }

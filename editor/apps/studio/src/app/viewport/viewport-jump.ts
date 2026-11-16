@@ -7,6 +7,8 @@ export interface ViewportTarget {
   readonly camera?: ViewportCameraState | null;
   /** For the picture view, the file it shows, such as a mask written on its own (#109); shown again if it is. */
   readonly picture?: string | null;
+  /** What lights the model: a panorama's or a graph's file on the Server's machine, such as one from the shelf. */
+  readonly environment?: string | null;
 }
 
 /**

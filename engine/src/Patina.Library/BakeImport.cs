@@ -84,7 +84,27 @@ public static class BakeImport {
     /// </summary>
     public static bool Decoded(BakeImportMap map) {
         ArgumentNullException.ThrowIfNull(map);
-        return map.GreenDown || !IsPng(map.File);
+        return map.GreenDown == true || !IsPng(map.File);
+    }
+
+    /// <summary>
+    ///     The request with each map's green as it is to be read (#144): a tangent-space normal or bent normal that
+    ///     does not say runs as the project's normal format does; any other map has no green to turn.
+    /// </summary>
+    /// <param name="request">The maps as asked.</param>
+    /// <param name="format">The project's normal format, one of <see cref="NormalFormats.All" />.</param>
+    public static BakeImportRequest Greens(BakeImportRequest request, string format) {
+        ArgumentNullException.ThrowIfNull(request);
+        var turnable = request.Space == "tangent";
+        return request with {
+            Maps = [
+                ..request.Maps.Select(map => map with {
+                        GreenDown = map.GreenDown
+                            ?? (turnable && map.Map is "normal" or "bent" && format == NormalFormats.Down)
+                    }
+                )
+            ]
+        };
     }
 
     /// <summary>Refuses a request before anything is decoded or copied, which <see cref="Run" /> refuses too.</summary>
@@ -113,7 +133,7 @@ public static class BakeImport {
                 throw new ProjectRefusedException($"'{map.Map}' is not a map a bake has, or it is named twice.");
             }
 
-            if (map.GreenDown && (request.Space != "tangent" || map.Map is not ("normal" or "bent"))) {
+            if (map.GreenDown == true && (request.Space != "tangent" || map.Map is not ("normal" or "bent"))) {
                 throw new ProjectRefusedException(
                     $"Only a tangent-space normal or bent normal has a green to turn over, not '{map.Map}'."
                 );
@@ -135,7 +155,7 @@ public static class BakeImport {
             throw new ProjectRefusedException($"'{name}' is no picture Patina reads.");
         }
 
-        if (!decoding && (map.GreenDown || !IsPng(map.File))) {
+        if (!decoding && (map.GreenDown == true || !IsPng(map.File))) {
             throw new ProjectRefusedException($"'{name}' is no PNG with its green up, which a bake is read as.");
         }
     }

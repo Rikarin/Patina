@@ -1,3 +1,4 @@
+using Patina.Ipc;
 using Patina.Server.Sessions;
 
 namespace Patina.Server;
@@ -9,6 +10,28 @@ namespace Patina.Server;
 ///     for the whole of its patience, never because the one connected is slow.
 /// </summary>
 public static class WorkerWait {
+    /// <summary>The Worker's connection, waiting at most <paramref name="patience" /> for one to be there.</summary>
+    /// <remarks>
+    ///     ⚠ Only the connection is bounded: what is then asked of it is sent with
+    ///     <paramref name="cancellationToken" /> alone. A patience that also bounded the answer told a client that no
+    ///     GPU process was connected while one was drawing (a panorama on a busy GPU, #284).
+    /// </remarks>
+    /// <exception cref="RendererMissingException">No Worker was connected for the whole of the patience.</exception>
+    public static async Task<IpcConnection> ConnectionAsync(
+        WorkerLink worker,
+        TimeSpan patience,
+        CancellationToken cancellationToken
+    ) {
+        ArgumentNullException.ThrowIfNull(worker);
+        using var waiting = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        waiting.CancelAfter(patience);
+        try {
+            return await worker.ConnectionAsync(waiting.Token);
+        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            throw new RendererMissingException();
+        }
+    }
+
     /// <summary>Waits until nothing is pending, looking again at each of the session's events.</summary>
     /// <param name="session">What is waited on, whose events say something may have changed.</param>
     /// <param name="pending">What is still to be done, or null once it is.</param>

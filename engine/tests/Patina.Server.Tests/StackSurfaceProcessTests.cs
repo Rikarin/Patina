@@ -166,6 +166,26 @@ public sealed partial class StackProcessTests {
             new StackSetLayer(badge, Path: Through(size * 0.03f) with { Spacing = 17f })
         );
 
+        // A filled path comes back filled, and a ribbon takes no fill (#130).
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(badge, Path: Through(size * 0.03f) with { Filled = true })
+        );
+        Assert.True(
+            (await StateAsync(state.Id, deadline.Token)).Layers.Single(layer => layer.Id == badge).Path!.Filled
+        );
+        await EditAsync(
+            state.Id,
+            deadline.Token,
+            new StackSetLayer(badge, Path: Through(size * 0.03f) with { Filled = true, Ribbon = true })
+        );
+        Assert.False(
+            (await StateAsync(state.Id, deadline.Token)).Layers.Single(layer => layer.Id == badge).Path!.Filled
+        );
+        await ActAsync(state.Id, "undo", deadline.Token);
+        await ActAsync(state.Id, "undo", deadline.Token);
+
         // And the document holds the path as points, which is what the Server sends back.
         var kept = (await StateAsync(state.Id, deadline.Token)).Layers.Single(layer => layer.Id == badge);
         Assert.Equal("Path", kept.Projection);

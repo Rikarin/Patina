@@ -153,6 +153,11 @@ describe('evaluationSummary', () => {
     expect(summary({ revision: 4, settled: 3, evaluation })).toBe('Evaluating…');
   });
 
+  it('says a paused graph is paused, and whether edits wait (#306)', () => {
+    expect(summary({ revision: 4, settled: 3, evaluation, paused: true })).toBe('Paused, with edits waiting');
+    expect(summary({ revision: 3, settled: 3, evaluation, paused: true })).toBe('Paused');
+  });
+
   it('says a graph is up to date rather than that nothing ran in no time', () => {
     expect(summary({ revision: 3, settled: 3, evaluation: { ...evaluation, ran: 0, milliseconds: 0.2 } })).toBe(
       'Up to date'

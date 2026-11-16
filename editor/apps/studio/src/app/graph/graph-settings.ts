@@ -24,8 +24,9 @@ import { FrameColours, frameColourName } from './frame-colours';
 import { controlOf, freePresetName, grouped, holds, titleOf, widgetsFor } from './graph-authoring';
 import { colorTextOf, hexOfLanes, keptLanes, lanesOfColorText, lanesOfHex } from './graph-fields';
 import { GraphStore } from './graph-store';
+import { PairField } from './pair-field';
 
-const Kinds = ['Float', 'Int', 'Bool', 'Text', 'Color'];
+const Kinds = ['Float', 'Int', 'Bool', 'Text', 'Color', 'Float2'];
 const BitDepths = ['16', '32'];
 const PortKinds = ['Image', 'Float', 'Int', 'Bool', 'Float2', 'Float3', 'Float4'];
 const DefaultBitDepth = '16';
@@ -49,6 +50,8 @@ function startOf(kind: string): string {
       return '';
     case 'Color':
       return '1,1,1,1';
+    case 'Float2':
+      return '0,0';
     default:
       return '0';
   }
@@ -83,6 +86,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
   imports: [
     IconImports,
     AngleDial,
+    PairField,
     XuiButtonImports,
     XuiColorPickerImports,
     XuiInputImports,
@@ -342,7 +346,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                     [value]="parameter.summary"
                     (change)="describe(parameter, { summary: valueOf($event) })"
                   />
-                  @if (parameter.kind === 'Float' || parameter.kind === 'Int') {
+                  @if (parameter.kind === 'Float' || parameter.kind === 'Int' || parameter.kind === 'Float2') {
                     <div class="flex items-center gap-1" [attr.data-testid]="'parameter-range-' + parameter.name">
                       <span class="text-foreground-muted w-12 shrink-0 text-xs">Range</span>
                       <xui-numeric-input
@@ -510,6 +514,19 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                     }
                   </div>
                 </div>
+              }
+              @case ('pair') {
+                <ptn-pair-field
+                  [attr.data-testid]="'parameter-pair-' + parameter.name"
+                  [disabled]="!store.editable()"
+                  [label]="titleOf(parameter) + ' default'"
+                  [maximum]="parameter.maximum"
+                  [minimum]="parameter.minimum"
+                  [value]="store.parameterDefault(parameter)"
+                  [widget]="parameter.widget"
+                  (released)="store.endGesture()"
+                  (valueChange)="setDefault(parameter, $event)"
+                />
               }
               @case ('choice') {
                 <xui-select

@@ -1,6 +1,8 @@
 using Patina.Export.Materials;
 using Patina.Export.Presets;
+using System.Text.Json;
 using System.Xml.Linq;
+using Vixen.Core.Imaging;
 
 namespace Patina.Export.Tests;
 
@@ -137,7 +139,8 @@ public sealed class OpenPbrLayerExportTests : IDisposable {
             static warning => warning.StartsWith("USD: the sheen is left out", StringComparison.Ordinal)
         );
         Assert.Contains(said, static warning => warning.StartsWith("USD: transmission", StringComparison.Ordinal));
-        Assert.Contains(said, static warning => warning.StartsWith("glTF: the coat", StringComparison.Ordinal));
+        Assert.Contains(said, static warning => warning.StartsWith("glTF: the sheen", StringComparison.Ordinal));
+        Assert.Contains(said, static warning => warning.StartsWith("glTF: transmission", StringComparison.Ordinal));
         var read = Assert.Single(UsdaReader.Read(Path("usd/Car.usda"))).Slots.Select(static s => s.Usage).ToList();
         Assert.Contains("coat", read);
         Assert.Contains("coatRoughness", read);
@@ -173,5 +176,175 @@ public sealed class OpenPbrLayerExportTests : IDisposable {
         var usages = Assert.Single(MaterialXReader.Read(Path("tool.mtlx"))).Slots.Select(static s => s.Usage).ToList();
 
         Assert.Equal(["baseColor", "sheen", "sheenRoughness"], usages);
+    }
+
+    /// <summary>
+    ///     The shipped glTF preset writes a layered set's coat, sheen and transmission in the lanes glTF's extensions
+    ///     read, and its material file names them: the sheen's colour times its weight, since glTF's sheen has none.
+    /// </summary>
+    [Fact]
+    public void The_gltf_preset_carries_the_coat_sheen_and_transmission_through_gltfs_extensions() {
+        var preset = ExportPresetCatalog.Read(null).Find("gltf")!;
+        var maps = Layered();
+        maps["coatNormal"] = Flat("coatNormal", 3, 0.5f, 0.5f, 1f);
+
+        var said = Delivered(preset, maps, "gltf");
+
+        using var document = JsonDocument.Parse(File.ReadAllText(Path("gltf/Car.gltf")));
+        var root = document.RootElement;
+        var images = root.GetProperty("images")
+            .EnumerateArray()
+            .Select(static i => i.GetProperty("uri").GetString()!)
+            .ToList();
+        var extensions = root.GetProperty("materials")[0].GetProperty("extensions");
+        string Image(JsonElement slot) => images[slot.GetProperty("index").GetInt32()];
+
+        var coat = extensions.GetProperty("KHR_materials_clearcoat");
+        Assert.Equal("Car_clearcoat.png", Image(coat.GetProperty("clearcoatTexture")));
+        Assert.Equal("Car_clearcoat.png", Image(coat.GetProperty("clearcoatRoughnessTexture")));
+        Assert.Equal("Car_clearcoatNormal.png", Image(coat.GetProperty("clearcoatNormalTexture")));
+        var sheen = extensions.GetProperty("KHR_materials_sheen");
+        Assert.Equal("Car_sheen.png", Image(sheen.GetProperty("sheenColorTexture")));
+        Assert.Equal("Car_sheen.png", Image(sheen.GetProperty("sheenRoughnessTexture")));
+        Assert.Equal(
+            "Car_transmission.png",
+            Image(extensions.GetProperty("KHR_materials_transmission").GetProperty("transmissionTexture"))
+        );
+        Assert.DoesNotContain(said, static warning => warning.StartsWith("glTF:", StringComparison.Ordinal));
+
+        // The sheen's colour (0.9, 0.8, 0.7) times its weight of 0.7, stored as sRGB, with its roughness in alpha.
+        var tint = PngCodec.Decode(File.ReadAllBytes(Path("gltf/Car_sheen.png")));
+        float[] linear = [0.63f, 0.56f, 0.49f];
+        for (var lane = 0; lane < 3; lane++) {
+            Assert.Equal(MipChain.ToSrgb(linear[lane]), tint.Pixels[lane] / 255f, 2);
+        }
+
+        Assert.Equal(0.4f, tint.Pixels[3] / 255f, 2);
+    }
+
+    /// <summary>
+    ///     OpenPBR's specular lobe, a coat's colour and its own normal reach OpenPBR's and standard surface's inputs
+    ///     and read back as the maps they were written from; USD and glTF say they leave them out.
+    /// </summary>
+    [Fact]
+    public void The_specular_lobe_and_the_coats_colour_and_normal_reach_materialx_and_read_back() {
+        var preset = ExportPresetReader.Read(
+            """
+            version: 1
+            id: lobes
+            name: Lobes
+            normal: y-down
+            textures:
+              - file: "{project}_Lobe"
+                format: png8
+                space: linear
+                channels: [specularWeight.r, anisotropy.r, coat.r]
+              - file: "{project}_SpecularColor"
+                format: png8
+                space: srgb
+                channels: [specularColor.r, specularColor.g, specularColor.b]
+              - file: "{project}_CoatColor"
+                format: png8
+                space: srgb
+                channels: [coatColor.r, coatColor.g, coatColor.b]
+              - file: "{project}_CoatNormal"
+                format: png8
+                space: linear
+                channels: [coatNormal.r, coatNormal.g, coatNormal.b]
+            """,
+            "test"
+        ) with {
+            Materials = ["mtlx", "openpbr", "usda", "gltf"]
+        };
+        Dictionary<string, MapPicture> maps = new() {
+            ["specularWeight"] = Flat("specularWeight", 1, 0.8f),
+            ["anisotropy"] = Flat("anisotropy", 1, 0.3f),
+            ["coat"] = Flat("coat", 1, 1f),
+            ["specularColor"] = Flat("specularColor", 3, 1f, 0.9f, 0.8f),
+            ["coatColor"] = Flat("coatColor", 3, 0.9f, 0.9f, 1f),
+            ["coatNormal"] = Flat("coatNormal", 3, 0.5f, 0.5f, 1f)
+        };
+
+        var said = Delivered(preset, maps, "lobes");
+
+        var openPbr = Inputs(XDocument.Load(Path("lobes/Car.openpbr.mtlx")).Root!, "open_pbr_surface");
+        Assert.All(
+            (string[]) [
+                "specular_weight", "specular_color", "specular_roughness_anisotropy", "coat_color",
+                "geometry_coat_normal"
+            ],
+            input => Assert.Contains(input, openPbr)
+        );
+        var standard = Inputs(XDocument.Load(Path("lobes/Car.mtlx")).Root!, "standard_surface");
+        Assert.All(
+            (string[])["specular", "specular_color", "specular_anisotropy", "coat_color", "coat_normal"],
+            input => Assert.Contains(input, standard)
+        );
+        foreach (var file in (string[])["lobes/Car.openpbr.mtlx", "lobes/Car.mtlx"]) {
+            var slots = Assert.Single(MaterialXReader.Read(Path(file))).Slots.ToDictionary(static s => s.Usage);
+            Assert.Equal(
+                (Path("lobes/Car_Lobe.png"), 0),
+                (slots["specularWeight"].Texture, slots["specularWeight"].Lane)
+            );
+            Assert.Equal(1, slots["anisotropy"].Lane);
+            Assert.Equal(-1, slots["specularColor"].Lane);
+            Assert.Equal(Path("lobes/Car_CoatColor.png"), slots["coatColor"].Texture);
+            Assert.Equal(
+                (Path("lobes/Car_CoatNormal.png"), false),
+                (slots["coatNormal"].Texture, slots["coatNormal"].GreenUp)
+            );
+        }
+
+        Assert.Contains(said, static w => w.StartsWith("USD: the coat's color and normal", StringComparison.Ordinal));
+        Assert.Contains(said, static w => w.StartsWith("USD: specular weight", StringComparison.Ordinal));
+        Assert.Contains(said, static w => w.StartsWith("glTF: the coat's color", StringComparison.Ordinal));
+        Assert.Contains(said, static w => w.StartsWith("glTF: the coat is left out", StringComparison.Ordinal));
+        Assert.Contains(said, static w => w.StartsWith("glTF: specular weight", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    ///     A <c>gltf_pbr</c>'s sheen has no weight, so a coloured one comes in with a whole weight; a black one brings
+    ///     in nothing, and nor does a coat's colour without a coat or a specular colour left white.
+    /// </summary>
+    [Fact]
+    public void A_gltf_pbr_sheen_comes_in_with_a_whole_weight_while_its_colour_is_not_black() {
+        File.WriteAllText(
+            Path("gltf.mtlx"),
+            """
+            <?xml version="1.0"?>
+            <materialx version="1.39">
+              <gltf_pbr name="SR_Velvet" type="surfaceshader">
+                <input name="sheen_color" type="color3" value="0.5, 0.2, 0.1" />
+                <input name="sheen_roughness" type="float" value="0.3" />
+              </gltf_pbr>
+              <gltf_pbr name="SR_Plain" type="surfaceshader">
+                <input name="sheen_color" type="color3" value="0, 0, 0" />
+                <input name="sheen_roughness" type="float" value="0.3" />
+              </gltf_pbr>
+              <open_pbr_surface name="SR_Tinted" type="surfaceshader">
+                <input name="coat_color" type="color3" value="0.5, 0.5, 1" />
+                <input name="specular_color" type="color3" value="1, 1, 1" />
+              </open_pbr_surface>
+              <surfacematerial name="M_Velvet" type="material">
+                <input name="surfaceshader" type="surfaceshader" nodename="SR_Velvet" />
+              </surfacematerial>
+              <surfacematerial name="M_Plain" type="material">
+                <input name="surfaceshader" type="surfaceshader" nodename="SR_Plain" />
+              </surfacematerial>
+              <surfacematerial name="M_Tinted" type="material">
+                <input name="surfaceshader" type="surfaceshader" nodename="SR_Tinted" />
+              </surfacematerial>
+            </materialx>
+            """
+        );
+
+        var read = MaterialXReader.Read(Path("gltf.mtlx")).ToDictionary(static m => m.Name);
+
+        var velvet = read["Velvet"].Slots.ToDictionary(static s => s.Usage);
+        Assert.Equal(1f, velvet["sheen"].Value[0]);
+        Assert.Equal([0.5f, 0.2f, 0.1f], velvet["sheenColor"].Value.Take(3));
+        Assert.Equal(0.3f, velvet["sheenRoughness"].Value[0]);
+        Assert.DoesNotContain(read["Plain"].Slots, static s => s.Usage.StartsWith("sheen", StringComparison.Ordinal));
+        Assert.Empty(read["Tinted"].Slots);
     }
 }

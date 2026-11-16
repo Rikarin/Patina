@@ -355,19 +355,21 @@ public static class ExportMaps {
     public static IReadOnlyList<string> Users { get; } = [..Enumerable.Range(0, 8).Select(static at => $"user{at}")];
 
     /// <summary>
-    ///     The maps of OpenPBR's layers above the base (#142), which a texture set writes under these names. They are
+    ///     OpenPBR's maps beyond the standard ones (#142), which a texture set writes under these names. They are
     ///     Vixen's <c>ChannelAsset.OpenPbrUsages</c>; a Server test holds the two equal. Before <see cref="All" />,
     ///     which reads it as it starts.
     /// </summary>
-    public static IReadOnlyList<string> OpenPbr { get; } =
-        [Coat, CoatRoughness, Sheen, SheenColor, SheenRoughness, Transmission];
+    public static IReadOnlyList<string> OpenPbr { get; } = [
+        Coat, CoatRoughness, Sheen, SheenColor, SheenRoughness, Transmission, SpecularWeight, SpecularColor, Anisotropy,
+        CoatColor, CoatNormal
+    ];
 
     // Between the two groups, as in ExportCompressions: SK7020 honours no suppression, and reads fifteen constants in a
     // row as a clone of IpcTypes.
     public static IReadOnlyList<string> All { get; } = [
         BaseColor, Normal, Roughness, Metalness, Occlusion, Height, Emissive, Opacity, Mask, Curvature, Thickness, Id,
         Position, WorldNormal, BentNormal, BakedNormal, BakedOcclusion, Coverage, Specular, Diffuse, Glossiness,
-        ..Users, ..OpenPbr
+        SheenTint, ..Users, ..OpenPbr
     ];
 
     /// <summary>How much of a clear coat lies over the base: OpenPBR's <c>coat_weight</c>.</summary>
@@ -388,11 +390,34 @@ public static class ExportMaps {
     /// <summary>How much light passes through rather than scattering: OpenPBR's <c>transmission_weight</c>.</summary>
     public const string Transmission = "transmission";
 
+    /// <summary>How much of the specular lobe there is: OpenPBR's <c>specular_weight</c>, whole by default.</summary>
+    public const string SpecularWeight = "specularWeight";
+
+    /// <summary>What the specular lobe is tinted: OpenPBR's <c>specular_color</c>. Linear, as the sheen's is.</summary>
+    public const string SpecularColor = "specularColor";
+
+    /// <summary>
+    ///     How much longer the highlight is one way than the other: OpenPBR's <c>specular_roughness_anisotropy</c>.
+    /// </summary>
+    public const string Anisotropy = "anisotropy";
+
+    /// <summary>The coat's colour, what light through it is tinted: OpenPBR's <c>coat_color</c>. Linear.</summary>
+    public const string CoatColor = "coatColor";
+
+    /// <summary>The coat's own tangent-space normal, as the set's is: OpenPBR's <c>geometry_coat_normal</c>.</summary>
+    public const string CoatNormal = "coatNormal";
+
     /// <summary>
     ///     The maps a preset can read that no output makes: each is worked out from others when a file reads it
     ///     (<see cref="DerivedMaps" />), so a specular-glossiness file comes from a metal-roughness project.
     /// </summary>
-    public static IReadOnlyList<string> Derived { get; } = [Specular, Diffuse, Glossiness];
+    public static IReadOnlyList<string> Derived { get; } = [Specular, Diffuse, Glossiness, SheenTint];
+
+    /// <summary>
+    ///     The sheen's colour times its weight, linear: glTF's <c>sheenColor</c>, since glTF's sheen has no weight of
+    ///     its own. Worked out only for a set with a sheen weight, since without one there is no sheen.
+    /// </summary>
+    public const string SheenTint = "sheenTint";
 
     /// <summary>
     ///     The colour at normal incidence: four per cent for a dielectric, the base colour for a metal. sRGB.
@@ -427,7 +452,7 @@ public static class ExportMaps {
     public const string BakedOcclusion = "bakedOcclusion";
 
     /// <summary>Whether a map is a tangent-space normal, whose green a target may read either way.</summary>
-    public static bool IsTangentNormal(string map) => map is Normal or BakedNormal;
+    public static bool IsTangentNormal(string map) => map is Normal or BakedNormal or CoatNormal;
 
     /// <summary>
     ///     Which texels a mesh's layout covers, one where it does: what a stack on a mesh makes beside its maps, and
@@ -441,9 +466,10 @@ public static class ExportMaps {
     /// </summary>
     public static float Default(string map, int lane) =>
         (map, lane) switch {
-            (Normal or WorldNormal or BentNormal or BakedNormal, 2) => 1f,
-            (Normal or WorldNormal or BentNormal or BakedNormal, not 3) => 0.5f,
-            (Opacity or Occlusion or BakedOcclusion or Mask or Coverage or SheenColor, _) => 1f,
+            (Normal or WorldNormal or BentNormal or BakedNormal or CoatNormal, 2) => 1f,
+            (Normal or WorldNormal or BentNormal or BakedNormal or CoatNormal, not 3) => 0.5f,
+            (Opacity or Occlusion or BakedOcclusion or Mask or Coverage or SheenColor or SpecularWeight, _) => 1f,
+            (SpecularColor or CoatColor, _) => 1f,
             (_, 3) => 1f,
             (BaseColor or Roughness or Height or Curvature or Position or Diffuse or Glossiness or SheenRoughness, _) =>
                 0.5f,

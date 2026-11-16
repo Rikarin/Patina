@@ -11,6 +11,18 @@ namespace Patina.Worker;
 ///     borrowed goes back to the file when the painting session closes.
 /// </summary>
 sealed partial class StackHost {
+    /// <summary>
+    ///     The canvas a session of this Worker paints for a file, unsaved strokes and all, or null: what a graph
+    ///     reading the file reads in its place, so that a painted mask feeds a graph as it is painted (#205). Asked on
+    ///     the device's turn, as strokes are laid, so the canvas is never read halfway through one.
+    /// </summary>
+    public PaintCanvas? Painting(string file) {
+        var full = Path.GetFullPath(file);
+        return Held.SelectMany(static session => session.Painted())
+            .FirstOrDefault(pair => string.Equals(pair.File, full, StringComparison.Ordinal))
+            .Canvas;
+    }
+
     /// <summary>What every other session holds painted, which a session reads in place of the file.</summary>
     IEnumerable<(string File, PaintCanvas Canvas)> PaintedElsewhere(Session asking) =>
         Held.Where(session => !ReferenceEquals(session, asking)).SelectMany(static session => session.Painted());

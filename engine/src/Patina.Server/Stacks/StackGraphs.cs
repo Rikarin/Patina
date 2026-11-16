@@ -62,7 +62,7 @@ static class StackGraphs {
         return new(
             $"{LibraryLayout.ProjectsFolder}/{project.Path.Trim('/')}/{file}",
             named,
-            [..build.Problems.Select(static problem => problem.Message).Distinct(StringComparer.Ordinal)]
+            [..build.Problems.Select(static problem => problem.Message)]
         );
     }
 

@@ -8,6 +8,8 @@
 *.exr binary
 *.hdr binary
 *.glb binary
+*.usdc binary
+*.usdz binary
 *.ktx2 binary
 *.spv binary
 *.dylib binary

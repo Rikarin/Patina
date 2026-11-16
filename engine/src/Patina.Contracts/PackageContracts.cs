@@ -119,12 +119,13 @@ public sealed record PackageImportRequest(string Source);
 public sealed record PackageImported(string Path, PackageManifest Manifest, bool Replaced);
 
 /// <summary>
-///     The body of <c>POST /api/v1/graphs/{id}/relink</c>: a picture the graph reads, and the file it is now.
+///     The body of <c>POST /api/v1/graphs/{id}/relink</c>: a file the graph reads (a picture, a font or an SVG), and
+///     the file it is now.
 /// </summary>
-/// <param name="From">The picture as the graph's Bitmap nodes name it; not read when a node is named.</param>
+/// <param name="From">The file as the graph's nodes name it; not read when a node is named.</param>
 /// <param name="To">The file to read instead: absolute, or below the library.</param>
 /// <param name="Node">
-///     One Bitmap node to point at the file, whatever it reads now, or null for every one that reads
+///     One node that reads a file to point at this one, whatever it reads now, or null for every one that reads
 ///     <paramref name="From" /> (#292).
 /// </param>
 public sealed record GraphRelinkRequest(string From, string To, int? Node = null);

@@ -85,6 +85,12 @@ public sealed record ProjectDocument(
     /// <summary>How Auto Unwrap lays a mesh out.</summary>
     public UnwrapOptions Unwrap { get; init; } = new();
 
+    /// <summary>
+    ///     Which way the green of the project's tangent-space normal maps runs, one of
+    ///     <see cref="NormalFormats.All" /> (#144): what a normal map brought in is read as unless it says otherwise.
+    /// </summary>
+    public string NormalFormat { get; init; } = NormalFormats.Up;
+
     /// <summary>What the project's last export was set to, so the next one starts there, or null.</summary>
     public ProjectExportSettings? Export { get; init; }
 
@@ -185,8 +191,13 @@ public static class DocumentKinds {
     /// </summary>
     public const string BrushPreset = "brush-preset";
 
+    /// <summary>
+    ///     A material with its parameters set (#124). It opens no workspace; the shelf lists it among the materials.
+    /// </summary>
+    public const string MaterialPreset = "material-preset";
+
     public static bool Known(string kind) =>
-        kind is Texturing or LayeredMaterial or ImageMaterial or Graph or BrushPreset;
+        kind is Texturing or LayeredMaterial or ImageMaterial or Graph or BrushPreset or MaterialPreset;
 }
 
 /// <summary>

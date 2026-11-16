@@ -49,9 +49,11 @@ public static class DerivedMaps {
 
     /// <summary>A derived map is as deep as the deepest map it is worked out from (#141).</summary>
     static int DepthOf(string map, IReadOnlyDictionary<string, MapPicture> maps) {
-        string[] from = map == ExportMaps.Glossiness
-            ? [ExportMaps.Roughness]
-            : [ExportMaps.BaseColor, ExportMaps.Metalness];
+        string[] from = map switch {
+            ExportMaps.Glossiness => [ExportMaps.Roughness],
+            ExportMaps.SheenTint => [ExportMaps.Sheen, ExportMaps.SheenColor],
+            _ => [ExportMaps.BaseColor, ExportMaps.Metalness]
+        };
         return from.Select(name => maps.GetValueOrDefault(name)?.Depth ?? 8).Max();
     }
 
@@ -63,6 +65,8 @@ public static class DerivedMaps {
                 Each(rough.Width, rough.Height, 1, (x, y, _) => 1f - Lane(rough, x, y, 0, 0.5f)),
             ExportMaps.Specular or ExportMaps.Diffuse when colour is not null || metal is not null =>
                 Colour(map == ExportMaps.Specular, colour, metal),
+            ExportMaps.SheenTint when maps.GetValueOrDefault(ExportMaps.Sheen)?.Image is { } weight =>
+                Tint(weight, maps.GetValueOrDefault(ExportMaps.SheenColor)?.Image),
             _ => null
         };
     }
@@ -84,6 +88,18 @@ public static class DerivedMaps {
                 return MipChain.ToSrgb(linear);
             }
         );
+    }
+
+    /// <summary>
+    ///     glTF's sheen colour: OpenPBR's sheen colour times its weight, both linear, at the larger of the two sizes. A
+    ///     set without a sheen colour has OpenPBR's white one.
+    /// </summary>
+    static FloatImage Tint(FloatImage weight, FloatImage? colour) {
+        var width = Math.Max(weight.Width, colour?.Width ?? 0);
+        var height = Math.Max(weight.Height, colour?.Height ?? 0);
+        weight = Fit(weight, width, height)!;
+        colour = Fit(colour, width, height);
+        return Each(width, height, 3, (x, y, lane) => Lane(weight, x, y, 0, 0f) * Lane(colour, x, y, lane, 1f));
     }
 
     static FloatImage? Fit(FloatImage? image, int width, int height) =>

@@ -95,6 +95,7 @@ sealed class GraphParameterEdits(NodeGraphModel graph) {
             SettingWidget.Slider => parameter.IsBounded,
             SettingWidget.Angle => parameter.Kind is SettingKind.Float or SettingKind.Int,
             SettingWidget.Toggle => parameter.Kind == SettingKind.Bool,
+            SettingWidget.Position or SettingWidget.Tiling => parameter.Kind == SettingKind.Float2,
             _ => true
         };
         if (!fits) {

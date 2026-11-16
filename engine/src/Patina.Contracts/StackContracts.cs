@@ -179,6 +179,11 @@ public sealed record StackAnchorUse(string Layer, string Where, string Channel);
 ///     Which picture of a generator that writes several is the mask, by its name in the generator's Outputs, or empty
 ///     for its only one. Another generator starts from empty.
 /// </param>
+/// <param name="Projection">
+///     How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world
+///     position, which a mask on a mesh whose UVs it was not made for wants (#120).
+/// </param>
+/// <param name="Placement">How often a projected texture repeats, turns and moves, and how hard its seams are.</param>
 public sealed record StackMask(
     string Source,
     float Value = 1f,
@@ -198,7 +203,9 @@ public sealed record StackMask(
     bool Enabled = true,
     float Inside = 1f,
     float Outside = 0f,
-    string Output = ""
+    string Output = "",
+    string Projection = "Uv",
+    StackPlacement? Placement = null
 );
 
 /// <summary>
@@ -219,6 +226,11 @@ public sealed record StackMask(
 /// <param name="Enabled">Whether it composites at all.</param>
 /// <param name="Lane">Which lane of its picture it reads: Red, Green, Blue or Alpha.</param>
 /// <param name="Output">Which picture of a generator entry that writes several it reads, or empty for its one.</param>
+/// <param name="Projection">
+///     How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world
+///     position, which a mask on a mesh whose UVs it was not made for wants (#120).
+/// </param>
+/// <param name="Placement">How often a projected texture repeats, turns and moves, and how hard its seams are.</param>
 public sealed record StackMaskLayer(
     string Source,
     float Value = 1f,
@@ -233,7 +245,9 @@ public sealed record StackMaskLayer(
     float Opacity = 1f,
     bool Enabled = true,
     string Lane = "Red",
-    string Output = ""
+    string Output = "",
+    string Projection = "Uv",
+    StackPlacement? Placement = null
 );
 
 /// <summary>One step run on a mask.</summary>
@@ -816,6 +830,8 @@ public sealed record StackMoveMaskLayer(string Layer, int Index, int Delta) : St
 ///     Which picture of a generator entry that writes several it reads, or empty for its only one. Another generator
 ///     starts from empty.
 /// </param>
+/// <param name="Projection">How a texture entry lands: Uv, Triplanar, Planar, Spherical or Cylindrical.</param>
+/// <param name="Placement">Where a projected texture entry sits, which replaces where it sat.</param>
 public sealed record StackSetMaskLayer(
     string Layer,
     int Index,
@@ -831,7 +847,9 @@ public sealed record StackSetMaskLayer(
     bool? Enabled = null,
     string? Lane = null,
     IReadOnlyDictionary<string, StackAnchorRef>? Inputs = null,
-    string? Output = null
+    string? Output = null,
+    string? Projection = null,
+    StackPlacement? Placement = null
 ) : StackCommand;
 #pragma warning restore SK7005
 

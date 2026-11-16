@@ -254,8 +254,18 @@ public sealed class StackEditorPropertyTests {
         Assert.Equal(ChannelAsset.OpenPbrUsages, added.Select(static c => c.Usage));
         foreach (var channel in added) {
             Assert.Equal(ChannelAsset.Untouched(channel.Usage), channel.Default);
-            Assert.Equal(channel.Default[0], Patina.Export.Presets.ExportMaps.Default(channel.Usage, 0));
+            Assert.Equal(channel.Default, ExportDefault(channel.Usage));
         }
+    }
+
+    /// <summary>What an export fills each of a map's four lanes with where a set has no such map.</summary>
+    static float[] ExportDefault(string usage) {
+        var lanes = new float[4];
+        for (var lane = 0; lane < lanes.Length; lane++) {
+            lanes[lane] = Patina.Export.Presets.ExportMaps.Default(usage, lane);
+        }
+
+        return lanes;
     }
 
     /// <summary>
@@ -516,11 +526,25 @@ public sealed class StackEditorPropertyTests {
     public void More_of_a_saved_drag_leaves_the_stack_unsaved() {
         var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
         editor.Apply(new([Stroke("a", true, 2)]));
-        editor.MarkSaved();
+        editor.MarkSaved(editor.Mark);
         Assert.False(editor.History.Dirty);
 
         editor.Apply(new([Stroke("a", true, 3)]));
 
+        Assert.True(editor.History.Dirty);
+    }
+
+    /// <summary>A save taken part way through a drag holds that part: more of the drag is unsaved (#306).</summary>
+    [Fact]
+    public void A_save_taken_part_way_through_a_drag_holds_that_part() {
+        var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
+        editor.Apply(new([Stroke("a", true, 2)]));
+        var taken = editor.Mark;
+        editor.Apply(new([Stroke("a", true, 3)]));
+        editor.MarkSaved(taken);
+
+        Assert.True(editor.History.Dirty);
+        editor.Undo();
         Assert.True(editor.History.Dirty);
     }
 

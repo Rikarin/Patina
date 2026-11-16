@@ -8,6 +8,8 @@ import {
   isWireable,
   lanesOfColorText,
   lanesOfHex,
+  pairOfText,
+  pairTextOf,
   sliderRange,
   wireFamily
 } from './graph-fields';
@@ -184,5 +186,40 @@ describe("a Color parameter's text", () => {
   it('writes four numbers that read back the same', () => {
     expect(colorTextOf([0.25, 1.5, 0])).toBe('0.25,1.5,0,1');
     expect(lanesOfColorText(colorTextOf([0.1, 0.2, 0.3, 0.4]))).toEqual([0.1, 0.2, 0.3, 0.4]);
+  });
+});
+
+describe("a Float2 parameter's text (#181)", () => {
+  it('reads x and y, and writes them back the same', () => {
+    expect(pairOfText(' 0.5 , -2 ')).toEqual([0.5, -2]);
+    expect(pairOfText(pairTextOf(0.125, 4))).toEqual([0.125, 4]);
+  });
+
+  it('reads nothing else, a colour included', () => {
+    for (const text of ['', '1', '1,', '1,1,1', 'x,0', 'Infinity,0']) {
+      expect(pairOfText(text)).toBeNull();
+    }
+  });
+
+  it('draws a Float2 setting as a pair with its range', () => {
+    const [main] = fieldsOf({
+      ...type,
+      ports: [],
+      settings: [
+        {
+          name: 'Offset',
+          default: '0.5,0.5',
+          summary: '',
+          kind: 'Float2',
+          minimum: 0,
+          maximum: 1,
+          group: '',
+          accepted: [],
+          widget: 'Position'
+        }
+      ]
+    });
+
+    expect(main?.fields[0]).toMatchObject({ control: 'pair', minimum: 0, maximum: 1, widget: 'Position' });
   });
 });

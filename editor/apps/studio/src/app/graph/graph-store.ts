@@ -1138,9 +1138,9 @@ export class GraphStore {
   }
 
   /**
-   * Points every Bitmap node that reads the picture `from` at the file `to`, as one undo step (#185). The Server names
-   * the file as the graph finds it, so this sends the path the person picked. A refusal is thrown for the caller to
-   * show, since it comes from a dialog.
+   * Points every node that reads the file `from`, a Bitmap's picture or a Text's font or a Vector's SVG (#306), at the
+   * file `to`, as one undo step (#185). The Server names the file as the graph finds it, so this sends the path the
+   * person picked. A refusal is thrown for the caller to show, since it comes from a dialog.
    */
   async relinkPicture(from: string, to: string, node: number | null = null): Promise<void> {
     const id = this.mutableDocument()?.id;
@@ -1727,6 +1727,10 @@ export class GraphStore {
       this.autosave.set(autosaveNote(next.name, event));
     }
 
+    if (event.kind === 'paced') {
+      void this.repace(next.id); // a client paused or resumed it
+    }
+
     if (event.kind === 'typesChanged' || event.delta?.interface) {
       this.refreshCatalogue(next.id).catch((error: unknown) => {
         this.refused(error);
@@ -1736,6 +1740,36 @@ export class GraphStore {
     this.keepSelectionReal(next);
     this.positionDrafts.reached(event.sequence);
     this.valueDrafts.reached(event.sequence);
+  }
+
+  /**
+   * Pauses or resumes the graph's evaluation (#306): edits wait while a big graph is set up, and a resume evaluates them.
+   * Every client hears it, and a save never waits on it.
+   */
+  async setPaused(paused: boolean): Promise<void> {
+    const id = this.mutableDocument()?.id;
+    if (id === undefined) {
+      return;
+    }
+
+    try {
+      const pace = unwrap(
+        await this.api().PUT('/api/v1/graphs/{id}/pace', { params: { path: { id } }, body: { paused } })
+      );
+      this.mutableDocument.update(document => (document?.id === id ? { ...document, paused: pace.paused } : document));
+    } catch (failure) {
+      this.refused(failure);
+    }
+  }
+
+  /** Reads whether the graph is paused again, after a client changed it. */
+  private async repace(id: string): Promise<void> {
+    try {
+      const { paused } = unwrap(await this.api().GET('/api/v1/graphs/{id}', { params: { path: { id } } }));
+      this.mutableDocument.update(document => (document?.id === id ? { ...document, paused } : document));
+    } catch {
+      // The next state read brings it, and a lost Server is reported where the socket closes.
+    }
   }
 
   /** Something was missed, so the whole state replaces what is held, and events that came meanwhile follow it. */

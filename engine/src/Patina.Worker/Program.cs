@@ -74,6 +74,7 @@ using var gpu = new DeviceHost();
 using var graphs = new GraphHost(gpu);
 var watch = new DeviceWatch();
 using var stacks = new StackHost(gpu, viewport, meshes, watch);
+graphs.ReadPaintingOf(stacks);
 using var bakes = new BakeHost();
 using var builds = new BuildHost(gpu);
 var report = new WorkerReport(Console.Out);

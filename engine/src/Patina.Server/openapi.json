@@ -2989,6 +2989,175 @@
         }
       }
     },
+    "/api/v1/library/project-templates": {
+      "get": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "The project templates the library keeps, by name.",
+        "operationId": "ListProjectTemplates",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTemplateList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps a project\u0027s settings as a template: Auto Unwrap and Preserve Paint, and how it exports, bakes, opens the viewport, checks and paints. Its meshes and documents stay its own. A template of the same name is replaced.",
+        "operationId": "SaveProjectTemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTemplateList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Throws a project template away. Projects made from it keep their settings.",
+        "operationId": "DeleteProjectTemplate",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTemplateList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/library/project/settings": {
       "patch": {
         "tags": [
@@ -4036,6 +4205,67 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MaterialUse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/library/materials/presets": {
+      "post": {
+        "tags": [
+          "Library"
+        ],
+        "summary": "Keeps a graph fill\u0027s material and parameters as a material preset, a document of the project (#124).",
+        "operationId": "CreateMaterialPreset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialPresetCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialInfo"
                 }
               }
             }
@@ -6677,7 +6907,7 @@
         "tags": [
           "Graphs"
         ],
-        "summary": "Points every Bitmap node that reads a picture at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
+        "summary": "Points every node that reads a file (a Bitmap\u0027s picture, a Text\u0027s font, a Vector\u0027s SVG) at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
         "operationId": "RelinkGraphPicture",
         "parameters": [
           {
@@ -6722,6 +6952,57 @@
           },
           "422": {
             "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/pace": {
+      "put": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Pauses or resumes a graph\u0027s evaluation. While it is paused, edits wait and the previews stay those of its settled revision; resuming evaluates them. Every client hears a paced event.",
+        "operationId": "PaceGraph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphPace"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphPace"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -10668,8 +10949,7 @@
       "BakeImportMap": {
         "required": [
           "map",
-          "file",
-          "greenDown"
+          "file"
         ],
         "type": "object",
         "properties": {
@@ -10682,9 +10962,11 @@
             "description": "The picture, absolute or below the library: a PNG is copied as it is, and any other picture Patina reads is\nwritten as a 16-bit PNG by the GPU engine (#300)."
           },
           "greenDown": {
-            "type": "boolean",
-            "description": "For a tangent-space \u0060normal\u0060 or \u0060bent\u0060 map: its green runs down the picture, as DirectX\u0027s do, and is\nturned over as it comes in, since Patina\u0027s bakes run it up. False keeps it as it is.",
-            "default": false
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "For a tangent-space \u0060normal\u0060 or \u0060bent\u0060 map: its green runs down the picture, as DirectX\u0027s do, and is\nturned over as it comes in, since Patina\u0027s bakes run it up. False keeps it as it is. Null, or left out, reads\nit as the project\u0027s string ProjectContents.NormalFormat says (#144)."
           }
         },
         "description": "One map brought in."
@@ -15385,6 +15667,19 @@
         },
         "description": "Opens a texture graph for editing. Opening a file that is already open joins its session."
       },
+      "GraphPace": {
+        "required": [
+          "paused"
+        ],
+        "type": "object",
+        "properties": {
+          "paused": {
+            "type": "boolean",
+            "description": "Whether edits wait to be evaluated, as a stack\u0027s can, while a big graph is set up."
+          }
+        },
+        "description": "How a graph is evaluated while it is edited (#306): the body and the reply of its \u0060pace\u0060 route."
+      },
       "GraphPortDefinition": {
         "required": [
           "name",
@@ -15537,7 +15832,7 @@
         "properties": {
           "from": {
             "type": "string",
-            "description": "The picture as the graph\u0027s Bitmap nodes name it; not read when a node is named."
+            "description": "The file as the graph\u0027s nodes name it; not read when a node is named."
           },
           "to": {
             "type": "string",
@@ -15548,11 +15843,11 @@
               "null",
               "integer"
             ],
-            "description": "One Bitmap node to point at the file, whatever it reads now, or null for every one that reads\nFrom (#292).",
+            "description": "One node that reads a file to point at this one, whatever it reads now, or null for every one that reads\nFrom (#292).",
             "format": "int32"
           }
         },
-        "description": "The body of \u0060POST /api/v1/graphs/{id}/relink\u0060: a picture the graph reads, and the file it is now."
+        "description": "The body of \u0060POST /api/v1/graphs/{id}/relink\u0060: a file the graph reads (a picture, a font or an SVG), and\nthe file it is now."
       },
       "GraphSample": {
         "required": [
@@ -15716,7 +16011,7 @@
           },
           "kind": {
             "type": "string",
-            "description": "Text, Bool, Int, Float or Color, whose default is four numbers separated by commas."
+            "description": "Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two numbers such\nas a position or a tiling, separated by a comma, each within the range."
           },
           "minimum": {
             "type": [
@@ -15767,7 +16062,7 @@
               "null",
               "string"
             ],
-            "description": "The control an inspector draws: \u0060Default\u0060, \u0060Slider\u0060 (a number with a range), \u0060Angle\u0060 (a number\nin degrees) or \u0060Toggle\u0060 (a flag). Null for \u0060Default\u0060."
+            "description": "The control an inspector draws: \u0060Default\u0060, \u0060Slider\u0060 (a number with a range), \u0060Angle\u0060 (a number\nin degrees), \u0060Toggle\u0060 (a flag), \u0060Position\u0060 (a Float2 as a point on a square) or \u0060Tiling\u0060 (a\nFloat2 as two counts that can be kept equal). Null for \u0060Default\u0060."
           },
           "visibleIf": {
             "oneOf": [
@@ -15801,6 +16096,7 @@
           "comments",
           "previews",
           "repairs",
+          "paused",
           "settled",
           "readOnly",
           "info",
@@ -15939,6 +16235,11 @@
               "$ref": "#/components/schemas/GraphNodeTime"
             },
             "description": "The newest GPU time of each node an evaluation has timed."
+          },
+          "paused": {
+            "type": "boolean",
+            "description": "True while edits wait to be evaluated (#306): the previews are those of Settled until it is\nresumed. Saving never waits on it.",
+            "default": false
           }
         },
         "description": "The reply to \u0060GET /api/v1/graphs/{id}\u0060: the whole document as the Server holds it."
@@ -16763,7 +17064,7 @@
           },
           "file": {
             "type": "string",
-            "description": "A file on the Server\u0027s machine that describes materials: a glTF (\u0060.gltf\u0060, \u0060.glb\u0060) or another model\nfile, a MaterialX document (\u0060.mtlx\u0060), a USD layer in its text form (\u0060.usda\u0060) or a USD package\n(\u0060.usdz\u0060) whose layer is text."
+            "description": "A file on the Server\u0027s machine that describes materials: a glTF (\u0060.gltf\u0060, \u0060.glb\u0060) or another model\nfile, a MaterialX document (\u0060.mtlx\u0060), a USD layer in text or binary (\u0060.usda\u0060, \u0060.usdc\u0060,\n\u0060.usd\u0060) or a USD package (\u0060.usdz\u0060)."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/project/materials\u0060."
@@ -16899,6 +17200,37 @@
         },
         "description": "The materials a project can use."
       },
+      "MaterialPresetCreateRequest": {
+        "required": [
+          "project",
+          "name",
+          "graph",
+          "parameters"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project, below \u0060projects/\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "What to call it, which names its file."
+          },
+          "graph": {
+            "type": "string",
+            "description": "The material, as a graph fill in the project reads it (its \u0060graph\u0060), which the Server takes back to where\nthe shelf has it."
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What the fill sets the material\u0027s parameters to (its \u0060parameters\u0060)."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/materials/presets\u0060, which keeps a graph fill\u0027s material and parameters\nas a new material preset of the project."
+      },
       "MaterialUse": {
         "required": [
           "graph"
@@ -16908,6 +17240,16 @@
           "graph": {
             "type": "string",
             "description": "What a fill layer\u0027s \u0060graph\u0060 takes."
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What a material preset sets the graph\u0027s parameters to, which a fill layer\u0027s \u0060parameters\u0060 take, or null\nfor a material used as it is (#124)."
           }
         },
         "description": "A graph ready for a layer."
@@ -17716,6 +18058,7 @@
           "exportSets",
           "preservePaint",
           "unwrap",
+          "normalFormat",
           "bake"
         ],
         "type": "object",
@@ -17801,6 +18144,10 @@
           "unwrap": {
             "description": "How Auto Unwrap lays a mesh out.",
             "$ref": "#/components/schemas/UnwrapOptions"
+          },
+          "normalFormat": {
+            "type": "string",
+            "description": "Which way the green of the project\u0027s tangent-space normal maps runs: \u0060y-up\u0060 (OpenGL) or \u0060y-down\u0060\n(DirectX). A normal map brought in is read as this unless it says otherwise (#144)."
           },
           "bake": {
             "description": "How its bakes run, which texture sets they make maps for, and what they read beyond its mesh.",
@@ -17912,6 +18259,13 @@
             ],
             "description": "The height of a stack it starts with, when it is not as tall as Resolution is wide (#144):\na model laid out on a 2:1 sheet paints at 2048 \u00D7 1024. Null is square. A graph is always square.",
             "format": "int32"
+          },
+          "template": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project template whose settings it starts with (#144), by name, or null for none. Its bake settings take\nthe place of the person\u0027s default and of the size the project is made at."
           }
         },
         "description": "The body of \u0060POST /api/v1/library/projects\u0060."
@@ -18764,6 +19118,13 @@
               "boolean"
             ],
             "description": "True reloads Mesh only when nothing on it moves (#89): the same file name, the same\nmaterials, and every texture set laid out as it was. Then no paint is touched and open documents stay open,\nwith their undo. Otherwise it is refused with \u0060mesh-layout-changed\u0060 and nothing changes, and a client asks\nwhat reloading costs before it reloads without this."
+          },
+          "normalFormat": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Which way the green of the project\u0027s tangent-space normal maps runs: \u0060y-up\u0060 or \u0060y-down\u0060\n(#144). Maps already brought in stay as they were brought in."
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/settings\u0060. Null leaves a setting as it is."
@@ -18826,6 +19187,40 @@
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/tags\u0060."
+      },
+      "ProjectTemplateList": {
+        "required": [
+          "names"
+        ],
+        "type": "object",
+        "properties": {
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Their names, sorted."
+          }
+        },
+        "description": "The project templates a library keeps (#144): a project\u0027s settings under a name, which a new project starts\nfrom through string? ProjectCreateRequest.Template. A template holds how Auto Unwrap and Preserve Paint\nare set and the export, bake, viewport, checks and paint settings, never a mesh or a document."
+      },
+      "ProjectTemplateRequest": {
+        "required": [
+          "project",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "The project whose settings are kept, below \u0060projects/\u0060."
+          },
+          "name": {
+            "type": "string",
+            "description": "What the template is called. One of the same name is replaced."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/project-templates\u0060: a project\u0027s settings, kept by name."
       },
       "ProjectViewportRequest": {
         "required": [
@@ -20672,6 +21067,24 @@
               "string"
             ],
             "description": "Which picture of a generator entry that writes several it reads, or empty for its only one. Another generator\nstarts from empty."
+          },
+          "projection": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How a texture entry lands: Uv, Triplanar, Planar, Spherical or Cylindrical."
+          },
+          "placement": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Where a projected texture entry sits, which replaces where it sat.",
+                "$ref": "#/components/schemas/StackPlacement"
+              }
+            ]
           }
         },
         "description": "Changes an entry of a layer\u0027s mask stack. What is null stays."
@@ -22044,7 +22457,8 @@
           "enabled",
           "inside",
           "outside",
-          "output"
+          "output",
+          "projection"
         ],
         "type": "object",
         "properties": {
@@ -22186,6 +22600,22 @@
             "type": "string",
             "description": "Which picture of a generator that writes several is the mask, by its name in the generator\u0027s Outputs, or empty\nfor its only one. Another generator starts from empty.",
             "default": ""
+          },
+          "projection": {
+            "type": "string",
+            "description": "How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world\nposition, which a mask on a mesh whose UVs it was not made for wants (#120).",
+            "default": "Uv"
+          },
+          "placement": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "How often a projected texture repeats, turns and moves, and how hard its seams are.",
+                "$ref": "#/components/schemas/StackPlacement"
+              }
+            ]
           }
         },
         "description": "What decides where a layer shows."
@@ -22268,7 +22698,8 @@
           "opacity",
           "enabled",
           "lane",
-          "output"
+          "output",
+          "projection"
         ],
         "type": "object",
         "properties": {
@@ -22358,6 +22789,22 @@
             "type": "string",
             "description": "Which picture of a generator entry that writes several it reads, or empty for its one.",
             "default": ""
+          },
+          "projection": {
+            "type": "string",
+            "description": "How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world\nposition, which a mask on a mesh whose UVs it was not made for wants (#120).",
+            "default": "Uv"
+          },
+          "placement": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "How often a projected texture repeats, turns and moves, and how hard its seams are.",
+                "$ref": "#/components/schemas/StackPlacement"
+              }
+            ]
           }
         },
         "description": "One entry of a mask\u0027s own stack: a source, composited over the base and the entries beneath it with its own\nblend and opacity. Paint over a generator is a Paint entry over a Generator base."
@@ -23208,7 +23655,8 @@
           "repeat",
           "angle",
           "spacing",
-          "jitter"
+          "jitter",
+          "filled"
         ],
         "type": "object",
         "properties": {
@@ -23287,6 +23735,11 @@
               "string"
             ],
             "description": "For a stroke in stamps, the brush alpha each stamp takes the shape of, one of the vocabulary\u0027s \u0060alphas\u0060,\nturned with the path. Null, empty or \u0060Round\u0060 is a round stamp."
+          },
+          "filled": {
+            "type": "boolean",
+            "description": "Whether the path is a loop whose inside is covered too (#130): it closes from its last point back to its first,\nwhat it encloses takes the fill\u0027s picture, and the width falls away past the loop as a soft edge. A ribbon and\na row of stamps take no fill.",
+            "default": false
           }
         },
         "description": "A curve on the model that a fill with the \u0060Path\u0060 projection is laid along (#130, #131): the points stay in\nthe stack, so they can be moved after the stroke is seen, and the stroke follows. It passes through each point."

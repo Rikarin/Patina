@@ -69,7 +69,8 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
       enabled: true,
       inside: 1,
       outside: 0,
-      output: ''
+      output: '',
+      projection: 'Uv'
     }
   };
 }
@@ -939,7 +940,8 @@ describe('PaintStore', () => {
       blend: 'Copy',
       opacity: 1,
       enabled: true,
-      output: ''
+      output: '',
+      projection: 'Uv'
     };
     const masked = {
       ...layer('paint', 'paint'),

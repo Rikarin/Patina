@@ -30,7 +30,7 @@ puts over the base had nowhere to be painted.
 
 ## Left
 
-Viewport shading of the layers (each is seen on the mesh as its map holds it, through the view list, until then);
+A graph's or a bake's layers laid on the mesh (the viewport shades a stack's since wave 19);
 OpenPBR's other inputs (specular weight and colour, anisotropy, subsurface, thin film, a coat's colour and its own
 normal); glTF's `KHR_materials_clearcoat`, `_sheen` and `_transmission`, which need Vixen's glTF writer; and baking the
 layers down into the base for an engine that has none.

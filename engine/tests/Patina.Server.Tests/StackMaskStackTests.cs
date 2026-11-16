@@ -35,6 +35,56 @@ public sealed class StackMaskStackTests {
     }
 
     /// <summary>
+    ///     A mask's texture, as an entry or as its base, can be laid tri-planar with a placement of its own (#120): the
+    ///     change reaches the document, the file and the wire, and one undo takes it back.
+    /// </summary>
+    [Fact]
+    public void A_mask_texture_is_laid_triplanar_as_an_entry_and_as_the_base() {
+        var editor = Generated();
+        editor.Apply(new([new StackAddMaskLayer("paint", "Texture")]));
+        editor.Apply(
+            new(
+                [
+                    new StackSetMaskLayer(
+                        "paint",
+                        0,
+                        Asset: "grunge.png",
+                        Projection: "Triplanar",
+                        Placement: new(3f, Sharpness: 8f)
+                    )
+                ]
+            )
+        );
+
+        var entry = Assert.Single(Layer(editor).Mask.Layers);
+        Assert.Equal(LayerProjection.Triplanar, entry.Projection);
+        Assert.Equal((3f, 8f), (entry.Placement.Scale, entry.Placement.Sharpness));
+        var wire = Assert.Single(StackDocuments.Layers([Layer(editor)])[0].Mask.Layers!);
+        Assert.Equal(("Triplanar", 3f), (wire.Projection, wire.Placement!.Scale));
+        var saved = LayerStackYaml.Read(LayerStackYaml.Write(editor.Document)).Sets[0];
+        var savedMask = saved.Layers.Single(static layer => layer.Id == "paint").Mask;
+        Assert.Equal(LayerProjection.Triplanar, savedMask.Layers[0].Projection);
+
+        var mask = StackDocuments.Layers([Layer(editor)])[0].Mask;
+        editor.Apply(
+            new(
+                [
+                    new StackSetLayer(
+                        "paint",
+                        Mask: mask with { Source = "Texture", Asset = "spots.png", Projection = "Spherical" }
+                    )
+                ]
+            )
+        );
+        Assert.Equal(LayerProjection.Spherical, Layer(editor).Mask.Projection);
+        Assert.Equal("Spherical", StackDocuments.Layers([Layer(editor)])[0].Mask.Projection);
+
+        editor.Undo();
+        editor.Undo();
+        Assert.Equal(LayerProjection.Uv, Assert.Single(Layer(editor).Mask.Layers).Projection);
+    }
+
+    /// <summary>
     ///     A mask switches off and on again with all it holds, one undo step each, and the limit to some meshes is kept
     ///     whatever the switch says, so a layer switched unmasked stays on its meshes.
     /// </summary>

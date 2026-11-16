@@ -1,0 +1,72 @@
+version: 1
+name: Weathered Copper
+baseWidth: 1024
+baseHeight: 1024
+sets:
+  - name: Material
+    channels:
+      - usage: baseColor
+        default: [0.5, 0.5, 0.5, 1]
+      - usage: roughness
+        default: [0.5, 0.5, 0.5, 1]
+      - usage: metalness
+        default: [0, 0, 0, 1]
+    layers:
+      - id: copper
+        name: Copper
+        kind: Fill
+        values:
+          baseColor: [0.95, 0.64, 0.54, 1]
+          roughness: [0.3, 0.3, 0.3, 1]
+          metalness: [1, 1, 1, 1]
+      - id: oxide
+        name: Oxide
+        kind: Fill
+        blend: Copy
+        opacity: 0.7
+        values:
+          baseColor: [0.4, 0.22, 0.15, 1]
+          roughness: [0.55, 0.55, 0.55, 1]
+          metalness: [0.6, 0.6, 0.6, 1]
+        mask:
+          source: Generator
+          generator: Grunges/Dirt Patches
+      - id: verdigris
+        name: Verdigris
+        kind: Fill
+        blend: Copy
+        values:
+          baseColor: [0.3, 0.6, 0.5, 1]
+          roughness: [0.85, 0.85, 0.85, 1]
+          metalness: [0, 0, 0, 1]
+        mask:
+          source: Generator
+          generator: Generators/Cavity Select
+      - id: streaks
+        name: Streaks
+        kind: Fill
+        blend: Copy
+        opacity: 0.6
+        values:
+          baseColor: [0.36, 0.62, 0.52, 1]
+          roughness: [0.8, 0.8, 0.8, 1]
+          metalness: [0, 0, 0, 1]
+        mask:
+          source: Generator
+          generator: Generators/Drips
+      - id: polish
+        name: Polish
+        kind: Fill
+        blend: Copy
+        values:
+          baseColor: [0.98, 0.7, 0.6, 1]
+          roughness: [0.2, 0.2, 0.2, 1]
+          metalness: [1, 1, 1, 1]
+        mask:
+          source: Generator
+          generator: Generators/Edge Select
+          effects:
+            - node: Colour/Levels
+              values:
+                Input Black: [0.4]
+                Input White: [0.9]

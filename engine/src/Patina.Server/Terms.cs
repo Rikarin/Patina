@@ -199,6 +199,8 @@ public static class Terms {
             "brush" => "Brushes",
             "preset" => "Brush Presets",
             "picture" => "Pictures",
+            "environment" => "Environments",
+            "alpha" => "Alphas",
             "empty" => "Empty Graphs",
             "shipped" => "Starter",
             "package" => "Packages",
