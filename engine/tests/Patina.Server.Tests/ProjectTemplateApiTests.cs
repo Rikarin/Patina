@@ -3,7 +3,7 @@ using System.Net;
 
 namespace Patina.Server.Tests;
 
-/// <summary>Project templates: a project's settings kept under a name, which a new project starts from (#144).</summary>
+/// <summary>Project templates: a project's settings kept by name, which a new project starts from (#144).</summary>
 public sealed partial class LibraryTreeApiTests {
     /// <summary>
     ///     A project's settings kept as a template come back on a project made from it, with its own mesh and size: the

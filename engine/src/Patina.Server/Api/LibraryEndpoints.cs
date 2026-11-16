@@ -124,9 +124,7 @@ static class LibraryEndpoints {
                 OpenLibrary.RequireMesh(mesh);
             }
 
-            if (request.Template is { } template) {
-                ProjectTemplates.Find(library.RootPath, template); // before anything is made, so a typo makes nothing
-            }
+            RequireTemplate(library, request.Template);
 
             var kind = request.Kind ?? (request.Mesh is null ? null : DocumentKinds.Texturing);
             if (kind is not null && !DocumentKinds.Known(kind)) {
@@ -169,6 +167,14 @@ static class LibraryEndpoints {
             return Refusals.Of(e);
         } catch (ProjectRefusedException e) {
             return Refusals.Of(e);
+        }
+    }
+
+    /// <summary>A template the request names, looked for before anything is made, so a typo makes nothing.</summary>
+    /// <exception cref="FileNotFoundException">There is no template of that name.</exception>
+    static void RequireTemplate(OpenLibrary library, string? template) {
+        if (template is not null) {
+            ProjectTemplates.Find(library.RootPath, template);
         }
     }
 

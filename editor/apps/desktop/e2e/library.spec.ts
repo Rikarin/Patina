@@ -1,6 +1,6 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pick, ProjectKinds, removeScratch } from './projects';
@@ -114,6 +114,42 @@ test('a new project reaches the list through the index', async () => {
   await expect(window.getByTestId('paint-project')).toHaveText('Zebra Crate');
   expect(existsSync(join(library, 'projects/zebra-crate/project.yaml'))).toBe(true);
   rmSync(join(library, 'projects/zebra-crate'), { recursive: true, force: true });
+});
+
+test('a project kept as a template starts a new one with its settings (#144)', async () => {
+  const projectSettings = () =>
+    app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'projectSettings');
+    });
+  await window.getByTestId('library-new-project').click();
+  await window.getByTestId('new-project-name').fill('Template Source');
+  await pick(window, 'new-project-kind', ProjectKinds['layered-material']);
+  await window.getByRole('button', { name: 'Create' }).click();
+  await expect(window.getByTestId('document-tab-name')).toHaveText('Template Source');
+
+  await projectSettings();
+  await window.getByTestId('project-settings-unwrap').click();
+  await window.getByTestId('project-settings-apply').click();
+  await expect(window.getByTestId('project-settings')).toHaveCount(0);
+  await projectSettings();
+  await window.getByTestId('project-template-name').fill('Painted Prop');
+  await window.getByTestId('project-template-save').click();
+  await expect(window.getByTestId('project-template-kept')).toContainText('Painted Prop');
+  await window.screenshot({ path: join(shots, 'project-template-kept.png') });
+  await window.getByRole('button', { name: 'Cancel' }).click();
+  await expect(window.getByTestId('project-settings')).toHaveCount(0);
+
+  await window.getByTestId('library-new-project').click();
+  await window.getByTestId('new-project-name').fill('From Template');
+  await pick(window, 'new-project-kind', ProjectKinds['layered-material']);
+  await pick(window, 'new-project-template', 'Painted Prop');
+  await window.getByRole('button', { name: 'Create' }).click();
+  await expect(window.getByRole('tab', { name: 'From Template', selected: true })).toBeVisible();
+
+  expect(readFileSync(join(library, 'projects/from-template/project.yaml'), 'utf8')).toContain('autoUnwrap: false');
+  for (const made of ['projects/template-source', 'projects/from-template', 'project-templates']) {
+    rmSync(join(library, made), { recursive: true, force: true });
+  }
 });
 
 test('the Server says why a new project is refused', async () => {

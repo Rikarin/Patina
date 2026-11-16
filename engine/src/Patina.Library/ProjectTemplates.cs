@@ -61,9 +61,9 @@ public static class ProjectTemplates {
     }
 
     /// <summary>
-    ///     Sets a project's settings to a template's, leaving its meshes, documents and name be. A block the template
-    ///     does not hold, such as a bake it was never set to, leaves the project's own: a new project made at 1024 still
-    ///     bakes at 1024 from a template that says nothing about baking.
+    ///     Sets a project's settings to a template's, leaving its meshes, documents and name be. A block the
+    ///     template does not hold, such as a bake it was never set to, leaves the project's own: a new project made
+    ///     at 1024 still bakes at 1024 from a template that says nothing about baking.
     /// </summary>
     /// <exception cref="FileNotFoundException">The project or the template is not there.</exception>
     /// <exception cref="ProjectRefusedException">The name cannot name a template.</exception>

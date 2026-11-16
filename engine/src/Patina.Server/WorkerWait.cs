@@ -12,9 +12,9 @@ namespace Patina.Server;
 public static class WorkerWait {
     /// <summary>The Worker's connection, waiting at most <paramref name="patience" /> for one to be there.</summary>
     /// <remarks>
-    ///     ⚠ Only the connection is bounded: what is then asked of it is sent with <paramref name="cancellationToken" />
-    ///     alone. A patience that also bounded the answer told a client that no GPU process was connected while one
-    ///     was drawing (a panorama on a busy GPU, #284).
+    ///     ⚠ Only the connection is bounded: what is then asked of it is sent with
+    ///     <paramref name="cancellationToken" /> alone. A patience that also bounded the answer told a client that no
+    ///     GPU process was connected while one was drawing (a panorama on a busy GPU, #284).
     /// </remarks>
     /// <exception cref="RendererMissingException">No Worker was connected for the whole of the patience.</exception>
     public static async Task<IpcConnection> ConnectionAsync(

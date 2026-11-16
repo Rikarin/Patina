@@ -76,9 +76,10 @@ public sealed class ThumbnailRefusalTests : IDisposable {
     }
 
     /// <summary>
-    ///     A picture the connected Worker takes longer over than the patience is waited for (#284): the patience bounded
-    ///     the drawing as well as the wait for a Worker, so a panorama on a busy GPU was answered 503, "No GPU process is
-    ///     connected", while one was connected and drawing. With no Worker at all, the patience still runs out.
+    ///     A picture the connected Worker takes longer over than the patience is waited for (#284): the patience
+    ///     bounded the drawing as well as the wait for a Worker, so a panorama on a busy GPU was answered 503, "No GPU
+    ///     process is connected", while one was connected and drawing. With no Worker at all, the patience still runs
+    ///     out.
     /// </summary>
     [Fact]
     public async Task A_picture_the_Worker_is_slow_over_is_waited_for_and_no_Worker_is_not() {
@@ -96,7 +97,9 @@ public sealed class ThumbnailRefusalTests : IDisposable {
         await link.StartAsync(Token);
         try {
             using var thumbnails = new Thumbnails(link, store) { WorkerPatience = patience };
-            await Assert.ThrowsAsync<RendererMissingException>(() => thumbnails.DrawAsync(library, ["slow.png"], Token));
+            await Assert.ThrowsAsync<RendererMissingException>(() =>
+                thumbnails.DrawAsync(library, ["slow.png"], Token)
+            );
 
             await using var worker = await WorkerAsync(
                 socketPath,
@@ -133,8 +136,11 @@ public sealed class ThumbnailRefusalTests : IDisposable {
     static Task<IpcConnection> WorkerAsync(string socketPath, Func<IpcMessage, IpcMessage> answer) =>
         WorkerAsync(socketPath, request => Task.FromResult(answer(request)));
 
-    /// <summary>A Worker that says hello and answers every request with <paramref name="answer" />, in its own time.</summary>
-    static async Task<IpcConnection> WorkerAsync(string socketPath, Func<IpcMessage, Task<IpcMessage>> answer) {
+    /// <summary>A Worker that says hello and answers with <paramref name="answer" />, in its own time.</summary>
+    static async Task<IpcConnection> WorkerAsync(
+        string socketPath,
+        Func<IpcMessage, Task<IpcMessage>> answer
+    ) {
         var stream = await IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(5), Token);
         var worker = new IpcConnection(stream, async (request, _) => await answer(request));
         worker.Start();
