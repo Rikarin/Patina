@@ -1,4 +1,4 @@
-# ADR 0050: The undo history of a texturing document is kept in the cache at a save, and taken up again at an open
+# ADR 0051: The undo history of a texturing document is kept in the cache at a save, and taken up again at an open
 
 **Status:** proposed, 2026-11-16, for issue #209. Nothing of it is built yet.
 
