@@ -354,13 +354,39 @@ public static class ExportMaps {
     /// </summary>
     public static IReadOnlyList<string> Users { get; } = [..Enumerable.Range(0, 8).Select(static at => $"user{at}")];
 
+    /// <summary>
+    ///     The maps of OpenPBR's layers above the base (#142), which a texture set writes under these names. They are
+    ///     Vixen's <c>ChannelAsset.OpenPbrUsages</c>; a Server test holds the two equal. Before <see cref="All" />,
+    ///     which reads it as it starts.
+    /// </summary>
+    public static IReadOnlyList<string> OpenPbr { get; } =
+        [Coat, CoatRoughness, Sheen, SheenColor, SheenRoughness, Transmission];
+
     // Between the two groups, as in ExportCompressions: SK7020 honours no suppression, and reads fifteen constants in a
     // row as a clone of IpcTypes.
     public static IReadOnlyList<string> All { get; } = [
         BaseColor, Normal, Roughness, Metalness, Occlusion, Height, Emissive, Opacity, Mask, Curvature, Thickness, Id,
         Position, WorldNormal, BentNormal, BakedNormal, BakedOcclusion, Coverage, Specular, Diffuse, Glossiness,
-        ..Users
+        ..Users, ..OpenPbr
     ];
+
+    /// <summary>How much of a clear coat lies over the base: OpenPBR's <c>coat_weight</c>.</summary>
+    public const string Coat = "coat";
+
+    /// <summary>How rough the coat is: OpenPBR's <c>coat_roughness</c>.</summary>
+    public const string CoatRoughness = "coatRoughness";
+
+    /// <summary>How much sheen lies over the base: OpenPBR's <c>fuzz_weight</c>, which others call sheen.</summary>
+    public const string Sheen = "sheen";
+
+    /// <summary>The sheen's colour: OpenPBR's <c>fuzz_color</c>. Linear, as emissive is, until #105 says.</summary>
+    public const string SheenColor = "sheenColor";
+
+    /// <summary>How rough the sheen is: OpenPBR's <c>fuzz_roughness</c>.</summary>
+    public const string SheenRoughness = "sheenRoughness";
+
+    /// <summary>How much light passes through rather than scattering: OpenPBR's <c>transmission_weight</c>.</summary>
+    public const string Transmission = "transmission";
 
     /// <summary>
     ///     The maps a preset can read that no output makes: each is worked out from others when a file reads it
@@ -417,9 +443,10 @@ public static class ExportMaps {
         (map, lane) switch {
             (Normal or WorldNormal or BentNormal or BakedNormal, 2) => 1f,
             (Normal or WorldNormal or BentNormal or BakedNormal, not 3) => 0.5f,
-            (Opacity or Occlusion or BakedOcclusion or Mask or Coverage, _) => 1f,
+            (Opacity or Occlusion or BakedOcclusion or Mask or Coverage or SheenColor, _) => 1f,
             (_, 3) => 1f,
-            (BaseColor or Roughness or Height or Curvature or Position or Diffuse or Glossiness, _) => 0.5f,
+            (BaseColor or Roughness or Height or Curvature or Position or Diffuse or Glossiness or SheenRoughness, _) =>
+                0.5f,
             (Specular, _) => DerivedMaps.DielectricSrgb,
             _ => 0f
         };

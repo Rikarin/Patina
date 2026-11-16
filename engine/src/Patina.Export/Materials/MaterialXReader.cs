@@ -87,7 +87,7 @@ public sealed class MaterialXReader {
             }
         }
 
-        return new(Unprefixed(name), slots, [..warnings]);
+        return new(Unprefixed(name), SurfaceInputs.Kept(slots), [..warnings]);
     }
 
     /// <summary>A material's name without the <c>M_</c> the writer puts before it.</summary>

@@ -18,7 +18,7 @@ import { BakeStore } from '../bake/bake-store';
 import { Activity } from '../core/activity';
 import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
-import { channelName, isUserChannel, termName } from '../core/labels';
+import { channelName, isUnshadedChannel, termName } from '../core/labels';
 import { milliseconds } from '../core/numbers';
 import { Preferences } from '../core/preferences';
 import { SystemStatus } from '../core/system-status';
@@ -585,12 +585,12 @@ export class ViewportPane implements AfterViewInit {
     (this.bakes.current()?.result?.maps ?? []).map(map => ({ path: map.path, label: termName(map.map) }))
   );
   /**
-   * The open texture set's user channels, which the material's shading never shows (#298), while it is on a mesh. Each
-   * is seen as its map holds it, through the picture view.
+   * The open texture set's user channels and OpenPBR layers (#142), which the material's shading never shows (#298),
+   * while it is on a mesh. Each is seen as its map holds it, through the picture view.
    */
   protected readonly userChannels = computed(() => {
     const state = this.paint.state();
-    return state?.model.trim() ? state.channels.map(channel => channel.usage).filter(isUserChannel) : [];
+    return state?.model.trim() ? state.channels.map(channel => channel.usage).filter(isUnshadedChannel) : [];
   });
   /**
    * What the view list offers: the node on view, while one is, each view, the open texture set's user channels, then

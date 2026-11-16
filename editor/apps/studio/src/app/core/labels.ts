@@ -122,6 +122,24 @@ export function isUserChannel(usage: string): boolean {
   return /^user[0-7]$/u.test(usage);
 }
 
+/**
+ * OpenPBR's layers above the base (#142): a coat, a sheen and transmission. The viewport's shading has none of them yet,
+ * so each is seen on the mesh as its map holds it, as a user channel is.
+ */
+const OpenPbrChannels: ReadonlySet<string> = new Set([
+  'coat',
+  'coatRoughness',
+  'sheen',
+  'sheenColor',
+  'sheenRoughness',
+  'transmission'
+]);
+
+/** Whether a channel is one the material's shading in the viewport does not show: a user channel or an OpenPBR layer's. */
+export function isUnshadedChannel(usage: string): boolean {
+  return isUserChannel(usage) || OpenPbrChannels.has(usage);
+}
+
 /** Standard channels that hold one number, which a slider says better than a color. */
 const ScalarChannels: ReadonlySet<string> = new Set([
   'roughness',
@@ -129,7 +147,12 @@ const ScalarChannels: ReadonlySet<string> = new Set([
   'height',
   'occlusion',
   'opacity',
-  'mask'
+  'mask',
+  'coat',
+  'coatRoughness',
+  'sheen',
+  'sheenRoughness',
+  'transmission'
 ]);
 
 /**

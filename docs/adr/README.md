@@ -47,3 +47,4 @@ One numbered file per decision, `NNNN-short-title.md`, saying what was decided, 
 - [0047](0047-worker-lanes.md): accepted: what goes ahead of a Worker's queue never wears a stack, and a frame does not wait for a wear.
 - [0048](0048-texture-set-display-names.md): proposed: a texture set keeps its mesh slot's name as its key, and a person's name for it is a label beside that; what `{set}` writes is open.
 - [0049](0049-graph-environments.md): accepted: a graph lights the viewport as a half-float panorama of its Output, drawn from its file into the preview cache and drawn again when it is saved.
+- [0050](0050-openpbr-layer-channels.md): accepted: OpenPBR's coat, sheen and transmission are six channels named after OpenPBR's inputs (fuzz called a sheen), each starting at OpenPBR's default, wired into a material file only when the set has it.
