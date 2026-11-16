@@ -5,8 +5,8 @@ using System.Net;
 namespace Patina.Server.Tests;
 
 /// <summary>
-///     A project says how long its mesh's unit is (#146, #307), for a file that says nothing or says it wrongly: kept in
-///     its file, given back with the project, and turned back to the file's own by zero.
+///     A project says how long its mesh's unit is (#146, #307), for a file that says nothing or says it wrongly: kept
+///     in its file, given back with the project, and turned back to the file's own by zero.
 /// </summary>
 public sealed class ProjectUnitsApiTests : IAsyncLifetime {
     readonly ServerFixture server = new();
@@ -54,11 +54,19 @@ public sealed class ProjectUnitsApiTests : IAsyncLifetime {
 
         Assert.Equal(HttpStatusCode.OK, centimetres.StatusCode);
         Assert.Equal(0.01, (await centimetres.Content.ReadFromJsonAsync<ProjectContents>(Token))!.MetresPerUnit);
-        Assert.Contains("metresPerUnit: 0.01", await File.ReadAllTextAsync(ProjectFile, Token), StringComparison.Ordinal);
+        Assert.Contains(
+            "metresPerUnit: 0.01",
+            await File.ReadAllTextAsync(ProjectFile, Token),
+            StringComparison.Ordinal
+        );
 
         using var file = await SetAsync(0);
         Assert.Null((await file.Content.ReadFromJsonAsync<ProjectContents>(Token))!.MetresPerUnit);
-        Assert.DoesNotContain("metresPerUnit", await File.ReadAllTextAsync(ProjectFile, Token), StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "metresPerUnit",
+            await File.ReadAllTextAsync(ProjectFile, Token),
+            StringComparison.Ordinal
+        );
     }
 
     [Theory]
@@ -69,6 +77,10 @@ public sealed class ProjectUnitsApiTests : IAsyncLifetime {
         using var refused = await SetAsync(unit);
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.DoesNotContain("metresPerUnit", await File.ReadAllTextAsync(ProjectFile, Token), StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "metresPerUnit",
+            await File.ReadAllTextAsync(ProjectFile, Token),
+            StringComparison.Ordinal
+        );
     }
 }

@@ -328,10 +328,14 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
-    /// <summary>Says how long a unit of a project's mesh is, in metres (#146), or zero for what the file says.</summary>
-    public void SetMetresPerUnit(string path, double metresPerUnit) {
+    /// <summary>Says how long a unit of a project's mesh is, in metres (#146), or zero for the file's own.</summary>
+    public void SetMetresPerUnit(string path, double metresPerUnit) =>
+        Written(() => ProjectFiles.SetMetresPerUnit(RootPath, path, metresPerUnit));
+
+    /// <summary>Writes a project's file under the gate, for the next scan to find.</summary>
+    void Written(Action write) {
         lock (createGate) {
-            ProjectFiles.SetMetresPerUnit(RootPath, path, metresPerUnit);
+            write();
             Interlocked.Increment(ref unscannedWrites);
         }
     }

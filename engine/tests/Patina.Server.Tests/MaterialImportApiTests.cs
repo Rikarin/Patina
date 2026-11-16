@@ -260,8 +260,9 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
         var space = Path.GetFileNameWithoutExtension(file);
         File.WriteAllText(
             Path.Combine(source.FullName, file),
-            file.EndsWith(".mtlx", StringComparison.Ordinal) ? Emitting(space == "lin" ? "lin_rec709" : "srgb_texture")
-            : Glowing(space == "raw" ? "raw" : "auto")
+            file.EndsWith(".mtlx", StringComparison.Ordinal)
+                ? Emitting(space == "lin" ? "lin_rec709" : "srgb_texture")
+                : Glowing(space == "raw" ? "raw" : "auto")
         );
 
         var imported = await ImportAsync(file);

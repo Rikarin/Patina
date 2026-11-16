@@ -233,8 +233,10 @@ public sealed class StackCheckingTests {
         );
 
         Assert.Equal(expected, checks.TexelDensity, 1e-6);
-        Assert.Equal(expected == 51200 ? [] : [expected < 51200 ? CheckCodes.DensityLow : CheckCodes.DensityHigh],
-            checks.Problems.Select(static problem => problem.Code));
+        Assert.Equal(
+            expected == 51200 ? [] : [expected < 51200 ? CheckCodes.DensityLow : CheckCodes.DensityHigh],
+            checks.Problems.Select(static problem => problem.Code)
+        );
     }
 
     /// <summary>
@@ -418,7 +420,14 @@ public sealed class StackCheckingTests {
     public void A_layers_roughness_without_its_weight_is_no_file_to_check() {
         var gltf = ExportPresetCatalog.Read(null).Find("gltf")!;
         var state = Set(
-            "baseColor", "opacity", "roughness", "metalness", "normal", "occlusion", "sheenRoughness", "coatRoughness"
+            "baseColor",
+            "opacity",
+            "roughness",
+            "metalness",
+            "normal",
+            "occlusion",
+            "sheenRoughness",
+            "coatRoughness"
         );
 
         var checks = StackChecking.Judge(state, Square, null, 0, gltf);
