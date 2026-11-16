@@ -179,12 +179,16 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
     [InlineData("brick.usda", "Brick", new[] { "baseColor", "roughness", "metalness", "normal" })]
     [InlineData("tile.mtlx", "Tile", new[] { "baseColor", "roughness", "metalness" })]
     [InlineData("brick.usdz", "Brick", new[] { "baseColor", "roughness", "metalness", "normal" })]
-    [InlineData("brick.usdc",
+    [InlineData(
+        "brick.usdc",
         "Brick",
-        new[] { "baseColor", "roughness", "metalness", "normal", "emissive", "opacity" })]
-    [InlineData("binary.usdz",
+        new[] { "baseColor", "roughness", "metalness", "normal", "emissive", "opacity" }
+    )]
+    [InlineData(
+        "binary.usdz",
         "Brick",
-        new[] { "baseColor", "roughness", "metalness", "normal", "emissive", "opacity" })]
+        new[] { "baseColor", "roughness", "metalness", "normal", "emissive", "opacity" }
+    )]
     public async Task A_material_file_becomes_a_graph_that_reads_its_pictures(
         string file,
         string name,

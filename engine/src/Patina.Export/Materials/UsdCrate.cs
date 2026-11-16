@@ -52,7 +52,7 @@ sealed class UsdCrate {
         }
 
         UsdCrate crate = new(data);
-        crate.ReadSections(new Cursor(data, BinaryPrimitives.ReadInt64LittleEndian(data.AsSpan(16, 8))));
+        crate.ReadSections(new(data, BinaryPrimitives.ReadInt64LittleEndian(data.AsSpan(16, 8))));
         return crate;
     }
 
@@ -118,38 +118,50 @@ sealed class UsdCrate {
     string[] ReadPaths(Cursor at) {
         var paths = new string[at.Count(0)];
         var count = at.Count(0);
-        var indexes = at.Integers(count);
-        var elements = at.Integers(count);
-        var jumps = at.Integers(count);
+        PathTree tree = new(at.Integers(count), at.Integers(count), at.Integers(count), paths);
         Stack<(int Index, string? Parent)> pending = [];
         pending.Push((0, null));
         var visited = 0;
         while (pending.TryPop(out var next)) {
-            var (index, parent) = next;
-            while (true) {
-                if (index < 0 || index >= count || visited++ >= count) {
-                    throw new InvalidDataException("The USD binary layer's paths do not form a tree.");
-                }
-
-                var path = parent is null ? "/" : Element(parent, elements[index]);
-                Put(paths, indexes[index], path);
-                var jump = jumps[index];
-                if (jump > 0 || jump == -1) {
-                    if (jump > 0) {
-                        pending.Push((index + jump, parent));
-                    }
-
-                    parent = path;
-                } else if (jump != 0) {
-                    break;
-                }
-
-                index++;
+            visited += Walk(tree, next, pending);
+            if (visited > count) {
+                throw NoTree();
             }
         }
 
         return [..paths.Select(static p => p ?? string.Empty)];
     }
+
+    /// <summary>The tree's three columns, and the paths they make by index.</summary>
+    sealed record PathTree(int[] Indexes, int[] Elements, int[] Jumps, string[] Paths);
+
+    /// <summary>
+    ///     One run down the tree from an entry, through first children and next siblings, leaving each later sibling of
+    ///     an entry with a child for the stack; and how many entries it made paths of.
+    /// </summary>
+    int Walk(PathTree tree, (int Index, string? Parent) from, Stack<(int Index, string? Parent)> pending) {
+        var (index, parent) = from;
+        for (var walked = 1;; walked++, index++) {
+            if (index < 0 || index >= tree.Jumps.Length || walked > tree.Jumps.Length) {
+                throw NoTree();
+            }
+
+            var path = parent is null ? "/" : Element(parent, tree.Elements[index]);
+            Put(tree.Paths, tree.Indexes[index], path);
+            var jump = tree.Jumps[index];
+            if (jump > 0) {
+                pending.Push((index + jump, parent));
+            }
+
+            if (jump is > 0 or -1) {
+                parent = path;
+            } else if (jump != 0) {
+                return walked;
+            }
+        }
+    }
+
+    static InvalidDataException NoTree() => new("The USD binary layer's paths do not form a tree.");
 
     string Element(string parent, int element) {
         var name = Token(Math.Abs(element));
@@ -193,7 +205,9 @@ sealed class UsdCrate {
     }
 
     /// <summary>A place in the file that reads forward, refusing anything past the end.</summary>
-    internal sealed class Cursor(byte[] data, long at) {
+    internal sealed class Cursor(byte[] data, long start) {
+        long at = start;
+
         public ReadOnlySpan<byte> Bytes(long length) {
             if (at < 0 || length < 0 || at > data.Length - length) {
                 throw new InvalidDataException("The USD binary layer ends early.");

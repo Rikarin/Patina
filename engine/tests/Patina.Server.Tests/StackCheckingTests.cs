@@ -46,8 +46,8 @@ public sealed class StackCheckingTests {
     }
 
     /// <summary>
-    ///     A project whose chosen preset was renamed is measured with the starter, and the checks say so, pointing at its
-    ///     export setting, rather than falling back without a word (#305). A preset that is there says nothing.
+    ///     A project whose chosen preset was renamed is measured with the starter, and the checks say so, pointing at
+    ///     its export setting, rather than falling back without a word (#305). A preset that is there says nothing.
     /// </summary>
     [Fact]
     public void A_project_whose_preset_has_gone_is_told_which_one_its_checks_use() {

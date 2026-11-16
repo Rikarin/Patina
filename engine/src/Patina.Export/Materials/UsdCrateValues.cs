@@ -24,7 +24,8 @@ static class UsdCrateValues {
         Dictionary<string, UsdPrim> prims = new(StringComparer.Ordinal);
         foreach (var spec in crate.Specs.Where(static s => s.Type == PrimSpec)) {
             var path = crate.PathOf(spec.Path);
-            var type = crate.FieldsOf(spec.FieldSet).Where(static f => f.Name == "typeName")
+            var type = crate.FieldsOf(spec.FieldSet)
+                .Where(static f => f.Name == "typeName")
                 .Select(f => Spell(crate, f.Rep)?.Trim('"'))
                 .FirstOrDefault();
             var name = path[(path.LastIndexOf('/') + 1)..];

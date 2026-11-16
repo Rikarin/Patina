@@ -144,8 +144,7 @@ public sealed class UsdaReader {
         return at < 0 ? text : text[..at];
     }
 
-    static string? Id(UsdPrim prim) =>
-        prim.Properties.TryGetValue("info:id", out var id) ? id.Trim().Trim('"') : null;
+    static string? Id(UsdPrim prim) => prim.Properties.TryGetValue("info:id", out var id) ? id.Trim().Trim('"') : null;
 
     static string? Asset(string value) {
         var start = value.IndexOf('@', StringComparison.Ordinal);

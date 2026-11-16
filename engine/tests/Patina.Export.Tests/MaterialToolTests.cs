@@ -76,7 +76,12 @@ public sealed class MaterialToolTests : IDisposable {
         var made = Path.Combine(folder.FullName, "made");
         var manifest = ExportRun.Run(preset, LeaningMaps(), made, null, Token);
         var delivered = ExportRun.Deliver(
-            "key", made, manifest, Path.Combine(folder.FullName, "out"), new("Crate", id), preset: preset
+            "key",
+            made,
+            manifest,
+            Path.Combine(folder.FullName, "out"),
+            new("Crate", id),
+            preset: preset
         );
         var usd = Assert.Single(delivered.Files, static f => f.EndsWith(".usda", StringComparison.Ordinal));
 
@@ -119,7 +124,12 @@ public sealed class MaterialToolTests : IDisposable {
         var made = Path.Combine(folder.FullName, "made");
         var manifest = ExportRun.Run(preset, LeaningMaps(), made, null, Token);
         var delivered = ExportRun.Deliver(
-            "key", made, manifest, Path.Combine(folder.FullName, "out"), new("Crate", id), preset: preset
+            "key",
+            made,
+            manifest,
+            Path.Combine(folder.FullName, "out"),
+            new("Crate", id),
+            preset: preset
         );
         var usda = Assert.Single(delivered.Files, static f => f.EndsWith(".usda", StringComparison.Ordinal));
         var usdc = Path.ChangeExtension(usda, ".usdc");
@@ -130,16 +140,15 @@ public sealed class MaterialToolTests : IDisposable {
         Assert.Equal(Slots(usda), Slots(usdc));
     }
 
-    static string[] Slots(string layer) =>
-        [
-            ..UsdaReader.Read(layer)
-                .SelectMany(static m => m.Slots.Select(s =>
-                        $"{m.Name} {s.Usage} {s.Texture} {s.Lane} {s.Inverted} {s.GreenUp} {string.Join(',', s.Value)}"
-                    )
+    static string[] Slots(string layer) => [
+        ..UsdaReader.Read(layer)
+            .SelectMany(static m => m.Slots.Select(s =>
+                    $"{m.Name} {s.Usage} {s.Texture} {s.Lane} {s.Inverted} {s.GreenUp} {string.Join(',', s.Value)}"
                 )
-        ];
+            )
+    ];
 
-    /// <summary>A normal leaning to +X and −Y with green up, on 8-bit levels, so green read upside down shows.</summary>
+    /// <summary>A normal leaning to +X and −Y, green up, on 8-bit levels, so green read upside down shows.</summary>
     static readonly float[] Leaning = [166 / 255f, 77 / 255f, 230 / 255f];
 
     static Dictionary<string, MapPicture> LeaningMaps() {

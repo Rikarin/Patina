@@ -137,17 +137,18 @@ public static class StackChecking {
             return [];
         }
 
-        return checks.Platforms.Where(platform => presets.Find(platform.Preset) is null)
-            .Select(static platform => Problem(
-                    CheckCodes.PlatformUnknown,
-                    Warning,
-                    $"The project keeps limits for '{platform.Preset}', which no export preset is any more, so they "
-                    + "hold no set. Name the preset again or remove its limits.",
-                    new() { ["preset"] = platform.Preset },
-                    new(Setting: "checks.platforms")
+        return [
+            ..checks.Platforms.Where(platform => presets.Find(platform.Preset) is null)
+                .Select(static platform => Problem(
+                        CheckCodes.PlatformUnknown,
+                        Warning,
+                        $"The project keeps limits for '{platform.Preset}', which no export preset is any more, so "
+                        + "they hold no set. Name the preset again or remove its limits.",
+                        new() { ["preset"] = platform.Preset },
+                        new(Setting: "checks.platforms")
+                    )
                 )
-            )
-            .ToArray();
+        ];
     }
 
     /// <summary>Judges what the Worker measured, or what the Server knows of a set nobody has open.</summary>

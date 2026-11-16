@@ -403,7 +403,12 @@ public sealed class PresetLanguageTests : IDisposable {
         var manifest = ExportRun.Run(preset, Surface(), Path("object"), null, Token);
 
         var delivered = ExportRun.Deliver(
-            "key", Path("object"), manifest, Path("out"), new("Crate", "unreal"), preset: preset
+            "key",
+            Path("object"),
+            manifest,
+            Path("out"),
+            new("Crate", "unreal"),
+            preset: preset
         );
 
         Assert.Single(delivered.Warnings, static w => w.Contains("the normal is left out", StringComparison.Ordinal));
@@ -541,7 +546,7 @@ public sealed class PresetLanguageTests : IDisposable {
         File.WriteAllText(Path("in/broken.mtlx"), "<materialx");
 
         Assert.Contains(
-            ".usdc needs USD's own library",
+            "is not a USD binary layer",
             Assert.Throws<InvalidDataException>(() => UsdaReader.Read(Path("in/binary.usd"))).Message,
             StringComparison.Ordinal
         );
