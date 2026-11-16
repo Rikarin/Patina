@@ -96,7 +96,10 @@ public sealed partial class WorkerLossApiTests : IAsyncLifetime {
         using var reply = await ask();
 
         var problem = await reply.Content.ReadAsStringAsync(Token);
-        Assert.True(reply.StatusCode == HttpStatusCode.ServiceUnavailable, $"{type}: {(int)reply.StatusCode} {problem}");
+        Assert.True(
+            reply.StatusCode == HttpStatusCode.ServiceUnavailable,
+            $"{type}: {(int)reply.StatusCode} {problem}"
+        );
         Assert.Contains("engine-unavailable", problem, StringComparison.Ordinal);
         Assert.True(worker.Asked, $"{type} was never asked");
     }

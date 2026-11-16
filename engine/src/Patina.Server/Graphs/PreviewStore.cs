@@ -12,8 +12,8 @@ public sealed partial class PreviewStore(ServerIdentity identity) {
     const long Budget = 256L * 1024 * 1024;
 
     /// <summary>
-    ///     How old a half-written file is before it is taken for one a Worker left when it was killed: a writer finishes
-    ///     in seconds.
+    ///     How old a half-written file is before it is taken for one a Worker left when it was killed: a writer
+    ///     finishes in seconds.
     /// </summary>
     static readonly TimeSpan Abandoned = TimeSpan.FromHours(1);
 

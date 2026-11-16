@@ -50,8 +50,8 @@ public sealed class PreviewTrimTests : IDisposable {
     }
 
     /// <summary>
-    ///     A Worker killed while it wrote a picture leaves its half-written file, which no trim looked at, since it is no
-    ///     kind the cache keeps (#310). An old one goes whatever the budget; one being written now stays.
+    ///     A Worker killed while it wrote a picture leaves its half-written file, which no trim looked at, since it is
+    ///     no kind the cache keeps (#310). An old one goes whatever the budget; one being written now stays.
     /// </summary>
     [Fact]
     public void Files_a_killed_Worker_left_half_written_are_let_go_of() {

@@ -17,7 +17,7 @@ public readonly partial struct AutoreleasePool : IDisposable {
     /// <summary>Whether this pool drains anything when it is left: only on macOS.</summary>
     public bool Drains => token != 0;
 
-    /// <summary>Enters a pool on this thread, which <see cref="Dispose" /> leaves, releasing what it collected.</summary>
+    /// <summary>Enters a pool on this thread; <see cref="Dispose" /> leaves it, releasing what it collected.</summary>
     public static AutoreleasePool Enter() => OperatingSystem.IsMacOS() ? new(Push()) : default;
 
     public void Dispose() {
