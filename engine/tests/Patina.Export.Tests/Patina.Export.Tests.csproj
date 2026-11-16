@@ -4,4 +4,8 @@
     <ProjectReference Include="../../src/Patina.Graphs/Patina.Graphs.csproj"/>
     <ProjectReference Include="../../tools/Patina.Bench/Patina.Bench.csproj"/>
   </ItemGroup>
+  <ItemGroup>
+    <!-- MaterialToolTests reads the material files in USD's and MaterialX's own libraries through this script. -->
+    <None Include="tools/check_materials.py" CopyToOutputDirectory="PreserveNewest"/>
+  </ItemGroup>
 </Project>

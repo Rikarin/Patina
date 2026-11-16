@@ -380,6 +380,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- An export's USD material file says it is in metres with Y up (#157), as USD's validation asks of every layer, so a tool that validates on open takes it without a complaint. Every shipped preset's USD and MaterialX files are now read in Pixar's USD and the MaterialX library in CI.
 - A choice made in the Export dialog before it has read the project's settings is kept: the preset, padding or format changed while the project's file is still on its way used to be put back and never written to `project.yaml`. Now the newer choice stays and is the one kept.
 - A color picked on the mesh with the eyedropper goes to the mask that was waiting when the mesh was clicked, though the eyedropper is turned off or on again meanwhile, and the eyedropper waits until the color is in the mask.
 - A graph that cannot light the viewport says why (#180): with no GPU, or with a node that does not compile, choosing it as the environment is refused with `engine-refused` and the engine's reason, where it said the graph drew nothing (`panorama-empty`), and the failure is not remembered, so choosing it again draws it once it can.
