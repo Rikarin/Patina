@@ -170,7 +170,7 @@ static class StackEndpoints {
         app.Map("/ws/stacks/{id}", FollowAsync).ExcludeFromDescription();
 
     static Ok<IReadOnlyList<StackSummary>> GetAll(StackSessions sessions) =>
-        TypedResults.Ok<IReadOnlyList<StackSummary>>([..sessions.All.Select(static s => s.Summary)]);
+        TypedResults.Ok<IReadOnlyList<StackSummary>>([..sessions.Opened.Select(static s => s.Summary)]);
 
     static Results<Ok<T>, ProblemHttpResult> Refusable<T>(Func<T> act) {
         try {

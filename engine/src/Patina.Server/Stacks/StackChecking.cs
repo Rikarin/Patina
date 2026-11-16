@@ -91,16 +91,52 @@ public static class StackChecking {
     }
 
     /// <summary>
-    ///     Limits the project keeps for a platform whose preset neither the library nor the project has any more, which
-    ///     hold no set until a preset of that id comes back (ADR 0043). Each goes to the project's limits.
+    ///     Presets the project names that neither the library nor the project has any more: the one it exports with,
+    ///     which goes to its export setting, and each platform it keeps limits for, which hold no set until a preset of
+    ///     that id comes back (ADR 0043) and go to the project's limits.
     /// </summary>
     public static IEnumerable<CheckProblem> Platforms(ProjectContents? project, OpenLibrary? library) {
-        if (project?.Checks is not { Platforms.Count: > 0 } checks) {
+        if (project is null) {
             return [];
         }
 
         var root = library?.RootPath;
         var presets = ExportPresetCatalog.Read(root, root is null ? null : project.Path);
+        return [..Chosen(project, library, presets), ..Kept(project, presets)];
+    }
+
+    /// <summary>
+    ///     The preset the project last chose, when no library or project has it any more: its checks measure with the
+    ///     default instead, which is said rather than done without a word (#305).
+    /// </summary>
+    static CheckProblem[] Chosen(
+        ProjectContents project,
+        OpenLibrary? library,
+        ExportPresetCatalog.Found presets
+    ) {
+        if (project.Export?.Preset is not { Length: > 0 } chosen || presets.Find(chosen) is not null) {
+            return [];
+        }
+
+        var fallback = presets.Default(library?.Document.DefaultPreset)?.Id ?? string.Empty;
+        return [
+            Problem(
+                CheckCodes.PresetUnknown,
+                Warning,
+                $"The project exports with '{chosen}', which no export preset is any more, so the default "
+                + (fallback.Length > 0 ? $"'{fallback}' stands in for it." : "stands in for it, and there is none.")
+                + " Choose its preset again.",
+                new() { ["preset"] = chosen, ["fallback"] = fallback },
+                new(Setting: "export.preset")
+            )
+        ];
+    }
+
+    static CheckProblem[] Kept(ProjectContents project, ExportPresetCatalog.Found presets) {
+        if (project.Checks is not { Platforms.Count: > 0 } checks) {
+            return [];
+        }
+
         return checks.Platforms.Where(platform => presets.Find(platform.Preset) is null)
             .Select(static platform => Problem(
                     CheckCodes.PlatformUnknown,

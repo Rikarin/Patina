@@ -394,6 +394,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Checks name an export preset the project chose that has gone (#305): a project whose preset was renamed or deleted was checked with the default without a word; All sets and each set's check now list a `preset-unknown` warning naming both, which goes to the project's export setting.
+- A set Measure every set opens for a moment no longer shows among the open documents (#305): `GET /api/v1/stacks` lists only what a client opened.
 - An export whose normal file holds the normal in two lanes, as the Vixen preset's BC5 file does, says that its material files leave the normal out (#304); it used to drop it from the glTF, USD and MaterialX files without a word.
 - A graph's physical size set one side quickly after the other keeps both: the second side used to write the first one's old value back while the first was still on its way.
 - A shelf picture the engine could not draw for want of a GPU is drawn once there is one (#302): a library opened on a machine with no GPU used to keep its shelf and Library pictures blank until its cache was cleared. A material the engine cannot draw is still remembered as having no picture.

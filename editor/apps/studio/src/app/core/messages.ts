@@ -158,6 +158,8 @@ export function diagnosticOf(text: string): { summary: string; code: string | nu
  */
 const CheckWords: Readonly<Record<string, string>> = {
   'platform-unknown': 'Limits are kept for “{preset}”, which no export preset is any more, so they hold no set.',
+  'preset-unknown':
+    'The project exports with “{preset}”, which no export preset is any more, so the default “{fallback}” stands in for it.',
   'texture-over-budget': 'Takes {bytes} of GPU memory as {preset} writes it, over the budget of {budget}.',
   'texture-too-large': 'Is {width} × {height} texels, larger than the limit of {limit}.',
   'channel-missing': '{preset} reads {channel} into {file}, and this set has no {channel}, so a default fills it.',

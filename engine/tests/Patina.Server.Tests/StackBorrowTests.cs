@@ -33,6 +33,7 @@ public sealed class StackBorrowTests : IDisposable {
 
         Assert.NotNull(borrowed);
         Assert.Same(borrowed, Assert.Single(sessions.All));
+        Assert.Empty(sessions.Opened);
         sessions.GiveBack(borrowed);
         Assert.Empty(sessions.All);
         Assert.Equal([borrowed.Id], sessions.TakeClosed());
@@ -59,6 +60,7 @@ public sealed class StackBorrowTests : IDisposable {
 
         Assert.Same(borrowed, open);
         Assert.Same(open, Assert.Single(sessions.All));
+        Assert.Same(open, Assert.Single(sessions.Opened));
         Assert.Empty(sessions.TakeClosed());
     }
 }

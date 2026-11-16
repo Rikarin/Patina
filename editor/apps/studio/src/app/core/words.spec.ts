@@ -157,6 +157,9 @@ describe('check words', () => {
     expect(checkWords('platform-unknown', { preset: 'console' }, 'server')).toBe(
       'Limits are kept for “console”, which no export preset is any more, so they hold no set.'
     );
+    expect(checkWords('preset-unknown', { preset: 'console', fallback: 'gltf' }, 'server')).toBe(
+      'The project exports with “console”, which no export preset is any more, so the default “gltf” stands in for it.'
+    );
   });
 
   it('falls back to the Server’s sentence for a code it does not know', () => {

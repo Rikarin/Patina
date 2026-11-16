@@ -45,6 +45,23 @@ public sealed class StackCheckingTests {
         Assert.Equal("gltf", StackChecking.PresetOf(Project(new()) with { Export = null }, null)!.Id);
     }
 
+    /// <summary>
+    ///     A project whose chosen preset was renamed is measured with the starter, and the checks say so, pointing at its
+    ///     export setting, rather than falling back without a word (#305). A preset that is there says nothing.
+    /// </summary>
+    [Fact]
+    public void A_project_whose_preset_has_gone_is_told_which_one_its_checks_use() {
+        var renamed = Project(new()) with { Export = new() { Preset = "unreal-old" } };
+
+        var gone = Assert.Single(StackChecking.Platforms(renamed, null));
+
+        Assert.Equal("gltf", StackChecking.PresetOf(renamed, null)!.Id);
+        Assert.Equal(CheckCodes.PresetUnknown, gone.Code);
+        Assert.Equal(("unreal-old", "gltf"), (gone.Values["preset"], gone.Values["fallback"]));
+        Assert.Equal("export.preset", gone.Target.Setting);
+        Assert.Empty(StackChecking.Platforms(Project(new()), null));
+    }
+
     static ProjectContents Project(ProjectCheckSettings checks) =>
         new(Guid.Empty, "Crate", "crate", [], [], "bakes", [], []) {
             Checks = checks, Export = new() { Preset = Unreal.Id }
