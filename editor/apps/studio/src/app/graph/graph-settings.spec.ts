@@ -64,41 +64,37 @@ function render() {
     (fixture.debugElement.query(By.css(`[data-testid=${id}]`)).nativeElement as HTMLButtonElement).click();
     fixture.detectChanges();
   };
-  return { store, fixture, defaults, shown, click };
+  const texts = (id: string) =>
+    fixture.debugElement
+      .queryAll(By.css(`[data-testid=${id}]`))
+      .map(element => (element.nativeElement as HTMLElement).textContent.trim());
+  return { store, fixture, defaults, shown, click, texts };
 }
 
 describe('the parameters as used (#181)', () => {
   it('shows every parameter to its author, and as used only the ones showing, by their labels', () => {
-    const { fixture, shown, click } = render();
+    const { fixture, shown, click, texts } = render();
     expect(shown()).toEqual(['parameter-rusty', 'parameter-tint', 'parameter-amount']);
     expect(fixture.debugElement.query(By.css('[data-testid=parameter-add]'))).not.toBeNull();
 
     click('parameters-as-used');
 
     expect(shown()).toEqual(['parameter-rusty', 'parameter-tint']);
-    expect(
-      fixture.debugElement
-        .queryAll(By.css('[data-testid=parameter-title]'))
-        .map(e => e.nativeElement.textContent.trim())
-    ).toEqual(['Rusty', 'Tint']);
+    expect(texts('parameter-title')).toEqual(['Rusty', 'Tint']);
     expect(fixture.debugElement.query(By.css('[data-testid=parameter-add]'))).toBeNull();
     expect(fixture.debugElement.query(By.css('[aria-label="Parameter name"]'))).toBeNull();
     expect(fixture.debugElement.queryAll(By.css('[data-testid=parameter-group]'))).toEqual([]);
   });
 
   it('shows a parameter and its group once the value it waits on holds', () => {
-    const { fixture, defaults, shown, click } = render();
+    const { fixture, defaults, shown, click, texts } = render();
     click('parameters-as-used');
 
     defaults.set({ rusty: 'true' });
     fixture.detectChanges();
 
     expect(shown()).toEqual(['parameter-rusty', 'parameter-tint', 'parameter-amount']);
-    expect(
-      fixture.debugElement
-        .queryAll(By.css('[data-testid=parameter-group]'))
-        .map(e => e.nativeElement.textContent.trim())
-    ).toEqual(['Rust']);
+    expect(texts('parameter-group')).toEqual(['Rust']);
   });
 
   it('offers the presets, as a node holding the graph does, and applies the one chosen', () => {
