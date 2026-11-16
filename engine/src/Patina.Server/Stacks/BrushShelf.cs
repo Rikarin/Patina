@@ -34,7 +34,7 @@ public static class BrushShelf {
     public static IReadOnlyList<BrushPresetInfo> List(OpenLibrary library, string? project, string? search = null) {
         List<BrushPresetInfo> found = [..Starters()];
         if (project is not null) {
-            found.AddRange(Of(library, project, Own, null));
+            found.AddRange(Of(library, library.Contents(project).Documents, project, Own, null));
         }
 
         var words = search?.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
@@ -126,8 +126,14 @@ public static class BrushShelf {
     }
 
     /// <summary>One project's presets. A file that will not read is left off rather than emptying the shelf.</summary>
-    static IEnumerable<BrushPresetInfo> Of(OpenLibrary library, string project, string origin, string[]? words) {
-        foreach (var document in MaterialShelf.DocumentsOf(library, project)) {
+    static IEnumerable<BrushPresetInfo> Of(
+        OpenLibrary library,
+        IEnumerable<ProjectDocumentInfo> documents,
+        string project,
+        string origin,
+        string[]? words
+    ) {
+        foreach (var document in documents) {
             if (document.Kind != DocumentKinds.BrushPreset
                 || (words is not null && !Found(document, words))
                 || Read(Path.GetFullPath(document.Path, library.RootPath)) is not { } preset) {
@@ -156,13 +162,18 @@ public static class BrushShelf {
         return preset;
     }
 
+    /// <summary>
+    ///     Every other project's presets, which the index lists (#311): reading every project's file and walking its
+    ///     folder was most of what a shelf load cost in a library of many projects.
+    /// </summary>
     static IEnumerable<BrushPresetInfo> Others(OpenLibrary library, string? project, string[] words) {
+        var documents = MaterialShelf.DocumentsByProject(library);
         for (var offset = 0;; offset += ProjectPage) {
             var page = library.Projects(new(Offset: offset, Limit: ProjectPage)).Items;
             foreach (var summary in page.Where(summary => summary.Path != project)) {
                 IReadOnlyList<BrushPresetInfo> presets;
                 try {
-                    presets = [..Of(library, summary.Path, Elsewhere, words)];
+                    presets = [..Of(library, documents[summary.Path], summary.Path, Elsewhere, words)];
                 } catch (Exception e) when (e is LibraryFormatException or IOException) {
                     continue;
                 }

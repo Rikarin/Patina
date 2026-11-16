@@ -2,7 +2,6 @@ using Patina.Contracts;
 using Patina.Graphs;
 using Patina.Library;
 using Patina.Server.Stacks;
-using System.Collections.Concurrent;
 using System.Globalization;
 using Vixen.NodeGraph;
 using Vixen.Texturing.Layers;
@@ -28,13 +27,6 @@ public static class MaterialShelf {
     const string PackageOrigin = "package";
     const string StarterPrefix = "starter:";
     const string StarterResource = "Starter/";
-
-    /// <summary>
-    ///     What each project lists, its documents and its pictures, kept while its file and the folders pictures are
-    ///     brought into stand, so a search does not read a library.
-    /// </summary>
-    static readonly ConcurrentDictionary<string, (string Stamp, ProjectContents Contents)> Kept =
-        new(StringComparer.Ordinal);
 
     /// <summary>The types a shelf narrows to, and where a material can be from.</summary>
     static readonly string[] Roles = [
@@ -83,7 +75,7 @@ public static class MaterialShelf {
         found.AddRange(Packaged(library));
         if (project is not null) {
             var contents = library.Contents(project);
-            found.AddRange(contents.Documents.Select(document => Described(library, document)).OfType<MaterialInfo>());
+            found.AddRange(contents.Documents.SelectMany(document => Described(library, document)));
             List<MaterialInfo> pictures = [..contents.Pictures.Select(p => Pictured(p, contents.Name, "project"))];
             found.AddRange(pictures);
             found.AddRange(ShelfEnvironments.Among(pictures));
@@ -187,7 +179,7 @@ public static class MaterialShelf {
             try {
                 var manifest = PackageManifests.Read(package);
                 var graph = LibraryLayout.Relative(library.RootPath, Path.Combine(package, manifest.Graph));
-                found = FromGraph(library, manifest.Name, graph, PackageOrigin, manifest.Role);
+                found = FromGraph(GraphOf(library, graph), manifest.Name, graph, PackageOrigin, manifest.Role);
             } catch (Exception e) when (e is IOException or LibraryFormatException or GraphEditRefusedException) {
                 found = null;
             }
@@ -267,6 +259,8 @@ public static class MaterialShelf {
             Terms.InShelf(role),
             graph ? "empty" : string.Empty,
             graph ? Terms.InShelf("empty") : string.Empty,
+            graph ? ShelfEnvironments.Role : string.Empty,
+            graph ? Terms.InShelf(ShelfEnvironments.Role) : string.Empty,
             ElsewhereOrigin,
             Terms.InShelf(ElsewhereOrigin),
             project,
@@ -275,12 +269,15 @@ public static class MaterialShelf {
     }
 
     static IEnumerable<MaterialInfo> Elsewhere(OpenLibrary library, string? project, string[] words) {
-        // Every project's pictures at any depth are one query of the index, not a walk of each folder (#306).
+        // Every project's documents and pictures at any depth are a query of the index each, not a read of each
+        // project's file and a walk of its folder (#306, #311).
         var pictures = library.Pictures().ToLookup(static picture => picture.Project, StringComparer.Ordinal);
+        var documents = DocumentsByProject(library);
         for (var offset = 0;; offset += ProjectPage) {
             var page = library.Projects(new(Offset: offset, Limit: ProjectPage)).Items;
             foreach (var summary in page.Where(summary => summary.Path != project)) {
-                foreach (var material in OfProject(library, summary, pictures[summary.Path], words)) {
+                Held held = new(documents[summary.Path], pictures[summary.Path]);
+                foreach (var material in OfProject(library, summary, held, words)) {
                     yield return material;
                 }
             }
@@ -292,52 +289,29 @@ public static class MaterialShelf {
     }
 
     /// <summary>
+    ///     Every project's documents as the index lists them (#311), by project: the brush shelf reads other projects'
+    ///     through this too (#124).
+    /// </summary>
+    internal static ILookup<string, ProjectDocumentInfo> DocumentsByProject(OpenLibrary library) =>
+        library.Documents()
+            .ToLookup(static found => found.Project, static found => found.Document, StringComparer.Ordinal);
+
+    /// <summary>What the index holds of one project.</summary>
+    readonly record struct Held(IEnumerable<ProjectDocumentInfo> Documents, IEnumerable<LibraryPicture> Pictures);
+
+    /// <summary>
     ///     What another project offers that a search finds: its materials, and its pictures too (#203), which a click
     ///     or a drag brings into the open project first.
     /// </summary>
-    static IEnumerable<MaterialInfo> OfProject(
-        OpenLibrary library,
-        ProjectSummary summary,
-        IEnumerable<LibraryPicture> pictures,
-        string[] words
-    ) {
-        var materials = DocumentsOf(library, summary.Path)
+    static IEnumerable<MaterialInfo> OfProject(OpenLibrary library, ProjectSummary summary, Held held, string[] words) {
+        var materials = held.Documents
             .Where(document => Maybe(document, summary.Name, words))
-            .Select(document => Readable(library, document))
-            .OfType<MaterialInfo>()
+            .SelectMany(document => Readable(library, document))
             .Select(read => read with { Origin = ElsewhereOrigin, Project = summary.Name });
-        List<MaterialInfo> pictured = [..pictures.Select(static picture => Pictured(picture))];
+        List<MaterialInfo> pictured = [..held.Pictures.Select(static picture => Pictured(picture))];
         return materials.Concat(pictured)
             .Concat(ShelfEnvironments.Among(pictured))
             .Where(material => Matches(material, words));
-    }
-
-    /// <summary>
-    ///     What a project lists, read again only when its file has changed since; the brush shelf reads every other
-    ///     project's through this too (#124).
-    /// </summary>
-    internal static IReadOnlyList<ProjectDocumentInfo> DocumentsOf(OpenLibrary library, string project) =>
-        ContentsOf(library, project).Documents;
-
-    /// <summary>
-    ///     What a project holds, read again only when its file or its folder has changed since: a document dropped
-    ///     beside the file changes the folder, though not the project's file. Its pictures are the index's (#306).
-    /// </summary>
-    static ProjectContents ContentsOf(OpenLibrary library, string project) {
-        var file = library.ProjectFile(project, LibraryLayout.ProjectFile);
-        var folder = Path.GetDirectoryName(file)!;
-        var stamp = string.Join(
-            '|',
-            File.GetLastWriteTimeUtc(file).Ticks,
-            Directory.GetLastWriteTimeUtc(folder).Ticks
-        );
-        if (Kept.TryGetValue(file, out var held) && held.Stamp == stamp) {
-            return held.Contents;
-        }
-
-        var contents = library.Contents(project);
-        Kept[file] = (stamp, contents);
-        return contents;
     }
 
     /// <summary>A picture of a project's as the shelf lists it, found by its file type as well as its name.</summary>
@@ -369,11 +343,11 @@ public static class MaterialShelf {
     }
 
     /// <summary>One broken file in another project must not empty this project's shelf.</summary>
-    static MaterialInfo? Readable(OpenLibrary library, ProjectDocumentInfo document) {
+    static IReadOnlyList<MaterialInfo> Readable(OpenLibrary library, ProjectDocumentInfo document) {
         try {
             return Described(library, document);
         } catch (Exception e) when (e is not OperationCanceledException) {
-            return null;
+            return [];
         }
     }
 
@@ -612,42 +586,47 @@ public static class MaterialShelf {
             ?? throw new StackEditRefusedException($"'{stack.Name}' has no layers to use.");
     }
 
-    static MaterialInfo? Described(OpenLibrary library, ProjectDocumentInfo document) =>
+    /// <summary>What a project's document puts on the shelf: nothing, a material, or a graph and the sky it makes.</summary>
+    static IReadOnlyList<MaterialInfo> Described(OpenLibrary library, ProjectDocumentInfo document) =>
         document.Kind switch {
-            DocumentKinds.Graph or DocumentKinds.ImageMaterial => FromGraph(
-                library,
-                document.Name,
-                document.Path,
-                "project",
-                document.Role,
-                document.Tags
-            ),
-            DocumentKinds.MaterialPreset => MaterialPresetShelf.Described(library, document),
-            DocumentKinds.LayeredMaterial => new(
-                document.Name,
-                document.Kind,
-                document.Path,
-                document.Role ?? GraphRoles.Material,
-                "project",
-                [],
-                Tags: document.Tags
-            ),
-            _ => null
+            DocumentKinds.Graph or DocumentKinds.ImageMaterial => Graphed(library, document),
+            DocumentKinds.MaterialPreset => [MaterialPresetShelf.Described(library, document)],
+            DocumentKinds.LayeredMaterial => [
+                new(
+                    document.Name,
+                    document.Kind,
+                    document.Path,
+                    document.Role ?? GraphRoles.Material,
+                    "project",
+                    [],
+                    Tags: document.Tags
+                )
+            ],
+            _ => []
         };
+
+    /// <summary>A graph on the shelf, and an environment too when it makes a sky to light the viewport (#203).</summary>
+    static IReadOnlyList<MaterialInfo> Graphed(OpenLibrary library, ProjectDocumentInfo document) {
+        var graph = GraphOf(library, document.Path);
+        var material = FromGraph(graph, document.Name, document.Path, "project", document.Role, document.Tags);
+        return ShelfEnvironments.Lights(graph) ? [material, ShelfEnvironments.Of(material)] : [material];
+    }
+
+    static NodeGraphAsset GraphOf(OpenLibrary library, string path) =>
+        GraphDocuments.Parse(SharedFile.ReadAllText(Path.GetFullPath(path, library.RootPath)));
 
     /// <summary>
     ///     A graph on the shelf. Its tags are its project's words for it (ADR 0018), which a search of another project
     ///     reads without opening the file, and the graph's own, which a package carries.
     /// </summary>
     static MaterialInfo FromGraph(
-        OpenLibrary library,
+        NodeGraphAsset graph,
         string name,
         string path,
         string origin,
         string? role = null,
         IReadOnlyList<string>? tags = null
     ) {
-        var graph = GraphDocuments.Parse(SharedFile.ReadAllText(Path.GetFullPath(path, library.RootPath)));
         var usages = Usages(graph);
         return new(
             name,

@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Patina.Contracts;
+using Patina.Server.Graphs;
 using System.Buffers.Binary;
+using Vixen.NodeGraph;
 
 namespace Patina.Server.Tests;
 
@@ -97,6 +99,42 @@ public sealed class ShelfPictureApiTests : IAsyncLifetime {
         Assert.Equal(["Round", "Square", "Chisel", "Cross"], alphas.Select(static alpha => alpha.Name));
         Assert.Equal("alpha:Square", alphas[1].Source);
     }
+
+    /// <summary>
+    ///     A graph that makes a sky is on the shelf as an environment too (#203), in the open project and from any
+    ///     other, whose source is the graph's path behind the environment prefix; a graph that makes none is not, and
+    ///     every other project's documents come from the index (#311).
+    /// </summary>
+    [Fact]
+    public async Task A_graph_that_makes_a_sky_is_an_environment_from_any_project() {
+        var library = server.Services.GetRequiredService<LibraryHost>().Library!;
+        var dusk = library.CreateGraph(new("Dusk", "wear-kit"), GraphDocuments.Text(Sky("Dusk", "Environment/Sky")));
+        var noon = library.CreateGraph(new("Noon", "alpha"), GraphDocuments.Text(Sky("Noon", "Environment/Sky")));
+        library.CreateGraph(new("Rust", "wear-kit"), GraphDocuments.Text(Sky("Rust", "Colour/Dissolve")));
+        server.Services.GetRequiredService<LibraryHost>().RequestRescan();
+
+        var skies = await PicturesAsync("alpha", string.Empty, static found => found.Count == 2, "environment");
+        Assert.Equal(
+            [("Noon", $"environment:{noon}", "project"), ("Dusk", $"environment:{dusk}", "library")],
+            skies.Select(static sky => (sky.Name, sky.Source, sky.Origin))
+        );
+        Assert.Equal("Wear Kit", skies[1].Project);
+        var found = await PicturesAsync("alpha", "environment dusk", static found => found.Count > 0, null);
+        Assert.Equal(["environment"], found.Select(static item => item.Role));
+        var materials = await PicturesAsync("alpha", "wear", static found => found.Count == 2, "material");
+        Assert.Equal(["Dusk", "Rust"], materials.Select(static item => item.Name).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>A node (1) into an Output (2).</summary>
+    static NodeGraphAsset Sky(string name, string node) =>
+        new() {
+            Name = name,
+            Nodes = [
+                new() { Id = 1, Type = node },
+                new() { Id = 2, Type = "Output/Output", X = 300, Texts = new() { ["Usage"] = "baseColor" } }
+            ],
+            Edges = [new() { FromNode = 1, FromPort = "Out", ToNode = 2, ToPort = "Input" }]
+        };
 
     /// <summary>The start of a PNG as wide and high as asked: its signature and its header chunk.</summary>
     static byte[] Png(int width, int height) {
