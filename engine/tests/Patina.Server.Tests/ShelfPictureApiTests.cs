@@ -100,7 +100,7 @@ public sealed class ShelfPictureApiTests : IAsyncLifetime {
 
     /// <summary>The start of a PNG as wide and high as asked: its signature and its header chunk.</summary>
     static byte[] Png(int width, int height) {
-        byte[] head = [0x89, (byte)'P', (byte)'N', (byte)'G', 13, 10, 26, 10, 0, 0, 0, 13, ..("IHDR"u8), ..new byte[8]];
+        byte[] head = [0x89, (byte)'P', (byte)'N', (byte)'G', 13, 10, 26, 10, 0, 0, 0, 13, .."IHDR"u8, ..new byte[8]];
         BinaryPrimitives.WriteInt32BigEndian(head.AsSpan(16), width);
         BinaryPrimitives.WriteInt32BigEndian(head.AsSpan(20), height);
         return head;
