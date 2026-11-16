@@ -26,6 +26,10 @@ namespace Patina.Server.Viewport;
 ///     </para>
 /// </remarks>
 public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : IDisposable {
+    /// <summary>What a preview says while no GPU engine is connected to draw it.</summary>
+    public const string WaitsForEngine =
+        "The preview waits for the GPU engine, which is not connected: it is drawn again when the engine is back.";
+
     static readonly TimeSpan WorkerPatience = TimeSpan.FromSeconds(10);
 
     readonly Lock changing = new();
@@ -51,22 +55,29 @@ public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : ID
 
     /// <summary>
     ///     What is shown as its files say now: a project file or mesh file changed since it was told is read again and
-    ///     told to the Worker first, when one is connected, as the next frame would.
+    ///     told to the Worker first, as the next frame would, and so is a preview a new Worker has not heard. With no
+    ///     Worker connected, the preview asked for waits for one, with no key (#310).
     /// </summary>
     /// <param name="cancellationToken">Stops the wait.</param>
     public async Task<BakePreviewState> StateAsync(CancellationToken cancellationToken) {
-        if (!Stale()) {
-            return State;
-        }
-
-        var connecting = worker.ConnectionAsync(cancellationToken);
-        if (connecting.IsCompletedSuccessfully) {
-            await TellAsync(await connecting, false, cancellationToken);
-        } else {
+        if (!worker.IsConnected) {
             ReadAgain(); // no Worker to tell: the next one hears it
+            return Waiting();
         }
 
+        // A Worker that has heard this preview, from files that have not changed since, is not told it again.
+        await TellAsync(await worker.ConnectionAsync(cancellationToken), false, cancellationToken);
         return State;
+    }
+
+    /// <summary>
+    ///     A preview with no GPU engine to draw it: what was asked stays, and the key and warnings the last engine gave
+    ///     are not the answer, since the next one draws it again from the files as they are then.
+    /// </summary>
+    BakePreviewState Waiting() {
+        lock (changing) {
+            return preview is null ? BakePreviewState.Off : new(preview, [], [WaitsForEngine]);
+        }
     }
 
     /// <summary>
@@ -204,19 +215,6 @@ public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : ID
         } finally {
             telling.Release();
         }
-    }
-
-    /// <summary>Whether a followed project file or a shown mesh file has changed since it was read.</summary>
-    bool Stale() {
-        ViewportBakePreview? shown;
-        Followed? now;
-        (long Ticks, long Length)[] written;
-        lock (changing) {
-            (shown, now, written) = (preview, following, meshes);
-        }
-
-        return (now is not null && Stamp(now.File) != now.Written)
-            || (shown is not null && !Stamps(shown).SequenceEqual(written));
     }
 
     /// <summary>

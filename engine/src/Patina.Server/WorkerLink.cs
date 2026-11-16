@@ -45,6 +45,15 @@ public sealed class WorkerLink(IOptions<ServerOptions> options, ILogger<WorkerLi
         }
     }
 
+    /// <summary>Whether a Worker is connected now, asked without waiting for one.</summary>
+    public bool IsConnected {
+        get {
+            lock (changing) {
+                return current is { Closed.IsCompleted: false };
+            }
+        }
+    }
+
     /// <summary>
     ///     A connection and some work, if there is work. Waiting for a Worker can take seconds, and only what is newest
     ///     when one arrives counts, so the work is asked for on both sides of the wait.

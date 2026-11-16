@@ -414,6 +414,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The bake preview says it waits for the engine while none is connected (#310): its key and warnings were the last engine's, kept as if they still stood. A new engine draws it again when the Bake dialog asks, not only at the next frame.
 - A graph that lights the viewport, a shelf picture or a layer's picture that takes the GPU engine more than ten seconds is waited for (#284): on a busy GPU the viewport answered that no GPU process was connected while one was drawing the panorama. Only the wait for the engine to be there is bounded now, as for every other wait on it.
 - Generators on the shelf have pictures (#301): each is drawn on the sample knot's bake, which ships under `content/bakes/Knot`, where a generator used to show its name alone for want of a bake.
 - Other projects' pictures on the shelf come from the library's index (#306): a picture in a folder of its own inside another project, such as `pictures/worn/edges`, is listed after the next scan, where it used to wait until that project's file changed, and the shelf no longer reads each project's folders to find them. Each is found by its size as well, so a search for `2048` finds every picture that wide or high. The index is rebuilt once on the first start.
