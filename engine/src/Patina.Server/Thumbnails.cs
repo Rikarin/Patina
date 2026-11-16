@@ -188,7 +188,9 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
         return OfFile(library, source, full);
     }
 
-    /// <summary>The picture of a library file or folder named by its whole path, or null for one nothing draws.</summary>
+    /// <summary>
+    ///     The picture of a library file or folder named by its whole path, or null for one that draws nothing.
+    /// </summary>
     (string Key, MaterialThumbnailAsk Ask)? OfFile(OpenLibrary library, string source, string full) {
         if (Directory.Exists(full)) {
             // An empty material, or one that cannot be read, gives way to the next.
