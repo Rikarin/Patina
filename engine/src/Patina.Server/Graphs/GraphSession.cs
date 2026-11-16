@@ -5,6 +5,7 @@ using Patina.Server.Sessions;
 using System.Security.Cryptography;
 using System.Text;
 using Vixen.NodeGraph;
+using Vixen.Texturing.Painting;
 
 namespace Patina.Server.Graphs;
 
@@ -95,6 +96,18 @@ public sealed class GraphSession(
                     SubGraphs.Boundary(graph, SubGraphs.InputType),
                     SubGraphs.Boundary(graph, SubGraphs.OutputType)
                 ];
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Whether a node of it reads a painted canvas beside it, which then follows the strokes of a texture set
+    ///     painted in the same folder (#205).
+    /// </summary>
+    public bool ReadsPaint {
+        get {
+            lock (Changing) {
+                return editor.Document.Nodes.Any(static node => node.Texts.Values.Any(PaintReference.Claims));
             }
         }
     }
