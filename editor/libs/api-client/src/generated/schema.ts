@@ -1203,7 +1203,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Brings maps baked in another program in as a texturing document's bake: each PNG is copied where the document's own bake goes and replaces the map of its name there, and the document, open or not, reads them as a bake of its mesh, UV set and material as they stand. A normal map's green runs up. */
+    /** Brings maps baked in another program in as a texturing document's bake: each picture is copied where the document's own bake goes, as a PNG, and replaces the map of its name there, and the document, open or not, reads them as a bake of its mesh, UV set and material as they stand. A PNG is copied as it is; any other picture, and a normal whose green runs down, is written as a 16-bit PNG with its green up by the GPU engine first. */
     post: operations['ImportProjectBake'];
     delete?: never;
     options?: never;
@@ -2891,6 +2891,12 @@ export interface components {
        * @default 16
        */
       rays: number;
+      /**
+       * @description For `rays`, when parts are matched by name: whether the secondary rays meet only the texel's own part
+       *     (#300), so a part standing on another reads no crease where they meet, as an exploded bake would. Null or
+       *     false reads the whole high mesh.
+       */
+      withinPart?: null | boolean;
     };
     /** @description One baked map, as a file. */
     BakedMapFile: {
@@ -2987,8 +2993,17 @@ export interface components {
     BakeImportMap: {
       /** @description One of the maps a bake makes, such as `normal`, `ao` or `curvature`. */
       map: string;
-      /** @description The PNG, absolute or below the library. A normal map's green runs up the picture, as Patina's bakes do. */
+      /**
+       * @description The picture, absolute or below the library: a PNG is copied as it is, and any other picture Patina reads is
+       *     written as a 16-bit PNG by the GPU engine (#300).
+       */
       file: string;
+      /**
+       * @description For a tangent-space `normal` or `bent` map: its green runs down the picture, as DirectX's do, and is
+       *     turned over as it comes in, since Patina's bakes run it up. False keeps it as it is.
+       * @default false
+       */
+      greenDown: boolean;
     };
     /**
      * @description Maps baked in another program, brought in as a texturing document's bake (#144): the body of
@@ -3002,7 +3017,7 @@ export interface components {
        * @description The texturing document, by its id, whose texture set the maps are of.
        */
       document: string;
-      /** @description Each map and the PNG of it, on the Server's machine. */
+      /** @description Each map and the picture of it, on the Server's machine. */
       maps: components['schemas']['BakeImportMap'][];
       /**
        * @description Whether the normal is in `tangent` or `object` space, as a bake's options say.

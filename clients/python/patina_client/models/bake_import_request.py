@@ -30,7 +30,7 @@ class BakeImportRequest:
         Attributes:
             project (str): The project, below `projects/`.
             document (UUID): The texturing document, by its id, whose texture set the maps are of.
-            maps (list[BakeImportMap]): Each map and the PNG of it, on the Server's machine.
+            maps (list[BakeImportMap]): Each map and the picture of it, on the Server's machine.
             space (str): Whether the normal is in `tangent` or `object` space, as a bake's options say. Default: 'tangent'.
      """
 
