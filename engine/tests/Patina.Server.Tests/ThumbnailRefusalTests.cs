@@ -4,13 +4,17 @@ using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Library;
 using Patina.Server.Graphs;
+using Patina.Server.Stacks;
 using Patina.Testing;
 using System.Security.Cryptography;
 
 namespace Patina.Server.Tests;
 
-/// <summary>What a shelf picture the Worker would not draw leaves: nothing, unless the material was why.</summary>
+/// <summary>What a picture the Worker would not draw leaves: nothing, unless what was drawn was why.</summary>
 public sealed class ThumbnailRefusalTests : IDisposable {
+    /// <summary>What the Worker says to each picture, in turn: a refusal, or null to draw it.</summary>
+    static readonly string?[] Answers = ["No Vulkan device: none found", null, "It cannot be drawn.", "unasked"];
+
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-thumbnail-refusal-");
 
     static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -29,6 +33,40 @@ public sealed class ThumbnailRefusalTests : IDisposable {
         await File.WriteAllBytesAsync(Path.Combine(root, "first.png"), [1, 2, 3], Token);
         await File.WriteAllBytesAsync(Path.Combine(root, "second.png"), [4, 5, 6], Token);
         using var library = OpenLibrary.Open(root);
+
+        await RefusedThenDrawnAsync(root, (thumbnails, sources) => thumbnails.DrawAsync(library, sources, Token));
+    }
+
+    /// <summary>
+    ///     A node's picture, for a palette or a layer's generator list, is kept under the same kind of key as a shelf
+    ///     picture (#303): a Worker with no device leaves nothing behind, so the next one that has a device draws it,
+    ///     and a refusal about the node itself is kept, so it is not drawn on every visit.
+    /// </summary>
+    [Fact]
+    public async Task A_node_picture_refused_for_want_of_a_device_is_drawn_once_there_is_one() {
+        var root = Path.Combine(folder.FullName, "Library");
+        LibraryFiles.CreateDefaultLibrary(root, "Game");
+        var types = StackNodeKinds.Types(null);
+        var scope = new NodePictureScope(Path.Combine(root, "graph.ptgraph"), null, [root], types);
+
+        await RefusedThenDrawnAsync(
+            root,
+            (thumbnails, sources) => thumbnails.DrawNodesAsync(scope, sources, Token),
+            "Source/Noise",
+            "Filters/Blur"
+        );
+    }
+
+    /// <summary>
+    ///     Asks for the first picture with no device and again with one, the second picture twice with a refusal about
+    ///     it, and both of a new <see cref="Thumbnails" /> over the same cache, as after a restart.
+    /// </summary>
+    async Task RefusedThenDrawnAsync(
+        string root,
+        Func<Thumbnails, IReadOnlyList<string>, Task<IReadOnlyList<Thumbnail>>> draw,
+        string first = "first.png",
+        string second = "second.png"
+    ) {
         var store = new PreviewStore(new(root, null));
         var socketPath = TempFolders.NewSocket();
         using var link = new WorkerLink(
@@ -37,9 +75,7 @@ public sealed class ThumbnailRefusalTests : IDisposable {
         );
         await link.StartAsync(Token);
         try {
-            var answers = new Queue<string?>(
-                ["No Vulkan device: none found", null, "The picture cannot be read.", "unasked"]
-            );
+            var answers = new Queue<string?>(Answers);
             var asked = 0;
             await using var worker = await WorkerAsync(
                 socketPath,
@@ -57,12 +93,12 @@ public sealed class ThumbnailRefusalTests : IDisposable {
             await link.ConnectionAsync(Token);
             using var thumbnails = new Thumbnails(link, store);
 
-            var blind = await thumbnails.DrawAsync(library, ["first.png"], Token);
-            var seeing = await thumbnails.DrawAsync(library, ["first.png"], Token);
-            var broken = await thumbnails.DrawAsync(library, ["second.png"], Token);
-            var again = await thumbnails.DrawAsync(library, ["second.png"], Token);
+            var blind = await draw(thumbnails, [first]);
+            var seeing = await draw(thumbnails, [first]);
+            var broken = await draw(thumbnails, [second]);
+            var again = await draw(thumbnails, [second]);
             using var restarted = new Thumbnails(link, store);
-            var afterRestart = await restarted.DrawAsync(library, ["first.png", "second.png"], Token);
+            var afterRestart = await draw(restarted, [first, second]);
 
             Assert.Null(blind[0].Hash);
             Assert.Matches("^[0-9a-f]{64}$", seeing[0].Hash);
