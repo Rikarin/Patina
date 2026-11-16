@@ -109,11 +109,23 @@ public sealed partial class LibraryTreeApiTests {
             File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-1));
         }
 
+        // ⚠ The bake is held as running here: left queued, the Server's own Worker takes it at once and fails it, for
+        // its low mesh is not there, and a failed bake names nothing. A try the job runner wins is cancelled and made
+        // again.
         var jobs = server.Services.GetRequiredService<JobQueue>();
-        var job = jobs.Enqueue(
-            "held-test",
-            new() { High = [highPath], Low = Path.Combine(server.Library, "low.glb"), Output = server.Library }
-        );
+        JobState? job = null;
+        for (var tries = 0; tries < 20 && job is null; tries++) {
+            var queued = jobs.Enqueue(
+                "held-test",
+                new() { High = [highPath], Low = Path.Combine(server.Library, "low.glb"), Output = server.Library }
+            );
+            job = jobs.TakeNext() is { } taken && taken.Id == queued.Id ? taken : null;
+            if (job is null) {
+                jobs.Cancel(queued.Id);
+            }
+        }
+
+        Assert.NotNull(job);
         try {
             var unused = await client.GetFromJsonAsync<UnusedUploadList>(
                 $"/api/v1/library/uploads/unused?held={Uri.EscapeDataString(cagePath)}",
@@ -133,6 +145,7 @@ public sealed partial class LibraryTreeApiTests {
             Assert.False(File.Exists(lostPath));
         } finally {
             jobs.Cancel(job.Id);
+            jobs.Stopped(job.Id, job.Attempts);
         }
     }
 
