@@ -4308,7 +4308,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Renders a graph to a picture in its project, which a brush can stamp.",
+        "summary": "Renders a graph to a picture in its project, which a brush can stamp, or brings a picture Patina ships as an alpha into the project\u0027s brushes (#34).",
         "operationId": "MakeBrush",
         "requestBody": {
           "content": {

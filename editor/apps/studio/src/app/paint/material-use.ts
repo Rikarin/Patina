@@ -11,6 +11,8 @@ import { PaintStore } from './paint-store';
 /** The type of a brush alpha on the shelf, whose source is its name behind {@link AlphaPrefix} (#203). */
 export const ShelfAlpha = 'alpha';
 export const AlphaPrefix = 'alpha:';
+/** What a picture Patina ships as an alpha has for a source, before its name (#34): taking it up brings it in. */
+export const PictureAlphaPrefix = 'alpha-picture:';
 /** The type of a panorama on the shelf, whose source is its picture's path behind {@link EnvironmentPrefix}. */
 export const ShelfEnvironment = 'environment';
 const EnvironmentPrefix = 'environment:';
@@ -49,7 +51,8 @@ export class MaterialUse {
     }
 
     try {
-      if (material.role === 'brush') {
+      if (material.role === 'brush' || material.source.startsWith(PictureAlphaPrefix)) {
+        // A brush graph is drawn into the project's brushes, and a shipped picture alpha copied there (#34).
         const alpha = await this.brush(project.path, material);
         this.paint.brush.update(brush => ({ ...brush, alpha }));
       } else if (material.kind === 'layered-material' && material.role === 'mask') {
@@ -89,7 +92,7 @@ export class MaterialUse {
    * the viewport, by its file on the Server's machine. False for anything else.
    */
   private useAside(material: MaterialInfo): boolean {
-    if (material.role === ShelfAlpha) {
+    if (material.role === ShelfAlpha && material.source.startsWith(AlphaPrefix)) {
       const alpha = material.source.slice(AlphaPrefix.length);
       this.paint.brush.update(brush => ({ ...brush, alpha }));
       return true;

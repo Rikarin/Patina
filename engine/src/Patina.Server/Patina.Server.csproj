@@ -26,6 +26,7 @@
   <ItemGroup>
     <EmbeddedResource Include="../../../content/materials/*.vxtexgraph" LogicalName="Starter/%(Filename)"/>
     <EmbeddedResource Include="../../../content/brushes/*.ptbrush" LogicalName="Brush/%(Filename)"/>
+    <EmbeddedResource Include="../../../content/alphas/*.png" LogicalName="Alpha/%(Filename)"/>
     <EmbeddedResource Include="../../../content/smart-materials/*.vxsmartmat" LogicalName="Smart/%(Filename)"/>
     <EmbeddedResource Include="../../../content/samples/**/*" LogicalName="Sample/%(RecursiveDir)%(Filename)%(Extension)"/>
     <EmbeddedResource Include="../../../content/bakes/Knot/*" LogicalName="ShelfBake/%(Filename)%(Extension)"/>
