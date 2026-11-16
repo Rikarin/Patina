@@ -92,20 +92,22 @@ public static class GraphFiles {
             }
         }
 
-        string Kept(string text) => text.Trim() is { Length: > 0 } file && rename(file) is { } renamed ? renamed : text;
         return graph with {
             Nodes = [..graph.Nodes.Select(node => Renamed(node, rename))],
             Parameters = [
                 ..graph.Parameters.Select(parameter => knobs.Contains(parameter.Name)
-                    ? parameter with { Default = Kept(parameter.Default), Accepted = [..parameter.Accepted.Select(Kept)] }
-                    : parameter
+                        ? parameter with {
+                            Default = KeptOrRenamed(parameter.Default, rename),
+                            Accepted = [..parameter.Accepted.Select(text => KeptOrRenamed(text, rename))]
+                        }
+                        : parameter
                 )
             ],
             Presets = [
                 ..graph.Presets.Select(preset => preset with {
                         Values = preset.Values.ToDictionary(
                             static value => value.Key,
-                            value => knobs.Contains(value.Key) ? Kept(value.Value) : value.Value,
+                            value => knobs.Contains(value.Key) ? KeptOrRenamed(value.Value, rename) : value.Value,
                             StringComparer.Ordinal
                         )
                     }
@@ -113,6 +115,10 @@ public static class GraphFiles {
             ]
         };
     }
+
+    /// <summary>A parameter's text naming a file renamed, or as it was.</summary>
+    static string KeptOrRenamed(string text, Func<string, string?> rename) =>
+        text.Trim() is { Length: > 0 } file && rename(file) is { } renamed ? renamed : text;
 
     /// <summary>Every file a parameter of the graph can hold, each once.</summary>
     static IEnumerable<string> Choices(NodeGraphAsset graph, string knob) {
@@ -140,10 +146,12 @@ public static class GraphFiles {
     /// <param name="library">The library's folder.</param>
     public static NodeGraphAsset Rooted(NodeGraphAsset graph, string file, string library) {
         var folder = Path.GetDirectoryName(Path.GetFullPath(file))!;
+
         string? Rooted(string named) =>
             Path.IsPathRooted(named) || IsScheme(named)
                 ? null
                 : LibraryLayout.Relative(library, Path.GetFullPath(named, folder));
+
         var renamed = Renamed(graph, Rooted);
 
         // A compound's own parameter may be handed a file by the node standing for it, as a package's graph hands its
@@ -151,16 +159,16 @@ public static class GraphFiles {
         return renamed with {
             Nodes = [
                 ..renamed.Nodes.Select(node => SettingOf(node.Type) is not null
-                    ? node
-                    : node with {
-                        Texts = node.Texts.ToDictionary(
-                            static text => text.Key,
-                            text => Beside(folder, text.Value) && Rooted(text.Value.Trim()) is { } rooted
-                                ? rooted
-                                : text.Value,
-                            StringComparer.Ordinal
-                        )
-                    }
+                        ? node
+                        : node with {
+                            Texts = node.Texts.ToDictionary(
+                                static text => text.Key,
+                                text => Beside(folder, text.Value) && Rooted(text.Value.Trim()) is { } rooted
+                                    ? rooted
+                                    : text.Value,
+                                StringComparer.Ordinal
+                            )
+                        }
                 )
             ]
         };

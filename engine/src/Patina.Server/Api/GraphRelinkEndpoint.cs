@@ -40,9 +40,7 @@ static class GraphRelinkEndpoint {
                 ? Path.GetFullPath(request.To, library.RootPath)
                 : Path.IsPathRooted(request.To)
                     ? request.To
-                    : throw new GraphEditRefusedException(
-                        "With no library open, a file is named by its whole path."
-                    );
+                    : throw new GraphEditRefusedException("With no library open, a file is named by its whole path.");
             if (!File.Exists(file)) {
                 throw new GraphEditRefusedException($"There is no file at '{request.To}'.");
             }

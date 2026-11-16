@@ -347,7 +347,9 @@ public sealed record GraphState(
 /// <param name="Pinned">The node the views keep showing while the choice moves on, or null.</param>
 public sealed record GraphSelection(IReadOnlyList<int> Nodes, int? Pinned = null);
 
-/// <summary>How a graph is evaluated while it is edited (#306), the body and the reply of its <c>pace</c> route.</summary>
+/// <summary>
+///     How a graph is evaluated while it is edited (#306): the body and the reply of its <c>pace</c> route.
+/// </summary>
 /// <param name="Paused">Whether edits wait to be evaluated, as a stack's can, while a big graph is set up.</param>
 public sealed record GraphPace(bool Paused);
 

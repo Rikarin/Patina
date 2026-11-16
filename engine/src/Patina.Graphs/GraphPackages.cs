@@ -288,7 +288,8 @@ public static class GraphPackages {
                         GraphFiles.Drawing,
                         file,
                         null,
-                        "A parameter names it from outside the graph and its compounds, where a package cannot follow it."
+                        "A parameter names it from outside the graph and its compounds, where a package cannot "
+                        + "follow it."
                     )
                 );
             }

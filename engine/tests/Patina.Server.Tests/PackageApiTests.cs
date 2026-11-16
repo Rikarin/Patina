@@ -331,8 +331,8 @@ public sealed class PackageApiTests : IAsyncLifetime {
 
     /// <summary>
     ///     A file a node reads through a parameter (#306): every file the parameter can hold travels, its list and its
-    ///     presets' values as much as its default, and so does one a graph hands a compound's parameter. A project using
-    ///     the package finds each of them in the library.
+    ///     presets' values as much as its default, and so does one a graph hands a compound's parameter. A project
+    ///     using the package finds each of them in the library.
     /// </summary>
     [Fact]
     public async Task Files_a_parameter_names_travel_in_a_package_with_every_choice_it_has() {
@@ -345,7 +345,11 @@ public sealed class PackageApiTests : IAsyncLifetime {
                 "  - { id: 6, type: Source/Vector, texts: { File: $logo } }\n  - { id: 5, type: Output/Output",
                 StringComparison.Ordinal
             )
-            .Replace("  - { id: 2, type: Wear }", "  - { id: 2, type: Wear, texts: { face: fonts/B.ttf } }", StringComparison.Ordinal)
+            .Replace(
+                "  - { id: 2, type: Wear }",
+                "  - { id: 2, type: Wear, texts: { face: fonts/B.ttf } }",
+                StringComparison.Ordinal
+            )
             .Replace(
                 "  - { name: tint,",
                 "  - { name: logo, default: a.svg, kind: Text, accepted: [a.svg, b.svg] }\n  - { name: tint,",
@@ -358,7 +362,8 @@ public sealed class PackageApiTests : IAsyncLifetime {
                 "  - { id: 3, type: Sub-graph/Output }\n  - { id: 4, type: Source/Text, texts: { Font: $face } }",
                 StringComparison.Ordinal
             )
-            + "\nparameters:\n  - { name: face, default: fonts/A.ttf, kind: Text, accepted: [fonts/A.ttf, fonts/B.ttf] }\n";
+            + "\nparameters:\n"
+            + "  - { name: face, default: fonts/A.ttf, kind: Text, accepted: [fonts/A.ttf, fonts/B.ttf] }\n";
         await File.WriteAllTextAsync(Path.Combine(project, "Compounds", "Wear.vxtexgraph"), wear, Token);
         foreach (var name in new[] { "a.svg", "b.svg" }) {
             await File.WriteAllTextAsync(Path.Combine(project, name), $"<svg id='{name}'/>", Token);
@@ -406,9 +411,15 @@ public sealed class PackageApiTests : IAsyncLifetime {
         var material = YamlSerializer.Parse<NodeGraphAsset>(
             await File.ReadAllTextAsync(Path.Combine(alpha, "Materials", "Rust.vxtexgraph"), Token)
         );
-        Assert.Equal($"packages/Rust.ptpkg/{files["a.svg"]}", material.Parameters.Single(static p => p.Name == "logo").Default);
+        Assert.Equal(
+            $"packages/Rust.ptpkg/{files["a.svg"]}",
+            material.Parameters.Single(static p => p.Name == "logo").Default
+        );
         Assert.Equal($"packages/Rust.ptpkg/{files["b.svg"]}", material.Presets.Single().Values["logo"]);
-        Assert.Equal($"packages/Rust.ptpkg/{files["fonts/B.ttf"]}", material.Nodes.Single(static n => n.Id == 2).Texts["face"]);
+        Assert.Equal(
+            $"packages/Rust.ptpkg/{files["fonts/B.ttf"]}",
+            material.Nodes.Single(static n => n.Id == 2).Texts["face"]
+        );
         var brought = YamlSerializer.Parse<NodeGraphAsset>(
             await File.ReadAllTextAsync(Path.Combine(alpha, "Packages", "Rust", "Wear.vxtexgraph"), Token)
         );

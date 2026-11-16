@@ -43,7 +43,7 @@ public sealed partial class GraphProcessTests {
 
         using var missing = await http.PutAsJsonAsync(
             "/api/v1/graphs/nothing/pace",
-            new GraphPace(true),
+            new(true),
             ContractsJsonContext.Default.GraphPace,
             deadline.Token
         );
@@ -53,7 +53,7 @@ public sealed partial class GraphProcessTests {
     async Task<bool> PaceAsync(string id, bool paused, CancellationToken token) {
         using var response = await http.PutAsJsonAsync(
             $"/api/v1/graphs/{id}/pace",
-            new GraphPace(paused),
+            new(paused),
             ContractsJsonContext.Default.GraphPace,
             token
         );
