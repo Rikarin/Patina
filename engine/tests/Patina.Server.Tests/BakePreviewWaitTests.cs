@@ -14,7 +14,7 @@ public sealed class BakePreviewWaitTests : IAsyncDisposable {
 
     CancellationToken Token => TestContext.Current.CancellationToken;
 
-    public async ValueTask DisposeAsync() => await server.DisposeAsync();
+    public ValueTask DisposeAsync() => server.DisposeAsync();
 
     [Fact]
     public async Task A_preview_with_no_engine_waits_for_one_and_a_new_one_hears_it_when_asked() {
@@ -63,8 +63,7 @@ public sealed class BakePreviewWaitTests : IAsyncDisposable {
     sealed class PreviewWorker : IAsyncDisposable {
         readonly IpcConnection connection;
 
-        PreviewWorker(Stream stream) =>
-            connection = new(stream, (request, _) => ValueTask.FromResult(Answer(request)));
+        PreviewWorker(Stream stream) => connection = new(stream, (request, _) => ValueTask.FromResult(Answer(request)));
 
         /// <summary>How many previews it was told.</summary>
         public int Told { get; private set; }

@@ -1244,7 +1244,7 @@ export class LayerPanel {
 
   /** Whether a texture fill lays a picture in a tangent-space normal channel, whose green runs one way or the other. */
   protected laysNormal(layer: StackLayer): boolean {
-    return ['normal', 'coatNormal'].some((usage) => (layer.textures[usage] ?? '').length > 0);
+    return ['normal', 'coatNormal'].some(usage => (layer.textures[usage] ?? '').length > 0);
   }
 
   /** How a texture fill's normal pictures are read: as they are, or with their green turned down (#310). */

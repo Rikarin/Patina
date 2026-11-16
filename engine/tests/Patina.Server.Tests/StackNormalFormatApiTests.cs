@@ -57,7 +57,8 @@ public sealed class StackNormalFormatApiTests : IAsyncLifetime {
 
     async Task<StackLayer> LayerAsync(string name) =>
         (await client.GetFromJsonAsync<StackState>($"/api/v1/stacks/{stack}", Token))!.Layers.Single(layer =>
-            layer.Name == name);
+            layer.Name == name
+        );
 
     async Task<string> PictureAsync(string name, string usage, StackSetLayer? change = null) {
         await EditAsync(new StackAddLayer("fill", name));

@@ -87,8 +87,8 @@ static class MaterialImport {
     }
 
     /// <summary>
-    ///     A file's materials with their normals' green as the project's normal format says (#310, ADR 0054), for a file
-    ///     whose format does not say which way it runs. glTF, MaterialX and USD say their green runs up, and their
+    ///     A file's materials with their normals' green as the project's normal format says (#310, ADR 0054), for a
+    ///     file whose format does not say which way it runs. glTF, MaterialX and USD say their green runs up, and their
     ///     readers say where a file turns it; an FBX, an OBJ or a Collada file says nothing, so in a project whose maps
     ///     run their green down its normals are read as running down.
     /// </summary>
@@ -103,12 +103,14 @@ static class MaterialImport {
 
         return [
             ..materials.Select(static material => material with {
-                Slots = [
-                    ..material.Slots.Select(static slot => slot.Usage is "normal" or "coatNormal"
-                        ? slot with { GreenUp = false }
-                        : slot)
-                ]
-            })
+                    Slots = [
+                        ..material.Slots.Select(static slot => slot.Usage is "normal" or "coatNormal"
+                                ? slot with { GreenUp = false }
+                                : slot
+                        )
+                    ]
+                }
+            )
         ];
     }
 

@@ -89,8 +89,9 @@ static class StackLayerEdits {
         return batch with {
             Commands = [
                 ..batch.Commands.Select(command => LaysNormal(command)
-                    ? (StackSetLayer)command with { NormalFormat = format }
-                    : command)
+                        ? (StackSetLayer)command with { NormalFormat = format }
+                        : command
+                )
             ]
         };
     }

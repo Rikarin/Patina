@@ -309,7 +309,8 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
             );
             return asset.Nodes.Any(static n => n.Type == "Colour/Channel Mix"
                 && n.Values.TryGetValue("Green from Green", out var green)
-                && green[0] < 0);
+                && green[0] < 0
+            );
         }
     }
 

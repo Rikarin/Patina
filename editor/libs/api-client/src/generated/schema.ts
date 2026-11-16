@@ -8382,8 +8382,9 @@ export interface components {
        */
       tag: string;
       /**
-       * @description How a texture fill's normal and coat normal pictures are read: `y-up`, their green turned to run down as
-       *     a stack's normals do, or `y-down`, as they are (#310). The project's normal format when they were laid.
+       * @description How a texture fill's normal and coat normal pictures are read: `y-up`, their green turned to run down
+       *     as a stack's normals do, or `y-down`, as they are (#310). The project's normal format when they were
+       *     laid.
        */
       normalFormat: string;
     };

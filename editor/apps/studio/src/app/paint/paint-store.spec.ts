@@ -39,6 +39,7 @@ function layer(id: string, kind: string, children: StackLayer[] = []): StackLaye
     filterNode: '',
     anchorPoint: '',
     tag: 'None',
+    normalFormat: 'y-down',
     flattened: false,
     id,
     name: id,

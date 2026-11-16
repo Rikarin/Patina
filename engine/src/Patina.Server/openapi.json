@@ -22451,7 +22451,7 @@
           },
           "normalFormat": {
             "type": "string",
-            "description": "How a texture fill\u0027s normal and coat normal pictures are read: \u0060y-up\u0060, their green turned to run down as\na stack\u0027s normals do, or \u0060y-down\u0060, as they are (#310). The project\u0027s normal format when they were laid."
+            "description": "How a texture fill\u0027s normal and coat normal pictures are read: \u0060y-up\u0060, their green turned to run down\nas a stack\u0027s normals do, or \u0060y-down\u0060, as they are (#310). The project\u0027s normal format when they were\nlaid."
           }
         },
         "description": "One layer, without its pixels."
