@@ -59,7 +59,8 @@ static class StackSurfaces {
             path.Spacing,
             path.Jitter,
             Wire(path.Symmetry),
-            path.Alpha.Length > 0 ? path.Alpha : null
+            path.Alpha.Length > 0 ? path.Alpha : null,
+            path.Filled
         );
     }
 
@@ -167,6 +168,7 @@ static class StackSurfaces {
             Radius = path.Radius,
             Hardness = path.Hardness,
             Ribbon = path.Ribbon,
+            Filled = path.Filled && !path.Ribbon,
             Repeat = path.Repeat,
             Angle = path.Angle,
             Spacing = path.Spacing,

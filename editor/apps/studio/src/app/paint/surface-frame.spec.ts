@@ -290,6 +290,7 @@ describe('symmetry for a decal or a path (#132)', () => {
       radius: 0.01,
       hardness: 1,
       ribbon: false,
+      filled: false,
       repeat: 0,
       angle: 1.3,
       spacing: 0,

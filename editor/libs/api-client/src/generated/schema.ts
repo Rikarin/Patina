@@ -8972,6 +8972,13 @@ export interface components {
        *     turned with the path. Null, empty or `Round` is a round stamp.
        */
       alpha?: null | string;
+      /**
+       * @description Whether the path is a loop whose inside is covered too (#130): it closes from its last point back to its first,
+       *     what it encloses takes the fill's picture, and the width falls away past the loop as a soft edge. A ribbon and
+       *     a row of stamps take no fill.
+       * @default false
+       */
+      filled: boolean;
     };
     /**
      * @description How a decal or a path copies itself over the model (#132): mirrored through a plane, or turned round a line,

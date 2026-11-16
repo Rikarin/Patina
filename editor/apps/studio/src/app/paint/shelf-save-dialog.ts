@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output } from '@angular/core';
+import type { StackLayer } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiDialogImports } from '@xui/dialog';
 import { XuiFormFieldImports } from '@xui/form-field';
 import { XuiInputImports } from '@xui/input';
-import type { StackLayer } from '@patina/api-client';
 import { PaintStore } from './paint-store';
 
 /**
@@ -24,12 +24,7 @@ export interface ShelfSave {
   imports: [XuiButtonImports, XuiDialogImports, XuiFormFieldImports, XuiInputImports],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <xui-dialog
-      size="sm"
-      [title]="title()"
-      [open]="asked() !== null"
-      (openChange)="$event || closed.emit()"
-    >
+    <xui-dialog size="sm" [title]="title()" [open]="asked() !== null" (openChange)="$event || closed.emit()">
       <form (submit)="save($event)">
         <xui-dialog-body class="flex flex-col gap-3" data-testid="shelf-save-dialog">
           <xui-form-field label="Name">

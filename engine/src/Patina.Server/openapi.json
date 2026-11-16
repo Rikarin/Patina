@@ -23310,7 +23310,8 @@
           "repeat",
           "angle",
           "spacing",
-          "jitter"
+          "jitter",
+          "filled"
         ],
         "type": "object",
         "properties": {
@@ -23389,6 +23390,11 @@
               "string"
             ],
             "description": "For a stroke in stamps, the brush alpha each stamp takes the shape of, one of the vocabulary\u0027s \u0060alphas\u0060,\nturned with the path. Null, empty or \u0060Round\u0060 is a round stamp."
+          },
+          "filled": {
+            "type": "boolean",
+            "description": "Whether the path is a loop whose inside is covered too (#130): it closes from its last point back to its first,\nwhat it encloses takes the fill\u0027s picture, and the width falls away past the loop as a soft edge. A ribbon and\na row of stamps take no fill.",
+            "default": false
           }
         },
         "description": "A curve on the model that a fill with the \u0060Path\u0060 projection is laid along (#130, #131): the points stay in\nthe stack, so they can be moved after the stroke is seen, and the stroke follows. It passes through each point."
