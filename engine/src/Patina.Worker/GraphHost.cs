@@ -245,6 +245,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         readonly IReadOnlyList<string> imageRoots;
         readonly string? meshMaps;
         readonly string? badSize;
+        readonly GraphPaintTiles painted = new();
         ImmutableArray<NodeDiagnostic> diagnostics = [];
         IReadOnlyList<PictureStamp> stamps = [];
 
@@ -294,6 +295,11 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         /// <summary>Brings the plan up to date, compiling only for more than a value (plan §3.2).</summary>
         public GraphResultProblem[] Prepare(TexturePlanEvaluator evaluator, out bool compiled) {
             compiled = false;
+            // A canvas being painted carries the tiles a stroke moved, so a painted mask costs no compile (#311).
+            if (stamps.Any(pictures.Stale) && Uploads is { } held && painted.Carry(pictures, stamps, held) is { } now) {
+                stamps = now;
+            }
+
             if (!stamps.Any(pictures.Stale) && compiler.Refresh(graph) is { } refreshed) {
                 Plan = refreshed;
                 return Problems();
@@ -313,6 +319,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
             var owed = TextureGraphExternals.Upload(uploads, compilation.Value, compiler.Externals);
             var filled = pictures.Fill(uploads, compilation.Value, owed, imageRoots, meshMaps);
             stamps = filled.Stamps;
+            painted.Watch(pictures, filled);
             if (filled.Refusals.Count > 0) {
                 uploads.Dispose();
                 diagnostics = diagnostics.AddRange(filled.Refusals);

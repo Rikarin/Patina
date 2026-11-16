@@ -18,7 +18,13 @@ public readonly record struct PictureStamp(string Path, long Length, DateTime Wr
 /// <summary>What filling a compilation's external images came to.</summary>
 /// <param name="Refusals">One per image that could not be filled. With any here, the plan cannot run.</param>
 /// <param name="Stamps">The files that were read, to notice one changing.</param>
-public sealed record FilledPictures(IReadOnlyList<NodeDiagnostic> Refusals, IReadOnlyList<PictureStamp> Stamps);
+public sealed record FilledPictures(IReadOnlyList<NodeDiagnostic> Refusals, IReadOnlyList<PictureStamp> Stamps) {
+    /// <summary>The channels read from a canvas being painted, which <see cref="GraphPaintTiles" /> carries on.</summary>
+    public IReadOnlyList<LivePicture> Live { get; init; } = [];
+}
+
+/// <summary>A channel read from a canvas being painted, and the plan's image it was uploaded to.</summary>
+public readonly record struct LivePicture(int Image, PictureStamp Stamp);
 
 /// <summary>
 ///     Fills the external images a compilation names and cannot carry: bitmaps from files through Vixen's decoder, and
@@ -66,9 +72,29 @@ public sealed class GraphPictures {
             return Moved(stamp) || Painting(stamp.Path) is not null;
         }
 
+        return Canvas(stamp, out var usage) is not { } canvas || Revision(canvas, usage) != stamp.Length;
+    }
+
+    /// <summary>
+    ///     The channel a stamp read from a canvas being painted is now, or null when the stamp read a file, the painting
+    ///     has ended, or the channel is not painted.
+    /// </summary>
+    public PaintImage? Channel(PictureStamp stamp) =>
+        stamp.Written == Live && Canvas(stamp, out var usage) is { } canvas && canvas.Has(usage)
+            ? canvas.Channel(usage)
+            : null;
+
+    /// <summary>A stamp of a canvas being painted as it is now, once what moved on it has been carried.</summary>
+    public PictureStamp Restamped(PictureStamp stamp) =>
+        stamp.Written == Live && Canvas(stamp, out var usage) is { } canvas
+            ? stamp with { Length = Revision(canvas, usage) }
+            : stamp;
+
+    /// <summary>The canvas a live stamp read, if it is still being painted, and the channel it read.</summary>
+    PaintCanvas? Canvas(PictureStamp stamp, out string usage) {
         var split = stamp.Path.LastIndexOf('|');
-        return Painting(stamp.Path[..split]) is not { } canvas
-            || Revision(canvas, stamp.Path[(split + 1)..]) != stamp.Length;
+        usage = stamp.Path[(split + 1)..];
+        return Painting(stamp.Path[..split]);
     }
 
     /// <summary>Uploads every image in <paramref name="owed" />, and says which could not be.</summary>
@@ -91,6 +117,7 @@ public sealed class GraphPictures {
     ) {
         List<NodeDiagnostic> refusals = [];
         List<PictureStamp> stamps = [];
+        List<LivePicture> live = [];
         foreach (var external in owed) {
             var reference = external.Asset.Trim();
             if (TextureDrawings.Draws(reference)) {
@@ -119,6 +146,9 @@ public sealed class GraphPictures {
                 }
 
                 stamps.Add(stamp);
+                if (stamp.Written == Live) {
+                    live.Add(new(external.Image, stamp));
+                }
 
                 // At the depth the picture is, whatever the plan declares: a bitmap is declared eight-bit before its
                 // file is opened, and a mesh map half-float whether or not its bake wrote that deep.
@@ -134,7 +164,7 @@ public sealed class GraphPictures {
             }
         }
 
-        return new(refusals, stamps);
+        return new(refusals, stamps) { Live = live };
     }
 
     /// <summary>

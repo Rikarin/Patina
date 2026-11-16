@@ -25,8 +25,13 @@ painted mask feeding a graph live, and a set's layers as a node inside a graph.
 - **No pixels move outside the Worker.** The canvas is read on the device's turn, as strokes are laid, and the graph's
   previews go through the cache as before.
 
-The cost is a full upload of the channel at each evaluation while painting. Tiles are not carried across yet; a graph
-reading a canvas the size of a 4K set uploads 64 MiB a pass, which is the first thing to measure if it shows.
+The cost was a full upload of the channel at each evaluation while painting, 64 MiB a pass for a 4K float channel, and
+a compile. **Amended 2026-11-16 (#311): the moved tiles are carried.** When every stamp that went stale is a canvas still
+being painted, at the size and depth it was uploaded at, the Worker writes the tiles each channel moved since the last
+pass into what it uploaded, through Vixen's `PaintTileCache` as a set's own layers do, restamps them, and refreshes the
+plan without compiling. A file that moved, a painting that ended, a channel painted for the first time (uploaded clear,
+one texel) or a canvas of another size still compiles and reads it whole. The plan rule still holds: what is skipped is
+the compile a stroke never needed, not a plan kept across a structural edit.
 
 ## Proposed: a texture set's layers as a node
 
