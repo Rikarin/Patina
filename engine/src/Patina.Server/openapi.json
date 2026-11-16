@@ -6907,7 +6907,7 @@
         "tags": [
           "Graphs"
         ],
-        "summary": "Points every node that reads a file (a Bitmap\u0027s picture, a Text\u0027s font, a Vector\u0027s SVG) at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
+        "summary": "Points every node that reads a file (a Bitmap\u0027s picture, a Text\u0027s font, a Vector\u0027s SVG) at another file, as one undo step, or only the node named by node. A file a node reads through a parameter is pointed in the parameter\u0027s default, choices and presets, and one a compound\u0027s node hands its compound on that node. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
         "operationId": "RelinkGraphPicture",
         "parameters": [
           {
@@ -16011,7 +16011,7 @@
           },
           "kind": {
             "type": "string",
-            "description": "Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two numbers such\nas a position or a tiling, separated by a comma, each within the range."
+            "description": "Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two numbers such\nas a position or a tiling, separated by a comma, each within the range. A graph\u0027s own parameter can also be a\nCurve or a Ramp, written inline as a Curve or Ramp setting holds one (\u0060curve:\u0060, \u0060ramp:\u0060) or empty for\nthe node\u0027s own, which a setting written \u0060$Name\u0060 takes whole."
           },
           "minimum": {
             "type": [

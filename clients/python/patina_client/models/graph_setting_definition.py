@@ -32,7 +32,9 @@ class GraphSettingDefinition:
             summary (str): One line about it.
             kind (str): Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two
                 numbers such
-                as a position or a tiling, separated by a comma, each within the range.
+                as a position or a tiling, separated by a comma, each within the range. A graph's own parameter can also be a
+                Curve or a Ramp, written inline as a Curve or Ramp setting holds one (`curve:`, `ramp:`) or empty for
+                the node's own, which a setting written `$Name` takes whole.
             group (str): The heading it sits under.
             accepted (list[str]): The values it may take; empty for any.
             minimum (float | None | Unset): Its lower bound, or null for none.

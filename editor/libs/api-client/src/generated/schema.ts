@@ -1722,7 +1722,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
+    /** Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another file, as one undo step, or only the node named by node. A file a node reads through a parameter is pointed in the parameter's default, choices and presets, and one a compound's node hands its compound on that node. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
     post: operations['RelinkGraphPicture'];
     delete?: never;
     options?: never;
@@ -5429,7 +5429,9 @@ export interface components {
       summary: string;
       /**
        * @description Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two numbers such
-       *     as a position or a tiling, separated by a comma, each within the range.
+       *     as a position or a tiling, separated by a comma, each within the range. A graph's own parameter can also be a
+       *     Curve or a Ramp, written inline as a Curve or Ramp setting holds one (`curve:`, `ramp:`) or empty for
+       *     the node's own, which a setting written `$Name` takes whole.
        */
       kind: string;
       /**
