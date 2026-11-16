@@ -38,14 +38,12 @@ public sealed class IndexedDocumentTests : IDisposable {
         open.Rescan(Token);
 
         var found = open.Documents();
+        var indexed = found.ToLookup(static document => document.Project, static document => document.Document);
         foreach (var project in (string[])["props/crate", "hero"]) {
             var listed = open.Contents(project)
                 .Documents.Where(static document => document.Kind != DocumentKinds.Texturing)
                 .OrderBy(static document => document.Path, StringComparer.Ordinal);
-            Assert.Equal(
-                listed.Select(Shelved),
-                found.Where(document => document.Project == project).Select(document => Shelved(document.Document))
-            );
+            Assert.Equal(listed.Select(Shelved), indexed[project].Select(Shelved));
         }
 
         Assert.Equal(["Crate", "Hero"], found.Select(static document => document.ProjectName).Distinct());

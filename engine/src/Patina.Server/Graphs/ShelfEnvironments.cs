@@ -27,8 +27,8 @@ public static class ShelfEnvironments {
             .Select(static picture => picture with { Source = Prefix + picture.Source, Role = Role });
 
     /// <summary>
-    ///     Whether a graph makes a sky, which is what the Environment nodes are for: one that uses any of them is on the
-    ///     shelf as an environment too, and lights the viewport as its file draws it (ADR 0049).
+    ///     Whether a graph makes a sky, which is what the Environment nodes are for: one that uses any of them is on
+    ///     the shelf as an environment too, and lights the viewport as its file draws it (ADR 0049).
     /// </summary>
     public static bool Lights(NodeGraphAsset graph) =>
         graph.Nodes.Any(static node => node.Type.StartsWith(NodeCategory, StringComparison.Ordinal));

@@ -586,7 +586,7 @@ public static class MaterialShelf {
             ?? throw new StackEditRefusedException($"'{stack.Name}' has no layers to use.");
     }
 
-    /// <summary>What a project's document puts on the shelf: nothing, a material, or a graph and the sky it makes.</summary>
+    /// <summary>What a project's document puts on the shelf: nothing, a material, or a graph and its sky.</summary>
     static IReadOnlyList<MaterialInfo> Described(OpenLibrary library, ProjectDocumentInfo document) =>
         document.Kind switch {
             DocumentKinds.Graph or DocumentKinds.ImageMaterial => Graphed(library, document),
@@ -605,7 +605,7 @@ public static class MaterialShelf {
             _ => []
         };
 
-    /// <summary>A graph on the shelf, and an environment too when it makes a sky to light the viewport (#203).</summary>
+    /// <summary>A graph on the shelf, and an environment too when it makes a sky to light by (#203).</summary>
     static IReadOnlyList<MaterialInfo> Graphed(OpenLibrary library, ProjectDocumentInfo document) {
         var graph = GraphOf(library, document.Path);
         var material = FromGraph(graph, document.Name, document.Path, "project", document.Role, document.Tags);

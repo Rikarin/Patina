@@ -25,7 +25,9 @@ static class IndexedDocuments {
                              FROM asset a ORDER BY a.path
                              """;
 
-    /// <summary>The graphs beside a project that its file does not list: kind 2 is <see cref="TrackedKind.Content" />.</summary>
+    /// <summary>
+    ///     The graphs beside a project that its file does not list: kind 2 is <see cref="TrackedKind.Content" />.
+    /// </summary>
     const string UnlistedRows = """
                                 SELECT f.path FROM file f
                                 WHERE f.kind = 2 AND NOT EXISTS(SELECT 1 FROM asset a WHERE a.path = f.path)
