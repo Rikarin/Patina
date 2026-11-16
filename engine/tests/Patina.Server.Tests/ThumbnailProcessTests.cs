@@ -103,7 +103,8 @@ public sealed partial class StackProcessTests {
             )
             .ToList();
 
-        // A noise draws from nothing; a generator reads a bake, which a shelf has not got, and shows its name.
+        // A noise draws from nothing; a generator reads a bake, the sample knot's on the shelf (#301), where it used to
+        // have none and show its name alone.
         string SourceOf(string role, string prefix) =>
             compounds.Select(static item => item.GetProperty("source").GetString()!)
                 .First(source => source.StartsWith(prefix, StringComparison.Ordinal)
@@ -113,14 +114,15 @@ public sealed partial class StackProcessTests {
                 );
 
         string[] sources = [
-            SourceOf("mask", "compound:Noise/"), SourceOf("filter", "compound:"), "compound:Nowhere/Nothing"
+            SourceOf("mask", "compound:Noise/"), SourceOf("filter", "compound:"),
+            "compound:Generators/Cavity Select", "compound:Nowhere/Nothing"
         ];
 
         var drawn = await ThumbnailsAsync(sources, deadline.Token);
 
-        Assert.All(drawn[..2], static hash => Assert.Matches("^[0-9a-f]{64}$", hash));
-        Assert.NotEqual(drawn[0], drawn[1]);
-        Assert.Null(drawn[2]);
+        Assert.All(drawn[..3], static hash => Assert.Matches("^[0-9a-f]{64}$", hash));
+        Assert.Equal(3, drawn[..3].Distinct().Count());
+        Assert.Null(drawn[3]);
         Assert.Equal((256, 256), await PictureSizeAsync(drawn[0]!, deadline.Token));
         Assert.Equal(drawn, await ThumbnailsAsync(sources, deadline.Token));
     }

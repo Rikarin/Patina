@@ -53,7 +53,11 @@ static class LibraryFileEndpoints {
             ? refused
             : LibraryTreeEndpoints.Guarded(
                 host,
-                library => TypedResults.Ok(new ProjectPicture(library.AddPicture(request.Project, request.Picture)))
+                library => {
+                    var added = new ProjectPicture(library.AddPicture(request.Project, request.Picture));
+                    host.RequestRescan(); // the index lists every project's pictures (#306)
+                    return TypedResults.Ok(added);
+                }
             );
     }
 

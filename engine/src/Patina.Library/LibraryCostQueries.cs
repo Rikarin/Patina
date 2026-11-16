@@ -9,12 +9,15 @@ namespace Patina.Library;
 ///     makes. Every answer is an aggregate or a page, so no query reads a document or walks the library.
 /// </summary>
 sealed class LibraryCostQueries(IndexDatabase database) {
-    /// <summary>The stacks below the folder, each with the rest of its path after the folder and its cost.</summary>
+    /// <summary>
+    ///     The stacks below the folder, each with the rest of its path after the folder and its cost. A picture has a
+    ///     size too (#306), and is not a document (kind 2 is a document beside a project).
+    /// </summary>
     const string Below = """
                          SELECT substr(path, length(@from) + 1) AS rest, width * height * maps * 4 AS bytes,
                              path, width, height, maps, coalesce(sets, 0) AS sets
                          FROM file
-                         WHERE width IS NOT NULL AND path >= @from AND path < @to
+                         WHERE kind = 2 AND width IS NOT NULL AND path >= @from AND path < @to
                          """;
 
     /// <summary>The folder or project directly in the folder that a stack is below.</summary>

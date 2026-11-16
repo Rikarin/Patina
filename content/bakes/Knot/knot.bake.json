@@ -1,0 +1,84 @@
+{
+  "name": "knot",
+  "format": "png8",
+  "result": {
+    "maps": [
+      {
+        "map": "ao",
+        "path": "knot_ao.png",
+        "resolution": 256,
+        "scale": 0
+      },
+      {
+        "map": "curvature",
+        "path": "knot_curvature.png",
+        "resolution": 256,
+        "scale": 5.233132362365723
+      },
+      {
+        "map": "thickness",
+        "path": "knot_thickness.png",
+        "resolution": 256,
+        "scale": 0
+      },
+      {
+        "map": "position",
+        "path": "knot_position.png",
+        "resolution": 256,
+        "scale": 0
+      },
+      {
+        "map": "world",
+        "path": "knot_world.png",
+        "resolution": 256,
+        "scale": 0
+      },
+      {
+        "map": "id",
+        "path": "knot_id.png",
+        "resolution": 256,
+        "scale": 0
+      },
+      {
+        "map": "islands",
+        "path": "knot_islands.png",
+        "resolution": 256,
+        "scale": 0
+      },
+      {
+        "map": "bounds",
+        "path": "knot_bounds.png",
+        "resolution": 256,
+        "scale": 0
+      },
+      {
+        "map": "density",
+        "path": "knot_density.png",
+        "resolution": 256,
+        "scale": 0
+      }
+    ],
+    "covered": 65536,
+    "missed": 0,
+    "warnings": [],
+    "cached": false,
+    "log": [
+      "High: knot.glb, 11712 faces in 5 part(s).",
+      "Low: knot.glb, 11712 faces in 5 part(s).",
+      "65536 texels held a chart, 0 of them found no surface and took the nearest point, and the gutter filled 0 more.",
+      "Baked in 0.6 s."
+    ]
+  },
+  "mesh": "a10a712a57c869b7c11ff4a91404f0e808f53b3e26f27f6cd8e0c0bd13f73e13",
+  "uvSet": 0,
+  "space": "tangent",
+  "geometry": "sha256:47c0c79f6a27ef3282f60663fb76ad375df316dbea1319eb8e713a8b9361c26d",
+  "positionBox": [
+    -1.0551468,
+    -0.50993246,
+    -1.2406842,
+    1.31,
+    0.50993264,
+    1.2406721
+  ]
+}

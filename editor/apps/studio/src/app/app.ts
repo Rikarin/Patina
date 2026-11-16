@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -12,9 +11,8 @@ import {
 } from '@angular/core';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
-import { XuiDialogImports } from '@xui/dialog';
+import { XuiDialog, XuiDialogBody } from '@xui/dialog';
 import { type XuiDockManagerLayout, XuiDockManagerImports } from '@xui/dock-manager';
-import { XuiInputImports } from '@xui/input';
 import { BakePane } from './bake/bake-pane';
 import { BakeSettings } from './bake/bake-settings';
 import { BakeStore } from './bake/bake-store';
@@ -26,13 +24,13 @@ import { type CommandHandler, Commands } from './core/commands';
 import { desktop } from './core/desktop';
 import { DiagnosticsDialog } from './core/diagnostics-dialog';
 import { EditCommands } from './core/edit-commands';
-import { FileConflictDialog } from './core/file-conflict-dialog';
 import { FilePicker } from './core/file-picker';
 import { Links } from './core/help-links';
 import { HistoryPane } from './core/history-pane';
 import { KeyHelper } from './core/key-helper';
 import { percent } from './core/numbers';
 import { PreferencesDialog } from './core/preferences-dialog';
+import { SessionDialogs } from './core/session-dialogs';
 import { ShortcutsDialog } from './core/shortcuts-dialog';
 import { StartPane } from './core/start-pane';
 import { SystemStatus } from './core/system-status';
@@ -92,6 +90,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     PreferencesDialog,
     LibrarySettingsDialog,
     KeyHelper,
+    SessionDialogs,
     ShortcutsDialog,
     ImageMaterialPane,
     Inspector,
@@ -101,11 +100,8 @@ import { ViewportPane } from './viewport/viewport-pane';
     TextureSets,
     LayerStack,
     LibraryPane,
-    DatePipe,
     DiagnosticsDialog,
-    FileConflictDialog,
     MaterialShelf,
-    XuiInputImports,
     PaintAtlas,
     PaintPane,
     PickFileDialog,
@@ -114,7 +110,8 @@ import { ViewportPane } from './viewport/viewport-pane';
     ViewportPane,
     XuiButtonImports,
     XuiCalloutImports,
-    XuiDialogImports,
+    XuiDialog,
+    XuiDialogBody,
     XuiDockManagerImports
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -486,61 +483,28 @@ import { ViewportPane } from './viewport/viewport-pane';
       }
     }
 
-    <xui-dialog class="max-w-5xl" size="lg" title="Bake" [(open)]="baking">
-      <xui-dialog-body>
-        @defer (when baking()) {
+    @defer (when baking()) {
+      <xui-dialog class="max-w-5xl" size="lg" title="Bake" [(open)]="baking">
+        <xui-dialog-body>
           <div class="flex h-[70vh] min-h-0 flex-col"><ptn-bake /></div>
-        }
-      </xui-dialog-body>
-    </xui-dialog>
-    <xui-dialog class="max-w-5xl" size="lg" title="Export" [(open)]="exporting">
-      <xui-dialog-body>
-        @defer (when exporting()) {
+        </xui-dialog-body>
+      </xui-dialog>
+    }
+    @defer (when exporting()) {
+      <xui-dialog class="max-w-5xl" size="lg" title="Export" [(open)]="exporting">
+        <xui-dialog-body>
           <div class="flex h-[75vh] min-h-0 flex-col"><ptn-export /></div>
-        }
-      </xui-dialog-body>
-    </xui-dialog>
+        </xui-dialog-body>
+      </xui-dialog>
+    }
 
-    <xui-dialog
-      size="sm"
-      title="Unsaved changes"
-      [open]="project.closing() !== null"
-      (openChange)="$event || project.resolveClosing('cancel')"
-    >
-      <xui-dialog-body data-testid="project-leaving">This document has unsaved changes.</xui-dialog-body>
-      <xui-dialog-footer>
-        <button type="button" xuiButton variant="ghost" (click)="project.resolveClosing('cancel')">Cancel</button>
-        <button
-          type="button"
-          xuiButton
-          variant="ghost"
-          data-testid="project-discard"
-          (click)="project.resolveClosing('discard')"
-        >
-          Don't Save
-        </button>
-        <button
-          type="button"
-          xuiButton
-          color="primary"
-          data-testid="project-save"
-          (click)="project.resolveClosing('save')"
-        >
-          Save
-        </button>
-      </xui-dialog-footer>
-    </xui-dialog>
+    @defer (when asking()) {
+      <ptn-session-dialogs />
+    }
 
     @defer (when project.reloading() !== null) {
       <ptn-mesh-reload-dialog />
     }
-
-    <ptn-file-conflict
-      [name]="project.active()?.name ?? ''"
-      [open]="paint.saveConflict()"
-      (cancelled)="paint.saveConflict.set(false)"
-      (overwrite)="paint.act('save', true)"
-    />
 
     @defer (when diagnosing()) {
       <ptn-diagnostics [(open)]="diagnosing" />
@@ -569,100 +533,6 @@ import { ViewportPane } from './viewport/viewport-pane';
     @defer (when librarySettingsOpen()) {
       <ptn-library-settings [(open)]="librarySettingsOpen" />
     }
-
-    <xui-dialog
-      size="sm"
-      [title]="project.copying() ? 'Save a Copy' : 'Save As'"
-      [open]="project.savingAs()"
-      (openChange)="project.savingAs.set($event)"
-    >
-      <form (submit)="saveAs($event, saveName.value)">
-        <xui-dialog-body>
-          <input
-            #saveName
-            class="w-full"
-            xuiInput
-            aria-label="New name"
-            autocomplete="off"
-            data-testid="save-as-name"
-          />
-        </xui-dialog-body>
-        <xui-dialog-footer>
-          <button type="button" xuiButton variant="ghost" (click)="project.savingAs.set(false)">Cancel</button>
-          <button type="submit" xuiButton color="primary" data-testid="save-as-save">Save</button>
-        </xui-dialog-footer>
-      </form>
-    </xui-dialog>
-
-    <xui-dialog
-      size="sm"
-      title="Recover unsaved work?"
-      [open]="project.recoverable() !== null"
-      (openChange)="$event || project.dismissRecovery()"
-    >
-      <xui-dialog-body data-testid="app-recovery">
-        Patina kept work on this document that was never saved, from {{ project.recoverable()?.saved | date: 'short' }}.
-        Closing this keeps it, and asks again next time.
-      </xui-dialog-body>
-      <xui-dialog-footer>
-        <button
-          type="button"
-          xuiButton
-          variant="ghost"
-          data-testid="recovery-discard"
-          (click)="project.resolveRecovery(false)"
-        >
-          Discard
-        </button>
-        <button
-          type="button"
-          xuiButton
-          color="primary"
-          data-testid="recovery-restore"
-          (click)="project.resolveRecovery(true)"
-        >
-          Restore
-        </button>
-      </xui-dialog-footer>
-    </xui-dialog>
-
-    <xui-dialog
-      size="sm"
-      title="Quit Patina?"
-      [open]="project.quitting()"
-      (openChange)="$event || project.resolveQuitting('cancel')"
-    >
-      <xui-dialog-body data-testid="app-quitting"
-        >{{ project.unsavedTabs().length }} document(s) have unsaved changes.</xui-dialog-body
-      >
-      <xui-dialog-footer>
-        <button type="button" xuiButton variant="ghost" (click)="project.resolveQuitting('cancel')">Cancel</button>
-        <button type="button" xuiButton variant="ghost" (click)="project.resolveQuitting('discard')">Don't Save</button>
-        <button type="button" xuiButton color="primary" (click)="project.resolveQuitting('save')">Save All</button>
-      </xui-dialog-footer>
-    </xui-dialog>
-
-    <xui-dialog
-      size="sm"
-      title="Close Project?"
-      [open]="project.closingProject() !== null"
-      (openChange)="$event || project.resolveClosingProject('cancel')"
-    >
-      <xui-dialog-body data-testid="project-closing"
-        >Some documents of this project have unsaved changes.</xui-dialog-body
-      >
-      <xui-dialog-footer>
-        <button type="button" xuiButton variant="ghost" (click)="project.resolveClosingProject('cancel')">
-          Cancel
-        </button>
-        <button type="button" xuiButton variant="ghost" (click)="project.resolveClosingProject('discard')">
-          Don't Save
-        </button>
-        <button type="button" xuiButton color="primary" (click)="project.resolveClosingProject('save')">
-          Save All
-        </button>
-      </xui-dialog-footer>
-    </xui-dialog>
   `
 })
 export class App {
@@ -699,6 +569,16 @@ export class App {
   protected readonly paint = inject(PaintStore);
   /** The one thing that went wrong last, which stays until it is read. */
   protected readonly failure = computed(() => this.paint.failure() ?? this.project.failure());
+  /** Whether the session asks a question, which first loads the dialogs that ask them (#301). */
+  protected readonly asking = computed(
+    () =>
+      this.project.closing() !== null ||
+      this.project.savingAs() ||
+      this.project.recoverable() !== null ||
+      this.project.quitting() ||
+      this.project.closingProject() !== null ||
+      this.paint.saveConflict()
+  );
   protected readonly baking = signal(false);
 
   /** Bakes with the project's settings. A refusal opens the dialog, which says why. */
@@ -829,14 +709,6 @@ export class App {
   protected dismissFailure(): void {
     this.paint.failure.set(null);
     this.project.clearFailure();
-  }
-
-  protected saveAs(event: Event, name: string): void {
-    event.preventDefault();
-    if (name.trim()) {
-      this.project.savingAs.set(false);
-      void this.project.saveAs(name.trim(), this.project.copying());
-    }
   }
 
   protected keep(layout: XuiDockManagerLayout): void {

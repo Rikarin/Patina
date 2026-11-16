@@ -166,6 +166,14 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             return ShelfCompounds.NodeOf(source) is { } node ? OfCompound(library, node) : null;
         }
 
+        if (ShelfEnvironments.PictureOf(source) is { } panorama) {
+            return Ask(library, panorama); // an environment on the shelf is drawn as the picture it is (#203)
+        }
+
+        if (source.StartsWith(ShelfAlphas.Prefix, StringComparison.Ordinal)) {
+            return null; // a client draws an alpha as a stamp of its brush
+        }
+
         if (source.StartsWith(MaterialShelf.ShippedPrefix, StringComparison.Ordinal)) {
             return OfStack(source, library.RootPath, Path.Combine(library.RootPath, LibraryLayout.ProjectsFolder));
         }
