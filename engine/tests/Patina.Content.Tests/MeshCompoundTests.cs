@@ -280,7 +280,10 @@ public sealed class MeshCompoundTests {
             var fitted = Bake(device, compiler, graph)["baseColor"];
 
             Assert.True(Differing(fitted) < 0.02, $"Fitted, {Differing(fitted):0.000} of the halves differ.");
-            Assert.True(Differing(layout) > 0.2, $"Over the layout, only {Differing(layout):0.000} of the halves differ.");
+            Assert.True(
+                Differing(layout) > 0.2,
+                $"Over the layout, only {Differing(layout):0.000} of the halves differ."
+            );
         }
 
         // The share of texels whose red on the left is not the blue half a picture to the right.
@@ -301,8 +304,8 @@ public sealed class MeshCompoundTests {
     }
 
     /// <summary>
-    ///     Patina #121: Texel Density colours the stand-in's density bake, which climbs from sparse on the left to dense
-    ///     on the right: blue on the left, green in the middle and red on the right.
+    ///     Patina #121: Texel Density colours the stand-in's density bake, which climbs from sparse on the left to
+    ///     dense on the right: blue on the left, green in the middle and red on the right.
     /// </summary>
     [Fact]
     public void Texel_density_is_blue_where_sparse_and_red_where_dense() {

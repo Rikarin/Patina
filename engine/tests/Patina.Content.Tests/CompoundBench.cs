@@ -165,7 +165,7 @@ static class CompoundBench {
                     "id" or "islands" => x < Side / 2 ? (1.0, 0.0, 0.0) : (0.0, 0.0, 1.0),
                     "thickness" => Grey(x / (double)Side),
                     "density" => Grey(x / (double)Side),
-                    "bounds" => ((x % (Side / 2)) / (double)(Side / 2), y / (double)Side, 0.5),
+                    "bounds" => (x % (Side / 2) / (Side / 2.0), y / (double)Side, 0.5),
                     "normal" or "bent" => (0.5, 0.5, 1.0),
                     _ => Grey(0.5)
                 };
