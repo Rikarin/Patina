@@ -36,10 +36,10 @@ public static class BakeKeyReads {
 
     /// <summary>
     ///     What the model reader makes of a file's bytes (<see cref="ModelReader.Revision" />). Every mesh of a bake is
-    ///     keyed by what is read of it, and an OBJ baked before polypaint was read must not come back without its colors.
+    ///     keyed by what is read of it, and an OBJ baked before polypaint was read must not come back without its
+    ///     colors.
     /// </summary>
-    public static Revision ReaderRevision { get; } =
-        Revision.Of(System.Text.Encoding.UTF8.GetBytes(ModelReader.Revision));
+    public static Revision ReaderRevision { get; } = Revision.Of(MemoryMarshal.AsBytes(ModelReader.Revision.AsSpan()));
 
     /// <summary>The key of what a request would make, reading each input for what the bake uses of it.</summary>
     /// <param name="request">The bake.</param>

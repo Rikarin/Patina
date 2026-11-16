@@ -356,8 +356,8 @@ public sealed class BakeCorrectionTests : IDisposable {
     }
 
     /// <summary>
-    ///     Patina #306: an OBJ baked before polypaint was read must not come back from the cache without its colors, and
-    ///     its bytes are the same, so what the model reader makes of them is in the key.
+    ///     Patina #306: an OBJ baked before polypaint was read must not come back from the cache without its colors,
+    ///     and its bytes are the same, so what the model reader makes of them is in the key.
     /// </summary>
     [Fact]
     public void A_bakes_key_carries_what_the_model_reader_makes_of_the_bytes() {

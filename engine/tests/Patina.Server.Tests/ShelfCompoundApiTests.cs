@@ -87,9 +87,9 @@ public sealed class ShelfCompoundApiTests : IAsyncLifetime {
     }
 
     /// <summary>
-    ///     Patina's own layered materials (#34), CC0 in <c>content/smart-materials</c>, are on the shelf as shipped, and
-    ///     each reads as layers whose every mask is one of Patina's own compounds, so nothing of it is under another
-    ///     licence and it opens with nothing missing.
+    ///     Patina's own layered materials (#34), CC0 in <c>content/smart-materials</c>, are on the shelf as shipped,
+    ///     and each reads as layers whose every mask is one of Patina's own compounds, so nothing of it is under
+    ///     another licence and it opens with nothing missing.
     /// </summary>
     [Fact]
     public async Task Patinas_own_layered_materials_are_on_the_shelf_masked_by_its_own_compounds() {
@@ -98,8 +98,11 @@ public sealed class ShelfCompoundApiTests : IAsyncLifetime {
         var shelf = await ShelfAsync(string.Empty);
 
         Assert.True(names.Length >= 10, $"Only {names.Length} layered materials ship.");
+        const string Prefix = MaterialShelf.ShippedPrefix;
+        var shipped = shelf.Where(static material => material.Source.StartsWith(Prefix, StringComparison.Ordinal))
+            .ToDictionary(static material => material.Source[Prefix.Length..]);
         foreach (var name in names) {
-            var listed = Assert.Single(shelf, material => material.Source == MaterialShelf.ShippedPrefix + name);
+            var listed = shipped[name!];
             Assert.Equal((DocumentKinds.LayeredMaterial, "shipped"), (listed.Kind, listed.Origin));
 
             var set = Assert.Single(MaterialShelf.Read(null, listed.Source).Sets);
