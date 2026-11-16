@@ -166,9 +166,7 @@ public sealed partial class Thumbnails {
             Nodes = [
                 new() { Id = StandardNode, Type = StandardInput },
                 new() {
-                    Id = DrawnNode,
-                    Type = type.Path,
-                    Texts = values is null ? [] : new(values, StringComparer.Ordinal)
+                    Id = DrawnNode, Type = type.Path, Texts = values is null ? [] : new(values, StringComparer.Ordinal)
                 }
             ],
             Edges = [
