@@ -102,13 +102,18 @@ public sealed class MaterialXReader {
 
         var trace = new Trace(usage, -1, false, [1f, 1f, 1f, 1f], true);
         return Follow(usage, input, scope, trace) is { } read
-            ? new ImportedSlot(usage, read.File, read.Lane, read.Inverted, read.Factor) { GreenUp = read.GreenUp }
+            ? new ImportedSlot(usage, read.File, read.Lane, read.Inverted, read.Factor) {
+                GreenUp = read.GreenUp, ColourSpace = read.ColourSpace
+            }
             : null;
     }
 
     /// <summary>What a node chain has come to on its way back to an image.</summary>
     sealed record Trace(string Usage, int Lane, bool Inverted, float[] Factor, bool GreenUp) {
         public string? File { get; init; }
+
+        /// <summary>The colour space the image's file is in, or null when nothing says.</summary>
+        public string? ColourSpace { get; init; }
     }
 
     Trace? Follow(string usage, XElement input, XElement scope, Trace trace) {
@@ -137,7 +142,7 @@ public sealed class MaterialXReader {
         switch (node.Name.LocalName) {
             case "image" or "tiledimage" or "gltf_image":
                 return Child(node, "file") is { } file && Attribute(file, "value") is { Length: > 0 } uri
-                    ? trace with { File = Resolve(node, uri) }
+                    ? trace with { File = Resolve(node, uri), ColourSpace = Space(file) }
                     : Left(usage, "its image names no file");
             case "convert" or "normalmap":
                 return Through(usage, node, "in", scope, trace);
@@ -192,6 +197,26 @@ public sealed class MaterialXReader {
         );
         var relative = Uri.UnescapeDataString(prefix + uri).Replace('/', Path.DirectorySeparatorChar);
         return Path.GetFullPath(Path.Combine(folder, relative));
+    }
+
+    /// <summary>
+    ///     What an image's file is in (#308): the <c>colorspace</c> on its file input, else on the nearest element
+    ///     round it, as MaterialX inherits it. The <c>lin_</c> spaces, ACEScg and <c>none</c> are linear, and the
+    ///     <c>srgb_</c> and gamma ones sRGB; nothing, or a space Patina does not know, leaves it to the picture's use.
+    /// </summary>
+    static string? Space(XElement file) {
+        var named = file.AncestorsAndSelf()
+            .Select(static element => Attribute(element, "colorspace"))
+            .FirstOrDefault(static space => space is not null);
+        return named?.ToLowerInvariant() switch {
+            null => null,
+            "none" or "raw" or "acescg" => ImportedSpaces.Linear,
+            var linear when linear.StartsWith("lin_", StringComparison.Ordinal) => ImportedSpaces.Linear,
+            var gamma when gamma.StartsWith("srgb_", StringComparison.Ordinal)
+                || gamma.StartsWith("g22_", StringComparison.Ordinal)
+                || gamma.StartsWith("g18_", StringComparison.Ordinal) => ImportedSpaces.Srgb,
+            _ => null
+        };
     }
 
     Trace? Left(string usage, string why) {

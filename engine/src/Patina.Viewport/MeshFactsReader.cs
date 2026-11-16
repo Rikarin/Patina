@@ -6,7 +6,10 @@ using Vixen.Interchange;
 
 namespace Patina.Viewport;
 
-/// <summary>Says what a mesh file is (#146): its parts, materials, coordinate sets, triangles, box and units.</summary>
+/// <summary>
+///     Says what a mesh file is (#146): its parts, materials, coordinate sets, triangles, box and units, and the
+///     cameras it holds (#144).
+/// </summary>
 public static class MeshFactsReader {
     /// <summary>Reads a mesh file for its facts.</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
@@ -61,10 +64,22 @@ public static class MeshFactsReader {
             parts.Count == 0 ? 0 : parts.Max(static part => part.UvSets),
             parts.Count == 0 ? [0, 0, 0] : [box.Minimum.X, box.Minimum.Y, box.Minimum.Z],
             parts.Count == 0 ? [0, 0, 0] : [box.Maximum.X, box.Maximum.Y, box.Maximum.Z],
-            MetresPerUnit(extension, read.UnitScaleFactor),
+            MeshUnits.Stated(extension, read.UnitScaleFactor),
             colours
-        );
+        ) { Cameras = [..read.Cameras.Select(Camera)] };
     }
+
+    /// <summary>A file's camera as the facts say it (#144).</summary>
+    static MeshCameraFacts Camera(ModelCamera camera) =>
+        new(
+            camera.Name,
+            [camera.Position.X, camera.Position.Y, camera.Position.Z],
+            [camera.Forward.X, camera.Forward.Y, camera.Forward.Z],
+            [camera.Up.X, camera.Up.Y, camera.Up.Z],
+            camera.VerticalFieldOfView,
+            camera.AspectRatio,
+            camera.OrthographicHeight
+        );
 
     /// <summary>
     ///     How many sets a mesh has before the first it lacks: a set past a gap is unreachable by number, so it is not
@@ -83,15 +98,4 @@ public static class MeshFactsReader {
 
         return count;
     }
-
-    /// <summary>
-    ///     glTF is in metres by its specification. An FBX states centimetres per unit, which Assimp reports as its
-    ///     <c>UnitScaleFactor</c>. Nothing else is trusted to mean a length.
-    /// </summary>
-    static double? MetresPerUnit(string extension, double? stated) =>
-        extension.ToLowerInvariant() switch {
-            ".glb" or ".gltf" => 1,
-            ".fbx" when stated is > 0 => stated.Value / 100,
-            _ => null
-        };
 }

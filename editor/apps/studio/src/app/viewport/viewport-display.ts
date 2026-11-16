@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
-import type { ViewportDisplay } from '@patina/api-client';
+import { ChangeDetectionStrategy, Component, effect, inject, output, signal } from '@angular/core';
+import { type MeshCameraFacts, type MeshFacts, type ViewportDisplay, unwrap } from '@patina/api-client';
 import { XuiButtonImports } from '@xui/button';
 import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiNumericInputImports } from '@xui/numeric-input';
@@ -11,6 +11,7 @@ import { Commands } from '../core/commands';
 import { labelsOf, valuesOf } from '../core/labels';
 import { degrees, percent, stops, toRadians } from '../core/numbers';
 import { Preferences } from '../core/preferences';
+import { LibraryStore } from '../library/library-store';
 import { startOf } from './display-start';
 import type { AxisView } from './orbit';
 import { DefaultDisplay, Shapes, ViewportClient } from './viewport-client';
@@ -179,6 +180,13 @@ export const ToneMappings: readonly { value: string; label: string }[] = [
   { value: 'none', label: 'None (clip)' }
 ];
 
+/** A camera the mesh file holds, with the box it was placed round, which the pane turns into its own camera. */
+export interface FileCameraChoice {
+  camera: MeshCameraFacts;
+  minimum: readonly number[];
+  maximum: readonly number[];
+}
+
 const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
   { view: 'front', label: 'Front', key: 'Numpad 1' },
   { view: 'back', label: 'Back', key: 'Ctrl Numpad 1' },
@@ -259,6 +267,29 @@ const Snaps: readonly { view: AxisView; label: string; key: string }[] = [
         </button>
       }
     </div>
+    @if (facts(); as mesh) {
+      @if (mesh.cameras.length > 0) {
+        <div class="flex flex-col gap-1" data-testid="viewport-file-cameras">
+          <span class="text-foreground-muted text-xs">From the file</span>
+          @for (camera of mesh.cameras; track $index) {
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              class="min-w-0 justify-start"
+              [attr.data-testid]="'viewport-file-camera-' + $index"
+              [title]="
+                'Looks through ' + camera.name + ', the camera the mesh file holds, and circles the model from there'
+              "
+              (click)="lookThrough.emit({ camera, minimum: mesh.minimum, maximum: mesh.maximum })"
+            >
+              <span class="min-w-0 truncate">{{ camera.name }}</span>
+            </button>
+          }
+        </div>
+      }
+    }
 
     <span class="section-label mt-1">Light</span>
     @for (slider of lighting; track slider.key) {
@@ -426,6 +457,36 @@ export class ViewportDisplayPanel {
   protected readonly shapeName = labelsOf(Shapes);
   /** A snap moves the camera, which is the pane's. */
   readonly snap = output<AxisView>();
+  /** Looking through a file's camera moves the camera too, for the pane's shape (#144). */
+  readonly lookThrough = output<FileCameraChoice>();
+  private readonly library = inject(LibraryStore);
+  /** What the open mesh is, for the cameras it holds; null while it is read, or when it will not read. */
+  protected readonly facts = signal<MeshFacts | null>(null);
+
+  constructor() {
+    effect(onCleanup => {
+      const path = this.viewport.mesh();
+      let current = true;
+      onCleanup(() => (current = false));
+      this.facts.set(null);
+      if (path) {
+        void this.read(path, () => current);
+      }
+    });
+  }
+
+  /** The mesh's facts; a mesh that will not read simply offers no cameras, as the viewport says why it shows none. */
+  private async read(path: string, current: () => boolean): Promise<void> {
+    try {
+      const client = await this.library.api();
+      const facts = unwrap(await client.GET('/api/v1/library/mesh', { params: { query: { path } } }));
+      if (current()) {
+        this.facts.set(facts);
+      }
+    } catch {
+      // Nothing to offer.
+    }
+  }
 
   protected set(key: NumberSetting, value: number): void {
     this.viewport.setDisplay({ [key]: value });

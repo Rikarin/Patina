@@ -3468,7 +3468,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "The pictures, meshes or folders the library\u0027s projects hold, a project\u0027s own first: what a client offers to pick from, where a dialog of its own machine cannot see this one\u0027s disk. Folders are those a client can write into: every project\u0027s and the ones in it, then the exports folder\u0027s.",
+        "summary": "The pictures, meshes, fonts, SVG drawings or folders the library\u0027s projects hold, a project\u0027s own first: what a client offers to pick from, where a dialog of its own machine cannot see this one\u0027s disk. Folders are those a client can write into: every project\u0027s and the ones in it, then the exports folder\u0027s.",
         "operationId": "ListLibraryFiles",
         "parameters": [
           {
@@ -4308,7 +4308,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Renders a graph to a picture in its project, which a brush can stamp.",
+        "summary": "Renders a graph to a picture in its project, which a brush can stamp, or brings a picture Patina ships as an alpha into the project\u0027s brushes (#34).",
         "operationId": "MakeBrush",
         "requestBody": {
           "content": {
@@ -6907,7 +6907,7 @@
         "tags": [
           "Graphs"
         ],
-        "summary": "Points every node that reads a file (a Bitmap\u0027s picture, a Text\u0027s font, a Vector\u0027s SVG) at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
+        "summary": "Points every node that reads a file (a Bitmap\u0027s picture, a Text\u0027s font, a Vector\u0027s SVG) at another file, as one undo step, or only the node named by node. A file a node reads through a parameter is pointed in the parameter\u0027s default, choices and presets, and one a compound\u0027s node hands its compound on that node. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
         "operationId": "RelinkGraphPicture",
         "parameters": [
           {
@@ -13383,7 +13383,9 @@
           "pictures",
           "environments",
           "meshes",
-          "materials"
+          "materials",
+          "fonts",
+          "vectors"
         ],
         "type": "object",
         "properties": {
@@ -13414,6 +13416,20 @@
               "type": "string"
             },
             "description": "What a project brings materials in from, as graphs (#157)."
+          },
+          "fonts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What a graph\u0027s Text draws its letters with (#139)."
+          },
+          "vectors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What a graph\u0027s Vector draws (#139)."
           }
         },
         "description": "What a client may offer, with the dot."
@@ -16011,7 +16027,7 @@
           },
           "kind": {
             "type": "string",
-            "description": "Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two numbers such\nas a position or a tiling, separated by a comma, each within the range."
+            "description": "Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two numbers such\nas a position or a tiling, separated by a comma, each within the range. A graph\u0027s own parameter can also be a\nCurve or a Ramp, written inline as a Curve or Ramp setting holds one (\u0060curve:\u0060, \u0060ramp:\u0060) or empty for\nthe node\u0027s own, which a setting written \u0060$Name\u0060 takes whole."
           },
           "minimum": {
             "type": [
@@ -17272,6 +17288,64 @@
         },
         "description": "The body of \u0060POST /api/v1/library/materials/use\u0060."
       },
+      "MeshCameraFacts": {
+        "required": [
+          "name",
+          "position",
+          "forward",
+          "up",
+          "fieldOfView",
+          "aspectRatio",
+          "orthographicHeight"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What the file calls it."
+          },
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "description": "Where it stands, in the file\u0027s units."
+          },
+          "forward": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "description": "The unit direction it looks in."
+          },
+          "up": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "description": "The unit direction that is up in its picture, square to Forward."
+          },
+          "fieldOfView": {
+            "type": "number",
+            "description": "The whole vertical angle it sees, in radians; zero for an orthographic camera.",
+            "format": "double"
+          },
+          "aspectRatio": {
+            "type": "number",
+            "description": "Its picture\u0027s width over its height, or zero when the file does not say.",
+            "format": "double"
+          },
+          "orthographicHeight": {
+            "type": "number",
+            "description": "How tall the slab an orthographic camera sees is, in the file\u0027s units; zero for a camera with perspective.",
+            "format": "double"
+          }
+        },
+        "description": "A camera a mesh file holds, as a client may look through it."
+      },
       "MeshFacts": {
         "required": [
           "file",
@@ -17283,6 +17357,7 @@
           "uvSets",
           "minimum",
           "maximum",
+          "cameras",
           "vertexColours"
         ],
         "type": "object",
@@ -17351,6 +17426,13 @@
           "vertexColours": {
             "type": "boolean",
             "description": "Whether any part carries vertex colours."
+          },
+          "cameras": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeshCameraFacts"
+            },
+            "description": "The cameras the file holds (#144), in its order, each where it stands in the space the box round the model\nis in. Empty for a file with none."
           }
         },
         "description": "What a mesh file is, as the engine reads it (#146): the answer to \u0060GET /library/mesh\u0060."
@@ -17960,7 +18042,7 @@
           },
           "texelDensity": {
             "type": "number",
-            "description": "The texel density the sets are held to, in texels per unit of the model (a metre in glTF), or zero for the\nlibrary\u0027s.",
+            "description": "The texel density the sets are held to, in texels per metre, or zero for the library\u0027s. A mesh\u0027s own unit is\nturned into metres by what its file or project says it is (#307).",
             "format": "double",
             "default": 0
           },
@@ -18148,6 +18230,14 @@
           "normalFormat": {
             "type": "string",
             "description": "Which way the green of the project\u0027s tangent-space normal maps runs: \u0060y-up\u0060 (OpenGL) or \u0060y-down\u0060\n(DirectX). A normal map brought in is read as this unless it says otherwise (#144)."
+          },
+          "metresPerUnit": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "How long a unit of the project\u0027s mesh is, in metres, when the project says (#146), or null for what the mesh\nfile says: glTF is in metres and an FBX states its unit, while OBJ, PLY and STL say nothing and are taken\nas metres. The texel density check and view measure in metres through it (#307); the mesh itself is never\nscaled.",
+            "format": "double"
           },
           "bake": {
             "description": "How its bakes run, which texture sets they make maps for, and what they read beyond its mesh.",
@@ -19125,6 +19215,14 @@
               "string"
             ],
             "description": "Which way the green of the project\u0027s tangent-space normal maps runs: \u0060y-up\u0060 or \u0060y-down\u0060\n(#144). Maps already brought in stay as they were brought in."
+          },
+          "metresPerUnit": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "How long a unit of the project\u0027s mesh is, in metres, for a file that says nothing or says it wrongly\n(#146): 0.01 for centimetres, from a micrometre to a kilometre. Zero goes back to what the file says.",
+            "format": "double"
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/settings\u0060. Null leaves a setting as it is."
@@ -20938,6 +21036,13 @@
               "string"
             ],
             "description": "The colour it is marked with, from the vocabulary\u0027s tags: None takes the mark away."
+          },
+          "normalFormat": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How a texture fill\u0027s normal and coat normal pictures are read, \u0060y-up\u0060 or \u0060y-down\u0060 (#310). Null\nkeeps it, unless the textures it lays put a picture in the normal or coat normal channel: then it is the\nproject\u0027s."
           }
         },
         "description": "Changes what a layer\u0027s row shows. What is null stays."
@@ -22245,7 +22350,8 @@
           "filterNode",
           "anchorPoint",
           "flattened",
-          "tag"
+          "tag",
+          "normalFormat"
         ],
         "type": "object",
         "properties": {
@@ -22440,6 +22546,10 @@
             "type": "string",
             "description": "The colour the layer is marked with in a list, from the vocabulary\u0027s tags, or None.",
             "default": "None"
+          },
+          "normalFormat": {
+            "type": "string",
+            "description": "How a texture fill\u0027s normal and coat normal pictures are read: \u0060y-up\u0060, their green turned to run down\nas a stack\u0027s normals do, or \u0060y-down\u0060, as they are (#310). The project\u0027s normal format when they were\nlaid."
           }
         },
         "description": "One layer, without its pixels."
@@ -22457,8 +22567,7 @@
           "enabled",
           "inside",
           "outside",
-          "output",
-          "projection"
+          "output"
         ],
         "type": "object",
         "properties": {
@@ -22602,9 +22711,11 @@
             "default": ""
           },
           "projection": {
-            "type": "string",
-            "description": "How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world\nposition, which a mask on a mesh whose UVs it was not made for wants (#120).",
-            "default": "Uv"
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world\nposition, which a mask on a mesh whose UVs it was not made for wants (#120). Left out, the mask keeps the one it\nhas; the Server always says it."
           },
           "placement": {
             "oneOf": [
@@ -23608,6 +23719,16 @@
               "string"
             ],
             "description": "For a material, instead of Graph: a layered material, as the shelf names it in\nstring MaterialInfo.Source (#125). Its layers composite on the stroke\u0027s texture set, reading its mesh\nmaps, and the stroke lays what they make, each layer where its own projection puts it; so it takes no\nProjection, axis or Placement of its own."
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "For a material\u0027s Graph, the values its parameters take by name, as a graph fill\u0027s do: a\nmaterial preset\u0027s (#311). Null, or a name left out, keeps the graph\u0027s default."
           }
         },
         "description": "Where a stroke\u0027s colour comes from, when it is not one colour."
@@ -25035,6 +25156,54 @@
         },
         "description": "What the viewport draws alone (#136): the named meshes and the materials, which are texture sets, that show. The\nrest of the model is not drawn and casts no shadow. Both empty is the whole model."
       },
+      "ViewportLayerPaths": {
+        "type": "object",
+        "properties": {
+          "coat": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How much clear coat lies over the base: OpenPBR\u0027s \u0060coat_weight\u0060."
+          },
+          "coatRoughness": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The coat\u0027s own roughness."
+          },
+          "sheen": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How much sheen lies over everything: OpenPBR\u0027s \u0060fuzz_weight\u0060."
+          },
+          "sheenColor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The sheen\u0027s colour."
+          },
+          "sheenRoughness": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The sheen\u0027s roughness."
+          },
+          "transmission": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How much of a dielectric base lets light through: \u0060transmission_weight\u0060."
+          }
+        },
+        "description": "OpenPBR\u0027s layers over the material as pictures, each a path on the Server\u0027s machine (#310). Each is read from\nred, as linear, but the sheen\u0027s colour, which is a linear colour (ADR 0050). A slot left null is no coat, no\nsheen, a white sheen or no transmission: what a material without the layer draws."
+      },
       "ViewportMapPaths": {
         "type": "object",
         "properties": {
@@ -25086,6 +25255,17 @@
               "string"
             ],
             "description": "What the surface covers, read from red and shown as cut out or not."
+          },
+          "layers": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "OpenPBR\u0027s coat, sheen and transmission laid over the material, or null for none.",
+                "$ref": "#/components/schemas/ViewportLayerPaths"
+              }
+            ]
           }
         },
         "description": "Pictures to lay over the mesh\u0027s own materials, on every part. Each is a path on the Server\u0027s machine, and a slot\nleft null keeps what the material asks for. A filled slot replaces the material\u0027s factor too, so what shows\nis the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or\nthree grey ones both work. PNG, JPEG and EXR are read, base colour as sRGB and the rest as linear."

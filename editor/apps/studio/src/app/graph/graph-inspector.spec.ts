@@ -9,7 +9,7 @@ import { XuiSelect } from '@xui/select';
 import { SystemStatus } from '../core/system-status';
 import { FileChooser } from '../library/file-chooser';
 import { ProjectStore } from '../library/project-store';
-import { GraphInspector, Inspector, keptLanes } from './graph-inspector';
+import { GraphInspector, Inspector, keptLanes, pairStemOf, pairWidgetOf } from './graph-inspector';
 import { GraphSelection, GraphSettings, freeParameterName } from './graph-settings';
 import { GraphStore } from './graph-store';
 import { node } from './graph-testing';
@@ -182,6 +182,106 @@ describe('a number port from the Inspector', () => {
   });
 });
 
+describe('an X and Y pair from the Inspector (#311)', () => {
+  const offset: GraphNodeType = {
+    ...tintType,
+    ports: [
+      { name: 'Offset X', direction: 'Input', kind: 'Float', default: [0.25], summary: 'Where it starts.' },
+      { name: 'Offset Y', direction: 'Input', kind: 'Float', default: [0.75], summary: '' },
+      { name: 'Grid X', direction: 'Input', kind: 'Int', default: [4], summary: '' },
+      { name: 'Grid Y', direction: 'Input', kind: 'Int', default: [4], summary: '' }
+    ]
+  };
+
+  function render(driven = '') {
+    const store = {
+      ...fakeStore(),
+      types: signal(new Map([[offset.path, offset]])),
+      textOf: vi.fn((_node: number, port: string, fallback: string) => (port === '=Offset Y' ? driven : fallback)),
+      exposePair: vi.fn()
+    };
+    TestBed.configureTestingModule({ providers: [{ provide: GraphStore, useValue: store }] });
+    const fixture = TestBed.createComponent(GraphInspector);
+    fixture.componentRef.setInput('node', { ...node(1), type: offset.path });
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    return { store, found: (id: string) => element.querySelector<HTMLElement>(`[data-testid="${id}"]`) };
+  }
+
+  it('makes one Float2 parameter where the pair is, and drives each port from its half, as one step', () => {
+    const { store, found } = render();
+
+    found('expose-pair-Offset')?.click();
+
+    expect(store.exposePair).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ name: 'Offset', kind: 'Float2', default: '0.25,0.75', widget: 'Position' }),
+      [
+        { port: '=Offset X', value: 'Offset.x' },
+        { port: '=Offset Y', value: 'Offset.y' }
+      ]
+    );
+  });
+
+  it('is not offered for a pair of whole numbers', () => {
+    expect(render().found('expose-pair-Grid')).toBeNull();
+  });
+
+  it('is not offered once either half follows a parameter', () => {
+    expect(render('Speed * 2').found('expose-pair-Offset')).toBeNull();
+  });
+
+  it('draws counts as a tiling and places as a position', () => {
+    expect(pairWidgetOf('Repeat')).toBe('Tiling');
+    expect(pairWidgetOf('Centre')).toBe('Position');
+    expect(pairWidgetOf('Shear')).toBeNull();
+    expect(pairStemOf('Top Left X')).toBe('Top Left');
+    expect(pairStemOf('Offset Y')).toBeNull();
+  });
+});
+
+describe('a curve or a ramp from the Inspector (#181)', () => {
+  const falling = 'curve:r=0 1,1 0';
+  const curveType: GraphNodeType = {
+    ...tintType,
+    path: 'Colour/Curve',
+    ports: [],
+    settings: [
+      { name: 'Curve', default: '', summary: '', kind: 'Text', minimum: null, maximum: null, group: '', accepted: [] }
+    ]
+  };
+
+  function render(text: string) {
+    const store = {
+      ...fakeStore(),
+      types: signal(new Map([[curveType.path, curveType]])),
+      textOf: vi.fn((_node: number, port: string, fallback: string) => (port === 'Curve' ? text : fallback)),
+      addParameter: vi.fn()
+    };
+    TestBed.configureTestingModule({ providers: [{ provide: GraphStore, useValue: store }] });
+    const fixture = TestBed.createComponent(GraphInspector);
+    fixture.componentRef.setInput('node', { ...node(1), type: curveType.path });
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    return { store, found: (id: string) => element.querySelector<HTMLElement>(`[data-testid="${id}"]`) };
+  }
+
+  it('makes a Curve parameter holding the curve, and points the setting at it', () => {
+    const { store, found } = render(falling);
+
+    found('expose-Curve')?.click();
+
+    expect(store.addParameter).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Curve', kind: 'Curve', default: falling })
+    );
+    expect(store.setText).toHaveBeenCalledWith(1, 'Curve', '$Curve');
+  });
+
+  it('is not offered once the setting follows a parameter', () => {
+    expect(render('$Shape').found('expose-Curve')).toBeNull();
+  });
+});
+
 describe("a node's size", () => {
   function render(type: string, level?: number | null) {
     const store = { ...fakeStore(), setLevel: vi.fn() };
@@ -323,6 +423,48 @@ describe("a Bitmap's Source", () => {
     const { store } = await render(null);
 
     expect(store.relinkPicture).not.toHaveBeenCalled();
+  });
+});
+
+describe("a Text's font and a Vector's drawing", () => {
+  function typeOf(path: string, setting: string): GraphNodeType {
+    return {
+      path,
+      title: path.split('/')[1] ?? path,
+      category: 'Source',
+      summary: '',
+      hasPreview: true,
+      ports: [],
+      settings: [{ name: setting, default: '', summary: '', kind: 'String', group: '', accepted: [], minimum: null }]
+    };
+  }
+
+  async function render(type: GraphNodeType, testId: string) {
+    const store = { ...fakeStore(), types: signal(new Map([[type.path, type]])), relinkPicture: vi.fn() };
+    const path = vi.fn(() => Promise.resolve('C:/Art/Game.ptlib/projects/crate/fonts/Plate.ttf'));
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: GraphStore, useValue: store },
+        { provide: FileChooser, useValue: { path } },
+        { provide: ProjectStore, useValue: { current: signal({ path: 'crate' }) } }
+      ]
+    });
+    const fixture = TestBed.createComponent(GraphInspector);
+    fixture.componentRef.setInput('node', { ...node(4), type: type.path });
+    fixture.detectChanges();
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`)?.click();
+    await fixture.whenStable();
+    return { store, path };
+  }
+
+  it('are chosen from the library’s fonts and drawings, and point this node alone at them (#139)', async () => {
+    const text = await render(typeOf('Source/Text', 'Font'), 'graph-font-choose');
+    expect(text.path).toHaveBeenCalledWith(expect.objectContaining({ kind: 'font', project: 'crate' }));
+    expect(text.store.relinkPicture).toHaveBeenCalledWith('', 'C:/Art/Game.ptlib/projects/crate/fonts/Plate.ttf', 4);
+
+    TestBed.resetTestingModule();
+    const vector = await render(typeOf('Source/Vector', 'File'), 'graph-vector-choose');
+    expect(vector.path).toHaveBeenCalledWith(expect.objectContaining({ kind: 'vector' }));
   });
 });
 

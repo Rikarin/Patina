@@ -927,7 +927,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The pictures, meshes or folders the library's projects hold, a project's own first: what a client offers to pick from, where a dialog of its own machine cannot see this one's disk. Folders are those a client can write into: every project's and the ones in it, then the exports folder's. */
+    /** The pictures, meshes, fonts, SVG drawings or folders the library's projects hold, a project's own first: what a client offers to pick from, where a dialog of its own machine cannot see this one's disk. Folders are those a client can write into: every project's and the ones in it, then the exports folder's. */
     get: operations['ListLibraryFiles'];
     put?: never;
     post?: never;
@@ -1118,7 +1118,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Renders a graph to a picture in its project, which a brush can stamp. */
+    /** Renders a graph to a picture in its project, which a brush can stamp, or brings a picture Patina ships as an alpha into the project's brushes (#34). */
     post: operations['MakeBrush'];
     delete?: never;
     options?: never;
@@ -1722,7 +1722,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
+    /** Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another file, as one undo step, or only the node named by node. A file a node reads through a parameter is pointed in the parameter's default, choices and presets, and one a compound's node hands its compound on that node. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
     post: operations['RelinkGraphPicture'];
     delete?: never;
     options?: never;
@@ -4287,6 +4287,10 @@ export interface components {
       meshes: string[];
       /** @description What a project brings materials in from, as graphs (#157). */
       materials: string[];
+      /** @description What a graph's Text draws its letters with (#139). */
+      fonts: string[];
+      /** @description What a graph's Vector draws (#139). */
+      vectors: string[];
     };
     /** @description What the documents below one folder or project cost (#207). */
     FolderCost: {
@@ -5429,7 +5433,9 @@ export interface components {
       summary: string;
       /**
        * @description Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two numbers such
-       *     as a position or a tiling, separated by a comma, each within the range.
+       *     as a position or a tiling, separated by a comma, each within the range. A graph's own parameter can also be a
+       *     Curve or a Ramp, written inline as a Curve or Ramp setting holds one (`curve:`, `ramp:`) or empty for
+       *     the node's own, which a setting written `$Name` takes whole.
        */
       kind: string;
       /**
@@ -6010,6 +6016,32 @@ export interface components {
       /** @description The graph, below the library. */
       source: string;
     };
+    /** @description A camera a mesh file holds, as a client may look through it. */
+    MeshCameraFacts: {
+      /** @description What the file calls it. */
+      name: string;
+      /** @description Where it stands, in the file's units. */
+      position: number[];
+      /** @description The unit direction it looks in. */
+      forward: number[];
+      /** @description The unit direction that is up in its picture, square to Forward. */
+      up: number[];
+      /**
+       * Format: double
+       * @description The whole vertical angle it sees, in radians; zero for an orthographic camera.
+       */
+      fieldOfView: number;
+      /**
+       * Format: double
+       * @description Its picture's width over its height, or zero when the file does not say.
+       */
+      aspectRatio: number;
+      /**
+       * Format: double
+       * @description How tall the slab an orthographic camera sees is, in the file's units; zero for a camera with perspective.
+       */
+      orthographicHeight: number;
+    };
     /** @description What a mesh file is, as the engine reads it (#146): the answer to `GET /library/mesh`. */
     MeshFacts: {
       /** @description The file's name. */
@@ -6047,6 +6079,11 @@ export interface components {
       metresPerUnit?: null | number;
       /** @description Whether any part carries vertex colours. */
       vertexColours: boolean;
+      /**
+       * @description The cameras the file holds (#144), in its order, each where it stands in the space the box round the model
+       *     is in. Empty for a file with none.
+       */
+      cameras: components['schemas']['MeshCameraFacts'][];
     };
     /** @description One material of a mesh, which is one texture set. */
     MeshMaterialFacts: {
@@ -6330,8 +6367,8 @@ export interface components {
       maxSize: number;
       /**
        * Format: double
-       * @description The texel density the sets are held to, in texels per unit of the model (a metre in glTF), or zero for the
-       *     library's.
+       * @description The texel density the sets are held to, in texels per metre, or zero for the library's. A mesh's own unit is
+       *     turned into metres by what its file or project says it is (#307).
        * @default 0
        */
       texelDensity: number;
@@ -6416,6 +6453,14 @@ export interface components {
        *     (DirectX). A normal map brought in is read as this unless it says otherwise (#144).
        */
       normalFormat: string;
+      /**
+       * Format: double
+       * @description How long a unit of the project's mesh is, in metres, when the project says (#146), or null for what the mesh
+       *     file says: glTF is in metres and an FBX states its unit, while OBJ, PLY and STL say nothing and are taken
+       *     as metres. The texel density check and view measure in metres through it (#307); the mesh itself is never
+       *     scaled.
+       */
+      metresPerUnit?: null | number;
       /** @description How its bakes run, which texture sets they make maps for, and what they read beyond its mesh. */
       bake: components['schemas']['ProjectBakeSettings'];
       viewport?: null | components['schemas']['ViewportDisplay'];
@@ -6840,6 +6885,12 @@ export interface components {
        *     (#144). Maps already brought in stay as they were brought in.
        */
       normalFormat?: null | string;
+      /**
+       * Format: double
+       * @description How long a unit of the project's mesh is, in metres, for a file that says nothing or says it wrongly
+       *     (#146): 0.01 for centimetres, from a micrometre to a kilometre. Zero goes back to what the file says.
+       */
+      metresPerUnit?: null | number;
     };
     /** @description One project as the browser shows it. The project itself loads on open. */
     ProjectSummary: {
@@ -7681,6 +7732,12 @@ export interface components {
       path?: null | components['schemas']['StackSurfacePath'];
       /** @description The colour it is marked with, from the vocabulary's tags: None takes the mark away. */
       tag?: null | string;
+      /**
+       * @description How a texture fill's normal and coat normal pictures are read, `y-up` or `y-down` (#310). Null
+       *     keeps it, unless the textures it lays put a picture in the normal or coat normal channel: then it is the
+       *     project's.
+       */
+      normalFormat?: null | string;
     };
     /** @description Changes an entry of a layer's mask stack. What is null stays. */
     StackCommandStackSetMaskLayer: {
@@ -8375,6 +8432,12 @@ export interface components {
        * @default None
        */
       tag: string;
+      /**
+       * @description How a texture fill's normal and coat normal pictures are read: `y-up`, their green turned to run down
+       *     as a stack's normals do, or `y-down`, as they are (#310). The project's normal format when they were
+       *     laid.
+       */
+      normalFormat: string;
     };
     /** @description What decides where a layer shows. */
     StackMask: {
@@ -8468,10 +8531,10 @@ export interface components {
       output: string;
       /**
        * @description How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world
-       *     position, which a mask on a mesh whose UVs it was not made for wants (#120).
-       * @default Uv
+       *     position, which a mask on a mesh whose UVs it was not made for wants (#120). Left out, the mask keeps the one it
+       *     has; the Server always says it.
        */
-      projection: string;
+      projection?: null | string;
       placement?: null | components['schemas']['StackPlacement'];
     };
     /** @description One step run on a mask. */
@@ -8999,6 +9062,13 @@ export interface components {
        *     Projection, axis or Placement of its own.
        */
       layered?: null | string;
+      /**
+       * @description For a material's Graph, the values its parameters take by name, as a graph fill's do: a
+       *     material preset's (#311). Null, or a name left out, keeps the graph's default.
+       */
+      parameters?: null | {
+        [key: string]: string;
+      };
     };
     /** @description An open stack, for a list. */
     StackSummary: {
@@ -9813,6 +9883,25 @@ export interface components {
       materials: string[];
     };
     /**
+     * @description OpenPBR's layers over the material as pictures, each a path on the Server's machine (#310). Each is read from
+     *     red, as linear, but the sheen's colour, which is a linear colour (ADR 0050). A slot left null is no coat, no
+     *     sheen, a white sheen or no transmission: what a material without the layer draws.
+     */
+    ViewportLayerPaths: {
+      /** @description How much clear coat lies over the base: OpenPBR's `coat_weight`. */
+      coat?: null | string;
+      /** @description The coat's own roughness. */
+      coatRoughness?: null | string;
+      /** @description How much sheen lies over everything: OpenPBR's `fuzz_weight`. */
+      sheen?: null | string;
+      /** @description The sheen's colour. */
+      sheenColor?: null | string;
+      /** @description The sheen's roughness. */
+      sheenRoughness?: null | string;
+      /** @description How much of a dielectric base lets light through: `transmission_weight`. */
+      transmission?: null | string;
+    };
+    /**
      * @description Pictures to lay over the mesh's own materials, on every part. Each is a path on the Server's machine, and a slot
      *     left null keeps what the material asks for. A filled slot replaces the material's factor too, so what shows
      *     is the picture. Roughness is read from green, metallic from blue and occlusion from red, so one packed file or
@@ -9833,6 +9922,7 @@ export interface components {
       emissive?: null | string;
       /** @description What the surface covers, read from red and shown as cut out or not. */
       opacity?: null | string;
+      layers?: null | components['schemas']['ViewportLayerPaths'];
     };
     /** @description The named meshes a marquee reached (#110), by name in ordinal order; none when the model names none. */
     ViewportMarquee: {

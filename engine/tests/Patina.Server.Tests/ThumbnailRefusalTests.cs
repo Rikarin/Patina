@@ -159,7 +159,7 @@ public sealed class ThumbnailRefusalTests : IDisposable {
     }
 
     /// <summary>A Worker's picture: any bytes, written under their hash into the cache it was told of.</summary>
-    static IpcMessage Drawn(IpcMessage request, string cache) {
+    internal static IpcMessage Drawn(IpcMessage request, string cache) {
         byte[] pixels = [..Guid.NewGuid().ToByteArray()];
         var hash = Convert.ToHexStringLower(SHA256.HashData(pixels));
         var path = GraphPreviewFiles.PathOf(cache, hash);
@@ -169,7 +169,7 @@ public sealed class ThumbnailRefusalTests : IDisposable {
     }
 
     /// <summary>A Worker that says hello and answers every request with <paramref name="answer" />.</summary>
-    static Task<IpcConnection> WorkerAsync(string socketPath, Func<IpcMessage, IpcMessage> answer) =>
+    internal static Task<IpcConnection> WorkerAsync(string socketPath, Func<IpcMessage, IpcMessage> answer) =>
         WorkerAsync(socketPath, request => Task.FromResult(answer(request)));
 
     /// <summary>A Worker that says hello and answers with <paramref name="answer" />, in its own time.</summary>

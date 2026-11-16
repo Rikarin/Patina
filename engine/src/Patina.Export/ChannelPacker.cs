@@ -19,11 +19,11 @@ public sealed record PackedPicture(int Width, int Height, int Lanes, float[] Sam
 public static class ChannelPacker {
     const int AlphaLane = 3;
 
-    /// <summary>Whether a project has anything this texture reads.</summary>
+    /// <summary>Whether a project has anything this texture reads (<see cref="ExportMaps.Written" />).</summary>
     public static bool Applies(ExportTexture texture, IReadOnlyDictionary<string, MapPicture> maps) {
         ArgumentNullException.ThrowIfNull(texture);
         ArgumentNullException.ThrowIfNull(maps);
-        return !texture.Maps.Any() || texture.Maps.Any(maps.ContainsKey);
+        return ExportMaps.Written([..texture.Maps], maps.ContainsKey);
     }
 
     /// <summary>Packs one texture.</summary>

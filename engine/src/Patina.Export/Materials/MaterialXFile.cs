@@ -12,8 +12,9 @@ namespace Patina.Export.Materials;
 ///     <c>invert</c>, and a normal whose green runs down is turned over before <c>normalmap</c>, which reads green up.
 ///     Neither surface has occlusion or specular colour of this kind, so those are said and left out; height is left
 ///     to a displacement shader this does not write. Both have a coat with its colour and normal, a sheen,
-///     transmission and a specular lobe's weight, colour and anisotropy, so OpenPBR's maps reach either, under
-///     OpenPBR's names or standard surface's.
+///     transmission, a specular lobe's weight, colour and anisotropy with its turn, and subsurface scattering, so
+///     OpenPBR's maps reach either, under OpenPBR's names or standard surface's. A thin film reaches only OpenPBR's,
+///     since standard surface's has no weight.
 /// </summary>
 sealed class MaterialXFile {
     const string Float = "float";
@@ -92,6 +93,66 @@ sealed class MaterialXFile {
             Grey(layers.Anisotropy, "anisotropy")
         );
         Connect("coat_color", Colour3, Three(layers.CoatColor, "coat color", Colour3));
+        Further(layers);
+    }
+
+    /// <summary>
+    ///     The anisotropy's turn, subsurface scattering and a thin film. Standard surface takes the turn as a fraction
+    ///     of a whole one, as the map holds it, and its subsurface radius is a colour times a scale, the map being the
+    ///     scale; OpenPBR takes the turn as a tangent (<see cref="Tangent" />).
+    /// </summary>
+    void Further(OpenPbrSlots layers) {
+        if (openPbr) {
+            Connect("geometry_tangent", Vector3, Tangent(Grey(layers.AnisotropyRotation, "anisotropy rotation")));
+        } else {
+            Connect("specular_rotation", Float, Grey(layers.AnisotropyRotation, "anisotropy rotation"));
+        }
+
+        Connect(openPbr ? "subsurface_weight" : "subsurface", Float, Grey(layers.Subsurface, "subsurface"));
+        Connect("subsurface_color", Colour3, Three(layers.SubsurfaceColor, "subsurface color", Colour3));
+        Connect(
+            openPbr ? "subsurface_radius" : "subsurface_scale",
+            Float,
+            Grey(layers.SubsurfaceRadius, "subsurface radius")
+        );
+        if (!openPbr) {
+            if (layers.ThinFilm is not null || layers.ThinFilmThickness is not null) {
+                warnings.Add("MaterialX: the thin film is left out, because standard_surface's has no weight.");
+            }
+
+            return;
+        }
+
+        Connect("thin_film_weight", Float, Grey(layers.ThinFilm, "thin film"));
+        Connect("thin_film_thickness", Float, Grey(layers.ThinFilmThickness, "thin film thickness"));
+    }
+
+    /// <summary>
+    ///     A turn from the tangent as OpenPBR's <c>geometry_tangent</c>: the direction (cos, sin, 0) in tangent
+    ///     space, stored from 0 to 1 and put into the world by <c>normalmap</c>, which reads a vector as a normal map
+    ///     holds it.
+    /// </summary>
+    string? Tangent(string? turn) {
+        if (turn is null) {
+            return null;
+        }
+
+        var angle = Node("multiply", Float, Input("in1", Float, turn), Input("in2", Float, value: "6.2831853"));
+        var direction = Node(
+            "combine3",
+            Vector3,
+            Input("in1", Float, Node("cos", Float, Input("in", Float, angle))),
+            Input("in2", Float, Node("sin", Float, Input("in", Float, angle))),
+            Input("in3", Float, value: "0")
+        );
+        var halved = Node(
+            "multiply",
+            Vector3,
+            Input("in1", Vector3, direction),
+            Input("in2", Vector3, value: "0.5, 0.5, 0.5")
+        );
+        var stored = Node("add", Vector3, Input("in1", Vector3, halved), Input("in2", Vector3, value: "0.5, 0.5, 0.5"));
+        return Node("normalmap", Vector3, Input("in", Vector3, stored));
     }
 
     /// <summary>A normal turned so its green runs up: one minus green, as a multiply and an add.</summary>

@@ -27,8 +27,7 @@ public static class ExportFileChecking {
 
     static IEnumerable<Written> Writing(ExportPreset preset, NamingValues naming, IReadOnlySet<string> maps) {
         foreach (var texture in preset.Textures) {
-            var reads = texture.Maps.ToArray();
-            if (reads.Length > 0 && !reads.Any(maps.Contains)) {
+            if (!ExportMaps.Written([..texture.Maps], maps.Contains)) {
                 continue;
             }
 
@@ -203,7 +202,8 @@ public static class ExportFileChecking {
             or ExportMaps.SheenColor
             or ExportMaps.SheenTint
             or ExportMaps.SpecularColor
-            or ExportMaps.CoatColor;
+            or ExportMaps.CoatColor
+            or ExportMaps.SubsurfaceColor;
 
     /// <summary>Whether a file keeps eight bits a lane, where linear colour bands.</summary>
     static bool EightBit(ExportTexture texture) =>

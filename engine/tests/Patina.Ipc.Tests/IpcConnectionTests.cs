@@ -15,14 +15,15 @@ public sealed class IpcConnectionTests : IDisposable {
         IpcHandler right,
         Func<string, bool>? immediate = null,
         Func<string, bool>? aside = null,
-        Func<string, bool>? urgent = null
+        Func<string, bool>? urgent = null,
+        Action<string>? queued = null
     ) {
         using var listener = IpcSocket.Listen(socketPath);
         var accept = listener.AcceptAsync(Token).AsTask();
         var client = await IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(5), Token);
         var leftEnd = new IpcConnection(client, left);
         var rightEnd = new IpcConnection(new System.Net.Sockets.NetworkStream(await accept, true), right) {
-            Immediate = immediate, Aside = aside, Urgent = urgent
+            Immediate = immediate, Aside = aside, Urgent = urgent, Queued = queued
         };
         leftEnd.Start();
         rightEnd.Start();
@@ -254,6 +255,60 @@ public sealed class IpcConnectionTests : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     A picture for the shelf gives way to work queued behind it (Linux CI on lavapipe, where one took tens of
+    ///     seconds and a stroke's picture waited out a test): it stops, says so, and the stroke is answered before
+    ///     the picture is asked for again. With nothing behind it, the picture asked again runs to its end.
+    /// </summary>
+    [Fact]
+    public async Task A_picture_gives_way_to_work_queued_behind_it_and_runs_to_its_end_when_nothing_is() {
+        PictureYield pictures = new();
+        using var drawing = new SemaphoreSlim(0);
+        List<string> answered = [];
+        var (left, right) = await ConnectAsync(
+            Reply,
+            (request, _) => {
+                var answer = request.Type != IpcTypes.MaterialThumbnail
+                    ? IpcMessage.Ok(request.Id)
+                    : pictures.Draw(stop => {
+                            drawing.Release();
+                            // Parts of a run that look at the cancel between them, for a fifth of a second.
+                            stop.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(200));
+                            stop.ThrowIfCancellationRequested();
+                            return new IpcMessage { Type = IpcTypes.Ok, Id = request.Id, ThumbnailHash = "drawn" };
+                        }
+                    )
+                    ?? new IpcMessage { Type = IpcTypes.Ok, Id = request.Id, Superseded = true };
+                lock (answered) {
+                    answered.Add(answer.Superseded == true ? "gave way" : request.Type);
+                }
+
+                return ValueTask.FromResult(answer);
+            },
+            static type => type == IpcTypes.Health,
+            urgent: IpcTypes.Urgent,
+            queued: type => {
+                if (type != IpcTypes.MaterialThumbnail) {
+                    pictures.GiveWay();
+                }
+            }
+        );
+        await using (left) {
+            await using (right) {
+                var picture = left.SendAsync(new() { Type = IpcTypes.MaterialThumbnail }, Token);
+                Assert.True(await drawing.WaitAsync(TimeSpan.FromSeconds(5), Token));
+                var stroke = left.SendAsync(new() { Type = IpcTypes.StackEvaluate }, Token);
+                Assert.True((await picture.WaitAsync(TimeSpan.FromSeconds(5), Token)).Superseded);
+                Assert.Equal(IpcTypes.Ok, (await stroke.WaitAsync(TimeSpan.FromSeconds(5), Token)).Type);
+
+                var again = await left.SendAsync(new() { Type = IpcTypes.MaterialThumbnail }, Token)
+                    .WaitAsync(TimeSpan.FromSeconds(5), Token);
+                Assert.Equal("drawn", again.ThumbnailHash);
+                Assert.Equal(["gave way", IpcTypes.StackEvaluate, IpcTypes.MaterialThumbnail], answered);
+            }
+        }
+    }
+
     [Fact]
     public void Device_work_that_stops_moving_is_hung_and_a_beat_or_idle_clears_it() {
         var now = TimeSpan.FromHours(1);
@@ -290,9 +345,13 @@ public sealed class IpcConnectionTests : IDisposable {
 
             await right.DisposeAsync();
 
-            await Assert.ThrowsAsync<IOException>(() => pending);
+            await Assert.ThrowsAsync<IpcDisconnectedException>(() => pending);
             await left.Closed.WaitAsync(TimeSpan.FromSeconds(5), Token);
-            await Assert.ThrowsAsync<IOException>(() => left.SendAsync(new() { Type = IpcTypes.Health }, Token));
+            await Assert.ThrowsAsync<IpcDisconnectedException>(() => left.SendAsync(
+                    new() { Type = IpcTypes.Health },
+                    Token
+                )
+            );
         }
     }
 
@@ -308,7 +367,7 @@ public sealed class IpcConnectionTests : IDisposable {
         await connection.DisposeAsync();
         stream.BreakPipe();
 
-        await Assert.ThrowsAsync<IOException>(() => send);
+        await Assert.ThrowsAsync<IpcDisconnectedException>(() => send);
     }
 
     [Fact]
@@ -316,7 +375,11 @@ public sealed class IpcConnectionTests : IDisposable {
         var connection = new IpcConnection(new StalledStream(), Reply);
         await connection.DisposeAsync();
 
-        await Assert.ThrowsAsync<IOException>(() => connection.SendAsync(new() { Type = IpcTypes.Health }, Token));
+        await Assert.ThrowsAsync<IpcDisconnectedException>(() => connection.SendAsync(
+                new() { Type = IpcTypes.Health },
+                Token
+            )
+        );
     }
 
     [Fact]

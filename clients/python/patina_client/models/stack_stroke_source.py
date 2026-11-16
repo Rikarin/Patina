@@ -15,6 +15,7 @@ if TYPE_CHECKING:
   from ..models.stack_frame import StackFrame
   from ..models.stack_picture import StackPicture
   from ..models.stack_placement import StackPlacement
+  from ..models.stack_stroke_source_parameters_type_1 import StackStrokeSourceParametersType1
 
 
 
@@ -49,6 +50,9 @@ class StackStrokeSource:
                 string MaterialInfo.Source (#125). Its layers composite on the stroke's texture set, reading its mesh
                 maps, and the stroke lays what they make, each layer where its own projection puts it; so it takes no
                 Projection, axis or Placement of its own.
+            parameters (None | StackStrokeSourceParametersType1 | Unset): For a material's Graph, the values its parameters
+                take by name, as a graph fill's do: a
+                material preset's (#311). Null, or a name left out, keeps the graph's default.
      """
 
     kind: str
@@ -60,6 +64,7 @@ class StackStrokeSource:
     placement: None | StackPlacement | Unset = UNSET
     frame: None | StackFrame | Unset = UNSET
     layered: None | str | Unset = UNSET
+    parameters: None | StackStrokeSourceParametersType1 | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -70,6 +75,7 @@ class StackStrokeSource:
         from ..models.stack_frame import StackFrame # noqa: PLC0415
         from ..models.stack_picture import StackPicture # noqa: PLC0415
         from ..models.stack_placement import StackPlacement # noqa: PLC0415
+        from ..models.stack_stroke_source_parameters_type_1 import StackStrokeSourceParametersType1 # noqa: PLC0415
         kind = self.kind
 
         graph: None | str | Unset
@@ -130,6 +136,14 @@ class StackStrokeSource:
         else:
             layered = self.layered
 
+        parameters: dict[str, Any] | None | Unset
+        if isinstance(self.parameters, Unset):
+            parameters = UNSET
+        elif isinstance(self.parameters, StackStrokeSourceParametersType1):
+            parameters = self.parameters.to_dict()
+        else:
+            parameters = self.parameters
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -152,6 +166,8 @@ class StackStrokeSource:
             field_dict["frame"] = frame
         if layered is not UNSET:
             field_dict["layered"] = layered
+        if parameters is not UNSET:
+            field_dict["parameters"] = parameters
 
         return field_dict
 
@@ -162,6 +178,7 @@ class StackStrokeSource:
         from ..models.stack_frame import StackFrame # noqa: PLC0415
         from ..models.stack_picture import StackPicture # noqa: PLC0415
         from ..models.stack_placement import StackPlacement # noqa: PLC0415
+        from ..models.stack_stroke_source_parameters_type_1 import StackStrokeSourceParametersType1 # noqa: PLC0415
         d = dict(src_dict)
         kind = d.pop("kind")
 
@@ -283,6 +300,26 @@ class StackStrokeSource:
         layered = _parse_layered(d.pop("layered", UNSET))
 
 
+        def _parse_parameters(data: object) -> None | StackStrokeSourceParametersType1 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                parameters_type_1 = StackStrokeSourceParametersType1.from_dict(data)
+
+
+
+                return parameters_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackStrokeSourceParametersType1 | Unset, data)
+
+        parameters = _parse_parameters(d.pop("parameters", UNSET))
+
+
         stack_stroke_source = cls(
             kind=kind,
             graph=graph,
@@ -293,6 +330,7 @@ class StackStrokeSource:
             placement=placement,
             frame=frame,
             layered=layered,
+            parameters=parameters,
         )
 
 

@@ -30,9 +30,9 @@ class ProjectCheckSettings:
             memory_budget (float): The most GPU memory one texture set's exported files may take, in mebibytes, or zero for
                 no limit. Default: 0.0.
             max_size (int): The longest side a texture set's maps may have, in texels, or zero for no limit. Default: 0.
-            texel_density (float): The texel density the sets are held to, in texels per unit of the model (a metre in
-                glTF), or zero for the
-                library's. Default: 0.0.
+            texel_density (float): The texel density the sets are held to, in texels per metre, or zero for the library's. A
+                mesh's own unit is
+                turned into metres by what its file or project says it is (#307). Default: 0.0.
             density_tolerance (float): How far a set's density may stray from it before it is flagged, as a share: 0.25 is a
                 quarter. Default: 0.25.
             platforms (list[PlatformCheckLimits]): Limits of their own for the platforms the project ships to, each named by

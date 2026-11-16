@@ -40,6 +40,7 @@ static class ProjectSettingsEndpoint {
                 request.Unwrap,
                 request.NormalFormat
             );
+            SetUnit(host, stacks, viewport, request);
 
             var before = library.Contents(project);
             var onDocument = before.Documents.FirstOrDefault(static d => d.Mesh is not null)?.Mesh;
@@ -81,7 +82,29 @@ static class ProjectSettingsEndpoint {
         request.Unwrap?.Problem()
         ?? (request.NormalFormat is { } format && !NormalFormats.All.Contains(format, StringComparer.Ordinal)
             ? $"A normal map's green runs y-up or y-down, not '{format}'."
-            : null);
+            : null)
+        ?? (request.MetresPerUnit is { } unit ? MeshUnits.Problem(unit) : null);
+
+    /// <summary>
+    ///     Keeps the unit a request gives the project's mesh, if it gives one, and has the density view measure the
+    ///     worn set in it (#307).
+    /// </summary>
+    static void SetUnit(
+        LibraryHost host,
+        StackSessions stacks,
+        ViewportSession viewport,
+        ProjectSettingsRequest request
+    ) {
+        if (request.MetresPerUnit is not { } asked) {
+            return;
+        }
+
+        host.Library?.SetMetresPerUnit(request.Project, asked);
+        if (viewport.Worn is { } worn && stacks.Find(worn) is { } stack) {
+            var (target, resolution, unit) = StackChecking.Density(host.Library, stack);
+            viewport.SetDensity(target, resolution, unit);
+        }
+    }
 
     /// <summary>
     ///     The file Auto Unwrap laid the current mesh out from, when new options mean laying it out again, or null.
@@ -228,7 +251,7 @@ static class ProjectSettingsEndpoint {
         IReadOnlyDictionary<string, string>? reassign,
         CancellationToken cancellationToken
     ) {
-        var connection = await worker.ConnectionAsync(cancellationToken);
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerWait.Patience, cancellationToken);
         var reply = await connection.SendAsync(
             new() { Type = IpcTypes.MeshMaterials, MeshFile = library.ProjectFile(project, mesh.File) },
             cancellationToken
@@ -320,7 +343,7 @@ static class ProjectSettingsEndpoint {
             project,
             $"{LibraryLayout.PaintBackupFolder}/{DateTime.UtcNow:yyyyMMdd-HHmmss}"
         );
-        var connection = await worker.ConnectionAsync(cancellationToken);
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerWait.Patience, cancellationToken);
         foreach (var (document, was) in documents) {
             var stack = library.ProjectFile(project, document.File);
             if (open.Contains(stack)) {
@@ -365,7 +388,7 @@ static class ProjectSettingsEndpoint {
     ) {
         var source = library.ProjectFile(project, mesh.File);
         var output = library.ProjectFile(project, $"{Path.GetFileNameWithoutExtension(mesh.File)}_unwrapped.glb");
-        var connection = await worker.ConnectionAsync(cancellationToken);
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerWait.Patience, cancellationToken);
         var reply = await connection.SendAsync(
             new() { Type = IpcTypes.MeshUnwrap, MeshUnwrap = new(source, output, options) },
             cancellationToken

@@ -22,7 +22,14 @@ function setup() {
     return Response.json({ graph: 'Materials/rust', parameters: { redness: '0.9' } });
   }) as unknown as typeof fetch;
   const client = createPatinaClient({ baseUrl: 'http://server', token: 't' }, fetcher);
-  const paint = { addGraphLayer: vi.fn(), layers: signal([]), material: signal(null), tool: signal('brush') };
+  const paint = {
+    addGraphLayer: vi.fn(),
+    addGraphLayerOnRegion: vi.fn(),
+    layers: signal([]),
+    material: signal<unknown>(null),
+    tool: signal('brush'),
+    state: signal({})
+  };
   TestBed.configureTestingModule({
     providers: [
       { provide: LibraryStore, useValue: { api: () => Promise.resolve(client) } },
@@ -44,13 +51,30 @@ describe('MaterialUse', () => {
     expect(using.failure()).toBeNull();
   });
 
-  it('takes no material preset up for the brush, and says why', async () => {
+  it('takes a material preset up for the brush, at the values it keeps (#311)', async () => {
     const { using, paint, asked } = setup();
 
     await using.paintWith(redRust);
 
-    expect(asked).toEqual([]);
-    expect(paint.material()).toBeNull();
-    expect(using.failure()).toContain('Red Rust');
+    expect(asked).toEqual([{ project: 'crate', source: redRust.source }]);
+    expect(paint.material()).toEqual({
+      name: 'Red Rust',
+      graph: 'Materials/rust',
+      source: redRust.source,
+      parameters: { redness: '0.9' }
+    });
+    expect(using.failure()).toBeNull();
+  });
+
+  it('fills a region of the id map with a material preset at its values (#311)', async () => {
+    const { using, paint } = setup();
+
+    expect(using.takesRegion(redRust)).toBe(true);
+    await using.useOnRegion(redRust, [1, 0, 0]);
+
+    expect(paint.addGraphLayerOnRegion).toHaveBeenCalledWith('Red Rust', 'Materials/rust', [1, 0, 0], {
+      redness: '0.9'
+    });
+    expect(using.failure()).toBeNull();
   });
 });

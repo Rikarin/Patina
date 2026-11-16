@@ -83,11 +83,12 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
     static TextureBake Timed(
         TexturePlanEvaluator runner,
         TexturePlan plan,
-        IReadOnlyDictionary<int, TextureExternal> externals
+        IReadOnlyDictionary<int, TextureExternal> externals,
+        CancellationToken stop = default
     ) {
         runner.TimeOps = true;
         try {
-            return runner.EvaluateIncremental(plan, externals);
+            return runner.EvaluateIncremental(plan, externals, null, stop);
         } finally {
             runner.TimeOps = false;
         }
@@ -159,9 +160,10 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
 
     /// <summary>
     ///     One Output of a graph, drawn for the shelf from a copy that goes as soon as it has. The Server has already
-    ///     set the graph's size to the picture's, so nothing is computed larger than it is shown.
+    ///     set the graph's size to the picture's, so nothing is computed larger than it is shown. It stops between
+    ///     parts of its run when <paramref name="stop" /> is cancelled.
     /// </summary>
-    public IpcMessage Thumbnail(MaterialThumbnailAsk ask) {
+    public IpcMessage Thumbnail(MaterialThumbnailAsk ask, CancellationToken stop) {
         var load = new GraphLoad(ThumbnailSession, ask.Document, ask.Folder, ask.ImageRoots, ask.MeshMaps);
         using Loaded graph = new(load, compounds.Of(ask.Folder), pictures);
         var runner = gpu.Evaluator;
@@ -175,7 +177,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         }
 
         if (ask.Deep) {
-            return Drawn(Deep(runner, plan, source.Image, graph.Uploads!.Externals, ask.PreviewFolder));
+            return Drawn(Deep(runner, plan, source.Image, graph.Uploads!.Externals, ask.PreviewFolder, stop));
         }
 
         var extended = GraphPreviews.Extend(plan, [source], int.MaxValue, []);
@@ -184,7 +186,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         }
 
         // Timed, so a graph opened after its thumbnail, whose results the cache then holds, still has its times.
-        using var bake = Timed(runner, extended.Plan, graph.Uploads!.Externals);
+        using var bake = Timed(runner, extended.Plan, graph.Uploads!.Externals, stop);
         timings.Keep(bake, extended.Plan);
         return Drawn(previews.Write(bake, [extended.Images[0].Image], ask.PreviewFolder)[0].Hash);
     }
@@ -198,9 +200,10 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         TexturePlan plan,
         int image,
         IReadOnlyDictionary<int, TextureExternal> externals,
-        string folder
+        string folder,
+        CancellationToken stop
     ) {
-        using var bake = runner.EvaluateIncremental(GraphPreviews.Full(plan, image), externals);
+        using var bake = runner.EvaluateIncremental(GraphPreviews.Full(plan, image), externals, null, stop);
         var picture = RawPictures.ToFloat(bake.ReadRaw(image)).Image;
         var bytes = ExrCodec.Encode(picture, ExrPixels.Half);
         var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
@@ -245,6 +248,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         readonly IReadOnlyList<string> imageRoots;
         readonly string? meshMaps;
         readonly string? badSize;
+        readonly GraphPaintTiles painted = new();
         ImmutableArray<NodeDiagnostic> diagnostics = [];
         IReadOnlyList<PictureStamp> stamps = [];
 
@@ -294,6 +298,11 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
         /// <summary>Brings the plan up to date, compiling only for more than a value (plan §3.2).</summary>
         public GraphResultProblem[] Prepare(TexturePlanEvaluator evaluator, out bool compiled) {
             compiled = false;
+            // A canvas being painted carries the tiles a stroke moved, so a painted mask costs no compile (#311).
+            if (stamps.Any(pictures.Stale) && Uploads is { } held && painted.Carry(pictures, stamps, held) is { } now) {
+                stamps = now;
+            }
+
             if (!stamps.Any(pictures.Stale) && compiler.Refresh(graph) is { } refreshed) {
                 Plan = refreshed;
                 return Problems();
@@ -313,6 +322,7 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
             var owed = TextureGraphExternals.Upload(uploads, compilation.Value, compiler.Externals);
             var filled = pictures.Fill(uploads, compilation.Value, owed, imageRoots, meshMaps);
             stamps = filled.Stamps;
+            painted.Watch(pictures, filled);
             if (filled.Refusals.Count > 0) {
                 uploads.Dispose();
                 diagnostics = diagnostics.AddRange(filled.Refusals);

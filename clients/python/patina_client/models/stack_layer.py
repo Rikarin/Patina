@@ -61,6 +61,10 @@ class StackLayer:
                 are kept, unread,
                 as the way back. Default: False.
             tag (str): The colour the layer is marked with in a list, from the vocabulary's tags, or None. Default: 'None'.
+            normal_format (str): How a texture fill's normal and coat normal pictures are read: `y-up`, their green turned
+                to run down
+                as a stack's normals do, or `y-down`, as they are (#310). The project's normal format when they were
+                laid.
             placement (None | StackPlacement | Unset):
             parameters (None | StackLayerParametersType1 | Unset): What a graph fill sets the graph's knobs to, as text.
             anchor (None | StackAnchorRef | Unset):
@@ -87,6 +91,7 @@ class StackLayer:
     filter_: str
     settings: StackLayerSettings
     mask: StackMask
+    normal_format: str
     planar_axis: str = 'Y'
     filter_node: str = ''
     anchor_point: str = ''
@@ -167,6 +172,8 @@ class StackLayer:
         flattened = self.flattened
 
         tag = self.tag
+
+        normal_format = self.normal_format
 
         placement: dict[str, Any] | None | Unset
         if isinstance(self.placement, Unset):
@@ -250,6 +257,7 @@ class StackLayer:
             "anchorPoint": anchor_point,
             "flattened": flattened,
             "tag": tag,
+            "normalFormat": normal_format,
         })
         if placement is not UNSET:
             field_dict["placement"] = placement
@@ -348,6 +356,8 @@ class StackLayer:
         flattened = d.pop("flattened")
 
         tag = d.pop("tag")
+
+        normal_format = d.pop("normalFormat")
 
         def _parse_placement(data: object) -> None | StackPlacement | Unset:
             if data is None:
@@ -512,6 +522,7 @@ class StackLayer:
             anchor_point=anchor_point,
             flattened=flattened,
             tag=tag,
+            normal_format=normal_format,
             placement=placement,
             parameters=parameters,
             anchor=anchor,

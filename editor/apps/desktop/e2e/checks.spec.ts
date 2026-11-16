@@ -2,7 +2,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
-import { leave, newLibrary, newProject, removeScratch } from './projects';
+import { leave, newLibrary, newProject, pick, removeScratch } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
 const mesh = resolve(__dirname, '../../../../content/fixtures/viewport-test.glb');
@@ -82,8 +82,23 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
 
   await window.getByRole('tab', { name: 'Checks' }).click();
   await window.getByTestId('checks-run').click();
-  await expect(window.getByTestId('checks-density')).toHaveText(/\d+ per unit/u, { timeout: 120_000 });
+  await expect(window.getByTestId('checks-density')).toHaveText(/\d+ per metre/u, { timeout: 120_000 });
   await expect(window.getByTestId('checks-memory')).toHaveText(/ MB with /u);
+
+  // The same layout on a mesh in centimetres covers a hundredth of the metres, so it has a hundred times the texels
+  // per metre (#307). A glTF is in metres; the project can say otherwise, and the check measures through it.
+  const perMetre = async () =>
+    Number(/\d+/u.exec((await window.getByTestId('checks-density').textContent()) ?? '')?.[0]);
+  const inMetres = await perMetre();
+  await setUnits('Centimetres');
+  await expect.poll(() => readFileSync(projectFile(), 'utf8'), { timeout: 10_000 }).toContain('metresPerUnit: 0.01');
+  await window.getByTestId('checks-run').click();
+  await expect.poll(perMetre, { timeout: 120_000 }).toBeGreaterThan(inMetres * 99);
+  expect(await perMetre()).toBeLessThan(inMetres * 101);
+  await setUnits('As the file says');
+  await expect.poll(() => readFileSync(projectFile(), 'utf8'), { timeout: 10_000 }).not.toContain('metresPerUnit');
+  await window.getByTestId('checks-run').click();
+  await expect.poll(perMetre, { timeout: 120_000 }).toBe(inMetres);
 
   // Each file the export writes is listed with its size and the memory it takes.
   await window.getByTestId('checks-files').locator('[data-disclosure-toggle]').click();
@@ -145,6 +160,16 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
   await expect(sets).toHaveCount(3);
   await expect(window.getByTestId('checks-unmeasured')).toHaveCount(0);
 });
+
+/** Says in Project Settings what unit the project's mesh is in, and applies it. */
+async function setUnits(name: string): Promise<void> {
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('patina:command', 'projectSettings');
+  });
+  await pick(window, 'project-settings-units', name);
+  await window.getByTestId('project-settings-apply').click();
+  await expect(window.getByTestId('project-settings')).toHaveCount(0);
+}
 
 /** Adds a layered material to the project through the engine's API, as another client would, without opening it. */
 async function addLayeredMaterial(name: string): Promise<void> {

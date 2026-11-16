@@ -91,6 +91,12 @@ public sealed record ProjectDocument(
     /// </summary>
     public string NormalFormat { get; init; } = NormalFormats.Up;
 
+    /// <summary>
+    ///     How long the project's mesh unit is, in metres, when the project says (#146, #307), or null for what the
+    ///     mesh file says, else a metre (<see cref="MeshUnits.Of" />).
+    /// </summary>
+    public double? MetresPerUnit { get; init; }
+
     /// <summary>What the project's last export was set to, so the next one starts there, or null.</summary>
     public ProjectExportSettings? Export { get; init; }
 

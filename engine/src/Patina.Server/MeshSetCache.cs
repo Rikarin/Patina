@@ -115,12 +115,10 @@ public sealed class MeshSetCache(WorkerLink worker) : IMeshSetReads {
 
     async Task<MeshSetsRead?> AskAsync(string file, TimeSpan connecting) {
         IpcConnection connection;
-        using (CancellationTokenSource waiting = new(connecting)) {
-            try {
-                connection = await worker.ConnectionAsync(waiting.Token);
-            } catch (OperationCanceledException) {
-                return null;
-            }
+        try {
+            connection = await WorkerWait.ConnectionAsync(worker, connecting, CancellationToken.None);
+        } catch (RendererMissingException) {
+            return null;
         }
 
         try {

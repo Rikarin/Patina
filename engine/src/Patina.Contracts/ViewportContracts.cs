@@ -420,6 +420,7 @@ public sealed record ViewportMeshRequest(string Path);
 /// <param name="Occlusion">Ambient occlusion.</param>
 /// <param name="Emissive">Light the surface gives off.</param>
 /// <param name="Opacity">What the surface covers, read from red and shown as cut out or not.</param>
+/// <param name="Layers">OpenPBR's coat, sheen and transmission laid over the material, or null for none.</param>
 public sealed record ViewportMapPaths(
     string? BaseColor = null,
     string? Normal = null,
@@ -427,7 +428,28 @@ public sealed record ViewportMapPaths(
     string? Metallic = null,
     string? Occlusion = null,
     string? Emissive = null,
-    string? Opacity = null
+    string? Opacity = null,
+    ViewportLayerPaths? Layers = null
+);
+
+/// <summary>
+///     OpenPBR's layers over the material as pictures, each a path on the Server's machine (#310). Each is read from
+///     red, as linear, but the sheen's colour, which is a linear colour (ADR 0050). A slot left null is no coat, no
+///     sheen, a white sheen or no transmission: what a material without the layer draws.
+/// </summary>
+/// <param name="Coat">How much clear coat lies over the base: OpenPBR's <c>coat_weight</c>.</param>
+/// <param name="CoatRoughness">The coat's own roughness.</param>
+/// <param name="Sheen">How much sheen lies over everything: OpenPBR's <c>fuzz_weight</c>.</param>
+/// <param name="SheenColor">The sheen's colour.</param>
+/// <param name="SheenRoughness">The sheen's roughness.</param>
+/// <param name="Transmission">How much of a dielectric base lets light through: <c>transmission_weight</c>.</param>
+public sealed record ViewportLayerPaths(
+    string? Coat = null,
+    string? CoatRoughness = null,
+    string? Sheen = null,
+    string? SheenColor = null,
+    string? SheenRoughness = null,
+    string? Transmission = null
 );
 
 /// <summary>Asks the viewport to show a finished bake on the mesh it was baked onto.</summary>

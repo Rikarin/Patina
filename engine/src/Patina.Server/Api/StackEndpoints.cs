@@ -282,9 +282,18 @@ static class StackEndpoints {
         string id,
         StackCommandBatch batch,
         StackSessions sessions,
-        ViewportSession viewport
+        ViewportSession viewport,
+        LibraryHost host
     ) =>
-        Step(id, sessions, session => session.Apply(batch, viewport.State), "apply");
+        Step(
+            id,
+            sessions,
+            session => session.Apply(
+                StackLayerEdits.AsTheProjectSays(batch, host.Library, session.Path),
+                viewport.State
+            ),
+            "apply"
+        );
 
     static Results<Ok<StackEditResult>, ProblemHttpResult> Undo(string id, StackSessions sessions) =>
         Step(id, sessions, static session => session.Undo(), "undo");
@@ -425,14 +434,17 @@ static class StackEndpoints {
         StackIdColours? colours = null;
         if (session.MeshMaps is { } folder) {
             try {
-                var connection = await worker.ConnectionAsync(cancellationToken);
+                var connection = await WorkerWait.ConnectionAsync(worker, WorkerWait.Patience, cancellationToken);
                 var reply = await connection.SendAsync(
                     new() { Type = IpcTypes.BakeIdColours, Picture = new(IdColours: new(folder, u, v)) },
                     cancellationToken
                 );
                 colours = reply.Pictured?.IdColours;
-            } catch (Exception e) when (e is IpcException or IOException) {
+            } catch (IpcException e) {
                 return Refusals.OfEngine(e, StatusCodes.Status502BadGateway);
+            } catch (Exception e) when (e is IOException or TimeoutException) {
+                // The Worker went while it read the colours, or none came (#309).
+                return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
             }
         }
 

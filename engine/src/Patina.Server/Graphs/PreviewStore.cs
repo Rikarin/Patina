@@ -11,6 +11,12 @@ namespace Patina.Server.Graphs;
 public sealed partial class PreviewStore(ServerIdentity identity) {
     const long Budget = 256L * 1024 * 1024;
 
+    /// <summary>
+    ///     How old a half-written file is before it is taken for one a Worker left when it was killed: a writer
+    ///     finishes in seconds.
+    /// </summary>
+    static readonly TimeSpan Abandoned = TimeSpan.FromHours(1);
+
     /// <summary>Every kind of file the cache keeps under a hash.</summary>
     static readonly string[] Kinds =
         [GraphPreviewFiles.Extension, GraphPreviewFiles.Drawing, GraphPreviewFiles.Radiance];
@@ -47,9 +53,9 @@ public sealed partial class PreviewStore(ServerIdentity identity) {
             return;
         }
 
-        var files = new DirectoryInfo(Root).EnumerateFiles("*", SearchOption.AllDirectories)
-            .Where(static file => Kinds.Contains(file.Extension, StringComparer.OrdinalIgnoreCase))
-            .ToList();
+        var all = new DirectoryInfo(Root).EnumerateFiles("*", SearchOption.AllDirectories).ToList();
+        LetGoOfAbandoned(all);
+        var files = all.Where(static file => Kinds.Contains(file.Extension, StringComparer.OrdinalIgnoreCase)).ToList();
         var bytes = files.Sum(static file => file.Length);
         if (bytes <= budget) {
             return;
@@ -68,6 +74,21 @@ public sealed partial class PreviewStore(ServerIdentity identity) {
         }
     }
 
+    /// <summary>
+    ///     Deletes the half-written files a Worker killed while it wrote left behind (#310), whatever the budget: they
+    ///     are no picture anyone can be served, and nothing else would ever remove them. One being written now is
+    ///     young, and is left.
+    /// </summary>
+    static void LetGoOfAbandoned(IEnumerable<FileInfo> files) {
+        foreach (var file in files.Where(IsAbandoned)) {
+            Deleted(file);
+        }
+    }
+
+    /// <summary>Whether a file is one a writer began and has not touched for longer than any writer takes.</summary>
+    static bool IsAbandoned(FileInfo file) =>
+        HalfWritten().IsMatch(file.Name) && file.LastWriteTimeUtc < DateTime.UtcNow - Abandoned;
+
     /// <summary>Deletes a file unless someone has it open: one being served or read is left for next time.</summary>
     static bool Deleted(FileInfo file) {
         try {
@@ -80,4 +101,8 @@ public sealed partial class PreviewStore(ServerIdentity identity) {
 
     [GeneratedRegex("^[0-9a-f]{64}$")]
     private static partial Regex HashPattern();
+
+    /// <summary>What <see cref="GraphPreviewFiles.Store" /> writes before it moves a file under its hash.</summary>
+    [GeneratedRegex(@"^[0-9a-f]{64}\.[a-z]+\.[0-9a-f]{32}\.tmp$")]
+    private static partial Regex HalfWritten();
 }

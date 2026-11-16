@@ -22,5 +22,17 @@ told, map by map, that its green runs down (#300). A team whose maps all run the
 ## Left open
 
 - Tangent space per vertex or per fragment, and any basis other than MikkTSpace, waits on the owner (#144).
-- A normal map brought in as a layer's picture, or read by Import Materials (`greenUp` there), does not read the
-  project's format yet.
+- ~~A normal map brought in as a layer's picture, or read by Import Materials (`greenUp` there), does not read the
+  project's format yet.~~ Closed in wave 20 (#310), below.
+
+## Amendments
+
+- _2026-11-16 (#310):_ **A layer's picture.** A texture fill names its pictures and reads them at each compile, so
+  how its normal and coat normal pictures run is kept on the layer, as `normalGreenUp` in the stack file (Vixen's
+  `LayerAsset.NormalGreenUp`) and `normalFormat` (`y-up` or `y-down`) in the API. A stack keeps its normals green
+  down (ADR 0011), so `y-up` turns them and `y-down` reads them as they are. A `setLayer` that lays a normal or coat
+  normal picture and does not say is given the project's format, as a map brought in is; a layer laid before has
+  no flag and reads as it did, `y-down`, so no project changes under anyone. A stack in no project is left as sent.
+- _2026-11-16 (#310):_ **Import Materials.** glTF, MaterialX and USD say their normals run green up, and their
+  readers say where a file turns one; FBX, OBJ and Collada say nothing, so their normals are read as the project
+  says.

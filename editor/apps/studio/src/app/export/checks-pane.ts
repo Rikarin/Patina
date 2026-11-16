@@ -75,7 +75,7 @@ const Limits: readonly Limit[] = [
   {
     key: 'texelDensity',
     label: 'Texel density',
-    title: 'Texels per unit of the model (a metre in glTF) every set is held to, or 0 for the library’s',
+    title: 'Texels per metre every set is held to, or 0 for the library’s. Project Settings says what a mesh unit is.',
     scale: 1,
     perPlatform: true
   },
@@ -459,8 +459,8 @@ export class ChecksPane {
   protected density(checks: StackChecks): string {
     const measured = Math.round(checks.texelDensity);
     return checks.targetDensity > 0
-      ? `${measured} per unit, of ${Math.round(checks.targetDensity)}`
-      : `${measured} per unit`;
+      ? `${measured} per metre, of ${Math.round(checks.targetDensity)}`
+      : `${measured} per metre`;
   }
 
   protected memory(checks: StackChecks): string {

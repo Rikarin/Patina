@@ -22,6 +22,9 @@ sealed class WorkerLoop(
     static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
     static readonly long Started = Stopwatch.GetTimestamp();
 
+    /// <summary>The picture being drawn, which stops for anything queued behind it.</summary>
+    readonly PictureYield pictures = new();
+
     /// <summary>
     ///     Keeps a link to the Server, reconnecting when it drops. <paramref name="log" /> gets one line per link,
     ///     which the desktop app's supervision reads, and the Server gets its warnings and errors.
@@ -70,7 +73,12 @@ sealed class WorkerLoop(
             // ⚠ A frame waits for the request being answered, never behind every evaluation and thumbnail sent before
             // it: on a software GPU those queue for minutes, and the viewport stopped answering a change (#274). What
             // wears a stack keeps its place behind the stack's own requests (#295).
-            Urgent = IpcTypes.Urgent
+            Urgent = IpcTypes.Urgent,
+            Queued = type => {
+                if (type != IpcTypes.MaterialThumbnail) {
+                    pictures.GiveWay();
+                }
+            }
         };
         await using (connection) {
             connection.Start();
@@ -100,52 +108,59 @@ sealed class WorkerLoop(
         }
     }
 
-    ValueTask<IpcMessage> AnswerAsync(IpcConnection link, IpcMessage request, CancellationToken cancellationToken) =>
-        ValueTask.FromResult(
-            request.Type switch {
-                IpcTypes.Health => new() { Type = IpcTypes.Ok, Health = Health() },
-                IpcTypes.BrushPreview => BrushPreviews.Answer(request),
-                IpcTypes.ViewportOpen => viewport.Open(request),
-                IpcTypes.ViewportMaps => viewport.SetMaps(request),
-                IpcTypes.ViewportCamera => viewport.SetCamera(request),
-                IpcTypes.ViewportDisplay => viewport.SetDisplay(request),
-                IpcTypes.ViewportRender => viewport.Render(request),
-                IpcTypes.ViewportPick or IpcTypes.ViewportCast or IpcTypes.ViewportMarquee => viewport.Locate(request),
-                IpcTypes.ViewportBakePreview => BakePreviewHost.Show(request, viewport.Live),
-                IpcTypes.GraphLoad
-                    or IpcTypes.GraphEvaluate
-                    or IpcTypes.GraphImage
-                    or IpcTypes.GraphHistogram
-                    or IpcTypes.GraphSample
-                    or IpcTypes.GraphClose
-                    or IpcTypes.StackLoad
-                    or IpcTypes.StackSync
-                    or IpcTypes.StackThumbnails
-                    or IpcTypes.StackFind
-                    or IpcTypes.StackSample
-                    or IpcTypes.StackCheck
-                    or IpcTypes.StackEvaluate
-                    or IpcTypes.StackSave
-                    or IpcTypes.StackCopy
-                    or IpcTypes.StackCheckpoint
-                    or IpcTypes.StackPixels
-                    or IpcTypes.StackClose
-                    or IpcTypes.MaterialThumbnail
-                    or IpcTypes.ViewportStack => OnDevice(request),
-                IpcTypes.MaterialRead => ReadMaterials(request),
-                IpcTypes.PictureRead or IpcTypes.BakeIdColours or IpcTypes.ExportCompress => PictureWork.Answer(
-                    request,
-                    cancellationToken
-                ),
-                _ when request.Type.StartsWith("mesh.", StringComparison.Ordinal) => Mesh(request),
-                IpcTypes.BakeStart => bakes.Start(request, link),
-                IpcTypes.BakeCancel => bakes.Cancel(request),
-                IpcTypes.StackSupersede => stacks.Supersede(request),
-                IpcTypes.BuildStart => builds.Start(request, link),
-                IpcTypes.BuildCancel => builds.Cancel(request),
-                _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
-            }
-        );
+    /// <summary>
+    ///     Answers a request on the thread it came in on, inside an autorelease pool of its own, so what Metal
+    ///     autoreleased drawing it is released when it is answered rather than never (#310).
+    /// </summary>
+    ValueTask<IpcMessage> AnswerAsync(IpcConnection link, IpcMessage request, CancellationToken cancellationToken) {
+        using var pool = AutoreleasePool.Enter();
+        return ValueTask.FromResult(Answer(link, request, cancellationToken));
+    }
+
+    IpcMessage Answer(IpcConnection link, IpcMessage request, CancellationToken cancellationToken) =>
+        request.Type switch {
+            IpcTypes.Health => new() { Type = IpcTypes.Ok, Health = Health() },
+            IpcTypes.BrushPreview => BrushPreviews.Answer(request),
+            IpcTypes.ViewportOpen => viewport.Open(request),
+            IpcTypes.ViewportMaps => viewport.SetMaps(request),
+            IpcTypes.ViewportCamera => viewport.SetCamera(request),
+            IpcTypes.ViewportDisplay => viewport.SetDisplay(request),
+            IpcTypes.ViewportRender => viewport.Render(request),
+            IpcTypes.ViewportPick or IpcTypes.ViewportCast or IpcTypes.ViewportMarquee => viewport.Locate(request),
+            IpcTypes.ViewportBakePreview => BakePreviewHost.Show(request, viewport.Live),
+            IpcTypes.GraphLoad
+                or IpcTypes.GraphEvaluate
+                or IpcTypes.GraphImage
+                or IpcTypes.GraphHistogram
+                or IpcTypes.GraphSample
+                or IpcTypes.GraphClose
+                or IpcTypes.StackLoad
+                or IpcTypes.StackSync
+                or IpcTypes.StackThumbnails
+                or IpcTypes.StackFind
+                or IpcTypes.StackSample
+                or IpcTypes.StackCheck
+                or IpcTypes.StackEvaluate
+                or IpcTypes.StackSave
+                or IpcTypes.StackCopy
+                or IpcTypes.StackCheckpoint
+                or IpcTypes.StackPixels
+                or IpcTypes.StackClose
+                or IpcTypes.MaterialThumbnail
+                or IpcTypes.ViewportStack => OnDevice(request),
+            IpcTypes.MaterialRead => ReadMaterials(request),
+            IpcTypes.PictureRead or IpcTypes.BakeIdColours or IpcTypes.ExportCompress => PictureWork.Answer(
+                request,
+                cancellationToken
+            ),
+            _ when request.Type.StartsWith("mesh.", StringComparison.Ordinal) => Mesh(request),
+            IpcTypes.BakeStart => bakes.Start(request, link),
+            IpcTypes.BakeCancel => bakes.Cancel(request),
+            IpcTypes.StackSupersede => stacks.Supersede(request),
+            IpcTypes.BuildStart => builds.Start(request, link),
+            IpcTypes.BuildCancel => builds.Cancel(request),
+            _ => IpcMessage.Fail(request.Id, $"Unknown request '{request.Type}'.")
+        };
 
     /// <summary>What reads or rewrites a mesh file: none of it uses the device.</summary>
     IpcMessage Mesh(IpcMessage request) =>
@@ -332,7 +347,11 @@ sealed class WorkerLoop(
 
     IpcMessage Thumbnail(IpcMessage request) {
         var ask = request.MaterialThumbnail ?? throw new IpcException("material.thumbnail says nothing to draw.");
-        return ask.Kind == MaterialThumbnailKinds.Stack ? stacks.Thumbnail(ask) : graphs.Thumbnail(ask);
+        return pictures.Draw(stop => ask.Kind == MaterialThumbnailKinds.Stack
+                    ? stacks.Thumbnail(ask, stop)
+                    : graphs.Thumbnail(ask, stop)
+            )
+            ?? new() { Type = IpcTypes.Ok, Id = request.Id, Superseded = true };
     }
 
     WorkerHealth Health() =>

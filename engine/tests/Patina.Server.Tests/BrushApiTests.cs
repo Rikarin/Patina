@@ -250,7 +250,7 @@ public sealed class BrushApiTests : IAsyncLifetime {
             Token
         );
         var made = (await created.Content.ReadFromJsonAsync<BrushPresetInfo>(Token))!;
-        await IndexedAsync();
+        await ServerFixture.IndexedAsync(client, Token);
 
         Assert.Equal(30f, (await ShelfAsync()).Single(static p => p.Name == "Dent").Preset.Brush.Radius);
         var file = Path.Combine(server.Library, made.Source);
@@ -265,19 +265,6 @@ public sealed class BrushApiTests : IAsyncLifetime {
         );
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
         Assert.Contains(await ShelfAsync(), static p => p is { Name: "Gouge", Origin: "library" });
-    }
-
-    /// <summary>
-    ///     Waits for the scan a write asked for: the shelf finds other projects through the index, which lags a new
-    ///     project until the rescan the Server runs behind the API ends, and on a slow runner (macOS CI) that is
-    ///     after the next request.
-    /// </summary>
-    async Task IndexedAsync() {
-        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(Token);
-        deadline.CancelAfter(TimeSpan.FromSeconds(30));
-        while ((await client.GetFromJsonAsync<LibraryInfo>("/api/v1/library", deadline.Token))!.Indexing) {
-            await Task.Delay(20, deadline.Token);
-        }
     }
 
     async Task<IReadOnlyList<BrushPresetInfo>> ShelfAsync() =>

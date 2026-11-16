@@ -81,8 +81,31 @@ public sealed class ModelMaterialsTests : IDisposable {
                            }
                            """;
 
+    /// <summary>A specular lobe with its pictures and anisotropy turned a quarter; and a whole white lobe.</summary>
+    const string Lobed = """
+                         {
+                           "name": "Brushed",
+                           "extensions": {
+                             "KHR_materials_specular": {
+                               "specularFactor": 0.5, "specularTexture": { "index": 1 },
+                               "specularColorFactor": [1, 0.5, 0.25]
+                             },
+                             "KHR_materials_anisotropy": {
+                               "anisotropyStrength": 0.75, "anisotropyRotation": 1.5707964,
+                               "anisotropyTexture": { "index": 1 }
+                             }
+                           }
+                         },
+                         {
+                           "name": "Plain",
+                           "extensions": {
+                             "KHR_materials_specular": { "specularFactor": 1, "specularColorFactor": [1, 1, 1] }
+                           }
+                         }
+                         """;
+
     /// <summary>Two triangles, each wearing one of two materials, its pictures beside the file and inside it.</summary>
-    string Gltf(string materials = Painted) {
+    string Gltf(string materials = Painted, bool listed = true) {
         var floats = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1 };
         var bytes = new byte[floats.Length * 4];
         Buffer.BlockCopy(floats, 0, bytes, 0, bytes.Length);
@@ -93,10 +116,7 @@ public sealed class ModelMaterialsTests : IDisposable {
         var text = $$"""
                      {
                        "asset": { "version": "2.0" },
-                       "extensionsUsed": [
-                         "KHR_texture_transform", "KHR_materials_emissive_strength", "KHR_materials_clearcoat",
-                         "KHR_materials_sheen", "KHR_materials_transmission"
-                       ],
+                       "extensionsUsed": [{{(listed ? Listed : string.Empty)}}],
                        "scene": 0,
                        "scenes": [{ "nodes": [0, 1] }],
                        "nodes": [{ "mesh": 0, "name": "A" }, { "mesh": 1, "name": "B" }],
@@ -139,6 +159,73 @@ public sealed class ModelMaterialsTests : IDisposable {
                      """;
         var path = Path.Combine(folder.FullName, "two.gltf");
         File.WriteAllText(path, text);
+        return path;
+    }
+
+    const string Listed = """
+                          "KHR_texture_transform", "KHR_materials_emissive_strength", "KHR_materials_clearcoat",
+                          "KHR_materials_sheen", "KHR_materials_transmission", "KHR_materials_specular",
+                          "KHR_materials_anisotropy"
+                          """;
+
+    /// <summary>
+    ///     A hand-written glTF that uses its layers' extensions without listing them in <c>extensionsUsed</c> (#310)
+    ///     still brings its clear coat, sheen and transmission in, where Assimp alone dropped them without a word,
+    ///     and says so on each material that named one. A binary glTF is read the same way.
+    /// </summary>
+    [Theory]
+    [InlineData(".gltf")]
+    [InlineData(".glb")]
+    public void Extensions_a_gltf_does_not_list_are_read_and_said(string extension) {
+        var path = Gltf(Layered, false);
+        if (extension == ".glb") {
+            path = Binary(path);
+        }
+
+        var materials = ModelMaterials.Read(path, Path.Combine(folder.FullName, "pictures"));
+
+        var lacquer = materials[0].Slots.Select(static s => s.Usage).ToHashSet();
+        Assert.Superset(new HashSet<string> { "coat", "coatRoughness", "sheenColor", "transmission" }, lacquer);
+        var said = Assert.Single(
+            materials[0].Warnings,
+            static w => w.Contains("extensionsUsed", StringComparison.Ordinal)
+        );
+        Assert.Contains(
+            "KHR_materials_clearcoat, KHR_materials_sheen, KHR_materials_transmission",
+            said,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(materials[1].Warnings, static w => w.Contains("KHR_materials_sheen", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            ModelMaterials.Read(Gltf(Layered), Path.Combine(folder.FullName, "pictures"))[0].Warnings,
+            static w => w.Contains("extensionsUsed", StringComparison.Ordinal)
+        );
+    }
+
+    /// <summary>
+    ///     A text glTF as a binary one: its JSON, padded with spaces, then its buffer in a chunk of its own.
+    /// </summary>
+    static string Binary(string gltf) {
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(gltf))!;
+        var buffer = root["buffers"]![0]!.AsObject();
+        var uri = buffer["uri"]!.GetValue<string>();
+        var body = Convert.FromBase64String(uri[(uri.IndexOf(',', StringComparison.Ordinal) + 1)..]);
+        buffer.Remove("uri");
+        var json = System.Text.Encoding.UTF8.GetBytes(root.ToJsonString());
+        var (jsonLength, bodyLength) = ((json.Length + 3) / 4 * 4, (body.Length + 3) / 4 * 4);
+        var bytes = new byte[28 + jsonLength + bodyLength];
+        BitConverter.TryWriteBytes(bytes.AsSpan(0), 0x46546C67u);
+        BitConverter.TryWriteBytes(bytes.AsSpan(4), 2u);
+        BitConverter.TryWriteBytes(bytes.AsSpan(8), (uint)bytes.Length);
+        BitConverter.TryWriteBytes(bytes.AsSpan(12), (uint)jsonLength);
+        BitConverter.TryWriteBytes(bytes.AsSpan(16), 0x4E4F534Au);
+        json.CopyTo(bytes, 20);
+        bytes.AsSpan(20 + json.Length, jsonLength - json.Length).Fill((byte)' ');
+        BitConverter.TryWriteBytes(bytes.AsSpan(20 + jsonLength), (uint)bodyLength);
+        BitConverter.TryWriteBytes(bytes.AsSpan(24 + jsonLength), 0x004E4942u);
+        body.CopyTo(bytes, 28 + jsonLength);
+        var path = Path.ChangeExtension(gltf, ".glb");
+        File.WriteAllBytes(path, bytes);
         return path;
     }
 
@@ -195,6 +282,36 @@ public sealed class ModelMaterialsTests : IDisposable {
         Assert.Equal([0.5f, 0.25f, 0f], lacquer["sheenColor"].Value.Take(3).Select(Round));
         Assert.Equal((null, 0.25f), (lacquer["sheenRoughness"].Texture, Round(lacquer["sheenRoughness"].Value[0])));
         Assert.Equal((null, 0.5f), (lacquer["transmission"].Texture, Round(lacquer["transmission"].Value[0])));
+
+        Assert.Equal(["baseColor", "roughness", "metalness"], materials[1].Slots.Select(static s => s.Usage));
+    }
+
+    /// <summary>
+    ///     glTF's specular lobe and anisotropy come in as OpenPBR's maps (#142): the weight from alpha, the colour as
+    ///     its factor, the anisotropy's strength from blue and its rotation as a fraction of a turn. The direction
+    ///     picture is no one lane, so that is said. A whole white lobe brings in nothing.
+    /// </summary>
+    [Fact]
+    public void A_gltfs_specular_lobe_and_anisotropy_come_in_as_openpbrs_maps() {
+        var materials = ModelMaterials.Read(Gltf(Lobed), Path.Combine(folder.FullName, "pictures"));
+
+        var brushed = materials[0].Slots.ToDictionary(static s => s.Usage);
+        var orm = Path.Combine(folder.FullName, "orm.png");
+        Assert.Equal(
+            (orm, 3, 0.5f),
+            (brushed["specularWeight"].Texture, brushed["specularWeight"].Lane, brushed["specularWeight"].Value[0])
+        );
+        Assert.Equal([1f, 0.5f, 0.25f], brushed["specularColor"].Value.Take(3).Select(Round));
+        Assert.Null(brushed["specularColor"].Texture);
+        Assert.Equal(
+            (orm, 2, 0.75f),
+            (brushed["anisotropy"].Texture, brushed["anisotropy"].Lane, brushed["anisotropy"].Value[0])
+        );
+        Assert.Equal(0.25f, Round(brushed["anisotropyRotation"].Value[0]));
+        Assert.Contains(
+            materials[0].Warnings,
+            static w => w.Contains("anisotropy's picture", StringComparison.Ordinal)
+        );
 
         Assert.Equal(["baseColor", "roughness", "metalness"], materials[1].Slots.Select(static s => s.Usage));
     }

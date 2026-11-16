@@ -185,10 +185,23 @@ sealed partial class ViewportHost(string shaderCache, MeshShelf meshes) : IDispo
                     File(maps.Emissive),
                     File(maps.Opacity),
                     maps.GreenDown
-                )
+                ) { Layers = Layers(maps.Layers) }
             );
         return IpcMessage.Ok(request.Id);
     }
+
+    /// <summary>A graph's or a bake's coat, sheen and transmission, laid on the mesh (#310).</summary>
+    static ViewportLayerFiles Layers(ViewportLayerSet? layers) =>
+        layers is null
+            ? ViewportLayerFiles.None
+            : new(
+                File(layers.Coat),
+                File(layers.CoatRoughness),
+                File(layers.Sheen),
+                File(layers.SheenColor),
+                File(layers.SheenRoughness),
+                File(layers.Transmission)
+            );
 
     /// <summary>
     ///     A symmetry as the viewport draws it across the model (#132): a mirror's plane, or a radial one's half-planes
@@ -242,7 +255,9 @@ sealed partial class ViewportHost(string shaderCache, MeshShelf meshes) : IDispo
         }
 
         renderer.Shading = Shading(settings) with {
-            DensityTarget = (float)told.TexelDensity, DensityResolution = Math.Max(1, told.Resolution)
+            DensityTarget = (float)told.TexelDensity,
+            DensityResolution = Math.Max(1, told.Resolution),
+            MetresPerUnit = (float)told.MetresPerUnit
         };
         return IpcMessage.Ok(request.Id);
     }

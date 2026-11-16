@@ -30,6 +30,32 @@ public sealed record MeshFacts(
     IReadOnlyList<double> Maximum,
     double? MetresPerUnit,
     bool VertexColours
+) {
+    /// <summary>
+    ///     The cameras the file holds (#144), in its order, each where it stands in the space the box round the model
+    ///     is in. Empty for a file with none.
+    /// </summary>
+    public IReadOnlyList<MeshCameraFacts> Cameras { get; init; } = [];
+}
+
+/// <summary>A camera a mesh file holds, as a client may look through it.</summary>
+/// <param name="Name">What the file calls it.</param>
+/// <param name="Position">Where it stands, in the file's units.</param>
+/// <param name="Forward">The unit direction it looks in.</param>
+/// <param name="Up">The unit direction that is up in its picture, square to <paramref name="Forward" />.</param>
+/// <param name="FieldOfView">The whole vertical angle it sees, in radians; zero for an orthographic camera.</param>
+/// <param name="AspectRatio">Its picture's width over its height, or zero when the file does not say.</param>
+/// <param name="OrthographicHeight">
+///     How tall the slab an orthographic camera sees is, in the file's units; zero for a camera with perspective.
+/// </param>
+public sealed record MeshCameraFacts(
+    string Name,
+    IReadOnlyList<double> Position,
+    IReadOnlyList<double> Forward,
+    IReadOnlyList<double> Up,
+    double FieldOfView,
+    double AspectRatio,
+    double OrthographicHeight
 );
 
 /// <summary>One named mesh where the file places it.</summary>
@@ -90,4 +116,50 @@ public sealed record MeshHighPart(string Name, int Faces, string Digest);
 public sealed record MeshSetRead(string Material, int UvSet, int Udim, string Geometry) {
     /// <summary>The names of the set's parts, in order, as matching by name reads them (#151).</summary>
     public IReadOnlyList<string> Parts { get; init; } = [];
+}
+
+/// <summary>
+///     How long a mesh's unit is (#146, #307, ADR 0058). Patina keeps every mesh in its own units, as Assimp reads it:
+///     the viewport, paint and bakes measure in the model's own lengths, so nothing is scaled at import. Only a number
+///     that means a real length, the texel density, is turned into metres, through this.
+/// </summary>
+public static class MeshUnits {
+    /// <summary>The longest unit a project can say its mesh is in, in metres: a kilometre.</summary>
+    public const double Longest = 1000;
+
+    /// <summary>The shortest: a micrometre.</summary>
+    public const double Shortest = 1e-6;
+
+    /// <summary>
+    ///     How long a file's unit is, in metres, when its format means a length: glTF is in metres by its
+    ///     specification, and an FBX states centimetres per unit, which Assimp reports as its <c>UnitScaleFactor</c>
+    ///     while it leaves the numbers as the file has them. Null for a file that says nothing, as OBJ, PLY and STL
+    ///     never do.
+    /// </summary>
+    /// <param name="extension">The file's extension, with the dot.</param>
+    /// <param name="unitScaleFactor">The <c>UnitScaleFactor</c> Assimp read, or null.</param>
+    public static double? Stated(string extension, double? unitScaleFactor) =>
+        extension.ToLowerInvariant() switch {
+            ".glb" or ".gltf" => 1,
+            ".fbx" when unitScaleFactor is > 0 => unitScaleFactor.Value / 100,
+            _ => null
+        };
+
+    /// <summary>
+    ///     The unit a mesh is measured in, in metres: the project's own when it says one, else what the file says,
+    ///     else a metre.
+    /// </summary>
+    /// <param name="project">The project's unit, or null or zero for none.</param>
+    /// <param name="file">What the file says, from <see cref="Stated" />, or null.</param>
+    public static double Of(double? project, double? file) =>
+        project is > 0 and var own ? own
+        : file is > 0 and var stated ? stated
+        : 1;
+
+    /// <summary>What is wrong with a unit a project asks for, or null. Zero asks for the file's own again.</summary>
+    public static string? Problem(double metresPerUnit) =>
+        metresPerUnit == 0 || metresPerUnit is >= Shortest and <= Longest
+            ? null
+            : "A mesh's unit is from a micrometre to a kilometre long, in metres, or zero for what the file says, "
+            + $"not {metresPerUnit}.";
 }

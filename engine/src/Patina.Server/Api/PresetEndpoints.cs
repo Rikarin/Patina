@@ -89,7 +89,7 @@ static class PresetEndpoints {
                 return TypedResults.Ok(known);
             }
 
-            var connection = await worker.ConnectionAsync(cancellationToken);
+            var connection = await WorkerWait.ConnectionAsync(worker, WorkerWait.Patience, cancellationToken);
             var reply = await connection.SendAsync(
                 new() { Type = IpcTypes.ExportCompress, Picture = new(Compression: step) },
                 cancellationToken
@@ -104,6 +104,9 @@ static class PresetEndpoints {
         } catch (IpcException e) {
             // A file the preset does not write here, or one the set cannot have: the Worker's own sentence.
             return Refusals.BadBuild(e);
+        } catch (Exception e) when (e is IpcDisconnectedException or RendererMissingException) {
+            // The Worker went while it compressed, or none came (#309).
+            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
         } catch (ExportUnbuiltException e) {
             return Refusals.Problem(
                 e.Message,

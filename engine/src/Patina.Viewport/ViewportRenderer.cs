@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using Patina.Contracts;
 using System.Runtime.InteropServices;
 using Vixen.Core.Mathematics;
 using Vixen.Graphics;
@@ -467,6 +468,15 @@ public sealed class ViewportRenderer : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     The density view's target in texels per unit of the model, which the shader measures in: the project's
+    ///     texels per metre times the metres a unit is (#307).
+    /// </summary>
+    internal static float DensityPerUnit(ViewportShading shading, double? fileMetresPerUnit) {
+        var unit = MeshUnits.Of(shading.MetresPerUnit, fileMetresPerUnit);
+        return (float)Math.Max(shading.DensityTarget * unit, 0);
+    }
+
     static Vector3 LightFrom(float rotation) {
         var (sin, cos) = MathF.SinCos(rotation);
         return new(0.6f * cos + 0.5f * sin, 0.7f, 0.5f * cos - 0.6f * sin);
@@ -492,7 +502,7 @@ public sealed class ViewportRenderer : IDisposable {
             .Set("view", shading.ViewNumberFor(Neutral))
             .Set("pictureLane", (float)Math.Clamp(shading.PictureLane, 0, 4))
             .Set("pictureScale", shading.PictureScale)
-            .Set("densityTarget", Math.Max(shading.DensityTarget, 0f))
+            .Set("densityTarget", DensityPerUnit(shading, geometry?.Mesh.MetresPerUnit))
             .Set("densityResolution", Math.Max(shading.DensityResolution, 1f));
         WriteIrradiance();
         device.Write(frameConstants, 0, frameBlock.Bytes);

@@ -3,7 +3,7 @@ import type { XuiDockContentPane, XuiDockManagerLayout, XuiDockPane } from '@xui
 /** What the app is doing, which decides what is on screen (ADR 0012). */
 export type WorkspaceName = 'start' | 'texturing' | 'layered-material' | 'image-material' | 'graph';
 
-const Version = 9;
+const Version = 10;
 
 type Part = XuiDockPane;
 
@@ -41,12 +41,12 @@ const history = pane('history', 'History');
 const checks = pane('checks', 'Checks');
 /** What is on the stack over what the chosen layer is, as a painting tool has them, and its undo steps behind. */
 const stack = down(1.4, layers, tabs(1.2, properties, inspector, history, checks));
-/** The same with the model's texture sets over it, which only a mesh has. */
+/** The same with the model's texture sets over it, and its paths beside Properties, which only a mesh has. */
 const texturingStack = down(
   1.4,
   pane('sets', 'Texture Sets', 0.42),
   { ...layers, size: 1 },
-  tabs(1, properties, inspector, history, checks)
+  tabs(1, properties, inspector, history, checks, pane('paths', 'Paths'))
 );
 const shelf = pane('shelf', 'Materials');
 /** Where a document's materials come from: the Library, and what it can be filled with. */

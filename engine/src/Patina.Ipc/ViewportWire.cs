@@ -17,7 +17,20 @@ public sealed record ViewportMapSet(
 ) {
     /// <summary>Whether normals here point green down, as a graph's do.</summary>
     public bool GreenDown { get; init; }
+
+    /// <summary>OpenPBR's coat, sheen and transmission laid over the material, or null for none (#310).</summary>
+    public ViewportLayerSet? Layers { get; init; }
 }
+
+/// <summary>OpenPBR's layers as pictures, each read from its red but the sheen's colour. A null slot is none.</summary>
+public sealed record ViewportLayerSet(
+    ViewportMapFile? Coat = null,
+    ViewportMapFile? CoatRoughness = null,
+    ViewportMapFile? Sheen = null,
+    ViewportMapFile? SheenColor = null,
+    ViewportMapFile? SheenRoughness = null,
+    ViewportMapFile? Transmission = null
+);
 
 /// <summary>
 ///     How frames are lit, shown and finished, with the files it names hashed: the viewing table, and the picture the
@@ -28,8 +41,8 @@ public sealed record ViewportMapSet(
 /// <param name="Picture">The picture, or null.</param>
 /// <param name="Isolation">The parts and materials drawn alone, or null for the whole model.</param>
 /// <param name="TexelDensity">
-///     The texel density the texel density view measures against, in texels per unit of the model, from the project of
-///     the stack worn; zero for none.
+///     The texel density the texel density view measures against, in texels per metre, from the project of the stack
+///     worn; zero for none.
 /// </param>
 /// <param name="Resolution">The side of a map for a material whose own size cannot be read, in texels.</param>
 /// <param name="Highlight">What is marked on the model, or null for nothing.</param>
@@ -44,6 +57,12 @@ public sealed record ViewportDisplaySet(
     ViewportHighlight? Highlight = null,
     StackSymmetry? Symmetry = null
 ) {
+    /// <summary>
+    ///     How long the worn mesh's unit is, in metres, as its project says, or zero for what the file says, else a
+    ///     metre (#307).
+    /// </summary>
+    public double MetresPerUnit { get; init; }
+
     /// <summary>
     ///     The panorama that lights the model in place of the file <see cref="ViewportDisplay.Environment" /> names,
     ///     when that is a graph: its picture as the Server had it drawn into the preview cache (#180). Null to read

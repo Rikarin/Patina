@@ -71,6 +71,7 @@ that this table does not give.
 | `layers` | texturing, layered material | **Layers** | the layers of the open texture set |
 | `paint` | texturing, layered material | **Properties** | the document, the brush and the chosen layer |
 | `checks` | texturing, layered material | **Checks** | what a check before export found |
+| `paths` | texturing | **Paths** | the fills laid along a path on the mesh |
 | `viewport` | texturing | **Viewport** | the model, painted |
 | `viewport` | layered material, graph | **Preview** | the material on a stand-in shape |
 | `atlas` | texturing, layered material | **2D View** | the map being painted, flat |

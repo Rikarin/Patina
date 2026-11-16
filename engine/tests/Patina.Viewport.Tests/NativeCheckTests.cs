@@ -28,4 +28,19 @@ public sealed class NativeCheckTests {
     [InlineData(null, false, true)]
     public void A_package_that_carries_vulkan_needs_its_own_copy(string? library, bool carries, bool passes) =>
         Assert.Equal(passes, NativeCheck.HasItsVulkan(library, "/app/", carries));
+
+    /// <summary>
+    ///     A pool drains on macOS, where MoltenVK's Metal objects need one (#310), and is nothing elsewhere. Entered
+    ///     and left, nested, on this thread, it neither throws nor leaves anything behind.
+    /// </summary>
+    [Fact]
+    public void An_autorelease_pool_is_entered_and_left_on_macOS_alone() {
+        using (var outer = AutoreleasePool.Enter()) {
+            using var inner = AutoreleasePool.Enter();
+            Assert.Equal(OperatingSystem.IsMacOS(), outer.Drains);
+            Assert.Equal(OperatingSystem.IsMacOS(), inner.Drains);
+        }
+
+        Assert.False(default(AutoreleasePool).Drains);
+    }
 }

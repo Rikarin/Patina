@@ -90,6 +90,11 @@ describe('OpenPBR channels (#142)', () => {
       expect(isScalarChannel(usage, [])).toBe(usage === 'specularWeight' || usage === 'anisotropy');
     }
 
+    for (const usage of ['anisotropyRotation', 'subsurface', 'subsurfaceColor', 'subsurfaceRadius', 'thinFilm']) {
+      expect(isUnshadedChannel(usage)).toBe(true);
+      expect(isScalarChannel(usage, [])).toBe(usage !== 'subsurfaceColor');
+    }
+
     expect(isUnshadedChannel('user3')).toBe(true);
     expect(isUnshadedChannel('roughness')).toBe(false);
   });

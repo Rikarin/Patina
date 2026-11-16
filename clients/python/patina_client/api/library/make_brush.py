@@ -91,7 +91,8 @@ def sync_detailed(
     body: MaterialUseRequest,
 
 ) -> Response[MaterialBrush | ProblemDetails]:
-    """ Renders a graph to a picture in its project, which a brush can stamp.
+    """ Renders a graph to a picture in its project, which a brush can stamp, or brings a picture Patina
+    ships as an alpha into the project's brushes (#34).
 
     Args:
         body (MaterialUseRequest): The body of `POST /api/v1/library/materials/use`.
@@ -122,7 +123,8 @@ def sync(
     body: MaterialUseRequest,
 
 ) -> MaterialBrush | ProblemDetails | None:
-    """ Renders a graph to a picture in its project, which a brush can stamp.
+    """ Renders a graph to a picture in its project, which a brush can stamp, or brings a picture Patina
+    ships as an alpha into the project's brushes (#34).
 
     Args:
         body (MaterialUseRequest): The body of `POST /api/v1/library/materials/use`.
@@ -148,7 +150,8 @@ async def asyncio_detailed(
     body: MaterialUseRequest,
 
 ) -> Response[MaterialBrush | ProblemDetails]:
-    """ Renders a graph to a picture in its project, which a brush can stamp.
+    """ Renders a graph to a picture in its project, which a brush can stamp, or brings a picture Patina
+    ships as an alpha into the project's brushes (#34).
 
     Args:
         body (MaterialUseRequest): The body of `POST /api/v1/library/materials/use`.
@@ -179,7 +182,8 @@ async def asyncio(
     body: MaterialUseRequest,
 
 ) -> MaterialBrush | ProblemDetails | None:
-    """ Renders a graph to a picture in its project, which a brush can stamp.
+    """ Renders a graph to a picture in its project, which a brush can stamp, or brings a picture Patina
+    ships as an alpha into the project's brushes (#34).
 
     Args:
         body (MaterialUseRequest): The body of `POST /api/v1/library/materials/use`.

@@ -9,19 +9,24 @@ import {
   untracked,
   viewChild
 } from '@angular/core';
+import { provideIcons } from '@ng-icons/core';
+import { matMoreHoriz } from '@ng-icons/material-icons/baseline';
 import type { GraphHistogram, GraphSample } from '@patina/api-client';
 import { ChannelView, type Histogram, HistogramChart, type PictureChannel } from '@patina/studio-ui';
 import { XuiButtonImports } from '@xui/button';
+import { XuiMenuImports } from '@xui/menu';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
 import { BakeStore } from '../bake/bake-store';
 import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
+import { IconImports } from '../core/icons';
 import { termName } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { amount, length, percent } from '../core/numbers';
 import { ProjectStore } from '../library/project-store';
+import { fitBar } from './bar-fit';
 import { GraphStore } from './graph-store';
 
 const MinZoom = 0.25;
@@ -125,12 +130,15 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
   imports: [
     ChannelView,
     HistogramChart,
+    IconImports,
     XuiButtonImports,
+    XuiMenuImports,
     XuiNonIdealStateImports,
     XuiSegmentedControlImports,
     XuiSelectImports
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  viewProviders: [provideIcons({ matMoreHoriz })],
   host: { class: 'flex h-full min-h-0 flex-col' },
   styles: `
     .checker {
@@ -249,7 +257,8 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
         </div>
       }
       <div class="pane-bar gap-2 px-2" role="group" aria-label="Picture">
-        <span class="readout shrink-0" data-testid="texture-size">{{ sizeText() }}</span>
+        <!-- It gives way to the zoom rather than running past the pane's end, and says all of itself on hover. -->
+        <span class="readout min-w-0 truncate" data-testid="texture-size" [title]="sizeText()">{{ sizeText() }}</span>
         @if (stored(); as exact) {
           <span
             class="readout text-foreground-muted min-w-0 truncate"
@@ -271,13 +280,16 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
       <!--
         The bar keeps to one line, as every pane's does (#200, #184). As it narrows, Copy Image and Save Image… say
         Copy and Save…, then the channel's switch becomes a list, which keeps its labels whole in a fraction of the room;
-        the buttons keep their size and their titles say what they do.
+        the buttons keep their size and their titles say what they do, and at the last Copy and Save go into a menu.
+        Which of those it takes is measured (bar-fit.ts).
       -->
       <div
-        class="pane-bar @container flex-nowrap gap-1 overflow-hidden px-2"
+        #bar
+        class="pane-bar flex-nowrap gap-1 overflow-hidden px-2"
         role="toolbar"
         aria-label="2D View"
         data-testid="texture-bar"
+        [attr.data-fit]="fit()"
       >
         <button
           type="button"
@@ -322,65 +334,93 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
         >
           Physical
         </button>
-        <button
-          type="button"
-          xuiButton
-          size="sm"
-          variant="ghost"
-          class="shrink-0"
-          data-testid="texture-copy"
-          [disabled]="!picture"
-          [title]="copyTitle()"
-          (click)="copyImage()"
-        >
-          @if (copied() === 'copied') {
-            Copied
-          } @else if (copied() === 'refused') {
-            Not Copied
-          } @else {
-            <span class="@max-[30rem]:hidden">Copy Image</span>
-            <span class="hidden @max-[30rem]:inline">Copy</span>
-          }
-        </button>
-        @if (canSave) {
+        @if (fit() !== 'menu') {
           <button
             type="button"
             xuiButton
             size="sm"
             variant="ghost"
             class="shrink-0"
-            data-testid="texture-save"
-            [disabled]="!full()"
-            [title]="saveTitle()"
-            (click)="saveImage()"
+            data-testid="texture-copy"
+            [disabled]="!picture"
+            [title]="copyTitle()"
+            (click)="copyImage()"
           >
-            <span class="@max-[30rem]:hidden">Save Image…</span>
-            <span class="hidden @max-[30rem]:inline">Save…</span>
+            @if (copied() === 'copied') {
+              Copied
+            } @else if (copied() === 'refused') {
+              Not Copied
+            } @else {
+              {{ fit() === 'full' ? 'Copy Image' : 'Copy' }}
+            }
+          </button>
+          @if (canSave) {
+            <button
+              type="button"
+              xuiButton
+              size="sm"
+              variant="ghost"
+              class="shrink-0"
+              data-testid="texture-save"
+              [disabled]="!full()"
+              [title]="saveTitle()"
+              (click)="saveImage()"
+            >
+              {{ fit() === 'full' ? 'Save Image…' : 'Save…' }}
+            </button>
+          }
+        } @else {
+          <button
+            type="button"
+            xuiButton
+            size="sm"
+            variant="ghost"
+            class="shrink-0"
+            aria-label="More"
+            title="Copy Image and Save Image…"
+            data-testid="texture-more"
+            [disabled]="!picture"
+            [xuiMenuTriggerFor]="moreMenu"
+          >
+            <ng-icon xui size="sm" name="matMoreHoriz" />
           </button>
         }
         <span class="min-w-0 flex-1"></span>
-        <xui-segmented-control
-          class="hidden shrink-0 @min-[24rem]:flex"
-          size="sm"
-          aria-label="Channel"
-          data-testid="texture-channels"
-          [options]="channelOptions"
-          [value]="channel()"
-          (valueChange)="channel.set($event ?? 'rgba')"
-        />
-        <xui-select
-          class="w-20 min-w-14 @min-[24rem]:hidden [&_button]:text-xs"
-          style="--control-height-md: 1.5rem; --control-padding-md: 0.375rem"
-          aria-label="Channel"
-          data-testid="texture-channel-narrow"
-          [filterable]="false"
-          [itemText]="channelName"
-          [items]="channelValues"
-          [matchTargetWidth]="false"
-          [value]="channel()"
-          (valueChange)="channel.set($event ?? 'rgba')"
-        />
+        @if (fit() === 'full' || fit() === 'short') {
+          <xui-segmented-control
+            class="shrink-0"
+            size="sm"
+            aria-label="Channel"
+            data-testid="texture-channels"
+            [options]="channelOptions"
+            [value]="channel()"
+            (valueChange)="channel.set($event ?? 'rgba')"
+          />
+        } @else {
+          <xui-select
+            class="w-20 min-w-14 [&_button]:text-xs"
+            style="--control-height-md: 1.5rem; --control-padding-md: 0.375rem"
+            aria-label="Channel"
+            data-testid="texture-channel-narrow"
+            [filterable]="false"
+            [itemText]="channelName"
+            [items]="channelValues"
+            [matchTargetWidth]="false"
+            [value]="channel()"
+            (valueChange)="channel.set($event ?? 'rgba')"
+          />
+        }
       </div>
+      <ng-template #moreMenu>
+        <xui-menu aria-label="More" data-testid="texture-more-menu">
+          <button type="button" xuiMenuItem data-testid="texture-copy" (triggered)="copyImage()">Copy Image</button>
+          @if (canSave) {
+            <button type="button" xuiMenuItem data-testid="texture-save" [disabled]="!full()" (triggered)="saveImage()">
+              Save Image…
+            </button>
+          }
+        </xui-menu>
+      </ng-template>
     }
   `
 })
@@ -400,6 +440,9 @@ export class TextureView {
     'The texel under the pointer, and its red, green, blue and alpha as decoded at 8 bits';
   private readonly well = viewChild<ElementRef<HTMLElement>>('well');
   private readonly sheet = viewChild<ElementRef<HTMLElement>>('sheet');
+  private readonly bar = viewChild<ElementRef<HTMLElement>>('bar');
+  /** How the 2D View's bar fits its pane, measured as it and what it says change size. */
+  protected readonly fit = fitBar(this.bar, () => this.copied());
   private grabbed: { x: number; y: number } | null = null;
   private readonly offset = signal({ x: 0, y: 0 });
   private readonly reductionPixels = signal<ImageData | null>(null);

@@ -67,6 +67,13 @@ sealed class UsdMaterialFile(string name, ICollection<string> warnings) {
                 "USD: specular weight, color and anisotropy are left out, because UsdPreviewSurface has none of them."
             );
         }
+
+        if (layers.Beneath) {
+            warnings.Add(
+                "USD: the anisotropy's rotation, subsurface scattering and the thin film are left out, because "
+                + "UsdPreviewSurface has none of them."
+            );
+        }
     }
 
     string Text(bool displaced) {

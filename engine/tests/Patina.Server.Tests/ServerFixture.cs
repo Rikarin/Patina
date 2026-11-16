@@ -26,6 +26,20 @@ public sealed class ServerFixture : WebApplicationFactory<Program> {
         return client;
     }
 
+    /// <summary>
+    ///     Waits for the scan a write asked for: the shelf finds other projects through the index, which lags a write
+    ///     until the rescan the Server runs behind the API ends, and on a slow runner (macOS CI) that is after the next
+    ///     request.
+    /// </summary>
+    public static async Task IndexedAsync(HttpClient client, CancellationToken token) {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
+        deadline.CancelAfter(TimeSpan.FromSeconds(30));
+        while ((await client.GetFromJsonAsync<Patina.Contracts.LibraryInfo>("/api/v1/library", deadline.Token))!
+               .Indexing) {
+            await Task.Delay(20, deadline.Token);
+        }
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
         builder.UseSetting("library", Library);
         builder.UseSetting("Patina:Token", AccessToken);

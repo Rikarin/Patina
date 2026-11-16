@@ -193,6 +193,14 @@ public sealed record ProjectContents(
     /// </summary>
     public string NormalFormat { get; init; } = NormalFormats.Up;
 
+    /// <summary>
+    ///     How long a unit of the project's mesh is, in metres, when the project says (#146), or null for what the mesh
+    ///     file says: glTF is in metres and an FBX states its unit, while OBJ, PLY and STL say nothing and are taken
+    ///     as metres. The texel density check and view measure in metres through it (#307); the mesh itself is never
+    ///     scaled.
+    /// </summary>
+    public double? MetresPerUnit { get; init; }
+
     /// <summary>How its bakes run, which texture sets they make maps for, and what they read beyond its mesh.</summary>
     public ProjectBakeSettings Bake { get; init; } = new();
 
@@ -269,6 +277,12 @@ public sealed record ProjectSettingsRequest(
     ///     (#144). Maps already brought in stay as they were brought in.
     /// </summary>
     public string? NormalFormat { get; init; }
+
+    /// <summary>
+    ///     How long a unit of the project's mesh is, in metres, for a file that says nothing or says it wrongly
+    ///     (#146): 0.01 for centimetres, from a micrometre to a kilometre. Zero goes back to what the file says.
+    /// </summary>
+    public double? MetresPerUnit { get; init; }
 }
 
 /// <summary>Which way the green of a tangent-space normal map runs, as a project or an export preset says it.</summary>

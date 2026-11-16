@@ -22,6 +22,7 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { Activity } from '../core/activity';
+import type { PickKind } from '../core/file-picker';
 import { IconImports } from '../core/icons';
 import { messageOf } from '../core/messages';
 import { FileChooser } from '../library/file-chooser';
@@ -37,6 +38,7 @@ import {
   keptLanes,
   lanesOfColorText,
   lanesOfHex,
+  pairTextOf,
   sliderRange
 } from './graph-fields';
 import { edgeKey } from './graph-model';
@@ -55,12 +57,73 @@ interface Exposure {
   value: string;
 }
 
+/** An X port's Y partner, and the name the two share. */
+interface Pair {
+  stem: string;
+  y: NumberField;
+}
+
+/** What a port named `<stem> X` is called without its axis, or null for any other name. */
+export function pairStemOf(port: string): string | null {
+  return /^(.+) X$/u.exec(port)?.[1] ?? null;
+}
+
+/** The Float2 widget a pair's name suggests: counts tile, places are positions, and the rest stay plain numbers. */
+export function pairWidgetOf(stem: string): string | null {
+  if (/repeat|tiling|tiles|grid|count/iu.test(stem)) {
+    return 'Tiling';
+  }
+
+  return /offset|position|centre|center|start|end|left|right|origin/iu.test(stem) ? 'Position' : null;
+}
+
 const SliderSteps = 1000;
 /** How a setting names a parameter of its graph instead of holding a value: Vixen's name-knob reference. */
 const ReferencePrefix = '$';
-/** The node that reads a picture file, and the setting that names it, as the Server's relink names them. */
-const BitmapNode = 'Source/Bitmap';
-const BitmapSource = 'Source';
+/** What a chosen file is to a node that reads one, as the Server's relink names them: its setting, and what it is. */
+interface FileSetting {
+  setting: string;
+  kind: PickKind;
+  /** The dialog's title. */
+  title: string;
+  /** The button's tip. */
+  tip: string;
+  testId: string;
+}
+
+/** The nodes that read a file, each by the setting that names it: a picture, a font (#139) and an SVG (#139). */
+const FileSettings: ReadonlyMap<string, FileSetting> = new Map<string, FileSetting>([
+  [
+    'Source/Bitmap',
+    {
+      setting: 'Source',
+      kind: 'picture',
+      title: 'Choose a Picture for the Bitmap',
+      tip: 'Choose the picture this Bitmap reads',
+      testId: 'graph-bitmap-choose'
+    }
+  ],
+  [
+    'Source/Text',
+    {
+      setting: 'Font',
+      kind: 'font',
+      title: 'Choose a Font for the Text',
+      tip: 'Choose the font this Text draws with',
+      testId: 'graph-font-choose'
+    }
+  ],
+  [
+    'Source/Vector',
+    {
+      setting: 'File',
+      kind: 'vector',
+      title: 'Choose an SVG Drawing for the Vector',
+      tip: 'Choose the SVG drawing this Vector draws',
+      testId: 'graph-vector-choose'
+    }
+  ]
+]);
 
 export { keptLanes } from './graph-fields';
 
@@ -281,6 +344,21 @@ export { keptLanes } from './graph-fields';
                           >
                             <ng-icon xui size="sm" name="matPublish" />
                           </button>
+                          @if (pairOf(field); as pair) {
+                            <button
+                              type="button"
+                              xuiButton
+                              size="sm"
+                              variant="ghost"
+                              [title]="'Make ' + field.name + ' and ' + pair.y.name + ' one Float2 parameter'"
+                              [attr.aria-label]="'Expose ' + pair.stem + ' as one parameter'"
+                              [attr.data-testid]="'expose-pair-' + pair.stem"
+                              [disabled]="!store.editable()"
+                              (click)="exposePair(field, pair)"
+                            >
+                              XY
+                            </button>
+                          }
                         }
                       }
                     </div>
@@ -426,6 +504,22 @@ export { keptLanes } from './graph-fields';
                         (change)="setText(field, $event)"
                       />
                     }
+                    @if (canExposeTable(field)) {
+                      <button
+                        class="self-start"
+                        type="button"
+                        xuiButton
+                        size="sm"
+                        variant="ghost"
+                        title="Make this a parameter of the graph"
+                        [attr.aria-label]="'Expose ' + field.name"
+                        [attr.data-testid]="'expose-' + field.name"
+                        [disabled]="!store.editable()"
+                        (click)="exposeTable(field)"
+                      >
+                        <ng-icon xui size="sm" name="matPublish" />
+                      </button>
+                    }
                   }
                   @case ('ramp') {
                     @if (stopsOf(field); as stops) {
@@ -445,9 +539,25 @@ export { keptLanes } from './graph-fields';
                         (change)="setText(field, $event)"
                       />
                     }
+                    @if (canExposeTable(field)) {
+                      <button
+                        class="self-start"
+                        type="button"
+                        xuiButton
+                        size="sm"
+                        variant="ghost"
+                        title="Make this a parameter of the graph"
+                        [attr.aria-label]="'Expose ' + field.name"
+                        [attr.data-testid]="'expose-' + field.name"
+                        [disabled]="!store.editable()"
+                        (click)="exposeTable(field)"
+                      >
+                        <ng-icon xui size="sm" name="matPublish" />
+                      </button>
+                    }
                   }
                   @case ('text') {
-                    @if (picksPicture(field)) {
+                    @if (fileOf(field); as file) {
                       <div class="flex min-w-0 items-center gap-1">
                         <input
                           class="min-w-0 flex-1"
@@ -462,10 +572,10 @@ export { keptLanes } from './graph-fields';
                           type="button"
                           xuiButton
                           size="sm"
-                          data-testid="graph-bitmap-choose"
+                          [attr.data-testid]="file.testId"
                           [disabled]="!store.editable() || choosing()"
-                          [title]="'Choose the picture this Bitmap reads'"
-                          (click)="choosePicture(field)"
+                          [title]="file.tip"
+                          (click)="chooseFile(field, file)"
                         >
                           Choose…
                         </button>
@@ -562,6 +672,23 @@ export class GraphInspector {
     return field.control === 'choice' && !this.textOf(field).startsWith(ReferencePrefix);
   }
 
+  /**
+   * A curve or a ramp written inline, or left empty, that does not already follow a parameter can become a Curve or a
+   * Ramp parameter (#181); one naming an asset a host resolves cannot, since a parameter holds the table itself.
+   */
+  protected canExposeTable(field: GraphField): boolean {
+    if (field.control === 'curve') {
+      return !this.textOf(field).startsWith(ReferencePrefix) && this.curvesOf(field) !== null;
+    }
+
+    return field.control === 'ramp' && !this.textOf(field).startsWith(ReferencePrefix) && this.stopsOf(field) !== null;
+  }
+
+  /** Makes a Curve or Ramp parameter holding the field's table, and points the setting at it. */
+  protected exposeTable(field: GraphField): void {
+    this.exposeOne(field);
+  }
+
   /** Makes a parameter offering the setting's choices, and points the setting at it with Vixen's `$` reference. */
   protected exposeSetting(field: GraphField): void {
     if (field.control !== 'choice') {
@@ -591,7 +718,8 @@ export class GraphInspector {
           !this.wireInto(field) &&
           ((field.control === 'number' && this.canExpose(field)) ||
             (field.control === 'colour' && field.source === 'value' && this.expressionOf(field.name) === '') ||
-            this.canExposeSetting(field))
+            this.canExposeSetting(field) ||
+            this.canExposeTable(field))
       )
   );
 
@@ -614,6 +742,12 @@ export class GraphInspector {
     const node = { name, summary: field.summary, group: '', minimum: null, maximum: null };
     if (field.control === 'choice') {
       const parameter = { ...node, default: this.textOf(field), kind: 'Text', accepted: [...field.choices] };
+      return { parameter, port: field.name, value: `${ReferencePrefix}${name}` };
+    }
+
+    if (field.control === 'curve' || field.control === 'ramp') {
+      const kind = field.control === 'curve' ? 'Curve' : 'Ramp';
+      const parameter = { ...node, default: this.textOf(field).trim(), kind, accepted: [] };
       return { parameter, port: field.name, value: `${ReferencePrefix}${name}` };
     }
 
@@ -772,6 +906,55 @@ export class GraphInspector {
     this.exposeOne(field);
   }
 
+  /**
+   * The `<stem> Y` a port named `<stem> X` pairs with, when both are fractional numbers nothing drives or wires yet, so
+   * the two can become one Float2 parameter (#311). Null for any other field.
+   */
+  protected pairOf(field: NumberField): Pair | null {
+    const stem = pairStemOf(field.name);
+    if (stem === null || field.source !== 'value' || field.whole || !this.canExpose(field)) {
+      return null;
+    }
+
+    const y = this.groups()
+      .flatMap(group => group.fields)
+      .find(other => other.control === 'number' && other.name === `${stem} Y`);
+    return y?.control === 'number' &&
+      y.source === 'value' &&
+      !y.whole &&
+      this.canExpose(y) &&
+      !this.wireInto(y) &&
+      this.shown(y)
+      ? { stem, y }
+      : null;
+  }
+
+  /**
+   * Makes one Float2 parameter of an X and Y pair, starting where they are and drawn as a position or a tiling by what
+   * the pair is called, and drives each port from its half (`Offset.x`), as one undo step.
+   */
+  protected exposePair(x: NumberField, pair: Pair): void {
+    const name = this.freeName(pair.stem);
+    const at = [this.numberOf(x), this.numberOf(pair.y)] as const;
+    const { minimum: lowX, maximum: highX } = x;
+    const { minimum: lowY, maximum: highY } = pair.y;
+    const parameter: GraphSettingDefinition = {
+      name,
+      summary: x.summary,
+      group: '',
+      default: pairTextOf(at[0], at[1]),
+      kind: 'Float2',
+      minimum: Math.min(...at, ...(lowX === null || lowY === null ? [0] : [lowX, lowY])),
+      maximum: Math.max(...at, ...(highX === null || highY === null ? [1] : [highX, highY])),
+      accepted: [],
+      widget: pairWidgetOf(pair.stem)
+    };
+    this.store.exposePair(this.node().id, parameter, [
+      { port: expressionKey(x.name), value: `${name}.x` },
+      { port: expressionKey(pair.y.name), value: `${name}.y` }
+    ]);
+  }
+
   protected expressionOf(port: string): string {
     return this.store.textOf(this.node().id, expressionKey(port), '');
   }
@@ -828,20 +1011,22 @@ export class GraphInspector {
     this.store.endGesture();
   }
 
-  /** A Bitmap's Source, which is picked from the library's pictures as well as typed (#292). */
-  protected picksPicture(field: GraphField): boolean {
-    return this.node().type === BitmapNode && field.name === BitmapSource;
+  /**
+   * The file a setting names, when it names one: a Bitmap's Source (#292), a Text's Font or a Vector's File (#139),
+   * which are picked from the library's files as well as typed.
+   */
+  protected fileOf(field: GraphField): FileSetting | null {
+    const file = FileSettings.get(this.node().type);
+    return file?.setting === field.name ? file : null;
   }
 
   /**
-   * Asks for a picture and points this Bitmap at it, as one undo step. The Server names the file as the graph finds it,
-   * so the field reads as a typed name would.
+   * Asks for a file and points this node at it, as one undo step. The Server names the file as the graph finds it, so
+   * the field reads as a typed name would.
    */
-  protected async choosePicture(field: Extract<GraphField, { source: 'text' }>): Promise<void> {
+  protected async chooseFile(field: Extract<GraphField, { source: 'text' }>, setting: FileSetting): Promise<void> {
     const project = this.injector.get(ProjectStore).current()?.path ?? null;
-    const file = await this.injector
-      .get(FileChooser)
-      .path({ kind: 'picture', title: 'Choose a Picture for the Bitmap', project });
+    const file = await this.injector.get(FileChooser).path({ kind: setting.kind, title: setting.title, project });
     if (file === null) {
       return;
     }

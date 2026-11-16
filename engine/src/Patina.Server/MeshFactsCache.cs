@@ -59,7 +59,7 @@ public sealed class MeshFactsCache(Func<string, CancellationToken, Task<MeshFact
     }
 
     static async Task<MeshFacts?> AskAsync(WorkerLink worker, string file, CancellationToken cancellationToken) {
-        var connection = await worker.ConnectionAsync(cancellationToken);
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerWait.Patience, cancellationToken);
         var reply = await connection.SendAsync(new() { Type = IpcTypes.MeshFacts, MeshFile = file }, cancellationToken);
         return reply.Facts;
     }

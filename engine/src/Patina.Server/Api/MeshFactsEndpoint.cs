@@ -43,6 +43,9 @@ static class MeshFactsEndpoint {
                 );
         } catch (IpcException e) {
             return Refusals.OfEngine(e, StatusCodes.Status422UnprocessableEntity);
+        } catch (Exception e) when (e is IOException or TimeoutException) {
+            // The Worker went while it read the mesh, or none came (#309).
+            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
         }
     }
 }

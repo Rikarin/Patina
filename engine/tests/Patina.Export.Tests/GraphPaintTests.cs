@@ -169,6 +169,64 @@ public sealed class GraphPaintTests : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     A stroke on a canvas a graph reads as it is painted carries the tiles it touched onto what was uploaded, and
+    ///     no more: reading the channel again uploaded all of it on every stroke (#311). A painting that ends is read
+    ///     from its file again, so it is not carried.
+    /// </summary>
+    [Fact]
+    public void A_stroke_on_a_canvas_being_painted_carries_the_tiles_it_touched() {
+        const int side = 2 * PaintImage.TileSize;
+        var file = Path.Combine(folder, "paint", "Mask.vxpaint");
+        PaintCanvas? painting = new(side, side);
+        painting.Channel(PaintReference.Mask).Fill(new Vector4(0.2f, 0.2f, 0.2f, 1f));
+
+        NodeTypeRegistry registry = new();
+        NodeTypes.Register(registry);
+        NodeGraphModel graph = new();
+        Output(graph, Bitmap(graph, PaintReference.Reference("paint/Mask.vxpaint", PaintReference.Mask)), "baseColor");
+        TextureGraphCompiler compiler = new(registry) { BaseWidth = side, BaseHeight = side };
+        var plan = compiler.Compile(graph).Value;
+
+        if (!VulkanDevice.TryCreate(new(), out var device, out var refusal)) {
+            Assert.Skip($"No Vulkan device: {refusal}");
+            return;
+        }
+
+        using (device) {
+            GraphPictures pictures = new() { Painting = path => path == Path.GetFullPath(file) ? painting : null };
+            using TextureUploads uploads = new(device);
+            var filled = pictures.Fill(
+                uploads,
+                plan,
+                TextureGraphExternals.Upload(uploads, plan, compiler.Externals),
+                [folder],
+                null
+            );
+            Assert.Single(filled.Live);
+            GraphPaintTiles tiles = new();
+            tiles.Watch(pictures, filled);
+
+            painting.Channel(PaintReference.Mask).Write(side - 1, side - 1, new Vector4(0.9f, 0.9f, 0.9f, 1f));
+            Assert.True(pictures.Stale(Assert.Single(filled.Stamps)));
+            var carried = tiles.Carry(pictures, filled.Stamps, uploads);
+
+            Assert.NotNull(carried);
+            Assert.False(pictures.Stale(Assert.Single(carried)));
+            Assert.Equal(1, tiles.TilesUploaded);
+            using (TexturePlanEvaluator evaluator = new(device)) {
+                using var bake = evaluator.Evaluate(plan, uploads.Externals);
+                var pixels = bake.Read(compiler.Outputs.Single().Image).Pixels;
+                Assert.InRange(pixels[0], 49, 53);
+                Assert.InRange(pixels[(side * side - 1) * 4], 226, 234);
+            }
+
+            painting.Channel(PaintReference.Mask).Write(0, 0, Vector4.One);
+            painting = null;
+            Assert.Null(tiles.Carry(pictures, carried, uploads));
+        }
+    }
+
     static NodeId Bitmap(NodeGraphModel graph, string reference) {
         var node = graph.Add("Source/Bitmap");
         node.SetText("Source", reference);

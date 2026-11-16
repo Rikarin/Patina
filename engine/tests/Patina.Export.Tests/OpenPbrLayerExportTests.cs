@@ -211,6 +211,14 @@ public sealed class OpenPbrLayerExportTests : IDisposable {
             Image(extensions.GetProperty("KHR_materials_transmission").GetProperty("transmissionTexture"))
         );
         Assert.DoesNotContain(said, static warning => warning.StartsWith("glTF:", StringComparison.Ordinal));
+        // Every extension the file names is listed in extensionsUsed, or another reader drops it without a word (#46).
+        HashSet<string> listed = [
+            ..root.GetProperty("extensionsUsed").EnumerateArray().Select(static name => name.GetString()!)
+        ];
+        Assert.Superset(
+            new HashSet<string> { "KHR_materials_clearcoat", "KHR_materials_sheen", "KHR_materials_transmission" },
+            listed
+        );
 
         // The sheen's colour (0.9, 0.8, 0.7) times its weight of 0.7, stored as sRGB, with its roughness in alpha.
         var tint = PngCodec.Decode(File.ReadAllBytes(Path("gltf/Car_sheen.png")));
@@ -220,6 +228,31 @@ public sealed class OpenPbrLayerExportTests : IDisposable {
         }
 
         Assert.Equal(0.4f, tint.Pixels[3] / 255f, 2);
+    }
+
+    /// <summary>
+    ///     A coat's roughness or a sheen's without its weight is no coat and no sheen (#310): glTF's preset writes no
+    ///     clear coat or sheen file for it, where it wrote a coat file of nothing and a sheen file whose colour was a
+    ///     default, and the material names neither extension.
+    /// </summary>
+    [Fact]
+    public void A_layers_roughness_without_its_weight_writes_no_file_of_the_layer() {
+        var preset = ExportPresetCatalog.Read(null).Find("gltf")!;
+        var maps = new Dictionary<string, MapPicture> {
+            ["baseColor"] = Flat("baseColor", 3, 0.5f, 0.4f, 0.3f),
+            ["coatRoughness"] = Flat("coatRoughness", 1, 0.2f),
+            ["coatNormal"] = Flat("coatNormal", 3, 0.5f, 0.5f, 1f),
+            ["sheenRoughness"] = Flat("sheenRoughness", 1, 0.4f)
+        };
+
+        var said = Delivered(preset, maps, "bare");
+
+        string[] written = [..Directory.GetFiles(Path("bare")).Select(System.IO.Path.GetFileName).OfType<string>()];
+        Assert.Contains("Car_baseColor.png", written);
+        Assert.DoesNotContain(written, static file => file.Contains("clearcoat", StringComparison.Ordinal));
+        Assert.DoesNotContain(written, static file => file.Contains("sheen", StringComparison.Ordinal));
+        Assert.DoesNotContain(said, static warning => warning.Contains("sheenTint", StringComparison.Ordinal));
+        Assert.DoesNotContain("KHR_materials_", File.ReadAllText(Path("bare/Car.gltf")), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -346,5 +379,128 @@ public sealed class OpenPbrLayerExportTests : IDisposable {
         Assert.Equal(0.3f, velvet["sheenRoughness"].Value[0]);
         Assert.DoesNotContain(read["Plain"].Slots, static s => s.Usage.StartsWith("sheen", StringComparison.Ordinal));
         Assert.Empty(read["Tinted"].Slots);
+    }
+
+    /// <summary>
+    ///     The shipped glTF preset writes the specular lobe in the lanes <c>KHR_materials_specular</c> reads, its
+    ///     colour with its weight in alpha, and anisotropy as <c>KHR_materials_anisotropy</c> reads it: a quarter turn
+    ///     points the direction along the bitangent, (0, 1) stored as (0.5, 1), with the strength in blue.
+    /// </summary>
+    [Fact]
+    public void The_gltf_preset_carries_the_specular_lobe_and_anisotropy_through_gltfs_extensions() {
+        var preset = ExportPresetCatalog.Read(null).Find("gltf")!;
+        Dictionary<string, MapPicture> maps = new() {
+            ["baseColor"] = Flat("baseColor", 3, 0.5f, 0.4f, 0.3f),
+            ["specularWeight"] = Flat("specularWeight", 1, 0.8f),
+            ["specularColor"] = Flat("specularColor", 3, 1f, 0.5f, 0.25f),
+            ["anisotropy"] = Flat("anisotropy", 1, 0.6f),
+            ["anisotropyRotation"] = Flat("anisotropyRotation", 1, 0.25f)
+        };
+
+        var said = Delivered(preset, maps, "lobe");
+
+        using var document = JsonDocument.Parse(File.ReadAllText(Path("lobe/Car.gltf")));
+        var root = document.RootElement;
+        var images = root.GetProperty("images")
+            .EnumerateArray()
+            .Select(static i => i.GetProperty("uri").GetString()!)
+            .ToList();
+        var extensions = root.GetProperty("materials")[0].GetProperty("extensions");
+        string Image(JsonElement slot) => images[slot.GetProperty("index").GetInt32()];
+
+        var specular = extensions.GetProperty("KHR_materials_specular");
+        Assert.Equal("Car_specular.png", Image(specular.GetProperty("specularTexture")));
+        Assert.Equal("Car_specular.png", Image(specular.GetProperty("specularColorTexture")));
+        var anisotropy = extensions.GetProperty("KHR_materials_anisotropy");
+        Assert.Equal("Car_anisotropy.png", Image(anisotropy.GetProperty("anisotropyTexture")));
+        Assert.Equal(1f, anisotropy.GetProperty("anisotropyStrength").GetSingle());
+        Assert.DoesNotContain(said, static warning => warning.StartsWith("glTF:", StringComparison.Ordinal));
+
+        var lobe = MapPictures.ReadFile(Path("lobe/Car_specular.png"));
+        Assert.Equal(MipChain.ToSrgb(0.5f), lobe.Samples[1], 2);
+        Assert.Equal(0.8f, lobe.Samples[3], 2);
+        var turned = MapPictures.ReadFile(Path("lobe/Car_anisotropy.png"));
+        Assert.Equal([0.5f, 1f, 0.6f], turned.Samples.Take(3).Select(static lane => MathF.Round(lane, 2)));
+    }
+
+    /// <summary>
+    ///     The anisotropy's rotation, subsurface scattering and a thin film reach OpenPBR's inputs and standard
+    ///     surface's, the rotation as a tangent in OpenPBR's and as a fraction of a turn in standard surface's, and
+    ///     read back as the maps they were written from. Standard surface's thin film has no weight, so it is said and
+    ///     left out, and so are all of them in USD and glTF.
+    /// </summary>
+    [Fact]
+    public void Subsurface_a_thin_film_and_the_anisotropys_rotation_reach_materialx_and_read_back() {
+        var preset = ExportPresetReader.Read(
+            """
+            version: 1
+            id: beneath
+            name: Beneath
+            normal: y-up
+            textures:
+              - file: "{project}_Beneath"
+                format: png8
+                space: linear
+                channels: [subsurface.r, subsurfaceRadius.r, thinFilm.r, thinFilmThickness.r]
+              - file: "{project}_Turn"
+                format: png8
+                space: linear
+                channels: [anisotropy.r, anisotropyRotation.r, 0]
+              - file: "{project}_SubsurfaceColor"
+                format: png8
+                space: linear
+                channels: [subsurfaceColor.r, subsurfaceColor.g, subsurfaceColor.b]
+            """,
+            "test"
+        ) with {
+            Materials = ["mtlx", "openpbr", "usda", "gltf"]
+        };
+        Dictionary<string, MapPicture> maps = new() {
+            ["subsurface"] = Flat("subsurface", 1, 0.6f),
+            ["subsurfaceRadius"] = Flat("subsurfaceRadius", 1, 0.3f),
+            ["subsurfaceColor"] = Flat("subsurfaceColor", 3, 0.9f, 0.4f, 0.3f),
+            ["thinFilm"] = Flat("thinFilm", 1, 1f),
+            ["thinFilmThickness"] = Flat("thinFilmThickness", 1, 0.4f),
+            ["anisotropy"] = Flat("anisotropy", 1, 0.5f),
+            ["anisotropyRotation"] = Flat("anisotropyRotation", 1, 0.125f)
+        };
+
+        var said = Delivered(preset, maps, "beneath");
+
+        var openPbr = Inputs(XDocument.Load(Path("beneath/Car.openpbr.mtlx")).Root!, "open_pbr_surface");
+        Assert.All(
+            (string[]) [
+                "subsurface_weight", "subsurface_color", "subsurface_radius", "thin_film_weight", "thin_film_thickness",
+                "geometry_tangent"
+            ],
+            input => Assert.Contains(input, openPbr)
+        );
+        var standard = Inputs(XDocument.Load(Path("beneath/Car.mtlx")).Root!, "standard_surface");
+        Assert.All(
+            (string[])["subsurface", "subsurface_color", "subsurface_scale", "specular_rotation"],
+            input => Assert.Contains(input, standard)
+        );
+        Assert.DoesNotContain("thin_film_thickness", standard);
+
+        var fromOpenPbr = Assert.Single(MaterialXReader.Read(Path("beneath/Car.openpbr.mtlx")))
+            .Slots.ToDictionary(static s => s.Usage);
+        Assert.Equal(
+            (Path("beneath/Car_Beneath.png"), 3),
+            (fromOpenPbr["thinFilmThickness"].Texture, fromOpenPbr["thinFilmThickness"].Lane)
+        );
+        Assert.Equal(1, fromOpenPbr["subsurfaceRadius"].Lane);
+        Assert.Equal(-1, fromOpenPbr["subsurfaceColor"].Lane);
+        var fromStandard = Assert.Single(MaterialXReader.Read(Path("beneath/Car.mtlx")))
+            .Slots.ToDictionary(static s => s.Usage);
+        Assert.Equal(
+            (Path("beneath/Car_Turn.png"), 1),
+            (fromStandard["anisotropyRotation"].Texture, fromStandard["anisotropyRotation"].Lane)
+        );
+        Assert.Equal(0, fromStandard["subsurface"].Lane);
+
+        Assert.Contains(said, static w => w.StartsWith("MaterialX: the thin film", StringComparison.Ordinal));
+        Assert.Contains(said, static w => w.StartsWith("USD: the anisotropy's rotation", StringComparison.Ordinal));
+        Assert.Contains(said, static w => w.StartsWith("glTF: subsurface scattering", StringComparison.Ordinal));
+        Assert.Contains(said, static w => w.StartsWith("glTF: the thin film", StringComparison.Ordinal));
     }
 }

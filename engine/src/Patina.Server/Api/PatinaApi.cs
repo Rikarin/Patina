@@ -245,8 +245,8 @@ static class PatinaApi {
         string[] others = [..OtherSets(host.Library, stack).Select(path => stacks.Open(path).Id)];
         var worn = (IEnumerable<StackSession>)[stack, ..others.Select(stacks.Find).OfType<StackSession>()];
         session.Wear(stack.Id, file, others, others.Except(before), [..worn.Select(static s => (s.Set, s.UvSet))]);
-        var (target, resolution) = StackChecking.Density(host.Library, stack);
-        session.SetDensity(target, resolution);
+        var (target, resolution, unit) = StackChecking.Density(host.Library, stack);
+        session.SetDensity(target, resolution, unit);
         foreach (var closing in session.Release([..others]).Select(stacks.Find).OfType<StackSession>()) {
             stacks.Close(closing);
         }

@@ -18,7 +18,7 @@ import { XuiCalloutImports } from '@xui/callout';
 import { XuiContextMenuImports } from '@xui/context-menu';
 import { XuiInputImports } from '@xui/input';
 import { XuiMenuImports } from '@xui/menu';
-import { XuiMultiSelectImports } from '@xui/multi-select';
+import { XuiMultiSelect } from '@xui/multi-select';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports, type XuiSegmentedOption } from '@xui/segmented-control';
 import { XuiSelectImports } from '@xui/select';
@@ -87,7 +87,7 @@ function targetOf(row: LibraryRow): LibraryTarget {
     XuiContextMenuImports,
     XuiInputImports,
     XuiMenuImports,
-    XuiMultiSelectImports,
+    XuiMultiSelect,
     XuiNonIdealStateImports,
     XuiSegmentedControlImports,
     XuiSelectImports,
@@ -200,14 +200,19 @@ function targetOf(row: LibraryRow): LibraryTarget {
               </svg>
             </button>
           </div>
-          <xui-multi-select
-            data-testid="library-tags"
-            placeholder="Filter by tag"
-            noResultsText="No such tag"
-            [items]="tagNames()"
-            [values]="view().tags()"
-            (valuesChange)="filter($event)"
-          />
+          <!-- The tag filter loads once the app is idle, which keeps it out of the app's first bundle (#311). -->
+          @defer (on idle) {
+            <xui-multi-select
+              data-testid="library-tags"
+              placeholder="Filter by tag"
+              noResultsText="No such tag"
+              [items]="tagNames()"
+              [values]="view().tags()"
+              (valuesChange)="filter($event)"
+            />
+          } @placeholder {
+            <div class="h-8"></div>
+          }
         </div>
 
         @if (showsTree()) {

@@ -125,10 +125,16 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
     async Task<(string? Hash, bool Lasting)> DrawAsync(MaterialThumbnailAsk ask, CancellationToken cancellationToken) {
         var connection = await WorkerWait.ConnectionAsync(worker, WorkerPatience, cancellationToken);
         try {
-            var reply = await connection.SendAsync(
-                new() { Type = IpcTypes.MaterialThumbnail, MaterialThumbnail = ask },
-                cancellationToken
-            );
+            IpcMessage reply;
+            do {
+                // A picture gives way to work queued behind it on the Worker, and is asked for again behind that work
+                // (PictureYield): it is nobody's wait, and on a software GPU one took tens of seconds.
+                reply = await connection.SendAsync(
+                    new() { Type = IpcTypes.MaterialThumbnail, MaterialThumbnail = ask },
+                    cancellationToken
+                );
+            } while (reply.Superseded == true);
+
             return (reply.ThumbnailHash, true);
         } catch (IpcException e) when (!ask.Deep) {
             // A material that cannot draw shows its name alone, as it did before there were pictures. A panorama is
@@ -169,8 +175,8 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             return Ask(library, panorama); // an environment on the shelf is drawn as the picture it is (#203)
         }
 
-        if (source.StartsWith(ShelfAlphas.Prefix, StringComparison.Ordinal)) {
-            return null; // a client draws an alpha as a stamp of its brush
+        if (ShelfAlphas.Names(source)) {
+            return OfAlpha(source);
         }
 
         if (source.StartsWith(MaterialShelf.ShippedPrefix, StringComparison.Ordinal)) {
@@ -253,6 +259,13 @@ public sealed partial class Thumbnails(WorkerLink worker, PreviewStore store) : 
             DocumentKinds.Graph => 4,
             _ => -1
         };
+
+    /// <summary>
+    ///     An alpha on the shelf: none for a shape, which a client draws as a stamp of its brush, and a shipped picture
+    ///     alpha as the picture it is, unpacked beside the previews for the Worker to read (#34).
+    /// </summary>
+    (string Key, MaterialThumbnailAsk Ask)? OfAlpha(string source) =>
+        ShelfAlphas.PictureFile(source, store.Root) is { } file ? OfPicture(source, file) : null;
 
     /// <summary>
     ///     A picture file, as a graph that reads it into its base colour draws it (#203): the Worker decodes it as a

@@ -71,6 +71,7 @@ import { PaintAtlas } from './paint/paint-atlas';
 import { PaintCommands } from './paint/paint-commands';
 import { PaintPane } from './paint/paint-pane';
 import { PaintStore } from './paint/paint-store';
+import { PathsPane } from './paint/paths-pane';
 import { TextureSets } from './paint/texture-sets';
 import { ViewportPane } from './viewport/viewport-pane';
 
@@ -97,6 +98,7 @@ import { ViewportPane } from './viewport/viewport-pane';
     NodeLibrary,
     ProjectSettingsDialog,
     MeshReloadDialog,
+    PathsPane,
     TextureSets,
     LayerStack,
     LibraryPane,
@@ -381,6 +383,11 @@ import { ViewportPane } from './viewport/viewport-pane';
       <ng-template xuiDockContent="checks">
         @defer (on immediate) {
           <ptn-checks />
+        }
+      </ng-template>
+      <ng-template xuiDockContent="paths">
+        @defer (on immediate) {
+          <ptn-paths />
         }
       </ng-template>
     </xui-dock-manager>
@@ -756,6 +763,10 @@ export class App {
     handle('showChecks', {
       enabled: () => holds(this.layout(), 'checks'),
       run: () => this.layout.update(layout => showing(layout, 'checks'))
+    });
+    handle('showPaths', {
+      enabled: () => holds(this.layout(), 'paths'),
+      run: () => this.layout.update(layout => showing(layout, 'paths'))
     });
     handle('showActivity', { checked: () => this.activity.open(), run: () => this.activity.toggle() });
     handle('showLog', { run: () => this.activity.showLog() });

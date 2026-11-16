@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import type { GraphSettingDefinition } from '@patina/api-client';
+import { CurveEditor, GradientRamp, formatCurves, formatRamp, parseCurves, parseRamp } from '@patina/studio-ui';
 import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiInputImports } from '@xui/input';
 import { XuiNumericInputImports } from '@xui/numeric-input';
@@ -25,6 +26,8 @@ export interface KnobChange {
 @Component({
   selector: 'ptn-setting-knobs',
   imports: [
+    CurveEditor,
+    GradientRamp,
     PairField,
     XuiColorPickerImports,
     XuiInputImports,
@@ -94,6 +97,20 @@ export interface KnobChange {
             [widget]="parameter.widget"
             (valueChange)="set(parameter, $event)"
           />
+        } @else if (parameter.kind === 'Curve' && parseCurves(current); as curves) {
+          <ptn-curve-editor
+            class="min-w-0 flex-1"
+            [attr.data-testid]="testId() + parameter.name"
+            [curves]="curves"
+            (curvesChange)="set(parameter, formatCurves($event))"
+          />
+        } @else if (parameter.kind === 'Ramp' && parseRamp(current); as stops) {
+          <ptn-gradient-ramp
+            class="min-w-0 flex-1"
+            [attr.data-testid]="testId() + parameter.name"
+            [stops]="stops"
+            (stopsChange)="set(parameter, formatRamp($event))"
+          />
         } @else if (parameter.kind === 'Bool') {
           <xui-switch
             [aria-label]="nameOf(parameter)"
@@ -129,6 +146,10 @@ export class SettingKnobs {
   readonly knobChange = output<KnobChange>();
 
   protected readonly bounded = knobRange;
+  protected readonly parseCurves = parseCurves;
+  protected readonly formatCurves = formatCurves;
+  protected readonly parseRamp = parseRamp;
+  protected readonly formatRamp = formatRamp;
   protected readonly shown = knobShown;
   private readonly choiceReaders = new Map<string, (value: string) => string>();
 

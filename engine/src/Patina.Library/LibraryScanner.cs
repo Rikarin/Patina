@@ -447,10 +447,14 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
             deleteAsset = Prepare("DELETE FROM asset WHERE rid = @rid", "@rid");
             deleteAssetSearch = Prepare("DELETE FROM asset_search WHERE rowid = @rid", "@rid");
             insertAsset = Prepare(
-                "INSERT INTO asset(id, path, kind, name) VALUES (@id, @path, @kind, @name) RETURNING rid",
+                """
+                INSERT INTO asset(id, path, kind, document, name) VALUES (@id, @path, @kind, @document, @name)
+                RETURNING rid
+                """,
                 "@id",
                 PathParameter,
                 "@kind",
+                "@document",
                 NameParameter
             );
             insertAssetSearch = Prepare(
@@ -593,6 +597,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
             Set(insertAsset, "@id", item.Id.ToString());
             Set(insertAsset, PathParameter, path);
             Set(insertAsset, "@kind", item.Role ?? item.Kind);
+            Set(insertAsset, "@document", item.Kind);
             Set(insertAsset, NameParameter, item.Name);
             var rid = (long)insertAsset.ExecuteScalar()!;
 

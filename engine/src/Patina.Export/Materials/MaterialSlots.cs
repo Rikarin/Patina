@@ -141,9 +141,10 @@ public sealed record MaterialSlots {
 }
 
 /// <summary>
-///     Where OpenPBR's maps beyond the standard ones (#142) are in a set's files: a coat, a sheen, transmission and
-///     the specular lobe's weight, colour and anisotropy. Their defaults leave the base alone, and a set that does not
-///     have one has no slot for it, so a material file says nothing of that input.
+///     Where OpenPBR's maps beyond the standard ones (#142) are in a set's files: a coat, a sheen, transmission, the
+///     specular lobe's weight, colour and anisotropy with its turn, subsurface scattering and a thin film. Their
+///     defaults leave the base alone, and a set that does not have one has no slot for it, so a material file says
+///     nothing of that input.
 /// </summary>
 public sealed record OpenPbrSlots {
     public SlotLane? Coat { get; init; }
@@ -156,6 +157,12 @@ public sealed record OpenPbrSlots {
     public SlotColour? SpecularColor { get; init; }
     public SlotLane? Anisotropy { get; init; }
     public SlotColour? CoatColor { get; init; }
+    public SlotLane? AnisotropyRotation { get; init; }
+    public SlotLane? Subsurface { get; init; }
+    public SlotColour? SubsurfaceColor { get; init; }
+    public SlotLane? SubsurfaceRadius { get; init; }
+    public SlotLane? ThinFilm { get; init; }
+    public SlotLane? ThinFilmThickness { get; init; }
 
     /// <summary>The coat's normal, whose green runs as the preset's normal does.</summary>
     public SlotColour? CoatNormal { get; init; }
@@ -163,19 +170,21 @@ public sealed record OpenPbrSlots {
     /// <summary>The sheen's colour times its weight, which is what glTF reads as its sheen colour.</summary>
     public SlotColour? SheenTint { get; init; }
 
+    /// <summary>The anisotropy's direction and strength, which is what glTF reads as its anisotropy.</summary>
+    public SlotColour? AnisotropyVector { get; init; }
+
     /// <summary>Whether any layer has a slot.</summary>
     public bool Any =>
-        Coat is not null
-        || CoatRoughness is not null
-        || Sheen is not null
-        || SheenColor is not null
-        || SheenRoughness is not null
-        || Transmission is not null
-        || SpecularWeight is not null
-        || SpecularColor is not null
-        || Anisotropy is not null
-        || CoatColor is not null
-        || CoatNormal is not null;
+        Beneath
+        || ((object?[]) [
+            Coat, CoatRoughness, Sheen, SheenColor, SheenRoughness, Transmission, SpecularWeight, SpecularColor,
+            Anisotropy, CoatColor, CoatNormal
+        ]).Any(static slot => slot is not null);
+
+    /// <summary>Whether the anisotropy's turn, subsurface scattering or a thin film has a slot.</summary>
+    public bool Beneath =>
+        ((object?[])[AnisotropyRotation, Subsurface, SubsurfaceColor, SubsurfaceRadius, ThinFilm, ThinFilmThickness])
+        .Any(static slot => slot is not null);
 
     /// <summary>A colour slot filled, unless an earlier file filled it.</summary>
     internal OpenPbrSlots WithColour(string map, SlotColour read) =>
@@ -185,7 +194,7 @@ public sealed record OpenPbrSlots {
             ExportMaps.CoatColor => this with { CoatColor = CoatColor ?? read },
             ExportMaps.CoatNormal => this with { CoatNormal = CoatNormal ?? read },
             ExportMaps.SheenTint => this with { SheenTint = SheenTint ?? read },
-            _ => this
+            _ => WithFurther(map, null, read)
         };
 
     /// <summary>A grey slot filled, unless an earlier file filled it.</summary>
@@ -198,6 +207,25 @@ public sealed record OpenPbrSlots {
             ExportMaps.Transmission => this with { Transmission = Transmission ?? read },
             ExportMaps.SpecularWeight => this with { SpecularWeight = SpecularWeight ?? read },
             ExportMaps.Anisotropy => this with { Anisotropy = Anisotropy ?? read },
+            _ => WithFurther(map, read, null)
+        };
+
+    /// <summary>
+    ///     The anisotropy's turn and vector, subsurface scattering and a thin film, as <see cref="WithLane" /> and
+    ///     <see cref="WithColour" /> fill the others: a grey map from <paramref name="grey" />, a colour from
+    ///     <paramref name="colour" />.
+    /// </summary>
+    OpenPbrSlots WithFurther(string map, SlotLane? grey, SlotColour? colour) =>
+        (map, grey, colour) switch {
+            (ExportMaps.AnisotropyRotation, { } lane, _) => this with {
+                AnisotropyRotation = AnisotropyRotation ?? lane
+            },
+            (ExportMaps.Subsurface, { } lane, _) => this with { Subsurface = Subsurface ?? lane },
+            (ExportMaps.SubsurfaceRadius, { } lane, _) => this with { SubsurfaceRadius = SubsurfaceRadius ?? lane },
+            (ExportMaps.ThinFilm, { } lane, _) => this with { ThinFilm = ThinFilm ?? lane },
+            (ExportMaps.ThinFilmThickness, { } lane, _) => this with { ThinFilmThickness = ThinFilmThickness ?? lane },
+            (ExportMaps.SubsurfaceColor, _, { } three) => this with { SubsurfaceColor = SubsurfaceColor ?? three },
+            (ExportMaps.AnisotropyVector, _, { } three) => this with { AnisotropyVector = AnisotropyVector ?? three },
             _ => this
         };
 }

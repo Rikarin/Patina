@@ -117,6 +117,128 @@ public sealed class MeshFactsTests : IDisposable {
         Assert.Null(MeshFactsReader.Read(Write(".stl")).MetresPerUnit);
     }
 
+    /// <summary>
+    ///     What Assimp does with a centimetre FBX (#146, ADR 0058): it reports the unit and leaves the numbers as the
+    ///     file has them, so a triangle a metre wide reads a hundred units wide, everywhere a mesh is read. The unit
+    ///     goes with the geometry, so the density check can turn it into metres; a texel density view and check made
+    ///     per unit would judge this mesh a hundred times too coarse (#307).
+    /// </summary>
+    [Fact]
+    public void A_centimetre_fbx_keeps_its_numbers_and_says_its_unit() {
+        var path = Path.Combine(folder.FullName, "centimetres.fbx");
+        File.WriteAllText(path, CentimetreFbx);
+
+        var facts = MeshFactsReader.Read(path);
+        var geometry = ViewportGeometry.Read(path);
+        var set = ViewportGeometry.Read(path, "anything");
+
+        Assert.Equal(100, facts.Maximum[0], 3);
+        Assert.Equal(0.01, facts.MetresPerUnit);
+        Assert.Equal(100, geometry.Positions.Max(static p => p.X), 3);
+        Assert.Equal(0.01, geometry.MetresPerUnit);
+        Assert.Equal(0.01, set.MetresPerUnit);
+        Assert.Null(ViewportGeometry.Read(Write(".obj")).MetresPerUnit);
+        Assert.Equal(1, ViewportGeometry.Read(Write(".glb")).MetresPerUnit);
+    }
+
+    /// <summary>
+    ///     The density view measures per unit of the model, so its target in texels per metre is turned into texels
+    ///     per unit: the project's unit first, then the file's, then a metre.
+    /// </summary>
+    [Fact]
+    public void The_density_views_target_is_per_unit_of_the_model() {
+        var shading = new ViewportShading { DensityTarget = 1024 };
+
+        Assert.Equal(1024, ViewportRenderer.DensityPerUnit(shading, null), 3);
+        Assert.Equal(10.24f, ViewportRenderer.DensityPerUnit(shading, 0.01), 3);
+        Assert.Equal(1.024f, ViewportRenderer.DensityPerUnit(shading with { MetresPerUnit = 0.001f }, 0.01), 3);
+        Assert.Equal(0, ViewportRenderer.DensityPerUnit(shading with { DensityTarget = 0 }, 0.01));
+    }
+
+    /// <summary>A triangle a metre on each side, written in centimetres as a DCC in centimetres writes it.</summary>
+    const string CentimetreFbx = """
+                                 ; FBX 7.4.0 project file
+                                 FBXHeaderExtension:  {
+                                 	FBXHeaderVersion: 1003
+                                 	FBXVersion: 7400
+                                 }
+                                 GlobalSettings:  {
+                                 	Version: 1000
+                                 	Properties70:  {
+                                 		P: "UnitScaleFactor", "double", "Number", "",1
+                                 	}
+                                 }
+                                 Objects:  {
+                                 	Geometry: 1000, "Geometry::Tri", "Mesh" {
+                                 		Vertices: *9 {
+                                 			a: 0,0,0,100,0,0,0,100,0
+                                 		}
+                                 		PolygonVertexIndex: *3 {
+                                 			a: 0,1,-3
+                                 		}
+                                 		GeometryVersion: 124
+                                 		LayerElementUV: 0 {
+                                 			Version: 101
+                                 			Name: "map1"
+                                 			MappingInformationType: "ByPolygonVertex"
+                                 			ReferenceInformationType: "Direct"
+                                 			UV: *6 {
+                                 				a: 0,0,1,0,0,1
+                                 			}
+                                 		}
+                                 		Layer: 0 {
+                                 			Version: 100
+                                 			LayerElement:  {
+                                 				Type: "LayerElementUV"
+                                 				TypedIndex: 0
+                                 			}
+                                 		}
+                                 	}
+                                 	Model: 2000, "Model::Tri", "Mesh" {
+                                 		Version: 232
+                                 	}
+                                 }
+                                 Connections:  {
+                                 	C: "OO",1000,2000
+                                 	C: "OO",2000,0
+                                 }
+                                 """;
+
+    /// <summary>
+    ///     A mesh's cameras (#144): each where its node puts it, looking where it looks, with its vertical angle; and a
+    ///     file with none says none.
+    /// </summary>
+    [Fact]
+    public void A_mesh_says_its_cameras() {
+        var path = Path.Combine(folder.FullName, "shot.gltf");
+        File.WriteAllText(
+            path,
+            Gltf(
+                    "data:application/octet-stream;base64," + Convert.ToBase64String(Buffer()),
+                    OneMesh
+                    + """
+                      "cameras": [{ "type": "perspective", "perspective": { "yfov": 0.6, "znear": 0.1 } }],
+                      """
+                )
+                .Replace(
+                    "\"nodes\": [{ \"mesh\": 0 }],",
+                    "\"nodes\": [{ \"mesh\": 0, \"children\": [1] }, "
+                    + "{ \"name\": \"Shot\", \"camera\": 0, \"translation\": [0.5, 0.5, 4] }],",
+                    StringComparison.Ordinal
+                )
+        );
+
+        var camera = Assert.Single(MeshFactsReader.Read(path).Cameras);
+
+        Assert.Equal("Shot", camera.Name);
+        Assert.Equal([0.5, 0.5, 4], camera.Position.Select(static at => Math.Round(at, 4)));
+        Assert.Equal([0, 0, -1], camera.Forward.Select(static at => Math.Round(at, 4)));
+        Assert.Equal([0, 1, 0], camera.Up.Select(static at => Math.Round(at, 4)));
+        Assert.Equal(0.6, camera.FieldOfView, 4);
+        Assert.Equal(0, camera.OrthographicHeight);
+        Assert.Empty(MeshFactsReader.Read(Write(".gltf")).Cameras);
+    }
+
     /// <summary>A mesh's parts, materials and UV sets: two parts on two materials, one with a second set.</summary>
     [Fact]
     public void A_mesh_says_its_parts_materials_and_coordinate_sets() {

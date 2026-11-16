@@ -101,7 +101,7 @@ public sealed class JobRunner : BackgroundService {
                 continue;
             }
 
-            var connection = await worker.ConnectionAsync(stoppingToken);
+            var connection = await WorkerWait.ConnectionAsync(worker, Timeout.InfiniteTimeSpan, stoppingToken);
             if (queue.TakeNext() is { } job) {
                 await RunOneAsync(connection, job, stoppingToken);
             }

@@ -89,9 +89,13 @@ public sealed partial class Thumbnails {
     ///     A shipped compound on the shelf (#298), drawn as a palette draws its node, at the shelf's size: a mask as it
     ///     makes itself, a filter over the standard noise. Nothing of a project's is part of it, so one picture serves
     ///     every library on this build; a generator reads the sample knot's bake (#301), so it shows what it makes on
-    ///     a model.
+    ///     a model. A material preset of one gives its values, which its node is drawn at (#311).
     /// </summary>
-    (string Key, MaterialThumbnailAsk Ask)? OfCompound(OpenLibrary library, string node) {
+    (string Key, MaterialThumbnailAsk Ask)? OfCompound(
+        OpenLibrary library,
+        string node,
+        IReadOnlyDictionary<string, string>? values = null
+    ) {
         FactoryCompounds.Register();
         if (!LayerStackCompiler.Library(out _).TryGet(node, out var type)) {
             return null;
@@ -101,24 +105,25 @@ public sealed partial class Thumbnails {
         var scope = new NodePictureScope(Path.Combine(root, LibraryLayout.ProjectsFolder), null, [root], []) {
             MeshMaps = ShelfBake.In(store.Root)
         };
-        return OfNode(scope, type, Side);
+        return OfNode(scope, type, Side, values);
     }
 
     /// <summary>
-    ///     A graph of one node at its defaults, its first picture output drawn small. A type with no picture output,
-    ///     such as an Output or a number, has nothing to draw.
+    ///     A graph of one node at its defaults, or at the values given its settings, its first picture output drawn
+    ///     small. A type with no picture output, such as an Output or a number, has nothing to draw.
     /// </summary>
     (string Key, MaterialThumbnailAsk Ask)? OfNode(
         NodePictureScope scope,
         NodeTypeDefinition type,
-        int side = NodeSide
+        int side = NodeSide,
+        IReadOnlyDictionary<string, string>? values = null
     ) {
         if (type.Ports.FirstOrDefault(static port => port.Direction == PortDirection.Output && IsPicture(port.Kind))
             is not { } output) {
             return null;
         }
 
-        var document = GraphDocuments.Text(Alone(type, side));
+        var document = GraphDocuments.Text(Alone(type, side, values));
         // A project's own compound is made of the files in its folder, which may hold the compounds it holds.
         var own = scope.Folder is { } folder
             && GraphSessions.Compounds(folder).Any(c => !c.ReadOnly && c.Type == type.Path);
@@ -145,8 +150,11 @@ public sealed partial class Thumbnails {
         return (key, ask);
     }
 
-    /// <summary>The graph a type is drawn from: the noise, and the type with the noise on each picture input.</summary>
-    static NodeGraphAsset Alone(NodeTypeDefinition type, int side) =>
+    /// <summary>
+    ///     The graph a type is drawn from: the noise, and the type with the noise on each picture input and its
+    ///     settings at the values given, the rest at their defaults.
+    /// </summary>
+    static NodeGraphAsset Alone(NodeTypeDefinition type, int side, IReadOnlyDictionary<string, string>? values) =>
         new() {
             Name = type.Title,
             Settings = new(StringComparer.Ordinal) {
@@ -155,7 +163,12 @@ public sealed partial class Thumbnails {
                 ["seed"] = "0",
                 [TextureSizes.GraphSetting] = side.ToString(CultureInfo.InvariantCulture)
             },
-            Nodes = [new() { Id = StandardNode, Type = StandardInput }, new() { Id = DrawnNode, Type = type.Path }],
+            Nodes = [
+                new() { Id = StandardNode, Type = StandardInput },
+                new() {
+                    Id = DrawnNode, Type = type.Path, Texts = values is null ? [] : new(values, StringComparer.Ordinal)
+                }
+            ],
             Edges = [
                 ..type.Ports.Where(static port => port.Direction == PortDirection.Input && IsPicture(port.Kind))
                     .Select(static port => new GraphEdgeAsset {

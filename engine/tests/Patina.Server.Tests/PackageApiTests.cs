@@ -426,6 +426,96 @@ public sealed class PackageApiTests : IAsyncLifetime {
         Assert.Equal($"packages/Rust.ptpkg/{files["fonts/A.ttf"]}", brought.Parameters.Single().Default);
     }
 
+    /// <summary>
+    ///     A file a graph hands a compound's parameter across the compound's edge travels (#311), though the compound
+    ///     lists no such choice: named on the compound's node, or through a parameter of the graph with its presets. A
+    ///     file handed that is nowhere is named as missing rather than published.
+    /// </summary>
+    [Fact]
+    public async Task A_file_handed_to_a_compound_across_its_edge_travels_in_a_package() {
+        var graph = await RustProjectAsync();
+        var project = Path.Combine(server.Library, "projects", "rusty-kit");
+        var file = Path.Combine(server.Library, graph);
+        var handing = (await File.ReadAllTextAsync(file, Token))
+            .Replace(
+                "  - { id: 2, type: Wear }",
+                "  - { id: 2, type: Wear, texts: { face: $sign, grain: dots.png } }",
+                StringComparison.Ordinal
+            )
+            .Replace(
+                "  - { name: tint,",
+                "  - { name: sign, default: fonts/C.ttf, kind: Text, accepted: [fonts/C.ttf, fonts/D.ttf] }\n"
+                + "  - { name: tint,",
+                StringComparison.Ordinal
+            )
+            .Replace("values: { tint: '0.9' }", "values: { tint: '0.9', sign: fonts/D.ttf }", StringComparison.Ordinal);
+        await File.WriteAllTextAsync(file, handing, Token);
+        var wear = Wear.Replace(
+                "  - { id: 3, type: Sub-graph/Output }",
+                "  - { id: 3, type: Sub-graph/Output }\n  - { id: 4, type: Source/Text, texts: { Font: $face } }"
+                + "\n  - { id: 5, type: Source/Bitmap, texts: { Source: $grain } }",
+                StringComparison.Ordinal
+            )
+            + "\nparameters:\n  - { name: face, default: fonts/A.ttf, kind: Text, accepted: [fonts/A.ttf] }"
+            + "\n  - { name: grain, default: mask.png, kind: Text, accepted: [mask.png, dots.png] }\n";
+        await File.WriteAllTextAsync(Path.Combine(project, "Compounds", "Wear.vxtexgraph"), wear, Token);
+        Directory.CreateDirectory(Path.Combine(project, "fonts"));
+        await File.WriteAllBytesAsync(Path.Combine(project, "fonts", "A.ttf"), [1, 1], Token);
+        await File.WriteAllBytesAsync(Path.Combine(project, "fonts", "C.ttf"), [3, 3], Token);
+        await File.WriteAllBytesAsync(Path.Combine(project, "fonts", "D.ttf"), [4, 4], Token);
+        await File.WriteAllBytesAsync(Path.Combine(project, "dots.png"), [5, 5], Token);
+
+        var plan = await PlanAsync(graph);
+        Assert.Empty(plan.Diagnostics);
+        Assert.All(plan.Dependencies, static d => Assert.Null(d.Problem));
+        Assert.Equal(
+            [("drawing", "fonts/C.ttf"), ("drawing", "fonts/D.ttf"), ("picture", "dots.png")],
+            plan.Dependencies.Where(static d => d.Name is "fonts/C.ttf" or "fonts/D.ttf" or "dots.png")
+                .Select(static d => (d.Kind, d.Name))
+                .OrderBy(static d => d.Kind, StringComparer.Ordinal)
+                .ThenBy(static d => d.Name, StringComparer.Ordinal)
+        );
+
+        var published = await client.PostAsJsonAsync("/api/v1/library/packages", new PackageRequest(graph), Token);
+        Assert.Equal(HttpStatusCode.OK, published.StatusCode);
+        var files = (await published.Content.ReadFromJsonAsync<PackagePublished>(Token))!.Manifest.Files
+            .ToDictionary(static f => f.From, static f => f.Path);
+        var inside = YamlSerializer.Parse<NodeGraphAsset>(
+            await File.ReadAllTextAsync(
+                Path.Combine(server.Library, "packages", "Rust.ptpkg", "Rust.vxtexgraph"),
+                Token
+            )
+        );
+        var wearNode = inside.Nodes.Single(static n => n.Id == 2);
+        Assert.Equal(("$sign", files["dots.png"]), (wearNode.Texts["face"], wearNode.Texts["grain"]));
+        Assert.Equal(files["fonts/C.ttf"], inside.Parameters.Single(static p => p.Name == "sign").Default);
+        Assert.Equal(files["fonts/D.ttf"], inside.Presets.Single().Values["sign"]);
+        Assert.Equal("0.5", inside.Parameters.Single(static p => p.Name == "tint").Default);
+
+        await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Alpha"), Token);
+        (await client.PostAsJsonAsync(
+            "/api/v1/library/materials/use",
+            new MaterialUseRequest("alpha", "packages/Rust.ptpkg/Rust.vxtexgraph"),
+            Token
+        )).EnsureSuccessStatusCode();
+        var material = YamlSerializer.Parse<NodeGraphAsset>(
+            await File.ReadAllTextAsync(
+                Path.Combine(server.Library, "projects", "alpha", "Compounds", "Materials", "Rust.vxtexgraph"),
+                Token
+            )
+        );
+        Assert.Equal(
+            $"packages/Rust.ptpkg/{files["fonts/C.ttf"]}",
+            material.Parameters.Single(static p => p.Name == "sign").Default
+        );
+        Assert.Equal($"packages/Rust.ptpkg/{files["fonts/D.ttf"]}", material.Presets.Single().Values["sign"]);
+
+        File.Delete(Path.Combine(project, "fonts", "C.ttf"));
+        var missing = (await PlanAsync(graph)).Dependencies.Single(static d => d.Name == "fonts/C.ttf");
+        Assert.Equal("drawing", missing.Kind);
+        Assert.NotNull(missing.Problem);
+    }
+
     [Fact]
     public async Task What_a_graph_says_about_itself_is_one_undo_step_that_reaches_its_file() {
         var graph = await RustProjectAsync();

@@ -12,8 +12,8 @@ namespace Patina.Viewport;
 ///     written to a folder, since no pixel crosses the socket. A glTF's emissive factor and strength scale its
 ///     emission, its alpha becomes an opacity map unless the material is opaque, and a picture's texture transform
 ///     and its sampler's wrap go with its slot, for the graph to draw. Another format's opacity is its own picture and
-///     factor: an OBJ's <c>map_d</c> and <c>d</c>, an FBX's transparency. glTF's clear coat, sheen and transmission
-///     come in as OpenPBR's maps (#142).
+///     factor: an OBJ's <c>map_d</c> and <c>d</c>, an FBX's transparency. glTF's clear coat, sheen, transmission,
+///     specular lobe and anisotropy come in as OpenPBR's maps (#142).
 /// </summary>
 public static class ModelMaterials {
     /// <summary>Reads a model's materials.</summary>
@@ -21,8 +21,10 @@ public static class ModelMaterials {
     /// <param name="folder">Where a picture inside it is written.</param>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static IReadOnlyList<ImportedMaterial> Read(string path, string folder) {
+        // A material's extension the file does not list is read all the same, and said (#310).
+        var declared = GltfDeclarations.Of(SharedFile.ReadAllBytes(path), Path.GetExtension(path));
         var read = ModelReader.Read(
-            SharedFile.ReadAllBytes(path),
+            declared.Bytes,
             Path.GetExtension(path),
             Path.GetFileNameWithoutExtension(path),
             new ModelReadOptions { GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false },
@@ -44,10 +46,21 @@ public static class ModelMaterials {
 
             var factors = at < read.MaterialFactors.Length ? read.MaterialFactors[at] : ModelMaterialFactors.Default;
             var textures = at < read.MaterialTextures.Length ? read.MaterialTextures[at] : new();
-            materials.Add(Material(names[at], factors, textures, source));
+            var material = Material(names[at], factors, textures, source);
+            materials.Add(
+                declared.Missing.TryGetValue(at, out var missing)
+                    ? material with { Warnings = [..material.Warnings, Unlisted(missing)] }
+                    : material
+            );
         }
 
         return materials;
+    }
+
+    static string Unlisted(IReadOnlyList<string> missing) {
+        var them = missing.Count == 1 ? "it" : "them";
+        return $"glTF: the file uses {string.Join(", ", missing)} without listing {them} in extensionsUsed, as glTF "
+            + $"asks. Patina reads {them} all the same; another tool may not.";
     }
 
     /// <summary>Where a model's pictures are, where one inside it goes, and whether its factors are glTF's.</summary>
@@ -117,7 +130,9 @@ public static class ModelMaterials {
                      (textures.Opacity, "opacity"), (textures.Layers.Clearcoat, "clearcoat"),
                      (textures.Layers.ClearcoatRoughness, "clearcoatRoughness"),
                      (textures.Layers.ClearcoatNormal, "clearcoatNormal"), (textures.Layers.SheenColor, "sheen"),
-                     (textures.Layers.SheenRoughness, "sheenRoughness"), (textures.Layers.Transmission, "transmission")
+                     (textures.Layers.SheenRoughness, "sheenRoughness"), (textures.Layers.Transmission, "transmission"),
+                     (textures.Layers.Specular, "specular"), (textures.Layers.SpecularColor, "specularColor"),
+                     (textures.Layers.Anisotropy, "anisotropy")
                  ]) {
             if (texture is not null && !files.ContainsKey(texture)) {
                 files[texture] = Picture(texture, source, $"{name}_{stem}", warnings);
@@ -177,10 +192,14 @@ public static class ModelMaterials {
         }
 
         var layers = textures.Layers;
+        if (layers is { Anisotropy: not null, AnisotropyStrength: > 0f }) {
+            warnings.Add($"{name}: its anisotropy's picture brings in its strength, not the direction it turns to.");
+        }
+
         ModelTexture?[] pictures = [
             textures.BaseColor, textures.MetallicRoughness, textures.Normal, textures.Occlusion, textures.Emissive,
             textures.Opacity, layers.Clearcoat, layers.ClearcoatRoughness, layers.ClearcoatNormal, layers.SheenColor,
-            layers.SheenRoughness, layers.Transmission
+            layers.SheenRoughness, layers.Transmission, layers.Specular, layers.SpecularColor, layers.Anisotropy
         ];
         foreach (var picture in pictures.Distinct()) {
             if (picture is { Transform: not null } && Tiling(picture) is { Said: { } said }) {
@@ -255,7 +274,33 @@ public static class ModelMaterials {
             Add("transmission", layers.Transmission, 0, [layers.TransmissionFactor]);
         }
 
+        Lobe(layers, Add);
         return made;
+    }
+
+    /// <summary>
+    ///     glTF's specular lobe and anisotropy as OpenPBR's maps (#142), each only when it is not glTF's whole white
+    ///     lobe or no anisotropy. The weight is read from alpha and the colour from red, green and blue; the
+    ///     anisotropy's strength from blue, and its rotation, a fraction of a turn, from its factor alone, since a
+    ///     direction picture is no one lane.
+    /// </summary>
+    static void Lobe(ModelMaterialLayers layers, Action<string, ModelTexture?, int, float[]> add) {
+        if (layers.Specular is not null || Math.Abs(layers.SpecularFactor - 1f) > 1e-4f) {
+            add("specularWeight", layers.Specular, 3, [layers.SpecularFactor]);
+        }
+
+        var colour = layers.SpecularColorFactor;
+        if (layers.SpecularColor is not null || colour != Vixen.Core.Mathematics.Vector3.One) {
+            add("specularColor", layers.SpecularColor, -1, [colour.X, colour.Y, colour.Z, 1f]);
+        }
+
+        if (layers.AnisotropyStrength > 0f) {
+            add("anisotropy", layers.Anisotropy, 2, [layers.AnisotropyStrength]);
+            var turn = layers.AnisotropyRotation / MathF.Tau;
+            if (Math.Abs(turn) > 1e-4f) {
+                add("anisotropyRotation", null, -1, [turn - MathF.Floor(turn)]);
+            }
+        }
     }
 
     /// <summary>The usages a model's material fills, as an export names its maps.</summary>

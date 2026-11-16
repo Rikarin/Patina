@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Ipc;
 using Patina.Server.Stacks;
 
 namespace Patina.Server.Api;
@@ -69,8 +70,9 @@ static class StackNodePictures {
                     )
                 )
             );
-        } catch (TimeoutException e) {
-            return Refusals.Of(e, StatusCodes.Status503ServiceUnavailable);
+        } catch (Exception e) when (e is IpcDisconnectedException or TimeoutException) {
+            // No Worker came, or the one drawing went (#309).
+            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
         }
     }
 }

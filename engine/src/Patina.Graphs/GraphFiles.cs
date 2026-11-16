@@ -79,26 +79,46 @@ public static class GraphFiles {
     }
 
     /// <summary>
-    ///     A graph naming other files in place of those it names: in its nodes, and in the parameters its nodes read a
-    ///     file through, with their presets.
+    ///     A graph naming other files in place of those it names: in its nodes, in the parameters its nodes read a file
+    ///     through, and in those it hands a compound's node (<c>face: $face</c>), with their presets (#311).
     /// </summary>
     /// <param name="graph">The graph.</param>
     /// <param name="rename">The file a file becomes, or null to keep it.</param>
-    public static NodeGraphAsset Renamed(NodeGraphAsset graph, Func<string, string?> rename) {
-        HashSet<string> knobs = new(StringComparer.Ordinal);
+    /// <param name="handed">
+    ///     What a parameter handed to a compound's node becomes, or null to keep it; null for
+    ///     <paramref name="rename" />. A handed parameter may hold any text, so a rename that would change one that
+    ///     names no file passes a stricter one here.
+    /// </param>
+    public static NodeGraphAsset Renamed(
+        NodeGraphAsset graph,
+        Func<string, string?> rename,
+        Func<string, string?>? handed = null
+    ) {
+        handed ??= rename;
+        Dictionary<string, Func<string, string?>> knobs = new(StringComparer.Ordinal);
         foreach (var node in graph.Nodes) {
-            if (TextureGraphParameters.IsReference(Of(node), out var knob)) {
-                knobs.Add(knob);
+            if (SettingOf(node.Type) is not null) {
+                if (TextureGraphParameters.IsReference(Of(node), out var read)) {
+                    knobs[read] = rename;
+                }
+
+                continue;
+            }
+
+            foreach (var text in node.Texts.Values) {
+                if (TextureGraphParameters.IsReference(text.Trim(), out var knob)) {
+                    knobs.TryAdd(knob, handed);
+                }
             }
         }
 
         return graph with {
             Nodes = [..graph.Nodes.Select(node => Renamed(node, rename))],
             Parameters = [
-                ..graph.Parameters.Select(parameter => knobs.Contains(parameter.Name)
+                ..graph.Parameters.Select(parameter => knobs.ContainsKey(parameter.Name)
                         ? parameter with {
-                            Default = KeptOrRenamed(parameter.Default, rename),
-                            Accepted = [..parameter.Accepted.Select(text => KeptOrRenamed(text, rename))]
+                            Default = Kept(knobs, parameter.Name, parameter.Default),
+                            Accepted = [..parameter.Accepted.Select(text => Kept(knobs, parameter.Name, text))]
                         }
                         : parameter
                 )
@@ -107,7 +127,7 @@ public static class GraphFiles {
                 ..graph.Presets.Select(preset => preset with {
                         Values = preset.Values.ToDictionary(
                             static value => value.Key,
-                            value => knobs.Contains(value.Key) ? KeptOrRenamed(value.Value, rename) : value.Value,
+                            value => Kept(knobs, value.Key, value.Value),
                             StringComparer.Ordinal
                         )
                     }
@@ -115,6 +135,48 @@ public static class GraphFiles {
             ]
         };
     }
+
+    /// <summary>A parameter's text renamed as its parameter's files are, or as it was.</summary>
+    static string Kept(Dictionary<string, Func<string, string?>> knobs, string name, string text) =>
+        knobs.TryGetValue(name, out var renaming) ? KeptOrRenamed(text, renaming) : text;
+
+    /// <summary>
+    ///     The files a compound's node hands its compound, each with what a package calls it: a setting naming a file
+    ///     found by <paramref name="found" />, or every such file a parameter of the graph it hands on can hold.
+    /// </summary>
+    /// <param name="graph">The graph holding the node.</param>
+    /// <param name="node">A node of a compound, or of any type naming no file of its own.</param>
+    /// <param name="found">Whether a text names a file that is there.</param>
+    public static IEnumerable<(string File, string Kind)> Handed(
+        NodeGraphAsset graph,
+        GraphNodeAsset node,
+        Func<string, bool> found
+    ) {
+        if (SettingOf(node.Type) is not null) {
+            yield break;
+        }
+
+        foreach (var text in node.Texts.Values) {
+            var named = text.Trim();
+            var files = TextureGraphParameters.IsReference(named, out var knob)
+                ? Choices(graph, knob)
+                : new[] { named };
+            foreach (var file in files.Where(file => IsFileName(file) && found(file))) {
+                yield return (file, KindOfFile(file));
+            }
+        }
+    }
+
+    /// <summary>What a package calls a file by its extension: a font or an SVG is a drawing, else a picture.</summary>
+    public static string KindOfFile(string file) =>
+        Path.GetExtension(file).ToLowerInvariant() is ".ttf" or ".otf" or ".svg" ? Drawing : Picture;
+
+    /// <summary>Whether a text could name a file found beside a graph: not empty, a scheme or a parameter.</summary>
+    public static bool IsFileName(string named) =>
+        named.Length > 0
+        && !IsScheme(named)
+        && !TextureGraphParameters.IsReference(named, out _)
+        && named.IndexOfAny(Path.GetInvalidPathChars()) < 0;
 
     /// <summary>A parameter's text naming a file renamed, or as it was.</summary>
     static string KeptOrRenamed(string text, Func<string, string?> rename) =>
@@ -152,7 +214,7 @@ public static class GraphFiles {
                 ? null
                 : LibraryLayout.Relative(library, Path.GetFullPath(named, folder));
 
-        var renamed = Renamed(graph, Rooted);
+        var renamed = Renamed(graph, Rooted, named => Beside(folder, named) ? Rooted(named) : null);
 
         // A compound's own parameter may be handed a file by the node standing for it, as a package's graph hands its
         // compounds the files it carries: a text naming a file beside the graph is one.
@@ -177,11 +239,6 @@ public static class GraphFiles {
     /// <summary>Whether a text names a file beside a graph, as a package's own files are.</summary>
     static bool Beside(string folder, string text) {
         var named = text.Trim();
-        return named.Length > 0
-            && !Path.IsPathRooted(named)
-            && !IsScheme(named)
-            && !TextureGraphParameters.IsReference(named, out _)
-            && named.IndexOfAny(Path.GetInvalidPathChars()) < 0
-            && File.Exists(Path.GetFullPath(named, folder));
+        return IsFileName(named) && !Path.IsPathRooted(named) && File.Exists(Path.GetFullPath(named, folder));
     }
 }

@@ -218,6 +218,7 @@ from .material_preset_create_request_parameters import MaterialPresetCreateReque
 from .material_use import MaterialUse
 from .material_use_parameters_type_1 import MaterialUseParametersType1
 from .material_use_request import MaterialUseRequest
+from .mesh_camera_facts import MeshCameraFacts
 from .mesh_facts import MeshFacts
 from .mesh_material_facts import MeshMaterialFacts
 from .mesh_part_facts import MeshPartFacts
@@ -420,6 +421,7 @@ from .stack_saved_material import StackSavedMaterial
 from .stack_stamp import StackStamp
 from .stack_state import StackState
 from .stack_stroke_source import StackStrokeSource
+from .stack_stroke_source_parameters_type_1 import StackStrokeSourceParametersType1
 from .stack_summary import StackSummary
 from .stack_surface_path import StackSurfacePath
 from .stack_surface_symmetry import StackSurfaceSymmetry
@@ -455,6 +457,7 @@ from .viewport_follow import ViewportFollow
 from .viewport_graph_request import ViewportGraphRequest
 from .viewport_highlight import ViewportHighlight
 from .viewport_isolation import ViewportIsolation
+from .viewport_layer_paths import ViewportLayerPaths
 from .viewport_map_paths import ViewportMapPaths
 from .viewport_marquee import ViewportMarquee
 from .viewport_marquee_request import ViewportMarqueeRequest
@@ -688,6 +691,7 @@ __all__ = (
     "MaterialUse",
     "MaterialUseParametersType1",
     "MaterialUseRequest",
+    "MeshCameraFacts",
     "MeshFacts",
     "MeshMaterialFacts",
     "MeshPartFacts",
@@ -890,6 +894,7 @@ __all__ = (
     "StackStamp",
     "StackState",
     "StackStrokeSource",
+    "StackStrokeSourceParametersType1",
     "StackSummary",
     "StackSurfacePath",
     "StackSurfaceSymmetry",
@@ -925,6 +930,7 @@ __all__ = (
     "ViewportGraphRequest",
     "ViewportHighlight",
     "ViewportIsolation",
+    "ViewportLayerPaths",
     "ViewportMapPaths",
     "ViewportMarquee",
     "ViewportMarqueeRequest",

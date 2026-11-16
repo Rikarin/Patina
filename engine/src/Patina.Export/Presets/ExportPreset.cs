@@ -361,7 +361,8 @@ public static class ExportMaps {
     /// </summary>
     public static IReadOnlyList<string> OpenPbr { get; } = [
         Coat, CoatRoughness, Sheen, SheenColor, SheenRoughness, Transmission, SpecularWeight, SpecularColor, Anisotropy,
-        CoatColor, CoatNormal
+        CoatColor, CoatNormal, AnisotropyRotation, Subsurface, SubsurfaceColor, SubsurfaceRadius, ThinFilm,
+        ThinFilmThickness
     ];
 
     // Between the two groups, as in ExportCompressions: SK7020 honours no suppression, and reads fifteen constants in a
@@ -369,7 +370,7 @@ public static class ExportMaps {
     public static IReadOnlyList<string> All { get; } = [
         BaseColor, Normal, Roughness, Metalness, Occlusion, Height, Emissive, Opacity, Mask, Curvature, Thickness, Id,
         Position, WorldNormal, BentNormal, BakedNormal, BakedOcclusion, Coverage, Specular, Diffuse, Glossiness,
-        SheenTint, ..Users, ..OpenPbr
+        SheenTint, AnisotropyVector, ..Users, ..OpenPbr
     ];
 
     /// <summary>How much of a clear coat lies over the base: OpenPBR's <c>coat_weight</c>.</summary>
@@ -411,7 +412,8 @@ public static class ExportMaps {
     ///     The maps a preset can read that no output makes: each is worked out from others when a file reads it
     ///     (<see cref="DerivedMaps" />), so a specular-glossiness file comes from a metal-roughness project.
     /// </summary>
-    public static IReadOnlyList<string> Derived { get; } = [Specular, Diffuse, Glossiness, SheenTint];
+    public static IReadOnlyList<string> Derived { get; } =
+        [Specular, Diffuse, Glossiness, SheenTint, AnisotropyVector];
 
     /// <summary>
     ///     The sheen's colour times its weight, linear: glTF's <c>sheenColor</c>, since glTF's sheen has no weight of
@@ -451,6 +453,31 @@ public static class ExportMaps {
     /// </summary>
     public const string BakedOcclusion = "bakedOcclusion";
 
+    /// <summary>
+    ///     The layer weight a map means nothing without, or null: a coat's roughness, normal and colour are the coat's,
+    ///     and a sheen's roughness and colour the sheen's. OpenPBR's weights start at none, so without one the layer
+    ///     is not there (#310).
+    /// </summary>
+    public static string? WeightOf(string map) =>
+        map switch {
+            CoatRoughness or CoatNormal or CoatColor => Coat,
+            SheenRoughness or SheenColor or SheenTint => Sheen,
+            _ => null
+        };
+
+    /// <summary>
+    ///     Whether a file reading these maps is written for a set: one that reads nothing is, as it holds constants,
+    ///     and one that reads maps is when the set has one of them. A layer's map counts only beside its weight, so a
+    ///     coat's roughness alone writes no coat file, which would say the coat is there (#310).
+    /// </summary>
+    /// <param name="reads">The maps the file reads.</param>
+    /// <param name="has">Whether the set has a map.</param>
+    public static bool Written(IReadOnlyCollection<string> reads, Func<string, bool> has) {
+        ArgumentNullException.ThrowIfNull(reads);
+        ArgumentNullException.ThrowIfNull(has);
+        return reads.Count == 0 || reads.Any(map => has(map) && (WeightOf(map) is not { } weight || has(weight)));
+    }
+
     /// <summary>Whether a map is a tangent-space normal, whose green a target may read either way.</summary>
     public static bool IsTangentNormal(string map) => map is Normal or BakedNormal or CoatNormal;
 
@@ -469,10 +496,14 @@ public static class ExportMaps {
             (Normal or WorldNormal or BentNormal or BakedNormal or CoatNormal, 2) => 1f,
             (Normal or WorldNormal or BentNormal or BakedNormal or CoatNormal, not 3) => 0.5f,
             (Opacity or Occlusion or BakedOcclusion or Mask or Coverage or SheenColor or SpecularWeight, _) => 1f,
-            (SpecularColor or CoatColor, _) => 1f,
+            (SpecularColor or CoatColor or SubsurfaceRadius, _) => 1f,
+            (SubsurfaceColor, not 3) => 0.8f,
+            (AnisotropyVector, 0) => 1f,
+            (AnisotropyVector, 1) => 0.5f,
             (_, 3) => 1f,
             (BaseColor or Roughness or Height or Curvature or Position or Diffuse or Glossiness or SheenRoughness, _) =>
                 0.5f,
+            (ThinFilmThickness, _) => 0.5f,
             (Specular, _) => DerivedMaps.DielectricSrgb,
             _ => 0f
         };
@@ -486,4 +517,34 @@ public static class ExportMaps {
     ///     linear.
     /// </remarks>
     public static bool IsColour(string map) => map is BaseColor or Specular or Diffuse;
+
+    // OpenPBR's later maps (#142), apart from the other constants so that SK7020 reads no run of them as a clone.
+
+    /// <summary>
+    ///     How far the anisotropy's long axis is turned from the tangent, counter-clockwise towards the bitangent, as a
+    ///     fraction of a whole turn: OpenPBR says it through <c>geometry_tangent</c>, glTF through its direction.
+    /// </summary>
+    public const string AnisotropyRotation = "anisotropyRotation";
+
+    /// <summary>How much light scatters beneath the surface: OpenPBR's <c>subsurface_weight</c>.</summary>
+    public const string Subsurface = "subsurface";
+
+    /// <summary>The colour light scattered beneath takes: OpenPBR's <c>subsurface_color</c>. Linear.</summary>
+    public const string SubsurfaceColor = "subsurfaceColor";
+
+    /// <summary>How far light travels beneath, in the scene's units: OpenPBR's <c>subsurface_radius</c>.</summary>
+    public const string SubsurfaceRadius = "subsurfaceRadius";
+
+    /// <summary>How much of a thin film lies on the surface: OpenPBR's <c>thin_film_weight</c>.</summary>
+    public const string ThinFilm = "thinFilm";
+
+    /// <summary>How thick the film is, in micrometres: OpenPBR's <c>thin_film_thickness</c>.</summary>
+    public const string ThinFilmThickness = "thinFilmThickness";
+
+    /// <summary>
+    ///     glTF's anisotropy picture: the direction in red and green, from 0 to 1 for -1 to 1 along the tangent and the
+    ///     bitangent, turned by <see cref="AnisotropyRotation" />, and the strength, <see cref="Anisotropy" />, in
+    ///     blue. Worked out only for a set with an anisotropy.
+    /// </summary>
+    public const string AnisotropyVector = "anisotropyVector";
 }

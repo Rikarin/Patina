@@ -39,7 +39,7 @@ static class MeshReloadCheck {
             return $"'{Path.GetFileName(mesh)}' is not the file the project's mesh '{Path.GetFileName(held)}' is.";
         }
 
-        var connection = await worker.ConnectionAsync(cancellationToken);
+        var connection = await WorkerWait.ConnectionAsync(worker, WorkerWait.Patience, cancellationToken);
         if (!(await MaterialsAsync(connection, held, cancellationToken)).SetEquals(
                 await MaterialsAsync(connection, mesh, cancellationToken)
             )) {

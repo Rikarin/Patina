@@ -386,6 +386,20 @@ function stemOf(source: string): string | undefined {
                   }
                 </div>
               }
+              @if (layer.fill === 'Texture' && laysNormal(layer)) {
+                <label
+                  class="flex items-center justify-between gap-2 text-xs"
+                  title="A normal map made for DirectX runs its green down the picture. A new picture starts from the project's Normal maps."
+                >
+                  Its green runs down (DirectX)
+                  <xui-switch
+                    aria-label="Its green runs down (DirectX)"
+                    data-testid="paint-texture-green-down"
+                    [checked]="layer.normalFormat === 'y-down'"
+                    (checkedChange)="setGreenDown(layer, $event)"
+                  />
+                </label>
+              }
               @if (layer.fill === 'Graph') {
                 <div class="flex items-center gap-2">
                   <span class="text-foreground-muted w-16 shrink-0 text-xs">Graph</span>
@@ -739,6 +753,47 @@ function stemOf(source: string): string | undefined {
                   Choose…
                 </button>
               </div>
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Projection</span>
+                <xui-select
+                  class="min-w-0 flex-1"
+                  aria-label="Mask projection"
+                  data-testid="paint-mask-projection"
+                  [filterable]="false"
+                  [itemText]="labelsOf(maskProjections())"
+                  [items]="valuesOf(maskProjections())"
+                  [value]="layer.mask.projection ?? 'Uv'"
+                  (valueChange)="$event && setMask(layer, { projection: $event })"
+                />
+              </div>
+              @if ((layer.mask.projection ?? 'Uv') !== 'Uv') {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Scale</span>
+                  <xui-numeric-input
+                    class="min-w-0 flex-1"
+                    size="sm"
+                    aria-label="Mask projection scale"
+                    data-testid="paint-mask-scale"
+                    [stepSize]="0.1"
+                    [value]="layer.mask.placement?.scale ?? 1"
+                    (valueChange)="placeMask(layer, { scale: $event ?? 1 })"
+                  />
+                </div>
+                @if (layer.mask.projection === 'Triplanar') {
+                  <div class="flex items-center gap-2">
+                    <span class="text-foreground-muted w-16 shrink-0 text-xs">Blending</span>
+                    <xui-numeric-input
+                      class="min-w-0 flex-1"
+                      size="sm"
+                      aria-label="Mask projection blending"
+                      data-testid="paint-mask-sharpness"
+                      [stepSize]="0.5"
+                      [value]="layer.mask.placement?.sharpness ?? 4"
+                      (valueChange)="placeMask(layer, { sharpness: $event ?? 4 })"
+                    />
+                  </div>
+                }
+              }
             }
             @case ('Anchor') {
               <xui-select
@@ -1228,6 +1283,16 @@ export class LayerPanel {
     void this.store.edit({ op: 'setLayer', layer: layer.id, textures: { [usage]: path } });
   }
 
+  /** Whether a texture fill lays a picture in a tangent-space normal channel, whose green runs one way or the other. */
+  protected laysNormal(layer: StackLayer): boolean {
+    return ['normal', 'coatNormal'].some(usage => (layer.textures[usage] ?? '').length > 0);
+  }
+
+  /** How a texture fill's normal pictures are read: as they are, or with their green turned down (#310). */
+  protected setGreenDown(layer: StackLayer, down: boolean): void {
+    void this.store.edit({ op: 'setLayer', layer: layer.id, normalFormat: down ? 'y-down' : 'y-up' });
+  }
+
   /** What a filter runs, or nothing for a compound of the project's own, whose knobs come from the shelf. */
   protected filterOf(node: string): StackFilterKind | undefined {
     return this.filters().get(node);
@@ -1286,6 +1351,20 @@ export class LayerPanel {
   ): void {
     const placement = { scale: 1, rotation: 0, offsetX: 0, offsetY: 0, sharpness: 4, ...entry.placement, ...change };
     this.setEntry(layer, index, { placement });
+  }
+
+  /** Where the mask's own projected picture sits, from where it sat. */
+  protected placeMask(layer: StackLayer, change: Partial<NonNullable<StackLayer['placement']>>): void {
+    const placement = {
+      scale: 1,
+      rotation: 0,
+      offsetX: 0,
+      offsetY: 0,
+      sharpness: 4,
+      ...layer.mask.placement,
+      ...change
+    };
+    this.setMask(layer, { placement });
   }
 
   protected place(layer: StackLayer, change: Partial<NonNullable<StackLayer['placement']>>): void {

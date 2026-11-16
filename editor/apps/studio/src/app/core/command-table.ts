@@ -414,6 +414,12 @@ export const CommandTable: readonly CommandSpec[] = [
     hint: 'Lists what the texture set in front would get wrong in an export'
   },
   {
+    id: 'showPaths',
+    label: 'Paths',
+    section: 'Window',
+    hint: 'Lists the fills laid along a path on the mesh, to choose one or start another'
+  },
+  {
     id: 'showActivity',
     label: 'Activity',
     section: 'Window',
@@ -625,6 +631,7 @@ export const MenuBar: readonly {
       { submenu: 'Layout', items: ['layout1', 'layout2', 'layout3', 'layout4', '-', 'resetLayout'] },
       'showHistory',
       'showChecks',
+      'showPaths',
       'showActivity',
       'showLog',
       '-',

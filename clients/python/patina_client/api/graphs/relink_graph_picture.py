@@ -87,8 +87,10 @@ def sync_detailed(
 
 ) -> Response[GraphEditResult | ProblemDetails]:
     """ Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another
-    file, as one undo step, or only the node named by node. The file is named as the graph finds it:
-    below the graph's folder or the library when it is in one, else whole.
+    file, as one undo step, or only the node named by node. A file a node reads through a parameter is
+    pointed in the parameter's default, choices and presets, and one a compound's node hands its
+    compound on that node. The file is named as the graph finds it: below the graph's folder or the
+    library when it is in one, else whole.
 
     Args:
         id (str):
@@ -125,8 +127,10 @@ def sync(
 
 ) -> GraphEditResult | ProblemDetails | None:
     """ Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another
-    file, as one undo step, or only the node named by node. The file is named as the graph finds it:
-    below the graph's folder or the library when it is in one, else whole.
+    file, as one undo step, or only the node named by node. A file a node reads through a parameter is
+    pointed in the parameter's default, choices and presets, and one a compound's node hands its
+    compound on that node. The file is named as the graph finds it: below the graph's folder or the
+    library when it is in one, else whole.
 
     Args:
         id (str):
@@ -158,8 +162,10 @@ async def asyncio_detailed(
 
 ) -> Response[GraphEditResult | ProblemDetails]:
     """ Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another
-    file, as one undo step, or only the node named by node. The file is named as the graph finds it:
-    below the graph's folder or the library when it is in one, else whole.
+    file, as one undo step, or only the node named by node. A file a node reads through a parameter is
+    pointed in the parameter's default, choices and presets, and one a compound's node hands its
+    compound on that node. The file is named as the graph finds it: below the graph's folder or the
+    library when it is in one, else whole.
 
     Args:
         id (str):
@@ -196,8 +202,10 @@ async def asyncio(
 
 ) -> GraphEditResult | ProblemDetails | None:
     """ Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another
-    file, as one undo step, or only the node named by node. The file is named as the graph finds it:
-    below the graph's folder or the library when it is in one, else whole.
+    file, as one undo step, or only the node named by node. A file a node reads through a parameter is
+    pointed in the parameter's default, choices and presets, and one a compound's node hands its
+    compound on that node. The file is named as the graph finds it: below the graph's folder or the
+    library when it is in one, else whole.
 
     Args:
         id (str):

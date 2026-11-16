@@ -187,9 +187,16 @@ public static class GraphPackages {
 
                 foreach (var node in held.Graph.Nodes) {
                     Visit(node);
+
+                    // A compound's node may hand its compound a file, as a setting or through a parameter (#311).
+                    foreach (var (file, kind) in GraphFiles.Handed(held.Graph, node, Found)) {
+                        Picture(file, kind, held.In);
+                    }
                 }
             }
         }
+
+        bool Found(string file) => Located(file, roots) is not null;
 
         void Visit(GraphNodeAsset node) {
             if (GraphFiles.SettingOf(node.Type) is null
@@ -223,7 +230,7 @@ public static class GraphPackages {
         ///     A picture, or a font or an SVG file (<paramref name="kind" /> says which), named by the graph or by the
         ///     compound <paramref name="into" />.
         /// </summary>
-        void Picture(string reference, string kind, string? into) {
+        public void Picture(string reference, string kind, string? into) {
             if (reference.Length == 0
                 || reference.StartsWith(GraphFiles.MeshMapScheme, StringComparison.Ordinal)
                 || Pictures.ContainsKey(reference)) {
@@ -269,29 +276,21 @@ public static class GraphPackages {
     }
 
     /// <summary>
-    ///     Compiles the graph as the Worker would, which is the check that what is published evaluates, and names a
-    ///     font or an SVG file a drawing reads that the walk did not find, as one a graph around a compound hands it:
-    ///     a package carries the files its nodes and their parameters name, and cannot know what a graph using one of
-    ///     its compounds could.
+    ///     Compiles the graph as the Worker would, which is the check that what is published evaluates, and gathers a
+    ///     file a node reads that the walk did not find, as one a graph hands a compound, shipped or its project's,
+    ///     across the compound's edge (#311): carried when it is found, else named as missing.
     /// </summary>
     static IReadOnlyList<GraphDiagnostic> Compile(NodeGraphAsset graph, PublishedCompounds published, Walk walk) {
         var model = NodeGraphDocument.Load(CompoundShelf.WithoutBoundaries(graph), out _);
         var compiler = new TextureGraphCompiler(published.Registry) { SubGraphSource = published.Source };
         var compilation = compiler.Compile(model);
         foreach (var external in compiler.Externals) {
-            if (TextureDrawings.Draws(external.Asset)
-                && TextureDrawings.FileOf(external.Asset)?.Trim() is { Length: > 0 } file
-                && !walk.Pictures.ContainsKey(file)) {
-                walk.Pictures[file] = new(file, string.Empty);
-                walk.Dependencies.Add(
-                    new(
-                        GraphFiles.Drawing,
-                        file,
-                        null,
-                        "A parameter names it from outside the graph and its compounds, where a package cannot "
-                        + "follow it."
-                    )
-                );
+            var reference = external.Asset.Trim();
+            var (file, kind) = TextureDrawings.Draws(reference)
+                ? (TextureDrawings.FileOf(reference)?.Trim() ?? string.Empty, GraphFiles.Drawing)
+                : (reference, GraphFiles.Picture);
+            if (GraphFiles.IsFileName(file)) {
+                walk.Picture(file, kind, null);
             }
         }
 

@@ -188,6 +188,10 @@ public sealed record BrushPresetUpdateRequest(string Project, string Source, Bru
 ///     maps, and the stroke lays what they make, each layer where its own projection puts it; so it takes no
 ///     <paramref name="Projection" />, axis or <paramref name="Placement" /> of its own.
 /// </param>
+/// <param name="Parameters">
+///     For a material's <paramref name="Graph" />, the values its parameters take by name, as a graph fill's do: a
+///     material preset's (#311). Null, or a name left out, keeps the graph's default.
+/// </param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field.
 #pragma warning disable SK7005
 public sealed record StackStrokeSource(
@@ -199,7 +203,8 @@ public sealed record StackStrokeSource(
     string? PlanarAxis = null,
     StackPlacement? Placement = null,
     StackFrame? Frame = null,
-    string? Layered = null
+    string? Layered = null,
+    IReadOnlyDictionary<string, string>? Parameters = null
 );
 #pragma warning restore SK7005
 
@@ -315,6 +320,10 @@ public static class StackBrushes {
     static string? LayeredProblem(StackStrokeSource source) {
         if (string.IsNullOrWhiteSpace(source.Layered) || source.Graph is not null) {
             return "A material brush names one material: a graph or a layered material.";
+        }
+
+        if (source.Parameters is { Count: > 0 }) {
+            return "A layered material's layers keep their own values, and it takes no parameters.";
         }
 
         if (source.Projection is not (null or "Uv") || source.PlanarAxis is not null || source.Placement is not null) {

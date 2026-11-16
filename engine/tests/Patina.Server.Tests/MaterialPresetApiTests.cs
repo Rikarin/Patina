@@ -89,6 +89,8 @@ public sealed class MaterialPresetApiTests : IAsyncLifetime {
 
         var own = await ShelfAsync("crate", null);
         Assert.Contains(own, material => material.Source == preset.Source && material.Origin == "project");
+        // Another project's documents are found through the index, which catches up with the write behind the API.
+        await ServerFixture.IndexedAsync(client, Token);
         var found = Assert.Single(
             await ShelfAsync("barrel", "rust"),
             static material => material.Kind == DocumentKinds.MaterialPreset

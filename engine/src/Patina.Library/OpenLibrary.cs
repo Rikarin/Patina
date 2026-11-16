@@ -328,6 +328,18 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Says how long a unit of a project's mesh is, in metres (#146), or zero for the file's own.</summary>
+    public void SetMetresPerUnit(string path, double metresPerUnit) =>
+        Written(() => ProjectFiles.SetMetresPerUnit(RootPath, path, metresPerUnit));
+
+    /// <summary>Writes a project's file under the gate, for the next scan to find.</summary>
+    void Written(Action write) {
+        lock (createGate) {
+            write();
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
     /// <summary>Keeps what a project's export is set to, so any client's next export of it starts there.</summary>
     /// <exception cref="FileNotFoundException">The project is not there.</exception>
     public void SetExport(string path, ProjectExportSettings settings) {
@@ -544,6 +556,9 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     ///     (#306): one query, where reading each project's contents would walk its folder.
     /// </summary>
     public IReadOnlyList<LibraryPicture> Pictures() => queries.Pictures();
+
+    /// <summary>The index's queries, which <see cref="LibraryIndexReads" /> reads.</summary>
+    internal LibraryQueries Queries => queries;
 
     /// <summary>What a folder's documents cost, by each folder or project directly in it (#207).</summary>
     /// <param name="folder">The folder below <c>projects/</c>, empty for the whole library.</param>

@@ -1,7 +1,10 @@
 import { Injectable, signal } from '@angular/core';
 
-/** What a picker lists: the pictures, the meshes or the folders the library's projects hold. */
-export type PickKind = 'picture' | 'mesh' | 'folder';
+/**
+ * What a picker lists: the pictures, the meshes, the fonts a graph's Text draws with, the SVGs its Vector draws (#139),
+ * or the folders the library's projects hold.
+ */
+export type PickKind = 'picture' | 'mesh' | 'font' | 'vector' | 'folder';
 
 /** What a person is asked to pick. */
 export interface PickRequest {

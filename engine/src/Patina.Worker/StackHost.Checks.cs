@@ -64,6 +64,9 @@ sealed partial class StackHost {
             ];
         }
 
-        return new() { Type = IpcTypes.Ok, StackMeasured = new(width, height, layout?.Measures, maps) };
+        return new() {
+            Type = IpcTypes.Ok,
+            StackMeasured = new(width, height, layout?.Measures, maps) { MetresPerUnit = mesh?.Geometry.MetresPerUnit }
+        };
     }
 }

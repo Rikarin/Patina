@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
 using Patina.Ipc;
 using Patina.Jobs;
-using Patina.Library;
 using Patina.Server.Graphs;
 using Patina.Server.Viewport;
 using System.Collections.Frozen;
@@ -128,7 +127,7 @@ static class ViewportMapEndpoints {
         CancellationToken cancellationToken
     ) {
         try {
-            var hashed = await Task.Run(() => Hashed(request), cancellationToken);
+            var hashed = await Task.Run(() => ViewportMapFiles.Hashed(request), cancellationToken);
             // Pictures laid by hand take the place of a graph followed.
             session.Follow(null);
             session.SetMaps(hashed);
@@ -162,7 +161,10 @@ static class ViewportMapEndpoints {
         }
 
         try {
-            var (look, picture) = await Task.Run(() => (Hash(request.Look), Hash(request.Picture)), cancellationToken);
+            var (look, picture) = await Task.Run(
+                () => (ViewportMapFiles.Hash(request.Look), ViewportMapFiles.Hash(request.Picture)),
+                cancellationToken
+            );
             // A stand-in shape gives way to the one chosen; a model's own mesh stays whatever the shape says.
             var mesh = session.State.Mesh;
             if (PreviewShape.Holds(identity.Library, mesh)) {
@@ -210,8 +212,9 @@ static class ViewportMapEndpoints {
                 : (null, Refusals.NoPanorama(environment));
         } catch (IpcException e) {
             return (null, Refusals.OfEngine(e, Refused));
-        } catch (TimeoutException e) {
-            return (null, Refusals.Of(e, Unavailable));
+        } catch (Exception e) when (e is IOException or TimeoutException) {
+            // The Worker went while it drew the panorama, or none came (#309).
+            return (null, Refusals.OfEngine(e, Unavailable));
         }
     }
 
@@ -243,6 +246,8 @@ static class ViewportMapEndpoints {
             return Refusals.Of(e);
         } catch (IpcException e) {
             return Refusals.OfEngine(e, Refused);
+        } catch (IpcDisconnectedException e) {
+            return Refusals.OfEngine(e, Unavailable);
         } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
             return Refusals.Unwritable(e, Unavailable);
         } catch (TimeoutException e) {
@@ -359,7 +364,7 @@ static class ViewportMapEndpoints {
         try {
             var maps = tangent ? new ViewportMapPaths(Normal: Of("normal"), Occlusion: Of("ao")) : new();
             var (hashed, alone) = await Task.Run(
-                () => (Hashed(maps), request.Map is { } map ? Hash(Of(map)) : null),
+                () => (ViewportMapFiles.Hashed(maps), request.Map is { } map ? ViewportMapFiles.Hash(Of(map)) : null),
                 cancellationToken
             );
             if (!File.Exists(job.Bake.Low)) {
@@ -457,28 +462,5 @@ static class ViewportMapEndpoints {
         if (session.State is { Mesh: null, Display.Shape: var shape }) {
             session.SetMesh(PreviewShape.File(identity.Library, shape));
         }
-    }
-
-    static ViewportMapSet Hashed(ViewportMapPaths paths) =>
-        new(
-            Hash(paths.BaseColor),
-            Hash(paths.Normal),
-            Hash(paths.Roughness),
-            Hash(paths.Metallic),
-            Hash(paths.Occlusion),
-            Hash(paths.Emissive),
-            Hash(paths.Opacity)
-        );
-
-    /// <exception cref="FileNotFoundException">The file is not there.</exception>
-    static ViewportMapFile? Hash(string? path) {
-        if (path is null) {
-            return null;
-        }
-
-        var full = Path.GetFullPath(path);
-        return File.Exists(full)
-            ? new(full, Revision.OfFile(full).Text)
-            : throw new FileNotFoundException($"There is no file at '{path}'.", path);
     }
 }

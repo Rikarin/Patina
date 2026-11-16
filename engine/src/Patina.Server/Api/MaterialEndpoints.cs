@@ -9,10 +9,9 @@ namespace Patina.Server.Api;
 
 /// <summary>
 ///     What a project's layers can be filled with: the material graphs on its shelf, and a graph rendered to a picture
-///     for a brush to stamp.
+///     for a brush to stamp, or a picture Patina ships as an alpha brought into the project.
 /// </summary>
 static class MaterialEndpoints {
-    const string BrushFolder = "brushes";
     static readonly TimeSpan BrushPatience = TimeSpan.FromSeconds(60);
     static readonly TimeSpan BrushRetry = TimeSpan.FromMilliseconds(100);
 
@@ -34,7 +33,11 @@ static class MaterialEndpoints {
             );
 
         library.MapPost("/materials/brush", MakeBrush)
-            .Described("MakeBrush", "Renders a graph to a picture in its project, which a brush can stamp.");
+            .Described(
+                "MakeBrush",
+                "Renders a graph to a picture in its project, which a brush can stamp, or brings a picture Patina "
+                + "ships as an alpha into the project's brushes (#34)."
+            );
 
         library.MapPost("/materials/refresh", RefreshMaterials)
             .Described("RefreshMaterials", "Brings a project's layers up to edits saved in the graphs they read.");
@@ -95,18 +98,24 @@ static class MaterialEndpoints {
 
     /// <summary>
     ///     A graph's Output as a picture in <c>brushes/</c>, through a session of its own unless one is open. The
-    ///     Worker only has a picture once it has evaluated, so this asks until it does.
+    ///     Worker only has a picture once it has evaluated, so this waits until it has. Only the wait for a Worker to
+    ///     come is bounded: one that is connected and slow over the graph is waited for (#309).
     /// </summary>
     static async Task<Results<Ok<MaterialBrush>, ProblemHttpResult>> MakeBrush(
         LibraryHost host,
         GraphSessions graphs,
         GraphEvaluator evaluator,
+        WorkerLink worker,
         PreviewStore previews,
         MaterialUseRequest request,
         CancellationToken cancellationToken
     ) {
         if (host.Library is not { } library) {
             return LibraryTreeEndpoints.NoLibrary();
+        }
+
+        if (ShelfAlphas.Names(request.Source)) {
+            return BroughtAlpha(library, request);
         }
 
         var full = Path.GetFullPath(request.Source, library.RootPath);
@@ -119,34 +128,51 @@ static class MaterialEndpoints {
         try {
             var (node, usage) = MaterialShelf.BrushOutput(await SharedFile.ReadAllTextAsync(full, cancellationToken));
             session.Evaluate();
-            using var patience = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            patience.CancelAfter(BrushPatience);
-            var picture = await RenderedAsync(session, evaluator, node, usage, patience.Token);
+            await WorkerWait.UntilAsync(
+                session,
+                session.Pending,
+                worker.ConnectionAsync,
+                BrushPatience,
+                cancellationToken
+            );
+            var picture = await RenderedAsync(session, evaluator, node, usage, cancellationToken);
             var name = Path.GetFileNameWithoutExtension(request.Source);
-            var alpha = $"{BrushFolder}/{name}.png";
+            var alpha = $"{ShelfAlphas.BrushFolder}/{name}.png";
             var file = library.ProjectFile(request.Project, alpha);
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
             File.Copy(previews.Find(picture.Hash)!, file, true);
             return TypedResults.Ok(new MaterialBrush(alpha));
         } catch (ProjectRefusedException e) {
-            return Refusals.Problem(
-                e.Message,
-                StatusCodes.Status422UnprocessableEntity,
-                Refusals.LibraryRefused,
-                Refusals.Reason(e.Message)
-            );
-        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            return Refusals.Problem(
-                "The graph did not render in time.",
-                StatusCodes.Status503ServiceUnavailable,
-                Refusals.EngineUnavailable
-            );
+            return Refused(e);
+        } catch (Exception e) when (e is IpcDisconnectedException or TimeoutException) {
+            // No Worker came, or the one drawing went (#309).
+            return Refusals.OfEngine(e, StatusCodes.Status503ServiceUnavailable);
         } finally {
             if (!held) {
                 graphs.Close(session);
             }
         }
     }
+
+    /// <summary>A picture Patina ships as an alpha, copied into the project's <c>brushes/</c> (#34).</summary>
+    static Results<Ok<MaterialBrush>, ProblemHttpResult> BroughtAlpha(OpenLibrary library, MaterialUseRequest request) {
+        try {
+            return ShelfAlphas.Bring(library, request.Project, request.Source) is { } alpha
+                ? TypedResults.Ok(new MaterialBrush(alpha))
+                : Refusals.NoFile(request.Source);
+        } catch (ProjectRefusedException e) {
+            return Refused(e);
+        }
+    }
+
+    /// <summary>What a project refused, said as the library's refusal.</summary>
+    static ProblemHttpResult Refused(ProjectRefusedException e) =>
+        Refusals.Problem(
+            e.Message,
+            StatusCodes.Status422UnprocessableEntity,
+            Refusals.LibraryRefused,
+            Refusals.Reason(e.Message)
+        );
 
     static async Task<GraphFullImage> RenderedAsync(
         GraphSession session,
@@ -155,12 +181,17 @@ static class MaterialEndpoints {
         string usage,
         CancellationToken cancellationToken
     ) {
-        while (true) {
+        // ⚠ Evaluated already: these tries only cover a picture the Worker has not quite put away, never its drawing.
+        for (var waited = TimeSpan.Zero;; waited += BrushRetry) {
             try {
                 return await evaluator.ImageAsync(session, node, usage, cancellationToken);
             } catch (IpcException) when (!cancellationToken.IsCancellationRequested) {
                 if (session.EvaluationError is { } failed) {
                     throw new ProjectRefusedException(failed);
+                }
+
+                if (waited > BrushPatience) {
+                    throw new TimeoutException("The graph did not render in time.");
                 }
 
                 await Task.Delay(BrushRetry, cancellationToken);

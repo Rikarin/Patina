@@ -53,6 +53,7 @@ static class ProjectFiles {
             PreservePaint = document.PreservePaint,
             Unwrap = document.Unwrap,
             NormalFormat = document.NormalFormat,
+            MetresPerUnit = document.MetresPerUnit,
             Export = document.Export,
             ExportSets = [
                 ..ProjectOutputs.Of(document, full)
@@ -292,6 +293,18 @@ static class ProjectFiles {
                 Unwrap = unwrap ?? document.Unwrap,
                 NormalFormat = normalFormat ?? document.NormalFormat
             }
+        );
+    }
+
+    /// <summary>
+    ///     Says how long a unit of the project's mesh is, in metres (#146), or zero for what the file says.
+    /// </summary>
+    public static void SetMetresPerUnit(string root, string path, double metresPerUnit) {
+        var (_, document) = Project(root, path);
+        LibraryFiles.WriteProject(
+            root,
+            path,
+            document with { MetresPerUnit = metresPerUnit > 0 ? metresPerUnit : null }
         );
     }
 

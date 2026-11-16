@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Ipc;
 using System.IO.Compression;
 using System.Net;
 using System.Text;
@@ -246,6 +247,81 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
         Assert.Single(asset.Nodes, static n => n.Type == "Colour/Channel Shuffle");
     }
 
+    /// <summary>
+    ///     A colour picture's numbers are what its file says they are (#308), not what its use usually has: a linear
+    ///     emissive is read as it is, where an sRGB one is taken to linear, and a linear base color is taken to sRGB,
+    ///     which a graph's base color is. MaterialX inherits a document's colour space; USD says it per texture.
+    /// </summary>
+    [Theory]
+    [InlineData("lin.mtlx", 0, 1)]
+    [InlineData("srgb.mtlx", 1, 0)]
+    [InlineData("raw.usda", 0, 1)]
+    [InlineData("auto.usda", 1, 0)]
+    public async Task A_colour_pictures_space_is_what_its_file_says(string file, int toLinear, int toSrgb) {
+        var space = Path.GetFileNameWithoutExtension(file);
+        File.WriteAllText(
+            Path.Combine(source.FullName, file),
+            file.EndsWith(".mtlx", StringComparison.Ordinal)
+                ? Emitting(space == "lin" ? "lin_rec709" : "srgb_texture")
+                : Glowing(space == "raw" ? "raw" : "auto")
+        );
+
+        var imported = await ImportAsync(file);
+
+        var asset = YamlSerializer.Parse<NodeGraphAsset>(
+            await File.ReadAllTextAsync(Path.Combine(server.Library, imported.Documents[0]), Token)
+        );
+        Assert.Equal(toLinear, asset.Nodes.Count(static n => n.Type == "Colour/sRGB to Linear"));
+        Assert.Equal(toSrgb, asset.Nodes.Count(static n => n.Type == "Colour/Linear to sRGB"));
+    }
+
+    /// <summary>A MaterialX document in a colour space, whose base color and emission colour read pictures.</summary>
+    static string Emitting(string space) =>
+        $"""
+         <?xml version="1.0" encoding="utf-8"?>
+         <materialx version="1.38" colorspace="{space}">
+           <image name="colour" type="color3">
+             <input name="file" type="filename" value="textures/colour.png" />
+           </image>
+           <image name="glow" type="color3">
+             <input name="file" type="filename" value="textures/colour.png" />
+           </image>
+           <open_pbr_surface name="SR_Lamp" type="surfaceshader">
+             <input name="base_color" type="color3" nodename="colour" />
+             <input name="emission_color" type="color3" nodename="glow" />
+           </open_pbr_surface>
+           <surfacematerial name="M_Lamp" type="material">
+             <input name="surfaceshader" type="surfaceshader" nodename="SR_Lamp" />
+           </surfacematerial>
+         </materialx>
+         """;
+
+    /// <summary>A USD material whose base color and emissive read one texture in a colour space.</summary>
+    static string Glowing(string space) =>
+        $$"""
+          #usda 1.0
+          def Material "Lamp"
+          {
+              token outputs:surface.connect = </Lamp/Surface.outputs:surface>
+
+              def Shader "Surface"
+              {
+                  uniform token info:id = "UsdPreviewSurface"
+                  color3f inputs:diffuseColor.connect = </Lamp/Colour.outputs:rgb>
+                  color3f inputs:emissiveColor.connect = </Lamp/Colour.outputs:rgb>
+                  token outputs:surface
+              }
+
+              def Shader "Colour"
+              {
+                  uniform token info:id = "UsdUVTexture"
+                  asset inputs:file = @textures/colour.png@
+                  token inputs:sourceColorSpace = "{{space}}"
+                  float3 outputs:rgb
+              }
+          }
+          """;
+
     /// <summary>An input a graph would have to compute is left out and said, and the rest comes in.</summary>
     [Fact]
     public async Task An_input_made_by_a_node_is_left_out_and_said() {
@@ -275,6 +351,44 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
         Assert.False(Directory.Exists(Path.Combine(server.Library, "projects/walls/pictures/scene")));
     }
 
+    /// <summary>
+    ///     A model file that does not say which way its normal's green runs is read as the project's normal format says
+    ///     (#310): in a DirectX project an FBX's or an OBJ's normal is not turned, and a glTF's, whose format says its
+    ///     green runs up, still is.
+    /// </summary>
+    [Fact]
+    public async Task A_models_normal_runs_its_green_as_the_project_says_unless_its_format_says() {
+        await using var worker = await ModelWorker.ConnectAsync(
+            server.SocketPath,
+            Path.Combine(source.FullName, "textures", "normal.png"),
+            Token
+        );
+        foreach (var name in (string[])["crate.obj", "crate.gltf"]) {
+            File.WriteAllText(Path.Combine(source.FullName, name), string.Empty);
+        }
+
+        Assert.True(Turned(await ImportAsync("crate.obj")), "A Y+ project turns an OBJ's normal as glTF's.");
+        using var settings = await client.PatchAsJsonAsync(
+            "/api/v1/library/project/settings",
+            new ProjectSettingsRequest("walls", null, null, null) { NormalFormat = NormalFormats.Down },
+            Token
+        );
+        Assert.True(settings.IsSuccessStatusCode, await settings.Content.ReadAsStringAsync(Token));
+
+        Assert.False(Turned(await ImportAsync("crate.obj")), "A Y- project reads an OBJ's normal as running down.");
+        Assert.True(Turned(await ImportAsync("crate.gltf")), "glTF says its green runs up, whatever the project.");
+
+        bool Turned(MaterialImportResult imported) {
+            var asset = YamlSerializer.Parse<NodeGraphAsset>(
+                File.ReadAllText(Path.Combine(server.Library, imported.Documents[0]))
+            );
+            return asset.Nodes.Any(static n => n.Type == "Colour/Channel Mix"
+                && n.Values.TryGetValue("Green from Green", out var green)
+                && green[0] < 0
+            );
+        }
+    }
+
     [Fact]
     public async Task A_file_that_is_no_material_file_is_refused() {
         File.WriteAllText(Path.Combine(source.FullName, "notes.txt"), "no");
@@ -285,5 +399,49 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    /// <summary>A Worker that reads every model as one material whose normal is a picture, and nothing else.</summary>
+    sealed class ModelWorker : IAsyncDisposable {
+        readonly IpcConnection connection;
+        readonly string normal;
+        int reads;
+
+        ModelWorker(Stream stream, string normal) {
+            this.normal = normal;
+            connection = new(stream, (request, _) => ValueTask.FromResult(Answer(request)));
+        }
+
+        public static async Task<ModelWorker> ConnectAsync(
+            string socketPath,
+            string normal,
+            CancellationToken cancellationToken
+        ) {
+            var stream = await IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(30), cancellationToken);
+            ModelWorker worker = new(stream, normal);
+            worker.connection.Start();
+            await worker.connection.SendAsync(
+                new() {
+                    Type = IpcTypes.Hello, Worker = new(IpcMessage.ProtocolVersion, "test", Environment.ProcessId)
+                },
+                cancellationToken
+            );
+            return worker;
+        }
+
+        IpcMessage Answer(IpcMessage request) =>
+            request.Type switch {
+                IpcTypes.Health => IpcMessage.Ok(request.Id),
+                IpcTypes.MaterialRead => new() {
+                    Type = IpcTypes.Ok,
+                    Id = request.Id,
+                    MaterialsRead = [
+                        new($"Crate {++reads}", [new("normal", normal, -1, false, [1f, 1f, 1f, 1f])], [])
+                    ]
+                },
+                _ => IpcMessage.Fail(request.Id, $"A model Worker does not answer '{request.Type}'.")
+            };
+
+        public ValueTask DisposeAsync() => connection.DisposeAsync();
     }
 }

@@ -1,3 +1,5 @@
+using Microsoft.Data.Sqlite;
+
 namespace Patina.Library;
 
 /// <summary>A picture in a project, as the index holds it (#306).</summary>
@@ -19,15 +21,7 @@ static class IndexedPictures {
     /// <summary>Every picture of every project the index knows, by path.</summary>
     public static IReadOnlyList<LibraryPicture> All(IndexDatabase database) {
         using var connection = database.Open();
-        Dictionary<string, string> projects = new(StringComparer.Ordinal);
-        using (var command = connection.CreateCommand()) {
-            command.CommandText = "SELECT path, name FROM project";
-            using var reader = command.ExecuteReader();
-            while (reader.Read()) {
-                projects[reader.GetString(0)] = reader.GetString(1);
-            }
-        }
-
+        var projects = Projects(connection);
         List<LibraryPicture> found = [];
         using (var command = connection.CreateCommand()) {
             command.CommandText = PictureRows;
@@ -51,8 +45,21 @@ static class IndexedPictures {
         return found;
     }
 
+    /// <summary>Every project the index knows: its name by its path below <c>projects/</c>.</summary>
+    internal static Dictionary<string, string> Projects(SqliteConnection connection) {
+        Dictionary<string, string> projects = new(StringComparer.Ordinal);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT path, name FROM project";
+        using var reader = command.ExecuteReader();
+        while (reader.Read()) {
+            projects[reader.GetString(0)] = reader.GetString(1);
+        }
+
+        return projects;
+    }
+
     /// <summary>The project a file is in: the nearest folder above it that is one, or null for none indexed.</summary>
-    static string? ProjectOf(Dictionary<string, string> projects, string path) {
+    internal static string? ProjectOf(Dictionary<string, string> projects, string path) {
         var below = path[(LibraryLayout.ProjectsFolder.Length + 1)..];
         for (var end = below.LastIndexOf('/'); end > 0; end = below.LastIndexOf('/', end - 1)) {
             if (projects.ContainsKey(below[..end])) {

@@ -7,7 +7,17 @@ import type {
   GraphSettingCondition,
   GraphSettingDefinition
 } from '@patina/api-client';
-import { AngleDial } from '@patina/studio-ui';
+import {
+  AngleDial,
+  CurveEditor,
+  type Curves,
+  GradientRamp,
+  type RampStop,
+  formatCurves,
+  formatRamp,
+  parseCurves,
+  parseRamp
+} from '@patina/studio-ui';
 import { XuiButtonImports } from '@xui/button';
 import { XuiColorPickerImports } from '@xui/color-picker';
 import { XuiInputImports } from '@xui/input';
@@ -26,7 +36,7 @@ import { colorTextOf, hexOfLanes, keptLanes, lanesOfColorText, lanesOfHex } from
 import { GraphStore } from './graph-store';
 import { PairField } from './pair-field';
 
-const Kinds = ['Float', 'Int', 'Bool', 'Text', 'Color', 'Float2'];
+const Kinds = ['Float', 'Int', 'Bool', 'Text', 'Color', 'Float2', 'Curve', 'Ramp'];
 const BitDepths = ['16', '32'];
 const PortKinds = ['Image', 'Float', 'Int', 'Bool', 'Float2', 'Float3', 'Float4'];
 const DefaultBitDepth = '16';
@@ -47,6 +57,8 @@ function startOf(kind: string): string {
     case 'Bool':
       return 'false';
     case 'Text':
+    case 'Curve':
+    case 'Ramp':
       return '';
     case 'Color':
       return '1,1,1,1';
@@ -86,6 +98,8 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
   imports: [
     IconImports,
     AngleDial,
+    CurveEditor,
+    GradientRamp,
     PairField,
     XuiButtonImports,
     XuiColorPickerImports,
@@ -527,6 +541,28 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                   (released)="store.endGesture()"
                   (valueChange)="setDefault(parameter, $event)"
                 />
+              }
+              @case ('curve') {
+                @if (curvesOf(parameter); as curves) {
+                  <ptn-curve-editor
+                    [attr.data-testid]="'parameter-curve-' + parameter.name"
+                    [curves]="curves"
+                    [disabled]="!store.editable()"
+                    (curvesChange)="setDefault(parameter, formatCurves($event))"
+                    (released)="store.endGesture()"
+                  />
+                }
+              }
+              @case ('ramp') {
+                @if (stopsOf(parameter); as stops) {
+                  <ptn-gradient-ramp
+                    [attr.data-testid]="'parameter-ramp-' + parameter.name"
+                    [disabled]="!store.editable()"
+                    [stops]="stops"
+                    (released)="store.endGesture()"
+                    (stopsChange)="setDefault(parameter, formatRamp($event))"
+                  />
+                }
               }
               @case ('choice') {
                 <xui-select
@@ -1238,6 +1274,19 @@ export class GraphSettings {
     if (name !== parameter.name) {
       this.store.editParameter(parameter.name, { ...parameter, name });
     }
+  }
+
+  protected readonly formatCurves = formatCurves;
+  protected readonly formatRamp = formatRamp;
+
+  /** A Curve parameter's default as the curve editor draws it (#181). */
+  protected curvesOf(parameter: GraphSettingDefinition): Curves | null {
+    return parseCurves(this.store.parameterDefault(parameter));
+  }
+
+  /** A Ramp parameter's default as the ramp's stops (#181). */
+  protected stopsOf(parameter: GraphSettingDefinition): readonly RampStop[] | null {
+    return parseRamp(this.store.parameterDefault(parameter));
   }
 
   protected setKind(parameter: GraphSettingDefinition, kind: string | null): void {

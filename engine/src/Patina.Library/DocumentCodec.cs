@@ -25,6 +25,7 @@ public static class DocumentCodec {
     const string PreservePaintKey = "preservePaint";
     const string UnwrapKey = "unwrap";
     const string NormalFormatKey = "normalFormat";
+    const string MetresPerUnitKey = "metresPerUnit";
     const string BakeKey = "bake";
     const string ViewportKey = "viewport";
     const string PaintKey = "paint";
@@ -86,6 +87,9 @@ public static class DocumentCodec {
                     ..document.NormalFormat == NormalFormats.Up
                         ? []
                         : new[] { Pair(NormalFormatKey, YamlText.Plain(document.NormalFormat)) },
+                    ..document.MetresPerUnit is { } unit
+                        ? new[] { Pair(MetresPerUnitKey, YamlText.Plain(unit)) }
+                        : [],
                     ..Block(
                         ExportKey,
                         Canonical(document.Export),
@@ -325,6 +329,10 @@ public static class DocumentCodec {
                     NormalFormat = fields.Optional(NormalFormatKey) == NormalFormats.Down
                         ? NormalFormats.Down
                         : NormalFormats.Up,
+                    MetresPerUnit = fields.Number(MetresPerUnitKey, 0) is > 0 and var unit
+                        && MeshUnits.Problem(unit) is null
+                            ? unit
+                            : null,
                     Export = ReadBlock(fields, ExportKey, LibraryTreeJsonContext.Default.ProjectExportSettings, new()),
                     Bake = ReadBake(fields),
                     Viewport = ReadBlock(fields, ViewportKey, LibraryTreeJsonContext.Default.ViewportDisplay, new()),

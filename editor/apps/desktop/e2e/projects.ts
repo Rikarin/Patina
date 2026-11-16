@@ -1,5 +1,5 @@
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 
@@ -242,9 +242,10 @@ export async function serverPicture(window: Page, path: string): Promise<string>
 }
 
 /**
- * Attaches what the engine's processes last said to a test that failed, as `engine-logs`, which CI uploads with the
- * rest of its results: on a runner that is the only way to see a cause the app's window does not show (#274). Beside
- * it go what the app says went wrong, as `app-failures`, and its console and uncaught errors, as `app-console` (#299).
+ * Attaches what the engine's processes last said to a test that failed, as the file `engine-logs` that CI uploads
+ * with the rest of its results: on a runner that is the only way to see a cause the app's window does not show (#274).
+ * Beside it go what the app says went wrong, as `app-failures`, and its console and uncaught errors, as `app-console`
+ * (#299).
  */
 async function keepLogs(app: ElectronApplication): Promise<void> {
   const info = test.info();
@@ -257,10 +258,12 @@ async function keepLogs(app: ElectronApplication): Promise<void> {
     ?.evaluate(() => (globalThis as unknown as { patina: { logs(): Promise<Record<string, string[]>> } }).patina.logs())
     .catch(() => undefined); // a window that has gone has nothing to say
   if (logs) {
-    const body = Object.entries(logs)
-      .map(([name, lines]) => [`== ${name} (${lines.length} lines)`, ...lines].join('\n'))
-      .join('\n\n');
-    await info.attach('engine-logs', { body, contentType: 'text/plain' });
+    // A file, since a reporter prints a text attachment cut to its first 300 characters, never the cause (#311).
+    const path = info.outputPath('engine-logs.txt');
+    writeFileSync(path, logText(logs, Infinity));
+    await info.attach('engine-logs', { path, contentType: 'text/plain' });
+    // The end of each log, where the cause is, goes to the run's own output beside the failure.
+    console.error(logText(logs, LogTail));
   }
 
   if (!window || window.isClosed()) {
@@ -288,6 +291,20 @@ async function keepLogs(app: ElectronApplication): Promise<void> {
     ].join('\n');
     await info.attach('app-console', { body, contentType: 'text/plain' });
   }
+}
+
+/** How many of each engine log's last lines a failure prints. */
+const LogTail = 40;
+
+/** Each process's log under its name, at most its last `tail` lines. */
+function logText(logs: Record<string, string[]>, tail: number): string {
+  return Object.entries(logs)
+    .map(([name, lines]) => {
+      const kept = lines.length > tail ? lines.slice(-tail) : lines;
+      const count = kept.length < lines.length ? `last ${kept.length} of ${lines.length}` : `${lines.length}`;
+      return [`== ${name} (${count} lines)`, ...kept].join('\n');
+    })
+    .join('\n\n');
 }
 
 function electronPid(app: ElectronApplication): number | undefined {

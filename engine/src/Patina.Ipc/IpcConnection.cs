@@ -50,6 +50,12 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
     /// </summary>
     public Func<string, bool>? Urgent { get; init; }
 
+    /// <summary>
+    ///     Told the type of each request as it joins the queue, on the reading thread, while the one being answered
+    ///     may still be running: what is answering can give way to it.
+    /// </summary>
+    public Action<string>? Queued { get; init; }
+
     /// <summary>Completes when the peer has gone or this connection was disposed.</summary>
     public Task Closed => closed.Task;
 
@@ -66,7 +72,7 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
         pending[request.Id] = reply;
         try {
             if (closed.Task.IsCompleted) {
-                throw new IOException("The IPC peer has disconnected.");
+                throw new IpcDisconnectedException();
             }
 
             await WriteAsync(request, cancellationToken).ConfigureAwait(false);
@@ -108,7 +114,7 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
                 writeLock.Release();
             }
         } catch (ObjectDisposedException e) {
-            throw new IOException("The IPC peer has disconnected.", e);
+            throw new IpcDisconnectedException(e);
         }
     }
 
@@ -129,7 +135,7 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
             ahead.Writer.TryComplete();
             closed.TrySetResult();
             foreach (var reply in pending.Values) {
-                reply.TrySetException(new IOException("The IPC peer has disconnected."));
+                reply.TrySetException(new IpcDisconnectedException());
             }
         }
     }
@@ -147,6 +153,7 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
             _ = Task.Run(() => AnswerAsideAsync(message, cancellationToken), CancellationToken.None);
         } else if (Immediate is { } immediate && !immediate(message.Type)) {
             (Urgent?.Invoke(message.Type) == true ? ahead : queued).Writer.TryWrite(message);
+            Queued?.Invoke(message.Type);
         } else {
             await WriteAsync(await AnswerAsync(message, cancellationToken).ConfigureAwait(false), cancellationToken)
                 .ConfigureAwait(false);
@@ -232,4 +239,21 @@ public sealed class IpcException : Exception {
 
     /// <summary>The refusal of a Worker that could open no device, with the reason the device gave.</summary>
     public static IpcException NoDevice(string? refusal) => new($"{NoDevicePrefix}: {refusal}");
+}
+
+/// <summary>
+///     The peer went away before it answered: its process ended or the link broke. Nothing in the request was wrong,
+///     and the same request may be answered by the next peer (#309). It is an <see cref="IOException" />, as it was,
+///     so that what recovers from a lost link still does; what refuses a request tells it apart from a file.
+/// </summary>
+public sealed class IpcDisconnectedException : IOException {
+    const string Said = "The IPC peer has disconnected.";
+
+    public IpcDisconnectedException() : base(Said) { }
+
+    public IpcDisconnectedException(Exception innerException) : base(Said, innerException) { }
+
+    public IpcDisconnectedException(string message) : base(message) { }
+
+    public IpcDisconnectedException(string message, Exception innerException) : base(message, innerException) { }
 }
