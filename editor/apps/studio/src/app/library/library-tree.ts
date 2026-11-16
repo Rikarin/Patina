@@ -13,7 +13,6 @@ import {
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiContextMenuImports } from '@xui/context-menu';
-import { XuiDialogImports } from '@xui/dialog';
 import { XuiInputImports } from '@xui/input';
 import { XuiMenuImports } from '@xui/menu';
 import { Commands } from '../core/commands';
@@ -23,6 +22,7 @@ import { MenuKeys } from '../core/menu-keys';
 import { SystemStatus } from '../core/system-status';
 import { LibraryActions, type LibraryTarget, projectTarget } from './library-actions';
 import { LibrarySelection } from './library-selection';
+import { LibraryTreeDialogs } from './library-tree-dialogs';
 import { FolderColours, LibraryTreeStore, type TreeRow, canDrop, parentOf } from './library-tree-store';
 import { type DocumentTab, ProjectStore } from './project-store';
 import { ViewportFit } from './viewport-fit';
@@ -81,7 +81,7 @@ interface Closing {
     XuiButtonImports,
     XuiCalloutImports,
     XuiContextMenuImports,
-    XuiDialogImports,
+    LibraryTreeDialogs,
     XuiInputImports,
     XuiMenuImports
   ],
@@ -337,59 +337,16 @@ interface Closing {
       </xui-menu>
     </ng-template>
 
-    <xui-dialog
-      size="sm"
-      title="Delete folder"
-      [open]="deleting() !== null"
-      (openChange)="$event || deleting.set(null)"
-    >
-      <xui-dialog-body data-testid="tree-delete">
-        @if (deleting()?.folder; as folder) {
-          @if (folder.projectCount > 0) {
-            {{ folder.name }} holds {{ folder.projectCount }} {{ folder.projectCount === 1 ? 'project' : 'projects' }}.
-            They move up a level, and nothing is deleted but the folder.
-          } @else {
-            Delete {{ folder.name }} and any empty folders in it?
-          }
-        }
-      </xui-dialog-body>
-      <xui-dialog-footer>
-        <button type="button" xuiButton variant="ghost" (click)="deleting.set(null)">Cancel</button>
-        <button type="button" xuiButton color="error" data-testid="tree-delete-confirm" (click)="confirmDelete()">
-          Delete Folder
-        </button>
-      </xui-dialog-footer>
-    </xui-dialog>
-
-    <xui-dialog
-      size="sm"
-      title="Close open documents?"
-      [open]="closing() !== null"
-      (openChange)="$event || closing.set(null)"
-    >
-      <xui-dialog-body data-testid="tree-closing">
-        @if (closing(); as ask) {
-          <p>
-            {{ ask.what }} closes
-            {{ ask.documents.length === 1 ? ask.documents[0]?.name : ask.documents.length + ' open documents' }}, and
-            {{ ask.documents.length === 1 ? 'its' : 'their' }} undo history is lost. Saved work is kept.
-          </p>
-          @if (ask.documents.length > 1) {
-            <ul class="text-foreground-muted mt-1 list-inside list-disc text-xs">
-              @for (document of ask.documents; track document.path) {
-                <li>{{ document.name }}</li>
-              }
-            </ul>
-          }
-        }
-      </xui-dialog-body>
-      <xui-dialog-footer>
-        <button type="button" xuiButton variant="ghost" (click)="closing.set(null)">Cancel</button>
-        <button type="button" xuiButton color="warning" data-testid="tree-closing-confirm" (click)="confirmClosing()">
-          Close and Continue
-        </button>
-      </xui-dialog-footer>
-    </xui-dialog>
+    @defer (when deleting() !== null || closing() !== null) {
+      <ptn-library-tree-dialogs
+        [deleting]="deleting()"
+        [closing]="closing()"
+        (deleteCancelled)="deleting.set(null)"
+        (deleteConfirmed)="confirmDelete()"
+        (closingCancelled)="closing.set(null)"
+        (closingConfirmed)="confirmClosing()"
+      />
+    }
   `
 })
 export class LibraryTree {
