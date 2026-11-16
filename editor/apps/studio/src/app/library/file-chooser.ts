@@ -1,13 +1,29 @@
 import { Injectable, inject } from '@angular/core';
 import { unwrap } from '@patina/api-client';
-import { desktop } from '../core/desktop';
-import { type FileChoice, FilePicker, type PickRequest } from '../core/file-picker';
+import { type DesktopBridge, desktop } from '../core/desktop';
+import { type FileChoice, FilePicker, type PickKind, type PickRequest } from '../core/file-picker';
 import { SystemStatus } from '../core/system-status';
 import { LibraryStore } from './library-store';
 
 /** A library file's path on the Server's machine, from the library's own path there and the file's below it. */
 export function pathOnServer(library: string, below: string): string {
   return `${library.replace(/[\\/]+$/u, '')}/${below}`;
+}
+
+/** This machine's dialog for a kind of file, offering what the Server reads of it: its path, or null for none. */
+export function openOnMachine(bridge: DesktopBridge, kind: PickKind, status: SystemStatus): Promise<string | null> {
+  switch (kind) {
+    case 'mesh':
+      return bridge.openMesh(status.meshes());
+    case 'folder':
+      return bridge.openFolder();
+    case 'font':
+      return bridge.openImage(status.fonts(), 'Fonts');
+    case 'vector':
+      return bridge.openImage(status.vectors(), 'SVG Drawings');
+    default:
+      return bridge.openImage(status.pictures());
+  }
 }
 
 /**
@@ -25,11 +41,7 @@ export class FileChooser {
   async choose(request: PickRequest): Promise<FileChoice | null> {
     const bridge = desktop();
     if (bridge && !(await this.libraryHas(request))) {
-      const file = await (request.kind === 'mesh'
-        ? bridge.openMesh(this.status.meshes())
-        : request.kind === 'folder'
-          ? bridge.openFolder()
-          : bridge.openImage(this.status.pictures()));
+      const file = await openOnMachine(bridge, request.kind, this.status);
       return file ? { machine: file } : null;
     }
 

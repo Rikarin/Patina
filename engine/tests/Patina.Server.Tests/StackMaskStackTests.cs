@@ -85,6 +85,32 @@ public sealed class StackMaskStackTests {
     }
 
     /// <summary>
+    ///     A client that leaves the mask's projection out keeps the one it has (#311): it was read as Uv, so any change
+    ///     of the mask from a client that did not know of projections laid a tri-planar mask through the UVs again.
+    /// </summary>
+    [Fact]
+    public void A_mask_sent_without_a_projection_keeps_the_one_it_has() {
+        var editor = Generated();
+        editor.Apply(
+            new(
+                [
+                    new StackSetLayer(
+                        "paint",
+                        Mask: new("Texture", Asset: "spots.png", Projection: "Triplanar", Placement: new(2f))
+                    )
+                ]
+            )
+        );
+
+        editor.Apply(new([new StackSetLayer("paint", Mask: new("Texture", Asset: "dots.png"))]));
+
+        var mask = Layer(editor).Mask;
+        Assert.Equal(("dots.png", LayerProjection.Triplanar), (mask.Asset, mask.Projection));
+        Assert.Equal(2f, mask.Placement.Scale);
+        Assert.Equal("Triplanar", StackDocuments.Layers([Layer(editor)])[0].Mask.Projection);
+    }
+
+    /// <summary>
     ///     A mask switches off and on again with all it holds, one undo step each, and the limit to some meshes is kept
     ///     whatever the switch says, so a layer switched unmasked stays on its meshes.
     /// </summary>

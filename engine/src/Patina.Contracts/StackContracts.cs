@@ -179,7 +179,8 @@ public sealed record StackAnchorUse(string Layer, string Where, string Channel);
 /// </param>
 /// <param name="Projection">
 ///     How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world
-///     position, which a mask on a mesh whose UVs it was not made for wants (#120).
+///     position, which a mask on a mesh whose UVs it was not made for wants (#120). Left out, the mask keeps the one it
+///     has; the Server always says it.
 /// </param>
 /// <param name="Placement">How often a projected texture repeats, turns and moves, and how hard its seams are.</param>
 public sealed record StackMask(
@@ -202,7 +203,7 @@ public sealed record StackMask(
     float Inside = 1f,
     float Outside = 0f,
     string Output = "",
-    string Projection = "Uv",
+    string? Projection = null,
     StackPlacement? Placement = null
 );
 

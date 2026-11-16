@@ -219,6 +219,32 @@ test('a fill shows only the projection controls that apply', async () => {
   await expect(window.getByTestId('paint-fill-slot-baseColor')).toContainText('rust', { timeout: 30_000 });
 });
 
+test('a mask’s own picture is laid by a projection chosen in Properties (#311)', async () => {
+  const paint = window.getByTestId('paint-layer-paint');
+  await paint.click({ button: 'right' });
+  await window.getByTestId('layer-menu-mask-black').click();
+  await paint.getByTestId('layer-mask').click();
+  await pick(window, 'paint-mask-source', 'Bitmap');
+  const projection = window.getByTestId('paint-mask-projection');
+  await expect(projection).toContainText('UV');
+  await expect(window.getByTestId('paint-mask-scale')).toHaveCount(0);
+
+  await pick(window, 'paint-mask-projection', 'Tri-planar');
+  await expect(window.getByTestId('paint-mask-sharpness')).toBeVisible();
+  const scale = window.getByTestId('paint-mask-scale').locator('input');
+  await scale.fill('3');
+  await scale.press('Enter');
+  await expect(scale).toHaveValue('3');
+  await expect(projection).toContainText('Tri-planar');
+
+  // ⚠ The scale's own number, not its text: xUI's numeric input keeps the text typed into it after an undo.
+  await window.getByTestId('app-undo').click();
+  await expect(scale).toHaveAttribute('aria-valuenow', '1');
+  await window.getByTestId('app-undo').click();
+  await expect(projection).toContainText('UV');
+  await expect(window.getByTestId('paint-mask-scale')).toHaveCount(0);
+});
+
 test('colours painted in Blender bake to an id map, and a mask selects one', async () => {
   // The bake alone may take the 120 s its wait allows, so the test's own 120 s limit would cut it off first.
   test.setTimeout(300_000);

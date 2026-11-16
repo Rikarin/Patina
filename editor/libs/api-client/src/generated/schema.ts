@@ -927,7 +927,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The pictures, meshes or folders the library's projects hold, a project's own first: what a client offers to pick from, where a dialog of its own machine cannot see this one's disk. Folders are those a client can write into: every project's and the ones in it, then the exports folder's. */
+    /** The pictures, meshes, fonts, SVG drawings or folders the library's projects hold, a project's own first: what a client offers to pick from, where a dialog of its own machine cannot see this one's disk. Folders are those a client can write into: every project's and the ones in it, then the exports folder's. */
     get: operations['ListLibraryFiles'];
     put?: never;
     post?: never;
@@ -4287,6 +4287,10 @@ export interface components {
       meshes: string[];
       /** @description What a project brings materials in from, as graphs (#157). */
       materials: string[];
+      /** @description What a graph's Text draws its letters with (#139). */
+      fonts: string[];
+      /** @description What a graph's Vector draws (#139). */
+      vectors: string[];
     };
     /** @description What the documents below one folder or project cost (#207). */
     FolderCost: {
@@ -8468,10 +8472,10 @@ export interface components {
       output: string;
       /**
        * @description How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world
-       *     position, which a mask on a mesh whose UVs it was not made for wants (#120).
-       * @default Uv
+       *     position, which a mask on a mesh whose UVs it was not made for wants (#120). Left out, the mask keeps the one it
+       *     has; the Server always says it.
        */
-      projection: string;
+      projection?: null | string;
       placement?: null | components['schemas']['StackPlacement'];
     };
     /** @description One step run on a mask. */

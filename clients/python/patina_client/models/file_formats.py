@@ -28,12 +28,16 @@ class FileFormats:
             environments (list[str]): What lights the viewport.
             meshes (list[str]): What a project takes as its mesh, its detailed mesh or a cage.
             materials (list[str]): What a project brings materials in from, as graphs (#157).
+            fonts (list[str]): What a graph's Text draws its letters with (#139).
+            vectors (list[str]): What a graph's Vector draws (#139).
      """
 
     pictures: list[str]
     environments: list[str]
     meshes: list[str]
     materials: list[str]
+    fonts: list[str]
+    vectors: list[str]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -57,6 +61,14 @@ class FileFormats:
 
 
 
+        fonts = self.fonts
+
+
+
+        vectors = self.vectors
+
+
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -65,6 +77,8 @@ class FileFormats:
             "environments": environments,
             "meshes": meshes,
             "materials": materials,
+            "fonts": fonts,
+            "vectors": vectors,
         })
 
         return field_dict
@@ -86,11 +100,19 @@ class FileFormats:
         materials = cast(list[str], d.pop("materials"))
 
 
+        fonts = cast(list[str], d.pop("fonts"))
+
+
+        vectors = cast(list[str], d.pop("vectors"))
+
+
         file_formats = cls(
             pictures=pictures,
             environments=environments,
             meshes=meshes,
             materials=materials,
+            fonts=fonts,
+            vectors=vectors,
         )
 
 
