@@ -96,6 +96,7 @@ public sealed class BakeInputsTests : IDisposable {
     [InlineData("borders-width")]
     [InlineData("diffusion")]
     [InlineData("auto-cage")]
+    [InlineData("curvature-within-part")]
     public void Each_setting_is_in_the_key(string setting) {
         var request = Request();
         var changed = With(
@@ -135,11 +136,23 @@ public sealed class BakeInputsTests : IDisposable {
                 "borders-width" => options with { Borders = new() { Width = 0.1 } },
                 "diffusion" => options with { Diffusion = true },
                 "auto-cage" => options with { Rays = options.Rays with { AutomaticCage = true } },
+                "curvature-within-part" => options with { Curvature = options.Curvature with { WithinPart = true } },
                 _ => options with { Id = options.Id with { Palette = "grey" } }
             }
         );
 
         Assert.NotEqual(Key(request), Key(changed));
+    }
+
+    /// <summary>Curvature across parts said as false keeps the key a bake had before it was a choice (#300).</summary>
+    [Fact]
+    public void Curvature_across_parts_keeps_the_key_it_had() {
+        var request = Request();
+
+        Assert.Equal(
+            Key(request),
+            Key(With(request, options => options with { Curvature = options.Curvature with { WithinPart = false } }))
+        );
     }
 
     [Fact]

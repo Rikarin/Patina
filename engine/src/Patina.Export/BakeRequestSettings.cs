@@ -60,6 +60,7 @@ static class BakeRequestSettings {
             },
             CurvatureSampling = (float)options.Curvature.Sampling,
             CurvatureRays = options.Curvature.Rays,
+            CurvatureWithinPart = options.Curvature.WithinPart == true,
             PositionRange = options.Position.Range switch {
                 "cube" => PositionRange.Cube,
                 "sphere" => PositionRange.Sphere,
