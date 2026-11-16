@@ -282,9 +282,18 @@ static class StackEndpoints {
         string id,
         StackCommandBatch batch,
         StackSessions sessions,
-        ViewportSession viewport
+        ViewportSession viewport,
+        LibraryHost host
     ) =>
-        Step(id, sessions, session => session.Apply(batch, viewport.State), "apply");
+        Step(
+            id,
+            sessions,
+            session => session.Apply(
+                StackLayerEdits.AsTheProjectSays(batch, host.Library, session.Path),
+                viewport.State
+            ),
+            "apply"
+        );
 
     static Results<Ok<StackEditResult>, ProblemHttpResult> Undo(string id, StackSessions sessions) =>
         Step(id, sessions, static session => session.Undo(), "undo");

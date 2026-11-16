@@ -7681,6 +7681,12 @@ export interface components {
       path?: null | components['schemas']['StackSurfacePath'];
       /** @description The colour it is marked with, from the vocabulary's tags: None takes the mark away. */
       tag?: null | string;
+      /**
+       * @description How a texture fill's normal and coat normal pictures are read, `y-up` or `y-down` (#310). Null
+       *     keeps it, unless the textures it lays put a picture in the normal or coat normal channel: then it is the
+       *     project's.
+       */
+      normalFormat?: null | string;
     };
     /** @description Changes an entry of a layer's mask stack. What is null stays. */
     StackCommandStackSetMaskLayer: {
@@ -8375,6 +8381,11 @@ export interface components {
        * @default None
        */
       tag: string;
+      /**
+       * @description How a texture fill's normal and coat normal pictures are read: `y-up`, their green turned to run down as
+       *     a stack's normals do, or `y-down`, as they are (#310). The project's normal format when they were laid.
+       */
+      normalFormat: string;
     };
     /** @description What decides where a layer shows. */
     StackMask: {
