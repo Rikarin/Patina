@@ -40,6 +40,9 @@ class ProjectCreateRequest:
             rows (int | None | Unset): The height of a stack it starts with, when it is not as tall as Resolution is wide
                 (#144):
                 a model laid out on a 2:1 sheet paints at 2048 × 1024. Null is square. A graph is always square.
+            template (None | str | Unset): The project template whose settings it starts with (#144), by name, or null for
+                none. Its bake settings take
+                the place of the person's default and of the size the project is made at.
      """
 
     name: str
@@ -51,6 +54,7 @@ class ProjectCreateRequest:
     image: None | str | Unset = UNSET
     high: None | str | Unset = UNSET
     rows: int | None | Unset = UNSET
+    template: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -112,6 +116,12 @@ class ProjectCreateRequest:
         else:
             rows = self.rows
 
+        template: None | str | Unset
+        if isinstance(self.template, Unset):
+            template = UNSET
+        else:
+            template = self.template
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -134,6 +144,8 @@ class ProjectCreateRequest:
             field_dict["high"] = high
         if rows is not UNSET:
             field_dict["rows"] = rows
+        if template is not UNSET:
+            field_dict["template"] = template
 
         return field_dict
 
@@ -232,6 +244,16 @@ class ProjectCreateRequest:
         rows = _parse_rows(d.pop("rows", UNSET))
 
 
+        def _parse_template(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        template = _parse_template(d.pop("template", UNSET))
+
+
         project_create_request = cls(
             name=name,
             folder=folder,
@@ -242,6 +264,7 @@ class ProjectCreateRequest:
             image=image,
             high=high,
             rows=rows,
+            template=template,
         )
 
 
