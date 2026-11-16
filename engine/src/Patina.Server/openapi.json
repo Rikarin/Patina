@@ -20895,6 +20895,24 @@
               "string"
             ],
             "description": "Which picture of a generator entry that writes several it reads, or empty for its only one. Another generator\nstarts from empty."
+          },
+          "projection": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How a texture entry lands: Uv, Triplanar, Planar, Spherical or Cylindrical."
+          },
+          "placement": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Where a projected texture entry sits, which replaces where it sat.",
+                "$ref": "#/components/schemas/StackPlacement"
+              }
+            ]
           }
         },
         "description": "Changes an entry of a layer\u0027s mask stack. What is null stays."
@@ -22267,7 +22285,8 @@
           "enabled",
           "inside",
           "outside",
-          "output"
+          "output",
+          "projection"
         ],
         "type": "object",
         "properties": {
@@ -22409,6 +22428,22 @@
             "type": "string",
             "description": "Which picture of a generator that writes several is the mask, by its name in the generator\u0027s Outputs, or empty\nfor its only one. Another generator starts from empty.",
             "default": ""
+          },
+          "projection": {
+            "type": "string",
+            "description": "How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world\nposition, which a mask on a mesh whose UVs it was not made for wants (#120).",
+            "default": "Uv"
+          },
+          "placement": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "How often a projected texture repeats, turns and moves, and how hard its seams are.",
+                "$ref": "#/components/schemas/StackPlacement"
+              }
+            ]
           }
         },
         "description": "What decides where a layer shows."
@@ -22491,7 +22526,8 @@
           "opacity",
           "enabled",
           "lane",
-          "output"
+          "output",
+          "projection"
         ],
         "type": "object",
         "properties": {
@@ -22581,6 +22617,22 @@
             "type": "string",
             "description": "Which picture of a generator entry that writes several it reads, or empty for its one.",
             "default": ""
+          },
+          "projection": {
+            "type": "string",
+            "description": "How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world\nposition, which a mask on a mesh whose UVs it was not made for wants (#120).",
+            "default": "Uv"
+          },
+          "placement": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "How often a projected texture repeats, turns and moves, and how hard its seams are.",
+                "$ref": "#/components/schemas/StackPlacement"
+              }
+            ]
           }
         },
         "description": "One entry of a mask\u0027s own stack: a source, composited over the base and the entries beneath it with its own\nblend and opacity. Paint over a generator is a Paint entry over a Generator base."

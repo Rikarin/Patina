@@ -42,11 +42,35 @@ public sealed class GraphPictures {
     /// <summary>What an unpainted layer or channel reads as: nothing, as in the stack.</summary>
     static readonly Decoded Clear = new(1, 1, [0, 0, 0, 0], TextureFormat.Rgba8);
 
+    /// <summary>When a stamp says it was read from a canvas still being painted rather than from its file.</summary>
+    static readonly DateTime Live = DateTime.MaxValue;
+
     readonly Dictionary<PictureStamp, Decoded> decoded = [];
     long held;
 
+    /// <summary>
+    ///     The canvas a painting session holds for a <c>.vxpaint</c>, by its full path, strokes not yet saved and all,
+    ///     or null when nobody is painting it. A graph reads that in place of the file, so a painted mask feeds a graph
+    ///     as it is painted (#205), as an instance in another texture set reads it (#108).
+    /// </summary>
+    public Func<string, PaintCanvas?> Painting { get; set; } = static _ => null;
+
     /// <summary>Whether a file is no longer what was read.</summary>
     public static bool Moved(PictureStamp stamp) => StampOf(stamp.Path) != stamp;
+
+    /// <summary>
+    ///     Whether what was read is no longer what there is: a file that moved, a canvas painted since, a canvas whose
+    ///     painting ended, and a file somebody has since begun to paint.
+    /// </summary>
+    public bool Stale(PictureStamp stamp) {
+        if (stamp.Written != Live) {
+            return Moved(stamp) || Painting(stamp.Path) is not null;
+        }
+
+        var split = stamp.Path.LastIndexOf('|');
+        return Painting(stamp.Path[..split]) is not { } canvas
+            || Revision(canvas, stamp.Path[(split + 1)..]) != stamp.Length;
+    }
 
     /// <summary>Uploads every image in <paramref name="owed" />, and says which could not be.</summary>
     /// <param name="uploads">Where they go.</param>
@@ -177,9 +201,9 @@ public sealed class GraphPictures {
 
     /// <summary>
     ///     One channel of a painted canvas, as a layer stack names it and a graph written from one keeps naming it
-    ///     (#205): the file beside the graph, as it was last saved. A layer never painted has no file yet, and it and
-    ///     a channel never painted are clear, as in the stack; the missing file is stamped, so its first save is
-    ///     noticed.
+    ///     (#205): the canvas being painted when a session of this Worker paints it, else the file beside the graph
+    ///     as it was last saved. A layer never painted has no file yet, and it and a channel never painted are clear,
+    ///     as in the stack; the missing file is stamped, so its first save is noticed.
     /// </summary>
     /// <exception cref="InvalidDataException">
     ///     The reference is malformed or reaches outside the graph's folder.
@@ -193,6 +217,10 @@ public sealed class GraphPictures {
         var file = Path.GetFullPath(Path.Combine(roots[0], relative));
         if (!Inside(roots[0], file)) {
             throw new InvalidDataException("a painted file is read from beside the graph, and this is elsewhere");
+        }
+
+        if (Painting(file) is { } painting) {
+            return Painted(painting, file, usage);
         }
 
         var stamp = StampOf(file);
@@ -215,11 +243,26 @@ public sealed class GraphPictures {
             return (stamp, Clear);
         }
 
-        var image = canvas.Channel(usage);
+        return (stamp, Keep(key, Texels(canvas.Channel(usage))));
+    }
+
+    /// <summary>
+    ///     One channel of a canvas being painted, stamped with the channel's revision. Never kept: the next stroke
+    ///     makes it another picture, and the canvas holds it already.
+    /// </summary>
+    static (PictureStamp Stamp, Decoded Picture) Painted(PaintCanvas canvas, string file, string usage) {
+        PictureStamp stamp = new($"{file}|{usage}", Revision(canvas, usage), Live);
+        return (stamp, canvas.Has(usage) ? Texels(canvas.Channel(usage)) : Clear);
+    }
+
+    /// <summary>A channel's revision, or -1 for one never painted.</summary>
+    static long Revision(PaintCanvas canvas, string usage) => canvas.Has(usage) ? canvas.Channel(usage).Revision : -1;
+
+    static Decoded Texels(PaintImage image) {
         var format = image.Format == PaintTexelFormat.Rgba8
             ? TextureFormat.Rgba8
             : PaintTexelFormats.Texture(image.Format);
-        return (stamp, Keep(key, new(image.Width, image.Height, image.ToTexels(), format)));
+        return new(image.Width, image.Height, image.ToTexels(), format);
     }
 
     static PictureStamp StampOf(string path) {

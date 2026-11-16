@@ -97,6 +97,78 @@ public sealed class GraphPaintTests : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     A canvas a texture set is painting is read in place of its file, so a painted mask feeds a graph as it is
+    ///     painted (#205). What was read goes stale on the next stroke and when the painting ends, and a file read
+    ///     before somebody began to paint it goes stale then too.
+    /// </summary>
+    [Fact]
+    public void A_canvas_being_painted_is_read_in_place_of_its_file_and_each_stroke_is_noticed() {
+        PaintCanvas saved = new(Side, Side);
+        saved.Channel(PaintReference.Mask).Fill(new Vector4(0.2f, 0.2f, 0.2f, 1f));
+        Directory.CreateDirectory(Path.Combine(folder, "paint"));
+        var file = Path.Combine(folder, "paint", "Mask.vxpaint");
+        using (var stream = File.Create(file)) {
+            saved.Write(stream);
+        }
+
+        NodeTypeRegistry registry = new();
+        NodeTypes.Register(registry);
+        NodeGraphModel graph = new();
+        Output(graph, Bitmap(graph, PaintReference.Reference("paint/Mask.vxpaint", PaintReference.Mask)), "baseColor");
+        TextureGraphCompiler compiler = new(registry) { BaseWidth = Side, BaseHeight = Side };
+        var plan = compiler.Compile(graph).Value;
+
+        if (!VulkanDevice.TryCreate(new(), out var device, out var refusal)) {
+            Assert.Skip($"No Vulkan device: {refusal}");
+            return;
+        }
+
+        using (device) {
+            PaintCanvas? painting = null;
+            GraphPictures pictures = new() { Painting = path => path == Path.GetFullPath(file) ? painting : null };
+            using TextureUploads before = new(device);
+            var fromFile = Assert.Single(
+                pictures.Fill(
+                        before,
+                        plan,
+                        TextureGraphExternals.Upload(before, plan, compiler.Externals),
+                        [folder],
+                        null
+                    )
+                    .Stamps
+            );
+            Assert.False(pictures.Stale(fromFile));
+
+            using (var stream = File.OpenRead(file)) {
+                painting = PaintCanvas.Read(stream);
+            }
+
+            painting.Channel(PaintReference.Mask).Fill(new Vector4(0.9f, 0.9f, 0.9f, 1f));
+            Assert.True(pictures.Stale(fromFile));
+
+            using TextureUploads uploads = new(device);
+            var filled = pictures.Fill(
+                uploads,
+                plan,
+                TextureGraphExternals.Upload(uploads, plan, compiler.Externals),
+                [folder],
+                null
+            );
+            var live = Assert.Single(filled.Stamps);
+            Assert.False(pictures.Stale(live));
+            using (TexturePlanEvaluator evaluator = new(device)) {
+                using var bake = evaluator.Evaluate(plan, uploads.Externals);
+                Assert.InRange(bake.Read(compiler.Outputs.Single().Image).Pixels[0], 226, 234);
+            }
+
+            painting.Channel(PaintReference.Mask).Fill(new Vector4(0.5f, 0.5f, 0.5f, 1f));
+            Assert.True(pictures.Stale(live));
+            painting = null;
+            Assert.True(pictures.Stale(live));
+        }
+    }
+
     static NodeId Bitmap(NodeGraphModel graph, string reference) {
         var node = graph.Add("Source/Bitmap");
         node.SetText("Source", reference);

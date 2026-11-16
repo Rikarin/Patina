@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Server.Graphs;
 using Patina.Server.Sessions;
 using Vixen.Texturing.Layers;
 
@@ -8,8 +9,12 @@ namespace Patina.Server.Stacks;
 ///     The open stacks. One file has one session, so two clients that open it share its edits and its
 ///     undo.
 /// </summary>
-public sealed class StackSessions(ServerIdentity identity, StackClips clips, MeshSetCache? meshes = null)
-    : IDisposable {
+public sealed class StackSessions(
+    ServerIdentity identity,
+    StackClips clips,
+    MeshSetCache? meshes = null,
+    GraphSessions? graphs = null
+) : IDisposable {
     readonly SessionTable<StackSession> table = new();
 
     /// <summary>The sessions the Server opened for itself, by id, which no client has opened since.</summary>
@@ -175,8 +180,19 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips, Mes
     /// </summary>
     /// <param name="changed">The session whose set changed.</param>
     public void CatchUp(StackSession changed) {
+        ArgumentNullException.ThrowIfNull(changed);
         foreach (var other in table.All.Where(other => other != changed && other.ReadsOtherSets)) {
             other.Evaluate();
+        }
+
+        // A graph beside the set that reads its paint reads the canvas being painted, so it follows the strokes and
+        // the end of the painting too (#205).
+        var folder = Path.GetDirectoryName(changed.Path);
+        foreach (var graph in graphs?.All ?? []) {
+            if (string.Equals(Path.GetDirectoryName(graph.Path), folder, StringComparison.Ordinal)
+                && graph.ReadsPaint) {
+                graph.Evaluate();
+            }
         }
     }
 

@@ -119,6 +119,15 @@ public static class StackDocuments {
         };
     }
 
+    /// <summary>Where a picture sits as asked, or where it sat when nothing was asked.</summary>
+    /// <exception cref="StackEditRefusedException">It repeats no times or fewer.</exception>
+    internal static LayerPlacement Placed(StackPlacement? placement, LayerPlacement held) =>
+        placement is null ? held : Placed(placement);
+
+    /// <summary>Where a fill or a mask's picture sits, as a client sees it.</summary>
+    internal static StackPlacement Wire(LayerPlacement placement) =>
+        new(placement.Scale, placement.Rotation, placement.OffsetX, placement.OffsetY, placement.Sharpness);
+
     /// <summary>What a person calls a mask source: Mesh Map for <c>Bake</c>, Bitmap for <c>Texture</c>.</summary>
     public static string SourceName(LayerMaskSource source) => Terms.InStack(source.ToString());
 
@@ -545,16 +554,12 @@ public static class StackDocuments {
                 layer.Mask.Enabled,
                 Selection(layer.Mask)?.Values.GetValueOrDefault(SelectInside)?[0] ?? 1f,
                 Selection(layer.Mask)?.Values.GetValueOrDefault(SelectOutside)?[0] ?? 0f,
-                layer.Mask.GeneratorOutput
+                layer.Mask.GeneratorOutput,
+                layer.Mask.Projection.ToString(),
+                Wire(layer.Mask.Placement)
             ),
             layer.PlanarAxis.ToString(),
-            new(
-                layer.Placement.Scale,
-                layer.Placement.Rotation,
-                layer.Placement.OffsetX,
-                layer.Placement.OffsetY,
-                layer.Placement.Sharpness
-            ),
+            Wire(layer.Placement),
             layer.Texts,
             FilterNodeOf(layer),
             layer.AnchorPoint,

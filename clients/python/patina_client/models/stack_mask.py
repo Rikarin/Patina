@@ -17,6 +17,7 @@ if TYPE_CHECKING:
   from ..models.stack_mask_inputs_type_1 import StackMaskInputsType1
   from ..models.stack_mask_layer import StackMaskLayer
   from ..models.stack_mask_parameters_type_1 import StackMaskParametersType1
+  from ..models.stack_placement import StackPlacement
 
 
 
@@ -49,6 +50,9 @@ class StackMask:
             output (str): Which picture of a generator that writes several is the mask, by its name in the generator's
                 Outputs, or empty
                 for its only one. Another generator starts from empty. Default: ''.
+            projection (str): How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or
+                Cylindrical by world
+                position, which a mask on a mesh whose UVs it was not made for wants (#120). Default: 'Uv'.
             anchor (None | StackAnchorRef | Unset):
             colours (list[list[float]] | None | Unset): The colours a bake or texture mask selects from its picture, each
                 three numbers, or null for all of it. A texel
@@ -62,6 +66,7 @@ class StackMask:
             layers (list[StackMaskLayer] | None | Unset): The mask's own stack over this base, bottom first. Ignored in a
                 change: the mask layer commands edit it, so that
                 a painted canvas stays with its entry.
+            placement (None | StackPlacement | Unset):
      """
 
     source: str
@@ -76,6 +81,7 @@ class StackMask:
     inside: float = 1.0
     outside: float = 0.0
     output: str = ''
+    projection: str = 'Uv'
     anchor: None | StackAnchorRef | Unset = UNSET
     colours: list[list[float]] | None | Unset = UNSET
     effects: list[StackMaskEffect] | None | Unset = UNSET
@@ -83,6 +89,7 @@ class StackMask:
     mesh_parts: list[str] | None | Unset = UNSET
     inputs: None | StackMaskInputsType1 | Unset = UNSET
     layers: list[StackMaskLayer] | None | Unset = UNSET
+    placement: None | StackPlacement | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -95,6 +102,7 @@ class StackMask:
         from ..models.stack_mask_inputs_type_1 import StackMaskInputsType1 # noqa: PLC0415
         from ..models.stack_mask_layer import StackMaskLayer # noqa: PLC0415
         from ..models.stack_mask_parameters_type_1 import StackMaskParametersType1 # noqa: PLC0415
+        from ..models.stack_placement import StackPlacement # noqa: PLC0415
         source = self.source
 
         value = self.value
@@ -118,6 +126,8 @@ class StackMask:
         outside = self.outside
 
         output = self.output
+
+        projection = self.projection
 
         anchor: dict[str, Any] | None | Unset
         if isinstance(self.anchor, Unset):
@@ -194,6 +204,14 @@ class StackMask:
         else:
             layers = self.layers
 
+        placement: dict[str, Any] | None | Unset
+        if isinstance(self.placement, Unset):
+            placement = UNSET
+        elif isinstance(self.placement, StackPlacement):
+            placement = self.placement.to_dict()
+        else:
+            placement = self.placement
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -210,6 +228,7 @@ class StackMask:
             "inside": inside,
             "outside": outside,
             "output": output,
+            "projection": projection,
         })
         if anchor is not UNSET:
             field_dict["anchor"] = anchor
@@ -225,6 +244,8 @@ class StackMask:
             field_dict["inputs"] = inputs
         if layers is not UNSET:
             field_dict["layers"] = layers
+        if placement is not UNSET:
+            field_dict["placement"] = placement
 
         return field_dict
 
@@ -237,6 +258,7 @@ class StackMask:
         from ..models.stack_mask_inputs_type_1 import StackMaskInputsType1 # noqa: PLC0415
         from ..models.stack_mask_layer import StackMaskLayer # noqa: PLC0415
         from ..models.stack_mask_parameters_type_1 import StackMaskParametersType1 # noqa: PLC0415
+        from ..models.stack_placement import StackPlacement # noqa: PLC0415
         d = dict(src_dict)
         source = d.pop("source")
 
@@ -261,6 +283,8 @@ class StackMask:
         outside = d.pop("outside")
 
         output = d.pop("output")
+
+        projection = d.pop("projection")
 
         def _parse_anchor(data: object) -> None | StackAnchorRef | Unset:
             if data is None:
@@ -413,6 +437,26 @@ class StackMask:
         layers = _parse_layers(d.pop("layers", UNSET))
 
 
+        def _parse_placement(data: object) -> None | StackPlacement | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                placement_type_1 = StackPlacement.from_dict(data)
+
+
+
+                return placement_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | StackPlacement | Unset, data)
+
+        placement = _parse_placement(d.pop("placement", UNSET))
+
+
         stack_mask = cls(
             source=source,
             value=value,
@@ -426,6 +470,7 @@ class StackMask:
             inside=inside,
             outside=outside,
             output=output,
+            projection=projection,
             anchor=anchor,
             colours=colours,
             effects=effects,
@@ -433,6 +478,7 @@ class StackMask:
             mesh_parts=mesh_parts,
             inputs=inputs,
             layers=layers,
+            placement=placement,
         )
 
 

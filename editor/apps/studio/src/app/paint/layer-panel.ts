@@ -616,6 +616,47 @@ function stemOf(source: string): string | undefined {
                     Choose…
                   </button>
                 </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Projection</span>
+                  <xui-select
+                    class="min-w-0 flex-1"
+                    aria-label="Mask layer projection"
+                    data-testid="paint-mask-layer-projection"
+                    [filterable]="false"
+                    [itemText]="labelsOf(maskProjections())"
+                    [items]="valuesOf(maskProjections())"
+                    [value]="entry.layer.projection"
+                    (valueChange)="$event && setEntry(layer, entry.index, { projection: $event })"
+                  />
+                </div>
+                @if (entry.layer.projection !== 'Uv') {
+                  <div class="flex items-center gap-2">
+                    <span class="text-foreground-muted w-16 shrink-0 text-xs">Scale</span>
+                    <xui-numeric-input
+                      class="min-w-0 flex-1"
+                      size="sm"
+                      aria-label="Mask layer projection scale"
+                      data-testid="paint-mask-layer-scale"
+                      [stepSize]="0.1"
+                      [value]="entry.layer.placement?.scale ?? 1"
+                      (valueChange)="placeEntry(layer, entry.index, entry.layer, { scale: $event ?? 1 })"
+                    />
+                  </div>
+                  @if (entry.layer.projection === 'Triplanar') {
+                    <div class="flex items-center gap-2">
+                      <span class="text-foreground-muted w-16 shrink-0 text-xs">Blending</span>
+                      <xui-numeric-input
+                        class="min-w-0 flex-1"
+                        size="sm"
+                        aria-label="Mask layer projection blending"
+                        data-testid="paint-mask-layer-sharpness"
+                        [stepSize]="0.5"
+                        [value]="entry.layer.placement?.sharpness ?? 4"
+                        (valueChange)="placeEntry(layer, entry.index, entry.layer, { sharpness: $event ?? 4 })"
+                      />
+                    </div>
+                  }
+                }
               }
               @case ('Anchor') {
                 <xui-select
@@ -1050,6 +1091,10 @@ export class LayerPanel {
   private readonly constantProjections = computed(() =>
     this.projections().filter(option => SurfaceProjections.has(option.value) || option.value === 'Uv')
   );
+  /** A mask's picture lands by its UVs or by world position; a decal and a path are a fill's (#120). */
+  protected readonly maskProjections = computed(() =>
+    this.projections().filter(option => !SurfaceProjections.has(option.value))
+  );
   protected readonly valuesOf = valuesOf;
   protected readonly labelsOf = labelsOf;
   protected readonly channels = computed(() => (this.store.state()?.channels ?? []).map(channel => channel.usage));
@@ -1230,6 +1275,17 @@ export class LayerPanel {
     if (node && node !== layer.filterNode) {
       void this.store.edit({ op: 'setLayer', layer: layer.id, filterNode: node });
     }
+  }
+
+  /** Where a mask layer's projected picture sits, from where it sat. */
+  protected placeEntry(
+    layer: StackLayer,
+    index: number,
+    entry: NonNullable<StackLayer['mask']['layers']>[number],
+    change: Partial<NonNullable<StackLayer['placement']>>
+  ): void {
+    const placement = { scale: 1, rotation: 0, offsetX: 0, offsetY: 0, sharpness: 4, ...entry.placement, ...change };
+    this.setEntry(layer, index, { placement });
   }
 
   protected place(layer: StackLayer, change: Partial<NonNullable<StackLayer['placement']>>): void {
