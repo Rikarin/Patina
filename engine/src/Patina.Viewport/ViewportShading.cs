@@ -153,9 +153,15 @@ public sealed record ViewportShading {
     public float PictureScale { get; init; } = 1f;
 
     /// <summary>
-    ///     The texel density the texel density view measures against, in texels per unit, or zero for none.
+    ///     The texel density the texel density view measures against, in texels per metre, or zero for none (#307).
     /// </summary>
     public float DensityTarget { get; init; }
+
+    /// <summary>
+    ///     How long the model's unit is, in metres, as its project says, or zero for what the file says, else a metre
+    ///     (<see cref="Patina.Contracts.MeshUnits.Of" />).
+    /// </summary>
+    public float MetresPerUnit { get; init; }
 
     /// <summary>The side of a map, in texels, for a material that wears none whose size can be read.</summary>
     public float DensityResolution { get; init; } = 2048f;

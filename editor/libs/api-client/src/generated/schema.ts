@@ -6334,8 +6334,8 @@ export interface components {
       maxSize: number;
       /**
        * Format: double
-       * @description The texel density the sets are held to, in texels per unit of the model (a metre in glTF), or zero for the
-       *     library's.
+       * @description The texel density the sets are held to, in texels per metre, or zero for the library's. A mesh's own unit is
+       *     turned into metres by what its file or project says it is (#307).
        * @default 0
        */
       texelDensity: number;
@@ -6420,6 +6420,14 @@ export interface components {
        *     (DirectX). A normal map brought in is read as this unless it says otherwise (#144).
        */
       normalFormat: string;
+      /**
+       * Format: double
+       * @description How long a unit of the project's mesh is, in metres, when the project says (#146), or null for what the mesh
+       *     file says: glTF is in metres and an FBX states its unit, while OBJ, PLY and STL say nothing and are taken
+       *     as metres. The texel density check and view measure in metres through it (#307); the mesh itself is never
+       *     scaled.
+       */
+      metresPerUnit?: null | number;
       /** @description How its bakes run, which texture sets they make maps for, and what they read beyond its mesh. */
       bake: components['schemas']['ProjectBakeSettings'];
       viewport?: null | components['schemas']['ViewportDisplay'];
@@ -6844,6 +6852,12 @@ export interface components {
        *     (#144). Maps already brought in stay as they were brought in.
        */
       normalFormat?: null | string;
+      /**
+       * Format: double
+       * @description How long a unit of the project's mesh is, in metres, for a file that says nothing or says it wrongly
+       *     (#146): 0.01 for centimetres, from a micrometre to a kilometre. Zero goes back to what the file says.
+       */
+      metresPerUnit?: null | number;
     };
     /** @description One project as the browser shows it. The project itself loads on open. */
     ProjectSummary: {

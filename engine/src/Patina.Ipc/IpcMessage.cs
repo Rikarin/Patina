@@ -243,7 +243,7 @@ public static partial class IpcTypes {
 /// <summary>One envelope for every message, so the protocol stays a single source-generated type.</summary>
 public sealed class IpcMessage {
     /// <summary>The wire format's version; a hello from another version is refused.</summary>
-    public const int ProtocolVersion = 23;
+    public const int ProtocolVersion = 24;
 
     public string Type { get; set; } = string.Empty;
 
@@ -492,7 +492,13 @@ public sealed record WorkerHealth(double UptimeSeconds, long WorkingSetBytes, do
 /// <param name="Height">Their height.</param>
 /// <param name="Layout">Its layout on the mesh, or null for a set with no mesh.</param>
 /// <param name="Maps">The values no physical material has, each with its share and its first texel.</param>
-public sealed record StackMeasured(int Width, int Height, LayoutMeasures? Layout, IReadOnlyList<MapMeasure> Maps);
+public sealed record StackMeasured(int Width, int Height, LayoutMeasures? Layout, IReadOnlyList<MapMeasure> Maps) {
+    /// <summary>
+    ///     How long the mesh file says its unit is, in metres (<see cref="MeshUnits.Stated" />), or null when it says
+    ///     nothing or there is no mesh: the Server turns the layout's density into texels per metre with it (#307).
+    /// </summary>
+    public double? MetresPerUnit { get; init; }
+}
 
 /// <summary>
 ///     A graph for the Worker to hold. It is a copy: the Server has the document, and sends it again after a crash.

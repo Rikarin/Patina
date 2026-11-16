@@ -27,8 +27,7 @@ public static class ExportFileChecking {
 
     static IEnumerable<Written> Writing(ExportPreset preset, NamingValues naming, IReadOnlySet<string> maps) {
         foreach (var texture in preset.Textures) {
-            var reads = texture.Maps.ToArray();
-            if (reads.Length > 0 && !reads.Any(maps.Contains)) {
+            if (!ExportMaps.Written([..texture.Maps], maps.Contains)) {
                 continue;
             }
 

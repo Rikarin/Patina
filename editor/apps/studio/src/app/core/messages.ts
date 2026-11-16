@@ -172,8 +172,8 @@ const CheckWords: Readonly<Record<string, string>> = {
   'compression-normal':
     '{file} holds a normal in {compression} blocks, which show on a lit surface. BC5 or BC7 keep it.',
   'mips-missing': '{file} has no mips, so an engine samples it as it is and it shimmers at a distance.',
-  'density-low': 'Has {density} texels per unit, short of the {target} the project asks for.',
-  'density-high': 'Has {density} texels per unit, more than the {target} the project asks for.',
+  'density-low': 'Has {density} texels per metre, short of the {target} the project asks for.',
+  'density-high': 'Has {density} texels per metre, more than the {target} the project asks for.',
   'bake-stale':
     'Its mesh maps were baked on another mesh, in another UV set than its UV {uvSet} or at another shape than its ' +
     'Width and Height, so what reads them lands in the wrong place. Bake it again.',
@@ -206,8 +206,20 @@ function measured(name: string, value: string): string {
 }
 
 /** This app's words for a problem a check found, or the Server's sentence for a code it does not know. */
+/**
+ * What a check says when one of its values is empty, where its usual words would quote nothing: a project whose preset
+ * has gone, in a library with no preset at all to stand in for it (#310).
+ */
+const EmptyCheckWords: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  'preset-unknown': {
+    fallback:
+      'The project exports with “{preset}”, which no export preset is any more, and there is no other preset to stand in for it.'
+  }
+};
+
 export function checkWords(code: string, values: Readonly<Record<string, string>>, detail: string): string {
-  const words = CheckWords[code];
+  const empty = Object.entries(EmptyCheckWords[code] ?? {}).find(([name]) => values[name] === '');
+  const words = empty?.[1] ?? CheckWords[code];
   if (words === undefined) {
     return detail;
   }

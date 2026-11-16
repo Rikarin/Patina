@@ -208,17 +208,21 @@ static class MaterialImport {
     /// <summary>
     ///     A picture's lanes as a map: one lane spread over three, then the factor, one minus it, or green turned so it
     ///     runs down the picture as a graph's normal does (ADR 0011). A color's factor is linear, so a base color is
-    ///     taken to linear numbers for it and back; an emissive picture holds sRGB numbers and a graph's emissive is
-    ///     linear, so it is taken to linear, and so are OpenPBR's colours (#142), a sheen's, a coat's and the specular
-    ///     lobe's, which are linear as emissive is. A coat's normal turns as the normal does.
+    ///     taken to linear numbers for it and back. A graph's emissive is linear, and so are OpenPBR's colours (#142),
+    ///     a sheen's, a coat's and the specular lobe's, so their pictures are taken to linear. Whether a colour picture
+    ///     needs taking there is what its file says of it (#308), sRGB when it says nothing: a linear one is read as it
+    ///     is, and a linear base color is taken to sRGB, which a graph's base color is. A coat's normal turns as the
+    ///     normal does.
     /// </summary>
     static int Picture(GraphText graph, ImportedSlot slot, string relative, List<string> warnings) {
         var bitmap = graph.Node("Source/Bitmap", [("Source", relative), ..Edges(slot.Placement)]);
         var node = Lane(graph, Placed(graph, slot, bitmap, warnings), slot.Lane);
         var colour = slot.Usage == "baseColor";
+        var linear = slot.ColourSpace == ImportedSpaces.Linear;
         float[] factor = [..slot.Value.Take(3)];
         var scaled = slot.Inverted || factor.Any(static f => Math.Abs(f - 1f) > 1e-4f);
-        if (slot.Usage is "emissive" or "sheenColor" or "coatColor" or "specularColor" || (colour && scaled)) {
+        var linearColour = !colour && ImportedSpaces.Colours.Contains(slot.Usage);
+        if (!linear && (linearColour || (colour && scaled))) {
             node = graph.Chain(node, "Colour/sRGB to Linear");
         }
 
@@ -230,7 +234,7 @@ static class MaterialImport {
             node = graph.Chain(node, Mix, [("Green from Green", [-1f]), ("Green Offset", [1f])]);
         }
 
-        return colour && scaled ? graph.Chain(node, "Colour/Linear to sRGB") : node;
+        return colour && (scaled || linear) ? graph.Chain(node, "Colour/Linear to sRGB") : node;
     }
 
     /// <summary>

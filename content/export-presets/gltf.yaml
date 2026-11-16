@@ -29,7 +29,8 @@ textures:
     channels: [emissive.r, emissive.g, emissive.b]
   # OpenPBR's coat, sheen and transmission (#142), written only for a set that has them, in the lanes glTF's
   # KHR_materials_clearcoat, _sheen and _transmission read: the coat in red and its roughness in green, the coat's own
-  # normal, the sheen's colour times its weight with its roughness in alpha, and transmission in red.
+  # normal, the sheen's colour times its weight with its roughness in alpha, and transmission in red. A layer's roughness
+  # or normal without its weight is no layer, and writes no file (#310).
   - file: "{set}_clearcoat"
     format: png8
     space: linear

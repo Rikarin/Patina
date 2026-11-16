@@ -46,6 +46,29 @@ public sealed record ImportedSlot(
 
     /// <summary>Where the picture lands on the mesh's coordinates, or null when it lands as it is.</summary>
     public ImportedPlacement? Placement { get; init; }
+
+    /// <summary>
+    ///     How a colour picture's numbers are stored, as the file says it (#308): <see cref="ImportedSpaces.Srgb" /> or
+    ///     <see cref="ImportedSpaces.Linear" />, or null when it says nothing and its use says, as glTF's does: a
+    ///     colour picture is sRGB. Only a colour's picture reads it; a grey map and a normal are read as they are.
+    /// </summary>
+    public string? ColourSpace { get; init; }
+}
+
+/// <summary>How a material file says a picture's numbers are stored.</summary>
+public static class ImportedSpaces {
+    /// <summary>sRGB, as a colour picture usually is: MaterialX's <c>srgb_texture</c>, USD's <c>sRGB</c>.</summary>
+    public const string Srgb = "srgb";
+
+    /// <summary>
+    ///     Linear: MaterialX's <c>lin_rec709</c> and the other <c>lin_</c> spaces, ACEScg and <c>none</c>; USD's
+    ///     <c>raw</c>.
+    /// </summary>
+    public const string Linear = "linear";
+
+    /// <summary>The usages whose picture is a colour, which are the ones a file's colour space applies to.</summary>
+    public static IReadOnlyList<string> Colours { get; } =
+        ["baseColor", "emissive", "sheenColor", "coatColor", "specularColor"];
 }
 
 /// <summary>

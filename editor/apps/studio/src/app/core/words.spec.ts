@@ -160,6 +160,11 @@ describe('check words', () => {
     expect(checkWords('preset-unknown', { preset: 'console', fallback: 'gltf' }, 'server')).toBe(
       'The project exports with “console”, which no export preset is any more, so the default “gltf” stands in for it.'
     );
+    // A library with no preset at all has nothing to stand in, and says so rather than quoting nothing (#310).
+    expect(checkWords('preset-unknown', { preset: 'console', fallback: '' }, 'server')).toBe(
+      'The project exports with “console”, which no export preset is any more, and there is no other preset to stand ' +
+        'in for it.'
+    );
   });
 
   it('falls back to the Server’s sentence for a code it does not know', () => {

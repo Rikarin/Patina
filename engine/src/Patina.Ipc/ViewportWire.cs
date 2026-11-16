@@ -28,8 +28,8 @@ public sealed record ViewportMapSet(
 /// <param name="Picture">The picture, or null.</param>
 /// <param name="Isolation">The parts and materials drawn alone, or null for the whole model.</param>
 /// <param name="TexelDensity">
-///     The texel density the texel density view measures against, in texels per unit of the model, from the project of
-///     the stack worn; zero for none.
+///     The texel density the texel density view measures against, in texels per metre, from the project of the stack
+///     worn; zero for none.
 /// </param>
 /// <param name="Resolution">The side of a map for a material whose own size cannot be read, in texels.</param>
 /// <param name="Highlight">What is marked on the model, or null for nothing.</param>
@@ -44,6 +44,12 @@ public sealed record ViewportDisplaySet(
     ViewportHighlight? Highlight = null,
     StackSymmetry? Symmetry = null
 ) {
+    /// <summary>
+    ///     How long the worn mesh's unit is, in metres, as its project says, or zero for what the file says, else a
+    ///     metre (#307).
+    /// </summary>
+    public double MetresPerUnit { get; init; }
+
     /// <summary>
     ///     The panorama that lights the model in place of the file <see cref="ViewportDisplay.Environment" /> names,
     ///     when that is a graph: its picture as the Server had it drawn into the preview cache (#180). Null to read

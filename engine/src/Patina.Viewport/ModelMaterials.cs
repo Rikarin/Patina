@@ -21,8 +21,10 @@ public static class ModelMaterials {
     /// <param name="folder">Where a picture inside it is written.</param>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static IReadOnlyList<ImportedMaterial> Read(string path, string folder) {
+        // A material's extension the file does not list is read all the same, and said (#310).
+        var declared = GltfDeclarations.Of(SharedFile.ReadAllBytes(path), Path.GetExtension(path));
         var read = ModelReader.Read(
-            SharedFile.ReadAllBytes(path),
+            declared.Bytes,
             Path.GetExtension(path),
             Path.GetFileNameWithoutExtension(path),
             new ModelReadOptions { GenerateTangents = false, ImportAnimations = false, ImportBlendShapes = false },
@@ -44,10 +46,21 @@ public static class ModelMaterials {
 
             var factors = at < read.MaterialFactors.Length ? read.MaterialFactors[at] : ModelMaterialFactors.Default;
             var textures = at < read.MaterialTextures.Length ? read.MaterialTextures[at] : new();
-            materials.Add(Material(names[at], factors, textures, source));
+            var material = Material(names[at], factors, textures, source);
+            materials.Add(
+                declared.Missing.TryGetValue(at, out var missing)
+                    ? material with { Warnings = [..material.Warnings, Unlisted(missing)] }
+                    : material
+            );
         }
 
         return materials;
+    }
+
+    static string Unlisted(IReadOnlyList<string> missing) {
+        var them = missing.Count == 1 ? "it" : "them";
+        return $"glTF: the file uses {string.Join(", ", missing)} without listing {them} in extensionsUsed, as glTF "
+            + $"asks. Patina reads {them} all the same; another tool may not.";
     }
 
     /// <summary>Where a model's pictures are, where one inside it goes, and whether its factors are glTF's.</summary>

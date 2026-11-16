@@ -472,6 +472,7 @@ public sealed partial class ViewportSession(
             display = settings with {
                 Isolation = display.Isolation,
                 TexelDensity = display.TexelDensity,
+                MetresPerUnit = display.MetresPerUnit,
                 Resolution = display.Resolution,
                 Highlight = display.Highlight,
                 Symmetry = display.Symmetry
@@ -504,16 +505,19 @@ public sealed partial class ViewportSession(
     }
 
     /// <summary>
-    ///     What the texel density view measures against: the project's density, and the side of a map whose own size
-    ///     cannot be read. A project's, so it is set where a stack is worn and where a project's checks change.
+    ///     What the texel density view measures against: the project's density in texels per metre, the side of a map
+    ///     whose own size cannot be read, and the project's unit for its mesh, or zero for the file's (#307). A
+    ///     project's, so it is set where a stack is worn and where a project's checks or unit change.
     /// </summary>
-    public void SetDensity(double target, int resolution) {
+    public void SetDensity(double target, int resolution, double metresPerUnit) {
         lock (changing) {
-            if (display.TexelDensity == target && display.Resolution == resolution) {
+            if (display.TexelDensity == target
+                && display.Resolution == resolution
+                && display.MetresPerUnit == metresPerUnit) {
                 return;
             }
 
-            display = display with { TexelDensity = target, Resolution = resolution };
+            display = display with { TexelDensity = target, Resolution = resolution, MetresPerUnit = metresPerUnit };
             revision++;
         }
 

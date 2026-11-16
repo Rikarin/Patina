@@ -58,6 +58,11 @@ class ProjectContents:
                 to bake, and the files
                 beyond the project's mesh that a bake reads.
             export (None | ProjectExportSettings | Unset):
+            metres_per_unit (float | None | Unset): How long a unit of the project's mesh is, in metres, when the project
+                says (#146), or null for what the mesh
+                file says: glTF is in metres and an FBX states its unit, while OBJ, PLY and STL say nothing and are taken
+                as metres. The texel density check and view measure in metres through it (#307); the mesh itself is never
+                scaled.
             viewport (None | Unset | ViewportDisplay):
             paint (None | ProjectPaintSettings | Unset):
             checks (None | ProjectCheckSettings | Unset):
@@ -79,6 +84,7 @@ class ProjectContents:
     normal_format: str
     bake: ProjectBakeSettings
     export: None | ProjectExportSettings | Unset = UNSET
+    metres_per_unit: float | None | Unset = UNSET
     viewport: None | Unset | ViewportDisplay = UNSET
     paint: None | ProjectPaintSettings | Unset = UNSET
     checks: None | ProjectCheckSettings | Unset = UNSET
@@ -160,6 +166,12 @@ class ProjectContents:
         else:
             export = self.export
 
+        metres_per_unit: float | None | Unset
+        if isinstance(self.metres_per_unit, Unset):
+            metres_per_unit = UNSET
+        else:
+            metres_per_unit = self.metres_per_unit
+
         viewport: dict[str, Any] | None | Unset
         if isinstance(self.viewport, Unset):
             viewport = UNSET
@@ -206,6 +218,8 @@ class ProjectContents:
         })
         if export is not UNSET:
             field_dict["export"] = export
+        if metres_per_unit is not UNSET:
+            field_dict["metresPerUnit"] = metres_per_unit
         if viewport is not UNSET:
             field_dict["viewport"] = viewport
         if paint is not UNSET:
@@ -322,6 +336,16 @@ class ProjectContents:
         export = _parse_export(d.pop("export", UNSET))
 
 
+        def _parse_metres_per_unit(data: object) -> float | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(float | None | Unset, data)
+
+        metres_per_unit = _parse_metres_per_unit(d.pop("metresPerUnit", UNSET))
+
+
         def _parse_viewport(data: object) -> None | Unset | ViewportDisplay:
             if data is None:
                 return data
@@ -399,6 +423,7 @@ class ProjectContents:
             normal_format=normal_format,
             bake=bake,
             export=export,
+            metres_per_unit=metres_per_unit,
             viewport=viewport,
             paint=paint,
             checks=checks,

@@ -91,3 +91,49 @@ public sealed record MeshSetRead(string Material, int UvSet, int Udim, string Ge
     /// <summary>The names of the set's parts, in order, as matching by name reads them (#151).</summary>
     public IReadOnlyList<string> Parts { get; init; } = [];
 }
+
+/// <summary>
+///     How long a mesh's unit is (#146, #307, ADR 0058). Patina keeps every mesh in its own units, as Assimp reads it:
+///     the viewport, paint and bakes measure in the model's own lengths, so nothing is scaled at import. Only a number
+///     that means a real length, the texel density, is turned into metres, through this.
+/// </summary>
+public static class MeshUnits {
+    /// <summary>The longest unit a project can say its mesh is in, in metres: a kilometre.</summary>
+    public const double Longest = 1000;
+
+    /// <summary>The shortest: a micrometre.</summary>
+    public const double Shortest = 1e-6;
+
+    /// <summary>
+    ///     How long a file's unit is, in metres, when its format means a length: glTF is in metres by its
+    ///     specification, and an FBX states centimetres per unit, which Assimp reports as its <c>UnitScaleFactor</c>
+    ///     while it leaves the numbers as the file has them. Null for a file that says nothing, as OBJ, PLY and STL
+    ///     never do.
+    /// </summary>
+    /// <param name="extension">The file's extension, with the dot.</param>
+    /// <param name="unitScaleFactor">The <c>UnitScaleFactor</c> Assimp read, or null.</param>
+    public static double? Stated(string extension, double? unitScaleFactor) =>
+        extension.ToLowerInvariant() switch {
+            ".glb" or ".gltf" => 1,
+            ".fbx" when unitScaleFactor is > 0 => unitScaleFactor.Value / 100,
+            _ => null
+        };
+
+    /// <summary>
+    ///     The unit a mesh is measured in, in metres: the project's own when it says one, else what the file says,
+    ///     else a metre.
+    /// </summary>
+    /// <param name="project">The project's unit, or null or zero for none.</param>
+    /// <param name="file">What the file says, from <see cref="Stated" />, or null.</param>
+    public static double Of(double? project, double? file) =>
+        project is > 0 and var own ? own
+        : file is > 0 and var stated ? stated
+        : 1;
+
+    /// <summary>What is wrong with a unit a project asks for, or null. Zero asks for the file's own again.</summary>
+    public static string? Problem(double metresPerUnit) =>
+        metresPerUnit == 0 || metresPerUnit is >= Shortest and <= Longest
+            ? null
+            : "A mesh's unit is from a micrometre to a kilometre long, in metres, or zero for what the file says, "
+            + $"not {metresPerUnit}.";
+}
