@@ -146,6 +146,13 @@ public sealed record BakeOptions {
     public bool? Tileable { get; set; }
 
     /// <summary>
+    ///     When the bake is tileable, whether the maps repeat along the patch's <c>u</c> only, as a trim sheet's
+    ///     strips do (#212): the high mesh is laid again past the patch's left and right sides and nowhere else, so a
+    ///     strip at the top meets no copy of the strip at the bottom. Null or false repeats both ways.
+    /// </summary>
+    public bool? Trim { get; set; }
+
+    /// <summary>
     ///     The code of the refusal of a minimum occluder distance at or past the occlusion distance while occlusion or
     ///     the bent normal is baked: every ray would start past its reach, and the map come out white (#228).
     /// </summary>

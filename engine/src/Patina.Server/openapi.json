@@ -10861,6 +10861,13 @@
               "boolean"
             ],
             "description": "Whether the maps repeat without a seam (#212): a high-poly patch baked onto a flat low patch, the high mesh\nlaid again on each side of the low mesh\u0027s box so a ray near an edge meets what lies beyond it when the\nmaterial repeats. Null or false bakes the high meshes once, as they are."
+          },
+          "trim": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "When the bake is tileable, whether the maps repeat along the patch\u0027s \u0060u\u0060 only, as a trim sheet\u0027s\nstrips do (#212): the high mesh is laid again past the patch\u0027s left and right sides and nowhere else, so a\nstrip at the top meets no copy of the strip at the bottom. Null or false repeats both ways."
           }
         },
         "description": "How a bake runs, with no meshes in it: what a project keeps between bakes and every client sends. Each map\u0027s\nown settings are a part of their own."

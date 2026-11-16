@@ -3157,6 +3157,12 @@ export interface components {
        *     material repeats. Null or false bakes the high meshes once, as they are.
        */
       tileable?: null | boolean;
+      /**
+       * @description When the bake is tileable, whether the maps repeat along the patch's `u` only, as a trim sheet's
+       *     strips do (#212): the high mesh is laid again past the patch's left and right sides and nowhere else, so a
+       *     strip at the top meets no copy of the strip at the bottom. Null or false repeats both ways.
+       */
+      trim?: null | boolean;
     };
     /** @description How the position map turns a point on the high poly mesh into a value (#148). */
     BakePositionOptions: {

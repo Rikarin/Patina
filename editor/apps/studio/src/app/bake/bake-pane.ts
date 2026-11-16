@@ -460,6 +460,20 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
                 (checkedChange)="set({ tileable: $event })"
               />
             </label>
+            @if (options.tileable === true) {
+              <label
+                class="flex items-center justify-between gap-2 text-sm"
+                title="For a trim sheet, whose strips run across the patch: the high mesh is laid again past the left and right sides only, so the maps repeat across and a strip at the top meets nothing of the strip at the bottom."
+              >
+                Trim sheet
+                <xui-switch
+                  aria-label="Trim sheet"
+                  data-testid="bake-trim"
+                  [checked]="options.trim === true"
+                  (checkedChange)="set({ trim: $event })"
+                />
+              </label>
+            }
 
             <p class="section-label mt-1">Rays</p>
             <div class="flex items-center justify-between gap-2 text-sm">
