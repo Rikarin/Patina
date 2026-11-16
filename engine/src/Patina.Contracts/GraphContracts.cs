@@ -304,6 +304,10 @@ public sealed record GraphEvaluation(
 /// <param name="Info">What it says about itself: a description, an author, tags and a physical size.</param>
 /// <param name="Selection">The nodes chosen in it, as the last client to say so chose them.</param>
 /// <param name="Times">The newest GPU time of each node an evaluation has timed.</param>
+/// <param name="Paused">
+///     True while edits wait to be evaluated (#306): the previews are those of <paramref name="Settled" /> until it is
+///     resumed. Saving never waits on it.
+/// </param>
 public sealed record GraphState(
     string Id,
     string Path,
@@ -326,7 +330,8 @@ public sealed record GraphState(
     bool ReadOnly,
     GraphInfoState Info,
     GraphSelection Selection,
-    IReadOnlyList<GraphNodeTime> Times
+    IReadOnlyList<GraphNodeTime> Times,
+    bool Paused = false
 );
 #pragma warning restore SK7005
 
@@ -337,6 +342,10 @@ public sealed record GraphState(
 /// <param name="Nodes">The chosen nodes, the first being the one a single-node view shows.</param>
 /// <param name="Pinned">The node the views keep showing while the choice moves on, or null.</param>
 public sealed record GraphSelection(IReadOnlyList<int> Nodes, int? Pinned = null);
+
+/// <summary>How a graph is evaluated while it is edited (#306), the body and the reply of its <c>pace</c> route.</summary>
+/// <param name="Paused">Whether edits wait to be evaluated, as a stack's can, while a big graph is set up.</param>
+public sealed record GraphPace(bool Paused);
 
 /// <summary>An open graph, for a list.</summary>
 public sealed record GraphSummary(string Id, string Path, string Name, long Revision, bool Dirty);
@@ -667,7 +676,10 @@ public enum GraphEventKind {
     [JsonStringEnumMemberName("autosaveFailed")]
     AutosaveFailed,
 
-    /// <summary>A stack was paused, resumed or given another preview size: read its state again (#208).</summary>
+    /// <summary>
+    ///     A graph or a stack was paused or resumed, or a stack given another preview size: read its state again
+    ///     (#208, #306).
+    /// </summary>
     [JsonStringEnumMemberName("paced")]
     Paced,
 

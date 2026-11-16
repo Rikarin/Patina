@@ -59,6 +59,7 @@ public sealed class GraphSession(
     bool forced;
     bool reload;
     bool closed;
+    bool paused;
     GraphEvaluation? evaluation;
     GraphSelection selection = new([]);
 
@@ -155,7 +156,8 @@ public sealed class GraphSession(
                     [
                         ..times.Where(time => nodes.Contains(time.Key))
                             .Select(static time => new GraphNodeTime(time.Key, time.Value))
-                    ]
+                    ],
+                    paused
                 );
             }
         }
@@ -354,6 +356,34 @@ public sealed class GraphSession(
         wake();
     }
 
+    /// <summary>Whether edits wait to be evaluated (#306).</summary>
+    public bool Paused {
+        get {
+            lock (Changing) {
+                return paused;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Pauses or resumes evaluation, as a stack's can be (#208), and tells every client. It is no edit: the file,
+    ///     the revision and the undo history stay. Resuming evaluates whatever was edited meanwhile.
+    /// </summary>
+    /// <returns>Whether it is paused now.</returns>
+    public bool Pace(bool pause) {
+        lock (Changing) {
+            if (paused == pause) {
+                return paused;
+            }
+
+            paused = pause;
+            Log.Append(Noted(GraphEventKind.Paced, null));
+        }
+
+        wake();
+        return pause;
+    }
+
     /// <summary>Ends the session: followers get a last event.</summary>
     public void Close() {
         lock (Changing) {
@@ -365,7 +395,9 @@ public sealed class GraphSession(
     /// <summary>What the evaluation loop should do next, or null.</summary>
     public GraphWork? Pending() {
         lock (Changing) {
-            return closed || (settled == revision && !forced) ? null : new(revision, editor.Document, forced, reload);
+            return closed || paused || (settled == revision && !forced)
+                ? null
+                : new(revision, editor.Document, forced, reload);
         }
     }
 

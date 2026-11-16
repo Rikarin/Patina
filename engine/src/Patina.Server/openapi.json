@@ -6677,7 +6677,7 @@
         "tags": [
           "Graphs"
         ],
-        "summary": "Points every Bitmap node that reads a picture at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
+        "summary": "Points every node that reads a file (a Bitmap\u0027s picture, a Text\u0027s font, a Vector\u0027s SVG) at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph\u0027s folder or the library when it is in one, else whole.",
         "operationId": "RelinkGraphPicture",
         "parameters": [
           {
@@ -6722,6 +6722,57 @@
           },
           "422": {
             "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graphs/{id}/pace": {
+      "put": {
+        "tags": [
+          "Graphs"
+        ],
+        "summary": "Pauses or resumes a graph\u0027s evaluation. While it is paused, edits wait and the previews stay those of its settled revision; resuming evaluates them. Every client hears a paced event.",
+        "operationId": "PaceGraph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphPace"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphPace"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -15385,6 +15436,19 @@
         },
         "description": "Opens a texture graph for editing. Opening a file that is already open joins its session."
       },
+      "GraphPace": {
+        "required": [
+          "paused"
+        ],
+        "type": "object",
+        "properties": {
+          "paused": {
+            "type": "boolean",
+            "description": "Whether edits wait to be evaluated, as a stack\u0027s can, while a big graph is set up."
+          }
+        },
+        "description": "How a graph is evaluated while it is edited (#306), the body and the reply of its \u0060pace\u0060 route."
+      },
       "GraphPortDefinition": {
         "required": [
           "name",
@@ -15537,7 +15601,7 @@
         "properties": {
           "from": {
             "type": "string",
-            "description": "The picture as the graph\u0027s Bitmap nodes name it; not read when a node is named."
+            "description": "The file as the graph\u0027s nodes name it; not read when a node is named."
           },
           "to": {
             "type": "string",
@@ -15548,11 +15612,11 @@
               "null",
               "integer"
             ],
-            "description": "One Bitmap node to point at the file, whatever it reads now, or null for every one that reads\nFrom (#292).",
+            "description": "One node that reads a file to point at this one, whatever it reads now, or null for every one that reads\nFrom (#292).",
             "format": "int32"
           }
         },
-        "description": "The body of \u0060POST /api/v1/graphs/{id}/relink\u0060: a picture the graph reads, and the file it is now."
+        "description": "The body of \u0060POST /api/v1/graphs/{id}/relink\u0060: a file the graph reads (a picture, a font or an SVG), and\nthe file it is now."
       },
       "GraphSample": {
         "required": [
@@ -15801,6 +15865,7 @@
           "comments",
           "previews",
           "repairs",
+          "paused",
           "settled",
           "readOnly",
           "info",
@@ -15939,6 +16004,11 @@
               "$ref": "#/components/schemas/GraphNodeTime"
             },
             "description": "The newest GPU time of each node an evaluation has timed."
+          },
+          "paused": {
+            "type": "boolean",
+            "description": "True while edits wait to be evaluated (#306): the previews are those of Settled until it is\nresumed. Saving never waits on it.",
+            "default": false
           }
         },
         "description": "The reply to \u0060GET /api/v1/graphs/{id}\u0060: the whole document as the Server holds it."
