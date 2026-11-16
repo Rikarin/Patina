@@ -3019,10 +3019,10 @@ export interface components {
       file: string;
       /**
        * @description For a tangent-space `normal` or `bent` map: its green runs down the picture, as DirectX's do, and is
-       *     turned over as it comes in, since Patina's bakes run it up. False keeps it as it is.
-       * @default false
+       *     turned over as it comes in, since Patina's bakes run it up. False keeps it as it is. Null, or left out, reads
+       *     it as the project's string ProjectContents.NormalFormat says (#144).
        */
-      greenDown: boolean;
+      greenDown?: null | boolean;
     };
     /**
      * @description Maps baked in another program, brought in as a texturing document's bake (#144): the body of
@@ -6333,6 +6333,11 @@ export interface components {
       preservePaint: boolean;
       /** @description How Auto Unwrap lays a mesh out. */
       unwrap: components['schemas']['UnwrapOptions'];
+      /**
+       * @description Which way the green of the project's tangent-space normal maps runs: `y-up` (OpenGL) or `y-down`
+       *     (DirectX). A normal map brought in is read as this unless it says otherwise (#144).
+       */
+      normalFormat: string;
       /** @description How its bakes run, which texture sets they make maps for, and what they read beyond its mesh. */
       bake: components['schemas']['ProjectBakeSettings'];
       viewport?: null | components['schemas']['ViewportDisplay'];
@@ -6752,6 +6757,11 @@ export interface components {
        *     what reloading costs before it reloads without this.
        */
       sameLayout?: null | boolean;
+      /**
+       * @description Which way the green of the project's tangent-space normal maps runs: `y-up` or `y-down`
+       *     (#144). Maps already brought in stay as they were brought in.
+       */
+      normalFormat?: null | string;
     };
     /** @description One project as the browser shows it. The project itself loads on open. */
     ProjectSummary: {

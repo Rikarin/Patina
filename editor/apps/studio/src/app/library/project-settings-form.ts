@@ -190,6 +190,23 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
       </span>
       <xui-switch aria-label="Preserve Paint" data-testid="project-settings-preserve" [(checked)]="preservePaint" />
     </label>
+    <label class="flex items-center justify-between gap-2">
+      <span class="flex flex-col">
+        <span class="text-sm">Normal maps</span>
+        <span class="text-foreground-muted text-xs">
+          Which way their green runs. A normal map brought in is read this way unless it says otherwise.
+        </span>
+      </span>
+      <xui-select
+        size="sm"
+        aria-label="Normal maps"
+        data-testid="project-settings-normal-format"
+        [items]="normalFormats"
+        [itemText]="normalFormatName"
+        [value]="normalFormat()"
+        (valueChange)="normalFormat.set($event ?? normalFormat())"
+      />
+    </label>
     <div class="flex flex-col gap-1" data-testid="project-files">
       <span class="section-label">Files</span>
       <div class="well flex max-h-40 flex-col overflow-auto px-2 py-1">
@@ -233,6 +250,11 @@ export class ProjectSettingsForm {
   protected readonly mesh = signal('');
   protected readonly autoUnwrap = signal(true);
   protected readonly preservePaint = signal(true);
+  /** Which way the green of the project's normal maps runs (#144). */
+  protected readonly normalFormat = signal('y-up');
+  protected readonly normalFormats = ['y-up', 'y-down'];
+  protected readonly normalFormatName = (format: string): string =>
+    format === 'y-down' ? 'DirectX (Y−)' : 'OpenGL (Y+)';
   protected readonly meshName = computed(() => fileName(this.mesh()) || (this.project.meshName() ?? ''));
   /** What the project holds besides its documents. */
   protected readonly files = computed(() => {
@@ -307,6 +329,7 @@ export class ProjectSettingsForm {
       this.mesh().trim() !== '' ||
       this.autoUnwrap() !== (this.project.current()?.autoUnwrap ?? true) ||
       this.preservePaint() !== (this.project.current()?.preservePaint ?? true) ||
+      this.normalFormat() !== (this.project.current()?.normalFormat ?? 'y-up') ||
       this.optionsChanged()
   );
 
@@ -342,6 +365,7 @@ export class ProjectSettingsForm {
     this.mesh.set('');
     this.autoUnwrap.set(this.project.current()?.autoUnwrap ?? true);
     this.preservePaint.set(this.project.current()?.preservePaint ?? true);
+    this.normalFormat.set(this.project.current()?.normalFormat ?? 'y-up');
     this.options.set(sameOrder(this.project.current()?.unwrap ?? DefaultUnwrap));
   }
 
@@ -353,7 +377,10 @@ export class ProjectSettingsForm {
       ...(this.autoUnwrap() === this.project.current()?.autoUnwrap ? {} : { autoUnwrap: this.autoUnwrap() }),
       // Sent only when changed too: new options lay out again the mesh Auto Unwrap wrote, and move its paint.
       ...(this.optionsChanged() ? { unwrap: this.options() } : {}),
-      preservePaint: this.preservePaint()
+      preservePaint: this.preservePaint(),
+      ...(this.normalFormat() === (this.project.current()?.normalFormat ?? 'y-up')
+        ? {}
+        : { normalFormat: this.normalFormat() })
     };
   }
 

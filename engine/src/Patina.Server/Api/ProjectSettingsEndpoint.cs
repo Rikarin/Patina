@@ -21,7 +21,7 @@ static class ProjectSettingsEndpoint {
             return LibraryTreeEndpoints.NoLibrary();
         }
 
-        if (request.Unwrap?.Problem() is { } wrong) {
+        if (Problem(request) is { } wrong) {
             return Refusals.BadSettings(wrong, StatusCodes.Status400BadRequest);
         }
 
@@ -33,7 +33,13 @@ static class ProjectSettingsEndpoint {
             }
 
             var options = library.Contents(project).Unwrap;
-            library.SetMeshHandling(project, request.AutoUnwrap, request.PreservePaint, request.Unwrap);
+            library.SetMeshHandling(
+                project,
+                request.AutoUnwrap,
+                request.PreservePaint,
+                request.Unwrap,
+                request.NormalFormat
+            );
 
             var before = library.Contents(project);
             var onDocument = before.Documents.FirstOrDefault(static d => d.Mesh is not null)?.Mesh;
@@ -69,6 +75,13 @@ static class ProjectSettingsEndpoint {
             return problem;
         }
     }
+
+    /// <summary>What is wrong with the settings asked for, or null.</summary>
+    static string? Problem(ProjectSettingsRequest request) =>
+        request.Unwrap?.Problem()
+        ?? (request.NormalFormat is { } format && !NormalFormats.All.Contains(format, StringComparer.Ordinal)
+            ? $"A normal map's green runs y-up or y-down, not '{format}'."
+            : null);
 
     /// <summary>
     ///     The file Auto Unwrap laid the current mesh out from, when new options mean laying it out again, or null.

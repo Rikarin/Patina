@@ -88,6 +88,7 @@ function contents(documents: ProjectDocumentInfo[], bake = defaults): ProjectCon
     pictures: [],
     autoUnwrap: true,
     preservePaint: true,
+    normalFormat: 'y-up',
     unwrap: { resolution: 2048, margin: 4, quality: 'outlines', rotations: 4, texelDensity: 0, overflow: 'shrink' },
     exportSets: [],
     tags: [],

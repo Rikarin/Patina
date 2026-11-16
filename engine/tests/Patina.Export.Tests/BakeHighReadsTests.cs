@@ -48,7 +48,7 @@ public sealed class BakeHighReadsTests : IDisposable {
     ///     The high mesh: each part a fan a little above its low part, its centre at its own height, and a frame that
     ///     matches nothing and holds the box still.
     /// </summary>
-    string High(float bolt, float plate, string plateName = "plate_high") {
+    string High(float bolt, float plate, string plateName = "plate_high", bool normals = true) {
         var text = string.Create(
             CultureInfo.InvariantCulture,
             $"""
@@ -81,6 +81,11 @@ public sealed class BakeHighReadsTests : IDisposable {
 
              """
         );
+        if (!normals) {
+            text = text.Replace("vn 0 0 1", string.Empty, StringComparison.Ordinal)
+                .Replace("//1", string.Empty, StringComparison.Ordinal);
+        }
+
         File.WriteAllText(Into("low.obj"), Low);
         File.WriteAllText(Into("high.obj"), text);
         return Into("high.obj");
@@ -205,6 +210,41 @@ public sealed class BakeHighReadsTests : IDisposable {
         Assert.Equal(key, Key(Curving(true)));
         Assert.Equal(before, Map("after", true));
         Assert.NotEqual(acrossBefore, Map("across-after", false));
+    }
+
+    /// <summary>
+    ///     Curvature from the normal map keeps the set's key when another part changes (#305), since it is worked out
+    ///     from the matched parts' own rays, and the set baked again is the same, byte for byte; a change to its own
+    ///     part changes both.
+    /// </summary>
+    [Fact]
+    public void Curvature_from_the_normal_map_keeps_the_key_and_bakes_the_same() {
+        var curving = Request(
+            "Bolt",
+            static options => options with {
+                Maps = ["normal", "curvature"], Curvature = new() { Source = "normal-map" }
+            }
+        );
+
+        byte[][] Maps(string into) {
+            var manifest = MeshMapBakeRun.Run(curving, Into(into), 0, null, TestContext.Current.CancellationToken);
+            return [..manifest.Result.Maps.Select(map => File.ReadAllBytes(Path.Combine(Into(into), map.Path)))];
+        }
+
+        // Faces without normals, so the bolt's fan bakes the bends its ridges make.
+        High(0.04f, 0.02f, normals: false);
+        var key = Key(curving);
+        var before = Maps("before");
+        High(0.04f, 0.8f, normals: false);
+        var keyAfter = Key(curving);
+        var after = Maps("after");
+        High(0.1f, 0.8f, normals: false);
+
+        Assert.Equal(key, keyAfter);
+        Assert.Equal(2, before.Length);
+        Assert.Equal(before, after);
+        Assert.NotEqual(keyAfter, Key(curving));
+        Assert.NotEqual(after, Maps("own"));
     }
 
     /// <summary>Anything reaching past the set's parts reads the high mesh whole: any change rebakes it.</summary>

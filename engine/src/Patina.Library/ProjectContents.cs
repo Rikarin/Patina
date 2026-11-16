@@ -52,6 +52,7 @@ static class ProjectFiles {
             Tags = document.Tags,
             PreservePaint = document.PreservePaint,
             Unwrap = document.Unwrap,
+            NormalFormat = document.NormalFormat,
             Export = document.Export,
             ExportSets = [
                 ..ProjectOutputs.Of(document, full)
@@ -269,13 +270,17 @@ static class ProjectFiles {
         LibraryFiles.WriteProject(root, path, document with { Export = settings });
     }
 
-    /// <summary>Says what happens to a mesh with no UV layout, and to paint on a new layout.</summary>
+    /// <summary>
+    ///     Says what happens to a mesh with no UV layout, to paint on a new layout, and which way the green of the
+    ///     project's normal maps runs (#144).
+    /// </summary>
     public static void SetMeshHandling(
         string root,
         string path,
         bool? autoUnwrap,
         bool? preservePaint,
-        UnwrapOptions? unwrap = null
+        UnwrapOptions? unwrap = null,
+        string? normalFormat = null
     ) {
         var (_, document) = Project(root, path);
         LibraryFiles.WriteProject(
@@ -284,7 +289,8 @@ static class ProjectFiles {
             document with {
                 AutoUnwrap = autoUnwrap ?? document.AutoUnwrap,
                 PreservePaint = preservePaint ?? document.PreservePaint,
-                Unwrap = unwrap ?? document.Unwrap
+                Unwrap = unwrap ?? document.Unwrap,
+                NormalFormat = normalFormat ?? document.NormalFormat
             }
         );
     }

@@ -85,6 +85,12 @@ public sealed record ProjectDocument(
     /// <summary>How Auto Unwrap lays a mesh out.</summary>
     public UnwrapOptions Unwrap { get; init; } = new();
 
+    /// <summary>
+    ///     Which way the green of the project's tangent-space normal maps runs, one of
+    ///     <see cref="NormalFormats.All" /> (#144): what a normal map brought in is read as unless it says otherwise.
+    /// </summary>
+    public string NormalFormat { get; init; } = NormalFormats.Up;
+
     /// <summary>What the project's last export was set to, so the next one starts there, or null.</summary>
     public ProjectExportSettings? Export { get; init; }
 

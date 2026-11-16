@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import type {
   BakeBorderOptions,
   BakeColourOptions,
@@ -1742,8 +1742,11 @@ export class BakePane {
     return document?.kind === 'texturing' && document.id ? { id: document.id, name: document.name } : null;
   });
   protected readonly importing = signal(false);
-  /** Whether a normal brought in runs its green down the picture, as DirectX's do, and is turned over (#300). */
-  protected readonly greenDown = signal(false);
+  /**
+   * Whether a normal brought in runs its green down the picture, as DirectX's do, and is turned over (#300). It starts as
+   * the project's normal maps run (#144).
+   */
+  protected readonly greenDown = linkedSignal(() => this.project.current()?.normalFormat === 'y-down');
 
   /** Whether a map brought in has a green that may run down: a tangent-space normal or bent normal. */
   protected turnable(map: string): boolean {

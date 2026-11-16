@@ -613,6 +613,7 @@ export class ProjectStore {
       preservePaint?: boolean;
       unwrap?: UnwrapOptions;
       reassign?: Record<string, string>;
+      normalFormat?: string;
     },
     from?: SettingsPlace
   ): Promise<boolean> {
@@ -644,7 +645,8 @@ export class ProjectStore {
             autoUnwrap: settings.autoUnwrap ?? null,
             preservePaint: settings.preservePaint ?? null,
             unwrap: settings.unwrap ?? null,
-            reassign: settings.reassign ?? null
+            reassign: settings.reassign ?? null,
+            normalFormat: settings.normalFormat ?? null
           }
         })
       );

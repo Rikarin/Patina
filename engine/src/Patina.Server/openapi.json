@@ -10837,8 +10837,7 @@
       "BakeImportMap": {
         "required": [
           "map",
-          "file",
-          "greenDown"
+          "file"
         ],
         "type": "object",
         "properties": {
@@ -10851,9 +10850,11 @@
             "description": "The picture, absolute or below the library: a PNG is copied as it is, and any other picture Patina reads is\nwritten as a 16-bit PNG by the GPU engine (#300)."
           },
           "greenDown": {
-            "type": "boolean",
-            "description": "For a tangent-space \u0060normal\u0060 or \u0060bent\u0060 map: its green runs down the picture, as DirectX\u0027s do, and is\nturned over as it comes in, since Patina\u0027s bakes run it up. False keeps it as it is.",
-            "default": false
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "For a tangent-space \u0060normal\u0060 or \u0060bent\u0060 map: its green runs down the picture, as DirectX\u0027s do, and is\nturned over as it comes in, since Patina\u0027s bakes run it up. False keeps it as it is. Null, or left out, reads\nit as the project\u0027s string ProjectContents.NormalFormat says (#144)."
           }
         },
         "description": "One map brought in."
@@ -17885,6 +17886,7 @@
           "exportSets",
           "preservePaint",
           "unwrap",
+          "normalFormat",
           "bake"
         ],
         "type": "object",
@@ -17970,6 +17972,10 @@
           "unwrap": {
             "description": "How Auto Unwrap lays a mesh out.",
             "$ref": "#/components/schemas/UnwrapOptions"
+          },
+          "normalFormat": {
+            "type": "string",
+            "description": "Which way the green of the project\u0027s tangent-space normal maps runs: \u0060y-up\u0060 (OpenGL) or \u0060y-down\u0060\n(DirectX). A normal map brought in is read as this unless it says otherwise (#144)."
           },
           "bake": {
             "description": "How its bakes run, which texture sets they make maps for, and what they read beyond its mesh.",
@@ -18940,6 +18946,13 @@
               "boolean"
             ],
             "description": "True reloads Mesh only when nothing on it moves (#89): the same file name, the same\nmaterials, and every texture set laid out as it was. Then no paint is touched and open documents stay open,\nwith their undo. Otherwise it is refused with \u0060mesh-layout-changed\u0060 and nothing changes, and a client asks\nwhat reloading costs before it reloads without this."
+          },
+          "normalFormat": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Which way the green of the project\u0027s tangent-space normal maps runs: \u0060y-up\u0060 or \u0060y-down\u0060\n(#144). Maps already brought in stay as they were brought in."
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/settings\u0060. Null leaves a setting as it is."

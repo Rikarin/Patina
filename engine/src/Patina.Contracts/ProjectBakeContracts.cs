@@ -33,9 +33,10 @@ public sealed record BakeImportRequest(
 /// </param>
 /// <param name="GreenDown">
 ///     For a tangent-space <c>normal</c> or <c>bent</c> map: its green runs down the picture, as DirectX's do, and is
-///     turned over as it comes in, since Patina's bakes run it up. False keeps it as it is.
+///     turned over as it comes in, since Patina's bakes run it up. False keeps it as it is. Null, or left out, reads
+///     it as the project's <see cref="ProjectContents.NormalFormat" /> says (#144).
 /// </param>
-public sealed record BakeImportMap(string Map, string File, bool GreenDown = false);
+public sealed record BakeImportMap(string Map, string File, bool? GreenDown = null);
 
 /// <summary>Where maps brought in now are, which the document reads its bake from.</summary>
 /// <param name="Folder">The bake's folder, below the library.</param>

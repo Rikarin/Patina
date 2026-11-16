@@ -247,6 +247,69 @@ public sealed class ProjectBakePlanApiTests : IAsyncLifetime {
         Assert.Empty(Directory.Exists(cache) ? Directory.GetFiles(cache) : []);
     }
 
+    /// <summary>
+    ///     A project says which way its normal maps' green runs (#144), and a normal brought in that does not say is
+    ///     read that way: in a DirectX project it comes in turned up, unless the map says its green already runs up.
+    ///     A map with no green is never turned, and a format Patina does not know is refused.
+    /// </summary>
+    [Fact]
+    public async Task A_normal_brought_in_runs_its_green_as_the_project_says_unless_it_says_otherwise() {
+        var folder = Path.Combine(server.Library, "projects", "crate");
+        await File.WriteAllTextAsync(Path.Combine(folder, "box.vxlayers"), "name: Box\n", Token);
+        var box = ProjectBakes.Read(folder).Documents.Single(static d => d.Material == "Box").Id.Value;
+        var normal = PngCodec.Encode8(1, 1, 3, [128, 64, 255]);
+        var ao = PngCodec.Encode8(1, 1, 3, [10, 64, 30]);
+        await File.WriteAllBytesAsync(Path.Combine(server.Library, "normal.png"), normal, Token);
+        await File.WriteAllBytesAsync(Path.Combine(server.Library, "ao.png"), ao, Token);
+
+        Task<HttpResponseMessage> SetAsync(string format) =>
+            client.PatchAsJsonAsync(
+                "/api/v1/library/project/settings",
+                new ProjectSettingsRequest("crate", null, null, null) { NormalFormat = format },
+                Token
+            );
+
+        // Whether the normal came in turned over: copied as it is, or written by the GPU engine with green up.
+        async Task<bool> TurnedAsync(bool? greenDown) {
+            using var imported = await client.PostAsJsonAsync(
+                "/api/v1/library/project/bake/import",
+                new BakeImportRequest("crate", box, [new("normal", "normal.png", greenDown), new("ao", "ao.png")]),
+                Token
+            );
+            Assert.Equal(HttpStatusCode.OK, imported.StatusCode);
+            var maps = Path.Combine(folder, "bakes", "maps", "Box");
+            Assert.Equal(ao, await File.ReadAllBytesAsync(Path.Combine(maps, "imported_ao.png"), Token));
+            var brought = await File.ReadAllBytesAsync(Path.Combine(maps, "imported_normal.png"), Token);
+            if (brought.SequenceEqual(normal)) {
+                return false;
+            }
+
+            Assert.Equal((ushort)(191 * 257), PngCodec.Decode16(brought).Samples[1]);
+            return true;
+        }
+
+        Assert.False(await TurnedAsync(null));
+        using var directX = await SetAsync("y-down");
+        Assert.Equal(HttpStatusCode.OK, directX.StatusCode);
+        Assert.Equal("y-down", (await directX.Content.ReadFromJsonAsync<ProjectContents>(Token))!.NormalFormat);
+        Assert.Contains(
+            "normalFormat: y-down",
+            await File.ReadAllTextAsync(Path.Combine(folder, LibraryLayout.ProjectFile), Token),
+            StringComparison.Ordinal
+        );
+        Assert.True(await TurnedAsync(null));
+        Assert.False(await TurnedAsync(false));
+
+        using var unknown = await SetAsync("y-sideways");
+        Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
+        using var openGl = await SetAsync("y-up");
+        Assert.DoesNotContain(
+            "normalFormat",
+            await File.ReadAllTextAsync(Path.Combine(folder, LibraryLayout.ProjectFile), Token),
+            StringComparison.Ordinal
+        );
+    }
+
     static BakeManifest BakeManifestOf(string file) =>
         JsonSerializer.Deserialize(File.ReadAllBytes(file), ContractsJsonContext.Default.BakeManifest)!;
 }
