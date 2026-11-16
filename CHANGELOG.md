@@ -395,6 +395,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A big brush on a dense model keeps up better again (#25): each of the threads that weigh a stamp keeps a texel once, at its strongest weight, as the stamp does, so putting their shares together on one thread no longer looks up every weight a texel's neighbouring faces gave it. On a two-million-triangle model that part of a 48-pixel stamp takes about half as long. It paints the same texels in the same order, so a stroke paints and replays as before.
 - The preview cache keeps to its budget with a graph lighting the viewport (#300): the panoramas a sky graph is drawn as, and the UV layout drawings, were never trimmed, so a sky edited over an afternoon left one behind per change. They now share the cache's budget with the pictures, oldest first, and the panorama lighting the model and the maps on it stay while they are shown, so a new engine finds them.
 - A graph's physical size set one side quickly after the other keeps both: the second side used to write the first one's old value back while the first was still on its way.
 - A shelf picture the engine could not draw for want of a GPU is drawn once there is one (#302): a library opened on a machine with no GPU used to keep its shelf and Library pictures blank until its cache was cleared. A material the engine cannot draw is still remembered as having no picture.
