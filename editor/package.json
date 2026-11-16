@@ -18,6 +18,7 @@
     "@xui/button": "^3.2.0",
     "@xui/callout": "^3.2.0",
     "@xui/checkbox": "^3.2.0",
+    "@xui/collapse": "^3.2.0",
     "@xui/color-picker": "^3.2.0",
     "@xui/context-menu": "^3.2.0",
     "@xui/core": "^3.2.0",

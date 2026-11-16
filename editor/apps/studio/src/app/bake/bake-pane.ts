@@ -11,6 +11,7 @@ import type {
   BakeRoundingOptions,
   JobState
 } from '@patina/api-client';
+import { Disclosure } from '@patina/studio-ui';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiInputImports } from '@xui/input';
@@ -163,6 +164,7 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
 @Component({
   selector: 'ptn-bake',
   imports: [
+    Disclosure,
     XuiButtonImports,
     XuiCalloutImports,
     XuiInputImports,
@@ -1293,14 +1295,13 @@ type PathField = 'cage' | 'skewMap' | 'distanceMap' | 'output';
               }
             </div>
             @if (result.log.length) {
-              <details data-testid="bake-log">
-                <summary class="text-foreground-muted cursor-pointer text-xs">Log</summary>
+              <ptn-disclosure label="Log" data-testid="bake-log">
                 <ul class="readout flex flex-col gap-0.5 py-1 text-xs">
                   @for (line of result.log; track $index) {
                     <li>{{ line }}</li>
                   }
                 </ul>
-              </details>
+              </ptn-disclosure>
             }
           }
         }

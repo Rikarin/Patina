@@ -20,6 +20,14 @@ describe('controls written into the code', () => {
     expect(found).toEqual([]);
   });
 
+  it('opens a section with the disclosure built from xUI, never a native details (#195)', async () => {
+    const found = (await sources()).flatMap(({ path, text }) =>
+      elementsOf(text, /details|summary/u).map(element => at(path, element.line, `<${element.tag}>`))
+    );
+
+    expect(found).toEqual([]);
+  });
+
   it('shows progress with xUI’s progress bar, never a hand-made one (#195)', async () => {
     const found = (await sources()).flatMap(({ path, text }) =>
       elementsOf(text, /[a-z]+/u)

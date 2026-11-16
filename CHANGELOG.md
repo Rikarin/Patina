@@ -579,6 +579,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- A section that folds open is xUI's too (#195): the bake's Log, the Checks tab's Memory by file and Limits, and a preset's The file open under an xUI button with an arrow, where they were the browser's own disclosure with its own look.
+- The third-party notices name cereal, which MoltenVK builds into the macOS package to keep its pipeline cache, with its BSD-3-Clause licence (#48).
 - The Bake dialog's Preview shows the bake its project would run (#296): the engine reads the meshes, the cage and the options from the project's file as it plans that bake, where the app worked them out itself. Through the API `project` and `document` in `PUT /api/v1/viewport/bake-preview`, which any client can send in place of the paths.
 - Properties starts with the document's texture set settings folded (#298): its name, mesh and channels stay in view, and Document unfolds the size, UV set, depth, bake settings and description. A machine that folded or unfolded it before keeps its choice.
 - The brush's Also paints offers a slider of grey for a channel that holds one number, a user channel included unless it holds a color (#298), where every channel had a color picker.
