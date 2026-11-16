@@ -1,27 +1,26 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Patina.Contracts;
+using Patina.Graphs;
 using Patina.Library;
 using Patina.Server.Graphs;
 
 namespace Patina.Server.Api;
 
 /// <summary>
-///     Relinking a picture (#185): every Bitmap of an open graph that reads one file reads another, as one undo step.
-///     It is what the dependency view of Publish as Package offers for a picture it cannot find, and it is the
-///     Server's so that any client names the new file the same way. Naming a node points that Bitmap alone, which is
-///     how a client picks a Bitmap's Source from a list rather than typing it (#292).
+///     Relinking a file (#185): every node of an open graph that reads one file reads another, as one undo step, be it
+///     a Bitmap's picture, a Text's font or a Vector's SVG (#306). It is what the dependency view of Publish as Package
+///     offers for a file it cannot find, and it is the Server's so that any client names the new file the same way.
+///     Naming a node points that node alone, which is how a client picks a Bitmap's Source from a list rather than
+///     typing it (#292).
 /// </summary>
 static class GraphRelinkEndpoint {
-    const string BitmapNode = "Source/Bitmap";
-    const string SourceSetting = "Source";
-
     public static void MapGraphRelink(this RouteGroupBuilder graphs) =>
         graphs.MapPost("/{id}/relink", Relink)
             .Describe(
                 "RelinkGraphPicture",
-                "Points every Bitmap node that reads a picture at another file, as one undo step, or only the node "
-                + "named by node. The file is named as the graph finds it: below the graph's folder or the library "
-                + "when it is in one, else whole.",
+                "Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another "
+                + "file, as one undo step, or only the node named by node. The file is named as the graph finds it: "
+                + "below the graph's folder or the library when it is in one, else whole.",
                 StatusCodes.Status404NotFound,
                 StatusCodes.Status422UnprocessableEntity
             );
@@ -41,40 +40,43 @@ static class GraphRelinkEndpoint {
                 ? Path.GetFullPath(request.To, library.RootPath)
                 : Path.IsPathRooted(request.To)
                     ? request.To
-                    : throw new GraphEditRefusedException(
-                        "With no library open, a picture is named by its whole path."
-                    );
+                    : throw new GraphEditRefusedException("With no library open, a file is named by its whole path.");
             if (!File.Exists(file)) {
-                throw new GraphEditRefusedException($"There is no picture at '{request.To}'.");
+                throw new GraphEditRefusedException($"There is no file at '{request.To}'.");
             }
 
             var name = CompoundFolders.PictureName(session.ImageRoots, file);
+            var reading = Reading(session.State.Nodes, request).ToList();
             List<GraphCommand> commands = [
-                ..Bitmaps(session.State.Nodes, request).Select(node => new GraphSetText(node.Id, SourceSetting, name))
+                ..reading.Select(node => new GraphSetText(node.Id, GraphFiles.SettingOf(node.Type)!, name))
             ];
             if (commands.Count == 0) {
                 throw new GraphEditRefusedException(
                     request.Node is { } node
-                        ? $"Node {node} of this graph is no Bitmap."
-                        : $"No Bitmap node of this graph reads '{request.From}'."
+                        ? $"Node {node} of this graph reads no file."
+                        : $"No node of this graph reads '{request.From}'."
                 );
             }
 
-            return TypedResults.Ok(
-                session.Apply(new(commands, request.Node is null ? "Relink Picture" : "Choose Picture"))
-            );
+            return TypedResults.Ok(session.Apply(new(commands, LabelOf(request, reading))));
         } catch (GraphEditRefusedException e) {
             return Refusals.Of(e);
         }
     }
 
-    /// <summary>The node the request names, or every one reading its picture, of those that are Bitmaps.</summary>
-    static IEnumerable<GraphNodeState> Bitmaps(IEnumerable<GraphNodeState> nodes, GraphRelinkRequest request) {
+    /// <summary>The node the request names, or every one reading its file, of those that read one.</summary>
+    static IEnumerable<GraphNodeState> Reading(IEnumerable<GraphNodeState> nodes, GraphRelinkRequest request) {
         var from = request.From.Trim();
-        return nodes.Where(node => node.Type == BitmapNode
+        return nodes.Where(node => GraphFiles.SettingOf(node.Type) is { } setting
             && (request.Node is { } id
                 ? node.Id == id
-                : node.Texts.TryGetValue(SourceSetting, out var source) && source.Trim() == from)
+                : node.Texts.TryGetValue(setting, out var source) && source.Trim() == from)
         );
+    }
+
+    /// <summary>What the undo step is called: a picture's when only Bitmaps read the file.</summary>
+    static string LabelOf(GraphRelinkRequest request, IReadOnlyList<GraphNodeState> reading) {
+        var what = reading.All(static node => node.Type == GraphFiles.BitmapNode) ? "Picture" : "File";
+        return request.Node is null ? $"Relink {what}" : $"Choose {what}";
     }
 }

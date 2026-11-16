@@ -51,6 +51,8 @@ export interface GraphDocument {
   readOnly: boolean;
   /** What the graph says about itself: a description, an author, tags and a physical size. */
   info: GraphInfoState;
+  /** True while edits wait to be evaluated (#306). */
+  paused: boolean;
 }
 
 /** What to do with an event, given what the client holds. */
@@ -82,7 +84,8 @@ export function documentOf(state: GraphState): GraphDocument {
     evaluation: state.evaluation ?? null,
     settled: state.settled,
     readOnly: state.readOnly,
-    info: state.info
+    info: state.info,
+    paused: state.paused
   };
 }
 
@@ -210,7 +213,11 @@ export function diagnosticsOf(document: GraphDocument): readonly GraphDiagnostic
 /** What the toolbar says about the last evaluation, or nothing when there is nothing to say. */
 export function evaluationSummary(document: GraphDocument): string {
   if (document.settled < document.revision) {
-    return 'Evaluating…';
+    return document.paused ? 'Paused, with edits waiting' : 'Evaluating…';
+  }
+
+  if (document.paused) {
+    return 'Paused';
   }
 
   const evaluation = document.evaluation;

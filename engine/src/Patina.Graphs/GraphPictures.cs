@@ -30,7 +30,6 @@ public sealed class GraphPictures {
     /// <summary>What a graph hears when a picture it reads cannot be read.</summary>
     public const string Problem = "PT0001";
 
-    const string MeshMapScheme = "meshmap:";
     const long Budget = 512L * 1024 * 1024;
 
     /// <summary>
@@ -104,14 +103,14 @@ public sealed class GraphPictures {
                 Decoded picture;
                 if (meshMaps is null
                     && unbaked is not null
-                    && reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)) {
-                    unbaked.Add(reference[MeshMapScheme.Length..]);
+                    && reference.StartsWith(GraphFiles.MeshMapScheme, StringComparison.Ordinal)) {
+                    unbaked.Add(reference[GraphFiles.MeshMapScheme.Length..]);
                     uploads.AddPicture(plan, external.Image, 1, 1, NoBake, TextureFormat.Rgba8);
                     continue;
                 }
 
-                if (reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)) {
-                    (stamp, picture) = ReadMeshMap(reference[MeshMapScheme.Length..], meshMaps);
+                if (reference.StartsWith(GraphFiles.MeshMapScheme, StringComparison.Ordinal)) {
+                    (stamp, picture) = ReadMeshMap(reference[GraphFiles.MeshMapScheme.Length..], meshMaps);
                 } else if (PaintReference.Claims(reference)) {
                     (stamp, picture) = ReadPaint(reference, roots);
                 } else {

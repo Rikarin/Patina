@@ -83,6 +83,7 @@ static class GraphEndpoints {
                 Refused
             );
         graphs.MapGraphRelink();
+        graphs.MapGraphPace();
         graphs.MapGraphPictures();
         graphs.MapPost("/{id}/undo", Undo)
             .Describe("UndoGraph", "Takes back the newest batch, whichever client sent it.", Missing, Conflict);

@@ -15,7 +15,7 @@ export interface GraphFieldLook {
   title: string;
   /** When it is shown, from another setting of the same node. */
   visibleIf: GraphSettingCondition | null;
-  /** The widget a setting asks for: `Angle` and `Toggle` change the control. */
+  /** The widget a setting asks for: `Angle`, `Toggle`, `Position` and `Tiling` change the control. */
   widget: string | null;
 }
 
@@ -56,6 +56,15 @@ export type GraphField = GraphFieldLook &
         label: (value: string) => string;
       }
     | { control: 'colour'; source: 'text'; name: string; summary: string; fallback: string }
+    | {
+        control: 'pair';
+        source: 'text';
+        name: string;
+        summary: string;
+        fallback: string;
+        minimum: number | null;
+        maximum: number | null;
+      }
     | { control: 'text'; source: 'text'; name: string; summary: string; fallback: string }
     | { control: 'curve'; source: 'text'; name: string; summary: string; fallback: string }
     | { control: 'ramp'; source: 'text'; name: string; summary: string; fallback: string }
@@ -139,6 +148,8 @@ function fieldOfSetting(setting: GraphSettingDefinition): GraphField {
       return { ...base, control: 'switch' };
     case 'Color':
       return { ...base, control: 'colour' };
+    case 'Float2':
+      return { ...base, control: 'pair', minimum: setting.minimum ?? null, maximum: setting.maximum ?? null };
     case 'Int':
     case 'Float':
       return {
@@ -234,6 +245,25 @@ export function lanesOfColorText(text: string): readonly number[] | null {
 /** RGBA lanes as a Color parameter's text, which the Server and Vixen read back exactly. */
 export function colorTextOf(lanes: readonly number[]): string {
   return [0, 1, 2, 3].map(at => String(lanes[at] ?? (at === 3 ? 1 : 0))).join(',');
+}
+
+/**
+ * The two numbers of a Float2 parameter's text, in Vixen's `SettingPairs` spelling: x and y separated by a comma (#181).
+ * Null for anything else.
+ */
+export function pairOfText(text: string): readonly [number, number] | null {
+  const parts = text.split(',').map(part => part.trim());
+  if (parts.length !== 2 || parts.some(part => part === '')) {
+    return null;
+  }
+
+  const [x, y] = parts.map(Number);
+  return x !== undefined && y !== undefined && Number.isFinite(x) && Number.isFinite(y) ? [x, y] : null;
+}
+
+/** X and y as a Float2 parameter's text, which the Server and Vixen read back exactly. */
+export function pairTextOf(x: number, y: number): string {
+  return `${String(x)},${String(y)}`;
 }
 
 /** A line a card shows under its title: something the author changed on the node, and what it is now. */

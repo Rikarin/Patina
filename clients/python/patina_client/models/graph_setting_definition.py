@@ -30,7 +30,9 @@ class GraphSettingDefinition:
             name (str): What it is called.
             default (str): Its default, as text.
             summary (str): One line about it.
-            kind (str): Text, Bool, Int, Float or Color, whose default is four numbers separated by commas.
+            kind (str): Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two
+                numbers such
+                as a position or a tiling, separated by a comma, each within the range.
             group (str): The heading it sits under.
             accepted (list[str]): The values it may take; empty for any.
             minimum (float | None | Unset): Its lower bound, or null for none.
@@ -42,7 +44,8 @@ class GraphSettingDefinition:
                 for the name.
             widget (None | str | Unset): The control an inspector draws: `Default`, `Slider` (a number with a range),
                 `Angle` (a number
-                in degrees) or `Toggle` (a flag). Null for `Default`.
+                in degrees), `Toggle` (a flag), `Position` (a Float2 as a point on a square) or `Tiling` (a
+                Float2 as two counts that can be kept equal). Null for `Default`.
             visible_if (GraphSettingCondition | None | Unset):
      """
 

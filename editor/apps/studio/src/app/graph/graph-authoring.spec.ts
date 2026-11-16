@@ -111,6 +111,7 @@ describe('parameters', () => {
     expect(controlOf(parameter({ kind: 'Bool' }))).toBe('switch');
     expect(controlOf(parameter({ kind: 'Text', accepted: ['A', 'B'] }))).toBe('choice');
     expect(controlOf(parameter({ kind: 'Text' }))).toBe('text');
+    expect(controlOf(parameter({ kind: 'Float2', default: '0.5,0.5', widget: 'Position' }))).toBe('pair');
   });
 
   it('are offered only the widgets the Server accepts for them', () => {
@@ -118,6 +119,7 @@ describe('parameters', () => {
     expect(widgetsFor(parameter({ minimum: null }))).toEqual(['Default', 'Angle']);
     expect(widgetsFor(parameter({ kind: 'Bool' }))).toEqual(['Default', 'Toggle']);
     expect(widgetsFor(parameter({ kind: 'Text' }))).toEqual(['Default']);
+    expect(widgetsFor(parameter({ kind: 'Float2' }))).toEqual(['Default', 'Position', 'Tiling']);
   });
 
   it('sit in their groups with the ungrouped first', () => {

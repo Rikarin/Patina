@@ -239,4 +239,58 @@ public sealed class PackageImportApiTests : IAsyncLifetime {
         );
         Assert.Equal("Choose Picture", after.History.UndoLabel);
     }
+
+    /// <summary>
+    ///     A font or an SVG file a package cannot find is relinked as a picture is (#306): every Text or Vector reading
+    ///     it, and nothing reading another file.
+    /// </summary>
+    [Fact]
+    public async Task A_missing_font_or_SVG_file_is_relinked_on_every_node_that_reads_it() {
+        const string Signs = """
+                             name: Signs
+                             nodes:
+                               - { id: 1, type: Source/Text, texts: { Font: plate.ttf, Text: A } }
+                               - { id: 2, type: Source/Text, texts: { Font: plate.ttf, Text: B } }
+                               - { id: 3, type: Source/Vector, texts: { File: logo.svg } }
+                               - { id: 4, type: Output/Output, texts: { Usage: baseColor } }
+                             edges:
+                               - { fromNode: 1, fromPort: Out, toNode: 4, toPort: Input }
+                             settings: { baseWidth: '64', baseHeight: '64', seed: '1' }
+                             """;
+        await File.WriteAllTextAsync(Path.Combine(server.Library, "loose", "Signs.vxtexgraph"), Signs, Token);
+        var font = Path.Combine(server.Library, "loose", "pictures", "plate-new.ttf");
+        await File.WriteAllBytesAsync(font, [7], Token);
+        var svg = Path.Combine(server.Library, "loose", "pictures", "logo-new.svg");
+        await File.WriteAllTextAsync(svg, "<svg/>", Token);
+        var state = await client.OpenAsync("loose/Signs.vxtexgraph", Token);
+
+        var relinked = await client.PostAsJsonAsync(
+            $"/api/v1/graphs/{state.Id}/relink",
+            new GraphRelinkRequest("plate.ttf", font),
+            Token
+        );
+        Assert.Equal(HttpStatusCode.OK, relinked.StatusCode);
+        Assert.Equal("Relink File", (await client.StateAsync(state.Id, Token)).History.UndoLabel);
+        var chosen = await client.PostAsJsonAsync(
+            $"/api/v1/graphs/{state.Id}/relink",
+            new GraphRelinkRequest(string.Empty, svg, 3),
+            Token
+        );
+        var output = await client.PostAsJsonAsync(
+            $"/api/v1/graphs/{state.Id}/relink",
+            new GraphRelinkRequest(string.Empty, svg, 4),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.OK, chosen.StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, output.StatusCode);
+        var after = await client.StateAsync(state.Id, Token);
+        Assert.Equal(
+            ["pictures/plate-new.ttf", "pictures/plate-new.ttf", "pictures/logo-new.svg"],
+            after.Nodes.Where(static n => n.Id != 4)
+                .OrderBy(static n => n.Id)
+                .Select(static n => n.Texts.GetValueOrDefault("Font") ?? n.Texts["File"])
+        );
+        Assert.Equal("Choose File", after.History.UndoLabel);
+    }
 }

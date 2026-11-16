@@ -39,7 +39,10 @@ public sealed record GraphEdgeState(int FromNode, string FromPort, int ToNode, s
 /// <param name="Name">What it is called.</param>
 /// <param name="Default">Its default, as text.</param>
 /// <param name="Summary">One line about it.</param>
-/// <param name="Kind">Text, Bool, Int, Float or Color, whose default is four numbers separated by commas.</param>
+/// <param name="Kind">
+///     Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two numbers such
+///     as a position or a tiling, separated by a comma, each within the range.
+/// </param>
 /// <param name="Minimum">Its lower bound, or null for none.</param>
 /// <param name="Maximum">Its upper bound, or null for none.</param>
 /// <param name="Group">The heading it sits under.</param>
@@ -54,7 +57,8 @@ public sealed record GraphEdgeState(int FromNode, string FromPort, int ToNode, s
 /// </param>
 /// <param name="Widget">
 ///     The control an inspector draws: <c>Default</c>, <c>Slider</c> (a number with a range), <c>Angle</c> (a number
-///     in degrees) or <c>Toggle</c> (a flag). Null for <c>Default</c>.
+///     in degrees), <c>Toggle</c> (a flag), <c>Position</c> (a Float2 as a point on a square) or <c>Tiling</c> (a
+///     Float2 as two counts that can be kept equal). Null for <c>Default</c>.
 /// </param>
 /// <param name="VisibleIf">When it is shown, or null for always. Hiding never changes its value.</param>
 // SK7005: a wire record's constructor is its JSON shape, one parameter per field, so fewer parameters means a new API.
@@ -304,6 +308,10 @@ public sealed record GraphEvaluation(
 /// <param name="Info">What it says about itself: a description, an author, tags and a physical size.</param>
 /// <param name="Selection">The nodes chosen in it, as the last client to say so chose them.</param>
 /// <param name="Times">The newest GPU time of each node an evaluation has timed.</param>
+/// <param name="Paused">
+///     True while edits wait to be evaluated (#306): the previews are those of <paramref name="Settled" /> until it is
+///     resumed. Saving never waits on it.
+/// </param>
 public sealed record GraphState(
     string Id,
     string Path,
@@ -326,7 +334,8 @@ public sealed record GraphState(
     bool ReadOnly,
     GraphInfoState Info,
     GraphSelection Selection,
-    IReadOnlyList<GraphNodeTime> Times
+    IReadOnlyList<GraphNodeTime> Times,
+    bool Paused = false
 );
 #pragma warning restore SK7005
 
@@ -337,6 +346,12 @@ public sealed record GraphState(
 /// <param name="Nodes">The chosen nodes, the first being the one a single-node view shows.</param>
 /// <param name="Pinned">The node the views keep showing while the choice moves on, or null.</param>
 public sealed record GraphSelection(IReadOnlyList<int> Nodes, int? Pinned = null);
+
+/// <summary>
+///     How a graph is evaluated while it is edited (#306): the body and the reply of its <c>pace</c> route.
+/// </summary>
+/// <param name="Paused">Whether edits wait to be evaluated, as a stack's can, while a big graph is set up.</param>
+public sealed record GraphPace(bool Paused);
 
 /// <summary>An open graph, for a list.</summary>
 public sealed record GraphSummary(string Id, string Path, string Name, long Revision, bool Dirty);
@@ -667,7 +682,10 @@ public enum GraphEventKind {
     [JsonStringEnumMemberName("autosaveFailed")]
     AutosaveFailed,
 
-    /// <summary>A stack was paused, resumed or given another preview size: read its state again (#208).</summary>
+    /// <summary>
+    ///     A graph or a stack was paused or resumed, or a stack given another preview size: read its state again
+    ///     (#208, #306).
+    /// </summary>
     [JsonStringEnumMemberName("paced")]
     Paced,
 

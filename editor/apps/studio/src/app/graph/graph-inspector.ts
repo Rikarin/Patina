@@ -43,6 +43,7 @@ import { edgeKey } from './graph-model';
 import { GraphNoteInspector, GraphSelection, GraphSettings } from './graph-settings';
 import { GraphStore } from './graph-store';
 import { type NodeSize, NodeSizes, sizeOf, sizeable } from './node-size';
+import { PairField } from './pair-field';
 
 type NumberField = Extract<GraphField, { control: 'number' }>;
 type ColourField = Extract<GraphField, { control: 'colour' }>;
@@ -69,6 +70,7 @@ export { keptLanes } from './graph-fields';
   imports: [
     IconImports,
     AngleDial,
+    PairField,
     CurveEditor,
     GradientRamp,
     XuiButtonImports,
@@ -382,6 +384,19 @@ export { keptLanes } from './graph-fields';
                         />
                       }
                     </div>
+                  }
+                  @case ('pair') {
+                    <ptn-pair-field
+                      [attr.data-testid]="'graph-pair-' + field.name"
+                      [disabled]="!store.editable()"
+                      [label]="field.title"
+                      [maximum]="field.maximum"
+                      [minimum]="field.minimum"
+                      [value]="textOf(field)"
+                      [widget]="field.widget"
+                      (released)="store.endGesture()"
+                      (valueChange)="store.setText(node().id, field.name, $event)"
+                    />
                   }
                   @case ('choice') {
                     <xui-select

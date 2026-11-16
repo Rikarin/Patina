@@ -169,6 +169,7 @@ from .graph_node_state_values import GraphNodeStateValues
 from .graph_node_time import GraphNodeTime
 from .graph_node_type import GraphNodeType
 from .graph_open_request import GraphOpenRequest
+from .graph_pace import GraphPace
 from .graph_port_definition import GraphPortDefinition
 from .graph_port_range import GraphPortRange
 from .graph_preset_state import GraphPresetState
@@ -635,6 +636,7 @@ __all__ = (
     "GraphNodeTime",
     "GraphNodeType",
     "GraphOpenRequest",
+    "GraphPace",
     "GraphPortDefinition",
     "GraphPortRange",
     "GraphPresetState",

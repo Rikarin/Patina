@@ -1705,8 +1705,25 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Points every Bitmap node that reads a picture at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
+    /** Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another file, as one undo step, or only the node named by node. The file is named as the graph finds it: below the graph's folder or the library when it is in one, else whole. */
     post: operations['RelinkGraphPicture'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/graphs/{id}/pace': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Pauses or resumes a graph's evaluation. While it is paused, edits wait and the previews stay those of its settled revision; resuming evaluates them. Every client hears a paced event. */
+    put: operations['PaceGraph'];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -5211,6 +5228,11 @@ export interface components {
       /** @description The graph file on the Server's machine, absolute or relative to the library. */
       path: string;
     };
+    /** @description How a graph is evaluated while it is edited (#306): the body and the reply of its `pace` route. */
+    GraphPace: {
+      /** @description Whether edits wait to be evaluated, as a stack's can, while a big graph is set up. */
+      paused: boolean;
+    };
     /** @description One port of a node type. */
     GraphPortDefinition: {
       /** @description What an edge calls it. */
@@ -5279,15 +5301,18 @@ export interface components {
        */
       height: number;
     };
-    /** @description The body of `POST /api/v1/graphs/{id}/relink`: a picture the graph reads, and the file it is now. */
+    /**
+     * @description The body of `POST /api/v1/graphs/{id}/relink`: a file the graph reads (a picture, a font or an SVG), and
+     *     the file it is now.
+     */
     GraphRelinkRequest: {
-      /** @description The picture as the graph's Bitmap nodes name it; not read when a node is named. */
+      /** @description The file as the graph's nodes name it; not read when a node is named. */
       from: string;
       /** @description The file to read instead: absolute, or below the library. */
       to: string;
       /**
        * Format: int32
-       * @description One Bitmap node to point at the file, whatever it reads now, or null for every one that reads
+       * @description One node that reads a file to point at this one, whatever it reads now, or null for every one that reads
        *     From (#292).
        */
       node?: null | number;
@@ -5385,7 +5410,10 @@ export interface components {
       default: string;
       /** @description One line about it. */
       summary: string;
-      /** @description Text, Bool, Int, Float or Color, whose default is four numbers separated by commas. */
+      /**
+       * @description Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two numbers such
+       *     as a position or a tiling, separated by a comma, each within the range.
+       */
       kind: string;
       /**
        * Format: float
@@ -5413,7 +5441,8 @@ export interface components {
       label?: null | string;
       /**
        * @description The control an inspector draws: `Default`, `Slider` (a number with a range), `Angle` (a number
-       *     in degrees) or `Toggle` (a flag). Null for `Default`.
+       *     in degrees), `Toggle` (a flag), `Position` (a Float2 as a point on a square) or `Tiling` (a
+       *     Float2 as two counts that can be kept equal). Null for `Default`.
        */
       widget?: null | string;
       visibleIf?: null | components['schemas']['GraphSettingCondition'];
@@ -5474,6 +5503,12 @@ export interface components {
       selection: components['schemas']['GraphSelection'];
       /** @description The newest GPU time of each node an evaluation has timed. */
       times: components['schemas']['GraphNodeTime'][];
+      /**
+       * @description True while edits wait to be evaluated (#306): the previews are those of Settled until it is
+       *     resumed. Saving never waits on it.
+       * @default false
+       */
+      paused: boolean;
     };
     /** @description An open graph, for a list. */
     GraphSummary: {
@@ -15510,6 +15545,41 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  PaceGraph: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GraphPace'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['GraphPace'];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

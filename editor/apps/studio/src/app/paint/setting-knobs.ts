@@ -9,6 +9,7 @@ import { XuiSwitchImports } from '@xui/switch';
 import { choiceName, termName } from '../core/labels';
 import { knobRange, knobShown } from '../core/numbers';
 import { colorTextOf, hexOfLanes, keptLanes, lanesOfColorText, lanesOfHex } from '../graph/graph-fields';
+import { PairField } from '../graph/pair-field';
 
 /** A setting a knob changed to. */
 export interface KnobChange {
@@ -24,6 +25,7 @@ export interface KnobChange {
 @Component({
   selector: 'ptn-setting-knobs',
   imports: [
+    PairField,
     XuiColorPickerImports,
     XuiInputImports,
     XuiNumericInputImports,
@@ -81,6 +83,16 @@ export interface KnobChange {
             [attr.data-testid]="testId() + parameter.name"
             [value]="hexOf(current)"
             (valueChange)="setHex(parameter, current, $event)"
+          />
+        } @else if (parameter.kind === 'Float2') {
+          <ptn-pair-field
+            [attr.data-testid]="testId() + parameter.name"
+            [label]="nameOf(parameter)"
+            [maximum]="parameter.maximum"
+            [minimum]="parameter.minimum"
+            [value]="current"
+            [widget]="parameter.widget"
+            (valueChange)="set(parameter, $event)"
           />
         } @else if (parameter.kind === 'Bool') {
           <xui-switch

@@ -86,14 +86,15 @@ def sync_detailed(
     body: GraphRelinkRequest,
 
 ) -> Response[GraphEditResult | ProblemDetails]:
-    """ Points every Bitmap node that reads a picture at another file, as one undo step, or only the node
-    named by node. The file is named as the graph finds it: below the graph's folder or the library when
-    it is in one, else whole.
+    """ Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another
+    file, as one undo step, or only the node named by node. The file is named as the graph finds it:
+    below the graph's folder or the library when it is in one, else whole.
 
     Args:
         id (str):
-        body (GraphRelinkRequest): The body of `POST /api/v1/graphs/{id}/relink`: a picture the
-            graph reads, and the file it is now.
+        body (GraphRelinkRequest): The body of `POST /api/v1/graphs/{id}/relink`: a file the graph
+            reads (a picture, a font or an SVG), and
+            the file it is now.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -123,14 +124,15 @@ def sync(
     body: GraphRelinkRequest,
 
 ) -> GraphEditResult | ProblemDetails | None:
-    """ Points every Bitmap node that reads a picture at another file, as one undo step, or only the node
-    named by node. The file is named as the graph finds it: below the graph's folder or the library when
-    it is in one, else whole.
+    """ Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another
+    file, as one undo step, or only the node named by node. The file is named as the graph finds it:
+    below the graph's folder or the library when it is in one, else whole.
 
     Args:
         id (str):
-        body (GraphRelinkRequest): The body of `POST /api/v1/graphs/{id}/relink`: a picture the
-            graph reads, and the file it is now.
+        body (GraphRelinkRequest): The body of `POST /api/v1/graphs/{id}/relink`: a file the graph
+            reads (a picture, a font or an SVG), and
+            the file it is now.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -155,14 +157,15 @@ async def asyncio_detailed(
     body: GraphRelinkRequest,
 
 ) -> Response[GraphEditResult | ProblemDetails]:
-    """ Points every Bitmap node that reads a picture at another file, as one undo step, or only the node
-    named by node. The file is named as the graph finds it: below the graph's folder or the library when
-    it is in one, else whole.
+    """ Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another
+    file, as one undo step, or only the node named by node. The file is named as the graph finds it:
+    below the graph's folder or the library when it is in one, else whole.
 
     Args:
         id (str):
-        body (GraphRelinkRequest): The body of `POST /api/v1/graphs/{id}/relink`: a picture the
-            graph reads, and the file it is now.
+        body (GraphRelinkRequest): The body of `POST /api/v1/graphs/{id}/relink`: a file the graph
+            reads (a picture, a font or an SVG), and
+            the file it is now.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -192,14 +195,15 @@ async def asyncio(
     body: GraphRelinkRequest,
 
 ) -> GraphEditResult | ProblemDetails | None:
-    """ Points every Bitmap node that reads a picture at another file, as one undo step, or only the node
-    named by node. The file is named as the graph finds it: below the graph's folder or the library when
-    it is in one, else whole.
+    """ Points every node that reads a file (a Bitmap's picture, a Text's font, a Vector's SVG) at another
+    file, as one undo step, or only the node named by node. The file is named as the graph finds it:
+    below the graph's folder or the library when it is in one, else whole.
 
     Args:
         id (str):
-        body (GraphRelinkRequest): The body of `POST /api/v1/graphs/{id}/relink`: a picture the
-            graph reads, and the file it is now.
+        body (GraphRelinkRequest): The body of `POST /api/v1/graphs/{id}/relink`: a file the graph
+            reads (a picture, a font or an SVG), and
+            the file it is now.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

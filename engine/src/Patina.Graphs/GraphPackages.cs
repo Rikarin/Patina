@@ -181,16 +181,21 @@ public static class GraphPackages {
         public void Through(NodeGraphAsset graph) {
             pending.Enqueue((graph, null));
             while (pending.TryDequeue(out var held)) {
+                foreach (var (file, type) in GraphFiles.Read(held.Graph)) {
+                    Picture(file, GraphFiles.KindOf(type), held.In);
+                }
+
                 foreach (var node in held.Graph.Nodes) {
-                    Visit(node, held.In);
+                    Visit(node);
                 }
             }
         }
 
-        void Visit(GraphNodeAsset node, string? into) {
-            if (GraphFiles.SettingOf(node.Type) is not null) {
-                Picture(GraphFiles.Of(node), GraphFiles.KindOf(node.Type), into);
-            } else if (!SubGraphs.IsBoundary(node.Type) && !Reroutes.IsReroute(node.Type) && seen.Add(node.Type)) {
+        void Visit(GraphNodeAsset node) {
+            if (GraphFiles.SettingOf(node.Type) is null
+                && !SubGraphs.IsBoundary(node.Type)
+                && !Reroutes.IsReroute(node.Type)
+                && seen.Add(node.Type)) {
                 Type(node.Type);
             }
         }
@@ -220,7 +225,7 @@ public static class GraphPackages {
         /// </summary>
         void Picture(string reference, string kind, string? into) {
             if (reference.Length == 0
-                || reference.StartsWith("meshmap:", StringComparison.Ordinal)
+                || reference.StartsWith(GraphFiles.MeshMapScheme, StringComparison.Ordinal)
                 || Pictures.ContainsKey(reference)) {
                 return;
             }
@@ -265,8 +270,9 @@ public static class GraphPackages {
 
     /// <summary>
     ///     Compiles the graph as the Worker would, which is the check that what is published evaluates, and names a
-    ///     font or an SVG file a drawing reads that no node names, as one a parameter gives it: a package carries the
-    ///     files its nodes name, and cannot know which ones a parameter could.
+    ///     font or an SVG file a drawing reads that the walk did not find, as one a graph around a compound hands it:
+    ///     a package carries the files its nodes and their parameters name, and cannot know what a graph using one of
+    ///     its compounds could.
     /// </summary>
     static IReadOnlyList<GraphDiagnostic> Compile(NodeGraphAsset graph, PublishedCompounds published, Walk walk) {
         var model = NodeGraphDocument.Load(CompoundShelf.WithoutBoundaries(graph), out _);
@@ -282,7 +288,8 @@ public static class GraphPackages {
                         GraphFiles.Drawing,
                         file,
                         null,
-                        "A parameter names it, and a package carries only the files its nodes name."
+                        "A parameter names it from outside the graph and its compounds, where a package cannot "
+                        + "follow it."
                     )
                 );
             }
@@ -398,20 +405,35 @@ public static class GraphPackages {
             ? graph
             : graph with { Tags = [..graph.Tags.Concat(tags).Distinct(StringComparer.OrdinalIgnoreCase)] };
 
-    /// <summary>A file of the package: compounds under their types there, and files from <c>files/</c>.</summary>
+    /// <summary>
+    ///     A file of the package: compounds under their types there, and files from <c>files/</c>, whether a node names
+    ///     one, a parameter holds one, or a compound's node hands its compound one.
+    /// </summary>
     static NodeGraphAsset Rewritten(
         NodeGraphAsset graph,
         Dictionary<string, string> types,
         Dictionary<string, string> files
-    ) =>
-        graph with {
+    ) {
+        var renamed = GraphFiles.Renamed(graph, named => files.GetValueOrDefault(named));
+        return renamed with {
             Nodes = [
-                ..graph.Nodes.Select(node => types.TryGetValue(node.Type, out var type)
-                        ? node with { Type = type }
-                        : GraphFiles.Renamed(node, named => files.GetValueOrDefault(named))
+                ..renamed.Nodes.Select(node => types.TryGetValue(node.Type, out var type)
+                        ? node with { Type = type, Texts = Carried(node.Texts, files) }
+                        : GraphFiles.SettingOf(node.Type) is null
+                            ? node with { Texts = Carried(node.Texts, files) }
+                            : node
                 )
             ]
         };
+    }
+
+    /// <summary>A compound's node's settings, each naming a file the package carries naming it there.</summary>
+    static Dictionary<string, string> Carried(Dictionary<string, string> texts, Dictionary<string, string> files) =>
+        texts.ToDictionary(
+            static text => text.Key,
+            text => files.GetValueOrDefault(text.Value.Trim(), text.Value),
+            StringComparer.Ordinal
+        );
 }
 
 /// <summary>A graph that cannot be published as a package, with a sentence saying why.</summary>
