@@ -19,7 +19,7 @@ public sealed class StackEvaluator(
     PreviewStore store,
     ServerIdentity identity,
     ViewportSession viewport,
-    GraphSessions graphs,
+    PreviewsInUse inUse,
     AutosaveGate autosave,
     ILogger<StackEvaluator> logger
 ) : BackgroundService {
@@ -526,12 +526,7 @@ public sealed class StackEvaluator(
         }
 
         untilTrim = TrimInterval;
-        store.Trim(
-            [
-                ..sessions.All.SelectMany(static session => session.PreviewHashes),
-                ..graphs.All.SelectMany(static session => session.PreviewHashes)
-            ]
-        );
+        store.Trim(inUse.Hashes());
     }
 
     void KeepBase(StackSession session) {

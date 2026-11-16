@@ -11,6 +11,10 @@ namespace Patina.Server.Graphs;
 public sealed partial class PreviewStore(ServerIdentity identity) {
     const long Budget = 256L * 1024 * 1024;
 
+    /// <summary>Every kind of file the cache keeps under a hash.</summary>
+    static readonly string[] Kinds =
+        [GraphPreviewFiles.Extension, GraphPreviewFiles.Drawing, GraphPreviewFiles.Radiance];
+
     /// <summary>The folder, on a disk the Worker can write.</summary>
     public string Root { get; } = identity.Library is { } library
         ? LibraryLayout.PreviewsPath(library)
@@ -29,27 +33,48 @@ public sealed partial class PreviewStore(ServerIdentity identity) {
     /// <summary>
     ///     Removes the oldest files until the cache fits its budget, keeping what clients are looking at.
     /// </summary>
-    public void Trim(IEnumerable<string> keep) {
+    public void Trim(IEnumerable<string> keep) => Trim(keep, Budget);
+
+    /// <summary>
+    ///     Removes the oldest files of every kind the cache keeps until it fits <paramref name="budget" />, keeping
+    ///     what clients are looking at. Pictures, drawings and panoramas share the one budget: a panorama lighting
+    ///     the viewport is a few megabytes, and a sky edited over an afternoon left one behind per save (#300).
+    /// </summary>
+    /// <param name="keep">The hashes still in use.</param>
+    /// <param name="budget">The bytes the cache may hold.</param>
+    public void Trim(IEnumerable<string> keep, long budget) {
         if (!Directory.Exists(Root)) {
             return;
         }
 
-        var files = new DirectoryInfo(Root).GetFiles($"*{GraphPreviewFiles.Extension}", SearchOption.AllDirectories);
+        var files = new DirectoryInfo(Root).EnumerateFiles("*", SearchOption.AllDirectories)
+            .Where(static file => Kinds.Contains(file.Extension, StringComparer.OrdinalIgnoreCase))
+            .ToList();
         var bytes = files.Sum(static file => file.Length);
-        if (bytes <= Budget) {
+        if (bytes <= budget) {
             return;
         }
 
         HashSet<string> kept = [..keep];
         foreach (var file in files.OrderBy(static file => file.LastWriteTimeUtc)) {
-            if (bytes <= Budget) {
+            if (bytes <= budget) {
                 return;
             }
 
-            if (!kept.Contains(Path.GetFileNameWithoutExtension(file.Name))) {
-                bytes -= file.Length;
-                file.Delete();
+            var length = file.Length;
+            if (!kept.Contains(Path.GetFileNameWithoutExtension(file.Name)) && Deleted(file)) {
+                bytes -= length;
             }
+        }
+    }
+
+    /// <summary>Deletes a file, unless someone has it open: a picture being served or read is left for next time.</summary>
+    static bool Deleted(FileInfo file) {
+        try {
+            file.Delete();
+            return true;
+        } catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+            return false;
         }
     }
 

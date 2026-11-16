@@ -119,6 +119,7 @@ builder.Services.AddSingleton<PanoramaKeeper>();
 builder.Services.AddHostedService(static services => services.GetRequiredService<PanoramaKeeper>());
 builder.Services.AddSingleton<StackClips>();
 builder.Services.AddSingleton<StackSessions>();
+builder.Services.AddSingleton<PreviewsInUse>();
 builder.Services.AddSingleton<StackEvaluator>();
 builder.Services.AddHostedService(static services => services.GetRequiredService<StackEvaluator>());
 builder.Services.AddSingleton(static services => new JobQueue(
