@@ -2,6 +2,7 @@ export * from './lib/angle';
 export * from './lib/angle-dial';
 export * from './lib/curve';
 export * from './lib/curve-editor';
+export * from './lib/disclosure';
 export * from './lib/gradient-ramp';
 export * from './lib/histogram';
 export * from './lib/picture-charts';

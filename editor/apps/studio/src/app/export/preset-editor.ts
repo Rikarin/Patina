@@ -19,6 +19,7 @@ import type {
   ExportPresetSource,
   ExportPresetTextureDocument
 } from '@patina/api-client';
+import { Disclosure } from '@patina/studio-ui';
 import { XuiButtonImports } from '@xui/button';
 import { XuiCalloutImports } from '@xui/callout';
 import { XuiCheckboxImports } from '@xui/checkbox';
@@ -91,6 +92,7 @@ function blank(id: string): ExportPresetDocument {
 @Component({
   selector: 'ptn-preset-editor',
   imports: [
+    Disclosure,
     IconImports,
     XuiButtonImports,
     XuiCalloutImports,
@@ -545,10 +547,9 @@ function blank(id: string): ExportPresetDocument {
                 }
               </section>
             }
-            <details class="text-xs">
-              <summary class="text-foreground-muted cursor-pointer">The file</summary>
+            <ptn-disclosure class="text-xs" label="The file">
               <pre class="readout well mt-1 overflow-x-auto p-2" data-testid="preset-text">{{ check.text }}</pre>
-            </details>
+            </ptn-disclosure>
           }
 
           @if (error(); as message) {

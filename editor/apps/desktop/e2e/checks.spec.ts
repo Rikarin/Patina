@@ -86,11 +86,11 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
   await expect(window.getByTestId('checks-memory')).toHaveText(/ MB with /u);
 
   // Each file the export writes is listed with its size and the memory it takes.
-  await window.getByTestId('checks-files').locator('summary').click();
+  await window.getByTestId('checks-files').locator('[data-disclosure-toggle]').click();
   await expect(window.getByTestId('checks-file').first()).toHaveText(/\.\w+\s*\d+ × \d+\s*[\d.]+ MB/u);
 
   // A density far past what the set has is one it falls short of, and the problem shows it on the mesh.
-  await window.getByTestId('checks-limits').locator('summary').click();
+  await window.getByTestId('checks-limits').locator('[data-disclosure-toggle]').click();
   await window.getByTestId('checks-limit-texelDensity').fill('1000000');
   await window.getByTestId('checks-limit-texelDensity').press('Enter');
   await window.getByTestId('checks-limit-texelDensity').blur();
@@ -112,7 +112,7 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
   // breaks when it is checked for Godot.
   await window.getByTestId('checks-platform').click();
   await window.getByRole('option', { name: 'Godot' }).click();
-  await expect(window.getByTestId('checks-limits').locator('summary')).toHaveText('Limits for Godot');
+  await expect(window.getByTestId('checks-limits').locator('[data-disclosure-toggle]')).toHaveText('Limits for Godot');
   await window.getByTestId('checks-limit-maxSize').fill('16');
   await window.getByTestId('checks-limit-maxSize').press('Enter');
   await window.getByTestId('checks-limit-maxSize').blur();

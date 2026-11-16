@@ -11,6 +11,7 @@ import type {
   StackState
 } from '@patina/api-client';
 import { unwrap } from '@patina/api-client';
+import { Disclosure } from '@patina/studio-ui';
 import { XuiButtonImports } from '@xui/button';
 import { XuiInputImports } from '@xui/input';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
@@ -97,6 +98,7 @@ const Limits: readonly Limit[] = [
 @Component({
   selector: 'ptn-checks',
   imports: [
+    Disclosure,
     NgTemplateOutlet,
     XuiButtonImports,
     XuiInputImports,
@@ -186,8 +188,7 @@ const Limits: readonly Limit[] = [
             <dd class="readout" data-testid="checks-memory">{{ memory(checks) }}</dd>
           </dl>
           @if (checks.files.length > 0) {
-            <details class="shrink-0 px-2 pb-1 text-xs" data-testid="checks-files">
-              <summary class="text-foreground-muted cursor-pointer">Memory by file</summary>
+            <ptn-disclosure class="shrink-0 px-2 pb-1 text-xs" label="Memory by file" data-testid="checks-files">
               <ul class="mt-1" aria-label="Memory by file">
                 @for (file of checks.files; track file.file) {
                   <li class="flex items-baseline gap-2" data-testid="checks-file" [title]="held(file)">
@@ -197,7 +198,7 @@ const Limits: readonly Limit[] = [
                   </li>
                 }
               </ul>
-            </details>
+            </ptn-disclosure>
           }
           <ng-container *ngTemplateOutlet="problemList; context: { $implicit: checks, here: true }" />
         } @else if (scope() === 'all' && project(); as all) {
@@ -234,8 +235,11 @@ const Limits: readonly Limit[] = [
           <p class="text-error px-2 py-1 text-sm" role="alert" data-testid="checks-failure">{{ reason }}</p>
         }
         @if (projectPath()) {
-          <details class="border-hairline shrink-0 border-t px-2 py-1" data-testid="checks-limits">
-            <summary class="text-foreground-muted cursor-pointer text-xs">{{ limitsTitle() }}</summary>
+          <ptn-disclosure
+            class="border-hairline shrink-0 border-t px-2 py-1"
+            data-testid="checks-limits"
+            [label]="limitsTitle()"
+          >
             @for (limit of shownLimits(); track limit.key) {
               <label class="mt-1 flex items-center gap-2 text-xs" [title]="limitTitle(limit)">
                 <span class="text-foreground-muted w-24 shrink-0">{{ limit.label }}</span>
@@ -252,7 +256,7 @@ const Limits: readonly Limit[] = [
                 />
               </label>
             }
-          </details>
+          </ptn-disclosure>
         }
       </div>
     } @else {
