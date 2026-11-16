@@ -104,8 +104,7 @@ public sealed record MaterialSlots {
             ExportMaps.Normal => this with { Normal = Normal ?? colour },
             ExportMaps.Emissive => this with { Emissive = Emissive ?? colour },
             ExportMaps.Specular => this with { Specular = Specular ?? colour },
-            ExportMaps.SheenColor when Had(colour.File, map) =>
-                this with { Layers = Layers with { SheenColor = Layers.SheenColor ?? colour } },
+            _ when Had(colour.File, map) => this with { Layers = Layers.WithColour(map, colour) },
             _ => this
         };
 
@@ -142,9 +141,9 @@ public sealed record MaterialSlots {
 }
 
 /// <summary>
-///     Where OpenPBR's layer maps (#142) are in a set's files: a coat, a sheen and transmission. Their defaults leave
-///     the base alone, and a set that does not have one has no slot for it, so a material file says nothing of that
-///     layer.
+///     Where OpenPBR's maps beyond the standard ones (#142) are in a set's files: a coat, a sheen, transmission and
+///     the specular lobe's weight, colour and anisotropy. Their defaults leave the base alone, and a set that does not
+///     have one has no slot for it, so a material file says nothing of that input.
 /// </summary>
 public sealed record OpenPbrSlots {
     public SlotLane? Coat { get; init; }
@@ -153,6 +152,16 @@ public sealed record OpenPbrSlots {
     public SlotColour? SheenColor { get; init; }
     public SlotLane? SheenRoughness { get; init; }
     public SlotLane? Transmission { get; init; }
+    public SlotLane? SpecularWeight { get; init; }
+    public SlotColour? SpecularColor { get; init; }
+    public SlotLane? Anisotropy { get; init; }
+    public SlotColour? CoatColor { get; init; }
+
+    /// <summary>The coat's normal, whose green runs as the preset's normal does.</summary>
+    public SlotColour? CoatNormal { get; init; }
+
+    /// <summary>The sheen's colour times its weight, which is what glTF reads as its sheen colour.</summary>
+    public SlotColour? SheenTint { get; init; }
 
     /// <summary>Whether any layer has a slot.</summary>
     public bool Any =>
@@ -161,7 +170,23 @@ public sealed record OpenPbrSlots {
         || Sheen is not null
         || SheenColor is not null
         || SheenRoughness is not null
-        || Transmission is not null;
+        || Transmission is not null
+        || SpecularWeight is not null
+        || SpecularColor is not null
+        || Anisotropy is not null
+        || CoatColor is not null
+        || CoatNormal is not null;
+
+    /// <summary>A colour slot filled, unless an earlier file filled it.</summary>
+    internal OpenPbrSlots WithColour(string map, SlotColour read) =>
+        map switch {
+            ExportMaps.SheenColor => this with { SheenColor = SheenColor ?? read },
+            ExportMaps.SpecularColor => this with { SpecularColor = SpecularColor ?? read },
+            ExportMaps.CoatColor => this with { CoatColor = CoatColor ?? read },
+            ExportMaps.CoatNormal => this with { CoatNormal = CoatNormal ?? read },
+            ExportMaps.SheenTint => this with { SheenTint = SheenTint ?? read },
+            _ => this
+        };
 
     /// <summary>A grey slot filled, unless an earlier file filled it.</summary>
     internal OpenPbrSlots WithLane(string map, SlotLane read) =>
@@ -171,6 +196,8 @@ public sealed record OpenPbrSlots {
             ExportMaps.Sheen => this with { Sheen = Sheen ?? read },
             ExportMaps.SheenRoughness => this with { SheenRoughness = SheenRoughness ?? read },
             ExportMaps.Transmission => this with { Transmission = Transmission ?? read },
+            ExportMaps.SpecularWeight => this with { SpecularWeight = SpecularWeight ?? read },
+            ExportMaps.Anisotropy => this with { Anisotropy = Anisotropy ?? read },
             _ => this
         };
 }

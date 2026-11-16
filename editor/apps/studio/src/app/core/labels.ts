@@ -123,8 +123,9 @@ export function isUserChannel(usage: string): boolean {
 }
 
 /**
- * OpenPBR's layers above the base (#142): a coat, a sheen and transmission. The viewport's shading has none of them yet,
- * so each is seen on the mesh as its map holds it, as a user channel is.
+ * OpenPBR's maps beyond the standard ones (#142): a coat with its colour and normal, a sheen, transmission and the
+ * specular lobe's weight, colour and anisotropy. The viewport's shading has none of them yet, so each is seen on the
+ * mesh as its map holds it, as a user channel is.
  */
 const OpenPbrChannels: ReadonlySet<string> = new Set([
   'coat',
@@ -132,7 +133,12 @@ const OpenPbrChannels: ReadonlySet<string> = new Set([
   'sheen',
   'sheenColor',
   'sheenRoughness',
-  'transmission'
+  'transmission',
+  'specularWeight',
+  'specularColor',
+  'anisotropy',
+  'coatColor',
+  'coatNormal'
 ]);
 
 /** Whether a channel is one the material's shading in the viewport does not show: a user channel or an OpenPBR layer's. */
@@ -152,7 +158,9 @@ const ScalarChannels: ReadonlySet<string> = new Set([
   'coatRoughness',
   'sheen',
   'sheenRoughness',
-  'transmission'
+  'transmission',
+  'specularWeight',
+  'anisotropy'
 ]);
 
 /**

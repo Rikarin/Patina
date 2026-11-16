@@ -34,19 +34,14 @@ static class GltfMaterialFile {
                 Emissive = emissive,
                 EmissiveFactor = emissive is null ? Vector3.Zero : Vector3.One,
                 AlphaMode = blended ? ModelAlphaMode.Blend : ModelAlphaMode.Opaque
-            }
+            },
+            Layers = slots.Layers.Any ? GltfLayers.Of(slots.Layers, slots.Green, warnings) : null
         };
-        if (slots.Layers.Any) {
-            warnings.Add(
-                "glTF: the coat, sheen and transmission are left out, because this writes no glTF extensions."
-            );
-        }
-
         return ModelWriter.GltfMaterials([material], name);
     }
 
     /// <summary>A file glTF can name in a slot, or null with the reason said.</summary>
-    static string? Image(SlotFile file, string slot, bool srgb, ICollection<string> warnings) {
+    internal static string? Image(SlotFile file, string slot, bool srgb, ICollection<string> warnings) {
         if (!Formats.Contains(file.File.Format)) {
             warnings.Add(
                 $"glTF: {slot} is left out, because glTF does not read {ExportFormats.LabelOf(file.File.Format)}."

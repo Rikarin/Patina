@@ -77,7 +77,7 @@ public sealed class UsdaReader {
             }
         }
 
-        return new(material.Name, SurfaceInputs.Kept(slots), [..warnings]);
+        return new(material.Name, SurfaceInputs.Kept(slots, SurfaceInputs.Preview), [..warnings]);
     }
 
     ImportedSlot? Slot(string usage, UsdPrim surface, string input) {

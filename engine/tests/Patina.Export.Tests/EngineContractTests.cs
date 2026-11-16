@@ -29,6 +29,15 @@ public sealed class EngineContractTests : IDisposable {
     static readonly float[] Normal = [128 / 255f, 77 / 255f, 230 / 255f];
     static readonly float[] Emissive = [26 / 255f, 128 / 255f, 77 / 255f];
 
+    // OpenPBR's layers (#142), which glTF reads through its extensions.
+    const float Coat = 217 / 255f;
+    const float CoatRoughness = 64 / 255f;
+    const float Sheen = 0.5f;
+    const float SheenRoughness = 115 / 255f;
+    const float Transmission = 140 / 255f;
+    static readonly float[] SheenColor = [0.8f, 0.4f, 0.2f];
+    static readonly float[] CoatNormal = [102 / 255f, 153 / 255f, 240 / 255f];
+
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-engines-");
 
     static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -81,6 +90,12 @@ public sealed class EngineContractTests : IDisposable {
         ("gltf", "_normal", Normal),
         ("gltf", "_occlusionRoughnessMetallic", Orm),
         ("gltf", "_emissive", Srgb(Emissive)),
+        // KHR_materials_clearcoat (coat R, roughness G, its normal +Y up), KHR_materials_sheen (an sRGB colour, which
+        // has no weight, so OpenPBR's weight is in it, and roughness in alpha) and KHR_materials_transmission (R).
+        ("gltf", "_clearcoat", [Coat, CoatRoughness]),
+        ("gltf", "_clearcoatNormal", CoatNormal),
+        ("gltf", "_sheen", [..Srgb([..SheenColor.Select(static lane => lane * Sheen)]), SheenRoughness]),
+        ("gltf", "_transmission", [Transmission]),
         // Blender's manual: an Image Texture node reads a colour picture as sRGB and a data map as Non-Color, the
         // Normal Map node reads tangent space with green up (OpenGL), and Emission Color is a colour.
         ("blender", "_base_color", BaseColor),
@@ -129,7 +144,14 @@ public sealed class EngineContractTests : IDisposable {
             [ExportMaps.Occlusion] = Constant(ExportMaps.Occlusion, Occlusion),
             [ExportMaps.Mask] = Constant(ExportMaps.Mask, DetailMask),
             [ExportMaps.Emissive] = Constant(ExportMaps.Emissive, Emissive),
-            [ExportMaps.Height] = Constant(ExportMaps.Height, Height)
+            [ExportMaps.Height] = Constant(ExportMaps.Height, Height),
+            [ExportMaps.Coat] = Constant(ExportMaps.Coat, Coat),
+            [ExportMaps.CoatRoughness] = Constant(ExportMaps.CoatRoughness, CoatRoughness),
+            [ExportMaps.CoatNormal] = Constant(ExportMaps.CoatNormal, CoatNormal),
+            [ExportMaps.Sheen] = Constant(ExportMaps.Sheen, Sheen),
+            [ExportMaps.SheenColor] = Constant(ExportMaps.SheenColor, SheenColor),
+            [ExportMaps.SheenRoughness] = Constant(ExportMaps.SheenRoughness, SheenRoughness),
+            [ExportMaps.Transmission] = Constant(ExportMaps.Transmission, Transmission)
         };
 
     /// <summary>

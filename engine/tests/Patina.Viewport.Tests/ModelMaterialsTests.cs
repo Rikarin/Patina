@@ -55,6 +55,32 @@ public sealed class ModelMaterialsTests : IDisposable {
                            }
                            """;
 
+    /// <summary>A clear coat with its pictures and normal, a sheen with no weight, transmission; and nothing.</summary>
+    const string Layered = """
+                           {
+                             "name": "Lacquer",
+                             "extensions": {
+                               "KHR_materials_clearcoat": {
+                                 "clearcoatFactor": 0.75, "clearcoatTexture": { "index": 1 },
+                                 "clearcoatRoughnessFactor": 0.5, "clearcoatRoughnessTexture": { "index": 1 },
+                                 "clearcoatNormalTexture": { "index": 2 }
+                               },
+                               "KHR_materials_sheen": {
+                                 "sheenColorFactor": [0.5, 0.25, 0], "sheenColorTexture": { "index": 0 },
+                                 "sheenRoughnessFactor": 0.25
+                               },
+                               "KHR_materials_transmission": { "transmissionFactor": 0.5 }
+                             }
+                           },
+                           {
+                             "name": "Bare",
+                             "extensions": {
+                               "KHR_materials_clearcoat": { "clearcoatFactor": 0, "clearcoatRoughnessFactor": 0.5 },
+                               "KHR_materials_sheen": { "sheenColorFactor": [0, 0, 0], "sheenRoughnessFactor": 0.5 }
+                             }
+                           }
+                           """;
+
     /// <summary>Two triangles, each wearing one of two materials, its pictures beside the file and inside it.</summary>
     string Gltf(string materials = Painted) {
         var floats = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1 };
@@ -67,7 +93,10 @@ public sealed class ModelMaterialsTests : IDisposable {
         var text = $$"""
                      {
                        "asset": { "version": "2.0" },
-                       "extensionsUsed": ["KHR_texture_transform", "KHR_materials_emissive_strength"],
+                       "extensionsUsed": [
+                         "KHR_texture_transform", "KHR_materials_emissive_strength", "KHR_materials_clearcoat",
+                         "KHR_materials_sheen", "KHR_materials_transmission"
+                       ],
                        "scene": 0,
                        "scenes": [{ "nodes": [0, 1] }],
                        "nodes": [{ "mesh": 0, "name": "A" }, { "mesh": 1, "name": "B" }],
@@ -141,6 +170,33 @@ public sealed class ModelMaterialsTests : IDisposable {
         Assert.Null(plain["baseColor"].Texture);
         Assert.Equal([0.2f, 0.4f, 0.6f], plain["baseColor"].Value.Take(3).Select(static v => MathF.Round(v, 3)));
         Assert.DoesNotContain(ExportNormal, plain.Keys);
+    }
+
+    /// <summary>
+    ///     glTF's clear coat, sheen and transmission come in as OpenPBR's maps (#142), in the lanes each extension
+    ///     reads; its sheen has no weight, so a coloured one comes in with a whole one. A material whose layers do
+    ///     nothing brings in none of them.
+    /// </summary>
+    [Fact]
+    public void A_gltfs_clear_coat_sheen_and_transmission_come_in_as_openpbrs_maps() {
+        var materials = ModelMaterials.Read(Gltf(Layered), Path.Combine(folder.FullName, "pictures"));
+
+        var lacquer = materials[0].Slots.ToDictionary(static s => s.Usage);
+        var orm = Path.Combine(folder.FullName, "orm.png");
+        Assert.Equal((orm, 0, 0.75f), (lacquer["coat"].Texture, lacquer["coat"].Lane, Round(lacquer["coat"].Value[0])));
+        Assert.Equal(
+            (orm, 1, 0.5f),
+            (lacquer["coatRoughness"].Texture, lacquer["coatRoughness"].Lane, Round(lacquer["coatRoughness"].Value[0]))
+        );
+        Assert.Equal(-1, lacquer["coatNormal"].Lane);
+        Assert.True(File.Exists(lacquer["coatNormal"].Texture));
+        Assert.Equal((null, 1f), (lacquer["sheen"].Texture, lacquer["sheen"].Value[0]));
+        Assert.Equal(Path.Combine(folder.FullName, "base colour.png"), lacquer["sheenColor"].Texture);
+        Assert.Equal([0.5f, 0.25f, 0f], lacquer["sheenColor"].Value.Take(3).Select(Round));
+        Assert.Equal((null, 0.25f), (lacquer["sheenRoughness"].Texture, Round(lacquer["sheenRoughness"].Value[0])));
+        Assert.Equal((null, 0.5f), (lacquer["transmission"].Texture, Round(lacquer["transmission"].Value[0])));
+
+        Assert.Equal(["baseColor", "roughness", "metalness"], materials[1].Slots.Select(static s => s.Usage));
     }
 
     /// <summary>glTF's emission is black unless the file says otherwise, so a silent material has none.</summary>
