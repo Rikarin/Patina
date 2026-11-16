@@ -49,7 +49,28 @@ public sealed class PreviewTrimTests : IDisposable {
         Assert.True(File.Exists(other));
     }
 
+    /// <summary>
+    ///     A Worker killed while it wrote a picture leaves its half-written file, which no trim looked at, since it is no
+    ///     kind the cache keeps (#310). An old one goes whatever the budget; one being written now stays.
+    /// </summary>
+    [Fact]
+    public void Files_a_killed_Worker_left_half_written_are_let_go_of() {
+        var store = new PreviewStore(new(folder.FullName, null));
+        var picture = Write(store.Root, Hash(1), GraphPreviewFiles.Extension, DateTime.UtcNow.AddHours(-3));
+        var left = Write(store.Root, Hash(2), $"{GraphPreviewFiles.Radiance}.{Guid.NewGuid():N}.tmp", Hours(-2));
+        var writing = Write(store.Root, Hash(3), $"{GraphPreviewFiles.Extension}.{Guid.NewGuid():N}.tmp", Hours(0));
+        var other = Path.Combine(Path.GetDirectoryName(left)!, "notes.tmp");
+        File.WriteAllBytes(other, new byte[Size]);
+        File.SetLastWriteTimeUtc(other, DateTime.UtcNow.AddHours(-2));
+
+        store.Trim([], long.MaxValue);
+
+        Assert.Equal([true, false, true, true], new[] { picture, left, writing, other }.Select(File.Exists));
+    }
+
     const int Size = 1000;
+
+    static DateTime Hours(int hours) => DateTime.UtcNow.AddHours(hours);
 
     static string Hash(int i) => i.ToString("x64", CultureInfo.InvariantCulture);
 
