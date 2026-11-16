@@ -19,6 +19,11 @@ namespace Patina.Server.Viewport;
 ///         was read, by any client or by hand, the next frame reads the meshes, cage and options from it again, as
 ///         <c>PUT /viewport/bake-preview</c> did. A file that no longer reads keeps what was shown, with the reason.
 ///     </para>
+///     <para>
+///         Every preview follows its mesh files too (#305): one rewritten in place, as Reload Mesh does, is read again
+///         by the Worker with the next frame. <c>GET /viewport/bake-preview</c> looks as a frame does, so it never
+///         answers with a setup the files no longer say while no frame has been drawn.
+///     </para>
 /// </remarks>
 public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : IDisposable {
     static readonly TimeSpan WorkerPatience = TimeSpan.FromSeconds(10);
@@ -27,6 +32,7 @@ public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : ID
     readonly SemaphoreSlim telling = new(1, 1);
     ViewportBakePreview? preview;
     Followed? following;
+    (long Ticks, long Length)[] meshes = [];
     ViewportIsolation? isolation;
     BakePreviewState state = BakePreviewState.Off;
     long version;
@@ -41,6 +47,26 @@ public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : ID
                 return state;
             }
         }
+    }
+
+    /// <summary>
+    ///     What is shown as its files say now: a project file or mesh file changed since it was told is read again and
+    ///     told to the Worker first, when one is connected, as the next frame would.
+    /// </summary>
+    /// <param name="cancellationToken">Stops the wait.</param>
+    public async Task<BakePreviewState> StateAsync(CancellationToken cancellationToken) {
+        if (!Stale()) {
+            return State;
+        }
+
+        var connecting = worker.ConnectionAsync(cancellationToken);
+        if (connecting.IsCompletedSuccessfully) {
+            await TellAsync(await connecting, false, cancellationToken);
+        } else {
+            ReadAgain(); // no Worker to tell: the next one hears it
+        }
+
+        return State;
     }
 
     /// <summary>
@@ -80,8 +106,11 @@ public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : ID
         CancellationToken cancellationToken
     ) {
         ArgumentNullException.ThrowIfNull(asked);
+        // ⚠ Before the Worker reads them, so a file rewritten while it reads is read again.
+        var written = Stamps(asked);
         lock (changing) {
             preview = asked.Low.Length == 0 ? null : asked;
+            meshes = written;
             following = preview is null ? null : followed;
             version++;
             if (preview is null) {
@@ -177,8 +206,49 @@ public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : ID
         }
     }
 
-    /// <summary>Reads a followed project's setup again when its file has changed since it was read (#300).</summary>
+    /// <summary>Whether a followed project file or a shown mesh file has changed since it was read.</summary>
+    bool Stale() {
+        ViewportBakePreview? shown;
+        Followed? now;
+        (long Ticks, long Length)[] written;
+        lock (changing) {
+            (shown, now, written) = (preview, following, meshes);
+        }
+
+        return (now is not null && Stamp(now.File) != now.Written)
+            || (shown is not null && !Stamps(shown).SequenceEqual(written));
+    }
+
+    /// <summary>
+    ///     Reads a followed project's setup again when its file has changed since it was read (#300), and shows a
+    ///     preview again when one of its mesh files has (#305).
+    /// </summary>
     void ReadAgain() {
+        ReadProjectAgain();
+        ViewportBakePreview? shown;
+        (long Ticks, long Length)[] written;
+        lock (changing) {
+            (shown, written) = (preview, meshes);
+        }
+
+        if (shown is null) {
+            return;
+        }
+
+        var now = Stamps(shown);
+        if (now.SequenceEqual(written)) {
+            return;
+        }
+
+        lock (changing) {
+            if (preview == shown && meshes == written) {
+                meshes = now;
+                version++;
+            }
+        }
+    }
+
+    void ReadProjectAgain() {
         Followed? now;
         lock (changing) {
             now = following;
@@ -194,6 +264,7 @@ public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : ID
         }
 
         var refused = ProjectBakePlanEndpoint.Resolve(host, now.Asked, out var resolved);
+        var written = Stamps(resolved);
         lock (changing) {
             if (following != now) {
                 return; // a client showed another meanwhile
@@ -202,6 +273,7 @@ public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : ID
             following = now with { Written = stamp };
             if (refused is null && resolved.Low.Length > 0) {
                 preview = resolved;
+                meshes = written;
                 version++;
             } else {
                 var why = refused?.ProblemDetails.Detail ?? "it names no mesh to bake onto";
@@ -210,10 +282,21 @@ public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : ID
         }
     }
 
+    /// <summary>When each file a preview reads was last written, and how long it is (#305).</summary>
+    static (long Ticks, long Length)[] Stamps(ViewportBakePreview shown) {
+        var rays = shown.Options.Rays;
+        string?[] files = [shown.Low, ..shown.High, shown.Cage, rays.SkewMap, rays.DistanceMap];
+        return [..files.Where(static file => file is { Length: > 0 }).Select(static file => Stamp(file!))];
+    }
+
     /// <summary>When a file was last written, and how long it is: anything that rewrites it changes one.</summary>
     static (long Ticks, long Length) Stamp(string file) {
-        var info = new FileInfo(file);
-        return info.Exists ? (info.LastWriteTimeUtc.Ticks, info.Length) : (0, -1);
+        try {
+            var info = new FileInfo(file);
+            return info.Exists ? (info.LastWriteTimeUtc.Ticks, info.Length) : (0, -1);
+        } catch (Exception e) when (e is ArgumentException or IOException or UnauthorizedAccessException) {
+            return (0, -2); // a path that does not read as one: the Worker says why
+        }
     }
 
     /// <summary>A preview as sent that names a project, the project's file, and how that stood when read.</summary>

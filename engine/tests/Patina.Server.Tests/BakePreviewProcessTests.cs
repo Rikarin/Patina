@@ -155,6 +155,54 @@ public sealed partial class BakeProcessTests {
     [Fact]
     public async Task A_preview_of_a_project_follows_its_file_when_another_client_changes_it() {
         using var deadline = Deadline(180);
+        var (shown, crate, file, _) = await ShowCrateAsync(deadline.Token);
+        using var socket = shown;
+        Assert.Equal(0.05, await FrontAsync(socket, 2, deadline.Token));
+
+        // By hand, as an editor of the file or another program would.
+        File.WriteAllText(file, DocumentCodec.Write(crate with { Bake = Front(crate, 0.2) }));
+        Assert.Equal(0.2, await FrontAsync(socket, 3, deadline.Token));
+
+        // Through the API, as another client would.
+        using var kept = await http.PutAsJsonAsync(
+            "/api/v1/library/project/bake",
+            new ProjectBakeRequest("crate", Front(crate, 0.1)),
+            deadline.Token
+        );
+        kept.EnsureSuccessStatusCode();
+        Assert.Equal(0.1, await FrontAsync(socket, 4, deadline.Token));
+    }
+
+    /// <summary>
+    ///     What the preview shows is read again when asked, before any frame is drawn (#305): a project file changed
+    ///     by hand, and a mesh file rewritten in place, as Reload Mesh reads one.
+    /// </summary>
+    [Fact]
+    public async Task A_preview_answers_with_its_files_as_they_are_before_a_frame_is_drawn() {
+        using var deadline = Deadline(180);
+        var (shown, crate, file, project) = await ShowCrateAsync(deadline.Token);
+        using var socket = shown;
+        var before = await PreviewStateAsync(deadline.Token);
+        Assert.Equal(0.05, before.Preview!.Options.Rays.Front);
+
+        File.WriteAllText(file, DocumentCodec.Write(crate with { Bake = Front(crate, 0.3) }));
+        Assert.Equal(0.3, (await PreviewStateAsync(deadline.Token)).Preview!.Options.Rays.Front);
+
+        var faces = before.Parts.Sum(static part => part.HighFaces);
+        Assert.True(faces > 0, "The preview counts the high mesh's faces.");
+        BakeFixture.Write(project, 0.04f); // a coarser high mesh, written over the one shown
+        var after = await PreviewStateAsync(deadline.Token);
+        Assert.Empty(after.Warnings);
+        Assert.NotEqual(faces, after.Parts.Sum(static part => part.HighFaces));
+    }
+
+    /// <summary>
+    ///     A library with the crate project, a Server and a Worker, the crate's low mesh in the viewport, and the
+    ///     project's bake setup shown over it.
+    /// </summary>
+    async Task<(ClientWebSocket Socket, ProjectDocument Crate, string File, string Folder)> ShowCrateAsync(
+        CancellationToken token
+    ) {
         File.WriteAllText(
             Path.Combine(Library, "library.yaml"),
             """
@@ -172,51 +220,46 @@ public sealed partial class BakeProcessTests {
         var mesh = AssetId.New();
         ProjectDocument crate = new(ProjectId.New(), "Crate", [], [], []) {
             Meshes = [new(mesh, BakeFixture.LowFile, BakeFixture.HighFile)],
-            Bake = new() { Options = new() { Resolution = 64, Rays = new() { Front = 0.05 } } }
+            Bake = new() { Options = new() { Resolution = 64, Rays = new() { Front = 0.05, MatchByName = true } } }
         };
         var file = Path.Combine(project, LibraryLayout.ProjectFile);
         File.WriteAllText(file, DocumentCodec.Write(crate));
         StartServer();
-        await DiscoverAsync(deadline.Token);
+        await DiscoverAsync(token);
         StartWorker();
 
-        using var socket = await ViewportAsync(deadline.Token);
-        await SendAsync(socket, new(new(0.6d, 0.35d, 1.6d), 320, 200, 1), deadline.Token);
-        while ((await ViewportStateAsync(deadline.Token)).Width != 320) {
-            await Task.Delay(10, deadline.Token);
+        var socket = await ViewportAsync(token);
+        await SendAsync(socket, new(new(0.6d, 0.35d, 1.6d), 320, 200, 1), token);
+        while ((await ViewportStateAsync(token)).Width != 320) {
+            await Task.Delay(10, token);
         }
 
         using var opened = await http.PutAsJsonAsync(
             "/api/v1/viewport/mesh",
             new(Path.Combine(project, BakeFixture.LowFile)),
             ContractsJsonContext.Default.ViewportMeshRequest,
-            deadline.Token
+            token
         );
         opened.EnsureSuccessStatusCode();
-        await FrameAsync(socket, deadline.Token);
-        using var shown = await PreviewAsync(new() { Project = "crate" }, deadline.Token);
+        await FrameAsync(socket, token);
+        using var shown = await PreviewAsync(new() { Project = "crate" }, token);
         if (shown.StatusCode == HttpStatusCode.UnprocessableEntity
-            && await shown.Content.ReadAsStringAsync(deadline.Token) is var refusal
+            && await shown.Content.ReadAsStringAsync(token) is var refusal
             && refusal.Contains("No Vulkan", StringComparison.Ordinal)) {
+            socket.Dispose();
             Gpu.Skip(refusal);
         }
 
-        Assert.True(shown.IsSuccessStatusCode, await shown.Content.ReadAsStringAsync(deadline.Token));
-        Assert.Equal(0.05, await FrontAsync(socket, 2, deadline.Token));
-
-        // By hand, as an editor of the file or another program would.
-        File.WriteAllText(file, DocumentCodec.Write(crate with { Bake = Front(crate, 0.2) }));
-        Assert.Equal(0.2, await FrontAsync(socket, 3, deadline.Token));
-
-        // Through the API, as another client would.
-        using var kept = await http.PutAsJsonAsync(
-            "/api/v1/library/project/bake",
-            new ProjectBakeRequest("crate", Front(crate, 0.1)),
-            deadline.Token
-        );
-        kept.EnsureSuccessStatusCode();
-        Assert.Equal(0.1, await FrontAsync(socket, 4, deadline.Token));
+        Assert.True(shown.IsSuccessStatusCode, await shown.Content.ReadAsStringAsync(token));
+        return (socket, crate, file, project);
     }
+
+    async Task<BakePreviewState> PreviewStateAsync(CancellationToken token) =>
+        (await http.GetFromJsonAsync(
+            "/api/v1/viewport/bake-preview",
+            ContractsJsonContext.Default.BakePreviewState,
+            token
+        ))!;
 
     static ProjectBakeSettings Front(ProjectDocument project, double front) =>
         project.Bake! with {
@@ -227,13 +270,9 @@ public sealed partial class BakeProcessTests {
     async Task<double> FrontAsync(ClientWebSocket socket, uint input, CancellationToken token) {
         await SendAsync(socket, new(Input: input), token);
         await FrameAfterAsync(socket, input, token);
-        var state = await http.GetFromJsonAsync(
-            "/api/v1/viewport/bake-preview",
-            ContractsJsonContext.Default.BakePreviewState,
-            token
-        );
+        var state = await PreviewStateAsync(token);
         Assert.DoesNotContain(
-            state!.Warnings,
+            state.Warnings,
             static warning => warning.Contains("no longer", StringComparison.Ordinal)
         );
         return state.Preview!.Options.Rays.Front;
