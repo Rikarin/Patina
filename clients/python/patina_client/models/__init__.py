@@ -212,7 +212,10 @@ from .material_import_request import MaterialImportRequest
 from .material_import_result import MaterialImportResult
 from .material_info import MaterialInfo
 from .material_list import MaterialList
+from .material_preset_create_request import MaterialPresetCreateRequest
+from .material_preset_create_request_parameters import MaterialPresetCreateRequestParameters
 from .material_use import MaterialUse
+from .material_use_parameters_type_1 import MaterialUseParametersType1
 from .material_use_request import MaterialUseRequest
 from .mesh_facts import MeshFacts
 from .mesh_material_facts import MeshMaterialFacts
@@ -676,7 +679,10 @@ __all__ = (
     "MaterialImportResult",
     "MaterialInfo",
     "MaterialList",
+    "MaterialPresetCreateRequest",
+    "MaterialPresetCreateRequestParameters",
     "MaterialUse",
+    "MaterialUseParametersType1",
     "MaterialUseRequest",
     "MeshFacts",
     "MeshMaterialFacts",

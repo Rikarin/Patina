@@ -46,6 +46,10 @@ class StackSurfacePath:
                 Default: 0.0.
             jitter (float): How far each stamp moves at random, 0 to 1: that share of the width to the side and of half the
                 spacing along. Default: 0.0.
+            filled (bool): Whether the path is a loop whose inside is covered too (#130): it closes from its last point back
+                to its first,
+                what it encloses takes the fill's picture, and the width falls away past the loop as a soft edge. A ribbon and
+                a row of stamps take no fill. Default: False.
             box (list[float] | None | Unset): The box the mesh's `position` bake is normalised in, as a decal's is.
             symmetry (None | StackSurfaceSymmetry | Unset):
             alpha (None | str | Unset): For a stroke in stamps, the brush alpha each stamp takes the shape of, one of the
@@ -61,6 +65,7 @@ class StackSurfacePath:
     angle: float = 1.3
     spacing: float = 0.0
     jitter: float = 0.0
+    filled: bool = False
     box: list[float] | None | Unset = UNSET
     symmetry: None | StackSurfaceSymmetry | Unset = UNSET
     alpha: None | str | Unset = UNSET
@@ -93,6 +98,8 @@ class StackSurfacePath:
         spacing = self.spacing
 
         jitter = self.jitter
+
+        filled = self.filled
 
         box: list[float] | None | Unset
         if isinstance(self.box, Unset):
@@ -130,6 +137,7 @@ class StackSurfacePath:
             "angle": angle,
             "spacing": spacing,
             "jitter": jitter,
+            "filled": filled,
         })
         if box is not UNSET:
             field_dict["box"] = box
@@ -170,6 +178,8 @@ class StackSurfacePath:
         spacing = d.pop("spacing")
 
         jitter = d.pop("jitter")
+
+        filled = d.pop("filled")
 
         def _parse_box(data: object) -> list[float] | None | Unset:
             if data is None:
@@ -228,6 +238,7 @@ class StackSurfacePath:
             angle=angle,
             spacing=spacing,
             jitter=jitter,
+            filled=filled,
             box=box,
             symmetry=symmetry,
             alpha=alpha,
