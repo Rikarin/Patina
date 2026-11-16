@@ -40,6 +40,10 @@ static class ProjectSettingsEndpoint {
                 request.Unwrap,
                 request.NormalFormat
             );
+            if (request.MetresPerUnit is { } unit) {
+                library.SetMetresPerUnit(project, unit);
+                Remeasure(host, stacks, viewport);
+            }
 
             var before = library.Contents(project);
             var onDocument = before.Documents.FirstOrDefault(static d => d.Mesh is not null)?.Mesh;
@@ -81,7 +85,16 @@ static class ProjectSettingsEndpoint {
         request.Unwrap?.Problem()
         ?? (request.NormalFormat is { } format && !NormalFormats.All.Contains(format, StringComparer.Ordinal)
             ? $"A normal map's green runs y-up or y-down, not '{format}'."
-            : null);
+            : null)
+        ?? (request.MetresPerUnit is { } unit ? MeshUnits.Problem(unit) : null);
+
+    /// <summary>The density view measures the worn set in the project's unit as it now is (#307).</summary>
+    static void Remeasure(LibraryHost host, StackSessions stacks, ViewportSession viewport) {
+        if (viewport.Worn is { } worn && stacks.Find(worn) is { } stack) {
+            var (target, resolution, unit) = StackChecking.Density(host.Library, stack);
+            viewport.SetDensity(target, resolution, unit);
+        }
+    }
 
     /// <summary>
     ///     The file Auto Unwrap laid the current mesh out from, when new options mean laying it out again, or null.

@@ -15,7 +15,7 @@ import { XuiCalloutImports } from '@xui/callout';
 import { XuiNumericInputImports } from '@xui/numeric-input';
 import { XuiSelectImports } from '@xui/select';
 import { XuiSwitchImports } from '@xui/switch';
-import { percent, times } from '../core/numbers';
+import { length, percent, times } from '../core/numbers';
 import { SystemStatus } from '../core/system-status';
 import { FileChooser } from './file-chooser';
 import { HeldFiles } from './held-files';
@@ -31,6 +31,16 @@ const DefaultUnwrap: UnwrapOptions = {
   texelDensity: 0,
   overflow: 'shrink'
 };
+
+/** The units a mesh is commonly in, by how long one is in metres; 0 is what the file says. */
+const Units = new Map<number, string>([
+  [0, 'As the file says'],
+  [1, 'Metres'],
+  [0.01, 'Centimetres'],
+  [0.001, 'Millimetres'],
+  [0.0254, 'Inches'],
+  [0.3048, 'Feet']
+]);
 
 function fileName(path: string | null | undefined): string {
   return path?.split(/[\\/]/u).pop() ?? '';
@@ -207,6 +217,24 @@ function sameOrder(options: UnwrapOptions): UnwrapOptions {
         (valueChange)="normalFormat.set($event ?? normalFormat())"
       />
     </label>
+    <label class="flex items-center justify-between gap-2">
+      <span class="flex flex-col">
+        <span class="text-sm">Mesh units</span>
+        <span class="text-foreground-muted text-xs">
+          How long one unit of the mesh is. Texel density is checked per metre through it. glTF is in metres and an FBX
+          says its own; OBJ, PLY and STL say nothing and are taken as metres.
+        </span>
+      </span>
+      <xui-select
+        size="sm"
+        aria-label="Mesh units"
+        data-testid="project-settings-units"
+        [items]="units()"
+        [itemText]="unitName"
+        [value]="metresPerUnit()"
+        (valueChange)="metresPerUnit.set($event ?? metresPerUnit())"
+      />
+    </label>
     <div class="flex flex-col gap-1" data-testid="project-files">
       <span class="section-label">Files</span>
       <div class="well flex max-h-40 flex-col overflow-auto px-2 py-1">
@@ -255,6 +283,14 @@ export class ProjectSettingsForm {
   protected readonly normalFormats = ['y-up', 'y-down'];
   protected readonly normalFormatName = (format: string): string =>
     format === 'y-down' ? 'DirectX (Y−)' : 'OpenGL (Y+)';
+  /** How long a unit of the mesh is, in metres, or 0 for what the file says (#146, #307). */
+  protected readonly metresPerUnit = signal(0);
+  /** The units offered, and the one this project has even if the list has not. */
+  protected readonly units = computed(() => {
+    const held = this.metresPerUnit();
+    return Units.has(held) ? [...Units.keys()] : [...Units.keys(), held];
+  });
+  protected readonly unitName = (unit: number): string => Units.get(unit) ?? `${length(unit)} per unit`;
   protected readonly meshName = computed(() => fileName(this.mesh()) || (this.project.meshName() ?? ''));
   /** What the project holds besides its documents. */
   protected readonly files = computed(() => {
@@ -330,6 +366,7 @@ export class ProjectSettingsForm {
       this.autoUnwrap() !== (this.project.current()?.autoUnwrap ?? true) ||
       this.preservePaint() !== (this.project.current()?.preservePaint ?? true) ||
       this.normalFormat() !== (this.project.current()?.normalFormat ?? 'y-up') ||
+      this.metresPerUnit() !== (this.project.current()?.metresPerUnit ?? 0) ||
       this.optionsChanged()
   );
 
@@ -366,6 +403,7 @@ export class ProjectSettingsForm {
     this.autoUnwrap.set(this.project.current()?.autoUnwrap ?? true);
     this.preservePaint.set(this.project.current()?.preservePaint ?? true);
     this.normalFormat.set(this.project.current()?.normalFormat ?? 'y-up');
+    this.metresPerUnit.set(this.project.current()?.metresPerUnit ?? 0);
     this.options.set(sameOrder(this.project.current()?.unwrap ?? DefaultUnwrap));
   }
 
@@ -380,7 +418,10 @@ export class ProjectSettingsForm {
       preservePaint: this.preservePaint(),
       ...(this.normalFormat() === (this.project.current()?.normalFormat ?? 'y-up')
         ? {}
-        : { normalFormat: this.normalFormat() })
+        : { normalFormat: this.normalFormat() }),
+      ...(this.metresPerUnit() === (this.project.current()?.metresPerUnit ?? 0)
+        ? {}
+        : { metresPerUnit: this.metresPerUnit() })
     };
   }
 

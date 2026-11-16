@@ -210,6 +210,34 @@ public sealed class StackCheckingTests {
     }
 
     /// <summary>
+    ///     A density is texels per metre, as the project's is (#307): the same layout on a mesh in centimetres covers a
+    ///     hundredth of the metres, so it has a hundred times the texels per metre. What the file says is used unless
+    ///     the project says otherwise, and a file that says nothing is in metres.
+    /// </summary>
+    [Theory]
+    [InlineData(null, null, 512)]
+    [InlineData(null, 1.0, 512)]
+    [InlineData(null, 0.01, 51200)]
+    [InlineData(0.01, null, 51200)]
+    [InlineData(0.001, 0.01, 512000)]
+    public void A_density_is_measured_in_texels_per_metre(double? project, double? file, double expected) {
+        var state = Set("baseColor", "opacity", "roughness", "metalness", "normal", "occlusion");
+        var centimetres = Square with { MetresPerUnit = file };
+
+        var checks = StackChecking.Judge(
+            state,
+            centimetres,
+            Project(new() { TexelDensity = 51200 }) with { MetresPerUnit = project },
+            0,
+            Unreal
+        );
+
+        Assert.Equal(expected, checks.TexelDensity, 1e-6);
+        Assert.Equal(expected == 51200 ? [] : [expected < 51200 ? CheckCodes.DensityLow : CheckCodes.DensityHigh],
+            checks.Problems.Select(static problem => problem.Code));
+    }
+
+    /// <summary>
     ///     A platform's limits hold a set measured with its preset, each in place of the project's where it sets one,
     ///     and a set measured with another preset is held to the project's. Nothing measured has no density, layout or
     ///     values to judge, and says so.

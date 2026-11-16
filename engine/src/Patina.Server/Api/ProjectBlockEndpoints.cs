@@ -87,8 +87,8 @@ static class ProjectBlockEndpoints {
             library => library.SetChecks(request.Project, request.Checks)
         );
         if (viewport.Worn is { } worn && stacks.Find(worn) is { } stack) {
-            var (target, resolution) = StackChecking.Density(host.Library, stack);
-            viewport.SetDensity(target, resolution);
+            var (target, resolution, unit) = StackChecking.Density(host.Library, stack);
+            viewport.SetDensity(target, resolution, unit);
         }
 
         return kept;

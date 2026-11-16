@@ -328,6 +328,14 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Says how long a unit of a project's mesh is, in metres (#146), or zero for what the file says.</summary>
+    public void SetMetresPerUnit(string path, double metresPerUnit) {
+        lock (createGate) {
+            ProjectFiles.SetMetresPerUnit(RootPath, path, metresPerUnit);
+            Interlocked.Increment(ref unscannedWrites);
+        }
+    }
+
     /// <summary>Keeps what a project's export is set to, so any client's next export of it starts there.</summary>
     /// <exception cref="FileNotFoundException">The project is not there.</exception>
     public void SetExport(string path, ProjectExportSettings settings) {

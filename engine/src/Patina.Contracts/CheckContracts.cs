@@ -14,8 +14,8 @@ public sealed record ProjectCheckSettings {
     public int MaxSize { get; init; }
 
     /// <summary>
-    ///     The texel density the sets are held to, in texels per unit of the model (a metre in glTF), or zero for the
-    ///     library's.
+    ///     The texel density the sets are held to, in texels per metre, or zero for the library's. A mesh's own unit is
+    ///     turned into metres by what its file or project says it is (#307).
     /// </summary>
     public double TexelDensity { get; init; }
 

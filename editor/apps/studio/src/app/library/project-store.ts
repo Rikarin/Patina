@@ -620,6 +620,7 @@ export class ProjectStore {
       unwrap?: UnwrapOptions;
       reassign?: Record<string, string>;
       normalFormat?: string;
+      metresPerUnit?: number;
     },
     from?: SettingsPlace
   ): Promise<boolean> {
@@ -652,7 +653,8 @@ export class ProjectStore {
             preservePaint: settings.preservePaint ?? null,
             unwrap: settings.unwrap ?? null,
             reassign: settings.reassign ?? null,
-            normalFormat: settings.normalFormat ?? null
+            normalFormat: settings.normalFormat ?? null,
+            metresPerUnit: settings.metresPerUnit ?? null
           }
         })
       );

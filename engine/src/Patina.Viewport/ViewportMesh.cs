@@ -46,6 +46,12 @@ public sealed record ViewportGeometry(
     public string? PartOf(int triangle) =>
         TriangleParts is { } parts && triangle >= 0 && triangle < parts.Count ? parts[triangle] : null;
 
+    /// <summary>
+    ///     How long the file says its unit is, in metres (<see cref="MeshUnits.Stated" />), or null when it says
+    ///     nothing. The positions are in the file's units whatever this says.
+    /// </summary>
+    public double? MetresPerUnit { get; init; }
+
     /// <summary>Reads a model file.</summary>
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static ViewportGeometry Read(string path) => ViewportMesh.Read(path).Geometry();
@@ -157,6 +163,9 @@ sealed class ViewportMesh {
 
     /// <summary>Whether a normal map can be read.</summary>
     public bool HasTangents { get; }
+
+    /// <summary>How long the file says its unit is, in metres, or null when it says nothing.</summary>
+    public double? MetresPerUnit { get; private init; }
 
     /// <summary>Whether a material in the file brings a normal map of its own.</summary>
     public bool WantsTangents => Materials.Any(static material => material.Textures.Normal is not null);
@@ -273,7 +282,9 @@ sealed class ViewportMesh {
             parts.Add(new(first, mesh.Indices.Length, part.Material, part.Mesh));
         }
 
-        return new([..vertices], [..indices], [..parts], materials, bounds, hasCoordinates, false);
+        return new([..vertices], [..indices], [..parts], materials, bounds, hasCoordinates, false) {
+            MetresPerUnit = MeshUnits.Stated(Path.GetExtension(path), read.UnitScaleFactor)
+        };
     }
 
     /// <summary>A mesh's coordinates in one of its sets: the first as the mesh has it, or another one.</summary>
@@ -386,7 +397,7 @@ sealed class ViewportMesh {
             Bounds,
             HasCoordinates,
             Named(Parts, Indices.Length / 3)
-        );
+        ) { MetresPerUnit = MetresPerUnit };
     }
 
     /// <summary>
@@ -439,7 +450,7 @@ sealed class ViewportMesh {
             indices[corner] = index;
         }
 
-        return new([..vertices], indices, Parts, Materials, Bounds, true, true);
+        return new([..vertices], indices, Parts, Materials, Bounds, true, true) { MetresPerUnit = MetresPerUnit };
     }
 
     static ViewportMaterial[] ReadMaterials(ReadModel read) {

@@ -242,7 +242,9 @@ sealed partial class ViewportHost(string shaderCache, MeshShelf meshes) : IDispo
         }
 
         renderer.Shading = Shading(settings) with {
-            DensityTarget = (float)told.TexelDensity, DensityResolution = Math.Max(1, told.Resolution)
+            DensityTarget = (float)told.TexelDensity,
+            DensityResolution = Math.Max(1, told.Resolution),
+            MetresPerUnit = (float)told.MetresPerUnit
         };
         return IpcMessage.Ok(request.Id);
     }

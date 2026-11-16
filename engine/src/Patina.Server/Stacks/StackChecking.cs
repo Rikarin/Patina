@@ -48,15 +48,23 @@ public static class StackChecking {
         limits?.TexelDensity is > 0 and var own ? own : library;
 
     /// <summary>
-    ///     What the texel density view measures a worn stack against: its project's density on the platform its preset
-    ///     writes for, and its maps' side for a material whose own size the Worker cannot read.
+    ///     What the texel density view measures a worn stack against: its project's density in texels per metre on the
+    ///     platform its preset writes for, its maps' side for a material whose own size the Worker cannot read, and
+    ///     its project's unit for the mesh, or zero for what the file says (#307).
     /// </summary>
-    public static (double Target, int Resolution) Density(OpenLibrary? library, StackSession stack) {
+    public static (double Target, int Resolution, double MetresPerUnit) Density(
+        OpenLibrary? library,
+        StackSession stack
+    ) {
         ArgumentNullException.ThrowIfNull(stack);
         var state = stack.State;
         var project = ProjectOf(library, stack.Path);
         var limits = project?.Checks?.For(PresetOf(project, library)?.Id);
-        return (TargetDensity(limits, library?.Describe().TexelDensity ?? 0), Math.Max(state.Width, state.Height));
+        return (
+            TargetDensity(limits, library?.Describe().TexelDensity ?? 0),
+            Math.Max(state.Width, state.Height),
+            project?.MetresPerUnit ?? 0
+        );
     }
 
     /// <summary>A stack's file as its project lists it: below the library, with forward slashes.</summary>
@@ -155,7 +163,7 @@ public static class StackChecking {
     /// <param name="state">The stack as it stands.</param>
     /// <param name="measured">What the Worker measured of it, or null when it was not asked.</param>
     /// <param name="project">Its project, or null for a stack beside none.</param>
-    /// <param name="libraryDensity">The library's texel density, in texels per unit.</param>
+    /// <param name="libraryDensity">The library's texel density, in texels per metre.</param>
     /// <param name="preset">The export preset, or null when the library has none.</param>
     public static StackChecks Judge(
         StackState state,
@@ -169,7 +177,10 @@ public static class StackChecking {
         var name = state.Set.Length > 0 ? $"Texture set '{state.Set}'" : $"'{state.Name}'";
         var (width, height) = measured is null ? (state.Width, state.Height) : (measured.Width, measured.Height);
         var target = TargetDensity(settings, libraryDensity);
-        var density = measured?.Layout is { } layout ? LayoutCheck.Density(layout, Math.Max(width, height)) : 0;
+        var density = measured?.Layout is { } layout
+            ? LayoutCheck.Density(layout, Math.Max(width, height))
+            / MeshUnits.Of(project?.MetresPerUnit, measured.MetresPerUnit)
+            : 0;
         var naming = new NamingValues(project?.Name ?? state.Name, preset?.Id ?? string.Empty, state.Set);
         var written = preset is null ? null : Written(preset, project?.Export).For(state.Set);
         var files = written is null ? [] : ExportFileChecking.Files(written, naming, Maps(state), width, height);
@@ -283,7 +294,7 @@ public static class StackChecking {
             yield return Problem(
                 code,
                 Warning,
-                $"{name} has {Round(density)} texels per unit where the project asks for {Round(target)}.",
+                $"{name} has {Round(density)} texels per metre where the project asks for {Round(target)}.",
                 new() { ["density"] = Round(density), ["target"] = Round(target) },
                 new(ViewportViews.TexelDensity, Setting: "checks.texelDensity")
             );

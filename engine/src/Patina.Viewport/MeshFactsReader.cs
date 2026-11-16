@@ -61,7 +61,7 @@ public static class MeshFactsReader {
             parts.Count == 0 ? 0 : parts.Max(static part => part.UvSets),
             parts.Count == 0 ? [0, 0, 0] : [box.Minimum.X, box.Minimum.Y, box.Minimum.Z],
             parts.Count == 0 ? [0, 0, 0] : [box.Maximum.X, box.Maximum.Y, box.Maximum.Z],
-            MetresPerUnit(extension, read.UnitScaleFactor),
+            MeshUnits.Stated(extension, read.UnitScaleFactor),
             colours
         );
     }
@@ -83,15 +83,4 @@ public static class MeshFactsReader {
 
         return count;
     }
-
-    /// <summary>
-    ///     glTF is in metres by its specification. An FBX states centimetres per unit, which Assimp reports as its
-    ///     <c>UnitScaleFactor</c>. Nothing else is trusted to mean a length.
-    /// </summary>
-    static double? MetresPerUnit(string extension, double? stated) =>
-        extension.ToLowerInvariant() switch {
-            ".glb" or ".gltf" => 1,
-            ".fbx" when stated is > 0 => stated.Value / 100,
-            _ => null
-        };
 }

@@ -172,8 +172,8 @@ const CheckWords: Readonly<Record<string, string>> = {
   'compression-normal':
     '{file} holds a normal in {compression} blocks, which show on a lit surface. BC5 or BC7 keep it.',
   'mips-missing': '{file} has no mips, so an engine samples it as it is and it shimmers at a distance.',
-  'density-low': 'Has {density} texels per unit, short of the {target} the project asks for.',
-  'density-high': 'Has {density} texels per unit, more than the {target} the project asks for.',
+  'density-low': 'Has {density} texels per metre, short of the {target} the project asks for.',
+  'density-high': 'Has {density} texels per metre, more than the {target} the project asks for.',
   'bake-stale':
     'Its mesh maps were baked on another mesh, in another UV set than its UV {uvSet} or at another shape than its ' +
     'Width and Height, so what reads them lands in the wrong place. Bake it again.',
