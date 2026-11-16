@@ -191,7 +191,7 @@ export class LibraryCostsView {
     try {
       const client = await this.store.api();
       const listed = unwrap(await client.GET('/api/v1/export/presets', { params: { query: {} } }));
-      this.presets.set(listed.presets ?? []);
+      this.presets.set(listed.presets);
     } catch {
       this.presets.set([]); // the costs are still counted uncompressed
     }
