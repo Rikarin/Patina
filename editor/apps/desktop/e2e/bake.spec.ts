@@ -339,7 +339,10 @@ test('a Quick Bake of a set twice as wide as it is tall bakes at its shape, and 
   await window.getByTestId('quick-bake').click();
   const library = join(scratch, 'Game.ptlib');
   const find = () =>
-    readdirSync(library, { recursive: true, encoding: 'utf8' }).find(file => file.endsWith('.bake.json'));
+    readdirSync(library, { recursive: true, encoding: 'utf8' }).find(
+      // The cache holds the shelf's own sample bake too, which is not this project's.
+      file => file.endsWith('.bake.json') && !file.startsWith('.ptcache')
+    );
   await expect.poll(find, { timeout: 240_000 }).toBeDefined();
   await expect(window.getByTestId('quick-bake')).toHaveText('Quick Bake', { timeout: 30_000 });
   const manifest = find();

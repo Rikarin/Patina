@@ -313,10 +313,14 @@ test('layers are selected together, deleted by key, and a material drags in wher
   await window.getByLabel('Search materials').fill('Plastic');
   // ⚠ The Server answers the search a moment later, and a list that narrows under a drag already begun drops nothing:
   // the row under the pointer was another material's, or moved away.
+  // Other materials have Plastic in their names too (Sun Faded Plastic), so the shipped one is taken by its source.
   const shelf = window.getByTestId('shelf-material');
-  await expect(shelf).toHaveCount(1, { timeout: 15_000 });
-  await expect(shelf).toContainText('Plastic');
-  await shelf.first().dragTo(fills.first(), { targetPosition: { x: 40, y: 38 } });
+  await expect
+    .poll(async () => (await shelf.allTextContents()).every(text => text.includes('Plastic')), { timeout: 15_000 })
+    .toBe(true);
+  const plastic = window.locator('[data-testid=shelf-material][data-source="smart:Plastic"]');
+  await expect(plastic).toHaveCount(1);
+  await plastic.dragTo(fills.first(), { targetPosition: { x: 40, y: 38 } });
   const stack = window.getByTestId('paint-layers');
   const rows = stack.getByRole('treeitem');
   await expect(rows.nth(1)).not.toHaveAttribute('data-testid', /paint-layer-fill/u);

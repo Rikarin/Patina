@@ -187,7 +187,8 @@ test('a shipped material reaches a stack from the shelf', async () => {
   const before = await window.getByTestId('paint-picture').getAttribute('src');
 
   await window.getByTestId('shelf-search').fill('Plastic');
-  await window.getByTestId('shelf-material').filter({ hasText: 'Plastic' }).click();
+  // Other materials have Plastic in their names too (Sun Faded Plastic), so the shipped one is taken by its source.
+  await window.locator('[data-testid=shelf-material][data-source="smart:Plastic"]').click();
   await expect(window.getByTestId('paint-layer-moulding')).toBeVisible({ timeout: 15_000 });
   await expect
     .poll(() => window.getByTestId('paint-picture').getAttribute('src'), { timeout: 30_000 })
@@ -209,7 +210,7 @@ test('the shelf shows each material as a picture, at a size of choice, and narro
   await window.getByTestId('shelf-view').getByText('Large').click();
   await expect(window.getByTestId('shelf-materials')).toHaveAttribute('data-view', 'large');
   await expect(
-    window.getByTestId('shelf-material').filter({ hasText: 'Plastic' }).getByTestId('shelf-picture')
+    window.locator('[data-testid=shelf-material][data-source="smart:Plastic"]').getByTestId('shelf-picture')
   ).toBeVisible();
   await window.screenshot({ path: join(shots, 'shelf-pictures-large.png') });
 
