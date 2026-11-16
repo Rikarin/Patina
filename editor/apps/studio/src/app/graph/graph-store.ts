@@ -644,6 +644,21 @@ export class GraphStore {
     }
   }
 
+  /** Adds one parameter and points several of a node's fields at it, as one undo step (an X and Y pair, #311). */
+  exposePair(
+    node: number,
+    parameter: GraphSettingDefinition,
+    fields: readonly { port: string; value: string }[]
+  ): void {
+    void this.apply(
+      [
+        { op: 'addParameter', parameter },
+        ...fields.map(({ port, value }): GraphCommand => ({ op: 'setText', node, port, value }))
+      ],
+      `Expose ${parameter.name}`
+    );
+  }
+
   /**
    * A parameter as this client last asked for it, until the document has caught up with that edit. Two quick edits of
    * one parameter, such as its label and then its group, each send the whole parameter, so the second has to start

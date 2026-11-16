@@ -37,6 +37,7 @@ import {
   keptLanes,
   lanesOfColorText,
   lanesOfHex,
+  pairTextOf,
   sliderRange
 } from './graph-fields';
 import { edgeKey } from './graph-model';
@@ -53,6 +54,26 @@ interface Exposure {
   parameter: GraphSettingDefinition;
   port: string;
   value: string;
+}
+
+/** An X port's Y partner, and the name the two share. */
+interface Pair {
+  stem: string;
+  y: NumberField;
+}
+
+/** What a port named `<stem> X` is called without its axis, or null for any other name. */
+export function pairStemOf(port: string): string | null {
+  return /^(.+) X$/u.exec(port)?.[1] ?? null;
+}
+
+/** The Float2 widget a pair's name suggests: counts tile, places are positions, and the rest stay plain numbers. */
+export function pairWidgetOf(stem: string): string | null {
+  if (/repeat|tiling|tiles|grid|count/iu.test(stem)) {
+    return 'Tiling';
+  }
+
+  return /offset|position|centre|center|start|end|left|right|origin/iu.test(stem) ? 'Position' : null;
 }
 
 const SliderSteps = 1000;
@@ -281,6 +302,21 @@ export { keptLanes } from './graph-fields';
                           >
                             <ng-icon xui size="sm" name="matPublish" />
                           </button>
+                          @if (pairOf(field); as pair) {
+                            <button
+                              type="button"
+                              xuiButton
+                              size="sm"
+                              variant="ghost"
+                              [title]="'Make ' + field.name + ' and ' + pair.y.name + ' one Float2 parameter'"
+                              [attr.aria-label]="'Expose ' + pair.stem + ' as one parameter'"
+                              [attr.data-testid]="'expose-pair-' + pair.stem"
+                              [disabled]="!store.editable()"
+                              (click)="exposePair(field, pair)"
+                            >
+                              XY
+                            </button>
+                          }
                         }
                       }
                     </div>
@@ -770,6 +806,55 @@ export class GraphInspector {
   /** Makes a parameter of the field's name, starting where the field is, and drives the field from it. */
   protected expose(field: NumberField): void {
     this.exposeOne(field);
+  }
+
+  /**
+   * The `<stem> Y` a port named `<stem> X` pairs with, when both are fractional numbers nothing drives or wires yet, so
+   * the two can become one Float2 parameter (#311). Null for any other field.
+   */
+  protected pairOf(field: NumberField): Pair | null {
+    const stem = pairStemOf(field.name);
+    if (stem === null || field.source !== 'value' || field.whole || !this.canExpose(field)) {
+      return null;
+    }
+
+    const y = this.groups()
+      .flatMap(group => group.fields)
+      .find(other => other.control === 'number' && other.name === `${stem} Y`);
+    return y?.control === 'number' &&
+      y.source === 'value' &&
+      !y.whole &&
+      this.canExpose(y) &&
+      !this.wireInto(y) &&
+      this.shown(y)
+      ? { stem, y }
+      : null;
+  }
+
+  /**
+   * Makes one Float2 parameter of an X and Y pair, starting where they are and drawn as a position or a tiling by what
+   * the pair is called, and drives each port from its half (`Offset.x`), as one undo step.
+   */
+  protected exposePair(x: NumberField, pair: Pair): void {
+    const name = this.freeName(pair.stem);
+    const at = [this.numberOf(x), this.numberOf(pair.y)] as const;
+    const { minimum: lowX, maximum: highX } = x;
+    const { minimum: lowY, maximum: highY } = pair.y;
+    const parameter: GraphSettingDefinition = {
+      name,
+      summary: x.summary,
+      group: '',
+      default: pairTextOf(at[0], at[1]),
+      kind: 'Float2',
+      minimum: Math.min(...at, ...(lowX === null || lowY === null ? [0] : [lowX, lowY])),
+      maximum: Math.max(...at, ...(highX === null || highY === null ? [1] : [highX, highY])),
+      accepted: [],
+      widget: pairWidgetOf(pair.stem)
+    };
+    this.store.exposePair(this.node().id, parameter, [
+      { port: expressionKey(x.name), value: `${name}.x` },
+      { port: expressionKey(pair.y.name), value: `${name}.y` }
+    ]);
   }
 
   protected expressionOf(port: string): string {

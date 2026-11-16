@@ -390,6 +390,46 @@ public sealed class GraphAuthoringTests {
         Assert.Equal(("Float2", "1,1", "Tiling"), (held.Kind, held.Default, held.Widget));
     }
 
+    /// <summary>
+    ///     An X and Y pair exposed as one Float2 (#311), as the Inspector sends it: the parameter and each port driven by
+    ///     its half, as one undo step, which compiles with nothing to say.
+    /// </summary>
+    [Fact]
+    public void An_x_and_y_pair_exposed_as_one_float2_drives_each_port_from_its_half() {
+        var editor = Editor();
+        GraphSettingDefinition offset = new(
+            "Offset",
+            "0.25,0.75",
+            string.Empty,
+            "Float2",
+            0f,
+            1f,
+            string.Empty,
+            [],
+            Widget: "Position"
+        );
+
+        editor.Apply(
+            new(
+                [
+                    new GraphAddParameter(offset),
+                    new GraphSetText(1, "=Offset X", "Offset.x"),
+                    new GraphSetText(1, "=Offset Y", "Offset.y")
+                ],
+                "Expose Offset"
+            )
+        );
+
+        Assert.Equal("Expose Offset", editor.History.UndoLabel);
+        var noise = NodeOf(editor, 1);
+        Assert.Equal(("Offset.x", "Offset.y"), (noise.Texts["=Offset X"], noise.Texts["=Offset Y"]));
+        var model = NodeGraphDocument.Load(editor.Document, out _);
+        Assert.DoesNotContain(
+            new TextureGraphCompiler(Registry).Compile(model).Diagnostics,
+            static d => d.Severity == NodeSeverity.Error
+        );
+    }
+
     static void Refuses(GraphEditor editor, GraphSettingDefinition parameter) =>
         Assert.Throws<GraphEditRefusedException>(() =>
             editor.Apply(new([new GraphSetParameter(parameter.Name, parameter)]))
