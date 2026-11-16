@@ -257,6 +257,8 @@ static class ViewportMapEndpoints {
         LibraryHost host,
         CancellationToken cancellationToken
     ) {
+        // ⚠ Before it is read, so a change written while it is read is read again (#300).
+        var followed = preview.Follow(asked);
         if (ProjectBakePlanEndpoint.Resolve(host, asked, out var request) is { } refused) {
             return refused;
         }
@@ -282,7 +284,7 @@ static class ViewportMapEndpoints {
         }
 
         try {
-            var shown = await preview.ShowAsync(request, cancellationToken);
+            var shown = await preview.ShowAsync(request, followed, cancellationToken);
             session.Redraw();
             return TypedResults.Ok(shown);
         } catch (RendererMissingException e) {
