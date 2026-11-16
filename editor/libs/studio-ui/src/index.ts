@@ -6,4 +6,6 @@ export * from './lib/disclosure';
 export * from './lib/gradient-ramp';
 export * from './lib/histogram';
 export * from './lib/picture-charts';
+export * from './lib/position';
+export * from './lib/position-pad';
 export * from './lib/ramp';

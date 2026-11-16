@@ -26,6 +26,7 @@ import {
   lanesOfHex,
   sliderRange
 } from '../graph/graph-fields';
+import { PairField } from '../graph/pair-field';
 
 type NumberField = Extract<GraphField, { control: 'number' }>;
 
@@ -54,6 +55,7 @@ export interface FilterText {
   imports: [
     CurveEditor,
     GradientRamp,
+    PairField,
     XuiColorPickerImports,
     XuiInputImports,
     XuiNumericInputImports,
@@ -102,6 +104,16 @@ export interface FilterText {
               }
               @case ('colour') {
                 <xui-color-picker showAlpha [value]="hexOf(field)" (valueChange)="setHex(field, $event)" />
+              }
+              @case ('pair') {
+                <ptn-pair-field
+                  [label]="field.name"
+                  [maximum]="field.maximum"
+                  [minimum]="field.minimum"
+                  [value]="textOf(field)"
+                  [widget]="field.widget"
+                  (valueChange)="setChoice(field, $event)"
+                />
               }
               @case ('choice') {
                 <xui-select
@@ -235,7 +247,7 @@ export class FilterFields {
     return this.texts()[field.name] ?? field.fallback;
   }
 
-  protected setChoice(field: Extract<GraphField, { control: 'choice' }>, value: string | null): void {
+  protected setChoice(field: Extract<GraphField, { control: 'choice' | 'pair' }>, value: string | null): void {
     if (value !== null && value !== this.textOf(field)) {
       this.textChange.emit({ name: field.name, value });
     }

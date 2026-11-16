@@ -118,6 +118,8 @@ public static class GraphFactsOf {
             SettingKind.Float or SettingKind.Int when parsed < parameter.Minimum || parsed > parameter.Maximum => false,
             SettingKind.Bool => parameter.Default is "true" or "false",
             SettingKind.Color => SettingColors.TryRead(parameter.Default, out _),
+            SettingKind.Float2 => SettingPairs.TryRead(parameter.Default, out var pair)
+                && pair.All(lane => lane >= parameter.Minimum && lane <= parameter.Maximum),
             _ => parameter.Accepts(parameter.Default)
         };
     }
@@ -198,7 +200,7 @@ public static class GraphFactsOf {
     static string Described(SettingDefinition parameter) =>
         parameter switch {
             { IsChoice: true } => $"choice of {string.Join(", ", parameter.Accepted)}",
-            { Kind: SettingKind.Float or SettingKind.Int, IsBounded: true } =>
+            { Kind: SettingKind.Float or SettingKind.Int or SettingKind.Float2, IsBounded: true } =>
                 $"{parameter.Kind} from {parameter.Minimum.ToString(CultureInfo.InvariantCulture)} to "
                 + parameter.Maximum.ToString(CultureInfo.InvariantCulture),
             _ => parameter.Kind.ToString()

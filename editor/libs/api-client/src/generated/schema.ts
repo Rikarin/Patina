@@ -5391,7 +5391,10 @@ export interface components {
       default: string;
       /** @description One line about it. */
       summary: string;
-      /** @description Text, Bool, Int, Float or Color, whose default is four numbers separated by commas. */
+      /**
+       * @description Text, Bool, Int, Float, Color, whose default is four numbers separated by commas, or Float2, two numbers such
+       *     as a position or a tiling, separated by a comma, each within the range.
+       */
       kind: string;
       /**
        * Format: float
@@ -5419,7 +5422,8 @@ export interface components {
       label?: null | string;
       /**
        * @description The control an inspector draws: `Default`, `Slider` (a number with a range), `Angle` (a number
-       *     in degrees) or `Toggle` (a flag). Null for `Default`.
+       *     in degrees), `Toggle` (a flag), `Position` (a Float2 as a point on a square) or `Tiling` (a
+       *     Float2 as two counts that can be kept equal). Null for `Default`.
        */
       widget?: null | string;
       visibleIf?: null | components['schemas']['GraphSettingCondition'];

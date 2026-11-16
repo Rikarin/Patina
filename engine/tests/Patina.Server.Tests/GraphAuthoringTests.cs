@@ -352,6 +352,42 @@ public sealed class GraphAuthoringTests {
         Assert.Equal(("Color", "0,0,1"), (held.Kind, held.Default));
     }
 
+    /// <summary>
+    ///     A Float2 parameter (#181): two numbers within its range, drawn as a position or a tiling and as nothing else,
+    ///     and a preset sets one; a position widget does not suit a number.
+    /// </summary>
+    [Fact]
+    public void A_float2_parameter_holds_two_numbers_in_its_range_and_takes_a_position_or_tiling() {
+        var editor = Editor();
+        GraphSettingDefinition offset = new(
+            "Offset", "0.5,0.25", string.Empty, "Float2", 0f, 1f, string.Empty, [], Widget: "Position"
+        );
+
+        editor.Apply(new([new GraphAddParameter(offset)]));
+        editor.Apply(new([new GraphSetParameter("Offset", offset with { Widget = "Tiling" })]));
+
+        foreach (var refused in new[] {
+                     offset with { Default = "0.5" },
+                     offset with { Default = "0.5,0.5,0.5" },
+                     offset with { Default = "0.5,2" },
+                     offset with { Widget = "Angle" }
+                 }) {
+            Assert.Throws<GraphEditRefusedException>(() =>
+                editor.Apply(new([new GraphSetParameter("Offset", refused)]))
+            );
+        }
+
+        Assert.Throws<GraphEditRefusedException>(() =>
+            editor.Apply(new([new GraphSetParameter("Wear", Float("Wear", "0.5") with { Widget = "Position" })]))
+        );
+
+        editor.Apply(new([new GraphSavePreset("Corner", new Dictionary<string, string> { ["Offset"] = "1,1" })]));
+        editor.Apply(new([new GraphApplyPreset("Corner")]));
+
+        var held = GraphDocuments.Definition(editor.Document.Parameters.Single(static p => p.Name == "Offset"));
+        Assert.Equal(("Float2", "1,1", "Tiling"), (held.Kind, held.Default, held.Widget));
+    }
+
     [Fact]
     public void A_preset_saves_the_defaults_applies_them_back_and_undoes() {
         var editor = Editor();
