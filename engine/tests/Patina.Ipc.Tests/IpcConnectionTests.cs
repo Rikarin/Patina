@@ -15,14 +15,15 @@ public sealed class IpcConnectionTests : IDisposable {
         IpcHandler right,
         Func<string, bool>? immediate = null,
         Func<string, bool>? aside = null,
-        Func<string, bool>? urgent = null
+        Func<string, bool>? urgent = null,
+        Action<string>? queued = null
     ) {
         using var listener = IpcSocket.Listen(socketPath);
         var accept = listener.AcceptAsync(Token).AsTask();
         var client = await IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(5), Token);
         var leftEnd = new IpcConnection(client, left);
         var rightEnd = new IpcConnection(new System.Net.Sockets.NetworkStream(await accept, true), right) {
-            Immediate = immediate, Aside = aside, Urgent = urgent
+            Immediate = immediate, Aside = aside, Urgent = urgent, Queued = queued
         };
         leftEnd.Start();
         rightEnd.Start();
@@ -247,6 +248,69 @@ public sealed class IpcConnectionTests : IDisposable {
                     [
                         IpcTypes.StackEvaluate, IpcTypes.ViewportDisplay, IpcTypes.ViewportCamera,
                         IpcTypes.ViewportRender, IpcTypes.StackLoad, IpcTypes.StackSync, IpcTypes.ViewportStack
+                    ],
+                    answered
+                );
+            }
+        }
+    }
+
+    /// <summary>
+    ///     A picture for the shelf gives way to work queued behind it (Linux CI on lavapipe, where one took tens of
+    ///     seconds and a stroke's picture waited out a test): it stops, says so, and the stroke is answered before
+    ///     the picture is asked for again. A picture that has given way three times runs to its end.
+    /// </summary>
+    [Fact]
+    public async Task A_picture_gives_way_to_work_queued_behind_it_three_times_and_then_runs_to_its_end() {
+        PictureYield pictures = new();
+        using var drawing = new SemaphoreSlim(0);
+        List<string> answered = [];
+        var (left, right) = await ConnectAsync(
+            Reply,
+            (request, _) => {
+                var answer = request.Type != IpcTypes.MaterialThumbnail
+                    ? IpcMessage.Ok(request.Id)
+                    : pictures.Draw(
+                        "picture",
+                        stop => {
+                            drawing.Release();
+                            // Parts of a run that look at the cancel between them, for at most two seconds.
+                            stop.WaitHandle.WaitOne(TimeSpan.FromSeconds(2));
+                            stop.ThrowIfCancellationRequested();
+                            return new IpcMessage { Type = IpcTypes.Ok, Id = request.Id, ThumbnailHash = "drawn" };
+                        }
+                    )
+                    ?? new IpcMessage { Type = IpcTypes.Ok, Id = request.Id, Superseded = true };
+                lock (answered) {
+                    answered.Add(answer.Superseded == true ? "gave way" : request.Type);
+                }
+
+                return ValueTask.FromResult(answer);
+            },
+            static type => type == IpcTypes.Health,
+            urgent: IpcTypes.Urgent,
+            queued: type => {
+                if (type != IpcTypes.MaterialThumbnail) {
+                    pictures.GiveWay();
+                }
+            }
+        );
+        await using (left) {
+            await using (right) {
+                for (var attempt = 0; attempt <= PictureYield.MostGivenWay; attempt++) {
+                    var picture = left.SendAsync(new() { Type = IpcTypes.MaterialThumbnail }, Token);
+                    Assert.True(await drawing.WaitAsync(TimeSpan.FromSeconds(5), Token));
+                    var stroke = await left.SendAsync(new() { Type = IpcTypes.StackEvaluate }, Token)
+                        .WaitAsync(TimeSpan.FromSeconds(5), Token);
+                    Assert.Equal(IpcTypes.Ok, stroke.Type);
+                    var drawn = await picture.WaitAsync(TimeSpan.FromSeconds(5), Token);
+                    Assert.Equal(attempt < PictureYield.MostGivenWay, drawn.Superseded == true);
+                }
+
+                Assert.Equal(
+                    [
+                        "gave way", IpcTypes.StackEvaluate, "gave way", IpcTypes.StackEvaluate, "gave way",
+                        IpcTypes.StackEvaluate, IpcTypes.MaterialThumbnail, IpcTypes.StackEvaluate
                     ],
                     answered
                 );

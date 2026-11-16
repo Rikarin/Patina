@@ -16,9 +16,10 @@ sealed partial class StackHost {
 
     /// <summary>
     ///     A layered material's first set, composited once for the shelf. Its paint is read from beside its file, as an
-    ///     open stack's is, and nothing is kept but the picture.
+    ///     open stack's is, and nothing is kept but the picture. It stops between parts of its run when
+    ///     <paramref name="stop" /> is cancelled.
     /// </summary>
-    public IpcMessage Thumbnail(MaterialThumbnailAsk ask) {
+    public IpcMessage Thumbnail(MaterialThumbnailAsk ask, CancellationToken stop) {
         var document = LayerStackYaml.Read(ask.Document);
         if (document.Sets.FirstOrDefault() is not { } set) {
             return GraphHost.Drawn(null);
@@ -43,7 +44,7 @@ sealed partial class StackHost {
             return GraphHost.Drawn(null);
         }
 
-        using var bake = run.Evaluate();
+        using var bake = run.EvaluateCancellable(null, stop);
         return GraphHost.Drawn(previews.Write(bake, [output.Image], ask.PreviewFolder)[0].Hash);
     }
 
