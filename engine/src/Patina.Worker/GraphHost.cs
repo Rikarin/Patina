@@ -160,8 +160,8 @@ sealed class GraphHost(DeviceHost gpu) : SessionHost<GraphHost.Loaded> {
 
     /// <summary>
     ///     One Output of a graph, drawn for the shelf from a copy that goes as soon as it has. The Server has already
-    ///     set the graph's size to the picture's, so nothing is computed larger than it is shown. It stops between parts
-    ///     of its run when <paramref name="stop" /> is cancelled.
+    ///     set the graph's size to the picture's, so nothing is computed larger than it is shown. It stops between
+    ///     parts of its run when <paramref name="stop" /> is cancelled.
     /// </summary>
     public IpcMessage Thumbnail(MaterialThumbnailAsk ask, CancellationToken stop) {
         var load = new GraphLoad(ThumbnailSession, ask.Document, ask.Folder, ask.ImageRoots, ask.MeshMaps);
