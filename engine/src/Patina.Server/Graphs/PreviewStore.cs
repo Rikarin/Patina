@@ -68,7 +68,7 @@ public sealed partial class PreviewStore(ServerIdentity identity) {
         }
     }
 
-    /// <summary>Deletes a file, unless someone has it open: a picture being served or read is left for next time.</summary>
+    /// <summary>Deletes a file unless someone has it open: one being served or read is left for next time.</summary>
     static bool Deleted(FileInfo file) {
         try {
             file.Delete();

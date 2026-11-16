@@ -1,8 +1,9 @@
 namespace Patina.Viewport.Tests;
 
 /// <summary>
-///     OpenPBR's coat, sheen and transmission in the lit view (#142): each changes the picture as it should when painted,
-///     and painted at OpenPBR's default it draws the base exactly as no map does. Skipped where there is no Vulkan.
+///     OpenPBR's coat, sheen and transmission in the lit view (#142): each changes the picture as it should when
+///     painted, and painted at OpenPBR's default it draws the base exactly as no map does. Skipped where there is no
+///     Vulkan.
 /// </summary>
 public sealed partial class ViewportDisplayTests {
     static readonly OrbitCamera Angled = new(0.3f, 0.2f, 0.6f);
@@ -47,9 +48,9 @@ public sealed partial class ViewportDisplayTests {
     }
 
     /// <summary>
-    ///     Each layer painted on changes the lit picture as it should. Over a black base only a coat's own reflection can
-    ///     add light, so a coat brightens it; a white sheen brightens red plastic; and a transmitting base shows the
-    ///     environment behind it in place of its diffuse red, so the picture loses red against green.
+    ///     Each layer painted on changes the lit picture as it should. Over a black base only a coat's own reflection
+    ///     can add light, so a coat brightens it; a white sheen brightens red plastic; and a transmitting base shows
+    ///     the environment behind it in place of its diffuse red, so the picture loses red against green.
     /// </summary>
     [Fact]
     public void Coat_sheen_and_transmission_each_change_the_lit_picture() {

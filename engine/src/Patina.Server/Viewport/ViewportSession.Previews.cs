@@ -2,7 +2,7 @@ using Patina.Ipc;
 
 namespace Patina.Server.Viewport;
 
-/// <summary>What the viewport draws from the preview cache, so a trim leaves it there for a new Worker (#300).</summary>
+/// <summary>What the viewport draws from the preview cache, which a trim leaves for a new Worker (#300).</summary>
 public sealed partial class ViewportSession {
     /// <summary>
     ///     The hashes of the cache files the viewport draws: the maps, a node shown alone, the look, a picture and a

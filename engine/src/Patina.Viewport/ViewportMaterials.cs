@@ -173,8 +173,9 @@ sealed class ViewportMaterials(VulkanDevice device, ViewportTextures textures, S
     }
 
     /// <summary>
-    ///     OpenPBR's layers over the base (#142): only a stack paints them, and a slot it leaves empty reads as OpenPBR's
-    ///     default, no coat, sheen or transmission and a white sheen (ADR 0050), so the base is drawn as before.
+    ///     OpenPBR's layers over the base (#142): only a stack paints them, and a slot it leaves empty reads as
+    ///     OpenPBR's default, no coat, sheen or transmission and a white sheen (ADR 0050), so the base is drawn as
+    ///     before.
     /// </summary>
     LayerMaps Layers(ViewportLiveMap?[] worn) =>
         new(
