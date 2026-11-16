@@ -22,10 +22,12 @@ public sealed class GraphPaintTiles {
         ArgumentNullException.ThrowIfNull(filled);
         tiles.Clear();
         foreach (var live in filled.Live) {
-            var stamp = live.Stamp;
-            tiles.Watch(live.Image, () => pictures.Channel(stamp));
+            tiles.Watch(live.Image, SourceOf(pictures, live.Stamp));
         }
     }
+
+    /// <summary>Where a watched channel's pixels are now, or nothing while it has none.</summary>
+    static Func<PaintImage?> SourceOf(GraphPictures pictures, PictureStamp stamp) => () => pictures.Channel(stamp);
 
     /// <summary>
     ///     Carries the tiles that moved onto the uploads when every stamp that went stale is a canvas still being

@@ -237,8 +237,9 @@ test('a mask’s own picture is laid by a projection chosen in Properties (#311)
   await expect(scale).toHaveValue('3');
   await expect(projection).toContainText('Tri-planar');
 
+  // ⚠ The scale's own number, not its text: xUI's numeric input keeps the text typed into it after an undo.
   await window.getByTestId('app-undo').click();
-  await expect(scale).toHaveValue('1');
+  await expect(scale).toHaveAttribute('aria-valuenow', '1');
   await window.getByTestId('app-undo').click();
   await expect(projection).toContainText('UV');
   await expect(window.getByTestId('paint-mask-scale')).toHaveCount(0);

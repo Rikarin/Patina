@@ -69,7 +69,8 @@ public sealed partial class LibraryTreeApiTests {
         var vectors = await client.GetFromJsonAsync<LibraryFileList>("/api/v1/library/files?kind=vector", Token);
         var system = await client.GetFromJsonAsync<SystemInfo>("/api/v1/system", Token);
 
-        Assert.Equal(["Plate.ttf", "Sign.OTF"], fonts!.Files.Select(static file => file.Name).Order(StringComparer.Ordinal));
+        var named = fonts!.Files.Select(static file => file.Name).Order(StringComparer.Ordinal);
+        Assert.Equal(["Plate.ttf", "Sign.OTF"], named);
         Assert.Equal([new LibraryFile("projects/crate/logos/logo.svg", "logo.svg", "crate")], vectors!.Files);
         Assert.Equal([".ttf", ".otf"], system!.Formats.Fonts);
         Assert.Equal([".svg"], system.Formats.Vectors);

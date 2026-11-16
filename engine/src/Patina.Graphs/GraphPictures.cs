@@ -19,7 +19,7 @@ public readonly record struct PictureStamp(string Path, long Length, DateTime Wr
 /// <param name="Refusals">One per image that could not be filled. With any here, the plan cannot run.</param>
 /// <param name="Stamps">The files that were read, to notice one changing.</param>
 public sealed record FilledPictures(IReadOnlyList<NodeDiagnostic> Refusals, IReadOnlyList<PictureStamp> Stamps) {
-    /// <summary>The channels read from a canvas being painted, which <see cref="GraphPaintTiles" /> carries on.</summary>
+    /// <summary>The channels read from a canvas being painted, which <see cref="GraphPaintTiles" /> carries.</summary>
     public IReadOnlyList<LivePicture> Live { get; init; } = [];
 }
 
@@ -76,8 +76,8 @@ public sealed class GraphPictures {
     }
 
     /// <summary>
-    ///     The channel a stamp read from a canvas being painted is now, or null when the stamp read a file, the painting
-    ///     has ended, or the channel is not painted.
+    ///     The channel a stamp read from a canvas being painted is now, or null when the stamp read a file, the
+    ///     painting has ended, or the channel is not painted.
     /// </summary>
     public PaintImage? Channel(PictureStamp stamp) =>
         stamp.Written == Live && Canvas(stamp, out var usage) is { } canvas && canvas.Has(usage)

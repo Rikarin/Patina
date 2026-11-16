@@ -45,8 +45,8 @@ public sealed record FileFormats(
 }
 
 /// <summary>
-///     The one list of the files a graph draws from rather than decodes (#139): a Text's font and a Vector's SVG. A file
-///     dialog and the library's list of files offer them from here.
+///     The one list of the files a graph draws from rather than decodes (#139): a Text's font and a Vector's SVG. A
+///     file dialog and the library's list of files offer them from here.
 /// </summary>
 public static class DrawingFormats {
     /// <summary>TrueType and OpenType fonts, with outlines in a glyf or a CFF table.</summary>
