@@ -59,7 +59,7 @@ public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : ID
             return State;
         }
 
-        if (WorkerWait.Now(worker) is { } connection) {
+        if (worker.ConnectionNow is { } connection) {
             await TellAsync(connection, false, cancellationToken);
         } else {
             ReadAgain(); // no Worker to tell: the next one hears it

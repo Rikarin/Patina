@@ -66,8 +66,7 @@ public sealed record GraphOnMesh(ViewportMapSet Maps, NodePicture? Node = null) 
                 files.GetValueOrDefault("opacity")
             ) {
                 // A graph's Height to Normal points green down, and the shader reads green up (ADR 0011).
-                GreenDown = true,
-                Layers = LayerUsages.Any(files.ContainsKey) ? Layers(files) : null
+                GreenDown = true, Layers = LayerUsages.Any(files.ContainsKey) ? Layers(files) : null
             }
         );
     }

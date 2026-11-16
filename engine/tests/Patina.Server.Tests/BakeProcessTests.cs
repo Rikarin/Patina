@@ -710,7 +710,6 @@ public sealed partial class BakeProcessTests : IDisposable {
 
         Assert.True(File.Exists(shown.Maps.Roughness), shown.Maps.Roughness);
         Assert.Null(shown.Maps.BaseColor);
-        // A coat is laid over the base as a stack's is (#310); what the graph does not make stays none.
         Assert.True(File.Exists(shown.Maps.Layers?.Coat), shown.Maps.Layers?.Coat);
         Assert.Null(shown.Maps.Layers!.Sheen);
         await FrameAsync(socket, deadline.Token);

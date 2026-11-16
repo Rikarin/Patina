@@ -80,13 +80,14 @@ public sealed partial class PreviewStore(ServerIdentity identity) {
     ///     young, and is left.
     /// </summary>
     static void LetGoOfAbandoned(IEnumerable<FileInfo> files) {
-        var before = DateTime.UtcNow - Abandoned;
-        foreach (var file in files.Where(static file => HalfWritten().IsMatch(file.Name))) {
-            if (file.LastWriteTimeUtc < before) {
-                Deleted(file);
-            }
+        foreach (var file in files.Where(IsAbandoned)) {
+            Deleted(file);
         }
     }
+
+    /// <summary>Whether a file is one a writer began and has not touched for longer than any writer takes.</summary>
+    static bool IsAbandoned(FileInfo file) =>
+        HalfWritten().IsMatch(file.Name) && file.LastWriteTimeUtc < DateTime.UtcNow - Abandoned;
 
     /// <summary>Deletes a file unless someone has it open: one being served or read is left for next time.</summary>
     static bool Deleted(FileInfo file) {

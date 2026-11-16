@@ -1,7 +1,6 @@
 using Patina.Contracts;
 using Patina.Ipc;
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 
 namespace Patina.Server.Tests;
