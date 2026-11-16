@@ -38,6 +38,14 @@ const info: LibraryInfo = {
 
 const nothing = { items: [], total: 0, offset: 0, limit: 100 };
 
+/**
+ * Waits for what the engine's answers lead to. A second, vitest's default, was too short under a loaded machine's tests
+ * (#301): the pane had not yet drawn its empty library when the wait gave up.
+ */
+function until<T>(check: () => T | Promise<T>): Promise<T> {
+  return vi.waitFor(check, { timeout: 10_000, interval: 25 });
+}
+
 /** What the library costs, as the engine answers it. */
 const costs = {
   folder: '',
@@ -90,7 +98,7 @@ function provide(library: () => Response, projects: () => Response = () => Respo
 async function pane(text: string): Promise<HTMLElement> {
   const fixture = TestBed.createComponent(LibraryPane);
   const element = fixture.nativeElement as HTMLElement;
-  await vi.waitFor(async () => {
+  await until(async () => {
     await fixture.whenStable();
     expect(element.textContent).toContain(text);
   });
@@ -118,9 +126,12 @@ describe('LibraryPane', () => {
     provide(() => Response.json(info));
 
     const element = await pane('No projects yet');
+    const count = await until(() => {
+      const shown = element.querySelector('[data-testid=library-count]');
+      expect(shown?.textContent).toContain('0 projects');
+      return shown;
+    });
 
-    const count = element.querySelector('[data-testid=library-count]');
-    expect(count?.textContent).toContain('0 projects');
     // Narrow, only the number shows; the words are the part a container query hides, and the tooltip says it all (#234).
     expect(count?.firstChild?.textContent).toBe('0');
     expect(count?.querySelector('span')?.className).toContain('hidden');
@@ -159,7 +170,7 @@ describe('LibraryInspector', () => {
 
     const { element, settle } = await inspect();
     // The costs come over the engine's API, which the fixture does not wait for.
-    await vi.waitFor(async () => {
+    await until(async () => {
       await settle();
       expect(element.querySelectorAll('[data-testid=costs-item]')).toHaveLength(2);
     });
@@ -175,7 +186,7 @@ describe('LibraryInspector', () => {
     provide(() => Response.json(info));
     const fixture = TestBed.createComponent(LibraryInspector);
     const element = fixture.nativeElement as HTMLElement;
-    await vi.waitFor(async () => {
+    await until(async () => {
       await fixture.whenStable();
       expect(element.querySelectorAll('[data-testid=costs-item]')).toHaveLength(2);
     });
@@ -183,10 +194,10 @@ describe('LibraryInspector', () => {
       platform: WritableSignal<string>;
       platforms: () => readonly string[];
     };
-    await vi.waitFor(() => expect(view.platforms()).toEqual(['', 'gltf']));
+    await until(() => expect(view.platforms()).toEqual(['', 'gltf']));
 
     view.platform.set('gltf');
-    await vi.waitFor(async () => {
+    await until(async () => {
       await fixture.whenStable();
       expect(costQueries.at(-1)).toContain('preset=gltf');
     });
@@ -238,7 +249,7 @@ describe('LibraryInspector', () => {
     const { element, settle } = await inspect();
 
     TestBed.inject(LibrarySelection).select({ kind: 'asset', asset });
-    await vi.waitFor(async () => {
+    await until(async () => {
       await settle();
       expect(element.querySelector('[data-testid=impact-summary]')?.textContent).toContain('Affects 1,412 projects');
     });
