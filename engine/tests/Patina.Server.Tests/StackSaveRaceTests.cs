@@ -26,7 +26,7 @@ public sealed class StackSaveRaceTests : IDisposable {
         Assert.False(session.Summary.Dirty);
     }
 
-    /// <summary>An edit made while a save waits for the Worker is not in the file, so the stack stays unsaved.</summary>
+    /// <summary>An edit made while a save waits for the Worker is not in the file, so the stack stays dirty.</summary>
     [Fact]
     public void An_edit_during_a_save_leaves_the_stack_unsaved() {
         var session = Opened("Crate");

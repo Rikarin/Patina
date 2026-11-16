@@ -468,8 +468,8 @@ public sealed class StackEvaluator(
 
     /// <summary>
     ///     Whether an evaluation of a stack should stop for something waited on: a newer revision of the same stack
-    ///     that is waited on, or another stack that is waited on and behind, while nothing waits on this one. Two stacks
-    ///     waited on at once never stop each other, which on a slow GPU repeated forever (#299).
+    ///     that is waited on, or another stack that is waited on and behind, while nothing waits on this one. Two
+    ///     stacks waited on at once never stop each other, which on a slow GPU repeated forever (#299).
     /// </summary>
     /// <param name="session">The stack being evaluated.</param>
     /// <param name="revision">The revision being evaluated.</param>

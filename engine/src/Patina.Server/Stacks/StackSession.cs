@@ -397,7 +397,8 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
 
     /// <summary>
     ///     Writes the document, once the Worker has written its pixels. An edit made since the text was taken is not in
-    ///     the file, so the stack stays unsaved however this ends. A bake chosen meanwhile is no edit, and leaves it saved.
+    ///     the file, so the stack stays unsaved however this ends. A bake chosen meanwhile is no edit, and leaves it
+    ///     saved.
     /// </summary>
     /// <param name="text">The text <see cref="PrepareSave" /> took.</param>
     /// <param name="taken">The count of edits it held.</param>
