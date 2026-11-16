@@ -67,6 +67,8 @@ class GraphState:
                 session has one selection,
                 whichever client made it last, so a client that follows it, such as the viewport, needs no editor (#244).
             times (list[GraphNodeTime]): The newest GPU time of each node an evaluation has timed.
+            paused (bool): True while edits wait to be evaluated (#306): the previews are those of Settled until it is
+                resumed. Saving never waits on it. Default: False.
             evaluation (GraphEvaluation | None | Unset):
      """
 
@@ -91,6 +93,7 @@ class GraphState:
     info: GraphInfoState
     selection: GraphSelection
     times: list[GraphNodeTime]
+    paused: bool = False
     evaluation: GraphEvaluation | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -206,6 +209,8 @@ class GraphState:
 
 
 
+        paused = self.paused
+
         evaluation: dict[str, Any] | None | Unset
         if isinstance(self.evaluation, Unset):
             evaluation = UNSET
@@ -239,6 +244,7 @@ class GraphState:
             "info": info,
             "selection": selection,
             "times": times,
+            "paused": paused,
         })
         if evaluation is not UNSET:
             field_dict["evaluation"] = evaluation
@@ -399,6 +405,8 @@ class GraphState:
             times.append(times_item)
 
 
+        paused = d.pop("paused")
+
         def _parse_evaluation(data: object) -> GraphEvaluation | None | Unset:
             if data is None:
                 return data
@@ -441,6 +449,7 @@ class GraphState:
             info=info,
             selection=selection,
             times=times,
+            paused=paused,
             evaluation=evaluation,
         )
 

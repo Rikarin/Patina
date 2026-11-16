@@ -22,13 +22,14 @@ T = TypeVar("T", bound="GraphRelinkRequest")
 
 @_attrs_define
 class GraphRelinkRequest:
-    """ The body of `POST /api/v1/graphs/{id}/relink`: a picture the graph reads, and the file it is now.
+    """ The body of `POST /api/v1/graphs/{id}/relink`: a file the graph reads (a picture, a font or an SVG), and
+    the file it is now.
 
         Attributes:
-            from_ (str): The picture as the graph's Bitmap nodes name it; not read when a node is named.
+            from_ (str): The file as the graph's nodes name it; not read when a node is named.
             to (str): The file to read instead: absolute, or below the library.
-            node (int | None | Unset): One Bitmap node to point at the file, whatever it reads now, or null for every one
-                that reads
+            node (int | None | Unset): One node that reads a file to point at this one, whatever it reads now, or null for
+                every one that reads
                 From (#292).
      """
 
