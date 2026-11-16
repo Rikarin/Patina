@@ -235,7 +235,7 @@ sealed class LibraryScanner(string root, IndexDatabase database) {
         };
     }
 
-    /// <summary>The names of pictures and uploads in a file read whole, as Clean finds them; null when too large.</summary>
+    /// <summary>The names of pictures and uploads in a file read whole, as Clean finds them; null if too large.</summary>
     static HashSet<LibraryName>? NamesIn(byte[] bytes) =>
         bytes.LongLength > LibraryNameReader.MostRead ? null : LibraryNameReader.Read(Encoding.UTF8.GetString(bytes));
 

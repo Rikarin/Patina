@@ -122,10 +122,11 @@ sealed class LibraryCostQueries(IndexDatabase database) {
         return [..Priced(connection, folder, price)];
     }
 
-    /// <summary>The folder or project directly in the folder asked about, as <see cref="ChildSql" /> reads it.</summary>
-    static string Child(string rest) => rest.IndexOf('/', StringComparison.Ordinal) is var slash and >= 0
-        ? rest[..slash]
-        : rest;
+    /// <summary>The folder or project directly in the folder asked about, as <see cref="ChildSql" /> has it.</summary>
+    static string Child(string rest) =>
+        rest.IndexOf('/', StringComparison.Ordinal) is var slash and >= 0
+            ? rest[..slash]
+            : rest;
 
     /// <summary>
     ///     A command over the stacks below a folder, with the range <see cref="Below" /> reads: the paths below the

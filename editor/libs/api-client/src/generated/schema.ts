@@ -5578,8 +5578,8 @@ export interface components {
     /**
      * @description What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A
      *     document's cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for
-     *     each channel of each texture set. Asked for a platform's preset, it is what that preset writes: each of its files
-     *     for each texture set, at its size, compression and mip chain.
+     *     each channel of each texture set. Asked for a platform's preset, it is what that preset writes: each of its
+     *     files for each texture set, at its size, compression and mip chain.
      */
     LibraryCosts: {
       /** @description The folder below `projects/`, empty for the whole library. */

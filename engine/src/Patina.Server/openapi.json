@@ -16268,7 +16268,7 @@
             "description": "Each folder or project directly in it."
           }
         },
-        "description": "What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A\ndocument\u0027s cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for\neach channel of each texture set. Asked for a platform\u0027s preset, it is what that preset writes: each of its files\nfor each texture set, at its size, compression and mip chain."
+        "description": "What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A\ndocument\u0027s cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for\neach channel of each texture set. Asked for a platform\u0027s preset, it is what that preset writes: each of its\nfiles for each texture set, at its size, compression and mip chain."
       },
       "LibraryExportRequest": {
         "required": [

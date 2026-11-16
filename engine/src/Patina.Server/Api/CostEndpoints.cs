@@ -54,18 +54,30 @@ static class CostEndpoints {
         Priced(
             host,
             preset,
-            (library, price) => over < 0 || offset < 0 || limit is < 1 or > MostOnAPage
-                ? throw new ProjectRefusedException(
-                    $"A budget and an offset are not negative, and a page holds 1 to {MostOnAPage}."
-                )
-                : TypedResults.Ok(
-                    price is null
-                        ? library.CostlierThan(folder ?? string.Empty, over, offset, limit)
-                        : library.CostlierThan(folder ?? string.Empty, over, offset, limit, price)
-                )
+            (library, price) => TypedResults.Ok(Page(library, price, folder ?? string.Empty, over, offset, limit))
         );
 
-    /// <summary>Answers with the price of the preset asked for, none for uncompressed, or refuses one nobody has.</summary>
+    /// <summary>One page of the documents over a budget, once the budget and the page can be.</summary>
+    static DocumentCostPage Page(
+        OpenLibrary library,
+        DocumentPrice? price,
+        string folder,
+        long over,
+        int offset,
+        int limit
+    ) {
+        if (over < 0 || offset < 0 || limit is < 1 or > MostOnAPage) {
+            throw new ProjectRefusedException(
+                $"A budget and an offset are not negative, and a page holds 1 to {MostOnAPage}."
+            );
+        }
+
+        return price is null
+            ? library.CostlierThan(folder, over, offset, limit)
+            : library.CostlierThan(folder, over, offset, limit, price);
+    }
+
+    /// <summary>Answers with the price of the preset asked for, none for uncompressed, or refuses a missing one.</summary>
     static Results<Ok<T>, ProblemHttpResult> Priced<T>(
         LibraryHost host,
         string? preset,

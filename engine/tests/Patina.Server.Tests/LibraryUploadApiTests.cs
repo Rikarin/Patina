@@ -121,7 +121,9 @@ public sealed partial class LibraryTreeApiTests {
             );
             using var cleared = await client.PostAsJsonAsync(
                 "/api/v1/library/uploads/clear",
-                new UploadsClearRequest([$$"""{"cage":"{{cagePath.Replace("\\", "\\\\", StringComparison.Ordinal)}}"}"""]),
+                new UploadsClearRequest(
+                    [$$"""{"cage":"{{cagePath.Replace("\\", "\\\\", StringComparison.Ordinal)}}"}"""]
+                ),
                 Token
             );
 
