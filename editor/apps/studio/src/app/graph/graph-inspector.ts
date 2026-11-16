@@ -22,6 +22,7 @@ import { XuiSelectImports } from '@xui/select';
 import { XuiSliderImports } from '@xui/slider';
 import { XuiSwitchImports } from '@xui/switch';
 import { Activity } from '../core/activity';
+import type { PickKind } from '../core/file-picker';
 import { IconImports } from '../core/icons';
 import { messageOf } from '../core/messages';
 import { FileChooser } from '../library/file-chooser';
@@ -58,9 +59,50 @@ interface Exposure {
 const SliderSteps = 1000;
 /** How a setting names a parameter of its graph instead of holding a value: Vixen's name-knob reference. */
 const ReferencePrefix = '$';
-/** The node that reads a picture file, and the setting that names it, as the Server's relink names them. */
-const BitmapNode = 'Source/Bitmap';
-const BitmapSource = 'Source';
+/** What a chosen file is to a node that reads one, as the Server's relink names them: its setting, and what it is. */
+interface FileSetting {
+  setting: string;
+  kind: PickKind;
+  /** The dialog's title. */
+  title: string;
+  /** The button's tip. */
+  tip: string;
+  testId: string;
+}
+
+/** The nodes that read a file, each by the setting that names it: a picture, a font (#139) and an SVG (#139). */
+const FileSettings: ReadonlyMap<string, FileSetting> = new Map<string, FileSetting>([
+  [
+    'Source/Bitmap',
+    {
+      setting: 'Source',
+      kind: 'picture',
+      title: 'Choose a Picture for the Bitmap',
+      tip: 'Choose the picture this Bitmap reads',
+      testId: 'graph-bitmap-choose'
+    }
+  ],
+  [
+    'Source/Text',
+    {
+      setting: 'Font',
+      kind: 'font',
+      title: 'Choose a Font for the Text',
+      tip: 'Choose the font this Text draws with',
+      testId: 'graph-font-choose'
+    }
+  ],
+  [
+    'Source/Vector',
+    {
+      setting: 'File',
+      kind: 'vector',
+      title: 'Choose an SVG Drawing for the Vector',
+      tip: 'Choose the SVG drawing this Vector draws',
+      testId: 'graph-vector-choose'
+    }
+  ]
+]);
 
 export { keptLanes } from './graph-fields';
 
@@ -447,7 +489,7 @@ export { keptLanes } from './graph-fields';
                     }
                   }
                   @case ('text') {
-                    @if (picksPicture(field)) {
+                    @if (fileOf(field); as file) {
                       <div class="flex min-w-0 items-center gap-1">
                         <input
                           class="min-w-0 flex-1"
@@ -462,10 +504,10 @@ export { keptLanes } from './graph-fields';
                           type="button"
                           xuiButton
                           size="sm"
-                          data-testid="graph-bitmap-choose"
+                          [attr.data-testid]="file.testId"
                           [disabled]="!store.editable() || choosing()"
-                          [title]="'Choose the picture this Bitmap reads'"
-                          (click)="choosePicture(field)"
+                          [title]="file.tip"
+                          (click)="chooseFile(field, file)"
                         >
                           Choose…
                         </button>
@@ -828,20 +870,22 @@ export class GraphInspector {
     this.store.endGesture();
   }
 
-  /** A Bitmap's Source, which is picked from the library's pictures as well as typed (#292). */
-  protected picksPicture(field: GraphField): boolean {
-    return this.node().type === BitmapNode && field.name === BitmapSource;
+  /**
+   * The file a setting names, when it names one: a Bitmap's Source (#292), a Text's Font or a Vector's File (#139),
+   * which are picked from the library's files as well as typed.
+   */
+  protected fileOf(field: GraphField): FileSetting | null {
+    const file = FileSettings.get(this.node().type);
+    return file?.setting === field.name ? file : null;
   }
 
   /**
-   * Asks for a picture and points this Bitmap at it, as one undo step. The Server names the file as the graph finds it,
-   * so the field reads as a typed name would.
+   * Asks for a file and points this node at it, as one undo step. The Server names the file as the graph finds it, so
+   * the field reads as a typed name would.
    */
-  protected async choosePicture(field: Extract<GraphField, { source: 'text' }>): Promise<void> {
+  protected async chooseFile(field: Extract<GraphField, { source: 'text' }>, setting: FileSetting): Promise<void> {
     const project = this.injector.get(ProjectStore).current()?.path ?? null;
-    const file = await this.injector
-      .get(FileChooser)
-      .path({ kind: 'picture', title: 'Choose a Picture for the Bitmap', project });
+    const file = await this.injector.get(FileChooser).path({ kind: setting.kind, title: setting.title, project });
     if (file === null) {
       return;
     }

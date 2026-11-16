@@ -326,6 +326,48 @@ describe("a Bitmap's Source", () => {
   });
 });
 
+describe("a Text's font and a Vector's drawing", () => {
+  function typeOf(path: string, setting: string): GraphNodeType {
+    return {
+      path,
+      title: path.split('/')[1] ?? path,
+      category: 'Source',
+      summary: '',
+      hasPreview: true,
+      ports: [],
+      settings: [{ name: setting, default: '', summary: '', kind: 'String', group: '', accepted: [], minimum: null }]
+    };
+  }
+
+  async function render(type: GraphNodeType, testId: string) {
+    const store = { ...fakeStore(), types: signal(new Map([[type.path, type]])), relinkPicture: vi.fn() };
+    const path = vi.fn(() => Promise.resolve('C:/Art/Game.ptlib/projects/crate/fonts/Plate.ttf'));
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: GraphStore, useValue: store },
+        { provide: FileChooser, useValue: { path } },
+        { provide: ProjectStore, useValue: { current: signal({ path: 'crate' }) } }
+      ]
+    });
+    const fixture = TestBed.createComponent(GraphInspector);
+    fixture.componentRef.setInput('node', { ...node(4), type: type.path });
+    fixture.detectChanges();
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`)?.click();
+    await fixture.whenStable();
+    return { store, path };
+  }
+
+  it('are chosen from the library’s fonts and drawings, and point this node alone at them (#139)', async () => {
+    const text = await render(typeOf('Source/Text', 'Font'), 'graph-font-choose');
+    expect(text.path).toHaveBeenCalledWith(expect.objectContaining({ kind: 'font', project: 'crate' }));
+    expect(text.store.relinkPicture).toHaveBeenCalledWith('', 'C:/Art/Game.ptlib/projects/crate/fonts/Plate.ttf', 4);
+
+    TestBed.resetTestingModule();
+    const vector = await render(typeOf('Source/Vector', 'File'), 'graph-vector-choose');
+    expect(vector.path).toHaveBeenCalledWith(expect.objectContaining({ kind: 'vector' }));
+  });
+});
+
 describe('the Inspector', () => {
   function render(arrange: (store: ReturnType<typeof fakeStore>) => void = () => undefined) {
     const store = fakeStore();

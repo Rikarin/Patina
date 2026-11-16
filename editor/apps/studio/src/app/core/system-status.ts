@@ -53,6 +53,10 @@ export class SystemStatus {
   readonly materials = computed(() => this.formats()?.materials);
   /** What a file dialog offers for an environment. */
   readonly environments = computed(() => this.formats()?.environments);
+  /** What a file dialog offers for a font a graph's Text draws with (#139). */
+  readonly fonts = computed(() => this.formats()?.fonts);
+  /** What a file dialog offers for a drawing a graph's Vector draws (#139). */
+  readonly vectors = computed(() => this.formats()?.vectors);
 
   /** The texture sides the Server offers, so that every panel offers the same ones. Empty until it answers. */
   readonly textureSides = computed<readonly number[]>(

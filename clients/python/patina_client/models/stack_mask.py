@@ -50,9 +50,6 @@ class StackMask:
             output (str): Which picture of a generator that writes several is the mask, by its name in the generator's
                 Outputs, or empty
                 for its only one. Another generator starts from empty. Default: ''.
-            projection (str): How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or
-                Cylindrical by world
-                position, which a mask on a mesh whose UVs it was not made for wants (#120). Default: 'Uv'.
             anchor (None | StackAnchorRef | Unset):
             colours (list[list[float]] | None | Unset): The colours a bake or texture mask selects from its picture, each
                 three numbers, or null for all of it. A texel
@@ -66,6 +63,10 @@ class StackMask:
             layers (list[StackMaskLayer] | None | Unset): The mask's own stack over this base, bottom first. Ignored in a
                 change: the mask layer commands edit it, so that
                 a painted canvas stays with its entry.
+            projection (None | str | Unset): How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar,
+                Spherical or Cylindrical by world
+                position, which a mask on a mesh whose UVs it was not made for wants (#120). Left out, the mask keeps the one it
+                has; the Server always says it.
             placement (None | StackPlacement | Unset):
      """
 
@@ -81,7 +82,6 @@ class StackMask:
     inside: float = 1.0
     outside: float = 0.0
     output: str = ''
-    projection: str = 'Uv'
     anchor: None | StackAnchorRef | Unset = UNSET
     colours: list[list[float]] | None | Unset = UNSET
     effects: list[StackMaskEffect] | None | Unset = UNSET
@@ -89,6 +89,7 @@ class StackMask:
     mesh_parts: list[str] | None | Unset = UNSET
     inputs: None | StackMaskInputsType1 | Unset = UNSET
     layers: list[StackMaskLayer] | None | Unset = UNSET
+    projection: None | str | Unset = UNSET
     placement: None | StackPlacement | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -126,8 +127,6 @@ class StackMask:
         outside = self.outside
 
         output = self.output
-
-        projection = self.projection
 
         anchor: dict[str, Any] | None | Unset
         if isinstance(self.anchor, Unset):
@@ -204,6 +203,12 @@ class StackMask:
         else:
             layers = self.layers
 
+        projection: None | str | Unset
+        if isinstance(self.projection, Unset):
+            projection = UNSET
+        else:
+            projection = self.projection
+
         placement: dict[str, Any] | None | Unset
         if isinstance(self.placement, Unset):
             placement = UNSET
@@ -228,7 +233,6 @@ class StackMask:
             "inside": inside,
             "outside": outside,
             "output": output,
-            "projection": projection,
         })
         if anchor is not UNSET:
             field_dict["anchor"] = anchor
@@ -244,6 +248,8 @@ class StackMask:
             field_dict["inputs"] = inputs
         if layers is not UNSET:
             field_dict["layers"] = layers
+        if projection is not UNSET:
+            field_dict["projection"] = projection
         if placement is not UNSET:
             field_dict["placement"] = placement
 
@@ -283,8 +289,6 @@ class StackMask:
         outside = d.pop("outside")
 
         output = d.pop("output")
-
-        projection = d.pop("projection")
 
         def _parse_anchor(data: object) -> None | StackAnchorRef | Unset:
             if data is None:
@@ -437,6 +441,16 @@ class StackMask:
         layers = _parse_layers(d.pop("layers", UNSET))
 
 
+        def _parse_projection(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        projection = _parse_projection(d.pop("projection", UNSET))
+
+
         def _parse_placement(data: object) -> None | StackPlacement | Unset:
             if data is None:
                 return data
@@ -470,7 +484,6 @@ class StackMask:
             inside=inside,
             outside=outside,
             output=output,
-            projection=projection,
             anchor=anchor,
             colours=colours,
             effects=effects,
@@ -478,6 +491,7 @@ class StackMask:
             mesh_parts=mesh_parts,
             inputs=inputs,
             layers=layers,
+            projection=projection,
             placement=placement,
         )
 

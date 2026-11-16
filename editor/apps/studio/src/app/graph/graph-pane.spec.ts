@@ -28,7 +28,14 @@ const online = (connected: boolean): ServerState => ({
     library: null,
     host: { os: 'macOS', architecture: 'Arm64', runtime: '.NET 11' },
     worker: { connected },
-    formats: { pictures: ['.png'], environments: ['.hdr'], meshes: ['.obj'], materials: ['.mtlx'] },
+    formats: {
+      pictures: ['.png'],
+      environments: ['.hdr'],
+      meshes: ['.obj'],
+      materials: ['.mtlx'],
+      fonts: ['.ttf'],
+      vectors: ['.svg']
+    },
     textureSides: [256, 512, 1024, 2048],
     defaultTextureSide: 2048
   }

@@ -3468,7 +3468,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "The pictures, meshes or folders the library\u0027s projects hold, a project\u0027s own first: what a client offers to pick from, where a dialog of its own machine cannot see this one\u0027s disk. Folders are those a client can write into: every project\u0027s and the ones in it, then the exports folder\u0027s.",
+        "summary": "The pictures, meshes, fonts, SVG drawings or folders the library\u0027s projects hold, a project\u0027s own first: what a client offers to pick from, where a dialog of its own machine cannot see this one\u0027s disk. Folders are those a client can write into: every project\u0027s and the ones in it, then the exports folder\u0027s.",
         "operationId": "ListLibraryFiles",
         "parameters": [
           {
@@ -13383,7 +13383,9 @@
           "pictures",
           "environments",
           "meshes",
-          "materials"
+          "materials",
+          "fonts",
+          "vectors"
         ],
         "type": "object",
         "properties": {
@@ -13414,6 +13416,20 @@
               "type": "string"
             },
             "description": "What a project brings materials in from, as graphs (#157)."
+          },
+          "fonts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What a graph\u0027s Text draws its letters with (#139)."
+          },
+          "vectors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What a graph\u0027s Vector draws (#139)."
           }
         },
         "description": "What a client may offer, with the dot."
@@ -22457,8 +22473,7 @@
           "enabled",
           "inside",
           "outside",
-          "output",
-          "projection"
+          "output"
         ],
         "type": "object",
         "properties": {
@@ -22602,9 +22617,11 @@
             "default": ""
           },
           "projection": {
-            "type": "string",
-            "description": "How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world\nposition, which a mask on a mesh whose UVs it was not made for wants (#120).",
-            "default": "Uv"
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How a texture lands on the mesh: Uv through its UVs, or Triplanar, Planar, Spherical or Cylindrical by world\nposition, which a mask on a mesh whose UVs it was not made for wants (#120). Left out, the mask keeps the one it\nhas; the Server always says it."
           },
           "placement": {
             "oneOf": [

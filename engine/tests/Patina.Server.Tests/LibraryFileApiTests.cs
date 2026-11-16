@@ -53,6 +53,29 @@ public sealed partial class LibraryTreeApiTests {
     }
 
     /// <summary>
+    ///     The fonts a graph's Text draws with and the SVGs its Vector draws are listed for a client to pick from, as
+    ///     pictures are (#139), and the system says which files they are, for a dialog of the client's own machine.
+    /// </summary>
+    [Fact]
+    public async Task The_library_lists_its_fonts_and_drawings_for_a_client_to_pick_from() {
+        await MakeCrateAsync();
+        foreach (var file in new[] { "fonts/Plate.ttf", "fonts/Sign.OTF", "logos/logo.svg", "pictures/rust.jpg" }) {
+            var full = Path.Combine(server.Library, "projects", "crate", file);
+            Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+            await File.WriteAllTextAsync(full, "bytes", Token);
+        }
+
+        var fonts = await client.GetFromJsonAsync<LibraryFileList>("/api/v1/library/files?kind=font", Token);
+        var vectors = await client.GetFromJsonAsync<LibraryFileList>("/api/v1/library/files?kind=vector", Token);
+        var system = await client.GetFromJsonAsync<SystemInfo>("/api/v1/system", Token);
+
+        Assert.Equal(["Plate.ttf", "Sign.OTF"], fonts!.Files.Select(static file => file.Name).Order(StringComparer.Ordinal));
+        Assert.Equal([new LibraryFile("projects/crate/logos/logo.svg", "logo.svg", "crate")], vectors!.Files);
+        Assert.Equal([".ttf", ".otf"], system!.Formats.Fonts);
+        Assert.Equal([".svg"], system.Formats.Vectors);
+    }
+
+    /// <summary>
     ///     The folders a client can write an export or a bake into are listed for one that cannot see the disk of the
     ///     Server: every project's and those in it, the asked project's first, then the exports folder's; a hidden
     ///     folder and a project inside a project are not (#4).

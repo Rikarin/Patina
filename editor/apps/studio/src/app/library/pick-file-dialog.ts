@@ -19,7 +19,7 @@ import { desktop } from '../core/desktop';
 import { FilePicker, type PickRequest } from '../core/file-picker';
 import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
-import { FileChooser } from './file-chooser';
+import { FileChooser, openOnMachine } from './file-chooser';
 import { LibraryStore } from './library-store';
 
 /** How many pictures are drawn at once, so that a long list fills in from the top without asking for all of it. */
@@ -270,11 +270,7 @@ export class PickFileDialog {
   protected async fromMachine(): Promise<void> {
     const bridge = desktop();
     const kind = this.request()?.kind;
-    const file = await (kind === 'mesh'
-      ? bridge?.openMesh(this.status.meshes())
-      : kind === 'folder'
-        ? bridge?.openFolder()
-        : bridge?.openImage(this.status.pictures()));
+    const file = bridge && kind ? await openOnMachine(bridge, kind, this.status) : null;
     if (file) {
       this.picker.answer({ machine: file });
     }

@@ -739,6 +739,47 @@ function stemOf(source: string): string | undefined {
                   Choose…
                 </button>
               </div>
+              <div class="flex items-center gap-2">
+                <span class="text-foreground-muted w-16 shrink-0 text-xs">Projection</span>
+                <xui-select
+                  class="min-w-0 flex-1"
+                  aria-label="Mask projection"
+                  data-testid="paint-mask-projection"
+                  [filterable]="false"
+                  [itemText]="labelsOf(maskProjections())"
+                  [items]="valuesOf(maskProjections())"
+                  [value]="layer.mask.projection ?? 'Uv'"
+                  (valueChange)="$event && setMask(layer, { projection: $event })"
+                />
+              </div>
+              @if ((layer.mask.projection ?? 'Uv') !== 'Uv') {
+                <div class="flex items-center gap-2">
+                  <span class="text-foreground-muted w-16 shrink-0 text-xs">Scale</span>
+                  <xui-numeric-input
+                    class="min-w-0 flex-1"
+                    size="sm"
+                    aria-label="Mask projection scale"
+                    data-testid="paint-mask-scale"
+                    [stepSize]="0.1"
+                    [value]="layer.mask.placement?.scale ?? 1"
+                    (valueChange)="placeMask(layer, { scale: $event ?? 1 })"
+                  />
+                </div>
+                @if (layer.mask.projection === 'Triplanar') {
+                  <div class="flex items-center gap-2">
+                    <span class="text-foreground-muted w-16 shrink-0 text-xs">Blending</span>
+                    <xui-numeric-input
+                      class="min-w-0 flex-1"
+                      size="sm"
+                      aria-label="Mask projection blending"
+                      data-testid="paint-mask-sharpness"
+                      [stepSize]="0.5"
+                      [value]="layer.mask.placement?.sharpness ?? 4"
+                      (valueChange)="placeMask(layer, { sharpness: $event ?? 4 })"
+                    />
+                  </div>
+                }
+              }
             }
             @case ('Anchor') {
               <xui-select
@@ -1286,6 +1327,20 @@ export class LayerPanel {
   ): void {
     const placement = { scale: 1, rotation: 0, offsetX: 0, offsetY: 0, sharpness: 4, ...entry.placement, ...change };
     this.setEntry(layer, index, { placement });
+  }
+
+  /** Where the mask's own projected picture sits, from where it sat. */
+  protected placeMask(layer: StackLayer, change: Partial<NonNullable<StackLayer['placement']>>): void {
+    const placement = {
+      scale: 1,
+      rotation: 0,
+      offsetX: 0,
+      offsetY: 0,
+      sharpness: 4,
+      ...layer.mask.placement,
+      ...change
+    };
+    this.setMask(layer, { placement });
   }
 
   protected place(layer: StackLayer, change: Partial<NonNullable<StackLayer['placement']>>): void {

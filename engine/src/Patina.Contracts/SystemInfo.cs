@@ -36,6 +36,32 @@ public sealed record FileFormats(
 ) {
     /// <summary>What a project brings materials in from, as graphs (#157).</summary>
     public IReadOnlyList<string> Materials { get; init; } = MaterialFormats.Materials;
+
+    /// <summary>What a graph's Text draws its letters with (#139).</summary>
+    public IReadOnlyList<string> Fonts { get; init; } = DrawingFormats.Fonts;
+
+    /// <summary>What a graph's Vector draws (#139).</summary>
+    public IReadOnlyList<string> Vectors { get; init; } = DrawingFormats.Vectors;
+}
+
+/// <summary>
+///     The one list of the files a graph draws from rather than decodes (#139): a Text's font and a Vector's SVG. A file
+///     dialog and the library's list of files offer them from here.
+/// </summary>
+public static class DrawingFormats {
+    /// <summary>TrueType and OpenType fonts, with outlines in a glyf or a CFF table.</summary>
+    public static IReadOnlyList<string> Fonts { get; } = [".ttf", ".otf"];
+
+    /// <summary>SVG drawings.</summary>
+    public static IReadOnlyList<string> Vectors { get; } = [".svg"];
+
+    /// <summary>Whether a file is a font a Text draws with, by its name.</summary>
+    public static bool IsFont(string path) =>
+        Fonts.Contains(Path.GetExtension(path).ToLowerInvariant(), StringComparer.Ordinal);
+
+    /// <summary>Whether a file is a drawing a Vector draws, by its name.</summary>
+    public static bool IsVector(string path) =>
+        Vectors.Contains(Path.GetExtension(path).ToLowerInvariant(), StringComparer.Ordinal);
 }
 
 /// <summary>
