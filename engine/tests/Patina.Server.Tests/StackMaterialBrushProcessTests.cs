@@ -89,6 +89,67 @@ public sealed partial class StackProcessTests {
     }
 
     /// <summary>
+    ///     A material brush takes a material preset's values as a graph fill does (#311): the same stroke with the
+    ///     graph's parameter set lays something else than at its default, and at the default again the same as before,
+    ///     so what changed is the value and not the stroke.
+    /// </summary>
+    [Fact]
+    public async Task A_material_brush_lays_its_graph_at_the_values_given_its_parameters() {
+        using var deadline = Deadline(300);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        await StartAsync("Preset.vxlayers", deadline.Token);
+        var made = await http.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new { name = "Grain", kind = "layered-material" },
+            deadline.Token
+        );
+        Assert.True(made.IsSuccessStatusCode, await made.Content.ReadAsStringAsync(deadline.Token));
+        await File.WriteAllTextAsync(
+            Path.Combine(Library, "projects", "grain", "cells.vxtexgraph"),
+            CellGraph("{ id: 1, type: Source/Noise, texts: { '=Scale': Cells } }"),
+            deadline.Token
+        );
+        var used = await http.PostAsJsonAsync(
+            "/api/v1/library/materials/use",
+            new { project = "grain", source = "projects/grain/cells.vxtexgraph" },
+            deadline.Token
+        );
+        var reply = await used.Content.ReadAsStringAsync(deadline.Token);
+        Assert.True(used.IsSuccessStatusCode, reply);
+        var graph = JsonElement.Parse(reply).GetProperty("graph").GetString()!;
+        var state = await OpenAsync("projects/grain/grain.vxlayers", deadline.Token);
+        await EditAsync(state.Id, deadline.Token, new StackAddLayer("paint", "Paint"));
+        var paint = (await StateAsync(state.Id, deadline.Token)).Layers[^1].Id;
+        var size = (await PixelsAsync(state.Id, false, deadline.Token)).First(static map => map.Usage == "baseColor")
+            .Width;
+        var at = size / 4;
+        var dab = new StackStroke(
+            "material",
+            paint,
+            "baseColor",
+            new(size / 8f, Falloff: 0f),
+            Red,
+            [new(at, at), new(at + 3, at + 2)],
+            Source: new("material", graph)
+        );
+        var many = dab with {
+            Source = dab.Source! with { Parameters = new Dictionary<string, string> { ["Cells"] = "32" } }
+        };
+
+        await EditAsync(state.Id, deadline.Token, dab);
+        var plain = await TexelAsync(state.Id, "plain", at, at, deadline.Token);
+        await ActAsync(state.Id, "undo", deadline.Token);
+        await EditAsync(state.Id, deadline.Token, many);
+        var valued = await TexelAsync(state.Id, "valued", at, at, deadline.Token);
+        await ActAsync(state.Id, "undo", deadline.Token);
+        await EditAsync(state.Id, deadline.Token, dab);
+        var again = await TexelAsync(state.Id, "again", at, at, deadline.Token);
+
+        Assert.Equal(plain, again);
+        Assert.NotEqual(plain, valued);
+    }
+
+    /// <summary>
     ///     ⚠ A layered material lays what applying it lays (#125): its own layers composite on the set, and the stroke
     ///     takes what they make there, rather than one graph's maps. A graph or a placement beside it is refused, since
     ///     its layers are placed by their own projections.
@@ -123,6 +184,11 @@ public sealed partial class StackProcessTests {
 
         await RefusedAsync(state.Id, deadline.Token, dab with { Source = dab.Source! with { Placement = new(2f) } });
         await RefusedAsync(state.Id, deadline.Token, dab with { Source = dab.Source! with { Graph = "a.vxtexgraph" } });
+        await RefusedAsync(
+            state.Id,
+            deadline.Token,
+            dab with { Source = dab.Source! with { Parameters = new Dictionary<string, string> { ["Cells"] = "2" } } }
+        );
 
         await EditAsync(state.Id, deadline.Token, dab);
         var painted = await TexelAsync(state.Id, "painted", at, at, deadline.Token);

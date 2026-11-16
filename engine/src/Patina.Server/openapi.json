@@ -23707,6 +23707,16 @@
               "string"
             ],
             "description": "For a material, instead of Graph: a layered material, as the shelf names it in\nstring MaterialInfo.Source (#125). Its layers composite on the stroke\u0027s texture set, reading its mesh\nmaps, and the stroke lays what they make, each layer where its own projection puts it; so it takes no\nProjection, axis or Placement of its own."
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "For a material\u0027s Graph, the values its parameters take by name, as a graph fill\u0027s do: a\nmaterial preset\u0027s (#311). Null, or a name left out, keeps the graph\u0027s default."
           }
         },
         "description": "Where a stroke\u0027s colour comes from, when it is not one colour."

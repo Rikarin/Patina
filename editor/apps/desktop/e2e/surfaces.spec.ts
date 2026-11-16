@@ -204,4 +204,26 @@ test('a decal is placed with a click and scaled by its handle, a path takes poin
   await window.getByTestId('surface-path-ribbon').click();
   await settled();
   await window.screenshot({ path: join(shots, 'surface-ribbon.png') });
+
+  // The Paths pane lists the fill as a ribbon of four points (#130); New Path starts a second, which the next clicks
+  // on the mesh give its points, and choosing the first again brings its settings back to Properties.
+  await window.getByRole('tab', { name: 'Paths' }).click();
+  const paths = window.getByTestId('paths-list').getByRole('option');
+  await expect(paths).toHaveCount(1, { timeout: 30_000 });
+  await expect(paths.first().getByTestId('path-kind')).toHaveText('Ribbon');
+  await expect(paths.first().getByTestId('path-points')).toHaveText('4 points');
+  await window.getByTestId('paths-new').click();
+  await expect(paths).toHaveCount(2, { timeout: 30_000 });
+  await expect(window.getByTestId('paths-add-points')).toHaveText('Done', { timeout: 30_000 });
+  await click(0.24, 0.62);
+  await expect(paths.first().getByTestId('path-points')).toHaveText('1 point', { timeout: 30_000 });
+  await click(0.4, 0.62);
+  await expect(paths.first().getByTestId('path-points')).toHaveText('2 points', { timeout: 30_000 });
+  await expect(paths.first().getByTestId('path-kind')).toHaveText('Stroke');
+  await window.getByTestId('paths-add-points').click();
+  await window.screenshot({ path: join(shots, 'paths-pane.png') });
+  await paths.nth(1).click();
+  await expect(paths.nth(1)).toHaveAttribute('aria-selected', 'true');
+  await window.getByRole('tab', { name: 'Properties' }).click();
+  await expect(window.getByTestId('surface-path-count')).toContainText('4 points', { timeout: 30_000 });
 });

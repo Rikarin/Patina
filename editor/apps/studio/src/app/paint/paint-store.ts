@@ -211,6 +211,8 @@ export interface BrushMaterial {
   layered?: string;
   /** What the shelf names it by, whose picture the brush panel shows, if it came from the shelf. */
   source?: string;
+  /** The values the graph's parameters take, a material preset's (#311); the graph's defaults where left out. */
+  parameters?: Readonly<Record<string, string>>;
 }
 
 /** Where a stroke on the mesh is aimed: a picture of this size through this camera. */
@@ -958,13 +960,19 @@ export class PaintStore {
    * A graph fill on top, kept to one region of the id map: a material dropped on a part of the mesh (#110). The fill is
    * one step and the graph and its selection a second, as any new graph layer is.
    */
-  async addGraphLayerOnRegion(name: string, graph: string, colour: readonly number[]): Promise<void> {
+  async addGraphLayerOnRegion(
+    name: string,
+    graph: string,
+    colour: readonly number[],
+    parameters?: Readonly<Record<string, string>>
+  ): Promise<void> {
     await this.addLayer('fill', name);
     const id = this.layer();
     const layer = this.layers().find(row => row.layer.id === id)?.layer;
     if (layer) {
       const mask = { ...layer.mask, source: 'Bake', map: 'id', colours: [[...colour].slice(0, 3)], enabled: true };
-      await this.edit({ op: 'setLayer', layer: layer.id, fill: 'Graph', graph, mask });
+      const values = parameters ? { parameters: { ...parameters } } : {};
+      await this.edit({ op: 'setLayer', layer: layer.id, fill: 'Graph', graph, mask, ...values });
     }
   }
 
@@ -2295,7 +2303,8 @@ export class PaintStore {
     return {
       kind: 'material',
       graph: material.graph ?? null,
-      placement: scale === 1 ? null : { scale, rotation: 0, offsetX: 0, offsetY: 0, sharpness: 4 }
+      placement: scale === 1 ? null : { scale, rotation: 0, offsetX: 0, offsetY: 0, sharpness: 4 },
+      ...(material.parameters ? { parameters: { ...material.parameters } } : {})
     };
   }
 

@@ -16,6 +16,7 @@ const Names: Readonly<Record<WorkspaceName, Readonly<Record<string, string>>>> =
     inspector: 'Inspector',
     history: 'History',
     checks: 'Checks',
+    paths: 'Paths',
     viewport: 'Viewport',
     atlas: '2D View',
     texture: 'Maps'

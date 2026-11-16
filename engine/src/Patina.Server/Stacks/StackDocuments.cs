@@ -87,7 +87,8 @@ public static class StackDocuments {
                                     PlanarAxis = Enum.Parse<LayerAxis>(source.PlanarAxis ?? nameof(LayerAxis.Y)),
                                     Placement = source.Placement is { } placement
                                         ? Placed(placement)
-                                        : new()
+                                        : new(),
+                                    Texts = source.Parameters?.ToDictionary(StringComparer.Ordinal) ?? []
                                 }
                             ]
                         }

@@ -9048,6 +9048,13 @@ export interface components {
        *     Projection, axis or Placement of its own.
        */
       layered?: null | string;
+      /**
+       * @description For a material's Graph, the values its parameters take by name, as a graph fill's do: a
+       *     material preset's (#311). Null, or a name left out, keeps the graph's default.
+       */
+      parameters?: null | {
+        [key: string]: string;
+      };
     };
     /** @description An open stack, for a list. */
     StackSummary: {
