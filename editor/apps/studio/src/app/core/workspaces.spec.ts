@@ -24,6 +24,12 @@ describe('workspaces', () => {
     }
   });
 
+  it('has the Paths tab in every layout of a texturing document, which has a mesh to lay a path on (#130)', () => {
+    for (const layout of every('texturing')) {
+      expect(holds(layout, 'paths')).toBe(true);
+    }
+  });
+
   it('has the Maps tab in every layout of a layered material, beside the Checks tab', () => {
     for (const layout of every('layered-material')) {
       expect(holds(layout, 'texture')).toBe(true);
@@ -32,12 +38,15 @@ describe('workspaces', () => {
   });
 
   it('keeps a layout under its version, and starts afresh from one a build without both tabs kept', () => {
-    // A layout kept by a build that had the Checks tab and not Maps, or Maps and not Checks, was kept as version 8.
+    // A layout kept by a build that had the Checks tab and not Maps, or Maps and not Checks, was kept as version 8, and
+    // one without the Paths tab as version 9.
+    held.set('patina.workspace.9.texturing.0', JSON.stringify({ rootPane: { type: 'splitPane', panes: [] } }));
+    expect(holds(layoutOf('texturing', 0), 'paths')).toBe(true);
     held.set('patina.workspace.8.layered-material.0', JSON.stringify({ rootPane: { type: 'splitPane', panes: [] } }));
     expect(holds(layoutOf('layered-material', 0), 'texture')).toBe(true);
     expect(holds(layoutOf('layered-material', 0), 'checks')).toBe(true);
 
     keepLayout('layered-material', layoutOf('layered-material', 0), 0);
-    expect(held.has('patina.workspace.9.layered-material.0')).toBe(true);
+    expect(held.has('patina.workspace.10.layered-material.0')).toBe(true);
   });
 });
