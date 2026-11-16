@@ -318,6 +318,11 @@ export class PaintStore {
    * and a drag with nowhere to go still ends, or a save would wait for it for ever.
    */
   private strokeOn: { stack: string; layer: string } | null = null;
+  /**
+   * What the pointer did since a drag began while the last one had not gone out whole: replayed in order once its last
+   * part has left, so neither drag takes the other's stamps or ends the other (#299).
+   */
+  private behind: (() => void)[] | null = null;
   private strokes = 0;
   private pending: StackStamp[] = [];
   private view: StackView | null = null;
@@ -1802,7 +1807,7 @@ export class PaintStore {
 
   /** Waits until every stamp the pointer made has reached the Server. */
   private async drained(): Promise<void> {
-    while (this.sending || this.aiming || this.ending || this.pending.length > 0) {
+    while (this.sending || this.aiming || this.ending || this.behind || this.pending.length > 0) {
       await (this.sending ?? new Promise(done => setTimeout(done)));
     }
   }
@@ -1812,11 +1817,32 @@ export class PaintStore {
    * last one on says where the brush stood, and starts there without a stamp (#126).
    */
   begin(stamp: StackStamp, aim?: Aim, resume?: StackStamp): void {
+    // Where it paints is what was in front as it came down, however long it waits for the last drag.
+    const [stack, layer] = [this.state()?.id, this.layer()];
+    const on = stack && layer ? { stack, layer } : null;
+    if (this.stroke !== null || this.behind) {
+      // ⚠ The last drag is still going out, perhaps to another document (#299): it ends first, and this one waits.
+      if (this.stroke !== null && !this.ending) {
+        this.end();
+      }
+
+      (this.behind ??= []).push(() => this.start(stamp, on, aim, resume));
+      return;
+    }
+
+    this.start(stamp, on, aim, resume);
+  }
+
+  private start(
+    stamp: StackStamp,
+    on: { stack: string; layer: string } | null,
+    aim: Aim | undefined,
+    resume: StackStamp | undefined
+  ): void {
     this.startAction();
     this.strokes += 1;
     this.stroke = `drag-${Date.now()}-${this.strokes}`;
-    const [stack, layer] = [this.state()?.id, this.layer()];
-    this.strokeOn = stack && layer ? { stack, layer } : null;
+    this.strokeOn = on;
     this.resumeFrom = resume ? [resume.x, resume.y] : null;
     this.view = null;
     this.cloneStep = null;
@@ -1971,7 +1997,9 @@ export class PaintStore {
   }
 
   move(stamp: StackStamp): void {
-    if (this.stroke) {
+    if (this.behind) {
+      this.behind.push(() => this.move(stamp));
+    } else if (this.stroke) {
       if (this.pending.length === 0) {
         this.oldestStamp = performance.now();
       }
@@ -1983,7 +2011,9 @@ export class PaintStore {
 
   /** The brush came up: the last part closes the undo step. */
   end(): void {
-    if (this.stroke) {
+    if (this.behind) {
+      this.behind.push(() => this.end());
+    } else if (this.stroke) {
       this.ending = true;
       this.flush(false);
     }
@@ -2012,9 +2042,10 @@ export class PaintStore {
       this.startedAt = hit.found ? { u: hit.u, v: hit.v } : null;
     } catch (failure) {
       this.failure.set(messageOf(failure));
-      this.stroke = null;
-      this.ending = false;
       this.pending = [];
+      this.aiming = false;
+      this.ended();
+      return;
     } finally {
       this.aiming = false;
     }
@@ -2051,19 +2082,26 @@ export class PaintStore {
   }
 
   private flush(open: boolean): void {
+    const stroke = this.stroke;
     if (this.sending || this.aiming) {
       if (!open) {
-        void (this.sending ?? Promise.resolve()).then(() => setTimeout(() => this.flush(false)));
+        // Only this drag's end: by then a part's answer may have ended it, and another drag begun.
+        void (this.sending ?? Promise.resolve()).then(() =>
+          setTimeout(() => {
+            if (this.stroke === stroke) {
+              this.flush(false);
+            }
+          })
+        );
       }
 
       return;
     }
 
-    const stroke = this.stroke;
     const on = this.strokeOn;
     if (!stroke || !on) {
-      this.ending = false;
       this.pending = [];
+      this.ended();
       return;
     }
 
@@ -2077,14 +2115,25 @@ export class PaintStore {
     this.sending = this.send(stroke, layer, stamps, open, this.view, 'free', this.oldestStamp, false, stack).finally(
       () => {
         this.sending = null;
-        if (this.pending.length > 0) {
-          this.flush(open && this.stroke !== null);
+        // The stamps waiting are the drag now under way's, which may not be the one this part was of.
+        if (this.pending.length > 0 && this.stroke !== null) {
+          this.flush(!this.ending);
         }
       }
     );
     if (!open) {
-      this.stroke = null;
-      this.ending = false;
+      this.ended();
+    }
+  }
+
+  /** The drag under way has gone out whole: one that began meanwhile starts now. */
+  private ended(): void {
+    this.stroke = null;
+    this.ending = false;
+    const queued = this.behind;
+    this.behind = null;
+    for (const step of queued ?? []) {
+      step();
     }
   }
 

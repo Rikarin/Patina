@@ -377,6 +377,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A brush stroke started while the last one's end is still on its way to the engine waits for it (#299): the last stroke ends with its own stamps on its own document, and the new one keeps all of its stamps, where pressing again quickly, or on another document, used to end the new stroke after its first stamps or give it the last one's.
+- A bake chosen or finished while a texturing document saves leaves it saved (#299), where Close then asked about unsaved changes and the engine refused it.
+- Two documents waited on at once, such as one saving while another is sampled or checked, no longer stop each other's evaluations over and over on a slow GPU (#299); a document nobody waits on still gives way to one that is.
+- A failed end-to-end test keeps what the app said went wrong and its console beside the engine's logs (#299).
 - A choice made in the Export dialog before it has read the project's settings is kept: the preset, padding or format changed while the project's file is still on its way used to be put back and never written to `project.yaml`. Now the newer choice stays and is the one kept.
 - A color picked on the mesh with the eyedropper goes to the mask that was waiting when the mesh was clicked, though the eyedropper is turned off or on again meanwhile, and the eyedropper waits until the color is in the mask.
 - A graph that cannot light the viewport says why (#180): with no GPU, or with a node that does not compile, choosing it as the environment is refused with `engine-refused` and the engine's reason, where it said the graph drew nothing (`panorama-empty`), and the failure is not remembered, so choosing it again draws it once it can.

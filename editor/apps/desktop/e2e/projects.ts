@@ -243,7 +243,8 @@ export async function serverPicture(window: Page, path: string): Promise<string>
 
 /**
  * Attaches what the engine's processes last said to a test that failed, as `engine-logs`, which CI uploads with the
- * rest of its results: on a runner that is the only way to see a cause the app's window does not show (#274).
+ * rest of its results: on a runner that is the only way to see a cause the app's window does not show (#274). Beside
+ * it go what the app says went wrong, as `app-failures`, and its console and uncaught errors, as `app-console` (#299).
  */
 async function keepLogs(app: ElectronApplication): Promise<void> {
   const info = test.info();
@@ -251,15 +252,41 @@ async function keepLogs(app: ElectronApplication): Promise<void> {
     return;
   }
 
-  const logs = await app
-    .windows()[0]
+  const window = app.windows()[0];
+  const logs = await window
     ?.evaluate(() => (globalThis as unknown as { patina: { logs(): Promise<Record<string, string[]>> } }).patina.logs())
     .catch(() => undefined); // a window that has gone has nothing to say
   if (logs) {
     const body = Object.entries(logs)
-      .map(([name, lines]) => [`== ${name}`, ...lines].join('\n'))
+      .map(([name, lines]) => [`== ${name} (${lines.length} lines)`, ...lines].join('\n'))
       .join('\n\n');
     await info.attach('engine-logs', { body, contentType: 'text/plain' });
+  }
+
+  if (!window || window.isClosed()) {
+    return;
+  }
+
+  const failures = await window
+    .locator('[role="alert"], [data-testid$="-failure"], [data-testid$="-error"], [data-testid$="-refused"]')
+    .evaluateAll(found =>
+      found
+        .filter(element => (element as HTMLElement).offsetParent !== null)
+        .map(element => `${element.getAttribute('data-testid') ?? 'alert'}: ${element.textContent?.trim() ?? ''}`)
+    )
+    .catch(() => [] as string[]);
+  if (failures.length > 0) {
+    await info.attach('app-failures', { body: failures.join('\n'), contentType: 'text/plain' });
+  }
+
+  const said = await Promise.all([window.consoleMessages(), window.pageErrors()]).catch(() => undefined);
+  if (said) {
+    const [messages, errors] = said;
+    const body = [
+      ...messages.map(message => `[${message.type()}] ${message.text()}`),
+      ...errors.map(error => `[uncaught] ${error.stack ?? error.message}`)
+    ].join('\n');
+    await info.attach('app-console', { body, contentType: 'text/plain' });
   }
 }
 
