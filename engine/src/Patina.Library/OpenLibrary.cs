@@ -378,6 +378,19 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
+    /// <summary>Keeps a material preset as a new document of a project (#124).</summary>
+    /// <returns>Its file's path below the library.</returns>
+    /// <exception cref="ProjectExistsException">The project has a document of that name.</exception>
+    public string CreateMaterialPreset(string path, string name, MaterialPreset preset) {
+        lock (createGate) {
+            var file = ProjectFiles.NewFile(RootPath, path, name, MaterialPresets.Extension);
+            MaterialPresets.Write(ProjectFile(path, file), preset);
+            ProjectFiles.AddDocument(RootPath, path, DocumentKinds.MaterialPreset, file, name, null);
+            Interlocked.Increment(ref unscannedWrites);
+            return $"{LibraryLayout.ProjectsFolder}/{path.Trim('/')}/{file}";
+        }
+    }
+
     /// <summary>A new document with another's content.</summary>
     public ProjectItem CopyDocument(string path, AssetId document, string name) {
         lock (createGate) {

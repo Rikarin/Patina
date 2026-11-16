@@ -1503,6 +1503,17 @@ const MaskMarks: Readonly<Record<string, string>> = {
             >
               Save as Smart Material…
             </button>
+            @if (layer.kind === 'fill' && layer.fill === 'Graph' && layer.graph) {
+              <button
+                type="button"
+                xuiMenuItem
+                data-testid="layer-menu-save-preset"
+                [disabled]="!project.current()"
+                (triggered)="savePreset(layer)"
+              >
+                Save as Material Preset…
+              </button>
+            }
             <button type="button" xuiMenuItem data-testid="layer-menu-copy" (triggered)="store.copyLayers()">
               Copy <span menuItemLabel>{{ commands.keyText('copy') }}</span>
             </button>
@@ -1608,6 +1619,14 @@ export class LayerStack {
     const chosen = this.store.selection();
     const layers = mask || !chosen.has(layer.id) ? [layer.id] : [...chosen];
     this.shelfSave.set({ layers, mask, name: mask ? `${layer.name} Mask` : layer.name, project: project.path });
+  }
+
+  /** A graph fill's material and values, kept as a material preset on the project's shelf (#124). */
+  protected savePreset(layer: StackLayer): void {
+    const project = this.project.current();
+    if (project) {
+      this.shelfSave.set({ layers: [], mask: false, name: layer.name, project: project.path, preset: layer });
+    }
   }
 
   /**

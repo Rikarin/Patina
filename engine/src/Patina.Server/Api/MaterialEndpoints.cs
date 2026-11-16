@@ -27,6 +27,12 @@ static class MaterialEndpoints {
         library.MapPost("/materials/use", UseMaterial)
             .Described("UseMaterial", "Makes a material graph ready for a project's layers, and names it for them.");
 
+        library.MapPost("/materials/presets", CreatePreset)
+            .Described(
+                "CreateMaterialPreset",
+                "Keeps a graph fill's material and parameters as a material preset, a document of the project (#124)."
+            );
+
         library.MapPost("/materials/brush", MakeBrush)
             .Described("MakeBrush", "Renders a graph to a picture in its project, which a brush can stamp.");
 
@@ -52,9 +58,24 @@ static class MaterialEndpoints {
         LibraryTreeEndpoints.Guarded(
             host,
             library => {
-                var graph = MaterialShelf.Publish(library, request.Project, request.Source);
+                var used = MaterialPresets.Names(request.Source)
+                    ? MaterialPresetShelf.Use(library, request.Project, request.Source)
+                    : new MaterialUse(MaterialShelf.Publish(library, request.Project, request.Source));
                 MaterialShelf.Follow(library, request.Project, stacks);
-                return TypedResults.Ok(new MaterialUse(graph));
+                return TypedResults.Ok(used);
+            }
+        );
+
+    static Results<Ok<MaterialInfo>, ProblemHttpResult> CreatePreset(
+        LibraryHost host,
+        MaterialPresetCreateRequest request
+    ) =>
+        LibraryTreeEndpoints.Guarded(
+            host,
+            library => {
+                var made = MaterialPresetShelf.Create(library, request);
+                host.RequestRescan();
+                return TypedResults.Ok(made);
             }
         );
 

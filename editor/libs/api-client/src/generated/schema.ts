@@ -1073,6 +1073,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/library/materials/presets': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Keeps a graph fill's material and parameters as a material preset, a document of the project (#124). */
+    post: operations['CreateMaterialPreset'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/library/materials/brush': {
     parameters: {
       query?: never;
@@ -5901,10 +5918,36 @@ export interface components {
       /** @description Where a material can be from, with what to call each. */
       origins: components['schemas']['StackTerm'][];
     };
+    /**
+     * @description The body of `POST /api/v1/library/materials/presets`, which keeps a graph fill's material and parameters
+     *     as a new material preset of the project.
+     */
+    MaterialPresetCreateRequest: {
+      /** @description The project, below `projects/`. */
+      project: string;
+      /** @description What to call it, which names its file. */
+      name: string;
+      /**
+       * @description The material, as a graph fill in the project reads it (its `graph`), which the Server takes back to where
+       *     the shelf has it.
+       */
+      graph: string;
+      /** @description What the fill sets the material's parameters to (its `parameters`). */
+      parameters: {
+        [key: string]: string;
+      };
+    };
     /** @description A graph ready for a layer. */
     MaterialUse: {
       /** @description What a fill layer's `graph` takes. */
       graph: string;
+      /**
+       * @description What a material preset sets the graph's parameters to, which a fill layer's `parameters` take, or null
+       *     for a material used as it is (#124).
+       */
+      parameters?: null | {
+        [key: string]: string;
+      };
     };
     /** @description The body of `POST /api/v1/library/materials/use`. */
     MaterialUseRequest: {
@@ -13155,6 +13198,57 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['MaterialUse'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/problem+json': components['schemas']['ProblemDetails'];
+        };
+      };
+    };
+  };
+  CreateMaterialPreset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MaterialPresetCreateRequest'];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaterialInfo'];
         };
       };
       /** @description Bad Request */

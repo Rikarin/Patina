@@ -480,7 +480,11 @@ public sealed record MaterialUseRequest(string Project, string Source);
 
 /// <summary>A graph ready for a layer.</summary>
 /// <param name="Graph">What a fill layer's <c>graph</c> takes.</param>
-public sealed record MaterialUse(string Graph);
+/// <param name="Parameters">
+///     What a material preset sets the graph's parameters to, which a fill layer's <c>parameters</c> take, or null
+///     for a material used as it is (#124).
+/// </param>
+public sealed record MaterialUse(string Graph, IReadOnlyDictionary<string, string>? Parameters = null);
 
 /// <summary>A folder of projects.</summary>
 /// <param name="Path">Its path below <c>projects/</c>, with forward slashes.</param>

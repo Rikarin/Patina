@@ -200,7 +200,8 @@ const DocumentKinds: Readonly<Record<string, string>> = {
   'layered-material': 'Layered Material',
   'image-material': 'Image Material',
   graph: 'Graph',
-  'brush-preset': 'Brush Preset'
+  'brush-preset': 'Brush Preset',
+  'material-preset': 'Material Preset'
 };
 
 /** What a person calls a kind of document or asset. */

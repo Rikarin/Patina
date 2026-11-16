@@ -52,11 +52,11 @@ function isGraph(tab: DocumentTab | null | undefined): boolean {
   return tab?.kind === 'graph' || tab?.kind === 'image-material';
 }
 
-/** What opening a project means: its texturing, or else whatever it has that opens. A brush preset opens nothing. */
+/** What opening a project means: its texturing, or else whatever it has that opens. A preset opens nothing. */
 function firstOf(documents: readonly ProjectDocumentInfo[]): ProjectDocumentInfo | undefined {
   return (
     documents.find(document => document.kind === 'texturing') ??
-    documents.find(document => document.kind !== 'brush-preset')
+    documents.find(document => document.kind !== 'brush-preset' && document.kind !== 'material-preset')
   );
 }
 
@@ -356,6 +356,12 @@ export class ProjectStore {
       // A preset is taken up by the brush, and has no workspace of its own.
       if (document.kind === 'brush-preset') {
         await this.brushes.useFile(project, document.path, contents.paint);
+        return;
+      }
+
+      // A material preset is used from the shelf, as its material is (#124); it has no workspace either.
+      if (document.kind === 'material-preset') {
+        this.mutableFailure.set(`${document.name} is a material preset: use it from the shelf.`);
         return;
       }
 
