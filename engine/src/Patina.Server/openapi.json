@@ -18776,7 +18776,7 @@
               "null",
               "string"
             ],
-            "description": "Which way the green of the project\u0027s tangent-space normal maps runs: \u0060y-up\u0060 or \u0060y-down\u0060 (#144). Maps\nalready brought in stay as they were brought in."
+            "description": "Which way the green of the project\u0027s tangent-space normal maps runs: \u0060y-up\u0060 or \u0060y-down\u0060\n(#144). Maps already brought in stay as they were brought in."
           }
         },
         "description": "The body of \u0060PATCH /api/v1/library/project/settings\u0060. Null leaves a setting as it is."

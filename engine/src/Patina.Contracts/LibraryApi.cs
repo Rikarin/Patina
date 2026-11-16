@@ -248,10 +248,6 @@ public sealed record ProjectFileRequest(string Project, string File);
 ///     with their undo. Otherwise it is refused with <c>mesh-layout-changed</c> and nothing changes, and a client asks
 ///     what reloading costs before it reloads without this.
 /// </param>
-/// <param name="NormalFormat">
-///     Which way the green of the project's tangent-space normal maps runs: <c>y-up</c> or <c>y-down</c> (#144). Maps
-///     already brought in stay as they were brought in.
-/// </param>
 public sealed record ProjectSettingsRequest(
     string Project,
     string? Mesh,
@@ -260,9 +256,14 @@ public sealed record ProjectSettingsRequest(
     bool? PreservePaint = null,
     UnwrapOptions? Unwrap = null,
     IReadOnlyDictionary<string, string>? Reassign = null,
-    bool? SameLayout = null,
-    string? NormalFormat = null
-);
+    bool? SameLayout = null
+) {
+    /// <summary>
+    ///     Which way the green of the project's tangent-space normal maps runs: <c>y-up</c> or <c>y-down</c>
+    ///     (#144). Maps already brought in stay as they were brought in.
+    /// </summary>
+    public string? NormalFormat { get; init; }
+}
 
 /// <summary>Which way the green of a tangent-space normal map runs, as a project or an export preset says it.</summary>
 public static class NormalFormats {

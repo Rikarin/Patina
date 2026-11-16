@@ -100,7 +100,7 @@ public static class BakeImport {
             Maps = [
                 ..request.Maps.Select(map => map with {
                         GreenDown = map.GreenDown
-                            ?? (turnable && map.Map is ("normal" or "bent") && format == NormalFormats.Down)
+                            ?? (turnable && map.Map is "normal" or "bent" && format == NormalFormats.Down)
                     }
                 )
             ]

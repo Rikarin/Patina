@@ -265,7 +265,7 @@ public sealed class ProjectBakePlanApiTests : IAsyncLifetime {
         Task<HttpResponseMessage> SetAsync(string format) =>
             client.PatchAsJsonAsync(
                 "/api/v1/library/project/settings",
-                new ProjectSettingsRequest("crate", null, null, null, NormalFormat: format),
+                new ProjectSettingsRequest("crate", null, null, null) { NormalFormat = format },
                 Token
             );
 

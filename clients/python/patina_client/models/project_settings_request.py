@@ -50,8 +50,8 @@ class ProjectSettingsRequest:
                 with their undo. Otherwise it is refused with `mesh-layout-changed` and nothing changes, and a client asks
                 what reloading costs before it reloads without this.
             normal_format (None | str | Unset): Which way the green of the project's tangent-space normal maps runs: `y-up`
-                or `y-down` (#144). Maps
-                already brought in stay as they were brought in.
+                or `y-down`
+                (#144). Maps already brought in stay as they were brought in.
      """
 
     project: str

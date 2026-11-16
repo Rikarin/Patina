@@ -92,9 +92,16 @@ public static class BakeHighReads {
             && (!occludes || options.Occlusion.WithinPart)
             && !Asks("id")
             && !Asks("colour")
-            && (!Asks("curvature") || options.Curvature is { Source: "normal-map" } or { Source: "rays", WithinPart: true })
+            && (!Asks("curvature") || CurvatureWithinParts(options.Curvature))
             && !(Asks("edges") && options.Edges.Mesh != "low");
     }
+
+    /// <summary>
+    ///     Whether a curvature map reads only the matched parts: from the normal map, which is their own rays (#305),
+    ///     or by rays kept to the part (#300).
+    /// </summary>
+    static bool CurvatureWithinParts(BakeCurvatureOptions curvature) =>
+        curvature is { Source: "normal-map" } or { Source: "rays", WithinPart: true };
 
     /// <summary>A file read as a bake's high mesh, the way a reader of the file reports it.</summary>
     /// <param name="high">The file, flattened as a bake flattens it.</param>

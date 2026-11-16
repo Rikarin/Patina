@@ -311,18 +311,19 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
         }
     }
 
-    /// <summary>Says what a project does with a mesh with no UV layout, and with paint on a new layout.</summary>
-    public void SetMeshHandling(string path, bool? autoUnwrap, bool? preservePaint, UnwrapOptions? unwrap = null) {
+    /// <summary>
+    ///     Says what a project does with a mesh with no UV layout, with paint on a new layout, and which way its normal
+    ///     maps' green runs (#144). Null leaves a setting as it is.
+    /// </summary>
+    public void SetMeshHandling(
+        string path,
+        bool? autoUnwrap,
+        bool? preservePaint,
+        UnwrapOptions? unwrap = null,
+        string? normalFormat = null
+    ) {
         lock (createGate) {
-            ProjectFiles.SetMeshHandling(RootPath, path, autoUnwrap, preservePaint, unwrap);
-            Interlocked.Increment(ref unscannedWrites);
-        }
-    }
-
-    /// <summary>Keeps which way the green of a project's normal maps runs, one of <see cref="NormalFormats.All" />.</summary>
-    public void SetNormalFormat(string path, string format) {
-        lock (createGate) {
-            ProjectFiles.SetNormalFormat(RootPath, path, format);
+            ProjectFiles.SetMeshHandling(RootPath, path, autoUnwrap, preservePaint, unwrap, normalFormat);
             Interlocked.Increment(ref unscannedWrites);
         }
     }

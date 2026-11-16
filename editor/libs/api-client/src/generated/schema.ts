@@ -6734,8 +6734,8 @@ export interface components {
        */
       sameLayout?: null | boolean;
       /**
-       * @description Which way the green of the project's tangent-space normal maps runs: `y-up` or `y-down` (#144). Maps
-       *     already brought in stay as they were brought in.
+       * @description Which way the green of the project's tangent-space normal maps runs: `y-up` or `y-down`
+       *     (#144). Maps already brought in stay as they were brought in.
        */
       normalFormat?: null | string;
     };
