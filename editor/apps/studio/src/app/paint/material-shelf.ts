@@ -44,7 +44,7 @@ const Everything = 'all';
 const Favourites = 'favourites';
 /** The type of a brush or tool preset, which a click takes up rather than adds (#124). */
 const Preset = 'preset';
-/** The type of a picture of the project's on the shelf (#203), which goes where a picture from the Library goes. */
+/** A picture on the shelf, the open project's or another's (#203), which goes where a picture from the Library goes. */
 const Picture = 'picture';
 
 /**

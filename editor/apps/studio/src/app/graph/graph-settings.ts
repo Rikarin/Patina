@@ -211,9 +211,38 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
       </p>
     </div>
 
-    <p class="section-label mt-4 mb-1">Parameters</p>
-    <div class="flex flex-col gap-3">
-      @for (section of sections(); track section.group) {
+    <div class="mt-4 mb-1 flex items-center gap-1">
+      <p class="section-label min-w-0 flex-1">Parameters</p>
+      <button
+        type="button"
+        xuiButton
+        size="sm"
+        variant="ghost"
+        data-testid="parameters-as-used"
+        title="See the parameters as whoever uses the graph does: by their labels, the hidden ones left out"
+        [active]="asUsed()"
+        [attr.aria-pressed]="asUsed()"
+        (click)="asUsed.set(!asUsed())"
+      >
+        As Used
+      </button>
+    </div>
+    <div class="flex flex-col gap-3" data-testid="graph-parameters" [attr.data-as-used]="asUsed()">
+      @if (asUsed() && (document?.presets?.length ?? 0) > 0) {
+        <div class="flex flex-col gap-1" data-testid="parameters-preset">
+          <span class="text-foreground-muted text-xs">Preset</span>
+          <xui-select
+            aria-label="Preset"
+            placeholder="Choose a preset"
+            [disabled]="!store.editable()"
+            [itemText]="presetTitle"
+            [items]="document?.presets ?? []"
+            [value]="null"
+            (valueChange)="choosePreset($event)"
+          />
+        </div>
+      }
+      @for (section of shownSections(); track section.group) {
         @if (section.group) {
           <p class="section-label -mb-1" data-testid="parameter-group">
             {{ section.group }}
@@ -221,156 +250,166 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
         }
         @for (parameter of section.members; track parameter.name) {
           <div
-            class="well flex flex-col gap-1.5 p-2"
+            class="flex flex-col gap-1.5"
+            [class.well]="!asUsed()"
+            [class.p-2]="!asUsed()"
             [attr.data-testid]="'parameter-' + parameter.name"
             [class.opacity-60]="!visible(parameter)"
             [title]="visible(parameter) ? parameter.summary : 'Hidden while ' + hiddenBecause(parameter)"
           >
-            <div class="flex items-center gap-1">
-              <input
-                class="min-w-0 flex-1"
-                xuiInput
-                size="sm"
-                aria-label="Parameter name"
-                title="The name expressions write. Renaming it renames it in the file."
-                [disabled]="!store.editable()"
-                [value]="parameter.name"
-                (change)="rename(parameter, $event)"
-              />
-              <xui-select
-                class="w-28 min-w-0 shrink-0"
-                aria-label="Parameter kind"
-                [disabled]="!store.editable()"
-                [itemText]="kindName"
-                [items]="kinds"
-                [value]="parameter.kind"
-                (valueChange)="setKind(parameter, $event)"
-              />
-              <button
-                class="shrink-0"
-                type="button"
-                xuiButton
-                size="sm"
-                variant="ghost"
-                title="Describe it: label, group, range, widget and when it shows"
-                [active]="describing().has(parameter.name)"
-                [attr.aria-label]="'Describe ' + parameter.name"
-                [attr.data-testid]="'parameter-describe-' + parameter.name"
-                (click)="toggleDescribing(parameter.name)"
-              >
-                …
-              </button>
-            </div>
-            @if (describing().has(parameter.name)) {
-              <div class="flex flex-col gap-1.5" [attr.data-testid]="'parameter-details-' + parameter.name">
+            @if (asUsed()) {
+              @if (controlOf(parameter) !== 'toggle') {
+                <span class="text-foreground-muted text-xs" data-testid="parameter-title">{{
+                  titleOf(parameter)
+                }}</span>
+              }
+            } @else {
+              <div class="flex items-center gap-1">
                 <input
+                  class="min-w-0 flex-1"
                   xuiInput
                   size="sm"
-                  aria-label="Parameter label"
-                  [attr.data-testid]="'parameter-label-' + parameter.name"
+                  aria-label="Parameter name"
+                  title="The name expressions write. Renaming it renames it in the file."
                   [disabled]="!store.editable()"
-                  [placeholder]="'Label (' + parameter.name + ')'"
-                  [value]="parameter.label ?? ''"
-                  (change)="describe(parameter, { label: valueOf($event) })"
+                  [value]="parameter.name"
+                  (change)="rename(parameter, $event)"
                 />
-                <div class="flex items-center gap-1">
-                  <input
-                    class="min-w-0 flex-1"
-                    xuiInput
-                    size="sm"
-                    aria-label="Parameter group"
-                    placeholder="Group"
-                    [attr.data-testid]="'parameter-group-' + parameter.name"
-                    [disabled]="!store.editable()"
-                    [value]="parameter.group"
-                    (change)="describe(parameter, { group: valueOf($event) })"
-                  />
-                  <xui-select
-                    class="w-28 min-w-0 shrink-0"
-                    aria-label="Parameter widget"
-                    [attr.data-testid]="'parameter-widget-' + parameter.name"
-                    [disabled]="!store.editable()"
-                    [items]="widgetsFor(parameter)"
-                    [value]="parameter.widget ?? 'Default'"
-                    (valueChange)="setWidget(parameter, $event)"
-                  />
-                </div>
-                <input
-                  xuiInput
+                <xui-select
+                  class="w-28 min-w-0 shrink-0"
+                  aria-label="Parameter kind"
+                  [disabled]="!store.editable()"
+                  [itemText]="kindName"
+                  [items]="kinds"
+                  [value]="parameter.kind"
+                  (valueChange)="setKind(parameter, $event)"
+                />
+                <button
+                  class="shrink-0"
+                  type="button"
+                  xuiButton
                   size="sm"
-                  aria-label="Parameter summary"
-                  placeholder="What it does, in one line"
-                  [disabled]="!store.editable()"
-                  [value]="parameter.summary"
-                  (change)="describe(parameter, { summary: valueOf($event) })"
-                />
-                @if (parameter.kind === 'Float' || parameter.kind === 'Int') {
-                  <div class="flex items-center gap-1" [attr.data-testid]="'parameter-range-' + parameter.name">
-                    <span class="text-foreground-muted w-12 shrink-0 text-xs">Range</span>
-                    <xui-numeric-input
-                      class="min-w-0 flex-1"
-                      size="sm"
-                      buttonPosition="none"
-                      [aria-label]="parameter.name + ' minimum'"
-                      [disabled]="!store.editable()"
-                      [value]="parameter.minimum ?? null"
-                      (valueChange)="setRange(parameter, 'minimum', $event)"
-                    />
-                    <xui-numeric-input
-                      class="min-w-0 flex-1"
-                      size="sm"
-                      buttonPosition="none"
-                      [aria-label]="parameter.name + ' maximum'"
-                      [disabled]="!store.editable()"
-                      [value]="parameter.maximum ?? null"
-                      (valueChange)="setRange(parameter, 'maximum', $event)"
-                    />
-                  </div>
-                }
-                @if (parameter.kind === 'Text') {
+                  variant="ghost"
+                  title="Describe it: label, group, range, widget and when it shows"
+                  [active]="describing().has(parameter.name)"
+                  [attr.aria-label]="'Describe ' + parameter.name"
+                  [attr.data-testid]="'parameter-describe-' + parameter.name"
+                  (click)="toggleDescribing(parameter.name)"
+                >
+                  …
+                </button>
+              </div>
+              @if (describing().has(parameter.name)) {
+                <div class="flex flex-col gap-1.5" [attr.data-testid]="'parameter-details-' + parameter.name">
                   <input
                     xuiInput
                     size="sm"
-                    aria-label="Parameter choices"
-                    placeholder="Choices, separated by commas"
-                    [attr.data-testid]="'parameter-choices-' + parameter.name"
+                    aria-label="Parameter label"
+                    [attr.data-testid]="'parameter-label-' + parameter.name"
                     [disabled]="!store.editable()"
-                    [value]="parameter.accepted.join(', ')"
-                    (change)="setChoices(parameter, $event)"
+                    [placeholder]="'Label (' + parameter.name + ')'"
+                    [value]="parameter.label ?? ''"
+                    (change)="describe(parameter, { label: valueOf($event) })"
                   />
-                }
-                <div class="flex items-center gap-1" [attr.data-testid]="'parameter-visible-' + parameter.name">
-                  <span class="text-foreground-muted w-12 shrink-0 text-xs">Shown</span>
-                  <xui-select
-                    class="min-w-0 flex-1"
-                    aria-label="Shown while"
-                    [disabled]="!store.editable()"
-                    [itemText]="conditionName"
-                    [items]="conditionsFor(parameter)"
-                    [value]="parameter.visibleIf?.setting ?? ''"
-                    (valueChange)="setCondition(parameter, { setting: $event ?? '' })"
-                  />
-                  @if (parameter.visibleIf; as condition) {
-                    <xui-select
-                      class="w-20 min-w-0 shrink-0"
-                      aria-label="Comparison"
-                      [disabled]="!store.editable()"
-                      [items]="comparisons"
-                      [value]="condition.negated ? 'is not' : 'is'"
-                      (valueChange)="setCondition(parameter, { negated: $event === 'is not' })"
-                    />
+                  <div class="flex items-center gap-1">
                     <input
-                      class="w-20 min-w-0 shrink-0"
+                      class="min-w-0 flex-1"
                       xuiInput
                       size="sm"
-                      aria-label="Shown while value"
+                      aria-label="Parameter group"
+                      placeholder="Group"
+                      [attr.data-testid]="'parameter-group-' + parameter.name"
                       [disabled]="!store.editable()"
-                      [value]="condition.value"
-                      (change)="setCondition(parameter, { value: valueOf($event) })"
+                      [value]="parameter.group"
+                      (change)="describe(parameter, { group: valueOf($event) })"
+                    />
+                    <xui-select
+                      class="w-28 min-w-0 shrink-0"
+                      aria-label="Parameter widget"
+                      [attr.data-testid]="'parameter-widget-' + parameter.name"
+                      [disabled]="!store.editable()"
+                      [items]="widgetsFor(parameter)"
+                      [value]="parameter.widget ?? 'Default'"
+                      (valueChange)="setWidget(parameter, $event)"
+                    />
+                  </div>
+                  <input
+                    xuiInput
+                    size="sm"
+                    aria-label="Parameter summary"
+                    placeholder="What it does, in one line"
+                    [disabled]="!store.editable()"
+                    [value]="parameter.summary"
+                    (change)="describe(parameter, { summary: valueOf($event) })"
+                  />
+                  @if (parameter.kind === 'Float' || parameter.kind === 'Int') {
+                    <div class="flex items-center gap-1" [attr.data-testid]="'parameter-range-' + parameter.name">
+                      <span class="text-foreground-muted w-12 shrink-0 text-xs">Range</span>
+                      <xui-numeric-input
+                        class="min-w-0 flex-1"
+                        size="sm"
+                        buttonPosition="none"
+                        [aria-label]="parameter.name + ' minimum'"
+                        [disabled]="!store.editable()"
+                        [value]="parameter.minimum ?? null"
+                        (valueChange)="setRange(parameter, 'minimum', $event)"
+                      />
+                      <xui-numeric-input
+                        class="min-w-0 flex-1"
+                        size="sm"
+                        buttonPosition="none"
+                        [aria-label]="parameter.name + ' maximum'"
+                        [disabled]="!store.editable()"
+                        [value]="parameter.maximum ?? null"
+                        (valueChange)="setRange(parameter, 'maximum', $event)"
+                      />
+                    </div>
+                  }
+                  @if (parameter.kind === 'Text') {
+                    <input
+                      xuiInput
+                      size="sm"
+                      aria-label="Parameter choices"
+                      placeholder="Choices, separated by commas"
+                      [attr.data-testid]="'parameter-choices-' + parameter.name"
+                      [disabled]="!store.editable()"
+                      [value]="parameter.accepted.join(', ')"
+                      (change)="setChoices(parameter, $event)"
                     />
                   }
+                  <div class="flex items-center gap-1" [attr.data-testid]="'parameter-visible-' + parameter.name">
+                    <span class="text-foreground-muted w-12 shrink-0 text-xs">Shown</span>
+                    <xui-select
+                      class="min-w-0 flex-1"
+                      aria-label="Shown while"
+                      [disabled]="!store.editable()"
+                      [itemText]="conditionName"
+                      [items]="conditionsFor(parameter)"
+                      [value]="parameter.visibleIf?.setting ?? ''"
+                      (valueChange)="setCondition(parameter, { setting: $event ?? '' })"
+                    />
+                    @if (parameter.visibleIf; as condition) {
+                      <xui-select
+                        class="w-20 min-w-0 shrink-0"
+                        aria-label="Comparison"
+                        [disabled]="!store.editable()"
+                        [items]="comparisons"
+                        [value]="condition.negated ? 'is not' : 'is'"
+                        (valueChange)="setCondition(parameter, { negated: $event === 'is not' })"
+                      />
+                      <input
+                        class="w-20 min-w-0 shrink-0"
+                        xuiInput
+                        size="sm"
+                        aria-label="Shown while value"
+                        [disabled]="!store.editable()"
+                        [value]="condition.value"
+                        (change)="setCondition(parameter, { value: valueOf($event) })"
+                      />
+                    }
+                  </div>
                 </div>
-              </div>
+              }
             }
             @switch (controlOf(parameter)) {
               @case ('slider') {
@@ -493,33 +532,39 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
                 />
               }
             }
-            <button
-              class="self-start"
-              type="button"
-              xuiButton
-              size="sm"
-              variant="ghost"
-              [disabled]="!store.editable()"
-              (click)="store.removeParameter(parameter.name)"
-            >
-              Remove
-            </button>
+            @if (!asUsed()) {
+              <button
+                class="self-start"
+                type="button"
+                xuiButton
+                size="sm"
+                variant="ghost"
+                [disabled]="!store.editable()"
+                (click)="store.removeParameter(parameter.name)"
+              >
+                Remove
+              </button>
+            }
           </div>
         }
       } @empty {
-        <p class="text-foreground-muted text-xs">This graph exposes nothing yet.</p>
+        <p class="text-foreground-muted text-xs">
+          {{ asUsed() && sections().length > 0 ? 'Every parameter is hidden now.' : 'This graph exposes nothing yet.' }}
+        </p>
       }
-      <button
-        class="self-start"
-        type="button"
-        xuiButton
-        size="sm"
-        data-testid="parameter-add"
-        [disabled]="!store.editable()"
-        (click)="addParameter()"
-      >
-        Add parameter
-      </button>
+      @if (!asUsed()) {
+        <button
+          class="self-start"
+          type="button"
+          xuiButton
+          size="sm"
+          data-testid="parameter-add"
+          [disabled]="!store.editable()"
+          (click)="addParameter()"
+        >
+          Add parameter
+        </button>
+      }
     </div>
 
     <p class="section-label mt-4 mb-1">Presets</p>
@@ -642,7 +687,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
             [disabled]="!store.editable()"
             [min]="0"
             [value]="info?.physicalWidth ?? 0"
-            (valueChange)="setPhysical($event, info?.physicalHeight ?? $event)"
+            (valueChange)="setPhysical($event, physicalSide('height') ?? $event)"
           />
           <span class="text-foreground-muted text-xs">×</span>
           <xui-numeric-input
@@ -652,7 +697,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
             [disabled]="!store.editable()"
             [min]="0"
             [value]="info?.physicalHeight ?? 0"
-            (valueChange)="setPhysical(info?.physicalWidth ?? $event, $event)"
+            (valueChange)="setPhysical(physicalSide('width') ?? $event, $event)"
           />
         </div>
         <p class="text-foreground-muted text-xs">How much of the world one tile covers. Zero says nothing.</p>
@@ -808,6 +853,9 @@ export class GraphSettings {
     return value => choiceName(parameter, value);
   }
 
+  /** The physical size last set here, with the document it was set on. */
+  private typedPhysical: { path: string; width: number; height: number } | null = null;
+
   protected readonly seed = computed(() => Number(this.store.document()?.settings['seed'] ?? 0));
 
   protected readonly bitDepth = computed(() => this.store.document()?.settings['bitDepth'] ?? DefaultBitDepth);
@@ -906,16 +954,31 @@ export class GraphSettings {
   }
 
   /** A physical size is a width and a height together, both above zero, or both zero for none. */
+  /**
+   * One side of the physical size as last set here, or as the document says when nothing was set here since it
+   * opened. A side set a moment ago wins over the document, whose answer may still be on its way: the other side
+   * changed in that moment would otherwise write the old value back.
+   */
+  protected physicalSide(side: 'width' | 'height'): number | null {
+    const document = this.store.document();
+    const typed = this.typedPhysical?.path === document?.path ? this.typedPhysical : null;
+    return typed
+      ? side === 'width'
+        ? typed.width
+        : typed.height
+      : ((side === 'width' ? document?.info.physicalWidth : document?.info.physicalHeight) ?? null);
+  }
+
   protected setPhysical(width: number | null, height: number | null): void {
     const [w, h] = [width ?? 0, height ?? 0];
-    const info = this.store.document()?.info;
-    if (w === (info?.physicalWidth ?? 0) && h === (info?.physicalHeight ?? 0)) {
+    const path = this.store.document()?.path;
+    if (w === (this.physicalSide('width') ?? 0) && h === (this.physicalSide('height') ?? 0)) {
       return;
     }
 
-    this.store.describe(
-      w > 0 && h > 0 ? { physicalWidth: w, physicalHeight: h } : { physicalWidth: 0, physicalHeight: 0 }
-    );
+    const [kept, keptHeight] = w > 0 && h > 0 ? [w, h] : [0, 0];
+    this.typedPhysical = path === undefined ? null : { path, width: kept, height: keptHeight };
+    this.store.describe({ physicalWidth: kept, physicalHeight: keptHeight });
   }
 
   protected addPort(direction: string): void {
@@ -957,6 +1020,30 @@ export class GraphSettings {
 
   /** The parameters under their group headings. */
   protected readonly sections = computed(() => grouped(this.store.document()?.parameters ?? []));
+
+  /**
+   * Whether the parameters are seen as whoever uses the graph sees them (#181): by their labels, with their controls
+   * and the presets, and without the ones hidden by the values as they are now. What a control changes is still the
+   * default, as in the Inspector of a node holding the graph it is that node's value.
+   */
+  protected readonly asUsed = signal(false);
+
+  /** The sections shown: every parameter, or as used only the ones showing, and no group left empty. */
+  protected readonly shownSections = computed(() =>
+    this.asUsed()
+      ? this.sections()
+          .map(section => ({ ...section, members: section.members.filter(member => this.visible(member)) }))
+          .filter(section => section.members.length > 0)
+      : this.sections()
+  );
+
+  protected readonly presetTitle = (preset: GraphPresetState): string => preset.name;
+
+  protected choosePreset(preset: GraphPresetState | null): void {
+    if (preset) {
+      this.store.applyPreset(preset.name);
+    }
+  }
 
   /** Parameters whose description is open. */
   protected readonly describing = signal<ReadonlySet<string>>(new Set());

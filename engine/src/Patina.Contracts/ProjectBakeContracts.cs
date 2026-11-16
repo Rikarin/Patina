@@ -16,7 +16,7 @@ public sealed record ProjectBakePlan(string Project, IReadOnlyList<BakeRequest> 
 /// </summary>
 /// <param name="Project">The project, below <c>projects/</c>.</param>
 /// <param name="Document">The texturing document, by its id, whose texture set the maps are of.</param>
-/// <param name="Maps">Each map and the PNG of it, on the Server's machine.</param>
+/// <param name="Maps">Each map and the picture of it, on the Server's machine.</param>
 /// <param name="Space">Whether the normal is in <c>tangent</c> or <c>object</c> space, as a bake's options say.</param>
 public sealed record BakeImportRequest(
     string Project,
@@ -28,9 +28,14 @@ public sealed record BakeImportRequest(
 /// <summary>One map brought in.</summary>
 /// <param name="Map">One of the maps a bake makes, such as <c>normal</c>, <c>ao</c> or <c>curvature</c>.</param>
 /// <param name="File">
-///     The PNG, absolute or below the library. A normal map's green runs up the picture, as Patina's bakes do.
+///     The picture, absolute or below the library: a PNG is copied as it is, and any other picture Patina reads is
+///     written as a 16-bit PNG by the GPU engine (#300).
 /// </param>
-public sealed record BakeImportMap(string Map, string File);
+/// <param name="GreenDown">
+///     For a tangent-space <c>normal</c> or <c>bent</c> map: its green runs down the picture, as DirectX's do, and is
+///     turned over as it comes in, since Patina's bakes run it up. False keeps it as it is.
+/// </param>
+public sealed record BakeImportMap(string Map, string File, bool GreenDown = false);
 
 /// <summary>Where maps brought in now are, which the document reads its bake from.</summary>
 /// <param name="Folder">The bake's folder, below the library.</param>

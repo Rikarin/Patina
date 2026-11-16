@@ -150,8 +150,13 @@ public static class BakeInputs {
             Maps = [..request.Options.Maps.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             Rays = request.Options.Rays with { SkewMap = string.Empty, DistanceMap = string.Empty },
             Colour = request.Options.Colour with { Texture = string.Empty },
+            // Left out unless on, so a bake that reads the whole mesh keeps the key it had before (#300).
+            Curvature = request.Options.Curvature with {
+                WithinPart = request.Options.Curvature.WithinPart == true ? true : null
+            },
             // Left out unless on, so a bake that does not tile keeps the key it had before tiling was a choice (#212).
-            Tileable = request.Options.Tileable == true ? true : null
+            Tileable = request.Options.Tileable == true ? true : null,
+            Trim = request.Options is { Tileable: true, Trim: true } ? true : null
         };
         var settings = new Dictionary<string, string>(StringComparer.Ordinal) {
             ["options"] = JsonSerializer.Serialize(options, ContractsJsonContext.Default.BakeOptions),

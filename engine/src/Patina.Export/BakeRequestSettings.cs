@@ -60,6 +60,7 @@ static class BakeRequestSettings {
             },
             CurvatureSampling = (float)options.Curvature.Sampling,
             CurvatureRays = options.Curvature.Rays,
+            CurvatureWithinPart = options.Curvature.WithinPart == true,
             PositionRange = options.Position.Range switch {
                 "cube" => PositionRange.Cube,
                 "sphere" => PositionRange.Sphere,
@@ -106,6 +107,8 @@ static class BakeRequestSettings {
                 "edges" => MeshMaps.Edges,
                 "islands" => MeshMaps.Islands,
                 "borders" => MeshMaps.Borders,
+                "bounds" => MeshMaps.Bounds,
+                "density" => MeshMaps.Density,
                 _ => MeshMaps.None
             };
         }

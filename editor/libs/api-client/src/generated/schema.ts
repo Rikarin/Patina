@@ -788,7 +788,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what its file says, its limits, its files and its bake, and says it was not measured. The export preset of a platform to check for, or none for the project's own. */
+    /** Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what its file says, its limits, its files and its bake, and says it was not measured, unless measure is true: then the Server opens each such set in turn for the GPU engine to measure, and closes it again, which evaluates every set and takes as long. The export preset of a platform to check for, or none for the project's own. */
     get: operations['GetProjectChecks'];
     /** Keeps what a project's texture sets are held to before export in its project.yaml: a GPU memory budget, a size limit and a texel density, and limits of their own for each platform it ships to, by the export preset that writes for it. GET /stacks/{id}/checks, GET /library/project/checks and the texel density view measure against them. */
     put: operations['SetProjectChecks'];
@@ -1203,7 +1203,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Brings maps baked in another program in as a texturing document's bake: each PNG is copied where the document's own bake goes and replaces the map of its name there, and the document, open or not, reads them as a bake of its mesh, UV set and material as they stand. A normal map's green runs up. */
+    /** Brings maps baked in another program in as a texturing document's bake: each picture is copied where the document's own bake goes, as a PNG, and replaces the map of its name there, and the document, open or not, reads them as a bake of its mesh, UV set and material as they stand. A PNG is copied as it is; any other picture, and a normal whose green runs down, is written as a 16-bit PNG with its green up by the GPU engine first. */
     post: operations['ImportProjectBake'];
     delete?: never;
     options?: never;
@@ -1272,7 +1272,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** What a folder's documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document's size. No folder is the whole library. */
+    /** What a folder's documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document's size. No folder is the whole library. With preset, what they take in GPU memory as that platform's preset writes them: each of its files for each texture set, at its size, compression and mip chain. A preset nobody has is refused with preset-missing. */
     get: operations['GetLibraryCosts'];
     put?: never;
     post?: never;
@@ -1289,7 +1289,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first. */
+    /** One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first, uncompressed or, with preset, as that platform's preset writes them. */
     get: operations['GetDocumentsOverBudget'];
     put?: never;
     post?: never;
@@ -1528,7 +1528,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** The files sent from another computer that no file of the library and no open document names any more, with the room they take. One sent in the last hour counts as used. Changes nothing. */
+    /** The files sent from another computer that no file of the library, no open document, no queued or running bake or build and nothing in held names any more, with the room they take. held is what the client holds unsaved, such as an open dialog's paths. One sent in the last hour counts as used. Changes nothing. */
     get: operations['GetUnusedUploads'];
     put?: never;
     post?: never;
@@ -1547,7 +1547,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into the bin as one entry, which Restore puts back. */
+    /** Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them with the body's held, into the bin as one entry, which Restore puts back. */
     post: operations['ClearUploads'];
     delete?: never;
     options?: never;
@@ -2891,6 +2891,12 @@ export interface components {
        * @default 16
        */
       rays: number;
+      /**
+       * @description For `rays`, when parts are matched by name: whether the secondary rays meet only the texel's own part
+       *     (#300), so a part standing on another reads no crease where they meet, as an exploded bake would. Null or
+       *     false reads the whole high mesh.
+       */
+      withinPart?: null | boolean;
     };
     /** @description One baked map, as a file. */
     BakedMapFile: {
@@ -2987,8 +2993,17 @@ export interface components {
     BakeImportMap: {
       /** @description One of the maps a bake makes, such as `normal`, `ao` or `curvature`. */
       map: string;
-      /** @description The PNG, absolute or below the library. A normal map's green runs up the picture, as Patina's bakes do. */
+      /**
+       * @description The picture, absolute or below the library: a PNG is copied as it is, and any other picture Patina reads is
+       *     written as a 16-bit PNG by the GPU engine (#300).
+       */
       file: string;
+      /**
+       * @description For a tangent-space `normal` or `bent` map: its green runs down the picture, as DirectX's do, and is
+       *     turned over as it comes in, since Patina's bakes run it up. False keeps it as it is.
+       * @default false
+       */
+      greenDown: boolean;
     };
     /**
      * @description Maps baked in another program, brought in as a texturing document's bake (#144): the body of
@@ -3002,7 +3017,7 @@ export interface components {
        * @description The texturing document, by its id, whose texture set the maps are of.
        */
       document: string;
-      /** @description Each map and the PNG of it, on the Server's machine. */
+      /** @description Each map and the picture of it, on the Server's machine. */
       maps: components['schemas']['BakeImportMap'][];
       /**
        * @description Whether the normal is in `tangent` or `object` space, as a bake's options say.
@@ -3157,6 +3172,12 @@ export interface components {
        *     material repeats. Null or false bakes the high meshes once, as they are.
        */
       tileable?: null | boolean;
+      /**
+       * @description When the bake is tileable, whether the maps repeat along the patch's `u` only, as a trim sheet's
+       *     strips do (#212): the high mesh is laid again past the patch's left and right sides and nowhere else, so a
+       *     strip at the top meets no copy of the strip at the bottom. Null or false repeats both ways.
+       */
+      trim?: null | boolean;
     };
     /** @description How the position map turns a point on the high poly mesh into a value (#148). */
     BakePositionOptions: {
@@ -5578,7 +5599,8 @@ export interface components {
     /**
      * @description What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A
      *     document's cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for
-     *     each channel of each texture set. Compression and mip levels are a preset's, and are not counted.
+     *     each channel of each texture set. Asked for a platform's preset, it is what that preset writes: each of its
+     *     files for each texture set, at its size, compression and mip chain.
      */
     LibraryCosts: {
       /** @description The folder below `projects/`, empty for the whole library. */
@@ -6006,11 +6028,11 @@ export interface components {
     PackageDependency: {
       /**
        * @description `compound` (a graph of its project's, which the package carries), `shipped` (a compound that ships
-       *                 with Patina, which it does not), `picture` (a bitmap, which it carries), or `unknown` (a node type
-       *                 nothing publishes).
+       *                 with Patina, which it does not), `picture` (a bitmap, which it carries), `drawing` (a Text node's font
+       *                 or a Vector node's SVG file, which it carries), or `unknown` (a node type nothing publishes).
        */
       kind: string;
-      /** @description The node type, or the picture as the graph names it. */
+      /** @description The node type, or the file as the graph names it. */
       name: string;
       /** @description Where it was found, below the library when it is in one, or null when it was not. */
       file?: null | string;
@@ -6022,7 +6044,7 @@ export interface components {
        */
       in?: null | string;
     };
-    /** @description A picture a package carries. */
+    /** @description A picture, font or SVG file a package carries. */
     PackageFile: {
       /** @description Where it is in the package, below `files/`, named by its content. */
       path: string;
@@ -6066,7 +6088,7 @@ export interface components {
       compounds: components['schemas']['PackageCompound'][];
       /** @description The compounds it reads from those that ship with Patina, which it does not carry. */
       shipped: string[];
-      /** @description The pictures it carries under `files/`, and how the graph named each. */
+      /** @description The pictures, fonts and SVG files it carries under `files/`, and how the graph named each. */
       files: components['schemas']['PackageFile'][];
     };
     /** @description What publishing a graph as a package would do, for a dialog to show before it does. */
@@ -6186,6 +6208,11 @@ export interface components {
       memoryBytes: number;
       /** @description Each set, in the order the project lists its documents. */
       sets: components['schemas']['StackChecks'][];
+      /**
+       * @description What is wrong with the project's checks themselves rather than any one set: limits kept for a platform no preset
+       *     writes for any more.
+       */
+      problems: components['schemas']['CheckProblem'][];
     };
     /**
      * @description What a project holds its texture sets to before they are exported (#159), kept in its `project.yaml`. A
@@ -9257,6 +9284,14 @@ export interface components {
       /** @description The bin's entry that holds them, for a Restore, or null when none went. */
       bin?: null | string;
     };
+    /** @description The body of `POST /api/v1/library/uploads/clear` (#301). */
+    UploadsClearRequest: {
+      /**
+       * @description Paths on the Server's machine, or any text naming them, that the client holds where no file of the library
+       *     does yet, such as an open dialog's unsaved settings. An upload any of them names counts as used.
+       */
+      held?: null | string[];
+    };
     /**
      * @description A bake's setup to show in the viewport before it runs (#149): the meshes and the options a bake would be sent,
      *     and what of it to draw. Paths on the Server's machine, as in a bake request, or a project whose own settings the
@@ -12131,6 +12166,7 @@ export interface operations {
       query: {
         project: string;
         preset?: string;
+        measure?: boolean;
       };
       header?: never;
       path?: never;
@@ -13960,6 +13996,7 @@ export interface operations {
     parameters: {
       query?: {
         folder?: string;
+        preset?: string;
       };
       header?: never;
       path?: never;
@@ -14010,6 +14047,7 @@ export interface operations {
       query: {
         over: number;
         folder?: string;
+        preset?: string;
         offset?: number;
         limit?: number;
       };
@@ -14754,7 +14792,9 @@ export interface operations {
   };
   GetUnusedUploads: {
     parameters: {
-      query?: never;
+      query?: {
+        held?: string[];
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -14806,7 +14846,11 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody?: {
+      content: {
+        'application/json': null | components['schemas']['UploadsClearRequest'];
+      };
+    };
     responses: {
       /** @description OK */
       200: {

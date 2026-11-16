@@ -19,7 +19,7 @@ import { Commands } from '../core/commands';
 import { desktop } from '../core/desktop';
 import { termName } from '../core/labels';
 import { messageOf } from '../core/messages';
-import { amount, percent } from '../core/numbers';
+import { amount, length, percent } from '../core/numbers';
 import { ProjectStore } from '../library/project-store';
 import { GraphStore } from './graph-store';
 
@@ -80,6 +80,29 @@ export function storedText(texel: GraphSample): string {
 /** What a picture's format holds of each lane, in the readout's words. */
 export function precisionOf(format: string): string {
   return format.includes('32Float') ? '32-bit float' : format.includes('16Float') ? '16-bit float' : '8 bits';
+}
+
+/** A graph's physical size in centimetres, when it has one: both sides above zero. */
+export interface PhysicalSize {
+  width: number;
+  height: number;
+}
+
+/**
+ * The proportions one copy of a picture is drawn at, in the picture's own pixels across (#184): its pixels' own, or
+ * with Physical on, its graph's physical size's, so a 2 m by 1 m wall laid out on a square map is shown twice as wide
+ * as it is tall. The width stays the picture's, so the zoom readout still says how large its pixels are shown.
+ */
+export function proportionsOf(
+  picture: { width: number; height: number },
+  physical: PhysicalSize | null
+): { width: number; height: number } {
+  return physical ? { width: picture.width, height: (picture.width * physical.height) / physical.width } : picture;
+}
+
+/** The physical size a graph says, in the readout's words. */
+export function physicalText(size: PhysicalSize): string {
+  return `${length(size.width / 100)} × ${length(size.height / 100)}`;
 }
 
 /** A texel's four lanes as the decoded picture holds them, 0 to 1. */
@@ -269,6 +292,20 @@ export function texelText(pixels: ImageData, x: number, y: number): string {
           xuiButton
           size="sm"
           variant="ghost"
+          data-testid="texture-physical"
+          [active]="proportioned() !== null"
+          [attr.aria-pressed]="proportioned() !== null"
+          [disabled]="physicalSize() === null"
+          [title]="physicalTitle()"
+          (click)="physical.set(!physical())"
+        >
+          Physical
+        </button>
+        <button
+          type="button"
+          xuiButton
+          size="sm"
+          variant="ghost"
           data-testid="texture-copy"
           [disabled]="!picture"
           [title]="copyTitle()"
@@ -329,6 +366,22 @@ export class TextureView {
   protected readonly zoom = signal(1);
   protected readonly channel = signal<PictureChannel>('rgba');
   protected readonly tiled = signal(false);
+  /** Whether a picture is drawn in its graph's physical proportions rather than its pixels' (#184). */
+  protected readonly physical = signal(false);
+  /** The graph's physical size, when it says one. */
+  protected readonly physicalSize = computed((): PhysicalSize | null => {
+    const info = this.store.document()?.info;
+    const [width, height] = [info?.physicalWidth ?? 0, info?.physicalHeight ?? 0];
+    return width > 0 && height > 0 ? { width, height } : null;
+  });
+  /** The physical size the picture is drawn in the proportions of, or null for its pixels' own. */
+  protected readonly proportioned = computed(() => (this.physical() ? this.physicalSize() : null));
+  protected readonly physicalTitle = computed(() => {
+    const size = this.physicalSize();
+    return size
+      ? `Shows the picture in the proportions of the graph's physical size, ${physicalText(size)}, rather than its pixels'`
+      : 'The graph has no physical size. Give it one in Graph Settings to see the picture in its proportions';
+  });
   protected readonly loadingFull = signal(false);
   /** Whether the picture on screen was just copied, which the button says until the picture changes. */
   protected readonly copied = signal<'copied' | 'refused' | null>(null);
@@ -376,12 +429,11 @@ export class TextureView {
 
     // Tiled, the whole sheet of copies is what fits.
     const sheet = this.across();
+    const shape = proportionsOf(picture, this.proportioned());
     const fit =
-      width > 0 && height > 0
-        ? Math.min(width / (picture.width * sheet), height / (picture.height * sheet)) * FitShare
-        : 1;
+      width > 0 && height > 0 ? Math.min(width / (shape.width * sheet), height / (shape.height * sheet)) * FitShare : 1;
     const scale = fit * this.zoom();
-    return { width: picture.width * scale, height: picture.height * scale };
+    return { width: shape.width * scale, height: shape.height * scale };
   });
   /** How large the picture is shown, as a share of its own size. */
   protected readonly percent = computed(() => {
@@ -407,7 +459,9 @@ export class TextureView {
       return '—';
     }
 
-    const size = `${String(picture.width)} × ${String(picture.height)}`;
+    const physical = this.proportioned();
+    const shownAs = physical ? `, shown as ${physicalText(physical)}` : '';
+    const size = `${String(picture.width)} × ${String(picture.height)}${shownAs}`;
     return this.full() ? size : `${size}, a reduction${this.loadingFull() ? ' until the full size comes' : ''}`;
   });
   protected readonly copyTitle = computed(() =>

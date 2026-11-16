@@ -76,6 +76,26 @@ public sealed class LibraryCleanTests : IDisposable {
         Assert.Equal(1, library.Care.Clean(NothingOpen).Pictures);
     }
 
+    /// <summary>
+    ///     The rescan reads every document anyway, so it records what each names (#301): a Clean after it reads none
+    ///     of them again. The file changed under the same size and time shows the row came from the scan.
+    /// </summary>
+    [Fact]
+    public void The_rescan_records_what_each_document_names() {
+        var crate = Project("crate");
+        Picture(crate, "rust.png");
+        var stack = Path.Combine(crate, "crate.vxlayers");
+        File.WriteAllText(stack, """{"image":"pictures/rust.png"}""");
+        var earlier = DateTime.UtcNow.AddHours(-1);
+        File.SetLastWriteTimeUtc(stack, earlier);
+        library.Rescan(TestContext.Current.CancellationToken);
+
+        File.WriteAllText(stack, """{"image":"pictures/xxxx.png"}""");
+        File.SetLastWriteTimeUtc(stack, earlier);
+
+        Assert.Equal(0, library.Care.Clean(NothingOpen).Pictures);
+    }
+
     [Fact]
     public void Uploads_nothing_names_go_to_the_bin_and_come_back() {
         var used = Upload("aaaa", "crate.glb", DateTime.UtcNow.AddDays(-1));
@@ -89,11 +109,11 @@ public sealed class LibraryCleanTests : IDisposable {
             [Path.Combine(crate, "crate.vxlayers")] = $$"""{"high":"{{escaped}}"}"""
         };
 
-        var listed = library.Care.UnusedUploads(open);
+        var listed = library.Care.UnusedUploads(open, []);
 
         Assert.Equal(["uploads/bbbb/scan.png"], listed.Files.Select(static file => file.Path));
         Assert.Equal(3, listed.Bytes);
-        var cleared = library.Care.ClearUploads(open);
+        var cleared = library.Care.ClearUploads(open, []);
         Assert.Equal(1, cleared.Count);
         Assert.False(File.Exists(unused));
         Assert.False(Directory.Exists(Path.GetDirectoryName(unused)));

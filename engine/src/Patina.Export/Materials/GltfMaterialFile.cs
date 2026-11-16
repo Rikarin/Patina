@@ -36,6 +36,12 @@ static class GltfMaterialFile {
                 AlphaMode = blended ? ModelAlphaMode.Blend : ModelAlphaMode.Opaque
             }
         };
+        if (slots.Layers.Any) {
+            warnings.Add(
+                "glTF: the coat, sheen and transmission are left out, because this writes no glTF extensions."
+            );
+        }
+
         return ModelWriter.GltfMaterials([material], name);
     }
 

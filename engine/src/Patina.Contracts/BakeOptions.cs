@@ -56,7 +56,7 @@ public sealed record BakeOptions {
     /// <summary>Every map a bake can write, in the order they are reported.</summary>
     public static IReadOnlyList<string> AllMaps { get; } = [
         "normal", "height", "ao", "bent", "curvature", "thickness", "position", "world", "id", "colour", "opacity",
-        "edges", "islands", "borders"
+        "edges", "islands", "borders", "bounds", "density"
     ];
 
     /// <summary>The atlas's width, in texels, and its height too unless <see cref="Rows" /> says otherwise.</summary>
@@ -144,6 +144,13 @@ public sealed record BakeOptions {
     ///     material repeats. Null or false bakes the high meshes once, as they are.
     /// </summary>
     public bool? Tileable { get; set; }
+
+    /// <summary>
+    ///     When the bake is tileable, whether the maps repeat along the patch's <c>u</c> only, as a trim sheet's
+    ///     strips do (#212): the high mesh is laid again past the patch's left and right sides and nowhere else, so a
+    ///     strip at the top meets no copy of the strip at the bottom. Null or false repeats both ways.
+    /// </summary>
+    public bool? Trim { get; set; }
 
     /// <summary>
     ///     The code of the refusal of a minimum occluder distance at or past the occlusion distance while occlusion or

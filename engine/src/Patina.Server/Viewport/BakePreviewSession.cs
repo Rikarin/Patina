@@ -1,5 +1,7 @@
 using Patina.Contracts;
 using Patina.Ipc;
+using Patina.Library;
+using Patina.Server.Api;
 
 namespace Patina.Server.Viewport;
 
@@ -8,15 +10,23 @@ namespace Patina.Server.Viewport;
 ///     and the key the Worker answered with; the Worker holds the shapes, which it makes again when it is told again.
 /// </summary>
 /// <remarks>
-///     Its own state beside <see cref="ViewportSession" /> rather than inside it: a preview lies over whatever the
-///     viewport shows and changes nothing about it, so the session only has to tell a new Worker and draw again.
+///     <para>
+///         Its own state beside <see cref="ViewportSession" /> rather than inside it: a preview lies over whatever the
+///         viewport shows and changes nothing about it, so the session only has to tell a new Worker and draw again.
+///     </para>
+///     <para>
+///         A preview that names a project follows its <c>project.yaml</c> (#300): when the file has changed since it
+///         was read, by any client or by hand, the next frame reads the meshes, cage and options from it again, as
+///         <c>PUT /viewport/bake-preview</c> did. A file that no longer reads keeps what was shown, with the reason.
+///     </para>
 /// </remarks>
-public sealed class BakePreviewSession(WorkerLink worker) : IDisposable {
+public sealed class BakePreviewSession(WorkerLink worker, LibraryHost host) : IDisposable {
     static readonly TimeSpan WorkerPatience = TimeSpan.FromSeconds(10);
 
     readonly Lock changing = new();
     readonly SemaphoreSlim telling = new(1, 1);
     ViewportBakePreview? preview;
+    Followed? following;
     ViewportIsolation? isolation;
     BakePreviewState state = BakePreviewState.Off;
     long version;
@@ -33,13 +43,46 @@ public sealed class BakePreviewSession(WorkerLink worker) : IDisposable {
         }
     }
 
+    /// <summary>
+    ///     The project file a preview as sent follows, as it stands before it is read, or null for a preview that names
+    ///     no project. Taken before the preview is resolved, so a change written while it is read is not missed.
+    /// </summary>
+    public Followed? Follow(ViewportBakePreview asked) {
+        ArgumentNullException.ThrowIfNull(asked);
+        if (asked.Project is not { } project || host.Library is not { } library) {
+            return null;
+        }
+
+        try {
+            var file = LibraryFiles.ProjectFile(library.RootPath, project);
+            return new(asked, file, Stamp(file));
+        } catch (Exception e) when (e is ArgumentException or IOException) {
+            return null; // resolving it says why
+        }
+    }
+
+    /// <summary>Whether the preview shown follows a project, by its path below <c>projects/</c>.</summary>
+    public bool Follows(string project) {
+        lock (changing) {
+            return following?.Asked.Project == project;
+        }
+    }
+
     /// <summary>Shows a bake's setup, or takes it off for an empty low mesh, and answers with the key.</summary>
+    /// <param name="asked">The setup, with a project's paths and options already in it.</param>
+    /// <param name="followed">What <see cref="Follow" /> said before it was resolved, read again on a change.</param>
+    /// <param name="cancellationToken">Stops the wait.</param>
     /// <exception cref="RendererMissingException">No GPU process connected in time.</exception>
     /// <exception cref="IpcException">The Worker could not read the meshes or show them.</exception>
-    public async Task<BakePreviewState> ShowAsync(ViewportBakePreview asked, CancellationToken cancellationToken) {
+    public async Task<BakePreviewState> ShowAsync(
+        ViewportBakePreview asked,
+        Followed? followed,
+        CancellationToken cancellationToken
+    ) {
         ArgumentNullException.ThrowIfNull(asked);
         lock (changing) {
             preview = asked.Low.Length == 0 ? null : asked;
+            following = preview is null ? null : followed;
             version++;
             if (preview is null) {
                 state = BakePreviewState.Off;
@@ -86,6 +129,10 @@ public sealed class BakePreviewSession(WorkerLink worker) : IDisposable {
     async Task TellAsync(IpcConnection connection, bool throwing, CancellationToken cancellationToken) {
         await telling.WaitAsync(cancellationToken);
         try {
+            if (!throwing) {
+                ReadAgain();
+            }
+
             ViewportBakePreview? showing;
             ViewportIsolation? alone;
             long asked;
@@ -129,4 +176,49 @@ public sealed class BakePreviewSession(WorkerLink worker) : IDisposable {
             telling.Release();
         }
     }
+
+    /// <summary>Reads a followed project's setup again when its file has changed since it was read (#300).</summary>
+    void ReadAgain() {
+        Followed? now;
+        lock (changing) {
+            now = following;
+        }
+
+        if (now is null) {
+            return;
+        }
+
+        var stamp = Stamp(now.File);
+        if (stamp == now.Written) {
+            return;
+        }
+
+        var refused = ProjectBakePlanEndpoint.Resolve(host, now.Asked, out var resolved);
+        lock (changing) {
+            if (following != now) {
+                return; // a client showed another meanwhile
+            }
+
+            following = now with { Written = stamp };
+            if (refused is null && resolved.Low.Length > 0) {
+                preview = resolved;
+                version++;
+            } else {
+                var why = refused?.ProblemDetails.Detail ?? "it names no mesh to bake onto";
+                state = state with { Warnings = [$"The project's bake settings changed and no longer read: {why}"] };
+            }
+        }
+    }
+
+    /// <summary>When a file was last written, and how long it is: anything that rewrites it changes one.</summary>
+    static (long Ticks, long Length) Stamp(string file) {
+        var info = new FileInfo(file);
+        return info.Exists ? (info.LastWriteTimeUtc.Ticks, info.Length) : (0, -1);
+    }
+
+    /// <summary>A preview as sent that names a project, the project's file, and how that stood when read.</summary>
+    /// <param name="Asked">The preview as a client sent it.</param>
+    /// <param name="File">The project's <c>project.yaml</c>.</param>
+    /// <param name="Written">When it was written and how long it was.</param>
+    public sealed record Followed(ViewportBakePreview Asked, string File, (long Ticks, long Length) Written);
 }

@@ -1,4 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
 using Patina.Contracts;
+using Patina.Jobs;
 using System.Net;
 
 namespace Patina.Server.Tests;
@@ -89,6 +91,49 @@ public sealed partial class LibraryTreeApiTests {
         Assert.Equal(1, (await cleared.Content.ReadFromJsonAsync<UploadsCleared>(Token))!.Count);
         Assert.False(File.Exists(picture));
         Assert.True(File.Exists(mesh));
+    }
+
+    /// <summary>
+    ///     An upload no file names yet but a queued bake does, or a client's open dialog, is used (#301): the bake's
+    ///     high mesh and the cage a client holds unsaved stay, for the listing and the clear alike.
+    /// </summary>
+    [Fact]
+    public async Task Uploads_a_queued_bake_or_a_client_holds_are_used() {
+        using var high = await UploadAsync("high.fbx", [.."high"u8]);
+        using var cage = await UploadAsync("cage.glb", [.."cage"u8]);
+        using var scan = await UploadAsync("lost.png", [.."lost"u8]);
+        var highPath = (await high.Content.ReadFromJsonAsync<UploadedFile>(Token))!.Path;
+        var cagePath = (await cage.Content.ReadFromJsonAsync<UploadedFile>(Token))!.Path;
+        var lostPath = (await scan.Content.ReadFromJsonAsync<UploadedFile>(Token))!.Path;
+        foreach (var path in (string[])[highPath, cagePath, lostPath]) {
+            File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-1));
+        }
+
+        var jobs = server.Services.GetRequiredService<JobQueue>();
+        var job = jobs.Enqueue(
+            "held-test",
+            new() { High = [highPath], Low = Path.Combine(server.Library, "low.glb"), Output = server.Library }
+        );
+        try {
+            var unused = await client.GetFromJsonAsync<UnusedUploadList>(
+                $"/api/v1/library/uploads/unused?held={Uri.EscapeDataString(cagePath)}",
+                Token
+            );
+            using var cleared = await client.PostAsJsonAsync(
+                "/api/v1/library/uploads/clear",
+                new UploadsClearRequest(
+                    [$$"""{"cage":"{{cagePath.Replace("\\", "\\\\", StringComparison.Ordinal)}}"}"""]
+                ),
+                Token
+            );
+
+            Assert.Equal(["lost.png"], unused!.Files.Select(static file => Path.GetFileName(file.Path)));
+            Assert.Equal(1, (await cleared.Content.ReadFromJsonAsync<UploadsCleared>(Token))!.Count);
+            Assert.True(File.Exists(highPath) && File.Exists(cagePath));
+            Assert.False(File.Exists(lostPath));
+        } finally {
+            jobs.Cancel(job.Id);
+        }
     }
 
     /// <summary>A name that is no picture or mesh, or is more than a file's name, is refused with a code.</summary>

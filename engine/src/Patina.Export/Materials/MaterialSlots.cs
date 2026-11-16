@@ -39,6 +39,9 @@ public sealed record MaterialSlots {
     public SlotLane? Occlusion { get; init; }
     public SlotLane? Height { get; init; }
 
+    /// <summary>OpenPBR's layers above the base (#142), each wired only when the set had that channel.</summary>
+    public OpenPbrSlots Layers { get; init; } = new();
+
     /// <summary>Which way the normal file's green runs.</summary>
     public GreenAxis Green { get; init; } = GreenAxis.Up;
 
@@ -90,6 +93,8 @@ public sealed record MaterialSlots {
             ExportMaps.Normal => this with { Normal = Normal ?? colour },
             ExportMaps.Emissive => this with { Emissive = Emissive ?? colour },
             ExportMaps.Specular => this with { Specular = Specular ?? colour },
+            ExportMaps.SheenColor when Had(colour.File, map) =>
+                this with { Layers = Layers with { SheenColor = Layers.SheenColor ?? colour } },
             _ => this
         };
 
@@ -101,10 +106,13 @@ public sealed record MaterialSlots {
             ExportMaps.Metalness => this with { Metalness = Metalness ?? read },
             ExportMaps.Occlusion => this with { Occlusion = Occlusion ?? read },
             ExportMaps.Height => this with { Height = Height ?? read },
-            ExportMaps.Opacity when read.File.File.Maps.Contains(ExportMaps.Opacity, StringComparer.Ordinal) =>
-                this with { Opacity = Opacity ?? read },
+            ExportMaps.Opacity when Had(read.File, map) => this with { Opacity = Opacity ?? read },
+            _ when Had(read.File, map) => this with { Layers = Layers.WithLane(map, read) },
             _ => this
         };
+
+    /// <summary>Whether the set had a map, not only its default, in a file.</summary>
+    static bool Had(SlotFile file, string map) => file.File.Maps.Contains(map, StringComparer.Ordinal);
 
     /// <summary>The map whose r, g and b fill a file's first three lanes in order, or null.</summary>
     static string? Triple(IReadOnlyList<ChannelSource> channels) {
@@ -120,4 +128,38 @@ public sealed record MaterialSlots {
 
         return map;
     }
+}
+
+/// <summary>
+///     Where OpenPBR's layer maps (#142) are in a set's files: a coat, a sheen and transmission. Their defaults leave
+///     the base alone, and a set that does not have one has no slot for it, so a material file says nothing of that
+///     layer.
+/// </summary>
+public sealed record OpenPbrSlots {
+    public SlotLane? Coat { get; init; }
+    public SlotLane? CoatRoughness { get; init; }
+    public SlotLane? Sheen { get; init; }
+    public SlotColour? SheenColor { get; init; }
+    public SlotLane? SheenRoughness { get; init; }
+    public SlotLane? Transmission { get; init; }
+
+    /// <summary>Whether any layer has a slot.</summary>
+    public bool Any =>
+        Coat is not null
+        || CoatRoughness is not null
+        || Sheen is not null
+        || SheenColor is not null
+        || SheenRoughness is not null
+        || Transmission is not null;
+
+    /// <summary>A grey slot filled, unless an earlier file filled it.</summary>
+    internal OpenPbrSlots WithLane(string map, SlotLane read) =>
+        map switch {
+            ExportMaps.Coat => this with { Coat = Coat ?? read },
+            ExportMaps.CoatRoughness => this with { CoatRoughness = CoatRoughness ?? read },
+            ExportMaps.Sheen => this with { Sheen = Sheen ?? read },
+            ExportMaps.SheenRoughness => this with { SheenRoughness = SheenRoughness ?? read },
+            ExportMaps.Transmission => this with { Transmission = Transmission ?? read },
+            _ => this
+        };
 }

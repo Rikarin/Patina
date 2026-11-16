@@ -24,7 +24,8 @@ public sealed record ImportedMaterial(string Name, IReadOnlyList<ImportedSlot> S
 
 /// <summary>One map of a material: lanes of a picture times a factor, or a constant.</summary>
 /// <param name="Usage">
-///     The output it is: baseColor, normal, roughness, metalness, occlusion, emissive, opacity or height.
+///     The output it is: baseColor, normal, roughness, metalness, occlusion, emissive, opacity or height, or one of
+///     OpenPBR's layer maps: coat, coatRoughness, sheen, sheenColor, sheenRoughness or transmission.
 /// </param>
 /// <param name="Texture">The picture, absolute, or null for a constant.</param>
 /// <param name="Lane">The picture's lane that holds a grey map, 0 to 3, or -1 for its first three in order.</param>

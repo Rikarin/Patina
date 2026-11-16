@@ -20,7 +20,7 @@ T = TypeVar("T", bound="PackageFile")
 
 @_attrs_define
 class PackageFile:
-    """ A picture a package carries.
+    """ A picture, font or SVG file a package carries.
 
         Attributes:
             path (str): Where it is in the package, below `files/`, named by its content.

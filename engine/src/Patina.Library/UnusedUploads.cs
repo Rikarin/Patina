@@ -9,7 +9,8 @@ namespace Patina.Library;
 ///     upload's path still needs it: a project whose mesh came from it, or a bake's high mesh. A file counts as named
 ///     when any file of the library or an open document holds its path below the library, as a full path does; a file
 ///     outside every project too large to read keeps them all. One sent in the last hour is taken to be about to be
-///     used, by a client that sent it a moment ago and has not yet named it.
+///     used, by a client that sent it a moment ago and has not yet named it. What is held but in no file yet counts
+///     too (#301): a bake or build queued or running, and what a client says an open dialog holds unsaved.
 /// </summary>
 static class UnusedUploads {
     /// <summary>How long an upload counts as just sent, and so as used.</summary>
@@ -18,12 +19,15 @@ static class UnusedUploads {
     /// <summary>The uploads nothing names, as paths below the library with forward slashes, in order.</summary>
     /// <param name="root">The library.</param>
     /// <param name="open">The open documents' text by their full path.</param>
+    /// <param name="held">Paths or text held outside every file, such as a queued bake's request.</param>
     /// <param name="names">The names in the library's files.</param>
     public static IReadOnlyList<UnusedFile> Find(
         string root,
         IReadOnlyDictionary<string, string> open,
+        IReadOnlyList<string> held,
         LibraryNameSource names
     ) {
+        ArgumentNullException.ThrowIfNull(held);
         ArgumentNullException.ThrowIfNull(open);
         root = Path.GetFullPath(root);
         var folder = Path.Combine(root, LibraryUploads.Folder);
@@ -47,7 +51,9 @@ static class UnusedUploads {
         }
 
         HashSet<string> named = [
-            ..readers.SelectMany(static reader => reader.Names ?? []).Select(static name => name.Name)
+            ..readers.SelectMany(static reader => reader.Names ?? [])
+                .Concat(held.SelectMany(LibraryNameReader.Read))
+                .Select(static name => name.Name)
         ];
         return [
             ..uploads.Where(upload => !named.Contains(LibraryNameReader.Normal(upload)))
@@ -61,9 +67,10 @@ static class UnusedUploads {
     public static (BinItem? Item, int Count, long Bytes) Bin(
         string root,
         IReadOnlyDictionary<string, string> open,
+        IReadOnlyList<string> held,
         LibraryNameSource names
     ) {
-        var found = Find(root, open, names);
+        var found = Find(root, open, held, names);
         if (found.Count == 0) {
             return (null, 0, 0);
         }

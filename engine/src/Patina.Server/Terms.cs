@@ -35,6 +35,8 @@ public static class Terms {
         ["id"] = "ID",
         ["islands"] = "UV Islands",
         ["borders"] = "UV Borders",
+        ["bounds"] = "UV Island Bounds",
+        ["density"] = "Texel Density",
 
         // Port and parameter kinds.
         ["Float"] = "Number",

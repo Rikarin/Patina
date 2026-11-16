@@ -9,15 +9,20 @@ from ...types import Response, UNSET
 from ... import errors
 
 from ...models.problem_details import ProblemDetails
+from ...models.uploads_clear_request import UploadsClearRequest
 from ...models.uploads_cleared import UploadsCleared
+from ...types import UNSET, Unset
 from typing import cast
 
 
 
 def _get_kwargs(
-    
+    *,
+    body: None | Unset | UploadsClearRequest = UNSET,
+
 ) -> dict[str, Any]:
-    
+    headers: dict[str, Any] = {}
+
 
     
 
@@ -28,7 +33,15 @@ def _get_kwargs(
         "url": "/api/v1/library/uploads/clear",
     }
 
+    
+    if isinstance(body, UploadsClearRequest):
+        _kwargs["json"] = body.to_dict()
+    else:
+        _kwargs["json"] = body
 
+    headers["Content-Type"] = "application/json"
+
+    _kwargs["headers"] = headers
     return _kwargs
 
 
@@ -80,10 +93,14 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx2.Re
 def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
+    body: None | Unset | UploadsClearRequest = UNSET,
 
 ) -> Response[ProblemDetails | UploadsCleared]:
-    """ Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into
-    the bin as one entry, which Restore puts back.
+    """ Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them with
+    the body's held, into the bin as one entry, which Restore puts back.
+
+    Args:
+        body (None | Unset | UploadsClearRequest):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -95,7 +112,8 @@ def sync_detailed(
 
 
     kwargs = _get_kwargs(
-        
+        body=body,
+
     )
 
     response = client.get_httpx_client().request(
@@ -107,10 +125,14 @@ def sync_detailed(
 def sync(
     *,
     client: AuthenticatedClient | Client,
+    body: None | Unset | UploadsClearRequest = UNSET,
 
 ) -> ProblemDetails | UploadsCleared | None:
-    """ Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into
-    the bin as one entry, which Restore puts back.
+    """ Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them with
+    the body's held, into the bin as one entry, which Restore puts back.
+
+    Args:
+        body (None | Unset | UploadsClearRequest):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -123,16 +145,21 @@ def sync(
 
     return sync_detailed(
         client=client,
+body=body,
 
     ).parsed
 
 async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
+    body: None | Unset | UploadsClearRequest = UNSET,
 
 ) -> Response[ProblemDetails | UploadsCleared]:
-    """ Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into
-    the bin as one entry, which Restore puts back.
+    """ Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them with
+    the body's held, into the bin as one entry, which Restore puts back.
+
+    Args:
+        body (None | Unset | UploadsClearRequest):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -144,7 +171,8 @@ async def asyncio_detailed(
 
 
     kwargs = _get_kwargs(
-        
+        body=body,
+
     )
 
     response = await client.get_async_httpx_client().request(
@@ -156,10 +184,14 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: AuthenticatedClient | Client,
+    body: None | Unset | UploadsClearRequest = UNSET,
 
 ) -> ProblemDetails | UploadsCleared | None:
-    """ Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into
-    the bin as one entry, which Restore puts back.
+    """ Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them with
+    the body's held, into the bin as one entry, which Restore puts back.
+
+    Args:
+        body (None | Unset | UploadsClearRequest):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -172,5 +204,6 @@ async def asyncio(
 
     return (await asyncio_detailed(
         client=client,
+body=body,
 
     )).parsed

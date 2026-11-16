@@ -16,10 +16,13 @@ const Budgets: readonly number[] = [4 * MiB, 16 * MiB, 64 * MiB, 256 * MiB];
 /** How many documents over the budget the list shows; the total says how many there are. */
 const OverShown = 50;
 
+/** What the platform choice holds for no preset: the maps as they are, uncompressed. */
+const Uncompressed = '';
+
 /**
  * What the library costs (#207), while nothing in it is chosen: its documents' maps, uncompressed at each one's size,
- * by folder, costliest first, and a click goes into a folder. Below, the documents in the folder that cost more than a
- * budget. Both are the engine's index, so neither opens a document.
+ * or as a platform's preset writes them, by folder, costliest first, and a click goes into a folder. Below, the
+ * documents in the folder that cost more than a budget. Both are the engine's index, so neither opens a document.
  */
 @Component({
   selector: 'ptn-library-costs',
@@ -36,12 +39,20 @@ const OverShown = 50;
         </button>
       }
       <span class="flex-1"></span>
+      <xui-select
+        class="w-28 shrink-0"
+        size="sm"
+        aria-label="Platform"
+        title="Uncompressed counts the maps as they are; a platform counts what its preset writes, compressed, with its mip chain"
+        data-testid="costs-platform"
+        [filterable]="false"
+        [items]="platforms()"
+        [itemText]="platformName"
+        [value]="platform()"
+        (valueChange)="platform.set($event ?? Uncompressed)"
+      />
       @if (costs(); as answer) {
-        <span
-          class="readout shrink-0"
-          data-testid="costs-total"
-          title="What the documents' maps hold together, uncompressed at each document's size, before an export compresses them"
-        >
+        <span class="readout shrink-0" data-testid="costs-total" [title]="totalTitle()">
           {{ size(answer.bytes) }}
         </span>
       }
@@ -101,6 +112,24 @@ export class LibraryCostsView {
   protected readonly budgets = Budgets;
   /** The folder shown, below the library's projects, empty for the whole library. */
   protected readonly folder = signal('');
+  protected readonly Uncompressed = Uncompressed;
+  /** The preset whose files are counted, by id, or uncompressed (#207). */
+  protected readonly platform = signal(Uncompressed);
+  private readonly presets = signal<readonly { id: string; name: string }[]>([]);
+  /** Uncompressed, then the library's export targets, then every other preset. */
+  protected readonly platforms = computed(() => {
+    const state = this.store.state();
+    const targets = state.kind === 'ready' ? state.info.exportTargets : [];
+    const ids = this.presets().map(preset => preset.id);
+    return [Uncompressed, ...targets.filter(id => ids.includes(id)), ...ids.filter(id => !targets.includes(id))];
+  });
+  protected readonly totalTitle = computed(() =>
+    this.platform() === Uncompressed
+      ? "What the documents' maps hold together, uncompressed at each document's size, before an export compresses them"
+      : "What the files the platform's preset writes take in GPU memory, for each texture set of each document"
+  );
+  protected readonly platformName = (id: string): string =>
+    id === Uncompressed ? 'Uncompressed' : (this.presets().find(preset => preset.id === id)?.name ?? id);
   protected readonly budget = signal(Budgets[1] ?? 16 * MiB);
   protected readonly costs = signal<LibraryCosts | null>(null);
   protected readonly over = signal<readonly DocumentCost[]>([]);
@@ -121,9 +150,15 @@ export class LibraryCostsView {
     effect(() => {
       const folder = this.folder();
       const budget = this.budget();
+      const platform = this.platform();
       // ⚠ Only once there is a library: with none, every start asked and logged two 404s (#192).
       if (this.ready()) {
-        untracked(() => void this.read(folder, budget));
+        untracked(() => void this.read(folder, budget, platform));
+      }
+    });
+    effect(() => {
+      if (this.ready()) {
+        untracked(() => void this.readPresets());
       }
     });
   }
@@ -152,15 +187,26 @@ export class LibraryCostsView {
 
   private reading = '';
 
-  private async read(folder: string, budget: number): Promise<void> {
-    const key = `${folder}|${budget}`;
+  private async readPresets(): Promise<void> {
+    try {
+      const client = await this.store.api();
+      const listed = unwrap(await client.GET('/api/v1/export/presets', { params: { query: {} } }));
+      this.presets.set(listed.presets);
+    } catch {
+      this.presets.set([]); // the costs are still counted uncompressed
+    }
+  }
+
+  private async read(folder: string, budget: number, platform: string): Promise<void> {
+    const key = `${folder}|${budget}|${platform}`;
     this.reading = key;
+    const preset = platform === Uncompressed ? {} : { preset: platform };
     try {
       const client = await this.store.api();
       const [costs, over] = await Promise.all([
-        client.GET('/api/v1/library/costs', { params: { query: { folder } } }),
+        client.GET('/api/v1/library/costs', { params: { query: { folder, ...preset } } }),
         client.GET('/api/v1/library/costs/documents', {
-          params: { query: { folder, over: budget, offset: 0, limit: OverShown } }
+          params: { query: { folder, over: budget, offset: 0, limit: OverShown, ...preset } }
         })
       ]);
       if (this.reading === key) {

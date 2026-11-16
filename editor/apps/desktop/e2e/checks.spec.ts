@@ -1,7 +1,7 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { leave, newLibrary, newProject, removeScratch } from './projects';
 
 const main = resolve(__dirname, '../../../dist/apps/desktop/main.js');
@@ -86,11 +86,11 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
   await expect(window.getByTestId('checks-memory')).toHaveText(/ MB with /u);
 
   // Each file the export writes is listed with its size and the memory it takes.
-  await window.getByTestId('checks-files').locator('summary').click();
+  await window.getByTestId('checks-files').locator('[data-disclosure-toggle]').click();
   await expect(window.getByTestId('checks-file').first()).toHaveText(/\.\w+\s*\d+ × \d+\s*[\d.]+ MB/u);
 
   // A density far past what the set has is one it falls short of, and the problem shows it on the mesh.
-  await window.getByTestId('checks-limits').locator('summary').click();
+  await window.getByTestId('checks-limits').locator('[data-disclosure-toggle]').click();
   await window.getByTestId('checks-limit-texelDensity').fill('1000000');
   await window.getByTestId('checks-limit-texelDensity').press('Enter');
   await window.getByTestId('checks-limit-texelDensity').blur();
@@ -112,7 +112,7 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
   // breaks when it is checked for Godot.
   await window.getByTestId('checks-platform').click();
   await window.getByRole('option', { name: 'Godot' }).click();
-  await expect(window.getByTestId('checks-limits').locator('summary')).toHaveText('Limits for Godot');
+  await expect(window.getByTestId('checks-limits').locator('[data-disclosure-toggle]')).toHaveText('Limits for Godot');
   await window.getByTestId('checks-limit-maxSize').fill('16');
   await window.getByTestId('checks-limit-maxSize').press('Enter');
   await window.getByTestId('checks-limit-maxSize').blur();
@@ -130,4 +130,36 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
   await expect(window.getByTestId('checks-project-memory')).toHaveText(/ MB for 2 sets with Godot/u);
   await expect(sets.locator('[data-code="texture-too-large"]')).toHaveCount(2);
   await expect(sets.filter({ hasText: 'Gold' }).getByTestId('checks-unmeasured')).toHaveCount(0);
+
+  // A layered material nobody has open is judged from its file, until the check is asked to measure every set: then
+  // the engine opens it for the GPU to measure, and none is left unmeasured (#300).
+  await addLayeredMaterial('Trim');
+  await window.getByTestId('checks-run').click();
+  await expect(sets).toHaveCount(3, { timeout: 120_000 });
+  const trim = window.locator('[data-testid="checks-set"][data-document$="/trim.vxlayers"]');
+  await expect(trim.getByTestId('checks-unmeasured')).toHaveCount(1);
+  await window.getByTestId('checks-measure-all').getByRole('checkbox').click();
+  await expect(window.getByTestId('checks-measure-all').getByRole('checkbox')).toBeChecked();
+  await window.getByTestId('checks-run').click();
+  await expect(trim.getByTestId('checks-unmeasured')).toHaveCount(0, { timeout: 180_000 });
+  await expect(sets).toHaveCount(3);
+  await expect(window.getByTestId('checks-unmeasured')).toHaveCount(0);
 });
+
+/** Adds a layered material to the project through the engine's API, as another client would, without opening it. */
+async function addLayeredMaterial(name: string): Promise<void> {
+  const { baseUrl, token } = await window.evaluate(() =>
+    (
+      globalThis as unknown as { patina: { connection(): Promise<{ baseUrl: string; token: string }> } }
+    ).patina.connection()
+  );
+  const project = relative(join(scratch, 'Game.ptlib', 'projects'), dirname(projectFile())).replaceAll('\\', '/');
+  const response = await fetch(`${baseUrl}/api/v1/library/project/documents`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project, kind: 'layered-material', name, resolution: 256 })
+  });
+  if (!response.ok) {
+    throw new Error(`The engine added no ${name}: ${response.status} ${await response.text()}`);
+  }
+}

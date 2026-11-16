@@ -31,7 +31,8 @@ const KindNames: Readonly<Record<string, string>> = {
 const KindHints: Readonly<Record<string, string>> = {
   compound: 'Carried in the package',
   shipped: 'Ships with Patina, so not carried',
-  picture: 'Carried in the package'
+  picture: 'Carried in the package',
+  drawing: 'Carried in the package'
 };
 
 /**

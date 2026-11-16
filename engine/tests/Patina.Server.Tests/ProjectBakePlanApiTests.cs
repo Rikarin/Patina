@@ -2,6 +2,7 @@ using Patina.Contracts;
 using Patina.Library;
 using System.Net;
 using System.Text.Json;
+using Vixen.Core.Imaging;
 
 namespace Patina.Server.Tests;
 
@@ -12,6 +13,7 @@ namespace Patina.Server.Tests;
 public sealed class ProjectBakePlanApiTests : IAsyncLifetime {
     readonly ServerFixture server = new();
     HttpClient client = null!;
+    PictureWorker pictures = null!;
     ProjectDocument crate = null!;
 
     CancellationToken Token => TestContext.Current.CancellationToken;
@@ -42,10 +44,11 @@ public sealed class ProjectBakePlanApiTests : IAsyncLifetime {
         crate = document;
         File.WriteAllText(Path.Combine(project, LibraryLayout.ProjectFile), DocumentCodec.Write(document));
         client = server.AuthorisedClient();
-        await Task.CompletedTask;
+        pictures = await PictureWorker.ConnectAsync(server.SocketPath, Token);
     }
 
     public async ValueTask DisposeAsync() {
+        await pictures.DisposeAsync();
         client.Dispose();
         await server.DisposeAsync();
     }
@@ -165,7 +168,7 @@ public sealed class ProjectBakePlanApiTests : IAsyncLifetime {
         byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
         var theirs = Path.Combine(server.Library, "elsewhere_normal.png");
         await File.WriteAllBytesAsync(theirs, png, Token);
-        await File.WriteAllTextAsync(Path.Combine(server.Library, "notes.png"), "not a picture", Token);
+        await File.WriteAllTextAsync(Path.Combine(server.Library, "notes.txt"), "not a picture", Token);
         var box = ProjectBakes.Read(folder).Documents.Single(static d => d.Material == "Box").Id.Value;
 
         var imported = await client.PostAsJsonAsync(
@@ -175,7 +178,7 @@ public sealed class ProjectBakePlanApiTests : IAsyncLifetime {
         );
         var notPng = await client.PostAsJsonAsync(
             "/api/v1/library/project/bake/import",
-            new BakeImportRequest("crate", box, [new("ao", "notes.png")]),
+            new BakeImportRequest("crate", box, [new("ao", "notes.txt")]),
             Token
         );
         var unknown = await client.PostAsJsonAsync(
@@ -201,6 +204,47 @@ public sealed class ProjectBakePlanApiTests : IAsyncLifetime {
             (made.Material, made.UvSet, made.Space, Assert.Single(made.Result.Maps).Map)
         );
         Assert.Null(BakeFit.Stale(maps, null, new(1, 512, 256)));
+    }
+
+    /// <summary>
+    ///     A map in any picture Patina reads comes in as a 16-bit PNG, and a normal whose green runs down comes in with
+    ///     it turned up (#300). The GPU engine writes them, since the Server decodes no picture; green turned on a map
+    ///     with none is refused, as is a picture that does not read, and nothing is left in the cache.
+    /// </summary>
+    [Fact]
+    public async Task Any_picture_comes_in_as_a_png_and_a_green_that_ran_down_runs_up() {
+        var folder = Path.Combine(server.Library, "projects", "crate");
+        await File.WriteAllTextAsync(Path.Combine(folder, "box.vxlayers"), "name: Box\n", Token);
+        var box = ProjectBakes.Read(folder).Documents.Single(static d => d.Material == "Box").Id.Value;
+        var exr = Path.Combine(server.Library, "ao.exr");
+        await File.WriteAllBytesAsync(exr, ExrCodec.Encode(new(2, 1, 1, [0.25f, 2f])), Token);
+        var directX = Path.Combine(server.Library, "normal_dx.png");
+        await File.WriteAllBytesAsync(directX, PngCodec.Encode8(1, 1, 3, [128, 64, 255]), Token);
+        await File.WriteAllTextAsync(Path.Combine(server.Library, "broken.tga"), "not a picture", Token);
+
+        Task<HttpResponseMessage> ImportAsync(params BakeImportMap[] maps) =>
+            client.PostAsJsonAsync(
+                "/api/v1/library/project/bake/import",
+                new BakeImportRequest("crate", box, maps),
+                Token
+            );
+
+        using var imported = await ImportAsync(new("ao", "ao.exr"), new("normal", "normal_dx.png", true));
+        using var aoTurned = await ImportAsync(new BakeImportMap("ao", "ao.exr", true));
+        using var broken = await ImportAsync(new BakeImportMap("ao", "broken.tga"));
+
+        Assert.Equal(HttpStatusCode.OK, imported.StatusCode);
+        var maps = Path.Combine(folder, "bakes", "maps", "Box");
+        var ao = PngCodec.Decode16(await File.ReadAllBytesAsync(Path.Combine(maps, "imported_ao.png"), Token));
+        Assert.Equal((2, 1, 1), (ao.Width, ao.Height, ao.Channels));
+        Assert.Equal([(ushort)16384, ushort.MaxValue], ao.Samples);
+        var normal = PngCodec.Decode16(await File.ReadAllBytesAsync(Path.Combine(maps, "imported_normal.png"), Token));
+        Assert.Equal([(ushort)(128 * 257), (ushort)(191 * 257), ushort.MaxValue], normal.Samples);
+        Assert.Equal(HttpStatusCode.BadRequest, aoTurned.StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, broken.StatusCode);
+        Assert.Contains("picture-unreadable", await broken.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
+        var cache = Path.Combine(server.Library, ".ptcache", "pictures", "maps");
+        Assert.Empty(Directory.Exists(cache) ? Directory.GetFiles(cache) : []);
     }
 
     static BakeManifest BakeManifestOf(string file) =>

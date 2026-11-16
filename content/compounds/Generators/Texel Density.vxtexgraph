@@ -1,0 +1,31 @@
+version: 1
+name: Texel Density
+nodes:
+  - { id: 1, type: Source/Mesh Map, x: -960, y: 0, texts: { Map: density } }
+  - id: 2
+    type: Filters/Pixel Processor
+    x: -480
+    y: 0
+    texts:
+      Expression: 'float4(lerp(lerp(float3(0.1f, 0.75f, 0.2f), float3(0.9f, 0.15f, 0.1f), saturate((a.x - 0.5f) * x)), float3(0.15f, 0.3f, 0.9f), saturate((0.5f - a.x) * x)), 1f)'
+      '=X': spread
+  - { id: 99, type: Sub-graph/Output, x: 0, y: 0 }
+edges:
+  - { fromNode: 1, fromPort: Out, toNode: 2, toPort: A }
+  - { fromNode: 2, fromPort: Out, toNode: 99, toPort: Out }
+groups: []
+comments: []
+interface:
+  - name: Out
+    direction: Output
+    kind: Image
+    default: []
+    summary: 'Green where the texel density is the layout''s own, turning blue where it is sparser and red where it is denser.'
+settings:
+  baseWidth: '1024'
+  baseHeight: '1024'
+  seed: '1'
+  summary: 'The texel density of the UV layout as a layer, from the Texel Density bake: where the model gets fewer or more texels than the layout gives it on average.'
+  doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
+parameters:
+  - { name: spread, label: Sensitivity, default: '4', summary: 'How soon the color turns: at 4 it is fully blue at half the layout''s density and fully red at twice it.', kind: Float, minimum: 1, maximum: 16, group: Density }

@@ -142,6 +142,34 @@ public sealed class BakeMapKindsTests : IDisposable {
     }
 
     /// <summary>
+    ///     The bounds map lays a frame over each UV island, so across the islands its red and green run the whole way
+    ///     from dark to light; and the density map reads each texel's texel density against the layout's, so it is grey
+    ///     about a half and black off the islands (#121).
+    /// </summary>
+    [Fact]
+    public void The_bounds_and_density_maps_are_written_and_read_as_worked_out() {
+        var manifest = Bake("layout", static options => options with { Maps = ["islands", "bounds", "density"] });
+        var islands = Picture("layout", "islands");
+        var bounds = Picture("layout", "bounds");
+        var across = Covered(bounds, islands);
+        var density = Covered(Picture("layout", "density"), islands);
+        var outside = Picture("layout", "density")
+            .Pixels.Where((_, at) =>
+                at % 4 == 0 && islands.Pixels[at] + islands.Pixels[at + 1] + islands.Pixels[at + 2] == 0
+            );
+
+        Assert.Equal(
+            ["islands", "bounds", "density"],
+            manifest.Result.Maps.Select(static map => map.Map).ToArray()
+        );
+        Assert.Contains(across, static value => value < 20);
+        Assert.Contains(across, static value => value > 235);
+        Assert.InRange(density.Average(), 64, 192);
+        Assert.All(outside, static value => Assert.Equal(0, value));
+        Assert.Null(new BakeOptions { Maps = ["bounds", "density"] }.Problem());
+    }
+
+    /// <summary>
     ///     Fill past the dilation leaves every charted texel as it was and fills the rest of the texture, which a bake
     ///     without it leaves as background (#148).
     /// </summary>

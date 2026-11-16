@@ -17,8 +17,6 @@ public static class MaterialShelf {
     public const string ShippedPrefix = "smart:";
     const string OutputNode = "Output/Output";
     const string BoundaryOutput = "Sub-graph/Output";
-    const string BitmapNode = "Source/Bitmap";
-    const string SourceSetting = "Source";
     const string UsageSetting = "Usage";
     const string DefaultUsage = "baseColor";
     const string MaterialsFolder = "Materials";
@@ -29,10 +27,13 @@ public static class MaterialShelf {
     const string PackageOrigin = "package";
     const string StarterPrefix = "starter:";
     const string StarterResource = "Starter/";
+    const string PicturesFolder = "pictures";
 
-    /// <summary>What each project lists, kept while its file stands, so a search does not read a library.</summary>
-    static readonly ConcurrentDictionary<string, (DateTime Stamp, IReadOnlyList<ProjectDocumentInfo> Documents)>
-        Kept =
+    /// <summary>
+    ///     What each project lists, its documents and its pictures, kept while its file and the folders pictures are
+    ///     brought into stand, so a search does not read a library.
+    /// </summary>
+    static readonly ConcurrentDictionary<string, (string Stamp, ProjectContents Contents)> Kept =
         new(StringComparer.Ordinal);
 
     /// <summary>The types a shelf narrows to, and where a material can be from.</summary>
@@ -81,19 +82,7 @@ public static class MaterialShelf {
         if (project is not null) {
             var contents = library.Contents(project);
             found.AddRange(contents.Documents.Select(document => Described(library, document)).OfType<MaterialInfo>());
-            found.AddRange(
-                contents.Pictures.Select(picture => new MaterialInfo(
-                        Path.GetFileNameWithoutExtension(picture.Name),
-                        picture.Kind,
-                        picture.Path,
-                        PictureRole,
-                        "project",
-                        [],
-                        Project: contents.Name,
-                        Tags: [Path.GetExtension(picture.Name).TrimStart('.').ToUpperInvariant()]
-                    )
-                )
-            );
+            found.AddRange(contents.Pictures.Select(picture => Pictured(picture, contents.Name, "project")));
         }
 
         found.AddRange(Presets(library, project, search));
@@ -279,13 +268,8 @@ public static class MaterialShelf {
         for (var offset = 0;; offset += ProjectPage) {
             var page = library.Projects(new(Offset: offset, Limit: ProjectPage)).Items;
             foreach (var summary in page.Where(summary => summary.Path != project)) {
-                foreach (var document in DocumentsOf(library, summary.Path)) {
-                    if (Maybe(document, summary.Name, words)
-                        && Readable(library, document) is { } read
-                        && read with { Origin = ElsewhereOrigin, Project = summary.Name } is var material
-                        && Matches(material, words)) {
-                        yield return material;
-                    }
+                foreach (var material in OfProject(library, summary, words)) {
+                    yield return material;
                 }
             }
 
@@ -296,20 +280,61 @@ public static class MaterialShelf {
     }
 
     /// <summary>
+    ///     What another project offers that a search finds: its materials, and its pictures too (#203), which a click
+    ///     or a drag brings into the open project first.
+    /// </summary>
+    static IEnumerable<MaterialInfo> OfProject(OpenLibrary library, ProjectSummary summary, string[] words) {
+        var contents = ContentsOf(library, summary.Path);
+        var materials = contents.Documents
+            .Where(document => Maybe(document, summary.Name, words))
+            .Select(document => Readable(library, document))
+            .OfType<MaterialInfo>()
+            .Select(read => read with { Origin = ElsewhereOrigin, Project = summary.Name });
+        var pictures = contents.Pictures.Select(picture => Pictured(picture, summary.Name, ElsewhereOrigin));
+        return materials.Concat(pictures).Where(material => Matches(material, words));
+    }
+
+    /// <summary>
     ///     What a project lists, read again only when its file has changed since; the brush shelf reads every other
     ///     project's through this too (#124).
     /// </summary>
-    internal static IReadOnlyList<ProjectDocumentInfo> DocumentsOf(OpenLibrary library, string project) {
+    internal static IReadOnlyList<ProjectDocumentInfo> DocumentsOf(OpenLibrary library, string project) =>
+        ContentsOf(library, project).Documents;
+
+    /// <summary>
+    ///     What a project holds, read again only when its file, its folder or its pictures folder has changed since: a
+    ///     picture brought in or dropped beside the file changes a folder, though not the project's file.
+    /// </summary>
+    static ProjectContents ContentsOf(OpenLibrary library, string project) {
         var file = library.ProjectFile(project, LibraryLayout.ProjectFile);
-        var stamp = File.GetLastWriteTimeUtc(file);
+        var folder = Path.GetDirectoryName(file)!;
+        var stamp = string.Join(
+            '|',
+            File.GetLastWriteTimeUtc(file).Ticks,
+            Directory.GetLastWriteTimeUtc(folder).Ticks,
+            Directory.GetLastWriteTimeUtc(Path.Combine(folder, PicturesFolder)).Ticks
+        );
         if (Kept.TryGetValue(file, out var held) && held.Stamp == stamp) {
-            return held.Documents;
+            return held.Contents;
         }
 
-        var documents = library.Contents(project).Documents;
-        Kept[file] = (stamp, documents);
-        return documents;
+        var contents = library.Contents(project);
+        Kept[file] = (stamp, contents);
+        return contents;
     }
+
+    /// <summary>A picture of a project's as the shelf lists it, found by its file type as well as its name.</summary>
+    static MaterialInfo Pictured(ProjectFile picture, string project, string origin) =>
+        new(
+            Path.GetFileNameWithoutExtension(picture.Name),
+            picture.Kind,
+            picture.Path,
+            PictureRole,
+            origin,
+            [],
+            Project: project,
+            Tags: [Path.GetExtension(picture.Name).TrimStart('.').ToUpperInvariant()]
+        );
 
     /// <summary>One broken file in another project must not empty this project's shelf.</summary>
     static MaterialInfo? Readable(OpenLibrary library, ProjectDocumentInfo document) {
@@ -392,7 +417,7 @@ public static class MaterialShelf {
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
         Reference(library, project, source);
         BringPackage(library, project, full);
-        var text = GraphDocuments.Text(AsCompound(Rooted(graph, full, library.RootPath)));
+        var text = GraphDocuments.Text(AsCompound(GraphFiles.Rooted(graph, full, library.RootPath)));
         var path = $"{MaterialsFolder}/{name}";
         if (File.Exists(file) && string.Equals(SharedFile.ReadAllText(file), text, StringComparison.Ordinal)) {
             return path;
@@ -582,31 +607,6 @@ public static class MaterialShelf {
             .Select(static node => node.Texts.GetValueOrDefault(UsageSetting, DefaultUsage))
             .Distinct(StringComparer.Ordinal)
     ];
-
-    /// <summary>
-    ///     A graph's pictures are found beside it, and a compound lives elsewhere, so they are named from the library,
-    ///     which is where a stack in any project looks.
-    /// </summary>
-    static NodeGraphAsset Rooted(NodeGraphAsset graph, string file, string library) =>
-        graph with {
-            Nodes = [
-                ..graph.Nodes.Select(node => {
-                        if (node.Type != BitmapNode
-                            || !node.Texts.TryGetValue(SourceSetting, out var picture)
-                            || Path.IsPathRooted(picture)) {
-                            return node;
-                        }
-
-                        var beside = Path.GetFullPath(picture, Path.GetDirectoryName(file)!);
-                        return node with {
-                            Texts = new(node.Texts, StringComparer.Ordinal) {
-                                [SourceSetting] = LibraryLayout.Relative(library, beside)
-                            }
-                        };
-                    }
-                )
-            ]
-        };
 
     /// <summary>A graph as a compound: every Output becomes a port of one boundary, named for its usage.</summary>
     static NodeGraphAsset AsCompound(NodeGraphAsset graph) {

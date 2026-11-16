@@ -12,6 +12,9 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips, Mes
     : IDisposable {
     readonly SessionTable<StackSession> table = new();
 
+    /// <summary>The sessions the Server opened for itself, by id, which no client has opened since.</summary>
+    readonly HashSet<string> lent = new(StringComparer.Ordinal);
+
     /// <summary>The texture sets of stacks nobody has open, by file, until the file changes.</summary>
     readonly Dictionary<string, (DateTime Written, TextureSetAsset? Set)> files = new(StringComparer.Ordinal);
 
@@ -40,20 +43,58 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips, Mes
     /// <exception cref="StackEditRefusedException">The file is not a stack.</exception>
     public StackSession Open(string path) {
         var full = Resolve(path);
-        return table.Open(
-            full,
-            () => {
-                if (!File.Exists(full)) {
-                    throw new FileNotFoundException($"There is no document at '{full}'.", full);
-                }
+        lock (lent) {
+            // A client that opens a set the Server only borrowed keeps it: the borrow no longer closes it.
+            var session = table.Open(full, () => New(full));
+            lent.Remove(session.Id);
+            return session;
+        }
+    }
 
-                StackSession session = new(full, SharedFile.ReadAllText(full), table.Wake) {
-                    ImageRoots = LibraryRoot, Clips = clips, Changed = CatchUp, Meshes = meshes
-                };
-                session.Siblings = name => Sibling(session, name);
-                return session;
+    /// <summary>
+    ///     Opens a file nobody has open for the Server's own use, such as measuring it for a project's checks
+    ///     (ADR 0043), or null when a session has it open already. <see cref="GiveBack" /> closes it, unless a client
+    ///     opened it in the meantime.
+    /// </summary>
+    /// <exception cref="FileNotFoundException">There is no such file.</exception>
+    /// <exception cref="StackEditRefusedException">The file is not a stack.</exception>
+    public StackSession? Borrow(string path) {
+        var full = Resolve(path);
+        lock (lent) {
+            var session = table.Open(full, () => New(full), out var created);
+            if (!created) {
+                return null;
             }
-        );
+
+            lent.Add(session.Id);
+            return session;
+        }
+    }
+
+    /// <summary>Closes a borrowed session, unless a client has opened its file since, and then it is theirs.</summary>
+    public void GiveBack(StackSession session) {
+        ArgumentNullException.ThrowIfNull(session);
+        lock (lent) {
+            if (!lent.Remove(session.Id)) {
+                return;
+            }
+
+            table.Close(session);
+        }
+
+        CatchUp(session);
+    }
+
+    StackSession New(string full) {
+        if (!File.Exists(full)) {
+            throw new FileNotFoundException($"There is no document at '{full}'.", full);
+        }
+
+        StackSession session = new(full, SharedFile.ReadAllText(full), table.Wake) {
+            ImageRoots = LibraryRoot, Clips = clips, Changed = CatchUp, Meshes = meshes
+        };
+        session.Siblings = name => Sibling(session, name);
+        return session;
     }
 
     /// <summary>
@@ -132,7 +173,12 @@ public sealed class StackSessions(ServerIdentity identity, StackClips clips, Mes
     /// </summary>
     /// <param name="session">The session.</param>
     public void Close(StackSession session) {
-        table.Close(session);
+        ArgumentNullException.ThrowIfNull(session);
+        lock (lent) {
+            lent.Remove(session.Id);
+            table.Close(session);
+        }
+
         CatchUp(session);
     }
 

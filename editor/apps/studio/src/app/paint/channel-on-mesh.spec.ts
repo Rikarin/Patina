@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { StackState } from '@patina/api-client';
 import { describe, expect, it, vi } from 'vitest';
-import { isScalarChannel } from '../core/labels';
+import { isScalarChannel, isUnshadedChannel } from '../core/labels';
 import { ViewportJump } from '../viewport/viewport-jump';
 import { ChannelOnMesh, ChannelViewFolder } from './channel-on-mesh';
 import { PaintStore } from './paint-store';
@@ -75,5 +75,17 @@ describe('isScalarChannel (#298)', () => {
     expect(isScalarChannel('user0', channels)).toBe(true);
     expect(isScalarChannel('user1', channels)).toBe(false);
     expect(isScalarChannel('user2', [])).toBe(true);
+  });
+});
+
+describe('OpenPBR channels (#142)', () => {
+  it('are seen on the mesh as their maps hold them, a weight as one number and the sheen as a color', () => {
+    for (const usage of ['coat', 'coatRoughness', 'sheen', 'sheenColor', 'sheenRoughness', 'transmission']) {
+      expect(isUnshadedChannel(usage)).toBe(true);
+      expect(isScalarChannel(usage, [])).toBe(usage !== 'sheenColor');
+    }
+
+    expect(isUnshadedChannel('user3')).toBe(true);
+    expect(isUnshadedChannel('roughness')).toBe(false);
   });
 });

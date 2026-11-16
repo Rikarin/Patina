@@ -20,31 +20,68 @@ static class ProjectBakePlanEndpoint {
                 + "the maps in a folder of the Server's machine instead of the project's; set, once per texture set, "
                 + "bakes those instead of the ones the project ticks."
             );
-        library.MapPost("/project/bake/import", Import)
+        library.MapPost("/project/bake/import", ImportAsync)
             .Described(
                 "ImportProjectBake",
-                "Brings maps baked in another program in as a texturing document's bake: each PNG is copied where the "
-                + "document's own bake goes and replaces the map of its name there, and the document, open or not, "
-                + "reads them as a bake of its mesh, UV set and material as they stand. A normal map's green runs up."
+                "Brings maps baked in another program in as a texturing document's bake: each picture is copied where "
+                + "the document's own bake goes, as a PNG, and replaces the map of its name there, and the document, "
+                + "open or not, reads them as a bake of its mesh, UV set and material as they stand. A PNG is copied "
+                + "as it is; any other picture, and a normal whose green runs down, is written as a 16-bit PNG with "
+                + "its green up by the GPU engine first."
             );
     }
 
-    static Results<Ok<BakeImported>, ProblemHttpResult> Import(
+    static async Task<Results<Ok<BakeImported>, ProblemHttpResult>> ImportAsync(
         LibraryHost host,
         BakeLinks links,
-        BakeImportRequest request
-    ) =>
-        LibraryTreeEndpoints.Guarded(
-            host,
-            library => {
-                List<BakeImportMap> maps = [
-                    ..request.Maps.Select(map => map with { File = Path.GetFullPath(map.File, library.RootPath) })
-                ];
-                var (folder, document) = BakeImport.Run(library.RootPath, request with { Maps = maps });
-                links.Imported(document, folder);
-                return TypedResults.Ok(new BakeImported(LibraryLayout.Relative(library.RootPath, folder)));
+        PicturePreviews pictures,
+        BakeImportRequest request,
+        CancellationToken cancellationToken
+    ) {
+        if (host.Library is not { } library) {
+            return LibraryTreeEndpoints.NoLibrary();
+        }
+
+        var asked = request with {
+            Maps = [..request.Maps.Select(map => map with { File = Path.GetFullPath(map.File, library.RootPath) })]
+        };
+        List<string> written = [];
+        var reading = string.Empty;
+        try {
+            BakeImport.Check(asked, true);
+            List<BakeImportMap> maps = [];
+            foreach (var map in asked.Maps) {
+                if (!BakeImport.Decoded(map)) {
+                    maps.Add(map);
+                    continue;
+                }
+
+                // The Server decodes no picture (ADR 0042): the Worker writes it as a PNG with its green up (#300).
+                var png = pictures.MapFile();
+                reading = map.File;
+                written.Add(png);
+                await pictures.MapAsync(map.File, png, map.GreenDown, cancellationToken);
+                maps.Add(map with { File = png, GreenDown = false });
             }
-        );
+
+            return LibraryTreeEndpoints.Guarded(
+                host,
+                open => {
+                    var (folder, document) = BakeImport.Run(open.RootPath, asked with { Maps = maps });
+                    links.Imported(document, folder);
+                    return TypedResults.Ok(new BakeImported(LibraryLayout.Relative(open.RootPath, folder)));
+                }
+            );
+        } catch (Exception e) when (LibraryPictures.Refused(reading, e) is { } refused) {
+            return refused;
+        } catch (Exception e) when (LibraryTreeEndpoints.Refusal(e) is { } problem) {
+            return problem;
+        } finally {
+            foreach (var png in written) {
+                File.Delete(png);
+            }
+        }
+    }
 
     static Results<Ok<ProjectBakePlan>, ProblemHttpResult> GetPlan(
         LibraryHost host,

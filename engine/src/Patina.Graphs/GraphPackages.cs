@@ -20,9 +20,6 @@ public static class GraphPackages {
     /// <summary>Where a package's own compounds go, under its name, so two packages never share one.</summary>
     public const string CompoundPrefix = "Packages/";
 
-    const string BitmapNode = "Source/Bitmap";
-    const string SourceSetting = "Source";
-    const string MeshMapScheme = "meshmap:";
     const string Staging = ".publishing";
 
     /// <summary>The roles a package can have, which are the shelf's types.</summary>
@@ -104,35 +101,9 @@ public static class GraphPackages {
             var file = Path.Combine(compounds, compound.Type + LibraryLayout.GraphExtension);
             var asset = YamlSerializer.Parse<NodeGraphAsset>(SharedFile.ReadAllText(file));
             yield return (compound.Type + LibraryLayout.GraphExtension,
-                YamlSerializer.ToYaml(Rooted(asset, graph, library)));
+                YamlSerializer.ToYaml(GraphFiles.Rooted(asset, graph, library)));
         }
     }
-
-    /// <summary>
-    ///     A graph's pictures named from the library, as found from where <paramref name="file" /> is: a graph's
-    ///     pictures are found beside the graph holding it, and a project's stack is not beside the package.
-    /// </summary>
-    public static NodeGraphAsset Rooted(NodeGraphAsset graph, string file, string library) =>
-        graph with {
-            Nodes = [
-                ..graph.Nodes.Select(node => {
-                        if (node.Type != BitmapNode
-                            || !node.Texts.TryGetValue(SourceSetting, out var picture)
-                            || picture.Length == 0
-                            || Path.IsPathRooted(picture)) {
-                            return node;
-                        }
-
-                        var beside = Path.GetFullPath(picture, Path.GetDirectoryName(Path.GetFullPath(file))!);
-                        return node with {
-                            Texts = new(node.Texts, StringComparer.Ordinal) {
-                                [SourceSetting] = LibraryLayout.Relative(library, beside)
-                            }
-                        };
-                    }
-                )
-            ]
-        };
 
     /// <summary>
     ///     What a package is called: its graph's name, which a person gave it, unless that cannot be a folder's name,
@@ -149,7 +120,7 @@ public static class GraphPackages {
     /// <summary>A compound the graph reads from its project's folder, and the file it is in.</summary>
     sealed record Compound(string Type, string File, NodeGraphAsset Graph);
 
-    /// <summary>A picture one of the graph's files names, and the file it was found at.</summary>
+    /// <summary>A picture, font or SVG file one of the graph's files names, and the file it was found at.</summary>
     sealed record Picture(string Reference, string Found);
 
     sealed record Gathered(
@@ -174,7 +145,7 @@ public static class GraphPackages {
         var published = new CompoundShelf().Of(folder);
         Walk walk = new(folder, published, CompoundFolders.PictureRoots(graph, library));
         walk.Through(root);
-        var diagnostics = Compile(root, published, walk.Dependencies);
+        var diagnostics = Compile(root, published, walk);
         return new(
             NameOf(root, graph),
             graph,
@@ -217,8 +188,8 @@ public static class GraphPackages {
         }
 
         void Visit(GraphNodeAsset node, string? into) {
-            if (node.Type == BitmapNode) {
-                Picture(node.Texts.GetValueOrDefault(SourceSetting, string.Empty).Trim(), into);
+            if (GraphFiles.SettingOf(node.Type) is not null) {
+                Picture(GraphFiles.Of(node), GraphFiles.KindOf(node.Type), into);
             } else if (!SubGraphs.IsBoundary(node.Type) && !Reroutes.IsReroute(node.Type) && seen.Add(node.Type)) {
                 Type(node.Type);
             }
@@ -243,10 +214,13 @@ public static class GraphPackages {
             }
         }
 
-        /// <summary>A picture, named by the graph or by the compound <paramref name="into" />.</summary>
-        void Picture(string reference, string? into) {
+        /// <summary>
+        ///     A picture, or a font or an SVG file (<paramref name="kind" /> says which), named by the graph or by the
+        ///     compound <paramref name="into" />.
+        /// </summary>
+        void Picture(string reference, string kind, string? into) {
             if (reference.Length == 0
-                || reference.StartsWith(MeshMapScheme, StringComparison.Ordinal)
+                || reference.StartsWith("meshmap:", StringComparison.Ordinal)
                 || Pictures.ContainsKey(reference)) {
                 return;
             }
@@ -268,16 +242,17 @@ public static class GraphPackages {
 
             var found = Located(reference, roots);
             Pictures[reference] = new(reference, found ?? string.Empty);
+            var node = kind == GraphFiles.Picture ? "the Bitmap" : "its node";
             Dependencies.Add(
                 found is null
                     ? new(
-                        "picture",
+                        kind,
                         reference,
                         null,
-                        "It is not beside the graph or in the library. Point the Bitmap at it again.",
+                        $"It is not beside the graph or in the library. Point {node} at it again.",
                         into
                     )
-                    : new("picture", reference, Shown(found), null, into)
+                    : new(kind, reference, Shown(found), null, into)
             );
         }
 
@@ -289,20 +264,27 @@ public static class GraphPackages {
     }
 
     /// <summary>
-    ///     Compiles the graph as the Worker would, which is the check that what is published evaluates, and names the
-    ///     fonts and SVG files its drawings read, which a package does not carry yet.
+    ///     Compiles the graph as the Worker would, which is the check that what is published evaluates, and names a
+    ///     font or an SVG file a drawing reads that no node names, as one a parameter gives it: a package carries the
+    ///     files its nodes name, and cannot know which ones a parameter could.
     /// </summary>
-    static IReadOnlyList<GraphDiagnostic> Compile(
-        NodeGraphAsset graph,
-        PublishedCompounds published,
-        List<PackageDependency> dependencies
-    ) {
+    static IReadOnlyList<GraphDiagnostic> Compile(NodeGraphAsset graph, PublishedCompounds published, Walk walk) {
         var model = NodeGraphDocument.Load(CompoundShelf.WithoutBoundaries(graph), out _);
         var compiler = new TextureGraphCompiler(published.Registry) { SubGraphSource = published.Source };
         var compilation = compiler.Compile(model);
         foreach (var external in compiler.Externals) {
-            if (TextureDrawings.Draws(external.Asset) && TextureDrawings.FileOf(external.Asset) is { } file) {
-                dependencies.Add(new("drawing", file, null, "A package cannot carry a font or an SVG file yet."));
+            if (TextureDrawings.Draws(external.Asset)
+                && TextureDrawings.FileOf(external.Asset)?.Trim() is { Length: > 0 } file
+                && !walk.Pictures.ContainsKey(file)) {
+                walk.Pictures[file] = new(file, string.Empty);
+                walk.Dependencies.Add(
+                    new(
+                        GraphFiles.Drawing,
+                        file,
+                        null,
+                        "A parameter names it, and a package carries only the files its nodes name."
+                    )
+                );
             }
         }
 
@@ -416,7 +398,7 @@ public static class GraphPackages {
             ? graph
             : graph with { Tags = [..graph.Tags.Concat(tags).Distinct(StringComparer.OrdinalIgnoreCase)] };
 
-    /// <summary>A file of the package: compounds under their package types, pictures from <c>files/</c>.</summary>
+    /// <summary>A file of the package: compounds under their types there, and files from <c>files/</c>.</summary>
     static NodeGraphAsset Rewritten(
         NodeGraphAsset graph,
         Dictionary<string, string> types,
@@ -424,19 +406,9 @@ public static class GraphPackages {
     ) =>
         graph with {
             Nodes = [
-                ..graph.Nodes.Select(node => {
-                        if (types.TryGetValue(node.Type, out var type)) {
-                            return node with { Type = type };
-                        }
-
-                        return node.Type == BitmapNode
-                            && node.Texts.TryGetValue(SourceSetting, out var picture)
-                            && files.TryGetValue(picture.Trim(), out var file)
-                                ? node with {
-                                    Texts = new(node.Texts, StringComparer.Ordinal) { [SourceSetting] = file }
-                                }
-                                : node;
-                    }
+                ..graph.Nodes.Select(node => types.TryGetValue(node.Type, out var type)
+                        ? node with { Type = type }
+                        : GraphFiles.Renamed(node, named => files.GetValueOrDefault(named))
                 )
             ]
         };

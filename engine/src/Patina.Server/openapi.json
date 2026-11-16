@@ -2858,7 +2858,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what its file says, its limits, its files and its bake, and says it was not measured. The export preset of a platform to check for, or none for the project\u0027s own.",
+        "summary": "Checks every texture set and layered material of a project at once, as GET /stacks/{id}/checks does one. A set open in a session is measured by the GPU engine; one nobody has open is judged on what its file says, its limits, its files and its bake, and says it was not measured, unless measure is true: then the Server opens each such set in turn for the GPU engine to measure, and closes it again, which evaluates every set and takes as long. The export preset of a platform to check for, or none for the project\u0027s own.",
         "operationId": "GetProjectChecks",
         "parameters": [
           {
@@ -2874,6 +2874,13 @@
             "in": "query",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "measure",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -4653,7 +4660,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "Brings maps baked in another program in as a texturing document\u0027s bake: each PNG is copied where the document\u0027s own bake goes and replaces the map of its name there, and the document, open or not, reads them as a bake of its mesh, UV set and material as they stand. A normal map\u0027s green runs up.",
+        "summary": "Brings maps baked in another program in as a texturing document\u0027s bake: each picture is copied where the document\u0027s own bake goes, as a PNG, and replaces the map of its name there, and the document, open or not, reads them as a bake of its mesh, UV set and material as they stand. A PNG is copied as it is; any other picture, and a normal whose green runs down, is written as a 16-bit PNG with its green up by the GPU engine first.",
         "operationId": "ImportProjectBake",
         "requestBody": {
           "content": {
@@ -5073,11 +5080,18 @@
         "tags": [
           "Library"
         ],
-        "summary": "What a folder\u0027s documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document\u0027s size. No folder is the whole library.",
+        "summary": "What a folder\u0027s documents cost, by each folder or project directly in it, costliest first: their maps uncompressed, at each document\u0027s size. No folder is the whole library. With preset, what they take in GPU memory as that platform\u0027s preset writes them: each of its files for each texture set, at its size, compression and mip chain. A preset nobody has is refused with preset-missing.",
         "operationId": "GetLibraryCosts",
         "parameters": [
           {
             "name": "folder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "preset",
             "in": "query",
             "schema": {
               "type": "string"
@@ -5133,7 +5147,7 @@
         "tags": [
           "Library"
         ],
-        "summary": "One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first.",
+        "summary": "One page of the documents below a folder whose maps cost more than a budget in bytes, costliest first, uncompressed or, with preset, as that platform\u0027s preset writes them.",
         "operationId": "GetDocumentsOverBudget",
         "parameters": [
           {
@@ -5147,6 +5161,13 @@
           },
           {
             "name": "folder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "preset",
             "in": "query",
             "schema": {
               "type": "string"
@@ -6021,8 +6042,20 @@
         "tags": [
           "Library"
         ],
-        "summary": "The files sent from another computer that no file of the library and no open document names any more, with the room they take. One sent in the last hour counts as used. Changes nothing.",
+        "summary": "The files sent from another computer that no file of the library, no open document, no queued or running bake or build and nothing in held names any more, with the room they take. held is what the client holds unsaved, such as an open dialog\u0027s paths. One sent in the last hour counts as used. Changes nothing.",
         "operationId": "GetUnusedUploads",
+        "parameters": [
+          {
+            "name": "held",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -6072,8 +6105,24 @@
         "tags": [
           "Library"
         ],
-        "summary": "Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them, into the bin as one entry, which Restore puts back.",
+        "summary": "Moves the files sent from another computer that nothing names, as GetUnusedUploads lists them with the body\u0027s held, into the bin as one entry, which Restore puts back.",
         "operationId": "ClearUploads",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/UploadsClearRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -10473,6 +10522,13 @@
             "description": "For \u0060rays\u0060: how many secondary rays each sample casts, 1 to 256.",
             "format": "int32",
             "default": 16
+          },
+          "withinPart": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "For \u0060rays\u0060, when parts are matched by name: whether the secondary rays meet only the texel\u0027s own part\n(#300), so a part standing on another reads no crease where they meet, as an exploded bake would. Null or\nfalse reads the whole high mesh."
           }
         },
         "description": "The curvature map\u0027s source and stored range (#148)."
@@ -10612,7 +10668,8 @@
       "BakeImportMap": {
         "required": [
           "map",
-          "file"
+          "file",
+          "greenDown"
         ],
         "type": "object",
         "properties": {
@@ -10622,7 +10679,12 @@
           },
           "file": {
             "type": "string",
-            "description": "The PNG, absolute or below the library. A normal map\u0027s green runs up the picture, as Patina\u0027s bakes do."
+            "description": "The picture, absolute or below the library: a PNG is copied as it is, and any other picture Patina reads is\nwritten as a 16-bit PNG by the GPU engine (#300)."
+          },
+          "greenDown": {
+            "type": "boolean",
+            "description": "For a tangent-space \u0060normal\u0060 or \u0060bent\u0060 map: its green runs down the picture, as DirectX\u0027s do, and is\nturned over as it comes in, since Patina\u0027s bakes run it up. False keeps it as it is.",
+            "default": false
           }
         },
         "description": "One map brought in."
@@ -10650,7 +10712,7 @@
             "items": {
               "$ref": "#/components/schemas/BakeImportMap"
             },
-            "description": "Each map and the PNG of it, on the Server\u0027s machine."
+            "description": "Each map and the picture of it, on the Server\u0027s machine."
           },
           "space": {
             "type": "string",
@@ -10861,6 +10923,13 @@
               "boolean"
             ],
             "description": "Whether the maps repeat without a seam (#212): a high-poly patch baked onto a flat low patch, the high mesh\nlaid again on each side of the low mesh\u0027s box so a ray near an edge meets what lies beyond it when the\nmaterial repeats. Null or false bakes the high meshes once, as they are."
+          },
+          "trim": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "When the bake is tileable, whether the maps repeat along the patch\u0027s \u0060u\u0060 only, as a trim sheet\u0027s\nstrips do (#212): the high mesh is laid again past the patch\u0027s left and right sides and nowhere else, so a\nstrip at the top meets no copy of the strip at the bottom. Null or false repeats both ways."
           }
         },
         "description": "How a bake runs, with no meshes in it: what a project keeps between bakes and every client sends. Each map\u0027s\nown settings are a part of their own."
@@ -16226,7 +16295,7 @@
             "description": "Each folder or project directly in it."
           }
         },
-        "description": "What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A\ndocument\u0027s cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for\neach channel of each texture set. Compression and mip levels are a preset\u0027s, and are not counted."
+        "description": "What a folder of the library costs, and each folder or project directly in it, costliest first (#207). A\ndocument\u0027s cost is its maps as an export writes them uncompressed: its size, by four bytes a texel, by a map for\neach channel of each texture set. Asked for a platform\u0027s preset, it is what that preset writes: each of its\nfiles for each texture set, at its size, compression and mip chain."
       },
       "LibraryExportRequest": {
         "required": [
@@ -17107,11 +17176,11 @@
         "properties": {
           "kind": {
             "type": "string",
-            "description": "\u0060compound\u0060 (a graph of its project\u0027s, which the package carries), \u0060shipped\u0060 (a compound that ships\n            with Patina, which it does not), \u0060picture\u0060 (a bitmap, which it carries), or \u0060unknown\u0060 (a node type\n            nothing publishes)."
+            "description": "\u0060compound\u0060 (a graph of its project\u0027s, which the package carries), \u0060shipped\u0060 (a compound that ships\n            with Patina, which it does not), \u0060picture\u0060 (a bitmap, which it carries), \u0060drawing\u0060 (a Text node\u0027s font\n            or a Vector node\u0027s SVG file, which it carries), or \u0060unknown\u0060 (a node type nothing publishes)."
           },
           "name": {
             "type": "string",
-            "description": "The node type, or the picture as the graph names it."
+            "description": "The node type, or the file as the graph names it."
           },
           "file": {
             "type": [
@@ -17153,7 +17222,7 @@
             "description": "How the graph named it before it was published."
           }
         },
-        "description": "A picture a package carries."
+        "description": "A picture, font or SVG file a package carries."
       },
       "PackageImported": {
         "required": [
@@ -17244,7 +17313,7 @@
             "items": {
               "$ref": "#/components/schemas/PackageFile"
             },
-            "description": "The pictures it carries under \u0060files/\u0060, and how the graph named each."
+            "description": "The pictures, fonts and SVG files it carries under \u0060files/\u0060, and how the graph named each."
           }
         },
         "description": "A package\u0027s \u0060package.yaml\u0060 (ADR 0027): what a \u0060.ptpkg\u0060 folder holds besides its graph, and what made\nit. The graph\u0027s own file holds its parameters, presets and what it says about itself, so this repeats none of\nthem."
@@ -17490,7 +17559,8 @@
           "project",
           "preset",
           "memoryBytes",
-          "sets"
+          "sets",
+          "problems"
         ],
         "type": "object",
         "properties": {
@@ -17513,6 +17583,13 @@
               "$ref": "#/components/schemas/StackChecks"
             },
             "description": "Each set, in the order the project lists its documents."
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckProblem"
+            },
+            "description": "What is wrong with the project\u0027s checks themselves rather than any one set: limits kept for a platform no preset\nwrites for any more."
           }
         },
         "description": "The reply to \u0060GET /api/v1/library/project/checks\u0060: every texture set and layered material of a project\nchecked at once, against one platform (#159)."
@@ -23939,6 +24016,22 @@
           }
         },
         "description": "What \u0060POST /api/v1/library/uploads/clear\u0060 took away (#297)."
+      },
+      "UploadsClearRequest": {
+        "type": "object",
+        "properties": {
+          "held": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Paths on the Server\u0027s machine, or any text naming them, that the client holds where no file of the library\ndoes yet, such as an open dialog\u0027s unsaved settings. An upload any of them names counts as used."
+          }
+        },
+        "description": "The body of \u0060POST /api/v1/library/uploads/clear\u0060 (#301)."
       },
       "ViewportBakePreview": {
         "required": [

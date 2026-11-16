@@ -79,7 +79,8 @@ sealed class LibraryNameIndex(IndexDatabase database) {
             ("$names", names is null ? DBNull.Value : Join(names))
         );
 
-    static string Join(HashSet<LibraryName> names) =>
+    /// <summary>The names as a row holds them, which the scan writes too (#301).</summary>
+    internal static string Join(HashSet<LibraryName> names) =>
         string.Join('\n', names.Select(static name => $"{name.Before}{Separator}{name.Name}"));
 
     static HashSet<LibraryName> Parse(string names) => [

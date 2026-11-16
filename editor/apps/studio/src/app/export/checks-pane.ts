@@ -11,7 +11,9 @@ import type {
   StackState
 } from '@patina/api-client';
 import { unwrap } from '@patina/api-client';
+import { Disclosure } from '@patina/studio-ui';
 import { XuiButtonImports } from '@xui/button';
+import { XuiCheckboxImports } from '@xui/checkbox';
 import { XuiInputImports } from '@xui/input';
 import { XuiNonIdealStateImports } from '@xui/non-ideal-state';
 import { XuiSegmentedControlImports } from '@xui/segmented-control';
@@ -97,8 +99,10 @@ const Limits: readonly Limit[] = [
 @Component({
   selector: 'ptn-checks',
   imports: [
+    Disclosure,
     NgTemplateOutlet,
     XuiButtonImports,
+    XuiCheckboxImports,
     XuiInputImports,
     XuiNonIdealStateImports,
     XuiSegmentedControlImports,
@@ -137,6 +141,16 @@ const Limits: readonly Limit[] = [
       </div>
       <!-- One scroll below the bar, so a long list never runs under the limits. -->
       <div class="min-h-0 flex-1 overflow-y-auto">
+        @if (scope() === 'all') {
+          <xui-checkbox
+            class="px-2 py-1 text-xs"
+            data-testid="checks-measure-all"
+            title="Opens each set nobody has open for the engine to measure its texel density, UV layout and values, which takes as long as computing every set"
+            [checked]="measureAll()"
+            (checkedChange)="measureAll.set($event)"
+            >Measure every set</xui-checkbox
+          >
+        }
         @if (projectPath() && presets().length > 0) {
           <label class="flex shrink-0 items-center gap-2 px-2 py-1 text-xs" title="The platform to check the sets for">
             <span class="text-foreground-muted w-24 shrink-0">Platform</span>
@@ -186,8 +200,7 @@ const Limits: readonly Limit[] = [
             <dd class="readout" data-testid="checks-memory">{{ memory(checks) }}</dd>
           </dl>
           @if (checks.files.length > 0) {
-            <details class="shrink-0 px-2 pb-1 text-xs" data-testid="checks-files">
-              <summary class="text-foreground-muted cursor-pointer">Memory by file</summary>
+            <ptn-disclosure class="shrink-0 px-2 pb-1 text-xs" label="Memory by file" data-testid="checks-files">
               <ul class="mt-1" aria-label="Memory by file">
                 @for (file of checks.files; track file.file) {
                   <li class="flex items-baseline gap-2" data-testid="checks-file" [title]="held(file)">
@@ -197,11 +210,16 @@ const Limits: readonly Limit[] = [
                   </li>
                 }
               </ul>
-            </details>
+            </ptn-disclosure>
           }
           <ng-container *ngTemplateOutlet="problemList; context: { $implicit: checks, here: true }" />
         } @else if (scope() === 'all' && project(); as all) {
           <p class="readout shrink-0 px-2 py-1 text-xs" data-testid="checks-project-memory">{{ projectMemory(all) }}</p>
+          @if (all.problems.length > 0) {
+            <div data-testid="checks-project-problems">
+              <ng-container *ngTemplateOutlet="problemList; context: { $implicit: all, here: false }" />
+            </div>
+          }
           <div data-testid="checks-sets">
             @for (set of all.sets; track set.document) {
               <section class="border-hairline border-b" data-testid="checks-set" [attr.data-document]="set.document">
@@ -234,8 +252,11 @@ const Limits: readonly Limit[] = [
           <p class="text-error px-2 py-1 text-sm" role="alert" data-testid="checks-failure">{{ reason }}</p>
         }
         @if (projectPath()) {
-          <details class="border-hairline shrink-0 border-t px-2 py-1" data-testid="checks-limits">
-            <summary class="text-foreground-muted cursor-pointer text-xs">{{ limitsTitle() }}</summary>
+          <ptn-disclosure
+            class="border-hairline shrink-0 border-t px-2 py-1"
+            data-testid="checks-limits"
+            [label]="limitsTitle()"
+          >
             @for (limit of shownLimits(); track limit.key) {
               <label class="mt-1 flex items-center gap-2 text-xs" [title]="limitTitle(limit)">
                 <span class="text-foreground-muted w-24 shrink-0">{{ limit.label }}</span>
@@ -252,7 +273,7 @@ const Limits: readonly Limit[] = [
                 />
               </label>
             }
-          </details>
+          </ptn-disclosure>
         }
       </div>
     } @else {
@@ -280,6 +301,8 @@ export class ChecksPane {
   protected readonly result = signal<StackChecks | null>(null);
   protected readonly project = signal<ProjectChecks | null>(null);
   protected readonly running = signal(false);
+  /** Whether a check of every set opens the ones nobody has open for the engine to measure. */
+  protected readonly measureAll = signal(false);
   protected readonly failure = signal<string | null>(null);
   /** Whether a check was asked for while one ran. */
   private again = false;
@@ -355,7 +378,7 @@ export class ChecksPane {
       const client = await this.library.api();
       const project = this.projectPath();
       if (this.scope() === 'all' && project !== null) {
-        const query = { project, ...preset };
+        const query = { project, ...preset, ...(this.measureAll() ? { measure: true } : {}) };
         this.project.set(unwrap(await client.GET('/api/v1/library/project/checks', { params: { query } })));
         return;
       }

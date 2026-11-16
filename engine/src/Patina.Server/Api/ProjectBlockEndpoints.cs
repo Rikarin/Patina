@@ -171,15 +171,28 @@ static class ProjectBlockEndpoints {
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetExport(LibraryHost host, ProjectExportRequest request) =>
         Keep(host, request.Project, null, library => library.SetExport(request.Project, request.Export));
 
-    static Results<Ok<ProjectContents>, ProblemHttpResult> SetBake(LibraryHost host, ProjectBakeRequest request) =>
-        request.Bake.Options.Refusal() is { Code: { } code } refusal
-            ? Refusals.Problem(refusal.Detail, StatusCodes.Status400BadRequest, code, refusal.Values)
-            : Keep(
-                host,
-                request.Project,
-                request.Bake.Options.Problem(),
-                library => library.SetBake(request.Project, request.Bake)
-            );
+    static Results<Ok<ProjectContents>, ProblemHttpResult> SetBake(
+        LibraryHost host,
+        BakePreviewSession preview,
+        ViewportSession viewport,
+        ProjectBakeRequest request
+    ) {
+        if (request.Bake.Options.Refusal() is { Code: { } code } refusal) {
+            return Refusals.Problem(refusal.Detail, StatusCodes.Status400BadRequest, code, refusal.Values);
+        }
+
+        var kept = Keep(
+            host,
+            request.Project,
+            request.Bake.Options.Problem(),
+            library => library.SetBake(request.Project, request.Bake)
+        );
+        if (preview.Follows(request.Project)) {
+            viewport.Redraw(); // the next frame reads the preview's setup again (#300)
+        }
+
+        return kept;
+    }
 
     static Results<Ok<ProjectContents>, ProblemHttpResult> SetViewport(
         LibraryHost host,

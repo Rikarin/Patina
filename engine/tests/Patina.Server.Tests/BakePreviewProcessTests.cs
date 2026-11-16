@@ -1,4 +1,6 @@
+using Patina.Bench;
 using Patina.Contracts;
+using Patina.Library;
 using System.Buffers.Binary;
 using System.Net;
 using System.Net.WebSockets;
@@ -144,5 +146,96 @@ public sealed partial class BakeProcessTests {
         }
 
         Assert.True(SamePicture(bare, cleared), "Taking the preview off left something behind.");
+    }
+
+    /// <summary>
+    ///     A preview of a project follows its <c>project.yaml</c> (#300): written by hand or by another client through
+    ///     <c>PUT /library/project/bake</c>, the next frame reads the setup from it again, with no client asking.
+    /// </summary>
+    [Fact]
+    public async Task A_preview_of_a_project_follows_its_file_when_another_client_changes_it() {
+        using var deadline = Deadline(180);
+        File.WriteAllText(
+            Path.Combine(Library, "library.yaml"),
+            """
+            schema: 1
+            id: 0190a000-0000-7000-8000-00000000abd0
+            name: Game
+            texelDensity: 1024
+            channels: []
+            defaultShader: pbr
+            exportTargets: []
+            """
+        );
+        var project = Directory.CreateDirectory(Path.Combine(Library, "projects", "crate")).FullName;
+        BakeFixture.Write(project, 0.02f);
+        var mesh = AssetId.New();
+        ProjectDocument crate = new(ProjectId.New(), "Crate", [], [], []) {
+            Meshes = [new(mesh, BakeFixture.LowFile, BakeFixture.HighFile)],
+            Bake = new() { Options = new() { Resolution = 64, Rays = new() { Front = 0.05 } } }
+        };
+        var file = Path.Combine(project, LibraryLayout.ProjectFile);
+        File.WriteAllText(file, DocumentCodec.Write(crate));
+        StartServer();
+        await DiscoverAsync(deadline.Token);
+        StartWorker();
+
+        using var socket = await ViewportAsync(deadline.Token);
+        await SendAsync(socket, new(new(0.6d, 0.35d, 1.6d), 320, 200, 1), deadline.Token);
+        while ((await ViewportStateAsync(deadline.Token)).Width != 320) {
+            await Task.Delay(10, deadline.Token);
+        }
+
+        using var opened = await http.PutAsJsonAsync(
+            "/api/v1/viewport/mesh",
+            new(Path.Combine(project, BakeFixture.LowFile)),
+            ContractsJsonContext.Default.ViewportMeshRequest,
+            deadline.Token
+        );
+        opened.EnsureSuccessStatusCode();
+        await FrameAsync(socket, deadline.Token);
+        using var shown = await PreviewAsync(new() { Project = "crate" }, deadline.Token);
+        if (shown.StatusCode == HttpStatusCode.UnprocessableEntity
+            && await shown.Content.ReadAsStringAsync(deadline.Token) is var refusal
+            && refusal.Contains("No Vulkan", StringComparison.Ordinal)) {
+            Gpu.Skip(refusal);
+        }
+
+        Assert.True(shown.IsSuccessStatusCode, await shown.Content.ReadAsStringAsync(deadline.Token));
+        Assert.Equal(0.05, await FrontAsync(socket, 2, deadline.Token));
+
+        // By hand, as an editor of the file or another program would.
+        File.WriteAllText(file, DocumentCodec.Write(crate with { Bake = Front(crate, 0.2) }));
+        Assert.Equal(0.2, await FrontAsync(socket, 3, deadline.Token));
+
+        // Through the API, as another client would.
+        using var kept = await http.PutAsJsonAsync(
+            "/api/v1/library/project/bake",
+            new ProjectBakeRequest("crate", Front(crate, 0.1)),
+            deadline.Token
+        );
+        kept.EnsureSuccessStatusCode();
+        Assert.Equal(0.1, await FrontAsync(socket, 4, deadline.Token));
+    }
+
+    static ProjectBakeSettings Front(ProjectDocument project, double front) =>
+        project.Bake! with {
+            Options = project.Bake.Options with { Rays = project.Bake.Options.Rays with { Front = front } }
+        };
+
+    /// <summary>The front distance the preview shows once a frame carrying an input is drawn.</summary>
+    async Task<double> FrontAsync(ClientWebSocket socket, uint input, CancellationToken token) {
+        await SendAsync(socket, new(Input: input), token);
+        await FrameAfterAsync(socket, input, token);
+        var state = await http.GetFromJsonAsync(
+            "/api/v1/viewport/bake-preview",
+            ContractsJsonContext.Default.BakePreviewState,
+            token
+        );
+        Assert.DoesNotContain(
+            state!.Warnings,
+            static warning => warning.Contains("no longer", StringComparison.Ordinal)
+        );
+        return state.Preview!.Options.Rays.Front;
     }
 }

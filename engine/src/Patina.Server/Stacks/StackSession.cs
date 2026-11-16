@@ -40,6 +40,13 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     readonly Action wake;
     string fileHash;
     long revision = 1;
+
+    /// <summary>
+    ///     Counts edits, undos and redos: what a save compares, since the revision also moves when a bake is chosen,
+    ///     which is no edit of the document (#299).
+    /// </summary>
+    long edits;
+
     long settled;
     bool forced;
     bool closed;
@@ -359,14 +366,14 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
     ///     disk.
     /// </summary>
     /// <exception cref="GraphFileChangedException">The file changed behind this session.</exception>
-    /// <returns>The text to write, and the revision it is of.</returns>
-    public (string Text, long Revision) PrepareSave(bool force) {
+    /// <returns>The text to write, and the count of edits it holds.</returns>
+    public (string Text, long Edits) PrepareSave(bool force) {
         lock (Changing) {
             if (!force && File.Exists(Path) && Hash(SharedFile.ReadAllText(Path)) != fileHash) {
                 throw new GraphFileChangedException($"'{Path}' changed on disk after it was opened.");
             }
 
-            return (StackDocuments.Text(editor.Document), revision);
+            return (StackDocuments.Text(editor.Document), edits);
         }
     }
 
@@ -390,13 +397,16 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
 
     /// <summary>
     ///     Writes the document, once the Worker has written its pixels. An edit made since the text was taken is not in
-    ///     the file, so the stack stays unsaved however this ends.
+    ///     the file, so the stack stays unsaved however this ends. A bake chosen meanwhile is no edit, and leaves it
+    ///     saved.
     /// </summary>
+    /// <param name="text">The text <see cref="PrepareSave" /> took.</param>
+    /// <param name="taken">The count of edits it held.</param>
     public StackEditResult FinishSave(string text, long taken) {
         lock (Changing) {
             LibraryFiles.Replace(Path, text);
             fileHash = Hash(text);
-            if (taken == revision) {
+            if (taken == edits) {
                 editor.MarkSaved();
             }
 
@@ -768,6 +778,7 @@ public sealed class StackSession : FollowedSession<StackEvent>, IFileSession {
         published = editor.Document;
         if (painted is not null) {
             revision++;
+            edits++;
         }
 
         var delta = painted is null

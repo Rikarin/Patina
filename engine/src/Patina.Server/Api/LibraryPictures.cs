@@ -50,7 +50,7 @@ static class LibraryPictures {
     ///     A picture that does not read, or a Worker that did not come or could not read the file, as a refusal; null
     ///     for anything else.
     /// </summary>
-    static ProblemHttpResult? Refused(string file, Exception e) =>
+    internal static ProblemHttpResult? Refused(string file, Exception e) =>
         e switch {
             PictureUnreadableException => Refusals.Problem(
                 $"{Path.GetFileName(file)} does not read as a picture: {e.Message}",

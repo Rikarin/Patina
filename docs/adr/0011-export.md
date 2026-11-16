@@ -286,6 +286,17 @@ Two tests stand in for the engines until someone opens the files in them:
   encoder's error is measured in those patterns, which is a relative error and right for light. Measuring it in values
   instead would trade the dark end of every HDR picture for the bright end of this one; that is not done.
 
+- _2026-11-16 (#157, #46):_ USD's and MaterialX's own libraries read the material files. `MaterialToolTests` has every
+  shipped preset write its `.usda`, `.mtlx` and `.openpbr.mtlx` beside its textures, and a Python script
+  (`tools/check_materials.py`, with `usd-core` 26.11 and `MaterialX` 1.39.5 pinned by hash) opens each: every validator
+  USD ships but the `.usdz` ones, MaterialX's `validate()` against its standard libraries, a definition for every node,
+  a `UsdPreviewSurface` surface, every input from a `UsdUVTexture` or image that names a picture that is there and reads
+  texture coordinates, and each picture read in a space its numbers can be in. Linux CI installs both and fails if the
+  test is skipped. It found the layer saying no units or up axis, which every stage is asked to; the layer now says
+  metres and Y up. One warning is accepted: a normal whose green runs down is read with a green scale of −2, which USD's
+  validator holds against an 8-bit normal; a reader that ignores a texture's scale reads that green upside down, which
+  only an import in that reader shows.
+
 What only a person with the engine can check, one import per engine, recorded here when done:
 
 - **Unreal:** that a Y− normal imported with Flip Green Channel off lights correctly on a curved surface, and that the ORM file

@@ -83,6 +83,32 @@ public sealed class ProjectChecksApiTests : IAsyncLifetime {
         Assert.Equal("preset-missing", problem.RootElement.GetProperty("code").GetString());
     }
 
+    /// <summary>
+    ///     Limits kept for a preset that no library or project has any more are named once for the project, and go to
+    ///     its limits, rather than holding no set without a word; a platform whose preset is there says nothing.
+    /// </summary>
+    [Fact]
+    public async Task Limits_kept_for_a_preset_that_has_gone_are_named() {
+        await MakeAsync();
+        var checks = new ProjectCheckSettings { Platforms = [new("unreal") { MaxSize = 1024 }, new("renamed")] };
+        using var kept = await client.PutAsJsonAsync(
+            "/api/v1/library/project/checks",
+            new ProjectChecksRequest("crate", checks),
+            Token
+        );
+        kept.EnsureSuccessStatusCode();
+
+        var found = await ChecksAsync(null);
+
+        var gone = Assert.Single(found.Problems);
+        Assert.Equal((CheckCodes.PlatformUnknown, "renamed"), (gone.Code, gone.Values["preset"]));
+        Assert.Equal("checks.platforms", gone.Target.Setting);
+        Assert.DoesNotContain(
+            found.Sets.SelectMany(static set => set.Problems),
+            static problem => problem.Code == CheckCodes.PlatformUnknown
+        );
+    }
+
     /// <summary>A project keeps its platforms' limits in its file, and refuses two for one platform.</summary>
     [Fact]
     public async Task A_project_keeps_one_set_of_limits_for_each_platform() {

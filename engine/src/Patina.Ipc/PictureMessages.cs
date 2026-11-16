@@ -29,7 +29,16 @@ public sealed record PictureAnswer(
 /// <param name="File">The picture.</param>
 /// <param name="Preview">Where to write the PNG, or null to read it whole and write nothing.</param>
 /// <param name="Side">The PNG's longer side at most, or null for the picture's own size.</param>
-public sealed record PictureReadAsk(string File, string? Preview, int? Side);
+public sealed record PictureReadAsk(string File, string? Preview, int? Side) {
+    /// <summary>
+    ///     Whether the PNG is a map brought into a bake (#300): 16 bits a lane at the picture's own size, in place of
+    ///     the 8-bit picture a client is shown.
+    /// </summary>
+    public bool Map { get; init; }
+
+    /// <summary>For a map: whether its green is turned over, so a normal whose green ran down runs up.</summary>
+    public bool TurnGreen { get; init; }
+}
 
 /// <summary>A bake's folder whose ID map's colours are wanted, and a place on the map to ask about.</summary>
 /// <param name="Folder">The bake's folder.</param>

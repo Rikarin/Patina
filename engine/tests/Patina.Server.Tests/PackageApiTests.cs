@@ -250,6 +250,85 @@ public sealed class PackageApiTests : IAsyncLifetime {
         Assert.Contains("painted pixels", refused.Problem, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    ///     A Text node's font and a Vector node's SVG are found as a Bitmap's picture is (#139), so a package carries
+    ///     them as it carries pictures, from the graph or from a compound of its project, and a project using it finds
+    ///     them in the library.
+    /// </summary>
+    [Fact]
+    public async Task A_font_and_an_SVG_file_travel_in_a_package_as_pictures_do() {
+        var graph = await RustProjectAsync();
+        var project = Path.Combine(server.Library, "projects", "rusty-kit");
+        var file = Path.Combine(server.Library, graph);
+        var drawn = (await File.ReadAllTextAsync(file, Token)).Replace(
+            "  - { id: 5, type: Output/Output",
+            "  - { id: 6, type: Source/Vector, texts: { File: logo.svg } }\n  - { id: 5, type: Output/Output",
+            StringComparison.Ordinal
+        );
+        await File.WriteAllTextAsync(file, drawn, Token);
+        var wear = Wear.Replace(
+            "  - { id: 3, type: Sub-graph/Output }",
+            "  - { id: 3, type: Sub-graph/Output }\n  - { id: 4, type: Source/Text, texts: { Font: fonts/Plate.ttf } }",
+            StringComparison.Ordinal
+        );
+        await File.WriteAllTextAsync(Path.Combine(project, "Compounds", "Wear.vxtexgraph"), wear, Token);
+        await File.WriteAllTextAsync(Path.Combine(project, "logo.svg"), "<svg/>", Token);
+        Directory.CreateDirectory(Path.Combine(project, "fonts"));
+        await File.WriteAllBytesAsync(Path.Combine(project, "fonts", "Plate.ttf"), [7, 7, 7], Token);
+
+        var plan = await PlanAsync(graph);
+        Assert.Empty(plan.Diagnostics);
+        Assert.All(plan.Dependencies, static d => Assert.Null(d.Problem));
+        Assert.Equal(
+            [
+                ("drawing", "fonts/Plate.ttf", "projects/rusty-kit/fonts/Plate.ttf", "Wear"),
+                ("drawing", "logo.svg", "projects/rusty-kit/logo.svg", null)
+            ],
+            plan.Dependencies.Where(static d => d.Kind == "drawing")
+                .Select(static d => (d.Kind, d.Name, d.File, d.In))
+        );
+
+        var published = await client.PostAsJsonAsync("/api/v1/library/packages", new PackageRequest(graph), Token);
+        Assert.Equal(HttpStatusCode.OK, published.StatusCode);
+        var manifest = (await published.Content.ReadFromJsonAsync<PackagePublished>(Token))!.Manifest;
+        var files = manifest.Files.ToDictionary(static f => f.From, static f => f.Path);
+        Assert.Equal(["fonts/Plate.ttf", "logo.svg", "mask.png"], files.Keys.Order(StringComparer.Ordinal));
+        Assert.Matches("""^files/[0-9a-f]{16}\.ttf$""", files["fonts/Plate.ttf"]);
+
+        var folder = Path.Combine(server.Library, "packages", "Rust.ptpkg");
+        Assert.Equal([7, 7, 7], await File.ReadAllBytesAsync(Path.Combine(folder, files["fonts/Plate.ttf"]), Token));
+        var inside = YamlSerializer.Parse<NodeGraphAsset>(
+            await File.ReadAllTextAsync(Path.Combine(folder, "Rust.vxtexgraph"), Token)
+        );
+        Assert.Equal(files["logo.svg"], inside.Nodes.Single(static n => n.Id == 6).Texts["File"]);
+        var compound = Path.Combine(folder, "Compounds", "Packages", "Rust", "Wear.vxtexgraph");
+        var carried = YamlSerializer.Parse<NodeGraphAsset>(await File.ReadAllTextAsync(compound, Token));
+        Assert.Equal(files["fonts/Plate.ttf"], carried.Nodes.Single(static n => n.Id == 4).Texts["Font"]);
+
+        // A project using the package finds both from the library, as it finds the package's pictures.
+        await client.PostAsJsonAsync("/api/v1/library/projects", new ProjectCreateRequest("Alpha"), Token);
+        (await client.PostAsJsonAsync(
+            "/api/v1/library/materials/use",
+            new MaterialUseRequest("alpha", "packages/Rust.ptpkg/Rust.vxtexgraph"),
+            Token
+        )).EnsureSuccessStatusCode();
+        var alpha = Path.Combine(server.Library, "projects", "alpha", "Compounds");
+        var material = YamlSerializer.Parse<NodeGraphAsset>(
+            await File.ReadAllTextAsync(Path.Combine(alpha, "Materials", "Rust.vxtexgraph"), Token)
+        );
+        Assert.Equal(
+            $"packages/Rust.ptpkg/{files["logo.svg"]}",
+            material.Nodes.Single(static n => n.Id == 6).Texts["File"]
+        );
+        var brought = YamlSerializer.Parse<NodeGraphAsset>(
+            await File.ReadAllTextAsync(Path.Combine(alpha, "Packages", "Rust", "Wear.vxtexgraph"), Token)
+        );
+        Assert.Equal(
+            $"packages/Rust.ptpkg/{files["fonts/Plate.ttf"]}",
+            brought.Nodes.Single(static n => n.Id == 4).Texts["Font"]
+        );
+    }
+
     [Fact]
     public async Task What_a_graph_says_about_itself_is_one_undo_step_that_reaches_its_file() {
         var graph = await RustProjectAsync();

@@ -26,9 +26,10 @@ class PackageDependency:
 
         Attributes:
             kind (str): `compound` (a graph of its project's, which the package carries), `shipped` (a compound that ships
-                            with Patina, which it does not), `picture` (a bitmap, which it carries), or `unknown` (a node type
-                            nothing publishes).
-            name (str): The node type, or the picture as the graph names it.
+                            with Patina, which it does not), `picture` (a bitmap, which it carries), `drawing` (a Text node's
+                font
+                            or a Vector node's SVG file, which it carries), or `unknown` (a node type nothing publishes).
+            name (str): The node type, or the file as the graph names it.
             file (None | str | Unset): Where it was found, below the library when it is in one, or null when it was not.
             problem (None | str | Unset): Why it cannot be brought, or null when it can.
             in_ (None | str | Unset): The compound that names it, or null when the graph itself does, which is when

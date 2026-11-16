@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   effect,
   inject,
@@ -21,6 +22,7 @@ import { labelsOf, valuesOf } from '../core/labels';
 import { messageOf } from '../core/messages';
 import { SystemStatus } from '../core/system-status';
 import { FileChooser } from './file-chooser';
+import { HeldFiles } from './held-files';
 import { LibraryStore } from './library-store';
 import { LibraryTreeStore } from './library-tree-store';
 import { MeshFactsView } from './mesh-facts';
@@ -237,6 +239,8 @@ export class NewProjectDialog {
   );
 
   constructor() {
+    // A mesh or picture chosen and not yet made into a project may be an upload nothing else names (#301).
+    inject(DestroyRef).onDestroy(inject(HeldFiles).hold(() => [this.mesh(), this.high(), this.image()]));
     effect(() => {
       if (this.open()) {
         this.refused.set(null); // a refusal is about the last attempt, not this one

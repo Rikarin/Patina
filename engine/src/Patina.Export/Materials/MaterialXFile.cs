@@ -11,7 +11,8 @@ namespace Patina.Export.Materials;
 ///     moves to, whose inputs are named as OpenPBR names them. A lane is an <c>extract</c>, one minus it an
 ///     <c>invert</c>, and a normal whose green runs down is turned over before <c>normalmap</c>, which reads green up.
 ///     Neither surface has occlusion or specular colour of this kind, so those are said and left out; height is left
-///     to a displacement shader this does not write.
+///     to a displacement shader this does not write. Both have a coat, a sheen and transmission, so OpenPBR's layer
+///     maps reach either, under OpenPBR's names or standard surface's.
 /// </summary>
 sealed class MaterialXFile {
     const string Float = "float";
@@ -65,8 +66,19 @@ sealed class MaterialXFile {
             );
         }
 
+        Layers(slots.Layers);
         Unsupported(slots);
         return Text();
+    }
+
+    /// <summary>OpenPBR's layers above the base (#142); standard surface calls its fuzz a sheen.</summary>
+    void Layers(OpenPbrSlots layers) {
+        Connect(openPbr ? "coat_weight" : "coat", Float, Grey(layers.Coat, "coat"));
+        Connect("coat_roughness", Float, Grey(layers.CoatRoughness, "coat roughness"));
+        Connect(openPbr ? "fuzz_weight" : "sheen", Float, Grey(layers.Sheen, "sheen"));
+        Connect(openPbr ? "fuzz_color" : "sheen_color", Colour3, Three(layers.SheenColor, "sheen color", Colour3));
+        Connect(openPbr ? "fuzz_roughness" : "sheen_roughness", Float, Grey(layers.SheenRoughness, "sheen roughness"));
+        Connect(openPbr ? "transmission_weight" : "transmission", Float, Grey(layers.Transmission, "transmission"));
     }
 
     /// <summary>A normal turned so its green runs up: one minus green, as a multiply and an add.</summary>

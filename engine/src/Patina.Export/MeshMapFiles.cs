@@ -23,6 +23,8 @@ public static class MeshMapFiles {
             MeshMapKind.Edges => "edges",
             MeshMapKind.Islands => "islands",
             MeshMapKind.Borders => "borders",
+            MeshMapKind.Bounds => "bounds",
+            MeshMapKind.Density => "density",
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Not a map.")
         };
 

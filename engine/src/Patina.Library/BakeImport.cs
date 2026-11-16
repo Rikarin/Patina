@@ -12,8 +12,10 @@ namespace Patina.Library;
 /// <remarks>
 ///     <para>
 ///         The files are copied as they are, never decoded: the Server reads no picture (ADR 0042), so only a PNG is
-///         taken, which is what every reader of a bake reads, and a normal map's green must run up the picture, as
-///         Patina's bakes and glTF's do. A map's size is not known here and is kept as 0, which fits any shape.
+///         taken here, which is what every reader of a bake reads, and a normal map's green must run up the picture, as
+///         Patina's bakes and glTF's do. Any other picture, and a normal whose green runs down, is first written as a
+///         PNG with its green up by the Worker (#300), which <see cref="Decoded" /> says. A map's size is not known
+///         here and is kept as 0, which fits any shape.
 ///     </para>
 ///     <para>
 ///         A map brought in replaces the map of that name in whatever bake the folder holds, so exactly one file
@@ -36,8 +38,7 @@ public static class BakeImport {
     /// <exception cref="ProjectRefusedException">The request breaks a rule.</exception>
     /// <exception cref="FileNotFoundException">The project, the document or a picture is not there.</exception>
     public static (string Folder, string Document) Run(string root, BakeImportRequest request) {
-        ArgumentNullException.ThrowIfNull(request);
-        Check(request);
+        Check(request, false);
         var folder = Path.GetDirectoryName(LibraryFiles.ProjectFile(root, LibraryFolders.Existing(request.Project)))!;
         var project = ProjectBakes.Read(folder);
         var item = project.Documents.FirstOrDefault(d => d.Id.Value == request.Document)
@@ -77,9 +78,27 @@ public static class BakeImport {
         return (bake, Path.GetFullPath(item.File, folder));
     }
 
-    /// <exception cref="ProjectRefusedException">A map is unknown or twice, the space unknown, or no PNG.</exception>
+    /// <summary>
+    ///     Whether a map is to be written as a PNG with its green up before it is brought in (#300): it is no PNG, or
+    ///     its green runs down.
+    /// </summary>
+    public static bool Decoded(BakeImportMap map) {
+        ArgumentNullException.ThrowIfNull(map);
+        return map.GreenDown || !IsPng(map.File);
+    }
+
+    /// <summary>Refuses a request before anything is decoded or copied, which <see cref="Run" /> refuses too.</summary>
+    /// <param name="request">The maps, their files and their space.</param>
+    /// <param name="decoding">
+    ///     Whether a map may still be decoded (#300): any picture Patina reads, and a normal whose green runs down.
+    ///     Once decoded, only a PNG with its green up is taken.
+    /// </param>
+    /// <exception cref="ProjectRefusedException">
+    ///     A map is unknown or twice, the space unknown, a file no picture taken, or green turned on a map without one.
+    /// </exception>
     /// <exception cref="FileNotFoundException">A picture is not there.</exception>
-    static void Check(BakeImportRequest request) {
+    public static void Check(BakeImportRequest request, bool decoding) {
+        ArgumentNullException.ThrowIfNull(request);
         if (request.Maps.Count == 0) {
             throw new ProjectRefusedException("Bringing in a bake takes one map at least.");
         }
@@ -94,15 +113,30 @@ public static class BakeImport {
                 throw new ProjectRefusedException($"'{map.Map}' is not a map a bake has, or it is named twice.");
             }
 
-            if (!File.Exists(map.File)) {
-                throw new FileNotFoundException($"There is no picture at '{map.File}'.", map.File);
-            }
-
-            if (!IsPng(map.File)) {
+            if (map.GreenDown && (request.Space != "tangent" || map.Map is not ("normal" or "bent"))) {
                 throw new ProjectRefusedException(
-                    $"'{Path.GetFileName(map.File)}' is no PNG, which is what a bake is read as."
+                    $"Only a tangent-space normal or bent normal has a green to turn over, not '{map.Map}'."
                 );
             }
+
+            CheckFile(map, decoding);
+        }
+    }
+
+    /// <exception cref="ProjectRefusedException">The file is no picture taken.</exception>
+    /// <exception cref="FileNotFoundException">It is not there.</exception>
+    static void CheckFile(BakeImportMap map, bool decoding) {
+        if (!File.Exists(map.File)) {
+            throw new FileNotFoundException($"There is no picture at '{map.File}'.", map.File);
+        }
+
+        var name = Path.GetFileName(map.File);
+        if (decoding && !PictureFormats.IsPicture(map.File) && !IsPng(map.File)) {
+            throw new ProjectRefusedException($"'{name}' is no picture Patina reads.");
+        }
+
+        if (!decoding && (map.GreenDown || !IsPng(map.File))) {
+            throw new ProjectRefusedException($"'{name}' is no PNG with its green up, which a bake is read as.");
         }
     }
 

@@ -1,4 +1,5 @@
 using Patina.Contracts;
+using Patina.Library;
 
 namespace Patina.Server.Tests;
 
@@ -54,6 +55,41 @@ public sealed partial class StackProcessTests {
         );
         var codes = (await ChecksAsync(state.Id, deadline.Token)).Problems.Select(static problem => problem.Code);
         Assert.Contains(CheckCodes.MetalPartial, codes);
+    }
+
+    /// <summary>
+    ///     A project check asked to measure every set has the Worker measure a set nobody has open, and closes it again
+    ///     after, where an ordinary check judges it from its file alone (ADR 0043).
+    /// </summary>
+    [Fact]
+    public async Task A_project_check_can_measure_the_sets_nobody_has_open() {
+        using var deadline = Deadline(300);
+        LibraryFiles.CreateDefaultLibrary(Library, "Game");
+        var (_, unused) = await StartAsync("Unused.vxlayers", deadline.Token);
+        // A machine with no GPU says so here, and the test is skipped rather than finding the set unmeasured.
+        await ChecksAsync(unused.Id, deadline.Token);
+        var made = await http.PostAsJsonAsync(
+            "/api/v1/library/projects",
+            new { name = "Crate", kind = "layered-material", resolution = 256 },
+            deadline.Token
+        );
+        Assert.True(made.IsSuccessStatusCode, await made.Content.ReadAsStringAsync(deadline.Token));
+
+        var judged = await ProjectChecksAsync(string.Empty, deadline.Token);
+        var measured = await ProjectChecksAsync("&measure=true", deadline.Token);
+
+        Assert.False(Assert.Single(judged.Sets).Measured);
+        var set = Assert.Single(measured.Sets);
+        Assert.True(set.Measured, "The Worker measured the set nobody had open.");
+        Assert.Equal(string.Empty, set.Stack);
+        var open = await http.GetFromJsonAsync<StackSummary[]>("/api/v1/stacks", deadline.Token);
+        Assert.DoesNotContain(open!, static summary => summary.Path.Contains("crate", StringComparison.Ordinal));
+    }
+
+    async Task<ProjectChecks> ProjectChecksAsync(string query, CancellationToken token) {
+        using var response = await http.GetAsync($"/api/v1/library/project/checks?project=crate{query}", token);
+        await SucceededAsync(response, token);
+        return (await response.Content.ReadFromJsonAsync<ProjectChecks>(token))!;
     }
 
     async Task<StackChecks> ChecksAsync(string id, CancellationToken token) {

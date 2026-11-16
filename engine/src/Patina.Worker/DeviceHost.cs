@@ -30,7 +30,7 @@ sealed class DeviceHost : IDisposable {
         get {
             if (evaluator is null) {
                 if (!VulkanDevice.TryCreate(new(), out device, out var refusal)) {
-                    throw new IpcException($"No Vulkan device: {refusal}");
+                    throw IpcException.NoDevice(refusal);
                 }
 
                 evaluator = new(device) { Results = { Budget = ResultBudget(device.Adapter.DeviceMemory) } };

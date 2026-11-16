@@ -363,7 +363,7 @@ sealed partial class ViewportHost(string shaderCache, MeshShelf meshes) : IDispo
 
     ViewportRenderer Renderer() {
         if (renderer is null && !ViewportRenderer.TryCreate(new(shaderCache), out renderer, out var refusal)) {
-            throw new IpcException($"No Vulkan device: {refusal}");
+            throw IpcException.NoDevice(refusal);
         }
 
         return renderer!;
