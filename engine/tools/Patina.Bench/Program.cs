@@ -12,6 +12,7 @@ using Vixen.TextureGraph;
 //   graph <library> <nodes> <name>      adds a real texture graph to a library, for the editor and spike S7
 //   bake-library <path>                 a library with one project that bakes, which needs no GPU
 //   panel-pair <folder>                 a plate cut into panels over a one-chart low, the Shut Lines demo
+//   alphas <folder>                     the bitmap brush alphas content/alphas ships (#34)
 //   fan-out <folder> [projects] [real] [side] [presets]   edits a material every project reads, and rebuilds
 switch (args) {
     case ["generate", var path, var projects, .. var rest]:
@@ -48,6 +49,8 @@ switch (args) {
         return MeshFixture.Write(path);
     case ["mesh", var path, "--uvs"]:
         return MeshFixture.Write(path, true);
+    case ["alphas", var alphaFolder]:
+        return AlphaFixture.Write(alphaFolder);
     case ["panel-pair", var panels]:
         return PanelFixture.Write(panels);
     case ["bake-pair", var folder, .. var rest]:
@@ -136,6 +139,7 @@ switch (args) {
             Usage: patina-bench kernels <cache folder> [--parallel] [--pipelines] [--pipeline-threads]
                        [--pipeline-cache=<file>] [--format=<format>] [--salt=<n>]
                    patina-bench mesh <file.glb> [--uvs]
+                   patina-bench alphas <folder>
                    patina-bench bake-pair <folder> [cell]
                    patina-bench s9 <folder> [resolution] [rays] [reach]
                    patina-bench graph <library> <nodes> <name>

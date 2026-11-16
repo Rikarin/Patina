@@ -31,6 +31,14 @@ pool's bytes scale with the square of the side):
 of -1. At 16K each of those is 32768² and 16 GiB, and 32768 is past `maxImageDimension2D` on many devices
 (many stop at 16384). The same two images are 8 GiB together at an 8K graph today.
 
+⚠ **Correction, wave 20 (Vixen #1646): the table above scaled a 128² plan, and that is not what a 16K plan holds.**
+Histogram Equalise sizes its two `Rgba32Float` middles from the extent the plan is emitted for, 256 to 511 rows, so
+they are twice the side of a 128² plan and 256² in an 8K or 16K one; a plan is emitted again for each bake. Read off
+plans emitted for the bake (`CompoundPoolTests`, every compound authored at 1024): Edge Select and Cavity Select are
+0.38 GiB at 8K and 1.5 GiB at 16K, Rust 3.25 and 13 GiB, Textured Fill 4.3 and 17.3 GiB, Galvanised Spangle (the
+largest) 5.9 and 23.5 GiB, and no compound makes a texture wider than the bake. What follows from that is the
+owner's to weigh; the paragraphs below are as they were written.
+
 So no rule of the form "16K if the card has N GiB" holds: a grunge fits on a 16 GiB card, and a material with worn edges
 fits on none. The result cache (`TextureResultCache`, half the device's memory and at most 6 GiB in the Worker) cannot
 keep a 16K graph's intermediates either, and the incremental path is what an edit runs.

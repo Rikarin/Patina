@@ -28,7 +28,7 @@ import { DragType as LibraryDrag } from '../library/library-tree';
 import { ProjectStore } from '../library/project-store';
 import { LibraryThumbnails } from '../library/thumbnails';
 import { BrushStore } from './brush-store';
-import { MaterialUse, ShelfAlpha, ShelfEnvironment } from './material-use';
+import { AlphaPrefix, MaterialUse, ShelfAlpha, ShelfEnvironment } from './material-use';
 import { ShelfAlphaStamps } from './shelf-alphas';
 
 const SearchQuiet = 200;
@@ -514,10 +514,11 @@ export class MaterialShelf {
       this.originTerms.set(list.origins);
       this.failure.set(null);
       // In the list's order, a few at a time, so the first rows fill while the rest are drawn.
-      // A preset is a brush and not a picture, so it has none to draw; an alpha is drawn as a stamp of the brush.
+      // A preset is a brush and not a picture, so it has none to draw; an alpha's shape is drawn as a stamp of the
+      // brush, and a picture shipped as an alpha as the picture it is (#34).
       this.pictures.want(
         materials
-          .filter(material => material.role !== 'empty' && material.role !== Preset && material.role !== ShelfAlpha)
+          .filter(m => m.role !== 'empty' && m.role !== Preset && !m.source.startsWith(AlphaPrefix))
           .map(m => m.source)
       );
       this.alphas.want(materials.filter(material => material.role === ShelfAlpha).map(m => m.source));

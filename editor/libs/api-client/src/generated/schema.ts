@@ -1118,7 +1118,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Renders a graph to a picture in its project, which a brush can stamp. */
+    /** Renders a graph to a picture in its project, which a brush can stamp, or brings a picture Patina ships as an alpha into the project's brushes (#34). */
     post: operations['MakeBrush'];
     delete?: never;
     options?: never;
