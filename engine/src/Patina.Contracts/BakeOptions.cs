@@ -56,7 +56,7 @@ public sealed record BakeOptions {
     /// <summary>Every map a bake can write, in the order they are reported.</summary>
     public static IReadOnlyList<string> AllMaps { get; } = [
         "normal", "height", "ao", "bent", "curvature", "thickness", "position", "world", "id", "colour", "opacity",
-        "edges", "islands", "borders"
+        "edges", "islands", "borders", "bounds", "density"
     ];
 
     /// <summary>The atlas's width, in texels, and its height too unless <see cref="Rows" /> says otherwise.</summary>

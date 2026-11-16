@@ -59,6 +59,14 @@ const Maps: readonly { name: string; about: string }[] = [
   {
     name: 'borders',
     about: 'Black on the border of each UV island of the low mesh and white inside it, to fade a pattern before a seam.'
+  },
+  {
+    name: 'bounds',
+    about: 'Where each point lies in its UV island’s bounding square, for a pattern laid out on each island alone.'
+  },
+  {
+    name: 'density',
+    about: 'Texels per unit of the model against the layout’s own: a half where they agree, darker where it is sparser.'
   }
 ];
 const RoundedEdges = [

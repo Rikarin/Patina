@@ -3,6 +3,16 @@ name: UV Island Checker
 nodes:
   - { id: 1, type: Source/Mesh Map, x: -960, y: 0, texts: { Map: islands } }
   - { id: 2, type: Source/Checker, x: -960, y: 220, texts: { '=Scale X': scale, '=Scale Y': scale } }
+  - { id: 4, type: Source/Mesh Map, x: -960, y: 440, texts: { Map: bounds } }
+  - id: 5
+    type: Filters/Pixel Processor
+    x: -720
+    y: 220
+    texts:
+      Format: Grey
+      Expression: 'float4(lerp(b.x, step(0.5f, frac((floor(a.x * x) + floor(a.y * x)) * 0.5f)), y), 0f, 0f, 1f)'
+      '=X': scale
+      '=Y': fit
   - id: 3
     type: Filters/Pixel Processor
     x: -480
@@ -13,7 +23,9 @@ nodes:
   - { id: 99, type: Sub-graph/Output, x: 0, y: 0 }
 edges:
   - { fromNode: 1, fromPort: Out, toNode: 3, toPort: A }
-  - { fromNode: 2, fromPort: Out, toNode: 3, toPort: B }
+  - { fromNode: 4, fromPort: Out, toNode: 5, toPort: A }
+  - { fromNode: 2, fromPort: Out, toNode: 5, toPort: B }
+  - { fromNode: 5, fromPort: Out, toNode: 3, toPort: B }
   - { fromNode: 3, fromPort: Out, toNode: 99, toPort: Out }
 groups: []
 comments: []
@@ -30,5 +42,6 @@ settings:
   summary: 'A checker per UV island, to see stretch, scale and seams on the model before painting.'
   doesNotTile: 'Reads a mesh map, and an atlas has islands at its edges rather than a far side.'
 parameters:
-  - { name: scale, label: Squares, default: '16', summary: 'How many squares run across the UV layout.', kind: Float, minimum: 1, maximum: 128, group: Checker }
+  - { name: scale, label: Squares, default: '16', summary: 'How many squares run across the UV layout, or across each island when the checker is fitted to it.', kind: Float, minimum: 1, maximum: 128, group: Checker }
+  - { name: fit, label: Fit to Each Island, default: '0', summary: 'At 1 the checker starts at each island''s corner and runs its squares across the island''s longer side, from the UV Island Bounds bake; at 0 it runs across the whole layout.', kind: Int, minimum: 0, maximum: 1, group: Checker }
   - { name: contrast, label: Contrast, default: '0.6', summary: 'How much darker the dark squares are than the island''s colour.', kind: Float, minimum: 0, maximum: 1, group: Checker }
