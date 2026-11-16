@@ -13,6 +13,8 @@
     <EmbeddedResource Include="../../../external/Vixen/Raven/Library/Shading/Brdf.rvn" LogicalName="Patina.Viewport.Library.Shading.%(Filename)%(Extension)"/>
     <EmbeddedResource Include="../../../external/Vixen/Raven/Library/Shading/Ibl.rvn" LogicalName="Patina.Viewport.Library.Shading.%(Filename)%(Extension)"/>
     <EmbeddedResource Include="../../../external/Vixen/Raven/Library/Shading/SpecularModels.rvn" LogicalName="Patina.Viewport.Library.Shading.%(Filename)%(Extension)"/>
+    <EmbeddedResource Include="../../../external/Vixen/Raven/Library/Shading/Sheen.rvn" LogicalName="Patina.Viewport.Library.Shading.%(Filename)%(Extension)"/>
+    <EmbeddedResource Include="../../../external/Vixen/Raven/Library/Shading/ClearCoat.rvn" LogicalName="Patina.Viewport.Library.Shading.%(Filename)%(Extension)"/>
     <EmbeddedResource Include="../../../external/Vixen/Raven/Library/PostFx/Fullscreen.rvn" LogicalName="Patina.Viewport.Library.PostFx.%(Filename)%(Extension)"/>
     <EmbeddedResource Include="../../../external/Vixen/Raven/Library/PostFx/Sky.rvn" LogicalName="Patina.Viewport.Library.PostFx.%(Filename)%(Extension)"/>
     <EmbeddedResource Include="../../../external/Vixen/Raven/Library/PostFx/Tonemap.rvn" LogicalName="Patina.Viewport.Library.PostFx.%(Filename)%(Extension)"/>

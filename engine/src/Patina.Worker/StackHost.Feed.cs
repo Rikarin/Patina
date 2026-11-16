@@ -70,6 +70,12 @@ sealed partial class StackHost {
             "occlusion" => ViewportSlot.Occlusion,
             "emissive" => ViewportSlot.Emissive,
             "opacity" => ViewportSlot.Opacity,
+            "coat" => ViewportSlot.Coat,
+            "coatRoughness" => ViewportSlot.CoatRoughness,
+            "sheen" => ViewportSlot.Sheen,
+            "sheenColor" => ViewportSlot.SheenColor,
+            "sheenRoughness" => ViewportSlot.SheenRoughness,
+            "transmission" => ViewportSlot.Transmission,
             _ => null
         };
 

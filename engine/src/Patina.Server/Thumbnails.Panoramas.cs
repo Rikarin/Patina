@@ -28,8 +28,30 @@ public sealed partial class Thumbnails {
     /// <returns>The panorama, or null when the graph has no Output node to draw or draws nothing.</returns>
     /// <exception cref="TimeoutException">No Worker came to draw it.</exception>
     /// <exception cref="IpcException">The Worker could not draw it, and says why.</exception>
-    public async Task<ViewportMapFile?> PanoramaAsync(string file, CancellationToken cancellationToken) {
-        var graph = GraphDocuments.Parse(await SharedFile.ReadAllTextAsync(file, cancellationToken));
+    public async Task<ViewportMapFile?> PanoramaAsync(string file, CancellationToken cancellationToken) =>
+        await PanoramaAsync(
+            file,
+            GraphDocuments.Parse(await SharedFile.ReadAllTextAsync(file, cancellationToken)),
+            cancellationToken
+        );
+
+    /// <summary>
+    ///     A graph's Output as a panorama, as <see cref="PanoramaAsync(string, CancellationToken)" /> draws it, from
+    ///     a document as it is being edited rather than as saved (#300). Its files and pictures are still found
+    ///     beside the graph's file.
+    /// </summary>
+    /// <param name="file">The graph's whole path.</param>
+    /// <param name="graph">The document to draw.</param>
+    /// <param name="cancellationToken">Stops the wait.</param>
+    /// <returns>The panorama, or null when the graph has no Output node to draw or draws nothing.</returns>
+    /// <exception cref="TimeoutException">No Worker came to draw it.</exception>
+    /// <exception cref="IpcException">The Worker could not draw it, and says why.</exception>
+    public async Task<ViewportMapFile?> PanoramaAsync(
+        string file,
+        NodeGraphAsset graph,
+        CancellationToken cancellationToken
+    ) {
+        ArgumentNullException.ThrowIfNull(graph);
         if (Output(graph) is not var (node, usage)) {
             return null;
         }

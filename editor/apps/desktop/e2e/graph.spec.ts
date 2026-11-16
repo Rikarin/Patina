@@ -344,10 +344,17 @@ test('builds a tiling material from a new graph, down to its channels and full s
     'Histogram of the 512 × 512 picture, counted on the GPU'
   );
   await expect(window.getByTestId('texture-size')).toHaveText('512 × 512');
-  await window.getByRole('radio', { name: 'R', exact: true }).click();
+  // The 2D View's bar keeps to one line in the pane it has (#184): nothing runs past its end, and the channel is a
+  // switch where there is room and a list where there is not.
+  const bar = window.getByTestId('texture-bar');
+  expect(await bar.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+  const narrow = await window.getByTestId('texture-channel-narrow').isVisible();
+  const channel = async (name: string): Promise<void> =>
+    narrow ? pick(window, 'texture-channel-narrow', name) : window.getByRole('radio', { name, exact: true }).click();
+  await channel('R');
   await expect(window.getByTestId('texture-channel')).toBeVisible();
   await window.screenshot({ path: join(shots, 'graph-channel.png') });
-  await window.getByRole('radio', { name: 'RGBA' }).click();
+  await channel('RGBA');
   await window.screenshot({ path: join(shots, 'graph-tiling-material.png') });
 
   await window.getByTestId('app-save').click();

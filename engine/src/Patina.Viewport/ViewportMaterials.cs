@@ -165,11 +165,27 @@ sealed class ViewportMaterials(VulkanDevice device, ViewportTextures textures, S
                 Slot(worn, ViewportSlot.Emissive, Maps.Emissive, null, MapMeaning.Colour, textures.Black),
                 Slot(worn, ViewportSlot.Opacity, Maps.Opacity, null, MapMeaning.Measurement, textures.Open),
                 worn[(int)ViewportSlot.QuickMask]?.View ?? textures.Black,
-                SizeOf(worn, colourMap)
+                SizeOf(worn, colourMap),
+                Layers(worn)
             ),
             sampler
         );
     }
+
+    /// <summary>
+    ///     OpenPBR's layers over the base (#142): only a stack paints them, and a slot it leaves empty reads as
+    ///     OpenPBR's default, no coat, sheen or transmission and a white sheen (ADR 0050), so the base is drawn as
+    ///     before.
+    /// </summary>
+    LayerMaps Layers(ViewportLiveMap?[] worn) =>
+        new(
+            worn[(int)ViewportSlot.Coat]?.View ?? textures.Black,
+            worn[(int)ViewportSlot.CoatRoughness]?.View ?? textures.Black,
+            worn[(int)ViewportSlot.Sheen]?.View ?? textures.Black,
+            worn[(int)ViewportSlot.SheenColor]?.View ?? textures.Open,
+            worn[(int)ViewportSlot.SheenRoughness]?.View ?? textures.Black,
+            worn[(int)ViewportSlot.Transmission]?.View ?? textures.Black
+        );
 
     /// <summary>
     ///     The side a material is painted at, which its texel density is measured in: a stack's live maps, or its base
@@ -230,7 +246,18 @@ sealed class ViewportMaterials(VulkanDevice device, ViewportTextures textures, S
         TextureViewHandle Emissive,
         TextureViewHandle Opacity,
         TextureViewHandle QuickMask,
-        float Side
+        float Side,
+        LayerMaps Layers
     );
 #pragma warning restore SK7005
+
+    /// <summary>OpenPBR's coat, sheen and transmission: each read from its red, but the sheen's colour.</summary>
+    internal readonly record struct LayerMaps(
+        TextureViewHandle Coat,
+        TextureViewHandle CoatRoughness,
+        TextureViewHandle Sheen,
+        TextureViewHandle SheenColor,
+        TextureViewHandle SheenRoughness,
+        TextureViewHandle Transmission
+    );
 }
