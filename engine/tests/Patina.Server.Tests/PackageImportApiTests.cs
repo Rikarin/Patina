@@ -293,4 +293,69 @@ public sealed class PackageImportApiTests : IAsyncLifetime {
         );
         Assert.Equal("Choose File", after.History.UndoLabel);
     }
+
+    /// <summary>
+    ///     A file a node reads through a parameter, or a compound's node hands its compound, is relinked where it is named
+    ///     (#311): in the parameter's default, its choices and its presets, and on the compound's node, as one undo step.
+    /// </summary>
+    [Fact]
+    public async Task A_file_named_through_a_parameter_or_handed_to_a_compound_is_relinked_where_it_is_named() {
+        const string Plate = """
+                             name: Plate
+                             nodes:
+                               - { id: 1, type: Source/Text, texts: { Font: $face, Text: P } }
+                               - { id: 2, type: Sub-graph/Output }
+                             parameters:
+                               - { name: face, default: plate.ttf, kind: Text }
+                             """;
+        const string Signs = """
+                             name: Signs
+                             nodes:
+                               - { id: 1, type: Source/Text, texts: { Font: $face, Text: A } }
+                               - { id: 2, type: Plate, texts: { face: plate.ttf } }
+                               - { id: 3, type: Output/Output, texts: { Usage: baseColor } }
+                             edges:
+                               - { fromNode: 1, fromPort: Out, toNode: 3, toPort: Input }
+                             settings: { baseWidth: '64', baseHeight: '64', seed: '1' }
+                             parameters:
+                               - { name: face, default: plate.ttf, kind: Text, accepted: [plate.ttf, bold.ttf] }
+                               - { name: words, default: plate.ttf, kind: Text }
+                             presets:
+                               - { name: Bold, values: { face: bold.ttf, words: plate.ttf } }
+                               - { name: Plain, values: { face: plate.ttf, words: plate.ttf } }
+                             """;
+        var loose = Path.Combine(server.Library, "loose");
+        Directory.CreateDirectory(Path.Combine(loose, "Compounds"));
+        await File.WriteAllTextAsync(Path.Combine(loose, "Compounds", "Plate.vxtexgraph"), Plate, Token);
+        await File.WriteAllTextAsync(Path.Combine(loose, "Signs.vxtexgraph"), Signs, Token);
+        var font = Path.Combine(loose, "pictures", "plate-new.ttf");
+        await File.WriteAllBytesAsync(font, [7], Token);
+        var state = await client.OpenAsync("loose/Signs.vxtexgraph", Token);
+
+        var relinked = await client.PostAsJsonAsync(
+            $"/api/v1/graphs/{state.Id}/relink",
+            new GraphRelinkRequest("plate.ttf", font),
+            Token
+        );
+
+        Assert.Equal(HttpStatusCode.OK, relinked.StatusCode);
+        var after = await client.StateAsync(state.Id, Token);
+        var face = after.Parameters.Single(static p => p.Name == "face");
+        Assert.Equal("pictures/plate-new.ttf", face.Default);
+        Assert.Equal(["pictures/plate-new.ttf", "bold.ttf"], face.Accepted);
+        Assert.Equal("plate.ttf", after.Parameters.Single(static p => p.Name == "words").Default);
+        Assert.Equal("$face", after.Nodes.Single(static n => n.Id == 1).Texts["Font"]);
+        Assert.Equal("pictures/plate-new.ttf", after.Nodes.Single(static n => n.Id == 2).Texts["face"]);
+        Assert.Equal(
+            [("Bold", "bold.ttf", "plate.ttf"), ("Plain", "pictures/plate-new.ttf", "plate.ttf")],
+            after.Presets.Select(static p => (p.Name, p.Values["face"], p.Values["words"]))
+        );
+        Assert.Equal("Relink File", after.History.UndoLabel);
+
+        using var undone = await client.PostAsync($"/api/v1/graphs/{state.Id}/undo", null, Token);
+        undone.EnsureSuccessStatusCode();
+        var before = await client.StateAsync(state.Id, Token);
+        Assert.Equal("plate.ttf", before.Parameters.Single(static p => p.Name == "face").Default);
+        Assert.Equal("plate.ttf", before.Nodes.Single(static n => n.Id == 2).Texts["face"]);
+    }
 }
