@@ -73,12 +73,13 @@ public sealed class ShelfPictureApiTests : IAsyncLifetime {
     }
 
     /// <summary>
-    ///     A panorama of any project is an environment on the shelf too (#203), told apart from the picture it is by its
-    ///     source, and the brush alphas are there to choose from.
+    ///     A panorama of any project is an environment on the shelf too (#203), told apart from the picture it is by
+    ///     its source, and the brush alphas are there to choose from.
     /// </summary>
     [Fact]
     public async Task Panoramas_are_environments_and_the_brush_alphas_are_on_the_shelf() {
-        var pictures = Directory.CreateDirectory(Path.Combine(server.Library, "projects", "wear-kit", "skies")).FullName;
+        var pictures = Directory.CreateDirectory(Path.Combine(server.Library, "projects", "wear-kit", "skies"))
+            .FullName;
         await File.WriteAllBytesAsync(Path.Combine(pictures, "Dusk.hdr"), [1], Token);
         await File.WriteAllBytesAsync(Path.Combine(server.Library, "projects", "alpha", "Noon.exr"), [2], Token);
         server.Services.GetRequiredService<LibraryHost>().RequestRescan();

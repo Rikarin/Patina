@@ -54,7 +54,7 @@ public static class PictureSizes {
     static (int, int) Gif(ReadOnlySpan<byte> head) =>
         (BinaryPrimitives.ReadUInt16LittleEndian(head[6..]), BinaryPrimitives.ReadUInt16LittleEndian(head[8..]));
 
-    /// <summary>A bitmap's DIB header: the oldest is twelve bytes of 16-bit sides; any later one has 32-bit ones.</summary>
+    /// <summary>A bitmap's DIB header: the oldest is twelve bytes of 16-bit sides, and any later one 32-bit.</summary>
     static (int, int) Bmp(ReadOnlySpan<byte> head) =>
         BinaryPrimitives.ReadUInt32LittleEndian(head[14..]) == 12
             ? (BinaryPrimitives.ReadUInt16LittleEndian(head[18..]), BinaryPrimitives.ReadUInt16LittleEndian(head[20..]))
@@ -120,12 +120,13 @@ public static class PictureSizes {
 
             var length = BinaryPrimitives.ReadInt32LittleEndian(head[(value - 4)..]);
             if (head.Slice(at, name).SequenceEqual("dataWindow"u8) && length == 16 && value + 16 <= head.Length) {
+                // A box of four ints, its corners inclusive: x and y at least, then x and y at most.
                 var box = head[value..];
-                return (BinaryPrimitives.ReadInt32LittleEndian(box[8..]) - BinaryPrimitives.ReadInt32LittleEndian(box)
-                    + 1,
-                    BinaryPrimitives.ReadInt32LittleEndian(box[12..])
-                    - BinaryPrimitives.ReadInt32LittleEndian(box[4..])
-                    + 1);
+                var left = BinaryPrimitives.ReadInt32LittleEndian(box);
+                var top = BinaryPrimitives.ReadInt32LittleEndian(box[4..]);
+                var right = BinaryPrimitives.ReadInt32LittleEndian(box[8..]);
+                var bottom = BinaryPrimitives.ReadInt32LittleEndian(box[12..]);
+                return (right - left + 1, bottom - top + 1);
             }
 
             at = value + length;

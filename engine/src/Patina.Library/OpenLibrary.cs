@@ -491,10 +491,10 @@ public sealed class OpenLibrary : ILibrary, IDisposable {
     public AssetImpact? Impact(AssetId asset, int offset = 0, int limit = 50) => queries.Impact(asset, offset, limit);
 
     /// <summary>
-    ///     Every project's pictures at any depth, with their sizes, as the last <see cref="Rescan" /> found them (#306):
-    ///     one query, where reading each project's contents would walk its folder.
+    ///     Every project's pictures at any depth, with their sizes, as the last <see cref="Rescan" /> found them
+    ///     (#306): one query, where reading each project's contents would walk its folder.
     /// </summary>
-    public IReadOnlyList<LibraryPicture> Pictures() => IndexedPictures.All(database);
+    public IReadOnlyList<LibraryPicture> Pictures() => queries.Pictures();
 
     /// <summary>What a folder's documents cost, by each folder or project directly in it (#207).</summary>
     /// <param name="folder">The folder below <c>projects/</c>, empty for the whole library.</param>

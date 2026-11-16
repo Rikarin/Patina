@@ -4,7 +4,7 @@ using Patina.Testing;
 
 namespace Patina.Server.Tests;
 
-/// <summary>The bake the shelf draws its generators from (#301), written into the preview cache as it is needed.</summary>
+/// <summary>The bake the shelf draws its generators from (#301), written into the preview cache when needed.</summary>
 public sealed class ShelfBakeTests : IDisposable {
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-shelf-bake-");
 

@@ -15,6 +15,7 @@ public sealed record LibraryPicture(string Path, string Project, string ProjectN
 static class IndexedPictures {
     /// <summary>The pictures' rows: kind 3 is <see cref="TrackedKind.Picture" />.</summary>
     const string PictureRows = "SELECT path, width, height FROM file WHERE kind = 3 ORDER BY path";
+
     /// <summary>Every picture of every project the index knows, by path.</summary>
     public static IReadOnlyList<LibraryPicture> All(IndexDatabase database) {
         using var connection = database.Open();
