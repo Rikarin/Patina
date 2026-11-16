@@ -53,7 +53,8 @@ public static class MeshMapBakeRun {
 
         var low = Read(request.Low, request.Material, request.UvSet ?? 0);
         var tileable = request.Options.Tileable == true;
-        var high = ModelGeometry.Flatten(tileable ? BakeTiling.Around(files, low.Mesh) : files);
+        var trim = tileable && request.Options.Trim == true;
+        var high = ModelGeometry.Flatten(tileable ? BakeTiling.Around(files, low.Mesh, trim) : files);
         cancellationToken.ThrowIfCancellationRequested();
 
         if (low.Mesh.TexCoords.Length != low.Mesh.CornerCount) {
@@ -74,7 +75,7 @@ public static class MeshMapBakeRun {
 
         var cage = request.Cage is { } path ? Read(path, request.Material, request.UvSet ?? 0).Mesh : null;
         var ids = Ids(request.Options.Id.Source, high, files, warnings);
-        var (source, colours) = tileable ? BakeTiling.SameIds(high, ids) : ids;
+        var (source, colours) = tileable ? BakeTiling.SameIds(high, ids, BakeTiling.CopiesOf(trim)) : ids;
         var settings = BakeRequestSettings.Of(request, high, low, cage, threads) with {
             IdSource = source,
             GroupsAreColours = colours,

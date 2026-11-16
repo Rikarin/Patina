@@ -46,6 +46,16 @@ public sealed class BakeTilingTests : IDisposable {
                           f 1//1 2//1 3//1 4//1
                           """;
 
+    /// <summary>A strip along the patch's bottom, from a tenth below its edge to a sixth into it.</summary>
+    const string Ledge = """
+                         v 0 -0.1 0.02
+                         v 1 -0.1 0.02
+                         v 1 0.15 0.02
+                         v 0 0.15 0.02
+                         vn 0 0 1
+                         f 1//1 2//1 3//1 4//1
+                         """;
+
     readonly DirectoryInfo folder = Directory.CreateTempSubdirectory("patina-tiling-");
 
     public void Dispose() => folder.Delete(true);
@@ -69,9 +79,9 @@ public sealed class BakeTilingTests : IDisposable {
     }
 
     /// <summary>The first map of a bake of the strips onto the patch, all turned about <c>z</c> together.</summary>
-    Bitmap Baked(string into, BakeOptions options, float degrees = 0f, bool both = false) {
+    Bitmap Baked(string into, BakeOptions options, float degrees = 0f, bool both = false, string strip = Strip) {
         File.WriteAllText(Into("patch.obj"), Turned(Patch, degrees));
-        File.WriteAllText(Into("strip.obj"), Turned(Strip, degrees));
+        File.WriteAllText(Into("strip.obj"), Turned(strip, degrees));
         File.WriteAllText(Into("strip2.obj"), Turned(Strip2, degrees));
         into = Into(into);
         var manifest = MeshMapBakeRun.Run(
@@ -151,6 +161,35 @@ public sealed class BakeTilingTests : IDisposable {
         Assert.Equal(Colour(2), Colour(Side - 3));
     }
 
+    /// <summary>
+    ///     A trim sheet repeats along <c>u</c> only: a strip spilling past the left edge is met past the right, but one
+    ///     spilling past the bottom is not met at the top, where a bake tiled both ways meets it.
+    /// </summary>
+    [Fact]
+    public void A_trim_sheet_repeats_across_and_not_up() {
+        var both = Rows(false);
+        var trim = Rows(true);
+        var across = Baked("trim-across", new() { Maps = ["opacity"], Tileable = true, Trim = true });
+
+        Assert.True(both[2] > 0.9f && both[Side - 3] > 0.9f, $"Tiled both ways, the ends found {both[2]}, {both[^3]}.");
+        Assert.True(Math.Max(trim[2], trim[Side - 3]) > 0.9f, $"The ledge's own side found {trim[2]}, {trim[^3]}.");
+        Assert.True(Math.Min(trim[2], trim[Side - 3]) < 0.1f, $"A trim sheet's far end found {trim[2]}, {trim[^3]}.");
+        Assert.True(across.Pixels[(Side / 2 * Side + Side - 3) * 4] > 230, "A trim sheet still repeats across.");
+    }
+
+    /// <summary>The share of each row's texels a ray found the ledge from, top to bottom.</summary>
+    float[] Rows(bool trim) {
+        var map = Baked($"ledge-{trim}", new() { Maps = ["opacity"], Tileable = true, Trim = trim }, strip: Ledge);
+        var rows = new float[map.Height];
+        for (var y = 0; y < map.Height; y++) {
+            for (var x = 0; x < map.Width; x++) {
+                rows[y] += map.Pixels[(y * map.Width + x) * 4] / 255f / map.Width;
+            }
+        }
+
+        return rows;
+    }
+
     /// <summary>A bake that does not tile keeps the key it had before tiling could be chosen.</summary>
     [Fact]
     public void A_bake_that_does_not_tile_keeps_its_key() {
@@ -162,7 +201,15 @@ public sealed class BakeTilingTests : IDisposable {
         var off = BakeInputs.KeyOf(request with { Options = request.Options with { Tileable = false } }, tools);
         var on = BakeInputs.KeyOf(request with { Options = request.Options with { Tileable = true } }, tools);
 
+        var trimmed = BakeInputs.KeyOf(
+            request with { Options = request.Options with { Tileable = true, Trim = true } },
+            tools
+        );
+        var untiledTrim = BakeInputs.KeyOf(request with { Options = request.Options with { Trim = true } }, tools);
+
         Assert.Equal(unset, off);
         Assert.NotEqual(unset, on);
+        Assert.NotEqual(on, trimmed);
+        Assert.Equal(unset, untiledTrim);
     }
 }

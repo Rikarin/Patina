@@ -36,7 +36,24 @@ sealed class UsdMaterialFile(string name, ICollection<string> warnings) {
             slots.Green == GreenAxis.Up ? "normal-up" : "normal-down"
         );
         Lane(slots.Height, "float inputs:displacement", "height");
+        Layers(slots.Layers);
         return Text(slots.Height is not null);
+    }
+
+    /// <summary>
+    ///     OpenPBR's layers (#142) as far as UsdPreviewSurface has them: a clear coat and its roughness. It has no
+    ///     sheen or transmission, so those are said and left out.
+    /// </summary>
+    void Layers(OpenPbrSlots layers) {
+        Lane(layers.Coat, "float inputs:clearcoat", "coat");
+        Lane(layers.CoatRoughness, "float inputs:clearcoatRoughness", "coat roughness");
+        if (layers.Sheen is not null || layers.SheenRoughness is not null || layers.SheenColor is not null) {
+            warnings.Add("USD: the sheen is left out, because UsdPreviewSurface has none.");
+        }
+
+        if (layers.Transmission is not null) {
+            warnings.Add("USD: transmission is left out, because UsdPreviewSurface has none.");
+        }
     }
 
     string Text(bool displaced) {

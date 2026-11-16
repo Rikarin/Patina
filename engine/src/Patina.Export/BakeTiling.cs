@@ -8,7 +8,8 @@ namespace Patina.Export;
 /// <summary>
 ///     A tileable bake (#212): a high-poly patch baked onto a flat low patch so that the maps repeat without a seam.
 ///     The high meshes are laid again on each of the eight sides of the patch, one repeat away, so a ray or an
-///     occlusion ray near an edge meets what lies beyond it when the material repeats, as it will on the model.
+///     occlusion ray near an edge meets what lies beyond it when the material repeats, as it will on the model. A trim
+///     sheet repeats along <c>u</c> only, so its copies lie past the left and right sides alone.
 /// </summary>
 /// <remarks>
 ///     ⚠ <b>One repeat is one unit of the patch's texture coordinates</b>, the step the texture takes when it
@@ -19,18 +20,23 @@ namespace Patina.Export;
 ///     it reads past the left.
 /// </remarks>
 public static class BakeTiling {
-    /// <summary>How many copies of the high meshes a tileable bake holds: the patch's and eight around it.</summary>
-    public const int Copies = 9;
+    /// <summary>
+    ///     How many copies of the high meshes a tileable bake holds: the patch's and eight around it, or for a trim
+    ///     sheet the patch's and one on each side along <c>u</c>.
+    /// </summary>
+    public static int CopiesOf(bool trim) => trim ? 3 : 9;
 
     /// <summary>The high files, the patch's own first, then a copy moved onto each side of it.</summary>
     /// <param name="files">The high meshes, as read.</param>
     /// <param name="patch">The low mesh, with its layout.</param>
-    public static IReadOnlyList<ReadModel> Around(IReadOnlyList<ReadModel> files, EditMesh patch) {
+    /// <param name="trim">Whether it repeats along <c>u</c> only, as a trim sheet does.</param>
+    public static IReadOnlyList<ReadModel> Around(IReadOnlyList<ReadModel> files, EditMesh patch, bool trim = false) {
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(patch);
         var (across, along) = Steps(patch) ?? Sides(patch.Bounds.Maximum - patch.Bounds.Minimum);
         List<Vector3> shifts = [];
-        for (var row = -1; row <= 1; row++) {
+        var rows = trim ? 0 : 1;
+        for (var row = -rows; row <= rows; row++) {
             for (var column = -1; column <= 1; column++) {
                 if (row != 0 || column != 0) {
                     shifts.Add(across * column + along * row);
@@ -45,19 +51,24 @@ public static class BakeTiling {
     ///     Gives each copy's faces the ids of the faces it copies, and says what Vixen labels by: the source as asked,
     ///     or the groups when they now hold the shells, which are labels and not colours.
     /// </summary>
-    /// <param name="high">The tiled high meshes, flattened: <see cref="Copies" /> runs of the same faces.</param>
+    /// <param name="high">The tiled high meshes, flattened: <paramref name="copies" /> runs of the same faces.</param>
     /// <param name="ids">What the ID map labels by, and whether the labels are packed colours.</param>
+    /// <param name="copies">How many copies <see cref="Around" /> laid, <see cref="CopiesOf" />.</param>
     /// <returns>What to label by now.</returns>
     /// <remarks>
     ///     ⚠ <b>The groups' own source is kept</b>, since assigning one marks them all as assigned, and an automatic
     ///     source reads that to choose between groups and shells. ⚠ <b>Shells are worked out here</b>: each copy is a
     ///     shell of its own to Vixen, so they are numbered on the whole mesh and each copy takes its original's.
     /// </remarks>
-    public static (BakeIdSource Source, bool Colours) SameIds(FlatModel high, (BakeIdSource Source, bool Colours) ids) {
+    public static (BakeIdSource Source, bool Colours) SameIds(
+        FlatModel high,
+        (BakeIdSource Source, bool Colours) ids,
+        int copies
+    ) {
         ArgumentNullException.ThrowIfNull(high);
         var source = ids.Source;
         var mesh = high.Mesh;
-        var faces = mesh.FaceCount / Copies;
+        var faces = mesh.FaceCount / copies;
         var kept = mesh.GroupSource;
         var shells = source is BakeIdSource.Shells
             || (source is BakeIdSource.Automatic && !(kept is MeshGroupSource.Assigned && Several(mesh, faces)));

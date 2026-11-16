@@ -151,7 +151,8 @@ public static class BakeInputs {
             Rays = request.Options.Rays with { SkewMap = string.Empty, DistanceMap = string.Empty },
             Colour = request.Options.Colour with { Texture = string.Empty },
             // Left out unless on, so a bake that does not tile keeps the key it had before tiling was a choice (#212).
-            Tileable = request.Options.Tileable == true ? true : null
+            Tileable = request.Options.Tileable == true ? true : null,
+            Trim = request.Options is { Tileable: true, Trim: true } ? true : null
         };
         var settings = new Dictionary<string, string>(StringComparer.Ordinal) {
             ["options"] = JsonSerializer.Serialize(options, ContractsJsonContext.Default.BakeOptions),

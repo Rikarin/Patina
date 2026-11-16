@@ -78,6 +78,10 @@ class BakeOptions:
                 flat low patch, the high mesh
                 laid again on each side of the low mesh's box so a ray near an edge meets what lies beyond it when the
                 material repeats. Null or false bakes the high meshes once, as they are.
+            trim (bool | None | Unset): When the bake is tileable, whether the maps repeat along the patch's `u` only, as a
+                trim sheet's
+                strips do (#212): the high mesh is laid again past the patch's left and right sides and nowhere else, so a
+                strip at the top meets no copy of the strip at the bottom. Null or false repeats both ways.
      """
 
     maps: list[str]
@@ -101,6 +105,7 @@ class BakeOptions:
     rows: int | None | Unset = UNSET
     follow_set_shape: bool | None | Unset = UNSET
     tileable: bool | None | Unset = UNSET
+    trim: bool | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
@@ -175,6 +180,12 @@ class BakeOptions:
         else:
             tileable = self.tileable
 
+        trim: bool | None | Unset
+        if isinstance(self.trim, Unset):
+            trim = UNSET
+        else:
+            trim = self.trim
+
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -204,6 +215,8 @@ class BakeOptions:
             field_dict["followSetShape"] = follow_set_shape
         if tileable is not UNSET:
             field_dict["tileable"] = tileable
+        if trim is not UNSET:
+            field_dict["trim"] = trim
 
         return field_dict
 
@@ -323,6 +336,16 @@ class BakeOptions:
         tileable = _parse_tileable(d.pop("tileable", UNSET))
 
 
+        def _parse_trim(data: object) -> bool | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(bool | None | Unset, data)
+
+        trim = _parse_trim(d.pop("trim", UNSET))
+
+
         bake_options = cls(
             resolution=resolution,
             format_=format_,
@@ -345,6 +368,7 @@ class BakeOptions:
             rows=rows,
             follow_set_shape=follow_set_shape,
             tileable=tileable,
+            trim=trim,
         )
 
 

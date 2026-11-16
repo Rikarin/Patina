@@ -236,6 +236,29 @@ public sealed class StackEditorPropertyTests {
         Assert.Equal(ChannelAsset.UserUsages, Patina.Export.Presets.ExportMaps.Users);
 
     /// <summary>
+    ///     OpenPBR's layer maps (#142) are channels the vocabulary offers, labelled in words, each added at the number
+    ///     that leaves the material alone; an export reads them under the names a set writes.
+    /// </summary>
+    [Fact]
+    public void Every_openpbr_channel_is_offered_added_at_its_default_and_read_by_an_export() {
+        Assert.Equal(ChannelAsset.OpenPbrUsages, Patina.Export.Presets.ExportMaps.OpenPbr);
+        Assert.Contains(
+            StackDocuments.Vocabulary.Usages,
+            static term => term is { Value: "sheenColor", Label: "Sheen Color" }
+        );
+        var session = new StackSession("/tmp/Coat.vxlayers", StackDocuments.Text(Sample()), static () => { });
+
+        session.Apply(new([..ChannelAsset.OpenPbrUsages.Select(static usage => new StackAddChannel(usage))]));
+
+        var added = session.State.Channels.Where(static c => ChannelAsset.IsOpenPbr(c.Usage)).ToList();
+        Assert.Equal(ChannelAsset.OpenPbrUsages, added.Select(static c => c.Usage));
+        foreach (var channel in added) {
+            Assert.Equal(ChannelAsset.Untouched(channel.Usage), channel.Default);
+            Assert.Equal(channel.Default[0], Patina.Export.Presets.ExportMaps.Default(channel.Usage, 0));
+        }
+    }
+
+    /// <summary>
     ///     A stack's history is a list with labels, and a jump through it is one event that lands where single steps
     ///     would.
     /// </summary>
