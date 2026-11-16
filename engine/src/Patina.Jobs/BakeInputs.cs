@@ -44,7 +44,7 @@ public static class BakeInputs {
     ///     between two releases is not, and a cache hit would hand back a bake made before it. ⚠ Raise it with any
     ///     change, in Vixen or here, that changes a pixel of the same request: moving the Vixen pin to a bake fix too.
     /// </summary>
-    public const string BakerRevision = "2026-11-14";
+    public const string BakerRevision = "2026-11-16";
 
     /// <summary>The maps a request may ask for by name, in the order they are reported.</summary>
     public static IReadOnlyList<string> Maps => BakeOptions.AllMaps;

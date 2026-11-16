@@ -356,6 +356,30 @@ public sealed class BakeCorrectionTests : IDisposable {
     }
 
     /// <summary>
+    ///     Patina #306: an OBJ baked before polypaint was read must not come back from the cache without its colors,
+    ///     and its bytes are the same, so what the model reader makes of them is in the key.
+    /// </summary>
+    [Fact]
+    public void A_bakes_key_carries_what_the_model_reader_makes_of_the_bytes() {
+        var high = Quad("high.obj", 0f, Straight);
+        var low = TwoSets("low.obj", 0f);
+        var request = Request(high, low, static options => options with { Maps = ["colour"] });
+        var reads = BakeKeyReads.Of(request, MeshFileReads.Instance);
+        var older = reads.ToDictionary();
+        older[BakeKeyReads.Reader] = Revision.Of("before polypaint"u8);
+
+        Assert.Equal(BakeKeyReads.ReaderRevision, reads[BakeKeyReads.Reader]);
+        Assert.NotEqual(
+            BakeKeyReads.KeyOf(request, ToolCatalog.Default, MeshFileReads.Instance),
+            BakeInputs.KeyOf(request, ToolCatalog.Default, _ => older)
+        );
+        Assert.Equal(
+            BakeKeyReads.KeyOf(request, ToolCatalog.Default, MeshFileReads.Instance),
+            BakeInputs.KeyOf(request, ToolCatalog.Default, _ => reads)
+        );
+    }
+
+    /// <summary>
     ///     A bake taken from the cache says it was made on the mesh as it is now, so it is not out of
     ///     date.
     /// </summary>

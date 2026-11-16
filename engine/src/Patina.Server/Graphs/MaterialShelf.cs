@@ -68,7 +68,7 @@ public static class MaterialShelf {
     public static IReadOnlyList<MaterialInfo> List(OpenLibrary library, string? project, string? search = null) {
         var words = search?.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
         List<MaterialInfo> found = [
-            ..SmartMaterial.Shipped.Select(static name => new MaterialInfo(
+            ..ShippedSmartMaterials.Names.Select(static name => new MaterialInfo(
                     name,
                     DocumentKinds.LayeredMaterial,
                     ShippedPrefix + name,
@@ -560,7 +560,7 @@ public static class MaterialShelf {
     public static LayerStackAsset Read(string? library, string source) {
         if (source.StartsWith(ShippedPrefix, StringComparison.Ordinal)) {
             var name = source[ShippedPrefix.Length..];
-            var text = SmartMaterial.Source(name)
+            var text = ShippedSmartMaterials.Source(name)
                 ?? throw new StackEditRefusedException($"There is no material '{name}'.");
             return StackDocuments.Parse(text);
         }
