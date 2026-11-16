@@ -20,7 +20,7 @@ T = TypeVar("T", bound="GraphPace")
 
 @_attrs_define
 class GraphPace:
-    """ How a graph is evaluated while it is edited (#306), the body and the reply of its `pace` route.
+    """ How a graph is evaluated while it is edited (#306): the body and the reply of its `pace` route.
 
         Attributes:
             paused (bool): Whether edits wait to be evaluated, as a stack's can, while a big graph is set up.

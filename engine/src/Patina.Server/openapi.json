@@ -15447,7 +15447,7 @@
             "description": "Whether edits wait to be evaluated, as a stack\u0027s can, while a big graph is set up."
           }
         },
-        "description": "How a graph is evaluated while it is edited (#306), the body and the reply of its \u0060pace\u0060 route."
+        "description": "How a graph is evaluated while it is edited (#306): the body and the reply of its \u0060pace\u0060 route."
       },
       "GraphPortDefinition": {
         "required": [

@@ -5209,7 +5209,7 @@ export interface components {
       /** @description The graph file on the Server's machine, absolute or relative to the library. */
       path: string;
     };
-    /** @description How a graph is evaluated while it is edited (#306), the body and the reply of its `pace` route. */
+    /** @description How a graph is evaluated while it is edited (#306): the body and the reply of its `pace` route. */
     GraphPace: {
       /** @description Whether edits wait to be evaluated, as a stack's can, while a big graph is set up. */
       paused: boolean;

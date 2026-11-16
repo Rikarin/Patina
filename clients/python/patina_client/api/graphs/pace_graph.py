@@ -83,7 +83,7 @@ def sync_detailed(
 
     Args:
         id (str):
-        body (GraphPace): How a graph is evaluated while it is edited (#306), the body and the
+        body (GraphPace): How a graph is evaluated while it is edited (#306): the body and the
             reply of its `pace` route.
 
     Raises:
@@ -119,7 +119,7 @@ def sync(
 
     Args:
         id (str):
-        body (GraphPace): How a graph is evaluated while it is edited (#306), the body and the
+        body (GraphPace): How a graph is evaluated while it is edited (#306): the body and the
             reply of its `pace` route.
 
     Raises:
@@ -150,7 +150,7 @@ async def asyncio_detailed(
 
     Args:
         id (str):
-        body (GraphPace): How a graph is evaluated while it is edited (#306), the body and the
+        body (GraphPace): How a graph is evaluated while it is edited (#306): the body and the
             reply of its `pace` route.
 
     Raises:
@@ -186,7 +186,7 @@ async def asyncio(
 
     Args:
         id (str):
-        body (GraphPace): How a graph is evaluated while it is edited (#306), the body and the
+        body (GraphPace): How a graph is evaluated while it is edited (#306): the body and the
             reply of its `pace` route.
 
     Raises:
