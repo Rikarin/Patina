@@ -35,7 +35,9 @@ public sealed partial class PackageJsonContext : JsonSerializerContext;
 /// <param name="Writer">The Patina that published it, as <c>Patina 0.9.0</c>.</param>
 /// <param name="Compounds">The compounds it carries under <c>Compounds/</c>, and what each was called before.</param>
 /// <param name="Shipped">The compounds it reads from those that ship with Patina, which it does not carry.</param>
-/// <param name="Files">The pictures it carries under <c>files/</c>, and how the graph named each.</param>
+/// <param name="Files">
+///     The pictures, fonts and SVG files it carries under <c>files/</c>, and how the graph named each.
+/// </param>
 public sealed record PackageManifest(
     int Format,
     string Name,
@@ -52,7 +54,7 @@ public sealed record PackageManifest(
 /// <param name="From">What it was called in the folder it came from.</param>
 public sealed record PackageCompound(string Type, string From);
 
-/// <summary>A picture a package carries.</summary>
+/// <summary>A picture, font or SVG file a package carries.</summary>
 /// <param name="Path">Where it is in the package, below <c>files/</c>, named by its content.</param>
 /// <param name="From">How the graph named it before it was published.</param>
 public sealed record PackageFile(string Path, string From);
@@ -60,10 +62,10 @@ public sealed record PackageFile(string Path, string From);
 /// <summary>Something a graph reads that publishing it as a package has to bring, or cannot.</summary>
 /// <param name="Kind">
 ///     <c>compound</c> (a graph of its project's, which the package carries), <c>shipped</c> (a compound that ships
-///     with Patina, which it does not), <c>picture</c> (a bitmap, which it carries), or <c>unknown</c> (a node type
-///     nothing publishes).
+///     with Patina, which it does not), <c>picture</c> (a bitmap, which it carries), <c>drawing</c> (a Text node's font
+///     or a Vector node's SVG file, which it carries), or <c>unknown</c> (a node type nothing publishes).
 /// </param>
-/// <param name="Name">The node type, or the picture as the graph names it.</param>
+/// <param name="Name">The node type, or the file as the graph names it.</param>
 /// <param name="File">Where it was found, below the library when it is in one, or null when it was not.</param>
 /// <param name="Problem">Why it cannot be brought, or null when it can.</param>
 /// <param name="In">

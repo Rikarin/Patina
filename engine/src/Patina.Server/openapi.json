@@ -17107,11 +17107,11 @@
         "properties": {
           "kind": {
             "type": "string",
-            "description": "\u0060compound\u0060 (a graph of its project\u0027s, which the package carries), \u0060shipped\u0060 (a compound that ships\n            with Patina, which it does not), \u0060picture\u0060 (a bitmap, which it carries), or \u0060unknown\u0060 (a node type\n            nothing publishes)."
+            "description": "\u0060compound\u0060 (a graph of its project\u0027s, which the package carries), \u0060shipped\u0060 (a compound that ships\n            with Patina, which it does not), \u0060picture\u0060 (a bitmap, which it carries), \u0060drawing\u0060 (a Text node\u0027s font\n            or a Vector node\u0027s SVG file, which it carries), or \u0060unknown\u0060 (a node type nothing publishes)."
           },
           "name": {
             "type": "string",
-            "description": "The node type, or the picture as the graph names it."
+            "description": "The node type, or the file as the graph names it."
           },
           "file": {
             "type": [
@@ -17153,7 +17153,7 @@
             "description": "How the graph named it before it was published."
           }
         },
-        "description": "A picture a package carries."
+        "description": "A picture, font or SVG file a package carries."
       },
       "PackageImported": {
         "required": [
@@ -17244,7 +17244,7 @@
             "items": {
               "$ref": "#/components/schemas/PackageFile"
             },
-            "description": "The pictures it carries under \u0060files/\u0060, and how the graph named each."
+            "description": "The pictures, fonts and SVG files it carries under \u0060files/\u0060, and how the graph named each."
           }
         },
         "description": "A package\u0027s \u0060package.yaml\u0060 (ADR 0027): what a \u0060.ptpkg\u0060 folder holds besides its graph, and what made\nit. The graph\u0027s own file holds its parameters, presets and what it says about itself, so this repeats none of\nthem."

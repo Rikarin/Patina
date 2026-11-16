@@ -36,7 +36,8 @@ class PackageManifest:
             writer (str): The Patina that published it, as `Patina 0.9.0`.
             compounds (list[PackageCompound]): The compounds it carries under `Compounds/`, and what each was called before.
             shipped (list[str]): The compounds it reads from those that ship with Patina, which it does not carry.
-            files (list[PackageFile]): The pictures it carries under `files/`, and how the graph named each.
+            files (list[PackageFile]): The pictures, fonts and SVG files it carries under `files/`, and how the graph named
+                each.
      """
 
     format_: int

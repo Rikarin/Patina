@@ -6006,11 +6006,11 @@ export interface components {
     PackageDependency: {
       /**
        * @description `compound` (a graph of its project's, which the package carries), `shipped` (a compound that ships
-       *                 with Patina, which it does not), `picture` (a bitmap, which it carries), or `unknown` (a node type
-       *                 nothing publishes).
+       *                 with Patina, which it does not), `picture` (a bitmap, which it carries), `drawing` (a Text node's font
+       *                 or a Vector node's SVG file, which it carries), or `unknown` (a node type nothing publishes).
        */
       kind: string;
-      /** @description The node type, or the picture as the graph names it. */
+      /** @description The node type, or the file as the graph names it. */
       name: string;
       /** @description Where it was found, below the library when it is in one, or null when it was not. */
       file?: null | string;
@@ -6022,7 +6022,7 @@ export interface components {
        */
       in?: null | string;
     };
-    /** @description A picture a package carries. */
+    /** @description A picture, font or SVG file a package carries. */
     PackageFile: {
       /** @description Where it is in the package, below `files/`, named by its content. */
       path: string;
@@ -6066,7 +6066,7 @@ export interface components {
       compounds: components['schemas']['PackageCompound'][];
       /** @description The compounds it reads from those that ship with Patina, which it does not carry. */
       shipped: string[];
-      /** @description The pictures it carries under `files/`, and how the graph named each. */
+      /** @description The pictures, fonts and SVG files it carries under `files/`, and how the graph named each. */
       files: components['schemas']['PackageFile'][];
     };
     /** @description What publishing a graph as a package would do, for a dialog to show before it does. */

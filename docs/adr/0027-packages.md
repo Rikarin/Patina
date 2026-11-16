@@ -44,13 +44,15 @@ files:
   pictures beside it, then from the library, so a package is laid out for exactly those lookups and needs no resolver of
   its own: `patina bake Rust.ptpkg out/` works on a machine with no library, and so does `vixen texture bake` on the
   graph inside. Every picture a package's graph or its compounds name is rewritten to `files/…`, which is beside the
-  graph, because a compound's pictures are found from the graph holding it.
+  graph, because a compound's pictures are found from the graph holding it. A Text node's font and a Vector node's SVG
+  file are found as a picture is, so they are carried the same way (wave 18).
 - **A package's compounds live under `Packages/<name>/`**, and every node that named one is rewritten to that type. Two
   packages each carrying a `Wear`, or a package and the project using it, then never share one by accident.
 - **A shipped compound is named, not carried.** `shipped` lists the compounds of Vixen's and Patina's own that it reads;
   a Patina without one says `TG0025` on the node, as for any graph.
-- **Publishing is refused** when a picture cannot be found, a node type is published by nothing, a Text or Vector node
-  reads a font or an SVG file (a package cannot carry those yet), or the graph does not compile. `GET
+- **Publishing is refused** when a picture, font or SVG file cannot be found, a node type is published by nothing, a
+  Text or Vector node reads a font or an SVG file that a parameter names rather than the node, or the graph does not
+  compile. `GET
 /library/packages/plan` lists each of these before anything is written, so a dialog can show them; `POST
 /library/packages` answers `package-refused` with the reason.
 - **The same graph publishes to the same bytes.** Files are content-named and lists are sorted, so republishing an
@@ -104,7 +106,8 @@ So the format is the graph and what it reads, made self-contained, and stamped.
 
 ## Costs and open questions
 
-- **Fonts and SVG files are not carried.** A Text or Vector node with a file of its own refuses publishing.
+- **A font or an SVG file a parameter names is not carried.** A package carries the files its nodes name; which files a
+  parameter could name is not known when it is published, so a drawing that reads one refuses publishing.
 - **A package is a folder, not one file.** That is what diffs in Git; sending one means zipping it, which
   `patina package --zip` does: the folder under `<name>.ptpkg/`, its entries sorted and stamped alike, so the same package
   zips to the same bytes. Import Package… and `POST /library/packages/import` (#185) take such a zip, or a manifest at the
