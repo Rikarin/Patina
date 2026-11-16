@@ -455,6 +455,7 @@ from .viewport_follow import ViewportFollow
 from .viewport_graph_request import ViewportGraphRequest
 from .viewport_highlight import ViewportHighlight
 from .viewport_isolation import ViewportIsolation
+from .viewport_layer_paths import ViewportLayerPaths
 from .viewport_map_paths import ViewportMapPaths
 from .viewport_marquee import ViewportMarquee
 from .viewport_marquee_request import ViewportMarqueeRequest
@@ -925,6 +926,7 @@ __all__ = (
     "ViewportGraphRequest",
     "ViewportHighlight",
     "ViewportIsolation",
+    "ViewportLayerPaths",
     "ViewportMapPaths",
     "ViewportMarquee",
     "ViewportMarqueeRequest",
