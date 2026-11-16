@@ -687,7 +687,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
             [disabled]="!store.editable()"
             [min]="0"
             [value]="info?.physicalWidth ?? 0"
-            (valueChange)="setPhysical($event, info?.physicalHeight ?? $event)"
+            (valueChange)="setPhysical($event, physicalSide('height') ?? $event)"
           />
           <span class="text-foreground-muted text-xs">×</span>
           <xui-numeric-input
@@ -697,7 +697,7 @@ export function freePortName(taken: readonly GraphInterfacePort[], direction: st
             [disabled]="!store.editable()"
             [min]="0"
             [value]="info?.physicalHeight ?? 0"
-            (valueChange)="setPhysical(info?.physicalWidth ?? $event, $event)"
+            (valueChange)="setPhysical(physicalSide('width') ?? $event, $event)"
           />
         </div>
         <p class="text-foreground-muted text-xs">How much of the world one tile covers. Zero says nothing.</p>
@@ -853,6 +853,9 @@ export class GraphSettings {
     return value => choiceName(parameter, value);
   }
 
+  /** The physical size last set here, with the document it was set on. */
+  private typedPhysical: { path: string; width: number; height: number } | null = null;
+
   protected readonly seed = computed(() => Number(this.store.document()?.settings['seed'] ?? 0));
 
   protected readonly bitDepth = computed(() => this.store.document()?.settings['bitDepth'] ?? DefaultBitDepth);
@@ -951,16 +954,31 @@ export class GraphSettings {
   }
 
   /** A physical size is a width and a height together, both above zero, or both zero for none. */
+  /**
+   * One side of the physical size as last set here, or as the document says when nothing was set here since it
+   * opened. A side set a moment ago wins over the document, whose answer may still be on its way: the other side
+   * changed in that moment would otherwise write the old value back.
+   */
+  protected physicalSide(side: 'width' | 'height'): number | null {
+    const document = this.store.document();
+    const typed = this.typedPhysical?.path === document?.path ? this.typedPhysical : null;
+    return typed
+      ? side === 'width'
+        ? typed.width
+        : typed.height
+      : ((side === 'width' ? document?.info.physicalWidth : document?.info.physicalHeight) ?? null);
+  }
+
   protected setPhysical(width: number | null, height: number | null): void {
     const [w, h] = [width ?? 0, height ?? 0];
-    const info = this.store.document()?.info;
-    if (w === (info?.physicalWidth ?? 0) && h === (info?.physicalHeight ?? 0)) {
+    const path = this.store.document()?.path;
+    if (w === (this.physicalSide('width') ?? 0) && h === (this.physicalSide('height') ?? 0)) {
       return;
     }
 
-    this.store.describe(
-      w > 0 && h > 0 ? { physicalWidth: w, physicalHeight: h } : { physicalWidth: 0, physicalHeight: 0 }
-    );
+    const [kept, keptHeight] = w > 0 && h > 0 ? [w, h] : [0, 0];
+    this.typedPhysical = path === undefined ? null : { path, width: kept, height: keptHeight };
+    this.store.describe({ physicalWidth: kept, physicalHeight: keptHeight });
   }
 
   protected addPort(direction: string): void {

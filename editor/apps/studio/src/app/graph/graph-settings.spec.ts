@@ -29,6 +29,8 @@ function render() {
   const defaults = signal<Record<string, string>>({ rusty: 'false' });
   const store = {
     document: signal({
+      path: 'metal.vxtexgraph',
+      info: {},
       name: 'Metal',
       nodes: new Map(),
       settings: {},
@@ -43,6 +45,7 @@ function render() {
     selection: signal(new Set<number>()),
     parameterDefault: (held: GraphSettingDefinition) => defaults()[held.name] ?? held.default,
     applyPreset: vi.fn(),
+    describe: vi.fn(),
     setSetting: vi.fn(),
     endGesture: vi.fn()
   };
@@ -108,5 +111,21 @@ describe('the parameters as used (#181)', () => {
     select.value.set(presets[0] ?? null);
 
     expect(store.applyPreset).toHaveBeenCalledWith('Old');
+  });
+});
+
+describe('the physical size', () => {
+  it('keeps a side set a moment ago when the other is set before the document answers', () => {
+    const { store, fixture } = render();
+    const settings = fixture.componentInstance as unknown as {
+      physicalSide(side: 'width' | 'height'): number | null;
+      setPhysical(width: number | null, height: number | null): void;
+    };
+
+    // As the two fields do: each side sets the other from what is there, or from itself when nothing is.
+    settings.setPhysical(200, settings.physicalSide('height') ?? 200);
+    settings.setPhysical(settings.physicalSide('width') ?? 100, 100);
+
+    expect(store.describe).toHaveBeenLastCalledWith({ physicalWidth: 200, physicalHeight: 100 });
   });
 });
