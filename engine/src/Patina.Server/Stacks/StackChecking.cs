@@ -315,9 +315,15 @@ public static class StackChecking {
             maps.TryAdd("occlusion", Bits8);
         }
 
-        // The export works out specular, diffuse and glossiness from the metal-roughness maps (DerivedMaps).
+        // The export works out specular, diffuse and glossiness from the metal-roughness maps (DerivedMaps), and glTF's
+        // sheen colour from the sheen's weight and its colour.
         if (maps.TryGetValue(ExportMaps.Roughness, out var roughness)) {
             maps.TryAdd(ExportMaps.Glossiness, roughness);
+        }
+
+        // glTF's sheen colour, from a sheen's weight and its colour (#142).
+        if (maps.TryGetValue(ExportMaps.Sheen, out var sheen)) {
+            maps.TryAdd(ExportMaps.SheenTint, Math.Max(sheen, maps.GetValueOrDefault(ExportMaps.SheenColor)));
         }
 
         var colour = Math.Max(

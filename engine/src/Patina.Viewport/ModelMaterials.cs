@@ -12,7 +12,8 @@ namespace Patina.Viewport;
 ///     written to a folder, since no pixel crosses the socket. A glTF's emissive factor and strength scale its
 ///     emission, its alpha becomes an opacity map unless the material is opaque, and a picture's texture transform
 ///     and its sampler's wrap go with its slot, for the graph to draw. Another format's opacity is its own picture and
-///     factor: an OBJ's <c>map_d</c> and <c>d</c>, an FBX's transparency.
+///     factor: an OBJ's <c>map_d</c> and <c>d</c>, an FBX's transparency. glTF's clear coat, sheen and transmission
+///     come in as OpenPBR's maps (#142).
 /// </summary>
 public static class ModelMaterials {
     /// <summary>Reads a model's materials.</summary>
@@ -94,6 +95,7 @@ public static class ModelMaterials {
             slots.Add(Slot(ExportMap.Opacity, opacity.Texture, opacity.Lane, [opacity.Factor]));
         }
 
+        slots.AddRange(Layers(textures.Layers, Slot));
         Said(name, textures, warnings);
         return new(name, slots, warnings);
     }
@@ -112,7 +114,10 @@ public static class ModelMaterials {
         foreach (var (texture, stem) in (IEnumerable<(ModelTexture?, string)>) [
                      (textures.BaseColor, "baseColor"), (textures.MetallicRoughness, "metallicRoughness"),
                      (textures.Normal, "normal"), (textures.Occlusion, "occlusion"), (textures.Emissive, "emissive"),
-                     (textures.Opacity, "opacity")
+                     (textures.Opacity, "opacity"), (textures.Layers.Clearcoat, "clearcoat"),
+                     (textures.Layers.ClearcoatRoughness, "clearcoatRoughness"),
+                     (textures.Layers.ClearcoatNormal, "clearcoatNormal"), (textures.Layers.SheenColor, "sheen"),
+                     (textures.Layers.SheenRoughness, "sheenRoughness"), (textures.Layers.Transmission, "transmission")
                  ]) {
             if (texture is not null && !files.ContainsKey(texture)) {
                 files[texture] = Picture(texture, source, $"{name}_{stem}", warnings);
@@ -171,9 +176,11 @@ public static class ModelMaterials {
             warnings.Add($"{name}: its alpha is cut at {textures.AlphaCutoff:0.###}, which is the export's to say.");
         }
 
+        var layers = textures.Layers;
         ModelTexture?[] pictures = [
             textures.BaseColor, textures.MetallicRoughness, textures.Normal, textures.Occlusion, textures.Emissive,
-            textures.Opacity
+            textures.Opacity, layers.Clearcoat, layers.ClearcoatRoughness, layers.ClearcoatNormal, layers.SheenColor,
+            layers.SheenRoughness, layers.Transmission
         ];
         foreach (var picture in pictures.Distinct()) {
             if (picture is { Transform: not null } && Tiling(picture) is { Said: { } said }) {
@@ -209,6 +216,46 @@ public static class ModelMaterials {
                 ModelTextureWrap.Mirror => "Mirror",
                 _ => "Wrap"
             };
+    }
+
+    /// <summary>
+    ///     glTF's clear coat, sheen and transmission as OpenPBR's maps (#142), each only when its factor does
+    ///     something. glTF's sheen has no weight, so a sheen whose colour is not black comes in with a whole one and
+    ///     its colour, as OpenPBR's sheen of that colour is glTF's. A layer's picture that is not there leaves that
+    ///     map out. The usages are OpenPBR's, as an export names its maps.
+    /// </summary>
+    static List<ImportedSlot> Layers(
+        ModelMaterialLayers layers,
+        Func<string, ModelTexture?, int, float[], ImportedSlot> slot
+    ) {
+        List<ImportedSlot> made = [];
+
+        void Add(string usage, ModelTexture? texture, int lane, float[] factor) {
+            if (slot(usage, texture, lane, factor) is var one && (texture is null || one.Texture is not null)) {
+                made.Add(one);
+            }
+        }
+
+        if (layers.ClearcoatFactor > 0f) {
+            Add("coat", layers.Clearcoat, 0, [layers.ClearcoatFactor]);
+            Add("coatRoughness", layers.ClearcoatRoughness, 1, [layers.ClearcoatRoughnessFactor]);
+            if (layers.ClearcoatNormal is { } normal) {
+                Add("coatNormal", normal, -1, [1f]);
+            }
+        }
+
+        if (layers.SheenColorFactor is { X: > 0f } or { Y: > 0f } or { Z: > 0f }) {
+            var colour = layers.SheenColorFactor;
+            made.Add(slot("sheen", null, -1, [1f]));
+            Add("sheenColor", layers.SheenColor, -1, [colour.X, colour.Y, colour.Z, 1f]);
+            Add("sheenRoughness", layers.SheenRoughness, 3, [layers.SheenRoughnessFactor]);
+        }
+
+        if (layers.TransmissionFactor > 0f) {
+            Add("transmission", layers.Transmission, 0, [layers.TransmissionFactor]);
+        }
+
+        return made;
     }
 
     /// <summary>The usages a model's material fills, as an export names its maps.</summary>

@@ -87,7 +87,7 @@ public sealed class MaterialXReader {
             }
         }
 
-        return new(Unprefixed(name), SurfaceInputs.Kept(slots), [..warnings]);
+        return new(Unprefixed(name), SurfaceInputs.Kept(slots, shader.Name.LocalName), [..warnings]);
     }
 
     /// <summary>A material's name without the <c>M_</c> the writer puts before it.</summary>
@@ -155,7 +155,7 @@ public sealed class MaterialXReader {
             case "invert":
                 return Through(usage, node, "in", scope, trace with { Inverted = !trace.Inverted });
             case "multiply" when Constant(node, "in2") is { } scale:
-                if (usage == ExportMaps.Normal && scale is [_, < 0, ..]) {
+                if (ExportMaps.IsTangentNormal(usage) && scale is [_, < 0, ..]) {
                     // The writer's turn of green: a multiply by (1, -1, 1) and an add of (0, 1, 0) before it.
                     return Through(usage, node, "in1", scope, trace with { GreenUp = !trace.GreenUp });
                 }
@@ -167,7 +167,7 @@ public sealed class MaterialXReader {
                     scope,
                     trace with { Factor = [..trace.Factor.Select((f, at) => f * scale[Math.Min(at, scale.Count - 1)])] }
                 );
-            case "add" when usage == ExportMaps.Normal && Constant(node, "in2") is [_, 1f, ..]:
+            case "add" when ExportMaps.IsTangentNormal(usage) && Constant(node, "in2") is [_, 1f, ..]:
                 return Through(usage, node, "in1", scope, trace);
             default:
                 return Left(

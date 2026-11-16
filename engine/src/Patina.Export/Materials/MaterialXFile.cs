@@ -11,8 +11,9 @@ namespace Patina.Export.Materials;
 ///     moves to, whose inputs are named as OpenPBR names them. A lane is an <c>extract</c>, one minus it an
 ///     <c>invert</c>, and a normal whose green runs down is turned over before <c>normalmap</c>, which reads green up.
 ///     Neither surface has occlusion or specular colour of this kind, so those are said and left out; height is left
-///     to a displacement shader this does not write. Both have a coat, a sheen and transmission, so OpenPBR's layer
-///     maps reach either, under OpenPBR's names or standard surface's.
+///     to a displacement shader this does not write. Both have a coat with its colour and normal, a sheen,
+///     transmission and a specular lobe's weight, colour and anisotropy, so OpenPBR's maps reach either, under
+///     OpenPBR's names or standard surface's.
 /// </summary>
 sealed class MaterialXFile {
     const string Float = "float";
@@ -58,20 +59,24 @@ sealed class MaterialXFile {
             Connect("emission_color", Colour3, emission);
         }
 
-        if (Three(slots.Normal, "the normal", Vector3) is { } stored) {
-            Connect(
-                openPbr ? "geometry_normal" : "normal",
-                Vector3,
-                Node("normalmap", Vector3, Input("in", Vector3, Upright(stored, slots.Green)))
-            );
-        }
-
+        Normal(slots.Normal, "the normal", openPbr ? "geometry_normal" : "normal", slots.Green);
         Layers(slots.Layers);
+        Normal(slots.Layers.CoatNormal, "coat normal", openPbr ? "geometry_coat_normal" : "coat_normal", slots.Green);
         Unsupported(slots);
         return Text();
     }
 
-    /// <summary>OpenPBR's layers above the base (#142); standard surface calls its fuzz a sheen.</summary>
+    /// <summary>A tangent-space normal through <c>normalmap</c>, turned first when its green runs down.</summary>
+    void Normal(SlotColour? slot, string label, string input, GreenAxis green) {
+        if (Three(slot, label, Vector3) is { } stored) {
+            Connect(input, Vector3, Node("normalmap", Vector3, Input("in", Vector3, Upright(stored, green))));
+        }
+    }
+
+    /// <summary>
+    ///     OpenPBR's maps beyond the standard ones (#142); standard surface calls its fuzz a sheen and names the
+    ///     specular lobe's weight and anisotropy without OpenPBR's suffixes.
+    /// </summary>
     void Layers(OpenPbrSlots layers) {
         Connect(openPbr ? "coat_weight" : "coat", Float, Grey(layers.Coat, "coat"));
         Connect("coat_roughness", Float, Grey(layers.CoatRoughness, "coat roughness"));
@@ -79,6 +84,14 @@ sealed class MaterialXFile {
         Connect(openPbr ? "fuzz_color" : "sheen_color", Colour3, Three(layers.SheenColor, "sheen color", Colour3));
         Connect(openPbr ? "fuzz_roughness" : "sheen_roughness", Float, Grey(layers.SheenRoughness, "sheen roughness"));
         Connect(openPbr ? "transmission_weight" : "transmission", Float, Grey(layers.Transmission, "transmission"));
+        Connect(openPbr ? "specular_weight" : "specular", Float, Grey(layers.SpecularWeight, "specular weight"));
+        Connect("specular_color", Colour3, Three(layers.SpecularColor, "specular color", Colour3));
+        Connect(
+            openPbr ? "specular_roughness_anisotropy" : "specular_anisotropy",
+            Float,
+            Grey(layers.Anisotropy, "anisotropy")
+        );
+        Connect("coat_color", Colour3, Three(layers.CoatColor, "coat color", Colour3));
     }
 
     /// <summary>A normal turned so its green runs up: one minus green, as a multiply and an add.</summary>
