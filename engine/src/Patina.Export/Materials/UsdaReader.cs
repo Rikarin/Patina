@@ -128,8 +128,21 @@ public sealed class UsdaReader {
         var read = lane < 0 ? 0 : lane;
         var inverted = scale[read] < 0 && bias[read] > 0;
         float[] factor = [..scale.Select(static s => Math.Abs(s))];
-        return new(usage, file, lane, inverted, factor);
+        return new(usage, file, lane, inverted, factor) { ColourSpace = Space(texture) };
     }
+
+    /// <summary>
+    ///     What a texture's <c>sourceColorSpace</c> says its numbers are (#308): <c>raw</c> linear and <c>sRGB</c>
+    ///     sRGB. <c>auto</c>, or nothing, leaves it to the picture's use.
+    /// </summary>
+    static string? Space(UsdPrim texture) =>
+        texture.Properties.TryGetValue("inputs:sourceColorSpace", out var space)
+            ? space.Trim().Trim('"') switch {
+                "raw" => ImportedSpaces.Linear,
+                "sRGB" => ImportedSpaces.Srgb,
+                _ => null
+            }
+            : null;
 
     ImportedSlot? Left(string usage, string why) {
         warnings.Add($"USD: {usage} is left out, because {why}.");

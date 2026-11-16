@@ -246,6 +246,80 @@ public sealed class MaterialImportApiTests : IAsyncLifetime {
         Assert.Single(asset.Nodes, static n => n.Type == "Colour/Channel Shuffle");
     }
 
+    /// <summary>
+    ///     A colour picture's numbers are what its file says they are (#308), not what its use usually has: a linear
+    ///     emissive is read as it is, where an sRGB one is taken to linear, and a linear base color is taken to sRGB,
+    ///     which a graph's base color is. MaterialX inherits a document's colour space; USD says it per texture.
+    /// </summary>
+    [Theory]
+    [InlineData("lin.mtlx", 0, 1)]
+    [InlineData("srgb.mtlx", 1, 0)]
+    [InlineData("raw.usda", 0, 1)]
+    [InlineData("auto.usda", 1, 0)]
+    public async Task A_colour_pictures_space_is_what_its_file_says(string file, int toLinear, int toSrgb) {
+        var space = Path.GetFileNameWithoutExtension(file);
+        File.WriteAllText(
+            Path.Combine(source.FullName, file),
+            file.EndsWith(".mtlx", StringComparison.Ordinal) ? Emitting(space == "lin" ? "lin_rec709" : "srgb_texture")
+            : Glowing(space == "raw" ? "raw" : "auto")
+        );
+
+        var imported = await ImportAsync(file);
+
+        var asset = YamlSerializer.Parse<NodeGraphAsset>(
+            await File.ReadAllTextAsync(Path.Combine(server.Library, imported.Documents[0]), Token)
+        );
+        Assert.Equal(toLinear, asset.Nodes.Count(static n => n.Type == "Colour/sRGB to Linear"));
+        Assert.Equal(toSrgb, asset.Nodes.Count(static n => n.Type == "Colour/Linear to sRGB"));
+    }
+
+    /// <summary>A MaterialX document in a colour space, whose base color and emission colour read pictures.</summary>
+    static string Emitting(string space) =>
+        $"""
+         <?xml version="1.0" encoding="utf-8"?>
+         <materialx version="1.38" colorspace="{space}">
+           <image name="colour" type="color3">
+             <input name="file" type="filename" value="textures/colour.png" />
+           </image>
+           <image name="glow" type="color3">
+             <input name="file" type="filename" value="textures/colour.png" />
+           </image>
+           <open_pbr_surface name="SR_Lamp" type="surfaceshader">
+             <input name="base_color" type="color3" nodename="colour" />
+             <input name="emission_color" type="color3" nodename="glow" />
+           </open_pbr_surface>
+           <surfacematerial name="M_Lamp" type="material">
+             <input name="surfaceshader" type="surfaceshader" nodename="SR_Lamp" />
+           </surfacematerial>
+         </materialx>
+         """;
+
+    /// <summary>A USD material whose base color and emissive read one texture in a colour space.</summary>
+    static string Glowing(string space) =>
+        $$"""
+          #usda 1.0
+          def Material "Lamp"
+          {
+              token outputs:surface.connect = </Lamp/Surface.outputs:surface>
+
+              def Shader "Surface"
+              {
+                  uniform token info:id = "UsdPreviewSurface"
+                  color3f inputs:diffuseColor.connect = </Lamp/Colour.outputs:rgb>
+                  color3f inputs:emissiveColor.connect = </Lamp/Colour.outputs:rgb>
+                  token outputs:surface
+              }
+
+              def Shader "Colour"
+              {
+                  uniform token info:id = "UsdUVTexture"
+                  asset inputs:file = @textures/colour.png@
+                  token inputs:sourceColorSpace = "{{space}}"
+                  float3 outputs:rgb
+              }
+          }
+          """;
+
     /// <summary>An input a graph would have to compute is left out and said, and the rest comes in.</summary>
     [Fact]
     public async Task An_input_made_by_a_node_is_left_out_and_said() {

@@ -415,6 +415,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Import Materials reads a colour picture in the colour space its file gives it (#308): a MaterialX image in `lin_rec709`, ACEScg or `none`, set on the image or anywhere round it, and a USD texture whose `sourceColorSpace` is `raw` come in linear, so a linear emissive, sheen, coat or specular colour is no longer darkened and a linear base color is turned to sRGB rather than read as sRGB. A file that says nothing is read as before.
 - The texel density check and view measure texels per metre (#307), as the library's and the project's densities are given, where they measured per unit of the model: a mesh in centimetres was judged a hundred times too coarse. A glTF reads in metres and an FBX in the unit it states, unless the project says its Mesh units (ADR 0058).
 - A graph that lights the viewport, a shelf picture or a layer's picture that takes the GPU engine more than ten seconds is waited for (#284): on a busy GPU the viewport answered that no GPU process was connected while one was drawing the panorama. Only the wait for the engine to be there is bounded now, as for every other wait on it.
 - Generators on the shelf have pictures (#301): each is drawn on the sample knot's bake, which ships under `content/bakes/Knot`, where a generator used to show its name alone for want of a bake.
