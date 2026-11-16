@@ -305,6 +305,9 @@ test('builds a tiling material from a new graph, down to its channels and full s
   // The curve: a press in the middle bends it, and the picture after it changes.
   await inspect(2);
   const curve = window.getByTestId('curve-editor');
+  // The Inspector scrolls: the curve can start below its fold (Expose All sits over it once the curve can be exposed
+  // too), and a press measured from the box would then land outside the pane.
+  await curve.scrollIntoViewIfNeeded();
   const box = await curve.boundingBox();
   if (!box) {
     throw new Error('The curve is not on screen.');
