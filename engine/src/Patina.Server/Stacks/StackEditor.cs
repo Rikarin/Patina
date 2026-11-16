@@ -50,8 +50,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     readonly List<UndoStep> redoable = [];
     long nextEntry;
     long nextStep;
-    long? savedStep;
-    bool extendedSinceSave;
+    SaveMark saved;
 
     /// <summary>
     ///     What size each canvas is as a Worker holds it, which a stroke is checked against before it begins.
@@ -99,7 +98,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
             redoable.Count > 0,
             undoable.Count > 0 ? undoable[^1].Label : null,
             redoable.Count > 0 ? redoable[^1].Label : null,
-            extendedSinceSave || (undoable.Count > 0 ? undoable[^1].Id : null) != savedStep,
+            Mark != saved,
             undoable.Count > 0 ? undoable[^1].Id : null
         );
 
@@ -128,7 +127,7 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
 
         if (Extend(batch) is { } extended) {
             // More of a stroke is the same undo step, so the step alone cannot say the file is behind.
-            extendedSinceSave = true;
+            undoable[^1].Parts++;
             return extended;
         }
 
@@ -200,10 +199,11 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
         return step.Label;
     }
 
-    public void MarkSaved() {
-        savedStep = undoable.Count > 0 ? undoable[^1].Id : null;
-        extendedSinceSave = false;
-    }
+    /// <summary>Where the history stands, which a save takes with its text.</summary>
+    public SaveMark Mark => undoable.Count > 0 ? new(undoable[^1].Id, undoable[^1].Parts) : default;
+
+    /// <summary>The file holds the document as it stood at a mark: back at it, the stack is saved.</summary>
+    public void MarkSaved(SaveMark at) => saved = at;
 
     /// <summary>What a colour in the API is in a paint file.</summary>
     /// <exception cref="StackEditRefusedException">It is not four numbers.</exception>
@@ -973,6 +973,9 @@ public sealed class StackEditor(string path, LayerStackAsset document) : ILayerS
     /// <summary>One undo step: what it is called, what a jump names it by, and what it did.</summary>
     public sealed record UndoStep(long Id, string Label) {
         public List<IAuthoringCommand> Commands { get; } = [];
+
+        /// <summary>How many times a drag has added to the step since it began.</summary>
+        public int Parts { get; set; }
 
         public List<StackJournalEntry> Strokes { get; } = [];
     }

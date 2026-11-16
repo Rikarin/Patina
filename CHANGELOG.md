@@ -394,6 +394,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A save during which an edit was made and undone again leaves the document saved (#306): the document is as the file holds it, but the editor counted the edit and its undo, kept the document unsaved and Close refused it. A save now remembers where the undo history stood, so going back there, whatever happened between, is saved, for layer stacks and graphs alike.
 - A graph's physical size set one side quickly after the other keeps both: the second side used to write the first one's old value back while the first was still on its way.
 - A shelf picture the engine could not draw for want of a GPU is drawn once there is one (#302): a library opened on a machine with no GPU used to keep its shelf and Library pictures blank until its cache was cleared. A material the engine cannot draw is still remembered as having no picture.
 - A big brush on a dense model keeps up better (#25): finding the faces under a stamp no longer tests each face of a part that lies wholly inside the stamp's reach and view, which was over a quarter of a 48-pixel stamp's time on one thread on a two-million-triangle model and is now about a seventh of what it was. It finds the same faces in the same order, so a stroke paints and replays as before.

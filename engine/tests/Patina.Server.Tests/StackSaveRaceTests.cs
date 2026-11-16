@@ -40,6 +40,40 @@ public sealed class StackSaveRaceTests : IDisposable {
     }
 
     /// <summary>
+    ///     An edit made during a save and undone again leaves the document as the file holds it. A count of edits said
+    ///     otherwise, so Close refused a stack that had nothing to lose (#306).
+    /// </summary>
+    [Fact]
+    public void An_edit_undone_during_a_save_leaves_the_stack_saved() {
+        var session = Opened("Crate");
+        session.Apply(new([new StackSetSeed(9)]));
+
+        var (text, taken) = session.PrepareSave(false);
+        session.Apply(new([new StackSetSeed(11)]));
+        session.Undo();
+        session.FinishSave(text, taken);
+
+        Assert.False(session.Summary.Dirty);
+        session.Redo();
+        Assert.True(session.Summary.Dirty);
+    }
+
+    /// <summary>The step saved, undone during the save, is still what the file holds: it is unsaved until redone.</summary>
+    [Fact]
+    public void A_step_undone_during_a_save_is_saved_once_redone() {
+        var session = Opened("Crate");
+        session.Apply(new([new StackSetSeed(9)]));
+
+        var (text, taken) = session.PrepareSave(false);
+        session.Undo();
+        session.FinishSave(text, taken);
+
+        Assert.True(session.Summary.Dirty);
+        session.Redo();
+        Assert.False(session.Summary.Dirty);
+    }
+
+    /// <summary>
     ///     Two stacks waited on at once (a save on one, a sample on the other) stopped each other's evaluations, which
     ///     on a slow GPU repeated forever. A stack nobody waits on still gives way to one that is waited on (ADR 0040).
     /// </summary>

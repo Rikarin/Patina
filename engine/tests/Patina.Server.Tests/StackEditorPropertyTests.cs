@@ -516,11 +516,25 @@ public sealed class StackEditorPropertyTests {
     public void More_of_a_saved_drag_leaves_the_stack_unsaved() {
         var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
         editor.Apply(new([Stroke("a", true, 2)]));
-        editor.MarkSaved();
+        editor.MarkSaved(editor.Mark);
         Assert.False(editor.History.Dirty);
 
         editor.Apply(new([Stroke("a", true, 3)]));
 
+        Assert.True(editor.History.Dirty);
+    }
+
+    /// <summary>A save taken part way through a drag holds that part: more of the drag is unsaved (#306).</summary>
+    [Fact]
+    public void A_save_taken_part_way_through_a_drag_holds_that_part() {
+        var editor = new StackEditor("/tmp/Crate.vxlayers", Sample());
+        editor.Apply(new([Stroke("a", true, 2)]));
+        var taken = editor.Mark;
+        editor.Apply(new([Stroke("a", true, 3)]));
+        editor.MarkSaved(taken);
+
+        Assert.True(editor.History.Dirty);
+        editor.Undo();
         Assert.True(editor.History.Dirty);
     }
 

@@ -46,7 +46,7 @@ public sealed class StackEvaluator(
         bool force,
         CancellationToken cancellationToken
     ) {
-        var (text, edits) = session.PrepareSave(force);
+        var (text, mark) = session.PrepareSave(force);
         KeepBase(session);
         await ReachedAsync(session, cancellationToken);
         if (session.EvaluationError is { } failed) {
@@ -58,7 +58,7 @@ public sealed class StackEvaluator(
             new() { Type = IpcTypes.StackSave, StackSave = new(session.Id, null) },
             cancellationToken
         );
-        var saved = session.FinishSave(text, edits);
+        var saved = session.FinishSave(text, mark);
         if (identity.Library is { } library) {
             autosave.Forget(library, session.Path);
         }

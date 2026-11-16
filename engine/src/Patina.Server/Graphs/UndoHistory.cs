@@ -10,6 +10,15 @@ namespace Patina.Server.Graphs;
 public sealed record HistoryMove(GraphEventKind Kind, string Label);
 
 /// <summary>
+///     Where a history stands, which a save takes with its text: the file holds the document as it stood there, so
+///     the document is saved whenever the history is back at it, whatever happened between (#306). The revision is
+///     no measure, since it also moves for what is no edit, such as a bake chosen.
+/// </summary>
+/// <param name="Step">The newest step that stands, or null when none does.</param>
+/// <param name="Parts">How far a drag had got with that step, for an editor whose drags add to one step.</param>
+public readonly record struct SaveMark(long? Step, int Parts);
+
+/// <summary>
 ///     A jump to a step the history no longer holds: another client's edit dropped it. Nothing has changed.
 /// </summary>
 public sealed class HistoryStepGoneException : Exception {

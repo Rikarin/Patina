@@ -37,7 +37,7 @@ public sealed class GraphEditor {
     readonly List<UndoStep> redoable = [];
     NodeTypeRegistry registry;
     long nextStep;
-    long? savedStep;
+    SaveMark saved;
 
     /// <summary>Takes a document as a file holds it.</summary>
     public GraphEditor(NodeGraphAsset asset, NodeTypeRegistry registry) {
@@ -62,7 +62,7 @@ public sealed class GraphEditor {
             redoable.Count > 0,
             undoable.Count > 0 ? undoable[^1].Label : null,
             redoable.Count > 0 ? redoable[^1].Label : null,
-            (undoable.Count > 0 ? undoable[^1].Id : null) != savedStep,
+            Mark != saved,
             undoable.Count > 0 ? undoable[^1].Id : null
         );
 
@@ -196,10 +196,14 @@ public sealed class GraphEditor {
     /// <summary>The node types as they are now.</summary>
     internal NodeTypeRegistry Registry => registry;
 
+    /// <summary>Where the history stands, which a save takes with its text. A merged drag is a new step.</summary>
+    public SaveMark Mark => undoable.Count > 0 ? new(undoable[^1].Id, 0) : default;
+
     /// <summary>
-    ///     Says the document now matches the file. A later drag starts a new undo step rather than merging.
+    ///     Says the file holds the document as it stood at a mark. A later drag starts a new undo step rather than
+    ///     merging into the step saved.
     /// </summary>
-    public void MarkSaved() => savedStep = undoable.Count > 0 ? undoable[^1].Id : null;
+    public void MarkSaved(SaveMark at) => saved = at;
 
     void Remember(GraphCommandBatch batch, List<IAuthoringCommand> applied) {
         redoable.Clear();
@@ -216,7 +220,7 @@ public sealed class GraphEditor {
 
     /// <summary>Folds a batch into the last step, keeping that step's "before" (plan: a drag is one undo).</summary>
     bool TryMerge(List<IAuthoringCommand> applied) {
-        if (undoable.Count == 0 || undoable[^1].Id == savedStep || undoable[^1].Commands.Count != applied.Count) {
+        if (undoable.Count == 0 || undoable[^1].Id == saved.Step || undoable[^1].Commands.Count != applied.Count) {
             return false;
         }
 

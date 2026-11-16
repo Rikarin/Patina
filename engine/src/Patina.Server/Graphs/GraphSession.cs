@@ -294,10 +294,12 @@ public sealed class GraphSession(
                 throw new GraphFileChangedException($"'{Path}' changed on disk after it was opened.");
             }
 
-            var text = GraphDocuments.Text(editor.Document);
+            // Taken with the text, as a stack's save does across its wait for the Worker: the file holds the history
+            // as it stood here, and the revision is no measure of that (#306).
+            var (text, mark) = (GraphDocuments.Text(editor.Document), editor.Mark);
             LibraryFiles.Replace(Path, text);
             fileHash = Hash(text);
-            editor.MarkSaved();
+            editor.MarkSaved(mark);
             return Announce(GraphEventKind.Saved, null, null, []);
         }
     }
