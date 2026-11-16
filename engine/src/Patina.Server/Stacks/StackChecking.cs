@@ -131,8 +131,10 @@ public static class StackChecking {
             Problem(
                 CheckCodes.PresetUnknown,
                 Warning,
-                $"The project exports with '{chosen}', which no export preset is any more, so the default "
-                + (fallback.Length > 0 ? $"'{fallback}' stands in for it." : "stands in for it, and there is none.")
+                $"The project exports with '{chosen}', which no export preset is any more, "
+                + (fallback.Length > 0
+                    ? $"so the default '{fallback}' stands in for it."
+                    : "and there is no other preset to stand in for it.")
                 + " Choose its preset again.",
                 new() { ["preset"] = chosen, ["fallback"] = fallback },
                 new(Setting: "export.preset")

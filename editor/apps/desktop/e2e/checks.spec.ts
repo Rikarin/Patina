@@ -87,7 +87,8 @@ test('checks measure the set in front, keep the project’s limits, and go to a 
 
   // The same layout on a mesh in centimetres covers a hundredth of the metres, so it has a hundred times the texels
   // per metre (#307). A glTF is in metres; the project can say otherwise, and the check measures through it.
-  const perMetre = async () => Number(/\d+/u.exec((await window.getByTestId('checks-density').textContent()) ?? '')?.[0]);
+  const perMetre = async () =>
+    Number(/\d+/u.exec((await window.getByTestId('checks-density').textContent()) ?? '')?.[0]);
   const inMetres = await perMetre();
   await setUnits('Centimetres');
   await expect.poll(() => readFileSync(projectFile(), 'utf8'), { timeout: 10_000 }).toContain('metresPerUnit: 0.01');

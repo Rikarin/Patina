@@ -211,6 +211,14 @@ public sealed class OpenPbrLayerExportTests : IDisposable {
             Image(extensions.GetProperty("KHR_materials_transmission").GetProperty("transmissionTexture"))
         );
         Assert.DoesNotContain(said, static warning => warning.StartsWith("glTF:", StringComparison.Ordinal));
+        // Every extension the file names is listed in extensionsUsed, or another reader drops it without a word (#46).
+        HashSet<string> listed = [
+            ..root.GetProperty("extensionsUsed").EnumerateArray().Select(static name => name.GetString()!)
+        ];
+        Assert.Superset(
+            new HashSet<string> { "KHR_materials_clearcoat", "KHR_materials_sheen", "KHR_materials_transmission" },
+            listed
+        );
 
         // The sheen's colour (0.9, 0.8, 0.7) times its weight of 0.7, stored as sRGB, with its roughness in alpha.
         var tint = PngCodec.Decode(File.ReadAllBytes(Path("gltf/Car_sheen.png")));
