@@ -363,6 +363,14 @@ public static class StackChecking {
             maps.TryAdd(ExportMaps.SheenTint, Math.Max(sheen, maps.GetValueOrDefault(ExportMaps.SheenColor)));
         }
 
+        // glTF's anisotropy, from its strength and its rotation.
+        if (maps.TryGetValue(ExportMaps.Anisotropy, out var anisotropy)) {
+            maps.TryAdd(
+                ExportMaps.AnisotropyVector,
+                Math.Max(anisotropy, maps.GetValueOrDefault(ExportMaps.AnisotropyRotation))
+            );
+        }
+
         var colour = Math.Max(
             maps.GetValueOrDefault(ExportMaps.BaseColor),
             maps.GetValueOrDefault(ExportMaps.Metalness)

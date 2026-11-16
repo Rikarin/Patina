@@ -46,3 +46,15 @@ textures:
     format: png8
     space: linear
     channels: [transmission.r]
+  # The specular lobe (#142), written only for a set that has it, in the lanes KHR_materials_specular reads: its
+  # color, sRGB, in red, green and blue and its weight in alpha.
+  - file: "{set}_specular"
+    format: png8
+    space: srgb
+    channels: [specularColor.r, specularColor.g, specularColor.b, specularWeight.r]
+  # Anisotropy as KHR_materials_anisotropy reads it: the direction its rotation turns to in red and green, and its
+  # strength in blue, worked out only for a set with an anisotropy.
+  - file: "{set}_anisotropy"
+    format: png8
+    space: linear
+    channels: [anisotropyVector.r, anisotropyVector.g, anisotropyVector.b]

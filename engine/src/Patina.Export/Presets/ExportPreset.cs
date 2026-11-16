@@ -361,7 +361,8 @@ public static class ExportMaps {
     /// </summary>
     public static IReadOnlyList<string> OpenPbr { get; } = [
         Coat, CoatRoughness, Sheen, SheenColor, SheenRoughness, Transmission, SpecularWeight, SpecularColor, Anisotropy,
-        CoatColor, CoatNormal
+        CoatColor, CoatNormal, AnisotropyRotation, Subsurface, SubsurfaceColor, SubsurfaceRadius, ThinFilm,
+        ThinFilmThickness
     ];
 
     // Between the two groups, as in ExportCompressions: SK7020 honours no suppression, and reads fifteen constants in a
@@ -369,7 +370,7 @@ public static class ExportMaps {
     public static IReadOnlyList<string> All { get; } = [
         BaseColor, Normal, Roughness, Metalness, Occlusion, Height, Emissive, Opacity, Mask, Curvature, Thickness, Id,
         Position, WorldNormal, BentNormal, BakedNormal, BakedOcclusion, Coverage, Specular, Diffuse, Glossiness,
-        SheenTint, ..Users, ..OpenPbr
+        SheenTint, AnisotropyVector, ..Users, ..OpenPbr
     ];
 
     /// <summary>How much of a clear coat lies over the base: OpenPBR's <c>coat_weight</c>.</summary>
@@ -408,16 +409,45 @@ public static class ExportMaps {
     public const string CoatNormal = "coatNormal";
 
     /// <summary>
+    ///     How far the anisotropy's long axis is turned from the tangent, counter-clockwise towards the bitangent, as a
+    ///     fraction of a whole turn: OpenPBR says it through <c>geometry_tangent</c>, glTF through its direction.
+    /// </summary>
+    public const string AnisotropyRotation = "anisotropyRotation";
+
+    /// <summary>How much light scatters beneath the surface: OpenPBR's <c>subsurface_weight</c>.</summary>
+    public const string Subsurface = "subsurface";
+
+    /// <summary>The colour light scattered beneath takes: OpenPBR's <c>subsurface_color</c>. Linear.</summary>
+    public const string SubsurfaceColor = "subsurfaceColor";
+
+    /// <summary>How far light travels beneath, in the scene's units: OpenPBR's <c>subsurface_radius</c>.</summary>
+    public const string SubsurfaceRadius = "subsurfaceRadius";
+
+    /// <summary>How much of a thin film lies on the surface: OpenPBR's <c>thin_film_weight</c>.</summary>
+    public const string ThinFilm = "thinFilm";
+
+    /// <summary>How thick the film is, in micrometres: OpenPBR's <c>thin_film_thickness</c>.</summary>
+    public const string ThinFilmThickness = "thinFilmThickness";
+
+    /// <summary>
     ///     The maps a preset can read that no output makes: each is worked out from others when a file reads it
     ///     (<see cref="DerivedMaps" />), so a specular-glossiness file comes from a metal-roughness project.
     /// </summary>
-    public static IReadOnlyList<string> Derived { get; } = [Specular, Diffuse, Glossiness, SheenTint];
+    public static IReadOnlyList<string> Derived { get; } =
+        [Specular, Diffuse, Glossiness, SheenTint, AnisotropyVector];
 
     /// <summary>
     ///     The sheen's colour times its weight, linear: glTF's <c>sheenColor</c>, since glTF's sheen has no weight of
     ///     its own. Worked out only for a set with a sheen weight, since without one there is no sheen.
     /// </summary>
     public const string SheenTint = "sheenTint";
+
+    /// <summary>
+    ///     glTF's anisotropy picture: the direction in red and green, from 0 to 1 for -1 to 1 along the tangent and the
+    ///     bitangent, turned by <see cref="AnisotropyRotation" />, and the strength, <see cref="Anisotropy" />, in
+    ///     blue. Worked out only for a set with an anisotropy.
+    /// </summary>
+    public const string AnisotropyVector = "anisotropyVector";
 
     /// <summary>
     ///     The colour at normal incidence: four per cent for a dielectric, the base colour for a metal. sRGB.
@@ -469,10 +499,14 @@ public static class ExportMaps {
             (Normal or WorldNormal or BentNormal or BakedNormal or CoatNormal, 2) => 1f,
             (Normal or WorldNormal or BentNormal or BakedNormal or CoatNormal, not 3) => 0.5f,
             (Opacity or Occlusion or BakedOcclusion or Mask or Coverage or SheenColor or SpecularWeight, _) => 1f,
-            (SpecularColor or CoatColor, _) => 1f,
+            (SpecularColor or CoatColor or SubsurfaceRadius, _) => 1f,
+            (SubsurfaceColor, not 3) => 0.8f,
+            (AnisotropyVector, 0) => 1f,
+            (AnisotropyVector, 1) => 0.5f,
             (_, 3) => 1f,
             (BaseColor or Roughness or Height or Curvature or Position or Diffuse or Glossiness or SheenRoughness, _) =>
                 0.5f,
+            (ThinFilmThickness, _) => 0.5f,
             (Specular, _) => DerivedMaps.DielectricSrgb,
             _ => 0f
         };

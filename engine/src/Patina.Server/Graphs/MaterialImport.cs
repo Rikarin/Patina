@@ -209,8 +209,8 @@ static class MaterialImport {
     ///     A picture's lanes as a map: one lane spread over three, then the factor, one minus it, or green turned so it
     ///     runs down the picture as a graph's normal does (ADR 0011). A color's factor is linear, so a base color is
     ///     taken to linear numbers for it and back; an emissive picture holds sRGB numbers and a graph's emissive is
-    ///     linear, so it is taken to linear, and so are OpenPBR's colours (#142), a sheen's, a coat's and the specular
-    ///     lobe's, which are linear as emissive is. A coat's normal turns as the normal does.
+    ///     linear, so it is taken to linear, and so are OpenPBR's colours (#142), a sheen's, a coat's, the specular
+    ///     lobe's and subsurface scattering's, which are linear as emissive is. A coat's normal turns as the normal does.
     /// </summary>
     static int Picture(GraphText graph, ImportedSlot slot, string relative, List<string> warnings) {
         var bitmap = graph.Node("Source/Bitmap", [("Source", relative), ..Edges(slot.Placement)]);
@@ -218,7 +218,8 @@ static class MaterialImport {
         var colour = slot.Usage == "baseColor";
         float[] factor = [..slot.Value.Take(3)];
         var scaled = slot.Inverted || factor.Any(static f => Math.Abs(f - 1f) > 1e-4f);
-        if (slot.Usage is "emissive" or "sheenColor" or "coatColor" or "specularColor" || (colour && scaled)) {
+        if (slot.Usage is "emissive" or "sheenColor" or "coatColor" or "specularColor" or "subsurfaceColor"
+            || (colour && scaled)) {
             node = graph.Chain(node, "Colour/sRGB to Linear");
         }
 

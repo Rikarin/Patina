@@ -81,6 +81,29 @@ public sealed class ModelMaterialsTests : IDisposable {
                            }
                            """;
 
+    /// <summary>A specular lobe with its pictures and anisotropy turned a quarter; and a whole white lobe.</summary>
+    const string Lobed = """
+                         {
+                           "name": "Brushed",
+                           "extensions": {
+                             "KHR_materials_specular": {
+                               "specularFactor": 0.5, "specularTexture": { "index": 1 },
+                               "specularColorFactor": [1, 0.5, 0.25]
+                             },
+                             "KHR_materials_anisotropy": {
+                               "anisotropyStrength": 0.75, "anisotropyRotation": 1.5707964,
+                               "anisotropyTexture": { "index": 1 }
+                             }
+                           }
+                         },
+                         {
+                           "name": "Plain",
+                           "extensions": {
+                             "KHR_materials_specular": { "specularFactor": 1, "specularColorFactor": [1, 1, 1] }
+                           }
+                         }
+                         """;
+
     /// <summary>Two triangles, each wearing one of two materials, its pictures beside the file and inside it.</summary>
     string Gltf(string materials = Painted) {
         var floats = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1 };
@@ -95,7 +118,8 @@ public sealed class ModelMaterialsTests : IDisposable {
                        "asset": { "version": "2.0" },
                        "extensionsUsed": [
                          "KHR_texture_transform", "KHR_materials_emissive_strength", "KHR_materials_clearcoat",
-                         "KHR_materials_sheen", "KHR_materials_transmission"
+                         "KHR_materials_sheen", "KHR_materials_transmission", "KHR_materials_specular",
+                         "KHR_materials_anisotropy"
                        ],
                        "scene": 0,
                        "scenes": [{ "nodes": [0, 1] }],
@@ -195,6 +219,33 @@ public sealed class ModelMaterialsTests : IDisposable {
         Assert.Equal([0.5f, 0.25f, 0f], lacquer["sheenColor"].Value.Take(3).Select(Round));
         Assert.Equal((null, 0.25f), (lacquer["sheenRoughness"].Texture, Round(lacquer["sheenRoughness"].Value[0])));
         Assert.Equal((null, 0.5f), (lacquer["transmission"].Texture, Round(lacquer["transmission"].Value[0])));
+
+        Assert.Equal(["baseColor", "roughness", "metalness"], materials[1].Slots.Select(static s => s.Usage));
+    }
+
+    /// <summary>
+    ///     glTF's specular lobe and anisotropy come in as OpenPBR's maps (#142): the weight from alpha, the colour as its
+    ///     factor, the anisotropy's strength from blue and its rotation as a fraction of a turn. The direction picture
+    ///     is no one lane, so that is said. A whole white lobe brings in nothing.
+    /// </summary>
+    [Fact]
+    public void A_gltfs_specular_lobe_and_anisotropy_come_in_as_openpbrs_maps() {
+        var materials = ModelMaterials.Read(Gltf(Lobed), Path.Combine(folder.FullName, "pictures"));
+
+        var brushed = materials[0].Slots.ToDictionary(static s => s.Usage);
+        var orm = Path.Combine(folder.FullName, "orm.png");
+        Assert.Equal(
+            (orm, 3, 0.5f),
+            (brushed["specularWeight"].Texture, brushed["specularWeight"].Lane, brushed["specularWeight"].Value[0])
+        );
+        Assert.Equal([1f, 0.5f, 0.25f], brushed["specularColor"].Value.Take(3).Select(Round));
+        Assert.Null(brushed["specularColor"].Texture);
+        Assert.Equal(
+            (orm, 2, 0.75f),
+            (brushed["anisotropy"].Texture, brushed["anisotropy"].Lane, brushed["anisotropy"].Value[0])
+        );
+        Assert.Equal(0.25f, Round(brushed["anisotropyRotation"].Value[0]));
+        Assert.Contains(materials[0].Warnings, static w => w.Contains("anisotropy's picture", StringComparison.Ordinal));
 
         Assert.Equal(["baseColor", "roughness", "metalness"], materials[1].Slots.Select(static s => s.Usage));
     }

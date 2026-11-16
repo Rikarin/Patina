@@ -52,6 +52,7 @@ public static class DerivedMaps {
         string[] from = map switch {
             ExportMaps.Glossiness => [ExportMaps.Roughness],
             ExportMaps.SheenTint => [ExportMaps.Sheen, ExportMaps.SheenColor],
+            ExportMaps.AnisotropyVector => [ExportMaps.Anisotropy, ExportMaps.AnisotropyRotation],
             _ => [ExportMaps.BaseColor, ExportMaps.Metalness]
         };
         return from.Select(name => maps.GetValueOrDefault(name)?.Depth ?? 8).Max();
@@ -67,6 +68,8 @@ public static class DerivedMaps {
                 Colour(map == ExportMaps.Specular, colour, metal),
             ExportMaps.SheenTint when maps.GetValueOrDefault(ExportMaps.Sheen)?.Image is { } weight =>
                 Tint(weight, maps.GetValueOrDefault(ExportMaps.SheenColor)?.Image),
+            ExportMaps.AnisotropyVector when maps.GetValueOrDefault(ExportMaps.Anisotropy)?.Image is { } strength =>
+                Turned(strength, maps.GetValueOrDefault(ExportMaps.AnisotropyRotation)?.Image),
             _ => null
         };
     }
@@ -100,6 +103,31 @@ public static class DerivedMaps {
         weight = Fit(weight, width, height)!;
         colour = Fit(colour, width, height);
         return Each(width, height, 3, (x, y, lane) => Lane(weight, x, y, 0, 0f) * Lane(colour, x, y, lane, 1f));
+    }
+
+    /// <summary>
+    ///     glTF's anisotropy picture: the direction a turn of <paramref name="rotation" /> makes from the tangent, in
+    ///     red and green from 0 to 1, and the strength in blue, at the larger of the two sizes. A set without a
+    ///     rotation runs along the tangent.
+    /// </summary>
+    static FloatImage Turned(FloatImage strength, FloatImage? rotation) {
+        var width = Math.Max(strength.Width, rotation?.Width ?? 0);
+        var height = Math.Max(strength.Height, rotation?.Height ?? 0);
+        strength = Fit(strength, width, height)!;
+        rotation = Fit(rotation, width, height);
+        return Each(
+            width,
+            height,
+            3,
+            (x, y, lane) => {
+                if (lane == 2) {
+                    return Math.Clamp(Lane(strength, x, y, 0, 0f), 0f, 1f);
+                }
+
+                var (sin, cos) = MathF.SinCos(Lane(rotation, x, y, 0, 0f) * MathF.Tau);
+                return 0.5f + 0.5f * (lane == 0 ? cos : sin);
+            }
+        );
     }
 
     static FloatImage? Fit(FloatImage? image, int width, int height) =>
