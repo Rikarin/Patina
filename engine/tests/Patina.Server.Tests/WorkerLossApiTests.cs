@@ -33,9 +33,10 @@ public sealed partial class WorkerLossApiTests : IAsyncLifetime {
     /// </summary>
     [Fact]
     public async Task A_Worker_that_dies_mid_answer_is_the_engine_unavailable() {
-        var shared = Directory.CreateDirectory(Path.Combine(server.Library, "shared")).FullName;
-        var sky = GraphTesting.Write(shared, GraphTesting.Sample(), "sky.vxtexgraph");
-        var mesh = Path.Combine(shared, "crate.glb");
+        // ⚠ Not shared/: a library moves an old shared/ folder into a project when it opens, which may be after this.
+        var folder = Directory.CreateDirectory(Path.Combine(server.Library, "loose")).FullName;
+        var sky = GraphTesting.Write(folder, GraphTesting.Sample(), "sky.vxtexgraph");
+        var mesh = Path.Combine(folder, "crate.glb");
         await File.WriteAllBytesAsync(mesh, [1, 2, 3], Token);
 
         await AssertGoneAsync(
@@ -49,13 +50,13 @@ public sealed partial class WorkerLossApiTests : IAsyncLifetime {
         );
         await AssertGoneAsync(
             IpcTypes.MeshFacts,
-            () => client.GetAsync("/api/v1/library/mesh?path=shared/crate.glb", Token)
+            () => client.GetAsync("/api/v1/library/mesh?path=loose/crate.glb", Token)
         );
         await AssertGoneAsync(
             IpcTypes.MaterialThumbnail,
             () => client.PostAsJsonAsync(
                 "/api/v1/library/thumbnails",
-                new ThumbnailRequest(["shared/sky.vxtexgraph"]),
+                new ThumbnailRequest(["loose/sky.vxtexgraph"]),
                 Token
             )
         );
