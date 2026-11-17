@@ -22,8 +22,11 @@ sealed class WorkerLoop(
     static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
     static readonly long Started = Stopwatch.GetTimestamp();
 
-    /// <summary>The picture being drawn, which stops for anything queued behind it.</summary>
-    readonly PictureYield pictures = new();
+    /// <summary>
+    ///     The picture being drawn, which stops for anything queued behind it. One per link: work a link that dropped
+    ///     left on its queue is never taken, and would stop every picture after it.
+    /// </summary>
+    PictureYield pictures = new();
 
     /// <summary>
     ///     Keeps a link to the Server, reconnecting when it drops. <paramref name="log" /> gets one line per link,
@@ -59,6 +62,7 @@ sealed class WorkerLoop(
     async Task RunLinkAsync(string socketPath, WorkerReport log, CancellationToken cancellationToken) {
         var stream = await IpcSocket.ConnectAsync(socketPath, ConnectTimeout, cancellationToken);
         IpcConnection? connection = null;
+        var yielding = pictures = new();
         connection = new(stream, (request, token) => AnswerAsync(connection!, request, token)) {
             Immediate = static type => type
                 is IpcTypes.Health
@@ -74,11 +78,8 @@ sealed class WorkerLoop(
             // it: on a software GPU those queue for minutes, and the viewport stopped answering a change (#274). What
             // wears a stack keeps its place behind the stack's own requests (#295).
             Urgent = IpcTypes.Urgent,
-            Queued = type => {
-                if (type != IpcTypes.MaterialThumbnail) {
-                    pictures.GiveWay();
-                }
-            }
+            Queued = yielding.Queued,
+            Taken = yielding.Taken
         };
         await using (connection) {
             connection.Start();
