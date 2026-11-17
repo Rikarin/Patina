@@ -316,6 +316,86 @@ public sealed class ModelMaterialsTests : IDisposable {
         Assert.Equal(["baseColor", "roughness", "metalness"], materials[1].Slots.Select(static s => s.Usage));
     }
 
+    /// <summary>An anisotropy whose picture is inside the file and placed, as is the base colour; and none.</summary>
+    const string Turned = """
+                          {
+                            "name": "Turned",
+                            "pbrMetallicRoughness": {
+                              "baseColorTexture": {
+                                "index": 2,
+                                "extensions": {
+                                  "KHR_texture_transform": { "offset": [0.25, 0.5], "rotation": 0.5, "scale": [2, 4] }
+                                }
+                              }
+                            },
+                            "extensions": {
+                              "KHR_materials_anisotropy": {
+                                "anisotropyStrength": 0.5,
+                                "anisotropyTexture": {
+                                  "index": 2,
+                                  "extensions": {
+                                    "KHR_texture_transform": { "offset": [0.25, 0.5], "rotation": 0.5, "scale": [2, 4] }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          { "name": "Plain" }
+                          """;
+
+    /// <summary>
+    ///     A glTF's anisotropy comes in on every platform (#142): Linux and macOS load the Assimp 5 the binding was
+    ///     made for, which does not read <c>KHR_materials_anisotropy</c>, so it is read from the file's JSON, its
+    ///     picture inside the file as a data address or in its binary chunk, and placed as Assimp places the base
+    ///     colour's.
+    /// </summary>
+    [Theory]
+    [InlineData(".gltf", false)]
+    [InlineData(".glb", false)]
+    [InlineData(".glb", true)]
+    public void A_gltfs_anisotropy_and_its_picture_inside_the_file_come_in_wherever_it_is_read(
+        string extension,
+        bool inChunk
+    ) {
+        var path = Gltf(Turned);
+        if (inChunk) {
+            InChunk(path);
+        }
+
+        if (extension == ".glb") {
+            path = Binary(path);
+        }
+
+        var pictures = Path.Combine(folder.FullName, "pictures");
+        var turned = ModelMaterials.Read(path, pictures)[0].Slots.ToDictionary(static s => s.Usage);
+
+        var anisotropy = turned["anisotropy"];
+        Assert.Equal((2, 0.5f), (anisotropy.Lane, anisotropy.Value[0]));
+        Assert.StartsWith(pictures, anisotropy.Texture, StringComparison.Ordinal);
+        Assert.Equal(File.ReadAllBytes(turned["baseColor"].Texture!), File.ReadAllBytes(anisotropy.Texture!));
+        Assert.Equal(turned["baseColor"].Placement, anisotropy.Placement);
+        Assert.NotNull(anisotropy.Placement);
+    }
+
+    /// <summary>Moves a glTF's inner picture from a data address into its buffer, as a binary one keeps it.</summary>
+    static void InChunk(string gltf) {
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(gltf))!;
+        var buffer = root["buffers"]![0]!.AsObject();
+        var uri = buffer["uri"]!.GetValue<string>();
+        var body = Convert.FromBase64String(uri[(uri.IndexOf(',', StringComparison.Ordinal) + 1)..]);
+        var picture = Convert.FromBase64String(Png());
+        buffer["uri"] = "data:application/octet-stream;base64," + Convert.ToBase64String([..body, ..picture]);
+        buffer["byteLength"] = body.Length + picture.Length;
+        root["bufferViews"]!.AsArray()
+            .Add(
+                new System.Text.Json.Nodes.JsonObject {
+                    ["buffer"] = 0, ["byteOffset"] = body.Length, ["byteLength"] = picture.Length
+                }
+            );
+        root["images"]![2] = new System.Text.Json.Nodes.JsonObject { ["bufferView"] = 2, ["mimeType"] = "image/png" };
+        File.WriteAllText(gltf, root.ToJsonString());
+    }
+
     /// <summary>glTF's emission is black unless the file says otherwise, so a silent material has none.</summary>
     [Fact]
     public void A_gltf_material_with_no_emissive_factor_and_an_opaque_alpha_has_neither_map() {

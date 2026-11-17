@@ -22,7 +22,8 @@ public static class ModelMaterials {
     /// <exception cref="ModelFormatException">The file is not a readable model.</exception>
     public static IReadOnlyList<ImportedMaterial> Read(string path, string folder) {
         // A material's extension the file does not list is read all the same, and said (#310).
-        var declared = GltfDeclarations.Of(SharedFile.ReadAllBytes(path), Path.GetExtension(path));
+        var bytes = SharedFile.ReadAllBytes(path);
+        var declared = GltfDeclarations.Of(bytes, Path.GetExtension(path));
         var read = ModelReader.Read(
             declared.Bytes,
             Path.GetExtension(path),
@@ -35,6 +36,8 @@ public static class ModelMaterials {
             folder,
             Path.GetExtension(path).ToLowerInvariant() is ".gltf" or ".glb"
         );
+        // A glTF's anisotropy is its JSON's on every platform: only Windows' Assimp reads it.
+        var anisotropy = GltfAnisotropy.Of(bytes, Path.GetExtension(path), source.Beside);
         var names = MaterialNames.Unique(read.Model.Materials);
         List<ImportedMaterial> materials = [];
         // A material no part wears is one Assimp adds of its own, as glTF's importer does for a part that names none.
@@ -46,6 +49,12 @@ public static class ModelMaterials {
 
             var factors = at < read.MaterialFactors.Length ? read.MaterialFactors[at] : ModelMaterialFactors.Default;
             var textures = at < read.MaterialTextures.Length ? read.MaterialTextures[at] : new();
+            if (source.Gltf) {
+                textures = textures with {
+                    Layers = GltfAnisotropy.Over(textures.Layers, anisotropy.GetValueOrDefault(at))
+                };
+            }
+
             var material = Material(names[at], factors, textures, source);
             materials.Add(
                 declared.Missing.TryGetValue(at, out var missing)
