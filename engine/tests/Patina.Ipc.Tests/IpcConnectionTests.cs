@@ -16,14 +16,18 @@ public sealed class IpcConnectionTests : IDisposable {
         Func<string, bool>? immediate = null,
         Func<string, bool>? aside = null,
         Func<string, bool>? urgent = null,
-        Action<string>? queued = null
+        PictureYield? pictures = null
     ) {
         using var listener = IpcSocket.Listen(socketPath);
         var accept = listener.AcceptAsync(Token).AsTask();
         var client = await IpcSocket.ConnectAsync(socketPath, TimeSpan.FromSeconds(5), Token);
         var leftEnd = new IpcConnection(client, left);
         var rightEnd = new IpcConnection(new System.Net.Sockets.NetworkStream(await accept, true), right) {
-            Immediate = immediate, Aside = aside, Urgent = urgent, Queued = queued
+            Immediate = immediate,
+            Aside = aside,
+            Urgent = urgent,
+            Queued = pictures is null ? null : pictures.Queued,
+            Taken = pictures is null ? null : pictures.Taken
         };
         leftEnd.Start();
         rightEnd.Start();
@@ -264,6 +268,7 @@ public sealed class IpcConnectionTests : IDisposable {
     public async Task A_picture_gives_way_to_work_queued_behind_it_and_runs_to_its_end_when_nothing_is() {
         PictureYield pictures = new();
         using var drawing = new SemaphoreSlim(0);
+        var pictureCount = 0;
         List<string> answered = [];
         var (left, right) = await ConnectAsync(
             Reply,
@@ -271,9 +276,11 @@ public sealed class IpcConnectionTests : IDisposable {
                 var answer = request.Type != IpcTypes.MaterialThumbnail
                     ? IpcMessage.Ok(request.Id)
                     : pictures.Draw(stop => {
+                            // The first picture holds until the stroke stops it, so a slow runner cannot let it
+                            // end before the stroke is queued; the one asked again has nothing behind it.
+                            var first = Interlocked.Increment(ref pictureCount) == 1;
                             drawing.Release();
-                            // Parts of a run that look at the cancel between them, for a fifth of a second.
-                            stop.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(200));
+                            stop.WaitHandle.WaitOne(first ? TimeSpan.FromSeconds(10) : TimeSpan.FromMilliseconds(200));
                             stop.ThrowIfCancellationRequested();
                             return new IpcMessage { Type = IpcTypes.Ok, Id = request.Id, ThumbnailHash = "drawn" };
                         }
@@ -287,11 +294,7 @@ public sealed class IpcConnectionTests : IDisposable {
             },
             static type => type == IpcTypes.Health,
             urgent: IpcTypes.Urgent,
-            queued: type => {
-                if (type != IpcTypes.MaterialThumbnail) {
-                    pictures.GiveWay();
-                }
-            }
+            pictures: pictures
         );
         await using (left) {
             await using (right) {
@@ -305,6 +308,52 @@ public sealed class IpcConnectionTests : IDisposable {
                     .WaitAsync(TimeSpan.FromSeconds(5), Token);
                 Assert.Equal("drawn", again.ThumbnailHash);
                 Assert.Equal(["gave way", IpcTypes.StackEvaluate, IpcTypes.MaterialThumbnail], answered);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     A picture taken off the queue may wait for the device, behind a build's step, before it begins: work queued
+    ///     then found nothing to stop, and waited the whole picture. It now gives way as it begins.
+    /// </summary>
+    [Fact]
+    public async Task A_picture_that_begins_with_work_waiting_behind_it_gives_way_at_once() {
+        PictureYield pictures = new();
+        using var device = new SemaphoreSlim(0);
+        using var waiting = new SemaphoreSlim(0);
+        var (left, right) = await ConnectAsync(
+            Reply,
+            async (request, _) => {
+                if (request.Type != IpcTypes.MaterialThumbnail) {
+                    return IpcMessage.Ok(request.Id);
+                }
+
+                waiting.Release();
+                await device.WaitAsync(Token);
+                return pictures.Draw(stop => {
+                            stop.WaitHandle.WaitOne(TimeSpan.FromSeconds(10));
+                            stop.ThrowIfCancellationRequested();
+                            return new IpcMessage { Type = IpcTypes.Ok, Id = request.Id, ThumbnailHash = "drawn" };
+                        }
+                    )
+                    ?? new IpcMessage { Type = IpcTypes.Ok, Id = request.Id, Superseded = true };
+            },
+            static type => type == IpcTypes.Health,
+            urgent: IpcTypes.Urgent,
+            pictures: pictures
+        );
+        await using (left) {
+            await using (right) {
+                var picture = left.SendAsync(new() { Type = IpcTypes.MaterialThumbnail }, Token);
+                Assert.True(await waiting.WaitAsync(TimeSpan.FromSeconds(5), Token));
+                var stroke = left.SendAsync(new() { Type = IpcTypes.StackEvaluate }, Token);
+                // The link reads in order and answers a health check as it reads it: the stroke is queued by then.
+                await left.SendAsync(new() { Type = IpcTypes.Health }, Token)
+                    .WaitAsync(TimeSpan.FromSeconds(5), Token);
+                device.Release();
+
+                Assert.True((await picture.WaitAsync(TimeSpan.FromSeconds(5), Token)).Superseded);
+                Assert.Equal(IpcTypes.Ok, (await stroke.WaitAsync(TimeSpan.FromSeconds(5), Token)).Type);
             }
         }
     }

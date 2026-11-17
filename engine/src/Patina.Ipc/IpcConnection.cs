@@ -56,6 +56,12 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
     /// </summary>
     public Action<string>? Queued { get; init; }
 
+    /// <summary>
+    ///     Told the type of each queued request as it is taken off the queue to be answered: with
+    ///     <see cref="Queued" />, what is answering knows whether anything still waits behind it.
+    /// </summary>
+    public Action<string>? Taken { get; init; }
+
     /// <summary>Completes when the peer has gone or this connection was disposed.</summary>
     public Task Closed => closed.Task;
 
@@ -163,6 +169,7 @@ public sealed class IpcConnection(Stream stream, IpcHandler handler) : IAsyncDis
     async Task QueueLoopAsync(CancellationToken cancellationToken) {
         try {
             while (await NextAsync(cancellationToken).ConfigureAwait(false) is { } message) {
+                Taken?.Invoke(message.Type);
                 await AnswerAsideAsync(message, cancellationToken).ConfigureAwait(false);
             }
         } catch (OperationCanceledException) {

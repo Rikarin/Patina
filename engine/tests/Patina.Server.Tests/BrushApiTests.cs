@@ -233,7 +233,7 @@ public sealed class BrushApiTests : IAsyncLifetime {
 
     /// <summary>
     ///     Another project's preset is on the shelf, and the shelf keeps what it read of it only while the file stands
-    ///     (#124): an edit to the file, or a new preset in that project, is on the next load.
+    ///     (#124): an edit to the file is on the next load, and a new preset in that project once the index lists it.
     /// </summary>
     [Fact]
     public async Task Another_projects_presets_are_read_again_when_their_files_change() {
@@ -264,6 +264,8 @@ public sealed class BrushApiTests : IAsyncLifetime {
             Token
         );
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        // A new file is another project's document once the rescan the write asked for lists it.
+        await ServerFixture.IndexedAsync(client, Token);
         Assert.Contains(await ShelfAsync(), static p => p is { Name: "Gouge", Origin: "library" });
     }
 

@@ -16,6 +16,7 @@ namespace Patina.Viewport;
 public static class GltfDeclarations {
     const uint Magic = 0x46546C67; // "glTF"
     const uint JsonChunk = 0x4E4F534A; // "JSON"
+    const uint BinChunk = 0x004E4942; // "BIN"
     const int Header = 12;
     const int ChunkHeader = 8;
 
@@ -30,13 +31,7 @@ public static class GltfDeclarations {
     public static Declared Of(byte[] bytes, string extension) {
         ArgumentNullException.ThrowIfNull(bytes);
         var none = new Declared(bytes, new Dictionary<int, IReadOnlyList<string>>());
-        var binary = extension.Equals(".glb", StringComparison.OrdinalIgnoreCase);
-        if (!binary && !extension.Equals(".gltf", StringComparison.OrdinalIgnoreCase)) {
-            return none;
-        }
-
-        var json = binary ? JsonOf(bytes) : bytes.AsMemory();
-        if (json.IsEmpty || Parse(json) is not JsonObject root) {
+        if (Document(bytes, extension) is not var (root, binary)) {
             return none;
         }
 
@@ -56,6 +51,35 @@ public static class GltfDeclarations {
         root["extensionsUsed"] = used;
         var text = Encoding.UTF8.GetBytes(root.ToJsonString());
         return new(binary ? Rebuilt(bytes, text) : text, ByMaterial(root, named));
+    }
+
+    /// <summary>A glTF's JSON and whether it is binary; null for another format or JSON that will not parse.</summary>
+    /// <param name="bytes">The file.</param>
+    /// <param name="extension">Its extension, with the dot.</param>
+    internal static (JsonObject Root, bool Binary)? Document(byte[] bytes, string extension) {
+        var binary = extension.Equals(".glb", StringComparison.OrdinalIgnoreCase);
+        if (!binary && !extension.Equals(".gltf", StringComparison.OrdinalIgnoreCase)) {
+            return null;
+        }
+
+        var json = binary ? JsonOf(bytes) : bytes.AsMemory();
+        return !json.IsEmpty && Parse(json) is JsonObject root ? (root, binary) : null;
+    }
+
+    /// <summary>A binary glTF's BIN chunk, its first buffer when that names no file; empty when it has none.</summary>
+    internal static ReadOnlyMemory<byte> BinaryOf(byte[] bytes) {
+        var json = JsonOf(bytes);
+        var at = Header + ChunkHeader + json.Length;
+        if (json.IsEmpty
+            || bytes.Length - at < ChunkHeader
+            || BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(at + 4)) != BinChunk) {
+            return ReadOnlyMemory<byte>.Empty;
+        }
+
+        var length = BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(at));
+        return length > (uint)(bytes.Length - at - ChunkHeader)
+            ? ReadOnlyMemory<byte>.Empty
+            : bytes.AsMemory(at + ChunkHeader, (int)length);
     }
 
     static JsonNode? Parse(ReadOnlyMemory<byte> json) {

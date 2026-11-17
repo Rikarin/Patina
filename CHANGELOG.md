@@ -430,6 +430,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Import Materials brings in a glTF's anisotropy on Linux and macOS (#142): the Assimp those platforms load does not read `KHR_materials_anisotropy`, so a brushed metal came in brushed on Windows alone, without a word elsewhere. Patina reads the extension from the file itself on every platform, its picture beside the file or inside it.
+- A shelf picture that was still waiting for the GPU when a stroke, a frame or a save arrived gives way to it as it begins, where it ran to its end with that work waiting.
 - A stroke, a frame or a bake no longer waits for the shelf's pictures: a picture being drawn stops for any work queued behind it and is drawn again after it. On a GPU without hardware, such as Linux's lavapipe, Worn Canvas, Muddy Rubber and Scratched Aluminium each took tens of seconds to draw for the shelf, and the 2D view kept its old picture that long after a stroke.
 - A Splatter passes by the stamps that cannot reach a texel before reading any of its maps, the same picture at about half the cost; the grunges scattered with it drew in half the time or less on a software GPU.
 - The 2D View's bar fits its pane by measuring it (#184): Copy Image and Save Image… become Copy and Save…, then the channels a list, when what it holds is wider than it is, where it changed at fixed widths and ran past its end in wider fonts, as on Linux.
